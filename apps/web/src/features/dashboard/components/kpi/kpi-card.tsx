@@ -1,0 +1,47 @@
+'use client';
+
+import { LucideIcon } from 'lucide-react';
+
+interface KpiCardProps {
+  icon: LucideIcon;
+  label: string;
+  value: number | string;
+  color: string;
+  subtext?: string;
+  emptyHint?: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+}
+
+export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, trend }: KpiCardProps) {
+  const isZeroValue = typeof value === 'number' ? value === 0 : value === '0' || value === '₺0';
+
+  return (
+    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center gap-3">
+        <div className={`rounded-lg p-2 transition-transform group-hover:scale-110 ${color}`}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
+            {trend && (
+              <span
+                className={`text-xs font-medium ${trend.isPositive ? 'text-emerald-600' : 'text-red-600'}`}
+              >
+                {trend.isPositive ? '↗' : '↘'} {Math.abs(trend.value)}%
+              </span>
+            )}
+          </div>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+          {subtext && <p className="text-xs text-slate-400 dark:text-slate-500">{subtext}</p>}
+          {isZeroValue && emptyHint && (
+            <p className="mt-1 text-[11px] font-medium text-slate-400 dark:text-slate-500">{emptyHint}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
