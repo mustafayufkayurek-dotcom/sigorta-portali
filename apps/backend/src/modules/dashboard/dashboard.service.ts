@@ -1,12 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
+import { CacheService } from '@/cache/cache.service';
+import {
+  DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
+  DASHBOARD_OPS_TTL_SEC,
+  DASHBOARD_SLA_TTL_SEC,
+} from '@/cache/cache.constants';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cache: CacheService,
+  ) {}
 
   async getOperationsKpis(scopeUserId?: string) {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:operations',
+      role: scopeUserId ? 'office_staff' : 'shared',
+      userId: scopeUserId,
+    });
+    const cached = await this.cache.get<{
+      totalClaims: number;
+      openClaims: number;
+      closedClaims: number;
+      pendingTasks: number;
+      slaViolationCount: number;
+      overdueCollectionAmount: number;
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
     const now = new Date();
 
     const scopeWhere = scopeUserId
@@ -36,7 +60,7 @@ export class DashboardService {
         }),
       ]);
 
-    return {
+    const result = {
       totalClaims,
       openClaims,
       closedClaims,
@@ -44,6 +68,8 @@ export class DashboardService {
       slaViolationCount,
       overdueCollectionAmount: overdueAgg._sum.totalAmount ?? 0,
     };
+    this.cache.set(cacheKey, result, DASHBOARD_OPS_TTL_SEC).catch(() => {});
+    return result;
   }
 
   async getUserPerformance(filters: DashboardFiltersDto, scopeUserId?: string) {
@@ -1022,6 +1048,29 @@ export class DashboardService {
   // ── Sprint 3: Operasyon Hiyerarşisi ──────────────────────────────────────
 
   async getCriticalAlerts() {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:critical-alerts',
+      role: 'shared',
+    });
+    const cached = await this.cache.get<{
+      slaEscalations: Array<{
+        id: string;
+        fileNo: string;
+        currentStatus: string | null;
+        slaPercentage: number;
+        assignedTo: string | null;
+      }>;
+      inactiveFiles: Array<{
+        id: string;
+        fileNo: string;
+        lastActivityAt: Date | null;
+        daysSinceActivity: number | null;
+        currentStatus: string | undefined;
+      }>;
+      totalCritical: number;
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
     const now = new Date();
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
@@ -1062,7 +1111,7 @@ export class DashboardService {
       take: 20,
     });
 
-    return {
+    const result = {
       slaEscalations,
       inactiveFiles: inactiveFiles.map((f) => ({
         id: f.id, fileNo: f.fileNo, lastActivityAt: f.lastActivityAt,
@@ -1071,6 +1120,8 @@ export class DashboardService {
       })),
       totalCritical: slaEscalations.length + inactiveFiles.length,
     };
+    this.cache.set(cacheKey, result, DASHBOARD_CRITICAL_ALERTS_TTL_SEC).catch(() => {});
+    return result;
   }
 
   async getPendingActions(user: any) {
@@ -1101,6 +1152,16 @@ export class DashboardService {
   }
 
   async getSlaSummary() {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:sla-summary',
+      role: 'shared',
+    });
+    const cached = await this.cache.get<{
+      byStatus: Array<{ statusName: string; statusCode: string; total: number; normal: number; warning: number; critical: number; escalated: number }>;
+      overall: { total: number; healthy: number; atRisk: number; critical: number };
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
     const now = new Date();
     const openFiles = await this.prisma.claimFile.findMany({
       where: { currentStatus: { isClosedState: false } },
@@ -1134,7 +1195,9 @@ export class DashboardService {
       atRisk: acc.atRisk + s.warning, critical: acc.critical + s.critical + s.escalated,
     }), { total: 0, healthy: 0, atRisk: 0, critical: 0 });
 
-    return { byStatus, overall };
+    const result = { byStatus, overall };
+    this.cache.set(cacheKey, result, DASHBOARD_SLA_TTL_SEC).catch(() => {});
+    return result;
   }
 
   async getOwnershipLoad() {
