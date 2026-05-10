@@ -23,6 +23,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel', roles: [] },
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -56,6 +57,7 @@ interface NavItemAccess {
 const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -180,20 +182,22 @@ function Navbar({
 
   // Dışarı tıklamada dropdown'ları kapat
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (yonetimDropRef.current && !yonetimDropRef.current.contains(e.target as Node)) setYonetimDropOpen(false);
-      if (settingsDropRef.current && !settingsDropRef.current.contains(e.target as Node)) setSettingsDropOpen(false);
-      if (profileDropRef.current && !profileDropRef.current.contains(e.target as Node)) setProfileDropOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) onNotifClose();
+    const handler = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (yonetimDropRef.current && !yonetimDropRef.current.contains(target)) setYonetimDropOpen(false);
+      if (settingsDropRef.current && !settingsDropRef.current.contains(target)) setSettingsDropOpen(false);
+      if (profileDropRef.current && !profileDropRef.current.contains(target)) setProfileDropOpen(false);
+      if (notifRef.current && !notifRef.current.contains(target)) onNotifClose();
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
   }, [onNotifClose]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   const navLinkCls = (href: string) =>
-    `text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg ${
+    `text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap ${
       isActive(href)
         ? 'text-blue-700 bg-blue-50 font-semibold'
         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
@@ -218,7 +222,7 @@ function Navbar({
             </Link>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide max-w-[min(100vw-20rem,56rem)] lg:max-w-none">
               {isExpert && (
                 <>
                   <Link href="/panel/eksper-portal" className={navLinkCls('/panel/eksper-portal')}>Dashboard</Link>
@@ -238,7 +242,7 @@ function Navbar({
                 <>
                   <Link href="/panel" className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg ${pathname === '/panel' ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}>Dashboard</Link>
                   {canSee('/panel/hasar-dosyalari') && (
-                    <Link href="/panel/operasyon" className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
+                    <Link href="/panel/operasyon" className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
                       isActive('/panel/operasyon') || isActive('/panel/hasar-dosyalari') || isActive('/panel/acil-yardim')
                         ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                     }`}>
@@ -252,6 +256,9 @@ function Navbar({
                   )}
                   {canSee('/panel/personel-yonetimi') && (
                     <Link href="/panel/personel-yonetimi" className={navLinkCls('/panel/personel-yonetimi')}>Personel</Link>
+                  )}
+                  {canSee('/panel/sahiplik') && (
+                    <Link href="/panel/sahiplik" className={navLinkCls('/panel/sahiplik')}>Sahiplik</Link>
                   )}
 
                   {/* Müşteriler — düz link */}
@@ -268,16 +275,16 @@ function Navbar({
 
                   {/* Finans Dropdown (eski adı: Yönetim) */}
                   {canSee('/panel/finans') && (
-                    <div className="relative" ref={yonetimDropRef}>
-                      <button type="button" onClick={() => { setYonetimDropOpen((v) => !v); setSettingsDropOpen(false); }} className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
+                    <div className="relative z-[60]" ref={yonetimDropRef}>
+                      <button type="button" onClick={() => { setYonetimDropOpen((v) => !v); setSettingsDropOpen(false); }} className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
                         pathname.startsWith('/panel/finans') || pathname.startsWith('/panel/raporlar') || pathname.startsWith('/panel/carilerim')
                           ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`}>
+                      }`} aria-expanded={yonetimDropOpen}>
                         Finans
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </button>
                       {yonetimDropOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-50">
+                        <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-[70]">
                           <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Finans</p>
                           <Link href="/panel/finans" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Finans Özeti</Link>
                           <Link href="/panel/finans/fatura-talepleri" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Fatura Talepleri</Link>
@@ -307,16 +314,16 @@ function Navbar({
 
                   {/* Ayarlar Dropdown */}
                   {canSee('/panel/ayarlar') && (
-                    <div className="relative" ref={settingsDropRef}>
-                      <button type="button" onClick={() => { setSettingsDropOpen((v) => !v); setYonetimDropOpen(false); }} className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
+                    <div className="relative z-[60]" ref={settingsDropRef}>
+                      <button type="button" onClick={() => { setSettingsDropOpen((v) => !v); setYonetimDropOpen(false); }} className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
                         pathname.startsWith('/panel/ayarlar') || pathname.startsWith('/panel/kullanicilar') || pathname.startsWith('/panel/guvenlik')
                           ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`}>
+                      }`} aria-expanded={settingsDropOpen}>
                         Ayarlar
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </button>
                       {settingsDropOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-50">
+                        <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-[70]">
                           <Link href="/panel/ayarlar/kurulum" className="block mx-1 px-3 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
                             <span className="text-base leading-none">⚙️</span>
                             Kurulum Sihirbazı
@@ -557,7 +564,14 @@ function Navbar({
                   </>
                 )}
                 {canSee('/panel/ayarlar') && (
-                  <Link href="/panel/ayarlar/hizmet-branslari" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Ayarlar</Link>
+                  <>
+                    <Link href="/panel/ayarlar/kurulum" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Kurulum Sihirbazı</Link>
+                    <Link href="/panel/ayarlar/sablonlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Şablonlar</Link>
+                    <Link href="/panel/ayarlar/tanimlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tanımlar</Link>
+                    <Link href="/panel/ayarlar/sigorta-sirketleri" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Sigorta Şirketleri</Link>
+                    <Link href="/panel/ayarlar/fiyat-yonetimi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Fiyat Yönetimi</Link>
+                    <Link href="/panel/guvenlik/erisim-loglari" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Güvenlik</Link>
+                  </>
                 )}
               </>
             )}
