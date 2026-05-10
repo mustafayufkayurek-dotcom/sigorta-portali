@@ -227,7 +227,7 @@ function Navbar({
             </Link>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide max-w-[min(100vw-20rem,56rem)] lg:max-w-none">
+            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide max-w-[min(100vw-20rem,56rem)] lg:max-w-none lg:overflow-visible">
               {isExpert && (
                 <>
                   <Link href="/panel/eksper-portal" className={navLinkCls('/panel/eksper-portal')}>Dashboard</Link>
