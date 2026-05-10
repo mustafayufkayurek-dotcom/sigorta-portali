@@ -1,0 +1,72 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import * as IORedis from 'ioredis';
+
+@Injectable()
+export class HealthService {
+  private redisClient: IORedis.Redis | null = null;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private getRedisClient(): IORedis.Redis {
+    if (!this.redisClient) {
+      const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+      this.redisClient = new IORedis.default(redisUrl, {
+        lazyConnect: true,
+        connectTimeout: 5000,
+        maxRetriesPerRequest: 1,
+      });
+    }
+    return this.redisClient;
+  }
+
+  async check() {
+    const results = await Promise.allSettled([
+      this.checkDatabase(),
+      this.checkRedis(),
+    ]);
+
+    const db = results[0];
+    const redis = results[1];
+
+    const dbStatus = db.status === 'fulfilled' ? db.value : { status: 'down', error: (db as PromiseRejectedResult).reason?.message };
+    const redisStatus = redis.status === 'fulfilled' ? redis.value : { status: 'down', error: (redis as PromiseRejectedResult).reason?.message };
+
+    const allUp = dbStatus.status === 'up' && redisStatus.status === 'up';
+
+    return {
+      status: allUp ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      services: {
+        database: dbStatus,
+        redis: redisStatus,
+      },
+    };
+  }
+
+  private async checkDatabase() {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return { status: 'up' };
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      return { status: 'down', error: msg };
+    }
+  }
+
+  private async checkRedis() {
+    try {
+      const client = this.getRedisClient();
+      await client.ping();
+      return { status: 'up' };
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      return { status: 'down', error: msg };
+    }
+  }
+}

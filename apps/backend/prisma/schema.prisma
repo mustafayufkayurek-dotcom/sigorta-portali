@@ -1,0 +1,3026 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model InsuranceCompany {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  taxNumber    String?  @map("tax_number")
+  contactEmail String?  @map("contact_email")
+  contactPhone String?  @map("contact_phone")
+  address      String?
+  status       String   @default("active")
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  claimFiles               ClaimFile[]
+  userInsuranceCompanyScopes UserInsuranceCompanyScope[]
+  invoiceRequests          InvoiceRequest[]
+  surveyCampaigns          SurveyCampaign[]
+
+  @@map("insurance_companies")
+}
+
+model Branch {
+  id            String   @id @default(uuid())
+  name          String
+  city          String?
+  region        String?
+  address       String?
+  phone         String?
+  managerUserId String?  @map("manager_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  users              User[]        @relation("BranchUsers")
+  manager            User?         @relation("BranchManager", fields: [managerUserId], references: [id])
+  assignedClaimFiles ClaimFile[]
+
+  @@map("branches")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  module      String
+  action      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  branchId     String?   @map("branch_id")
+  roleId       String    @map("role_id")
+  adjusterId   String?   @unique @map("adjuster_id")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  email        String    @unique
+  phone        String?
+  passwordHash String    @map("password_hash")
+  status       String    @default("active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  employeeCode String?   @unique @map("employee_code")
+  isMobileUser Boolean   @default(false) @map("is_mobile_user")
+  isWebUser    Boolean   @default(true) @map("is_web_user")
+  expoPushToken String?  @map("expo_push_token")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  branch   Branch?   @relation("BranchUsers", fields: [branchId], references: [id])
+  role     Role      @relation(fields: [roleId], references: [id])
+  adjuster Adjuster? @relation("UserAdjuster", fields: [adjusterId], references: [id])
+
+  managedBranches            Branch[]                    @relation("BranchManager")
+  userInsuranceCompanyScopes UserInsuranceCompanyScope[]
+  assignedFieldClaimFiles    ClaimFile[]                 @relation("AssignedFieldUser")
+  assignedOfficeClaimFiles   ClaimFile[]                 @relation("AssignedOfficeUser")
+  assignedAdjusterClaimFiles ClaimFile[]                 @relation("AssignedAdjuster")
+  responsibleClaimFiles      ClaimFile[]                 @relation("CurrentResponsibleUser")
+  claimStatusChanges         ClaimStatusHistory[]
+  waitingsCreated            ClaimFileWaiting[] @relation("WaitingCreatedBy")
+  waitingsResolved           ClaimFileWaiting[] @relation("WaitingResolvedBy")
+  timelineNotes              TimelineNote[]     @relation("TimelineNoteAuthor")
+  tasks                      Task[]
+  notes                      Note[]
+  uploadedFileAssets         FileAsset[]
+  performedAuditLogs         AuditLog[]
+  notifications              Notification[]
+  refreshTokens              RefreshToken[]
+  passwordResetTokens        PasswordResetToken[]
+  createdRepairReports       RepairReport[]              @relation("CreatedRepairReports")
+  revisedRepairReports       RepairReport[]              @relation("RevisedRepairReports")
+  uploadedVendorDocuments    VendorDocument[]
+  approvalActions            ReportApprovalHistory[]
+  sentExternalApprovals      ExternalApproval[]          @relation("SentExternalApprovals")
+  externalApprovalResponses  ExternalApproval[]          @relation("ExternalApprovalResponder")
+  createdInvoices            Invoice[]                   @relation("CreatedInvoices")
+  createdPayments            Payment[]                   @relation("CreatedPayments")
+  serviceAreas               UserServiceArea[]
+  assignedAppointments       Appointment[]               @relation("AppointmentUser")
+  userLocations              UserLocation[]
+  customerAccessLogs         CustomerAccessLog[]
+  uploadedEntityDocuments    EntityDocument[]            @relation("UploadedEntityDocuments")
+  chatArchives               ChatArchive[]
+  taskAssignmentsAssigned    TaskAssignment[] @relation("TaskAssignmentAssignedTo")
+  taskAssignmentsAssignedBy  TaskAssignment[] @relation("TaskAssignmentAssignedBy")
+  assignmentRules            AssignmentRule[] @relation("AssignmentRuleUser")
+  revisionRequestsMade       ReportRevisionRequest[] @relation("RevisionRequestedBy")
+  revisionRequestsAssigned   ReportRevisionRequest[] @relation("RevisionAssignedTo")
+  revisionMessages           RevisionMessage[] @relation("RevisionMessageSender")
+  emailPreferences           UserEmailPreferences?
+  agreementAcceptances       AgreementAcceptance[]
+  createdVendorStatements    VendorPaymentStatement[]  @relation("CreatedVendorStatements")
+  uploadedStatementReceipts  VendorStatementReceipt[]  @relation("UploadedStatementReceipts")
+  resolvedVendorDisputes     VendorStatementDispute[]  @relation("ResolvedVendorDisputes")
+  acknowledgedVendorAlerts   VendorDisputeAlert[]      @relation("AcknowledgedVendorAlerts")
+  // P&L Faz 3
+  createdExtraWorkItems      ExtraWorkItem[]           @relation("CreatedExtraWorkItems")
+  createdFileRevenues        ClaimFileRevenue[]        @relation("CreatedFileRevenues")
+  createdOverheadEntries     MonthlyOverheadEntry[]    @relation("CreatedOverheadEntries")
+  // Acil Yardım
+  emergencyCasesCreated      EmergencyCase[]           @relation("EmergencyCreatedBy")
+  emergencyCasesAssigned     EmergencyCase[]           @relation("EmergencyAssignedUser")
+  emergencyCostEntries       EmergencyCostEntry[]      @relation("EmergencyCostCreatedBy")
+  emergencyInvoicesCreated   EmergencyInvoiceDraft[]   @relation("EmergencyInvoiceCreatedBy")
+  // Tedarikçi Sözleşmeleri
+  createdVendorContracts     VendorContract[]          @relation("CreatedVendorContracts")
+  // Dosya Evrak Sistemi
+  createdFileDocuments       FileDocument[]            @relation("CreatedFileDocuments")
+  physicalUploadedDocuments  FileDocument[]            @relation("PhysicalUploadedBy")
+  // Fatura Talepleri
+  createdInvoiceRequests     InvoiceRequest[]          @relation("CreatedInvoiceRequests")
+  approvedInvoiceRequests    InvoiceRequest[]          @relation("ApprovedInvoiceRequests")
+  // Ekran İzinleri
+  screenPermissions          ScreenPermission[]
+  // Masraf İzleme
+  createdExpenses            Expense[]                 @relation("ExpenseCreatedBy")
+  approvedExpenses           Expense[]                 @relation("ExpenseApprovedBy")
+
+  // Ofis-Saha İş Akışı
+  fileActivityLogs           FileActivityLog[]         @relation("FileActivityActor")
+  createdFileAppointments    FileAppointment[]         @relation("FileAppointmentCreatedBy")
+
+  @@index([email])
+  @@index([roleId])
+  @@index([branchId])
+  @@map("users")
+}
+
+model UserInsuranceCompanyScope {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  insuranceCompanyId String   @map("insurance_company_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insuranceCompany InsuranceCompany @relation(fields: [insuranceCompanyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, insuranceCompanyId])
+  @@map("user_insurance_company_scopes")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
+model ClaimFile {
+  id                    String    @id @default(uuid())
+  fileNo                String    @unique @map("file_no")
+  insuranceCompanyId    String    @map("insurance_company_id")
+  policyNo              String    @map("policy_no")
+  claimNo               String    @map("claim_no")
+  productBranch         String    @map("product_branch")
+  lossType              String?   @map("loss_type")
+  incidentDate          DateTime  @map("incident_date")
+  notificationDate      DateTime  @map("notification_date")
+  currentStatusId       String    @map("current_status_id")
+  priority              String    @default("medium")
+  sourceChannel         String?   @map("source_channel")
+  customerId            String?   @map("customer_id")
+  propertyType          String?   @map("property_type")
+  propertyAddressId     String?   @map("property_address_id")
+  fileType              String?   @map("file_type")
+  description           String?
+  initialReserveAmount  Float?    @map("initial_reserve_amount")
+  estimatedCostAmount   Float?    @map("estimated_cost_amount")
+  approvedBudgetAmount  Float?    @map("approved_budget_amount")
+  actualCostAmount      Float?    @map("actual_cost_amount")
+  invoicedAmount        Float?    @map("invoiced_amount")
+  collectedAmount       Float?    @map("collected_amount")
+  profitAmount          Float?    @map("profit_amount")
+  currency              String    @default("TRY")
+  assignedBranchId      String?   @map("assigned_branch_id")
+  assignedTeamId        String?   @map("assigned_team_id")
+  assignedFieldUserId   String?   @map("assigned_field_user_id")
+  assignedOfficeUserId  String?   @map("assigned_office_user_id")
+  assignedAdjusterId    String?   @map("assigned_adjuster_id")
+  assignedSupplierId    String?   @map("assigned_supplier_id")
+  supplierAssignedAt    DateTime? @map("supplier_assigned_at")
+  slaDueAt              DateTime? @map("sla_due_at")
+  departmentId          String?   @map("department_id")
+  departmentFileSubjectId String? @map("department_file_subject_id")
+  // Operasyonel Ownership (Danışman Ek Talep #1)
+  currentResponsibleRole  String?   @map("current_responsible_role")
+  currentResponsibleUserId String?  @map("current_responsible_user_id")
+  pendingActionOwner      String?   @map("pending_action_owner")
+
+  // Son Aktivite Takibi (Danışman Ek Talep #2)
+  lastActivityAt          DateTime? @map("last_activity_at")
+  lastHumanActionAt       DateTime? @map("last_human_action_at")
+  statusChangedAt         DateTime? @map("status_changed_at")
+
+  closedAt              DateTime? @map("closed_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  insuranceCompany InsuranceCompany @relation(fields: [insuranceCompanyId], references: [id])
+  currentStatus    ClaimStatus      @relation(fields: [currentStatusId], references: [id])
+  customer         Customer?        @relation(fields: [customerId], references: [id])
+  propertyAddress  Address?         @relation("PropertyAddress", fields: [propertyAddressId], references: [id])
+  assignedBranch   Branch?          @relation(fields: [assignedBranchId], references: [id])
+  assignedFieldUser   User?         @relation("AssignedFieldUser", fields: [assignedFieldUserId], references: [id])
+  assignedOfficeUser  User?         @relation("AssignedOfficeUser", fields: [assignedOfficeUserId], references: [id])
+  assignedAdjuster    User?         @relation("AssignedAdjuster", fields: [assignedAdjusterId], references: [id])
+  assignedSupplier    Vendor?       @relation("AssignedSupplier", fields: [assignedSupplierId], references: [id])
+  currentResponsibleUser User?     @relation("CurrentResponsibleUser", fields: [currentResponsibleUserId], references: [id])
+  department          Department?   @relation(fields: [departmentId], references: [id])
+  departmentFileSubject DepartmentFileSubject? @relation(fields: [departmentFileSubjectId], references: [id])
+
+  statusHistory        ClaimStatusHistory[]
+  waitings             ClaimFileWaiting[]
+  timelineNotes        TimelineNote[]
+  riskLocations        ClaimRiskLocation[]
+  tasks                Task[]
+  notes                Note[]
+  documents            ClaimDocument[]
+  adjusterAssignments  AdjusterAssignment[]
+  appointments         Appointment[]
+  budgetVersions       BudgetVersion[]
+  costEntries          CostEntry[]
+  repairReports        RepairReport[]
+  invoices             Invoice[]
+  payments             Payment[]
+  financialSummary     ClaimFinancialSummary?
+  customerAccessLogs   CustomerAccessLog[]
+  chatArchives         ChatArchive[]
+  taskAssignments      TaskAssignment[]
+  statementItems       VendorStatementItem[]
+  // P&L Faz 3
+  fileRevenues         ClaimFileRevenue[]
+  extraWorkItems       ExtraWorkItem[]
+  overheadAllocations  OverheadAllocation[]
+  // Tedarikçi Sözleşmeleri
+  vendorContracts      VendorContract[]
+  // Dosya Evrak & Fatura Talebi
+  fileDocuments        FileDocument[]
+  invoiceRequests      InvoiceRequest[]
+  // Müşteri Memnuniyet Anketi
+  surveyCampaigns      SurveyCampaign[]
+  // Masraf İzleme
+  expenses             Expense[]
+
+  // Ofis-Saha İş Akışı
+  activityLogs         FileActivityLog[]
+  fileAppointments     FileAppointment[]
+
+  @@index([fileNo])
+  @@index([insuranceCompanyId])
+  @@index([currentStatusId])
+  @@index([assignedFieldUserId])
+  @@index([assignedOfficeUserId])
+  @@index([assignedAdjusterId])
+  @@map("claim_files")
+}
+
+model ClaimStatus {
+  id               String   @id @default(uuid())
+  code             String   @unique
+  name             String
+  sequenceNo       Int      @map("sequence_no")
+  color            String   @default("#6B7280")
+  isClosedState    Boolean  @default(false) @map("is_closed_state")
+  maxDurationHours     Int?     @map("max_duration_hours")
+  slaWarningPercent    Int      @default(60) @map("sla_warning_percent")
+  slaCriticalPercent   Int      @default(80) @map("sla_critical_percent")
+  slaEscalationPercent Int      @default(100) @map("sla_escalation_percent")
+  isWaitingState       Boolean  @default(false) @map("is_waiting_state")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  claimFiles         ClaimFile[]
+  historyFrom        ClaimStatusHistory[] @relation("FromStatus")
+  historyTo          ClaimStatusHistory[] @relation("ToStatus")
+
+  @@map("claim_statuses")
+}
+
+model ClaimStatusHistory {
+  id              String   @id @default(uuid())
+  claimFileId     String   @map("claim_file_id")
+  fromStatusId    String?  @map("from_status_id")
+  toStatusId      String   @map("to_status_id")
+  changedByUserId String   @map("changed_by_user_id")
+  changedAt       DateTime @default(now()) @map("changed_at")
+  note            String?
+  durationMinutes Int?     @map("duration_minutes")
+  waitingReason   String?  @map("waiting_reason")
+
+  claimFile     ClaimFile    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  fromStatus    ClaimStatus? @relation("FromStatus", fields: [fromStatusId], references: [id])
+  toStatus      ClaimStatus  @relation("ToStatus", fields: [toStatusId], references: [id])
+  changedByUser User         @relation(fields: [changedByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@map("claim_status_history")
+}
+
+model ClaimFileWaiting {
+  id               String    @id @default(uuid())
+  claimFileId      String    @map("claim_file_id")
+  reason           String
+  description      String?
+  startedAt        DateTime  @default(now()) @map("started_at")
+  resolvedAt       DateTime? @map("resolved_at")
+  resolvedByUserId String?   @map("resolved_by_user_id")
+  createdByUserId  String    @map("created_by_user_id")
+
+  claimFile      ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdByUser  User      @relation("WaitingCreatedBy", fields: [createdByUserId], references: [id])
+  resolvedByUser User?     @relation("WaitingResolvedBy", fields: [resolvedByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@map("claim_file_waitings")
+}
+
+// Operasyonel İç Not Sistemi (Danışman Ek Talep #5)
+model TimelineNote {
+  id          String   @id @default(uuid())
+  claimFileId String   @map("claim_file_id")
+  authorId    String   @map("author_id")
+  content     String
+  noteType    String   @default("general") @map("note_type") // general | operations | finance | adjuster | field
+  visibility  String   @default("internal") // internal | team_only
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  author    User      @relation("TimelineNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([claimFileId])
+  @@map("timeline_notes")
+}
+
+model Customer {
+  id              String    @id @default(uuid())
+  type            String
+  // Yeni: entityType (individual/corporate) ve subType (insured/private_customer)
+  entityType      String    @default("individual") @map("entity_type") // individual | corporate
+  subType         String?   @map("sub_type")        // insured | private_customer (bireysel için)
+  identityNo      String?   @unique @map("identity_no")
+  taxNumber       String?   @unique @map("tax_number")
+  taxOffice       String?   @map("tax_office")
+  fullName        String?   @map("full_name")
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  companyName     String?   @map("company_name")
+  authorizedPerson String?  @map("authorized_person")
+  contactFirstName String?  @map("contact_first_name")
+  contactLastName  String?  @map("contact_last_name")
+  phone           String?
+  email           String?
+  city            String?
+  district        String?
+  address         String?
+  birthDate       DateTime? @map("birth_date")
+  latitude        Float?
+  longitude       Float?
+  // Hizmet türü ve branşlar
+  serviceType     String?   @map("service_type")       // HASAR | ACIL_YARDIM
+  serviceBranches Json?     @default("[]") @map("service_branches") // string[]
+
+  // CRM alanları
+  source          String?   // insurance_referral | referral | web | returning
+  satisfactionScore Int?    @map("satisfaction_score") // 1-5
+  followUpDate    DateTime? @map("follow_up_date")
+  tags            Json?     @default("[]")
+  status          String    @default("active") // active | passive | blacklisted
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  claimFiles   ClaimFile[]
+  contacts     CustomerContact[]
+  contactInfos ContactInfo[]
+  accessLogs   CustomerAccessLog[]
+  expertReports RepairReport[]     @relation("ExpertOfficeReports")
+  emergencyCases EmergencyCase[]   @relation("EmergencyCustomer")
+
+  @@map("customers")
+}
+
+model CustomerContact {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  name       String
+  role       String?
+  phone      String?
+  email      String?
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_contacts")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  title        String?
+  country      String   @default("TR")
+  city         String
+  district     String?
+  neighborhood String?
+  addressLine  String   @map("address_line")
+  postalCode   String?  @map("postal_code")
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  claimFilesProperty ClaimFile[]        @relation("PropertyAddress")
+  riskLocations      ClaimRiskLocation[]
+
+  @@map("addresses")
+}
+
+model ClaimRiskLocation {
+  id               String   @id @default(uuid())
+  claimFileId      String   @map("claim_file_id")
+  addressId        String   @map("address_id")
+  siteContactName  String?  @map("site_contact_name")
+  siteContactPhone String?  @map("site_contact_phone")
+  accessNotes      String?  @map("access_notes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  address   Address   @relation(fields: [addressId], references: [id])
+
+  @@index([claimFileId])
+  @@map("claim_risk_locations")
+}
+
+model Task {
+  id             String    @id @default(uuid())
+  claimFileId    String    @map("claim_file_id")
+  taskType       String    @map("task_type")
+  title          String
+  description    String?
+  priority       String
+  status         String    @default("pending")
+  assignedUserId String?   @map("assigned_user_id")
+  dueAt          DateTime? @map("due_at")
+  completedAt    DateTime? @map("completed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  claimFile    ClaimFile        @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  assignedUser User?            @relation(fields: [assignedUserId], references: [id])
+  checklists   TaskChecklist[]
+
+  @@index([claimFileId])
+  @@index([assignedUserId])
+  @@index([status])
+  @@index([dueAt])
+  @@map("tasks")
+}
+
+model TaskChecklist {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  itemText    String   @map("item_text")
+  isRequired  Boolean  @default(false) @map("is_required")
+  isCompleted Boolean  @default(false) @map("is_completed")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_checklists")
+}
+
+model Note {
+  id           String   @id @default(uuid())
+  claimFileId  String   @map("claim_file_id")
+  noteType     String   @map("note_type")
+  content      String
+  isPrivate    Boolean  @default(false) @map("is_private")
+  authorUserId String   @map("author_user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorUserId], references: [id])
+
+  @@index([claimFileId])
+  @@map("notes")
+}
+
+model FileAsset {
+  id            String   @id @default(uuid())
+  ownerType     String   @map("owner_type")
+  ownerId       String   @map("owner_id")
+  fileName      String   @map("file_name")
+  fileExtension String   @map("file_extension")
+  mimeType      String   @map("mime_type")
+  fileSize      Int      @map("file_size")
+  storageKey    String   @map("storage_key")
+  thumbnailKey  String?  @map("thumbnail_key")
+  category      String?
+  uploadedByUserId String @map("uploaded_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  uploadedBy User            @relation(fields: [uploadedByUserId], references: [id])
+  documents  ClaimDocument[]
+  adjusterReports AdjusterReport[]
+
+  @@index([ownerType, ownerId])
+  @@map("file_assets")
+}
+
+model ClaimDocument {
+  id           String   @id @default(uuid())
+  claimFileId  String   @map("claim_file_id")
+  fileAssetId  String   @map("file_asset_id")
+  documentType String   @map("document_type")
+  visibility   AttachmentVisibility @default(PUBLIC)
+  versionNo    Int      @default(1) @map("version_no")
+  isLatest     Boolean  @default(true) @map("is_latest")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  fileAsset FileAsset @relation(fields: [fileAssetId], references: [id])
+
+  @@index([claimFileId])
+  @@index([claimFileId, isLatest])
+  @@map("claim_documents")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  action      String
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  userId      String?  @map("user_id")
+  userEmail   String?  @map("user_email")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  type              String
+  title             String
+  body              String
+  channel           String
+  status            String   @default("pending")
+  relatedEntityType String?  @map("related_entity_type")
+  relatedEntityId   String?  @map("related_entity_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  readAt            DateTime? @map("read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("notifications")
+}
+
+// ─── Faz 2: Eksper Yönetimi ────────────────────────────────────────────────────
+
+model Adjuster {
+  id           String   @id @default(uuid())
+  name         String
+  company      String?
+  licenseNo    String?  @unique @map("license_no")
+  phone        String?
+  email        String?
+  city         String?
+  region       String?
+  specialties  String[] @default([])
+  status       String   @default("active")
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignments  AdjusterAssignment[]
+  appointments Appointment[]
+  users        User[]              @relation("UserAdjuster")
+
+  @@index([city])
+  @@index([region])
+  @@index([status])
+  @@map("adjusters")
+}
+
+model AdjusterAssignment {
+  id              String    @id @default(uuid())
+  claimFileId     String    @map("claim_file_id")
+  adjusterId      String    @map("adjuster_id")
+  status          String    @default("pending")
+  assignedAt      DateTime  @default(now()) @map("assigned_at")
+  respondedAt     DateTime? @map("responded_at")
+  appointmentDate DateTime? @map("appointment_date")
+  visitDate       DateTime? @map("visit_date")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  adjuster  Adjuster  @relation(fields: [adjusterId], references: [id])
+  report    AdjusterReport?
+
+  @@index([claimFileId])
+  @@index([adjusterId])
+  @@index([status])
+  @@map("adjuster_assignments")
+}
+
+model AdjusterReport {
+  id               String    @id @default(uuid())
+  assignmentId     String    @unique @map("assignment_id")
+  reportNo         String    @unique @map("report_no")
+  reportDate       DateTime  @map("report_date")
+  recommendation   String?
+  estimatedDamage  Float?    @map("estimated_damage")
+  status           String    @default("draft")
+  rejectionReason  String?   @map("rejection_reason")
+  fileAssetId      String?   @map("file_asset_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  assignment AdjusterAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  fileAsset  FileAsset?         @relation(fields: [fileAssetId], references: [id])
+
+  @@index([status])
+  @@map("adjuster_reports")
+}
+
+model Appointment {
+  id             String    @id @default(uuid())
+  claimFileId    String    @map("claim_file_id")
+  adjusterId     String?   @map("adjuster_id")
+  assignedUserId String?   @map("assigned_user_id")
+  vendorId       String?   @map("vendor_id")
+  type           String
+  scheduledAt    DateTime  @map("scheduled_at")
+  scheduledEnd   DateTime? @map("scheduled_end")
+  completedAt    DateTime? @map("completed_at")
+  notifiedAt     DateTime? @map("notified_at")
+  location       String?
+  notes          String?
+  status         String    @default("planned")
+  checkedInAt        DateTime? @map("checked_in_at")
+  checkedInLatitude  Float?    @map("checked_in_latitude")
+  checkedInLongitude Float?    @map("checked_in_longitude")
+  checkedOutAt       DateTime? @map("checked_out_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  claimFile    ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  adjuster     Adjuster? @relation(fields: [adjusterId], references: [id])
+  assignedUser User?     @relation("AppointmentUser", fields: [assignedUserId], references: [id])
+  vendor       Vendor?   @relation(fields: [vendorId], references: [id])
+
+  @@index([claimFileId])
+  @@index([adjusterId])
+  @@index([assignedUserId])
+  @@index([scheduledAt])
+  @@map("appointments")
+}
+
+// ─── Faz 2: Bütçe Yönetimi ────────────────────────────────────────────────────
+
+model Province {
+  id        String     @id @default(uuid())
+  plateCode Int        @unique @map("plate_code")
+  name      String     @unique
+  districts District[]
+  serviceAreas     VendorServiceArea[]
+  userServiceAreas UserServiceArea[]
+
+  @@map("provinces")
+}
+
+model District {
+  id         String   @id @default(uuid())
+  provinceId String   @map("province_id")
+  name       String
+  province   Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  serviceAreas     VendorServiceArea[]
+  userServiceAreas UserServiceArea[]
+
+  @@unique([provinceId, name])
+  @@index([provinceId])
+  @@map("districts")
+}
+
+model Vendor {
+  id               String   @id @default(uuid())
+  name             String
+  type             String
+  entityType       String   @default("corporate") @map("entity_type") // corporate | individual
+  taxNumber        String?  @unique @map("tax_number")
+  taxOffice        String?  @map("tax_office")
+  tradeRegistryNo  String?  @map("trade_registry_no")
+  authorizedPerson String?  @map("authorized_person")
+  authorizedPhone  String?  @map("authorized_phone")
+  authorizedEmail  String?  @map("authorized_email")
+  identityNo       String?  @unique @map("identity_no")
+  phone            String?
+  email            String?
+  address          String?
+  city             String?
+  district         String?
+  latitude         Float?
+  longitude        Float?
+  iban             String?
+  bankName         String?  @map("bank_name")
+  // CRM alanları
+  source           String?  // referral | web | direct | other
+  referral         String?  // Bu tedarikçiyi kim önerdi/tanıştırdı
+  tags             Json?    @default("[]")
+  notes            String?
+  // Sözleşme / Vade takip
+  contractStartDate DateTime? @map("contract_start_date")
+  contractEndDate   DateTime? @map("contract_end_date")
+  contractNotes     String?   @map("contract_notes")
+  // Tedarikçi kategorisi: hasar | acil | her_ikisi
+  category         String   @default("hasar")
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  budgetItems              BudgetItem[]
+  costEntries              CostEntry[]
+  serviceAreas             VendorServiceArea[]
+  vendorWorkGroups         VendorWorkGroup[]
+  vendorDocuments          VendorDocument[]
+  appointments             Appointment[]
+  contacts                 VendorContact[]
+  contactInfos             ContactInfo[]
+  vendorStatements         VendorPaymentStatement[]
+  statementDisputes        VendorStatementDispute[]
+  disputeAlerts            VendorDisputeAlert[]
+  riskScore                VendorRiskScore?
+  riskScoreHistory         VendorRiskScoreHistory[]
+  concentrationSnapshots   VendorConcentrationSnapshot[]
+  emergencyCases           EmergencyCase[]             @relation("EmergencyVendor")
+  emergencyCostEntries     EmergencyCostEntry[]        @relation("EmergencyCostVendor")
+  // Tedarikçi Sözleşmeleri
+  vendorContracts          VendorContract[]
+
+  // Ofis-Saha: Atanmış Dosyalar
+  assignedClaimFiles       ClaimFile[]     @relation("AssignedSupplier")
+
+  @@index([status])
+  @@index([category])
+  @@map("vendors")
+}
+
+model VendorServiceArea {
+  id         String    @id @default(uuid())
+  vendorId   String    @map("vendor_id")
+  provinceId String    @map("province_id")
+  districtId String?   @map("district_id")
+
+  vendor   Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  province Province  @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  @@unique([vendorId, provinceId, districtId])
+  @@index([vendorId])
+  @@map("vendor_service_areas")
+}
+
+model UserServiceArea {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  provinceId String    @map("province_id")
+  districtId String?   @map("district_id")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  province Province  @relation(fields: [provinceId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  @@unique([userId, provinceId, districtId])
+  @@index([userId])
+  @@map("user_service_areas")
+}
+
+model VendorWorkGroup {
+  vendorId    String @map("vendor_id")
+  workGroupId String @map("work_group_id")
+
+  vendor    Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  workGroup WorkGroup @relation(fields: [workGroupId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, workGroupId])
+  @@map("vendor_work_groups")
+}
+
+model BudgetVersion {
+  id          String    @id @default(uuid())
+  claimFileId String    @map("claim_file_id")
+  versionNo   Int       @map("version_no")
+  status      String    @default("draft")
+  totalAmount Float     @default(0) @map("total_amount")
+  notes       String?
+  submittedAt DateTime? @map("submitted_at")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  claimFile ClaimFile    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  items     BudgetItem[]
+
+  @@unique([claimFileId, versionNo])
+  @@index([claimFileId])
+  @@index([status])
+  @@map("budget_versions")
+}
+
+model BudgetItem {
+  id              String   @id @default(uuid())
+  budgetVersionId String   @map("budget_version_id")
+  vendorId        String?  @map("vendor_id")
+  category        String
+  description     String
+  unit            String?
+  quantity        Float    @default(1)
+  unitPrice       Float    @map("unit_price")
+  vatRate         Float    @default(18) @map("vat_rate")
+  totalAmount     Float    @map("total_amount")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  budgetVersion BudgetVersion @relation(fields: [budgetVersionId], references: [id], onDelete: Cascade)
+  vendor        Vendor?       @relation(fields: [vendorId], references: [id])
+
+  @@index([budgetVersionId])
+  @@map("budget_items")
+}
+
+model CostEntry {
+  id                 String   @id @default(uuid())
+  claimFileId        String   @map("claim_file_id")
+  vendorId           String?  @map("vendor_id")
+  category           String
+  expenseCategoryId  String?  @map("expense_category_id")
+  description        String
+  amount             Float
+  vatRate            Float    @default(18) @map("vat_rate")
+  invoiceNo          String?  @map("invoice_no")
+  entryDate          DateTime @map("entry_date")
+  // P&L Faz 3 alanları
+  source             String   @default("manual") // manual | vendor_statement | logo_erp | overhead_allocation
+  sourceRefId        String?  @map("source_ref_id") // VendorStatementItem.id | OverheadAllocation.id
+  isOverhead         Boolean  @default(false) @map("is_overhead") // false=değişken, true=sabit gider payı
+  extraWorkItemId    String?  @map("extra_work_item_id") // ExtraWorkItem ile bağlantı (opsiyonel)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  claimFile       ClaimFile        @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  vendor          Vendor?          @relation(fields: [vendorId], references: [id])
+  expenseCategory ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id])
+  extraWorkItem   ExtraWorkItem?   @relation(fields: [extraWorkItemId], references: [id])
+  overheadAllocation OverheadAllocation?
+
+  @@index([claimFileId])
+  @@index([expenseCategoryId])
+  @@index([isOverhead])
+  @@index([extraWorkItemId])
+  @@map("cost_entries")
+}
+
+model ExpenseCategory {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  parentId  String?  @map("parent_id")
+  level     Int      @default(1)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent      ExpenseCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    ExpenseCategory[] @relation("CategoryTree")
+  costEntries CostEntry[]
+  // P&L Faz 3
+  overheadEntries MonthlyOverheadEntry[]
+
+  @@index([parentId])
+  @@map("expense_categories")
+}
+
+// ─── Faz 4: Departman Yönetimi ────────────────────────────────────────────────
+
+model Department {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  description  String?
+  color        String   @default("#6366F1")
+  reportFormat String   @default("repair") @map("report_format")
+  sortOrder    Int      @default(0) @map("sort_order")
+  isSystem     Boolean  @default(false) @map("is_system")
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  fileSubjects  DepartmentFileSubject[]
+  fieldConfigs  ReportFieldConfig[]
+  claimFiles    ClaimFile[]
+  repairReports RepairReport[]
+
+  @@index([status])
+  @@map("departments")
+}
+
+model DepartmentFileSubject {
+  id           String   @id @default(uuid())
+  departmentId String   @map("department_id")
+  code         String
+  name         String
+  isSystem     Boolean  @default(false) @map("is_system")
+  sortOrder    Int      @default(0) @map("sort_order")
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  claimFiles ClaimFile[]
+
+  @@unique([departmentId, code])
+  @@index([departmentId])
+  @@map("department_file_subjects")
+}
+
+model ReportFieldConfig {
+  id           String   @id @default(uuid())
+  departmentId String   @map("department_id")
+  reportFormat String   @map("report_format")
+  fieldKey     String   @map("field_key")
+  fieldLabel   String   @map("field_label")
+  isRequired   Boolean  @default(false) @map("is_required")
+  isVisible    Boolean  @default(true) @map("is_visible")
+  sortOrder    Int      @default(0) @map("sort_order")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, reportFormat, fieldKey])
+  @@index([departmentId])
+  @@map("report_field_configs")
+}
+
+// ─── Faz 3: Onarım Raporu Modülü ──────────────────────────────────────────────
+
+model WorkGroup {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  unit        String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isSystem    Boolean  @default(true) @map("is_system")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  reportItems      RepairReportItem[]
+  targetMargin     TargetMargin?
+  priceHistories   SupplierPriceHistory[]
+  vendorWorkGroups VendorWorkGroup[]
+  workSubGroups    WorkSubGroup[]
+  statementItems   VendorStatementItem[]
+  marketPrices     MarketPriceCatalog[]
+  concentrationSnapshots VendorConcentrationSnapshot[]
+  templateItems    ReportTemplateItem[]
+
+  @@index([status])
+  @@map("work_groups")
+}
+
+model TargetMargin {
+  id           String  @id @default(uuid())
+  workGroupId  String  @unique @map("work_group_id")
+  minMarginPct Float   @map("min_margin_pct")
+  warnBelowPct Float?  @map("warn_below_pct")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  workGroup WorkGroup @relation(fields: [workGroupId], references: [id], onDelete: Cascade)
+
+  @@map("target_margins")
+}
+
+model RepairReport {
+  id                  String   @id @default(uuid())
+  claimFileId         String   @map("claim_file_id")
+  reportNo            String   @unique @map("report_no")
+  reportType          String   @default("single") @map("report_type")
+  reportDate          DateTime @map("report_date")
+  inspectorName       String?  @map("inspector_name")
+  reporterName        String?  @map("reporter_name")
+  findingsText        String?  @map("findings_text")
+  legalNotes          String?  @map("legal_notes")
+  quickDamageTypes    String[] @default([]) @map("quick_damage_types")
+  quickDamageSize     String?  @map("quick_damage_size")
+  status              String   @default("draft")
+  buildingDamageTotal Float    @default(0) @map("building_damage_total")
+  goodsDamageTotal    Float    @default(0) @map("goods_damage_total")
+  totalSupplierCost   Float    @default(0) @map("total_supplier_cost")
+  totalSalesAmount    Float    @default(0) @map("total_sales_amount")
+  grossProfit         Float    @default(0) @map("gross_profit")
+  grossMarginPct      Float    @default(0) @map("gross_margin_pct")
+  departmentId        String?  @map("department_id")
+  expertOfficeId      String?  @map("expert_office_id")
+  createdByUserId     String   @map("created_by_user_id")
+  versionNo           Int      @default(1) @map("version_no")
+  originalReportId    String?  @map("original_report_id")
+  revisedAt           DateTime? @map("revised_at")
+  revisedByUserId     String?  @map("revised_by_user_id")
+  revisionCount       Int      @default(0) @map("revision_count")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  claimFile      ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdBy      User               @relation("CreatedRepairReports", fields: [createdByUserId], references: [id])
+  revisedBy      User?              @relation("RevisedRepairReports", fields: [revisedByUserId], references: [id])
+  department     Department?        @relation(fields: [departmentId], references: [id])
+  expertOffice   Customer?          @relation("ExpertOfficeReports", fields: [expertOfficeId], references: [id])
+  originalReport RepairReport?      @relation("ReportVersions", fields: [originalReportId], references: [id])
+  versions       RepairReport[]     @relation("ReportVersions")
+  items          RepairReportItem[]
+  images         ReportImage[]
+  damageTypes    ReportDamageType[]
+  approvalHistory ReportApprovalHistory[]
+  externalApprovals ExternalApproval[]
+  revisionRequests  ReportRevisionRequest[] @relation("ReportRevisionRequests")
+  revisionAsNewReport ReportRevisionRequest[] @relation("RevisionNewReport")
+  // P&L Faz 3
+  fileRevenues   ClaimFileRevenue[]
+  // Tedarikçi Sözleşmeleri
+  vendorContracts VendorContract[]
+
+  @@index([claimFileId])
+  @@index([status])
+  @@index([originalReportId])
+  @@map("repair_reports")
+}
+
+model DamageTypeRepairTemplate {
+  id                    String   @id @default(uuid())
+  damageType            String   @map("damage_type")
+  workSubGroupId        String   @map("work_sub_group_id")
+  defaultQuantitySmall  Float?   @map("default_quantity_small")
+  defaultQuantityMedium Float?   @map("default_quantity_medium")
+  defaultQuantityLarge  Float?   @map("default_quantity_large")
+  usageCount            Int      @default(0) @map("usage_count")
+  sortOrder             Int      @default(0) @map("sort_order")
+  createdBy             String?  @map("created_by")
+  fileId                String?  @map("file_id")
+  isGlobal              Boolean  @default(true) @map("is_global")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  workSubGroup WorkSubGroup @relation(fields: [workSubGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([damageType, workSubGroupId, fileId])
+  @@index([damageType])
+  @@index([usageCount(sort: Desc)])
+  @@index([fileId])
+  @@map("damage_type_repair_templates")
+}
+
+model ReportDamageType {
+  id             String @id @default(uuid())
+  reportId       String @map("report_id")
+  damageTypeCode String @map("damage_type_code")
+  damageTypeName String @map("damage_type_name")
+  sortOrder      Int    @default(0) @map("sort_order")
+
+  report RepairReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  items  RepairReportItem[]
+
+  @@index([reportId])
+  @@map("report_damage_types")
+}
+
+model RepairReportItem {
+  id                String   @id @default(uuid())
+  reportId          String   @map("report_id")
+  workGroupId       String   @map("work_group_id")
+  damageTypeId      String?  @map("damage_type_id")
+  location          String?
+  jobDescription    String   @map("job_description")
+  description       String?
+  quantity          Float    @default(1)
+  unit              String   @default("adet")
+  supplierUnitPrice Float    @default(0) @map("supplier_unit_price")
+  salesUnitPrice    Float    @default(0) @map("sales_unit_price")
+  supplierTotal     Float    @default(0) @map("supplier_total")
+  salesTotal        Float    @default(0) @map("sales_total")
+  marginPct         Float    @default(0) @map("margin_pct")
+  sortOrder         Int      @default(0) @map("sort_order")
+  metrajData        Json?    @map("metraj_data")
+  pricingType       String   @default("unit") @map("pricing_type")
+  lumpSumPrice      Float?   @map("lump_sum_price")
+  materialIncluded  Boolean  @default(true) @map("material_included")
+  laborIncluded     Boolean  @default(true) @map("labor_included")
+  damageCategory    String   @default("bina") @map("damage_category")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  report     RepairReport      @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  workGroup  WorkGroup         @relation(fields: [workGroupId], references: [id])
+  damageType ReportDamageType? @relation(fields: [damageTypeId], references: [id])
+  statementItems VendorStatementItem[]
+  anomalyFlags   RepairItemAnomalyFlag[]
+
+  @@index([reportId])
+  @@index([workGroupId])
+  @@map("repair_report_items")
+}
+
+model ReportImage {
+  id               String   @id @default(uuid())
+  reportId         String   @map("report_id")
+  storageKey       String   @map("storage_key")
+  annotatedKey     String?  @map("annotated_key")
+  fileName         String   @map("file_name")
+  mimeType         String   @map("mime_type")
+  fileSize         Int      @map("file_size")
+  category         String   @default("damage")
+  caption          String?
+  hasAnnotation    Boolean  @default(false) @map("has_annotation")
+  annotationData   Json?    @map("annotation_data")
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  report RepairReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("report_images")
+}
+
+model SupplierPriceHistory {
+  id                String   @id @default(uuid())
+  workGroupId       String   @map("work_group_id")
+  jobDescription    String   @map("job_description")
+  unit              String?
+  supplierUnitPrice Float    @map("supplier_unit_price")
+  salesUnitPrice    Float    @map("sales_unit_price")
+  claimFileId       String   @map("claim_file_id")
+  recordedAt        DateTime @default(now()) @map("recorded_at")
+
+  workGroup WorkGroup @relation(fields: [workGroupId], references: [id], onDelete: Cascade)
+
+  @@index([workGroupId, jobDescription])
+  @@map("supplier_price_history")
+}
+
+// ─── Özellik: Tedarikçi Evrak Yönetimi ────────────────────────────────────────
+
+model DocumentType {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isRequired  Boolean  @default(false) @map("is_required")
+  sortOrder   Int      @default(0) @map("sort_order")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vendorDocuments VendorDocument[]
+  entityDocuments EntityDocument[]
+
+  @@index([status])
+  @@map("document_types")
+}
+
+model VendorDocument {
+  id               String   @id @default(uuid())
+  vendorId         String   @map("vendor_id")
+  documentTypeId   String   @map("document_type_id")
+  fileName         String   @map("file_name")
+  fileExtension    String   @map("file_extension")
+  mimeType         String   @map("mime_type")
+  fileSize         Int      @map("file_size")
+  storageKey       String   @map("storage_key")
+  thumbnailKey     String?  @map("thumbnail_key")
+  status           String   @default("active")
+  uploadedByUserId String   @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  vendor       Vendor       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+  uploadedBy   User         @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([vendorId])
+  @@map("vendor_documents")
+}
+
+// ─── Özellik: Onay Workflow ────────────────────────────────────────────────────
+
+model ReportApprovalHistory {
+  id        String   @id @default(uuid())
+  reportId  String   @map("report_id")
+  userId    String   @map("user_id")
+  action    String
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  report RepairReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id])
+
+  @@index([reportId])
+  @@map("report_approval_history")
+}
+
+// ─── Özellik: Dış Onay ────────────────────────────────────────────────────────
+
+model ExternalApproval {
+  id           String    @id @default(uuid())
+  reportId     String    @map("report_id")
+  approverType String    @map("approver_type")  // expert | insurance_company
+  approverId   String?   @map("approver_id")    // User.id veya dış kişi referansı
+  approverName String?   @map("approver_name")  // ad soyad (dış kişi için)
+  approverEmail String?  @map("approver_email")
+  approverPhone String?  @map("approver_phone")
+  channel      String    @map("channel")         // email | whatsapp | in_app
+  status       String    @default("pending")     // pending | approved | rejected | expired
+  token        String    @unique                 // public erişim token'ı
+  sentAt       DateTime  @default(now()) @map("sent_at")
+  expiresAt    DateTime  @map("expires_at")
+  respondedAt  DateTime? @map("responded_at")
+  comments     String?
+  sentByUserId String    @map("sent_by_user_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  report    RepairReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sentBy    User         @relation("SentExternalApprovals", fields: [sentByUserId], references: [id])
+  approver  User?        @relation("ExternalApprovalResponder", fields: [approverId], references: [id])
+
+  @@index([reportId])
+  @@index([token])
+  @@index([status])
+  @@index([approverId])
+  @@map("external_approvals")
+}
+
+// ─── Faz 3: Finans Modülü ─────────────────────────────────────────────────────
+
+model BankAccount {
+  id         String   @id @default(uuid())
+  bankName   String   @map("bank_name")
+  branchName String?  @map("branch_name")
+  iban       String   @unique
+  currency   String   @default("TRY")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+
+  @@map("bank_accounts")
+}
+
+model Invoice {
+  id                 String   @id @default(uuid())
+  claimFileId        String   @map("claim_file_id")
+  invoiceType        String   @map("invoice_type")        // sales | purchase
+  invoiceNo          String   @unique @map("invoice_no")
+  invoiceDate        DateTime @map("invoice_date")
+  dueDate            DateTime? @map("due_date")
+  counterpartyType   String   @map("counterparty_type")   // insurance_company | vendor | customer
+  counterpartyId     String?  @map("counterparty_id")
+  currency           String   @default("TRY")
+  subtotalAmount     Float    @default(0) @map("subtotal_amount")
+  vatAmount          Float    @default(0) @map("vat_amount")
+  withholdingAmount  Float    @default(0) @map("withholding_amount")
+  totalAmount        Float    @default(0) @map("total_amount")
+  status             String   @default("draft")           // draft | sent | paid | partial | cancelled | overdue
+  documentFileId     String?  @map("document_file_id")
+  createdByUserId    String   @map("created_by_user_id")
+  notes              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  claimFile   ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation("CreatedInvoices", fields: [createdByUserId], references: [id])
+  payments    Payment[]
+  // P&L Faz 3
+  fileRevenues ClaimFileRevenue[]
+  // Fatura Talebi
+  invoiceRequests InvoiceRequest[]
+
+  @@index([claimFileId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  claimFileId     String   @map("claim_file_id")
+  paymentType     String   @map("payment_type")    // incoming | outgoing
+  paymentDate     DateTime @map("payment_date")
+  amount          Float
+  currency        String   @default("TRY")
+  method          String                            // eft | havale | credit_card | cash | offset
+  payerType       String   @map("payer_type")      // insurance_company | vendor | customer
+  payerId         String?  @map("payer_id")
+  invoiceId       String?  @map("invoice_id")
+  referenceNo     String?  @map("reference_no")
+  status          String   @default("completed")   // pending | completed | cancelled
+  bankAccountId   String?  @map("bank_account_id")
+  note            String?
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  claimFile   ClaimFile    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  createdBy   User         @relation("CreatedPayments", fields: [createdByUserId], references: [id])
+  statementItems    VendorStatementItem[]
+  statementReceipts VendorStatementReceipt[]
+  // P&L Faz 3
+  revenueRecords ClaimFileRevenue[] @relation("RevenuePayment")
+
+  @@index([claimFileId])
+  @@index([invoiceId])
+  @@index([status])
+  @@map("payments")
+}
+
+model ClaimFinancialSummary {
+  id               String   @id @default(uuid())
+  claimFileId      String   @unique @map("claim_file_id")
+  estimatedRevenue Float    @default(0) @map("estimated_revenue")
+  actualRevenue    Float    @default(0) @map("actual_revenue")
+  estimatedCost    Float    @default(0) @map("estimated_cost")
+  actualCost       Float    @default(0) @map("actual_cost")
+  grossProfit      Float    @default(0) @map("gross_profit")
+  grossMarginPct   Float    @default(0) @map("gross_margin_pct")
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  // P&L Faz 3 — Gelir kırılımı
+  fileFeeRevenue      Float @default(0) @map("file_fee_revenue")       // Dosya bedeli (sigortacıdan)
+  extraWorkRevenue    Float @default(0) @map("extra_work_revenue")     // Ekstra iş (sigortalıdan)
+  totalRevenue        Float @default(0) @map("total_revenue")
+  // P&L Faz 3 — Gider kırılımı
+  vendorCost          Float @default(0) @map("vendor_cost")
+  fieldExpenseCost    Float @default(0) @map("field_expense_cost")
+  materialCost        Float @default(0) @map("material_cost")
+  communicationCost   Float @default(0) @map("communication_cost")
+  otherVariableCost   Float @default(0) @map("other_variable_cost")
+  totalVariableCost   Float @default(0) @map("total_variable_cost")
+  overheadShare       Float @default(0) @map("overhead_share")
+  totalCost           Float @default(0) @map("total_cost")
+  netProfit           Float @default(0) @map("net_profit")
+  netMarginPct        Float @default(0) @map("net_margin_pct")
+  // Tahsilat kırılımı
+  collectedFromInsurer Float @default(0) @map("collected_from_insurer")
+  collectedFromInsured Float @default(0) @map("collected_from_insured")
+  totalCollected       Float @default(0) @map("total_collected")
+  outstandingBalance   Float @default(0) @map("outstanding_balance")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+
+  @@map("claim_financial_summaries")
+}
+
+// ─── Logo Wing ERP Entegrasyonu ───────────────────────────────────────────────
+
+model IntegrationConfig {
+  id            String    @id @default(uuid())
+  provider      String    @default("logo_wing")
+  isEnabled     Boolean   @default(false) @map("is_enabled")
+  apiBaseUrl    String    @map("api_base_url")
+  clientId      String    @map("client_id")
+  clientSecret  String    @map("client_secret")
+  username      String
+  password      String
+  firmNo        Int       @map("firm_no")
+  companyCodePrefix String? @map("company_code_prefix")
+  categoryMapping   Json?   @map("category_mapping") // { "730.01": "OFFICE_RENT", ... }
+  lastTestedAt  DateTime? @map("last_tested_at")
+  testStatus    String?   @map("test_status")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@unique([provider])
+  @@map("integration_configs")
+}
+
+model IntegrationLog {
+  id              String    @id @default(uuid())
+  provider        String    @default("logo_wing")
+  entityType      String    @map("entity_type")
+  entityId        String    @map("entity_id")
+  direction       String
+  operation       String
+  status          String    @default("pending")
+  endpoint        String?
+  requestPayload  Json?     @map("request_payload")
+  responsePayload Json?     @map("response_payload")
+  errorMessage    String?   @map("error_message")
+  retryCount      Int       @default(0) @map("retry_count")
+  logoEntityId    String?   @map("logo_entity_id")
+  processedAt     DateTime? @map("processed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("integration_logs")
+}
+
+model IntegrationEntityMap {
+  id         String   @id @default(uuid())
+  provider   String   @default("logo_wing")
+  entityType String   @map("entity_type")
+  localId    String   @map("local_id")
+  logoId     String   @map("logo_id")
+  logoRef    String?  @map("logo_ref")
+  syncedAt   DateTime @default(now()) @map("synced_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, entityType, localId])
+  @@index([entityType, localId])
+  @@map("integration_entity_maps")
+}
+
+// ─── Saha Personeli Konum Takibi ──────────────────────────────────────────────
+
+model UserLocation {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  latitude     Float
+  longitude    Float
+  accuracy     Float?
+  altitude     Float?
+  speed        Float?
+  heading      Float?
+  batteryLevel Float?   @map("battery_level")
+  timestamp    DateTime
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@map("user_locations")
+}
+
+// ─── Müşteri Erişim Güvenlik Altyapısı ───────────────────────────────────────
+
+model CustomerAccessLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  customerId  String   @map("customer_id")
+  claimFileId String?  @map("claim_file_id")
+  accessType  String   @map("access_type") // view | call | export
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  isAnomaly   Boolean  @default(false) @map("is_anomaly")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id])
+  customer  Customer   @relation(fields: [customerId], references: [id])
+  claimFile ClaimFile? @relation(fields: [claimFileId], references: [id])
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([isAnomaly])
+  @@map("customer_access_logs")
+}
+
+// ─── Yazışma Arşivi ───────────────────────────────────────────────────────────
+
+model ChatArchive {
+  id             String   @id @default(uuid())
+  claimFileId    String   @map("claim_file_id")
+  label          String
+  rawContent     String   @db.Text
+  parsedMessages Json     @map("parsed_messages")
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+  uploadedById   String   @map("uploaded_by_id")
+
+  claimFile  ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation(fields: [uploadedById], references: [id])
+
+  @@index([claimFileId])
+  @@map("chat_archives")
+}
+
+// ─── Sistem Ayarları ──────────────────────────────────────────────────────────
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model SlaRule {
+  id            String   @id @default(uuid())
+  name          String
+  claimType     String?  @map("claim_type")
+  productBranch String?  @map("product_branch")
+  targetDays    Int      @map("target_days")
+  warningDays   Int      @map("warning_days")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("sla_rules")
+}
+
+// ─── Özellik: Polimorfik Evrak Yönetimi ───────────────────────────────────────
+
+model EntityDocument {
+  id               String   @id @default(uuid())
+  entityType       String   @map("entity_type")  // customer | insurance_company
+  entityId         String   @map("entity_id")
+  documentTypeId   String?  @map("document_type_id")
+  fileName         String   @map("file_name")
+  fileExtension    String   @map("file_extension")
+  mimeType         String   @map("mime_type")
+  fileSize         Int      @map("file_size")
+  storageKey       String   @map("storage_key")
+  thumbnailKey     String?  @map("thumbnail_key")
+  notes            String?
+  uploadedByUserId String   @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  documentType DocumentType? @relation(fields: [documentTypeId], references: [id])
+  uploadedBy   User          @relation("UploadedEntityDocuments", fields: [uploadedByUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("entity_documents")
+}
+
+// ─── Hasar Raporu Tanımlamaları ────────────────────────────────────────────────
+
+model ClaimLocation {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  status      String   @default("active")
+  parentId    String?  @map("parent_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent      ClaimLocation?  @relation("SubLocations", fields: [parentId], references: [id], onDelete: Cascade)
+  children    ClaimLocation[] @relation("SubLocations")
+
+  @@index([status])
+  @@index([parentId])
+  @@map("claim_locations")
+}
+
+model WorkSubGroup {
+  id          String   @id @default(uuid())
+  workGroupId String   @map("work_group_id")
+  code        String   @unique
+  name        String
+  description String?
+  unitType    String   @map("unit_type")
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(12, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workGroup WorkGroup @relation(fields: [workGroupId], references: [id], onDelete: Cascade)
+  damageRepairTemplates DamageTypeRepairTemplate[]
+
+  @@index([workGroupId])
+  @@index([status])
+  @@map("work_sub_groups")
+}
+
+// ─── Personel İş Atama Yönetimi ──────────────────────────────────────────────
+
+enum TaskAssignmentStatus {
+  PENDING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  TIMEOUT_AUTO_ASSIGNED
+
+  @@map("task_assignment_status")
+}
+
+enum TaskAssignmentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+
+  @@map("task_assignment_priority")
+}
+
+enum AssignmentNotificationType {
+  ASSIGNMENT
+  REMINDER
+  TIMEOUT_WARNING
+  ESCALATION
+  OVERDUE
+
+  @@map("assignment_notification_type")
+}
+
+model TaskAssignment {
+  id             String                 @id @default(uuid())
+  claimFileId    String                 @map("claim_file_id")
+  assignedToId   String                 @map("assigned_to_id")
+  assignedById   String?                @map("assigned_by_id")
+  status         TaskAssignmentStatus   @default(PENDING_APPROVAL)
+  priority       TaskAssignmentPriority @default(MEDIUM)
+  dueDate        DateTime?              @map("due_date")
+  startedAt      DateTime?              @map("started_at")
+  completedAt    DateTime?              @map("completed_at")
+  timeoutHours   Int                    @default(4) @map("timeout_hours")
+  autoAssigned   Boolean                @default(false) @map("auto_assigned")
+  notes          String?
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+
+  claimFile    ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  assignedTo   User      @relation("TaskAssignmentAssignedTo", fields: [assignedToId], references: [id])
+  assignedBy   User?     @relation("TaskAssignmentAssignedBy", fields: [assignedById], references: [id])
+
+  notifications AssignmentNotification[]
+
+  @@index([claimFileId])
+  @@index([assignedToId])
+  @@index([status])
+  @@map("task_assignments")
+}
+
+model AssignmentRule {
+  id              String   @id @default(uuid())
+  name            String
+  workGroupId     String?  @map("work_group_id")
+  serviceRegionId String?  @map("service_region_id")
+  assignToUserId  String   @map("assign_to_user_id")
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  assignToUser User @relation("AssignmentRuleUser", fields: [assignToUserId], references: [id])
+
+  @@index([isActive])
+  @@index([priority])
+  @@map("assignment_rules")
+}
+
+model AssignmentNotification {
+  id               String                     @id @default(uuid())
+  taskAssignmentId String                     @map("task_assignment_id")
+  type             AssignmentNotificationType
+  message          String
+  isRead           Boolean                    @default(false) @map("is_read")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+
+  taskAssignment TaskAssignment @relation(fields: [taskAssignmentId], references: [id], onDelete: Cascade)
+
+  @@index([taskAssignmentId])
+  @@index([isRead])
+  @@map("assignment_notifications")
+}
+
+// ─── Rapor Revizyon Yönetimi ──────────────────────────────────────────────────
+
+enum RevisionStatus {
+  REQUESTED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  ESCALATED
+
+  @@map("revision_status")
+}
+
+enum RevisionPriority {
+  NORMAL
+  URGENT
+
+  @@map("revision_priority")
+}
+
+enum RevisionReason {
+  PRICE_CORRECTION
+  ITEM_ADD_REMOVE
+  MEASUREMENT_FIX
+  SCOPE_CHANGE
+  MISSING_DOCUMENT
+  OTHER
+
+  @@map("revision_reason")
+}
+
+model ReportRevisionRequest {
+  id             String           @id @default(uuid())
+  reportId       String           @map("report_id")
+  requestedById  String           @map("requested_by_id")
+  assignedToId   String?          @map("assigned_to_id")
+  status         RevisionStatus   @default(REQUESTED)
+  priority       RevisionPriority @default(NORMAL)
+  reason         RevisionReason
+  reasonNote     String           @map("reason_note")
+  affectedItems  String[]         @default([]) @map("affected_items")
+  deadlineAt     DateTime?        @map("deadline_at")
+  completedAt    DateTime?        @map("completed_at")
+  responseNote   String?          @map("response_note")
+  newReportId    String?          @map("new_report_id")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  report       RepairReport      @relation("ReportRevisionRequests", fields: [reportId], references: [id], onDelete: Cascade)
+  requestedBy  User              @relation("RevisionRequestedBy", fields: [requestedById], references: [id])
+  assignedTo   User?             @relation("RevisionAssignedTo", fields: [assignedToId], references: [id])
+  newReport    RepairReport?     @relation("RevisionNewReport", fields: [newReportId], references: [id])
+  messages     RevisionMessage[]
+
+  @@index([reportId])
+  @@index([requestedById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([deadlineAt])
+  @@map("report_revision_requests")
+}
+
+model RevisionMessage {
+  id                String   @id @default(uuid())
+  revisionRequestId String   @map("revision_request_id")
+  senderId          String   @map("sender_id")
+  message           String
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  revisionRequest ReportRevisionRequest @relation(fields: [revisionRequestId], references: [id], onDelete: Cascade)
+  sender          User                  @relation("RevisionMessageSender", fields: [senderId], references: [id])
+
+  @@index([revisionRequestId])
+  @@map("revision_messages")
+}
+
+// ─── Yetkili Kişiler & Çoklu İletişim ────────────────────────────────────────
+
+model VendorContact {
+  id         String    @id @default(uuid())
+  vendorId   String    @map("vendor_id")
+  fullName   String    @map("full_name")
+  title      String?
+  phone      String?
+  email      String?
+  birthDate  DateTime? @map("birth_date")
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("vendor_contacts")
+}
+
+model ContactInfo {
+  id         String   @id @default(uuid())
+  entityType String   @map("entity_type") // vendor | customer
+  entityId   String   @map("entity_id")
+  type       String   // phone | email | fax | whatsapp
+  value      String
+  label      String   @default("general") // general | work | personal
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Polymorphic: ya vendor ya customer bağlantısı (entityType ile belirlenir)
+  vendorId   String?  @map("vendor_id")
+  customerId String?  @map("customer_id")
+
+  vendor   Vendor?   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@map("contact_infos")
+}
+
+model ServiceBranch {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // hasar | acil_yardim
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@map("service_branches")
+}
+
+// ─── Email Bildirim Altyapısı ─────────────────────────────────────────────────
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  to        String
+  subject   String
+  status    String   @default("queued") // queued | sent | failed
+  errorMsg  String?  @map("error_msg")
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+model UserEmailPreferences {
+  id                String  @id @default(uuid())
+  userId            String  @unique @map("user_id")
+  newClaimFile      Boolean @default(true) @map("new_claim_file")
+  claimAssignment   Boolean @default(true) @map("claim_assignment")
+  reportApproved    Boolean @default(true) @map("report_approved")
+  reportRejected    Boolean @default(true) @map("report_rejected")
+  slaWarning        Boolean @default(true) @map("sla_warning")
+  slaViolation      Boolean @default(true) @map("sla_violation")
+  revisionRequest   Boolean @default(true) @map("revision_request")
+  managerInstruction Boolean @default(true) @map("manager_instruction")
+  claimClosed       Boolean @default(true) @map("claim_closed")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_email_preferences")
+}
+
+// ─── SMS / WhatsApp Bildirim Altyapısı ───────────────────────────────────────
+
+model SmsLog {
+  id         String    @id @default(uuid())
+  to         String
+  message    String    @db.Text
+  status     String    @default("queued") // queued | sent | failed
+  provider   String    @default("console") // console | netgsm | iletimerkezi | twilio
+  claimFileId String?  @map("claim_file_id")
+  errorMsg   String?   @map("error_msg")
+  sentAt     DateTime? @map("sent_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([claimFileId])
+  @@map("sms_logs")
+}
+
+model MessageTemplate {
+  id        String   @id @default(uuid())
+  type      String   @unique // sms_assignment | whatsapp_assignment
+  name      String
+  content   String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@map("message_templates")
+}
+
+// ─── KVKK / Sözleşme Elektronik Onay ─────────────────────────────────────────
+
+model Agreement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text  // HTML içerik
+  type      String             // kvkk | gizlilik | is_sozlesmesi
+  version   String   @default("1.0")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  acceptances AgreementAcceptance[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("agreements")
+}
+
+model AgreementAcceptance {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  agreementId String   @map("agreement_id")
+  acceptedAt  DateTime @default(now()) @map("accepted_at")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  signature   String?  // ad soyad yazarak imza
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, agreementId])
+  @@index([userId])
+  @@index([agreementId])
+  @@map("agreement_acceptances")
+}
+
+// ─── Faz 3: Tedarikçi Ödeme Ekstre & Mutabakat Sistemi ───────────────────────
+
+enum VendorStatementStatus {
+  DRAFT
+  SENT
+  PARTIALLY_APPROVED
+  APPROVED
+  DISPUTED
+  CLOSED
+
+  @@map("vendor_statement_status")
+}
+
+enum VendorStatementItemApprovalStatus {
+  PENDING
+  APPROVED
+  DISPUTED
+  AUTO_APPROVED
+
+  @@map("vendor_statement_item_approval_status")
+}
+
+enum VendorDisputeReason {
+  AMOUNT_MISMATCH
+  ITEM_NOT_DONE
+  WRONG_CLAIM
+  NOT_RECEIVED
+  OTHER
+
+  @@map("vendor_dispute_reason")
+}
+
+enum VendorDisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_ACCEPT
+  RESOLVED_REJECT
+  WITHDRAWN
+
+  @@map("vendor_dispute_status")
+}
+
+enum VendorDisputeAlertType {
+  HIGH_DISPUTE_RATE
+  REPEATED_DISPUTE_SAME_ITEM
+  BULK_DISPUTE
+
+  @@map("vendor_dispute_alert_type")
+}
+
+model VendorPaymentStatement {
+  id              String                  @id @default(uuid())
+  vendorId        String                  @map("vendor_id")
+  statementNo     String                  @unique @map("statement_no")
+  periodStart     DateTime                @map("period_start")
+  periodEnd       DateTime                @map("period_end")
+  totalAmount     Float                   @default(0) @map("total_amount")
+  currency        String                  @default("TRY")
+  status          VendorStatementStatus   @default(DRAFT)
+  sentAt          DateTime?               @map("sent_at")
+  deadlineAt      DateTime?               @map("deadline_at")
+  autoApprovedAt  DateTime?               @map("auto_approved_at")
+  createdByUserId String                  @map("created_by_user_id")
+  notes           String?
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  vendor       Vendor                    @relation(fields: [vendorId], references: [id])
+  createdBy    User                      @relation("CreatedVendorStatements", fields: [createdByUserId], references: [id])
+  items        VendorStatementItem[]
+  receipts     VendorStatementReceipt[]
+  tokens       VendorStatementToken[]
+  disputeAlerts VendorDisputeAlert[]
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([deadlineAt])
+  @@map("vendor_payment_statements")
+}
+
+model VendorStatementItem {
+  id                  String                              @id @default(uuid())
+  statementId         String                              @map("statement_id")
+  paymentId           String?                             @map("payment_id")
+  claimFileId         String                              @map("claim_file_id")
+  repairReportItemId  String?                             @map("repair_report_item_id")
+  workGroupId         String?                             @map("work_group_id")
+  lineDescription     String                              @map("line_description")
+  quantity            Float                               @default(1)
+  unit                String?
+  unitPrice           Float                               @map("unit_price")
+  totalAmount         Float                               @map("total_amount")
+  vatRate             Float                               @default(18) @map("vat_rate")
+  receiptRef          String?                             @map("receipt_ref")
+  receiptDate         DateTime?                           @map("receipt_date")
+  approvalStatus      VendorStatementItemApprovalStatus   @default(PENDING)
+  approvedAt          DateTime?                           @map("approved_at")
+  disputedAt          DateTime?                           @map("disputed_at")
+  sortOrder           Int                                 @default(0) @map("sort_order")
+  createdAt           DateTime                            @default(now()) @map("created_at")
+  updatedAt           DateTime                            @updatedAt @map("updated_at")
+
+  statement        VendorPaymentStatement  @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  payment          Payment?                @relation(fields: [paymentId], references: [id])
+  claimFile        ClaimFile               @relation(fields: [claimFileId], references: [id])
+  repairReportItem RepairReportItem?       @relation(fields: [repairReportItemId], references: [id])
+  workGroup        WorkGroup?              @relation(fields: [workGroupId], references: [id])
+  disputeRecord    VendorStatementDispute?
+
+  @@index([statementId])
+  @@index([claimFileId])
+  @@index([approvalStatus])
+  @@map("vendor_statement_items")
+}
+
+model VendorStatementReceipt {
+  id              String    @id @default(uuid())
+  statementId     String    @map("statement_id")
+  paymentId       String?   @map("payment_id")
+  storageKey      String    @map("storage_key")
+  fileName        String    @map("file_name")
+  mimeType        String    @map("mime_type")
+  fileSize        Int       @map("file_size")
+  bankRef         String?   @map("bank_ref")
+  bankDate        DateTime? @map("bank_date")
+  amount          Float
+  uploadedByUserId String   @map("uploaded_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  statement  VendorPaymentStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  payment    Payment?               @relation(fields: [paymentId], references: [id])
+  uploadedBy User                   @relation("UploadedStatementReceipts", fields: [uploadedByUserId], references: [id])
+
+  @@index([statementId])
+  @@map("vendor_statement_receipts")
+}
+
+model VendorStatementDispute {
+  id               String               @id @default(uuid())
+  statementItemId  String               @unique @map("statement_item_id")
+  vendorId         String               @map("vendor_id")
+  reason           VendorDisputeReason
+  reasonNote       String               @map("reason_note")
+  evidenceStorageKey String?            @map("evidence_storage_key")
+  evidenceFileName   String?            @map("evidence_file_name")
+  status           VendorDisputeStatus  @default(OPEN)
+  resolvedAt       DateTime?            @map("resolved_at")
+  resolvedByUserId String?              @map("resolved_by_user_id")
+  resolvedNote     String?              @map("resolved_note")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  statementItem   VendorStatementItem @relation(fields: [statementItemId], references: [id], onDelete: Cascade)
+  vendor          Vendor              @relation(fields: [vendorId], references: [id])
+  resolvedBy      User?               @relation("ResolvedVendorDisputes", fields: [resolvedByUserId], references: [id])
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("vendor_statement_disputes")
+}
+
+model VendorStatementToken {
+  id          String    @id @default(uuid())
+  statementId String    @map("statement_id")
+  token       String    @unique
+  expiresAt   DateTime  @map("expires_at")
+  accessedAt  DateTime? @map("accessed_at")
+  ipAddress   String?   @map("ip_address")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  statement VendorPaymentStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([statementId])
+  @@map("vendor_statement_tokens")
+}
+
+model VendorDisputeAlert {
+  id                   String                  @id @default(uuid())
+  vendorId             String                  @map("vendor_id")
+  statementId          String?                 @map("statement_id")
+  alertType            VendorDisputeAlertType
+  disputeCount         Int                     @map("dispute_count")
+  windowDays           Int                     @map("window_days")
+  isAcknowledged       Boolean                 @default(false) @map("is_acknowledged")
+  acknowledgedByUserId String?                 @map("acknowledged_by_user_id")
+  acknowledgedAt       DateTime?               @map("acknowledged_at")
+  createdAt            DateTime                @default(now()) @map("created_at")
+
+  vendor              Vendor                  @relation(fields: [vendorId], references: [id])
+  statement           VendorPaymentStatement? @relation(fields: [statementId], references: [id])
+  acknowledgedBy      User?                   @relation("AcknowledgedVendorAlerts", fields: [acknowledgedByUserId], references: [id])
+
+  @@index([vendorId])
+  @@index([isAcknowledged])
+  @@map("vendor_dispute_alerts")
+}
+
+// ─── Tedarikçi Risk Yönetimi & Maliyet Analiz Sistemi ────────────────────────
+
+model VendorRiskScore {
+  id                      String   @id @default(uuid())
+  vendorId                String   @unique @map("vendor_id")
+  disputeRateScore        Float    @default(0) @map("dispute_rate_score")
+  revisionFreqScore       Float    @default(0) @map("revision_freq_score")
+  priceDeviationScore     Float    @default(0) @map("price_deviation_score")
+  deliveryComplianceScore Float    @default(0) @map("delivery_compliance_score")
+  concentrationScore      Float    @default(0) @map("concentration_score")
+  totalScore              Float    @default(0) @map("total_score")
+  riskLevel               String   @default("low") @map("risk_level")
+  calculatedAt            DateTime @default(now()) @map("calculated_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([riskLevel])
+  @@index([totalScore])
+  @@map("vendor_risk_scores")
+}
+
+model VendorRiskScoreHistory {
+  id           String   @id @default(uuid())
+  vendorId     String   @map("vendor_id")
+  totalScore   Float    @map("total_score")
+  riskLevel    String   @map("risk_level")
+  snapshot     Json
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId, calculatedAt])
+  @@map("vendor_risk_score_history")
+}
+
+model MarketPriceCatalog {
+  id             String   @id @default(uuid())
+  workGroupId    String   @map("work_group_id")
+  jobDescription String   @map("job_description")
+  unit           String   @default("adet")
+  regionType     String   @default("national") @map("region_type")
+  minPrice       Float    @map("min_price")
+  maxPrice       Float    @map("max_price")
+  referencePrice Float    @map("reference_price")
+  tolerancePct   Float    @default(15) @map("tolerance_pct")
+  source         String   @default("internal")
+  validFrom      DateTime @map("valid_from")
+  validTo        DateTime? @map("valid_to")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  workGroup    WorkGroup              @relation(fields: [workGroupId], references: [id])
+  anomalyFlags RepairItemAnomalyFlag[]
+
+  @@index([workGroupId, regionType])
+  @@index([isActive])
+  @@map("market_price_catalog")
+}
+
+model RepairItemAnomalyFlag {
+  id                 String    @id @default(uuid())
+  repairReportItemId String    @map("repair_report_item_id")
+  reportId           String    @map("report_id")
+  vendorId           String?   @map("vendor_id")
+  catalogId          String?   @map("catalog_id")
+  flagType           String    @map("flag_type")
+  deviationPct       Float?    @map("deviation_pct")
+  supplierPrice      Float?    @map("supplier_price")
+  referencePrice     Float?    @map("reference_price")
+  severity           String    @default("warning")
+  status             String    @default("open")
+  reviewedByUserId   String?   @map("reviewed_by_user_id")
+  reviewedAt         DateTime? @map("reviewed_at")
+  reviewNote         String?   @map("review_note")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  repairReportItem RepairReportItem    @relation(fields: [repairReportItemId], references: [id], onDelete: Cascade)
+  catalog          MarketPriceCatalog? @relation(fields: [catalogId], references: [id])
+
+  @@index([reportId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([flagType])
+  @@map("repair_item_anomaly_flags")
+}
+
+model VendorConcentrationSnapshot {
+  id               String   @id @default(uuid())
+  vendorId         String   @map("vendor_id")
+  workGroupId      String   @map("work_group_id")
+  periodStart      DateTime @map("period_start")
+  periodEnd        DateTime @map("period_end")
+  vendorJobCount   Int      @map("vendor_job_count")
+  totalJobCount    Int      @map("total_job_count")
+  vendorAmount     Float    @map("vendor_amount")
+  totalAmount      Float    @map("total_amount")
+  concentrationPct Float    @map("concentration_pct")
+  isOverThreshold  Boolean  @default(false) @map("is_over_threshold")
+  thresholdPct     Float    @default(60) @map("threshold_pct")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  vendor    Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  workGroup WorkGroup @relation(fields: [workGroupId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId, workGroupId])
+  @@index([periodStart])
+  @@index([isOverThreshold])
+  @@map("vendor_concentration_snapshots")
+}
+
+// ─── Faz 3: P&L Modülü ───────────────────────────────────────────────────────
+
+model ExtraWorkItem {
+  id              String    @id @default(uuid())
+  claimFileId     String    @map("claim_file_id")
+  title           String
+  description     String?
+  status          String    @default("draft")
+  // draft | approved | completed | cancelled
+  agreedAt        DateTime? @map("agreed_at")
+  completedAt     DateTime? @map("completed_at")
+  createdByUserId String    @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  claimFile   ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdBy   User               @relation("CreatedExtraWorkItems", fields: [createdByUserId], references: [id])
+  revenues    ClaimFileRevenue[]
+  costEntries CostEntry[]
+
+  @@index([claimFileId])
+  @@index([status])
+  @@map("extra_work_items")
+}
+
+model ClaimFileRevenue {
+  id               String    @id @default(uuid())
+  claimFileId      String    @map("claim_file_id")
+  revenueType      String    @map("revenue_type")
+  // file_fee | extra_work
+  collectionSource String    @map("collection_source")
+  // insurance_company | insured
+  description      String?
+  amount           Float
+  vatRate          Float     @default(0) @map("vat_rate")
+  vatAmount        Float     @default(0) @map("vat_amount")
+  totalAmount      Float     @map("total_amount")
+  invoiceId        String?   @map("invoice_id")
+  repairReportId   String?   @map("repair_report_id")
+  extraWorkItemId  String?   @map("extra_work_item_id")
+  // revenueType='extra_work' ise zorunlu; 'file_fee' ise null
+  status           String    @default("confirmed")
+  // draft | confirmed | collected | cancelled
+  collectedAmount  Float     @default(0) @map("collected_amount")
+  collectedAt      DateTime? @map("collected_at")
+  relatedPaymentId String?   @map("related_payment_id")
+  currency         String    @default("TRY")
+  entryDate        DateTime  @map("entry_date")
+  createdByUserId  String    @map("created_by_user_id")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  claimFile      ClaimFile     @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  invoice        Invoice?      @relation(fields: [invoiceId], references: [id])
+  repairReport   RepairReport? @relation(fields: [repairReportId], references: [id])
+  extraWorkItem  ExtraWorkItem? @relation(fields: [extraWorkItemId], references: [id])
+  relatedPayment Payment?      @relation("RevenuePayment", fields: [relatedPaymentId], references: [id])
+  createdBy      User          @relation("CreatedFileRevenues", fields: [createdByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@index([revenueType])
+  @@index([collectionSource])
+  @@index([status])
+  @@map("claim_file_revenues")
+}
+
+model MonthlyOverheadEntry {
+  id                String    @id @default(uuid())
+  year              Int
+  month             Int       // 1–12
+  expenseCategoryId String    @map("expense_category_id")
+  amount            Float
+  currency          String    @default("TRY")
+  description       String?
+  source            String    @default("manual")
+  // manual | logo_erp
+  logoEntryRef      String?   @map("logo_entry_ref")
+  isAllocated       Boolean   @default(false) @map("is_allocated")
+  allocatedAt       DateTime? @map("allocated_at")
+  createdByUserId   String    @map("created_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  expenseCategory ExpenseCategory      @relation(fields: [expenseCategoryId], references: [id])
+  createdBy       User                 @relation("CreatedOverheadEntries", fields: [createdByUserId], references: [id])
+  allocations     OverheadAllocation[]
+
+  @@unique([year, month, expenseCategoryId])
+  @@index([year, month])
+  @@map("monthly_overhead_entries")
+}
+
+model OverheadAllocation {
+  id               String   @id @default(uuid())
+  overheadEntryId  String   @map("overhead_entry_id")
+  claimFileId      String   @map("claim_file_id")
+  allocationMethod String   @map("allocation_method")
+  // equal | proportional_revenue | hybrid
+  allocationWeight Float    @map("allocation_weight")
+  // 0–1, bu dosyanın toplam portföydeki ağırlığı
+  allocatedAmount  Float    @map("allocated_amount")
+  costEntryId      String?  @unique @map("cost_entry_id")
+  // CostEntry (isOverhead=true) kaydının ID'si
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  overheadEntry MonthlyOverheadEntry @relation(fields: [overheadEntryId], references: [id], onDelete: Cascade)
+  claimFile     ClaimFile            @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  costEntry     CostEntry?           @relation(fields: [costEntryId], references: [id])
+
+  @@index([overheadEntryId])
+  @@index([claimFileId])
+  @@map("overhead_allocations")
+}
+
+// ─── Rapor Şablonları ──────────────────────────────────────────────────────────
+
+model ReportTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  serviceType String   @map("service_type")
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items ReportTemplateItem[]
+
+  @@index([serviceType])
+  @@map("report_templates")
+}
+
+model ReportTemplateItem {
+  id              String   @id @default(uuid())
+  templateId      String   @map("template_id")
+  workGroupId     String?  @map("work_group_id")
+  damageCategory  String   @default("bina") @map("damage_category")
+  location        String?
+  jobDescription  String   @map("job_description")
+  description     String?
+  defaultQuantity Float    @default(1) @map("default_quantity")
+  defaultUnit     String   @default("adet") @map("default_unit")
+  pricingType     String   @default("unit") @map("pricing_type")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  template  ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  workGroup WorkGroup?     @relation(fields: [workGroupId], references: [id])
+
+  @@index([templateId])
+  @@map("report_template_items")
+}
+
+// ─── Acil Yardım Operasyon Modülü ────────────────────────────────────────────
+
+enum EmergencyStatus {
+  GELEN
+  ATANDI
+  SAHADA
+  COZULDU
+  FATURALANDILDI
+
+  @@map("emergency_status")
+}
+
+enum EmergencyUrgency {
+  DUSUK
+  NORMAL
+  YUKSEK
+  KRITIK
+
+  @@map("emergency_urgency")
+}
+
+model EmergencyCase {
+  id               String           @id @default(uuid())
+  caseNo           String           @unique @map("case_no")
+  fileNo           String?          @map("file_no")
+  customerId       String?          @map("customer_id")
+  customerName     String           @map("customer_name")
+  customerPhone    String?          @map("customer_phone")
+  address          String
+  city             String?
+  district         String?
+  issueType        String           @map("issue_type")
+  urgency          EmergencyUrgency @default(NORMAL)
+  status           EmergencyStatus  @default(GELEN)
+  assignedVendorId String?          @map("assigned_vendor_id")
+  assignedUserId   String?          @map("assigned_user_id")
+  notes            String?
+  resolvedAt       DateTime?        @map("resolved_at")
+  invoicedAt       DateTime?        @map("invoiced_at")
+  createdByUserId  String           @map("created_by_user_id")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  customer       Customer?  @relation("EmergencyCustomer", fields: [customerId], references: [id])
+  assignedVendor Vendor?    @relation("EmergencyVendor", fields: [assignedVendorId], references: [id])
+  assignedUser   User?      @relation("EmergencyAssignedUser", fields: [assignedUserId], references: [id])
+  createdBy      User       @relation("EmergencyCreatedBy", fields: [createdByUserId], references: [id])
+  costEntries    EmergencyCostEntry[]
+  invoiceItems   EmergencyInvoiceItem[]
+  // Dosya Evrak & Fatura Talebi
+  fileDocuments  FileDocument[]
+  invoiceRequests InvoiceRequest[]
+
+  @@index([status])
+  @@index([urgency])
+  @@index([createdAt])
+  @@map("emergency_cases")
+}
+
+model EmergencyCostEntry {
+  id              String    @id @default(uuid())
+  caseId          String    @map("case_id")
+  vendorId        String?   @map("vendor_id")
+  entryType       String    @map("entry_type")
+  description     String
+  amount          Float
+  receiptKey      String?   @map("receipt_key")
+  entryDate       DateTime  @map("entry_date")
+  createdByUserId String    @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  case      EmergencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  vendor    Vendor?       @relation("EmergencyCostVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+  createdBy User          @relation("EmergencyCostCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([caseId])
+  @@index([entryType])
+  @@index([vendorId])
+  @@map("emergency_cost_entries")
+}
+
+model EmergencyInvoiceDraft {
+  id              String    @id @default(uuid())
+  draftNo         String    @unique @map("draft_no")
+  customerId      String?   @map("customer_id")
+  customerName    String    @map("customer_name")
+  totalAmount     Float     @default(0) @map("total_amount")
+  status          String    @default("draft")
+  logoRef         String?   @map("logo_ref")
+  notes           String?
+  createdByUserId String    @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  createdBy User                   @relation("EmergencyInvoiceCreatedBy", fields: [createdByUserId], references: [id])
+  items     EmergencyInvoiceItem[]
+
+  @@index([status])
+  @@map("emergency_invoice_drafts")
+}
+
+model EmergencyInvoiceItem {
+  id          String    @id @default(uuid())
+  draftId     String    @map("draft_id")
+  caseId      String    @map("case_id")
+  amount      Float
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  draft EmergencyInvoiceDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  case  EmergencyCase         @relation(fields: [caseId], references: [id])
+
+  @@index([draftId])
+  @@index([caseId])
+  @@map("emergency_invoice_items")
+}
+
+// ─── Tedarikçi Sözleşme Sistemi ──────────────────────────────────────────────
+
+model VendorContractTemplate {
+  id        String   @id @default(uuid())
+  name      String   @default("Tedarikçi Onarım Sözleşmesi")
+  isActive  Boolean  @default(true) @map("is_active")
+  version   String   @default("1.0")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clauses   VendorContractClause[]
+  contracts VendorContract[]
+
+  @@map("vendor_contract_templates")
+}
+
+model VendorContractClause {
+  id         String   @id @default(uuid())
+  templateId String   @map("template_id")
+  title      String
+  content    String   @db.Text
+  sortOrder  Int      @default(0) @map("sort_order")
+  isRequired Boolean  @default(true) @map("is_required")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  template VendorContractTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("vendor_contract_clauses")
+}
+
+model VendorContract {
+  id                   String    @id @default(uuid())
+  contractNo           String    @unique @map("contract_no")
+  claimFileId          String    @map("claim_file_id")
+  vendorId             String    @map("vendor_id")
+  repairReportId       String?   @map("repair_report_id")
+  templateId           String    @map("template_id")
+  contractDate         DateTime  @map("contract_date")
+  startDate            DateTime? @map("start_date")
+  deliveryDate         DateTime? @map("delivery_date")
+  vendorName           String    @map("vendor_name")
+  vendorTaxOrIdNo      String?   @map("vendor_tax_or_id_no")
+  vendorAddress        String?   @map("vendor_address")
+  vendorPhone          String?   @map("vendor_phone")
+  insuredName          String?   @map("insured_name")
+  fileNo               String    @map("file_no")
+  insuranceCompanyName String?   @map("insurance_company_name")
+  damageAddress        String?   @map("damage_address")
+  workItems            Json      @default("[]") @map("work_items")
+  renderedContent      String    @db.Text @map("rendered_content")
+  status               String    @default("draft")
+  signedAt             DateTime? @map("signed_at")
+  vendorSignatureData  String?   @map("vendor_signature_data")
+  whatsappSentAt       DateTime? @map("whatsapp_sent_at")
+  whatsappPhone        String?   @map("whatsapp_phone")
+  reminderCount        Int       @default(0) @map("reminder_count")
+  lastReminderAt       DateTime? @map("last_reminder_at")
+  signDeadlineAt       DateTime? @map("sign_deadline_at")
+  createdByUserId      String    @map("created_by_user_id")
+  pdfStorageKey        String?   @map("pdf_storage_key")
+  publicToken          String?   @unique @map("public_token")
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  claimFile    ClaimFile              @relation(fields: [claimFileId], references: [id])
+  vendor       Vendor                 @relation(fields: [vendorId], references: [id])
+  repairReport RepairReport?          @relation(fields: [repairReportId], references: [id])
+  template     VendorContractTemplate @relation(fields: [templateId], references: [id])
+  createdBy    User                   @relation("CreatedVendorContracts", fields: [createdByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([publicToken])
+  @@map("vendor_contracts")
+}
+
+// ─── Dosya Evrak Sistemi (Muvafakatname / Matbu Evrak) ────────────────────────
+
+model FileDocument {
+  id                       String    @id @default(uuid())
+  entityType               String    @map("entity_type")    // claim_file | emergency_case
+  entityId                 String    @map("entity_id")
+  documentKind             String    @map("document_kind")  // muvafakatname | matbu_evrak
+  status                   String    @default("draft")
+  // draft | sent | viewed | digitally_approved | physically_uploaded
+
+  renderedContent          String    @db.Text @map("rendered_content")
+
+  // Dijital onay
+  publicToken              String?   @unique @map("public_token")
+  publicTokenExpiresAt     DateTime? @map("public_token_expires_at")
+  whatsappSentAt           DateTime? @map("whatsapp_sent_at")
+  whatsappPhone            String?   @map("whatsapp_phone")
+  viewedAt                 DateTime? @map("viewed_at")
+  viewedIp                 String?   @map("viewed_ip")
+  digitallyApprovedAt      DateTime? @map("digitally_approved_at")
+  approvedIp               String?   @map("approved_ip")
+  approvedFullName         String?   @map("approved_full_name")
+  signatureData            String?   @map("signature_data")
+
+  // Fiziki yükleme (yalnızca hasar/muvafakatname için zorunlu)
+  physicalUploadKey        String?   @map("physical_upload_key")
+  physicalUploadedAt       DateTime? @map("physically_uploaded_at")
+  physicalUploadedByUserId String?   @map("physical_uploaded_by_user_id")
+
+  // Polymorphic relations
+  claimFileId              String?   @map("claim_file_id")
+  emergencyCaseId          String?   @map("emergency_case_id")
+
+  createdByUserId          String    @map("created_by_user_id")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  claimFile           ClaimFile?    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  emergencyCase       EmergencyCase? @relation(fields: [emergencyCaseId], references: [id], onDelete: Cascade)
+  createdBy           User          @relation("CreatedFileDocuments", fields: [createdByUserId], references: [id])
+  physicalUploadedBy  User?         @relation("PhysicalUploadedBy", fields: [physicalUploadedByUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([publicToken])
+  @@index([status])
+  @@index([claimFileId])
+  @@index([emergencyCaseId])
+  @@map("file_documents")
+}
+
+// ─── Fatura Talebi Sistemi ─────────────────────────────────────────────────────
+
+model InvoiceRequest {
+  id                   String    @id @default(uuid())
+  requestNo            String    @unique @map("request_no")       // FT-2026-00001
+  serviceType          String    @map("service_type")             // claim | emergency
+
+  claimFileId          String?   @map("claim_file_id")
+  emergencyCaseId      String?   @map("emergency_case_id")
+
+  insuranceCompanyId   String?   @map("insurance_company_id")
+  insuranceCompanyName String?   @map("insurance_company_name")   // denormalized
+  fileNo               String    @map("file_no")
+
+  totalAmount          Float     @default(0) @map("total_amount")
+  workItemsSummary     Json      @default("[]") @map("work_items_summary")
+  // [{ description: string, amount: number, vatRate: number }]
+
+  status               String    @default("pending")
+  // pending | approved | invoiced | cancelled
+
+  invoiceId            String?   @map("invoice_id")
+
+  notes                String?
+  createdByUserId      String    @map("created_by_user_id")
+  approvedByUserId     String?   @map("approved_by_user_id")
+  approvedAt           DateTime? @map("approved_at")
+  invoicedAt           DateTime? @map("invoiced_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  claimFile          ClaimFile?        @relation(fields: [claimFileId], references: [id])
+  emergencyCase      EmergencyCase?    @relation(fields: [emergencyCaseId], references: [id])
+  insuranceCompany   InsuranceCompany? @relation(fields: [insuranceCompanyId], references: [id])
+  createdBy          User              @relation("CreatedInvoiceRequests", fields: [createdByUserId], references: [id])
+  approvedBy         User?             @relation("ApprovedInvoiceRequests", fields: [approvedByUserId], references: [id])
+  invoice            Invoice?          @relation(fields: [invoiceId], references: [id])
+  surveyCampaign     SurveyCampaign?
+
+  @@index([status])
+  @@index([claimFileId])
+  @@index([emergencyCaseId])
+  @@index([serviceType])
+  @@map("invoice_requests")
+}
+
+// ─── Müşteri Memnuniyet Anket Sistemi ─────────────────────────────────────────
+
+model SurveyCampaign {
+  id                   String    @id @default(uuid())
+  claimFileId          String?   @map("claim_file_id")
+  emergencyCaseId      String?   @map("emergency_case_id")
+  invoiceRequestId     String?   @unique @map("invoice_request_id")
+  insuranceCompanyId   String?   @map("insurance_company_id")
+  insuredName          String?   @map("insured_name")
+  insuredPhone         String?   @map("insured_phone")
+  publicToken          String    @unique @map("public_token")
+  tokenExpiresAt       DateTime? @map("token_expires_at")
+  whatsappSentAt       DateTime? @map("whatsapp_sent_at")
+  whatsappDeepLink     String?   @map("whatsapp_deep_link")
+  status               String    @default("pending")
+  // pending | sent | completed | expired
+  completedAt          DateTime? @map("completed_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  claimFile        ClaimFile?        @relation(fields: [claimFileId], references: [id])
+  insuranceCompany InsuranceCompany? @relation(fields: [insuranceCompanyId], references: [id])
+  invoiceRequest   InvoiceRequest?   @relation(fields: [invoiceRequestId], references: [id])
+  response         SurveyResponse?
+
+  @@index([status])
+  @@index([insuranceCompanyId])
+  @@index([claimFileId])
+  @@map("survey_campaigns")
+}
+
+model SurveyResponse {
+  id           String   @id @default(uuid())
+  campaignId   String   @unique @map("campaign_id")
+  q1Rating     Int      @map("q1_rating")
+  q2Rating     Int      @map("q2_rating")
+  q3Rating     Int      @map("q3_rating")
+  q4Rating     Int      @map("q4_rating")
+  q5Rating     Int      @map("q5_rating")
+  q6Recommend  Boolean  @map("q6_recommend")
+  q7Comment    String?  @map("q7_comment")
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+  ipAddress    String?  @map("ip_address")
+
+  campaign SurveyCampaign @relation(fields: [campaignId], references: [id])
+
+  @@map("survey_responses")
+}
+
+// ─── Ekran İzin Sistemi ───────────────────────────────────────────────────────
+
+model ScreenPermission {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  screenCode String   @map("screen_code")
+  canView    Boolean  @default(true) @map("can_view")
+  canEdit    Boolean  @default(false) @map("can_edit")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, screenCode])
+  @@index([userId])
+  @@map("screen_permissions")
+}
+
+// ─── Masraf İzleme Sistemi ────────────────────────────────────────────────────
+
+enum ExpenseGroup {
+  YONETIM_GIDERLERI
+  OPERASYON_GIDERLERI
+  MHY_OZEL_GIDERLER
+}
+
+enum ExpensePlan {
+  BUTCELENEN
+  EKSTRA_SATIS_MASRAFI
+}
+
+enum ExpenseApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpenseOperationSubject {
+  HASAR_ONARIM
+  ACIL_YARDIM
+  OZEL_OPERASYON
+  DANISMANLIK
+  TEKNE_YAT
+}
+
+model Expense {
+  id                String                  @id @default(uuid())
+  date              DateTime
+  amount            Decimal                 @db.Decimal(12, 2)
+  vatRate           Int                     @default(20) @map("vat_rate")
+  vatIncluded       Boolean                 @default(true) @map("vat_included")
+  description       String?
+  expenseGroup      ExpenseGroup            @map("expense_group")
+  expenseSubgroup   String                  @map("expense_subgroup")
+  expensePlan       ExpensePlan?            @map("expense_plan")
+  approvalStatus    ExpenseApprovalStatus   @default(PENDING) @map("approval_status")
+  approvedById      String?                 @map("approved_by_id")
+  approvedAt        DateTime?               @map("approved_at")
+  operationSubject  ExpenseOperationSubject? @map("operation_subject")
+  fileCaseId        String?                 @map("file_case_id")
+  receiptImageUrl   String?                 @map("receipt_image_url")
+  createdById       String                  @map("created_by_id")
+  weekNumber        Int?                    @map("week_number")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  approvedBy  User?      @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
+  createdBy   User       @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  fileCase    ClaimFile? @relation(fields: [fileCaseId], references: [id])
+
+  @@index([expenseGroup])
+  @@index([approvalStatus])
+  @@index([date])
+  @@index([createdById])
+  @@map("expenses")
+}
+
+// ─── Fiyat Listesi & Bölgesel Zam Sistemi ─────────────────────────────────────
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  adjustments RegionalPriceAdjustment[]
+
+  @@map("regions")
+}
+
+model RegionalPriceAdjustment {
+  id                String   @id @default(uuid())
+  regionId          String   @map("region_id")
+  adjustmentPercent Decimal  @map("adjustment_percent") @db.Decimal(5, 2)
+  effectiveDate     DateTime @map("effective_date")
+  notes             String?
+  createdByUserId   String?  @map("created_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  region Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@index([regionId, effectiveDate])
+  @@map("regional_price_adjustments")
+}
+
+model PriceListVersion {
+  id            String   @id @default(uuid())
+  versionName   String
+  effectiveDate DateTime @map("effective_date")
+  isActive      Boolean  @default(false) @map("is_active")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("price_list_versions")
+}
+
+// ─── Ofis-Saha İş Akışı ──────────────────────────────────────────────────────
+
+enum FileActivityAction {
+  SUPPLIER_ASSIGNED
+  APPOINTMENT_SCHEDULED
+  APPOINTMENT_UPDATED
+  INSPECTION_DONE
+  COST_REPORT_SUBMITTED
+  ATTACHMENT_ADDED
+  STATUS_CHANGED
+  NOTE_ADDED
+
+  @@map("file_activity_action")
+}
+
+enum AttachmentVisibility {
+  PUBLIC
+  INTERNAL_ONLY
+
+  @@map("attachment_visibility")
+}
+
+model FileActivityLog {
+  id          String             @id @default(uuid())
+  claimFileId String             @map("claim_file_id")
+  action      FileActivityAction
+  actorId     String             @map("actor_id")
+  actorRole   String             @map("actor_role")
+  description String
+  metadata    Json?
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  actor     User      @relation("FileActivityActor", fields: [actorId], references: [id])
+
+  @@index([claimFileId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("file_activity_logs")
+}
+
+model FileAppointment {
+  id               String    @id @default(uuid())
+  claimFileId      String    @map("claim_file_id")
+  scheduledDate    DateTime  @map("scheduled_date")
+  notes            String?
+  status           String    @default("planned")
+  createdByUserId  String    @map("created_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  claimFile   ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation("FileAppointmentCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@index([scheduledDate])
+  @@map("file_appointments")
+}
+
+model ServiceType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("service_types")
+}
+
+model UploadLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  fileName  String   @map("file_name")
+  mimeType  String?  @map("mime_type")
+  size      Int?
+  endpoint  String?
+  status    String   // SUCCESS | REJECTED
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("upload_logs")
+}

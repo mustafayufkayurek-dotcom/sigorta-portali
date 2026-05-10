@@ -1,0 +1,580 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
+import {
+  CreateFileDocumentDto,
+  SendWhatsappDto,
+} from './dto/file-documents.dto';
+
+const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Muvafakatname — {{dosya_no}}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
+    .page { padding: 24px; max-width: 800px; margin: 0 auto; }
+    .header { border-bottom: 2px solid #1a4080; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header h1 { font-size: 18px; font-weight: bold; color: #1a4080; margin: 0; }
+    .header p { font-size: 11px; color: #6b7280; margin: 2px 0 0; }
+    .header-right { text-align: right; font-size: 11px; color: #374151; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; }
+    .info-item label { font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 2px; }
+    .info-item span { font-size: 12px; color: #111827; font-weight: 500; }
+    .content { line-height: 1.7; color: #374151; font-size: 12px; }
+    .content p { margin: 0 0 12px; }
+    .signature-section { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 16px; }
+    .sig-box h4 { font-size: 11px; font-weight: bold; color: #374151; margin: 0 0 8px; text-transform: uppercase; }
+    .sig-line { border-top: 1px solid #9ca3af; margin-top: 50px; padding-top: 6px; font-size: 10px; color: #6b7280; }
+    .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #9ca3af; text-align: center; }
+    .electronic-badge { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 10px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <h1>MUVAFAKATname</h1>
+      <p>Meridyen Assistance — Hasar Onarım Onayı</p>
+    </div>
+    <div class="header-right">
+      <div><strong>Dosya No: {{dosya_no}}</strong></div>
+      <div>Tarih: {{tarih}}</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-item"><label>Sigorta Şirketi</label><span>{{sigorta_sirketi}}</span></div>
+    <div class="info-item"><label>Dosya No</label><span>{{dosya_no}}</span></div>
+    <div class="info-item"><label>Poliçe No</label><span>{{police_no}}</span></div>
+    <div class="info-item"><label>Hasar No</label><span>{{hasar_no}}</span></div>
+    <div class="info-item"><label>Sigortalı / Hak Sahibi</label><span>{{sigorta_musteri_ad}}</span></div>
+    <div class="info-item"><label>Hasar Adresi</label><span>{{hasar_adresi}}</span></div>
+  </div>
+
+  <div class="content">
+    <p>
+      Ben, aşağıda imzası bulunan <strong>{{sigorta_musteri_ad}}</strong>, <strong>{{sigorta_sirketi}}</strong> nezdinde
+      <strong>{{police_no}}</strong> poliçe numarası ile kayıtlı sigorta poliçemin kapsadığı hasara ilişkin olarak;
+    </p>
+    <p>
+      Meridyen Assistance tarafından yapılacak hasar tespiti, onarım organizasyonu ve ilgili tüm teknik çalışmaların
+      <strong>{{hasar_adresi}}</strong> adresinde gerçekleştirilmesine <strong>açıkça muvafakat ediyorum</strong>.
+    </p>
+    <p>
+      Bu muvafakatname ile; Meridyen Assistance'ın onarım sürecinde yetkili tedarikçilerle sözleşme yapmasına,
+      hasar bölgesine erişim sağlamasına, fotoğraf ve video kayıt almasına, gerekli ölçüm ve inceleme
+      çalışmalarını yürütmesine izin veriyorum.
+    </p>
+    <p>
+      Onarım kapsamı ve maliyet konusunda Meridyen Assistance tarafından hazırlanan onarım raporunu onaylaması
+      durumunda, sigorta şirketinin belirlediği limitler çerçevesinde ödemenin sigorta şirketi tarafından
+      Meridyen Assistance'a yapılmasına muvafakat ediyorum.
+    </p>
+    <p>
+      Bu belge, {{tarih}} tarihinde elektronik ortamda imzalanmıştır. Elektronik imza, ıslak imza ile eşdeğer
+      hukuki geçerliliğe sahiptir.
+    </p>
+  </div>
+
+  <div class="signature-section">
+    <div class="sig-box">
+      <h4>Meridyen Assistance Adına</h4>
+      <div class="electronic-badge">Elektronik imza kullanılmıştır</div>
+      <div class="sig-line">Meridyen Assistance · {{tarih}}</div>
+    </div>
+    <div class="sig-box">
+      <h4>Sigortalı / Hak Sahibi</h4>
+      <p style="font-size:11px;color:#6b7280;margin:4px 0">Ad Soyad / İmza</p>
+      <div class="sig-line">İmza · Tarih</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Bu belge Meridyen Assistance tarafından otomatik oluşturulmuştur. Yetkisiz kopyalanması yasaktır.
+  </div>
+</div>
+</body>
+</html>`;
+
+const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Hizmet Onay Formu — {{case_no}}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
+    .page { padding: 28px; max-width: 780px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a4080; padding-bottom: 14px; margin-bottom: 20px; }
+    .header-left h1 { font-size: 17px; font-weight: bold; color: #1a4080; margin: 0 0 2px; }
+    .header-left p { font-size: 11px; color: #6b7280; margin: 0; }
+    .header-right { text-align: right; font-size: 11px; color: #374151; }
+    .header-right strong { display: block; font-size: 13px; color: #111827; }
+    .section { margin-bottom: 18px; }
+    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #6b7280; letter-spacing: 0.04em; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+    .info-row { display: flex; gap: 6px; font-size: 12px; }
+    .info-row .label { color: #6b7280; white-space: nowrap; min-width: 110px; }
+    .info-row .value { color: #111827; font-weight: 500; }
+    .is-ozeti { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #374151; min-height: 60px; }
+    .tutar-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+    .tutar-box .label { font-size: 12px; color: #1e40af; font-weight: 600; }
+    .tutar-box .value { font-size: 16px; font-weight: bold; color: #1e3a8a; }
+    .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+    .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 14px; }
+    .sig-box h4 { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #374151; margin: 0 0 6px; }
+    .sig-box .sig-info { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+    .sig-line { border-top: 1px solid #9ca3af; margin-top: 44px; padding-top: 5px; font-size: 10px; color: #9ca3af; }
+    .consent-text { font-size: 11px; color: #4b5563; line-height: 1.6; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; }
+    .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #9ca3af; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Başlık -->
+  <div class="header">
+    <div class="header-left">
+      <h1>HİZMET ONAY FORMU</h1>
+      <p>Meridyen Assistance — Acil Yardım Hizmetleri</p>
+    </div>
+    <div class="header-right">
+      <strong>{{case_no}}</strong>
+      Düzenlenme Tarihi: {{tarih}}
+    </div>
+  </div>
+
+  <!-- Müşteri & Vaka Bilgileri -->
+  <div class="section">
+    <div class="section-title">Müşteri ve Vaka Bilgileri</div>
+    <div class="info-grid">
+      <div class="info-row"><span class="label">Ad Soyad:</span><span class="value">{{musteri_ad}}</span></div>
+      <div class="info-row"><span class="label">Telefon:</span><span class="value">{{musteri_telefon}}</span></div>
+      <div class="info-row"><span class="label">Hizmet Adresi:</span><span class="value">{{adres}}</span></div>
+      <div class="info-row"><span class="label">İlçe / İl:</span><span class="value">{{ilce_il}}</span></div>
+      <div class="info-row"><span class="label">Dosya No:</span><span class="value">{{dosya_no}}</span></div>
+      <div class="info-row"><span class="label">Hizmet Türü:</span><span class="value">{{konu}}</span></div>
+      <div class="info-row"><span class="label">Tedarikçi / Ekip:</span><span class="value">{{tedarikci}}</span></div>
+      <div class="info-row"><span class="label">Hizmet Tarihi:</span><span class="value">{{tarih}}</span></div>
+    </div>
+  </div>
+
+  <!-- Yapılan İş Özeti -->
+  <div class="section">
+    <div class="section-title">Yapılan İş Özeti</div>
+    <div class="is-ozeti">{{is_ozeti}}</div>
+  </div>
+
+  <!-- Tutar -->
+  <div class="section">
+    <div class="tutar-box">
+      <span class="label">Toplam Hizmet Bedeli (KDV Dahil)</span>
+      <span class="value">{{toplam_tutar}} ₺</span>
+    </div>
+  </div>
+
+  <!-- Onay Metni -->
+  <div class="consent-text">
+    Ben, aşağıda imzası bulunan <strong>{{musteri_ad}}</strong>, Meridyen Assistance tarafından yukarıda
+    belirtilen adreste gerçekleştirilen hizmetin eksiksiz ve kabul edilebilir kalitede tamamlandığını,
+    açıklanan toplam bedeli onayladığımı beyan ederim. Bu formun imzalanması ile söz konusu hizmet
+    bedelinin sigorta şirketine veya ilgili taraflara fatura edilmesine muvafakat etmiş sayılırım.
+  </div>
+
+  <!-- İmza Alanları -->
+  <div class="signature-section">
+    <div class="sig-box">
+      <h4>Hizmet Veren</h4>
+      <p class="sig-info">Meridyen Assistance</p>
+      <p class="sig-info">Yetkili: ____________________</p>
+      <div class="sig-line">İmza · Tarih</div>
+    </div>
+    <div class="sig-box">
+      <h4>Müşteri / Hak Sahibi</h4>
+      <p class="sig-info">Ad Soyad: ____________________</p>
+      <p class="sig-info">T.C. Kimlik No: ________________</p>
+      <div class="sig-line">İmza · Tarih</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Bu form Meridyen Assistance tarafından düzenlenmiştir. Vaka No: {{case_no}} · {{tarih}}
+  </div>
+
+</div>
+</body>
+</html>`;
+
+@Injectable()
+export class FileDocumentsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  // ── Oluşturma ─────────────────────────────────────────────────────────────
+
+  async create(dto: CreateFileDocumentDto, createdByUserId: string) {
+    // Varlığı doğrula
+    if (dto.entityType === 'claim_file') {
+      const cf = await this.prisma.claimFile.findUnique({
+        where: { id: dto.entityId },
+        include: {
+          insuranceCompany: true,
+          customer: true,
+          propertyAddress: true,
+        },
+      });
+      if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+      const insuredName = cf.customer?.fullName ?? cf.customer?.companyName ?? cf.customer?.firstName
+        ? `${cf.customer.firstName ?? ''} ${cf.customer.lastName ?? ''}`.trim()
+        : '';
+      const damageAddress = cf.propertyAddress
+        ? `${cf.propertyAddress.addressLine ?? ''} ${cf.propertyAddress.district ?? ''} ${cf.propertyAddress.city ?? ''}`.trim()
+        : '';
+
+      // Muvafakatname template render
+      let rendered = MUVAFAKATNAME_TEMPLATE;
+      const placeholders: Record<string, string> = {
+        '{{dosya_no}}': cf.fileNo,
+        '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
+        '{{sigorta_sirketi}}': cf.insuranceCompany?.name ?? '—',
+        '{{police_no}}': cf.policyNo ?? '—',
+        '{{hasar_no}}': cf.claimNo ?? '—',
+        '{{sigorta_musteri_ad}}': insuredName || '—',
+        '{{hasar_adresi}}': damageAddress || '—',
+      };
+      for (const [k, v] of Object.entries(placeholders)) {
+        rendered = rendered.replaceAll(k, v);
+      }
+
+      // Ayarlardan özel template varsa üzerine yaz
+      const customTpl = await this.prisma.systemSetting.findUnique({
+        where: { key: 'muvafakatname_template' },
+      });
+      if (customTpl) {
+        let customRendered = String((customTpl.value as any) ?? '');
+        for (const [k, v] of Object.entries(placeholders)) {
+          customRendered = customRendered.replaceAll(k, v);
+        }
+        rendered = customRendered;
+      }
+
+      const publicToken = randomUUID();
+      const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      return this.prisma.fileDocument.create({
+        data: {
+          entityType: 'claim_file',
+          entityId: dto.entityId,
+          documentKind: 'muvafakatname',
+          status: 'draft',
+          renderedContent: rendered,
+          publicToken,
+          publicTokenExpiresAt,
+          claimFileId: dto.entityId,
+          createdByUserId,
+        },
+      });
+    }
+
+    if (dto.entityType === 'emergency_case') {
+      const ec = await this.prisma.emergencyCase.findUnique({
+        where: { id: dto.entityId },
+        include: {
+          assignedVendor: { select: { name: true } },
+          costEntries: { select: { amount: true, description: true } },
+        },
+      });
+      if (!ec) throw new NotFoundException('Acil yardım vakası bulunamadı');
+
+      // Toplam tutar
+      const toplamTutar = ec.costEntries.reduce((s, c) => s + c.amount, 0);
+
+      // İş özeti — cost entry açıklamalarından oluştur
+      const isOzeti = ec.costEntries.length > 0
+        ? ec.costEntries.map((c) => `• ${c.description}`).join('\n')
+        : ec.notes ?? '(İş özeti girilmemiş)';
+
+      // Tedarikçi adı
+      const tedarikci = ec.assignedVendor?.name ?? '—';
+
+      // İlçe / İl
+      const ilceIl = [ec.district, ec.city].filter(Boolean).join(' / ') || '—';
+
+      // Ayarlardan özel template varsa kullan
+      const customTpl = await this.prisma.systemSetting.findUnique({
+        where: { key: 'matbu_evrak_template' },
+      });
+      const sourceTpl = customTpl ? String((customTpl.value as any) ?? '') : MATBU_EVRAK_TEMPLATE;
+
+      const placeholders: Record<string, string> = {
+        '{{case_no}}': ec.caseNo,
+        '{{dosya_no}}': ec.fileNo ?? ec.caseNo,
+        '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
+        '{{musteri_ad}}': ec.customerName,
+        '{{musteri_telefon}}': ec.customerPhone ?? '—',
+        '{{adres}}': ec.address,
+        '{{ilce_il}}': ilceIl,
+        '{{konu}}': ec.issueType,
+        '{{tedarikci}}': tedarikci,
+        '{{is_ozeti}}': isOzeti,
+        '{{toplam_tutar}}': toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
+      };
+
+      let rendered = sourceTpl;
+      for (const [k, v] of Object.entries(placeholders)) {
+        rendered = rendered.replaceAll(k, v);
+      }
+
+      const publicToken = randomUUID();
+      const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      return this.prisma.fileDocument.create({
+        data: {
+          entityType: 'emergency_case',
+          entityId: dto.entityId,
+          documentKind: 'matbu_evrak',
+          status: 'draft',
+          renderedContent: rendered,
+          publicToken,
+          publicTokenExpiresAt,
+          emergencyCaseId: dto.entityId,
+          createdByUserId,
+        },
+      });
+    }
+
+    throw new BadRequestException('Geçersiz entityType');
+  }
+
+  // ── Liste & Detay ─────────────────────────────────────────────────────────
+
+  async findByEntity(entityType: string, entityId: string) {
+    return this.prisma.fileDocument.findMany({
+      where: { entityType, entityId },
+      select: {
+        id: true,
+        documentKind: true,
+        status: true,
+        whatsappSentAt: true,
+        whatsappPhone: true,
+        viewedAt: true,
+        digitallyApprovedAt: true,
+        approvedFullName: true,
+        physicalUploadKey: true,
+        physicalUploadedAt: true,
+        createdAt: true,
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string) {
+    const doc = await this.prisma.fileDocument.findUnique({
+      where: { id },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    return doc;
+  }
+
+  // ── WhatsApp Link ─────────────────────────────────────────────────────────
+
+  async sendWhatsapp(id: string, dto: SendWhatsappDto) {
+    const doc = await this.findOne(id);
+    if (!doc.publicToken) throw new BadRequestException('Public token bulunamadı');
+
+    const appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
+    const link = `${appUrl}/evrak/${doc.publicToken}`;
+
+    const kindLabel =
+      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
+
+    const message = encodeURIComponent(
+      `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`,
+    );
+    const waUrl = `https://wa.me/${dto.phone.replace(/\D/g, '')}?text=${message}`;
+
+    await this.prisma.fileDocument.update({
+      where: { id },
+      data: {
+        whatsappSentAt: new Date(),
+        whatsappPhone: dto.phone,
+        status: doc.status === 'draft' ? 'sent' : doc.status,
+      },
+    });
+
+    return { waUrl, link };
+  }
+
+  // ── Fiziki Yükleme ────────────────────────────────────────────────────────
+
+  async uploadPhysical(id: string, storageKey: string, uploadedByUserId: string) {
+    const doc = await this.findOne(id);
+    if (doc.documentKind !== 'muvafakatname') {
+      throw new BadRequestException('Fiziki yükleme yalnızca muvafakatname için gereklidir');
+    }
+    return this.prisma.fileDocument.update({
+      where: { id },
+      data: {
+        physicalUploadKey: storageKey,
+        physicalUploadedAt: new Date(),
+        physicalUploadedByUserId: uploadedByUserId,
+        status: 'physically_uploaded',
+      },
+    });
+  }
+
+  // ── Public Token — Görüntüleme ────────────────────────────────────────────
+
+  async findByToken(token: string) {
+    const doc = await this.prisma.fileDocument.findUnique({
+      where: { publicToken: token },
+      select: {
+        id: true,
+        documentKind: true,
+        status: true,
+        renderedContent: true,
+        digitallyApprovedAt: true,
+        publicTokenExpiresAt: true,
+      },
+    });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
+      throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
+    }
+    return doc;
+  }
+
+  async markViewed(token: string, ip?: string) {
+    const doc = await this.prisma.fileDocument.findUnique({
+      where: { publicToken: token },
+    });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+
+    if (!doc.viewedAt) {
+      await this.prisma.fileDocument.update({
+        where: { publicToken: token },
+        data: {
+          viewedAt: new Date(),
+          viewedIp: ip ?? null,
+          status: doc.status === 'sent' || doc.status === 'draft' ? 'viewed' : doc.status,
+        },
+      });
+    }
+    return { success: true };
+  }
+
+  // ── Public Token — Dijital Onay ───────────────────────────────────────────
+
+  async approveByToken(token: string, fullName: string, ip?: string) {
+    const doc = await this.prisma.fileDocument.findUnique({
+      where: { publicToken: token },
+    });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
+      throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
+    }
+    if (doc.digitallyApprovedAt) {
+      throw new BadRequestException('Bu evrak zaten onaylanmıştır');
+    }
+
+    const approvedAt = new Date();
+    const signatureData = `accepted:${fullName}:${approvedAt.toISOString()}`;
+
+    // İmzalı HTML ekle
+    const signedBadge = `
+      <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:12px">
+        <strong style="color:#15803d">Dijital Onay</strong><br>
+        <span style="color:#166534">${fullName}</span> tarafından 
+        <span style="color:#166534">${approvedAt.toLocaleString('tr-TR')}</span> tarihinde onaylanmıştır.
+        ${ip ? `<br><span style="color:#9ca3af;font-size:10px">IP: ${ip}</span>` : ''}
+      </div>`;
+    const updatedContent = doc.renderedContent.replace('</body>', `${signedBadge}</body>`);
+
+    return this.prisma.fileDocument.update({
+      where: { id: doc.id },
+      data: {
+        status: doc.documentKind === 'muvafakatname' ? 'digitally_approved' : 'digitally_approved',
+        digitallyApprovedAt: approvedAt,
+        approvedIp: ip ?? null,
+        approvedFullName: fullName,
+        signatureData,
+        renderedContent: updatedContent,
+      },
+    });
+  }
+
+  // ── Kapama Koşulu Kontrolü (diğer servisler için) ──────────────────────────
+
+  async checkClaimFileClosureConditions(claimFileId: string) {
+    const docs = await this.prisma.fileDocument.findMany({
+      where: { entityType: 'claim_file', entityId: claimFileId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const muvafakatname = docs.find((d) => d.documentKind === 'muvafakatname');
+
+    const [repairReport, vendorContract] = await Promise.all([
+      this.prisma.repairReport.findFirst({
+        where: { claimFileId, status: 'approved' },
+      }),
+      this.prisma.vendorContract.findFirst({
+        where: { claimFileId, status: 'vendor_signed' },
+      }),
+    ]);
+
+    const conditions = {
+      muvafakatnameDigitallyApproved: !!muvafakatname?.digitallyApprovedAt,
+      muvafakatnamePhysicallyUploaded: !!muvafakatname?.physicalUploadKey,
+      repairReportApproved: !!repairReport,
+      vendorContractSigned: !!vendorContract,
+    };
+
+    return {
+      ...conditions,
+      canCreateInvoiceRequest: Object.values(conditions).every(Boolean),
+      muvafakatnameId: muvafakatname?.id ?? null,
+      muvafakatnameStatus: muvafakatname?.status ?? null,
+    };
+  }
+
+  async checkEmergencyCaseClosureConditions(emergencyCaseId: string) {
+    const docs = await this.prisma.fileDocument.findMany({
+      where: { entityType: 'emergency_case', entityId: emergencyCaseId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const matbuEvrak = docs.find((d) => d.documentKind === 'matbu_evrak');
+
+    const ec = await this.prisma.emergencyCase.findUnique({
+      where: { id: emergencyCaseId },
+      select: { status: true },
+    });
+
+    const conditions = {
+      matbuEvrakDigitallyApproved: !!matbuEvrak?.digitallyApprovedAt,
+      caseStatusCompleted: ec?.status === 'COZULDU',
+    };
+
+    return {
+      ...conditions,
+      canCreateInvoiceRequest: Object.values(conditions).every(Boolean),
+      matbuEvrakId: matbuEvrak?.id ?? null,
+      matbuEvrakStatus: matbuEvrak?.status ?? null,
+    };
+  }
+}

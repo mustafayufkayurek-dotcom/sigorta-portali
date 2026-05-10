@@ -1,0 +1,1165 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Optional,
+  Logger,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { ReportPdfService } from './pdf/report-pdf.service';
+import { ReportEmailService } from './email/report-email.service';
+import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
+import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection.service';
+import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
+import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
+import {
+  CreateRepairReportDto,
+  UpdateRepairReportDto,
+  CreateReportItemDto,
+  UpdateReportItemDto,
+  CreateDamageTypeDto,
+  SendEmailDto,
+  AddQuickRepairItemsDto,
+} from './dto/repair-reports.dto';
+import * as path from 'path';
+import * as fs from 'fs';
+import { randomUUID } from 'crypto';
+
+interface DownloadToken {
+  reportId: string;
+  view: 'internal' | 'external';
+  expiresAt: number;
+}
+
+// In-memory token store (5 min TTL)
+const downloadTokenStore = new Map<string, DownloadToken>();
+
+const REPORT_INCLUDE = {
+  claimFile: {
+    include: {
+      insuranceCompany: true,
+      customer: true,
+      propertyAddress: true,
+    },
+  },
+  createdBy: { select: { id: true, firstName: true, lastName: true } },
+  revisedBy: { select: { id: true, firstName: true, lastName: true } },
+  originalReport: { select: { id: true, reportNo: true, versionNo: true } },
+  versions: {
+    select: { id: true, reportNo: true, versionNo: true, status: true, createdAt: true, revisedAt: true },
+    orderBy: { versionNo: 'asc' as const },
+  },
+  items: {
+    include: { workGroup: true, damageType: true },
+    orderBy: [{ workGroup: { sortOrder: 'asc' as const } }, { sortOrder: 'asc' as const }],
+  },
+  images: { orderBy: { sortOrder: 'asc' as const } },
+  damageTypes: { orderBy: { sortOrder: 'asc' as const } },
+  approvalHistory: {
+    include: { user: { select: { id: true, firstName: true, lastName: true } } },
+    orderBy: { createdAt: 'desc' as const },
+  },
+  expertOffice: {
+    select: {
+      id: true,
+      companyName: true,
+      phone: true,
+      email: true,
+    },
+  },
+};
+
+@Injectable()
+export class RepairReportsService {
+  private readonly uploadDir: string;
+  private readonly logger = new Logger(RepairReportsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+    private pdfService: ReportPdfService,
+    private emailService: ReportEmailService,
+    @Optional() private readonly claimEventEmail?: ClaimEventEmailService,
+    @Optional() private readonly damageRepairTemplates?: DamageRepairTemplatesService,
+    @Optional() private readonly anomalyDetection?: AnomalyDetectionService,
+    @Optional() private readonly vendorRisk?: VendorRiskService,
+  ) {
+    this.uploadDir = path.join(process.cwd(), 'uploads', 'report-images');
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true });
+    }
+  }
+
+  // ── Reports ─────────────────────────────────────────────────────────────────
+
+  async getReportsByClaimFile(claimFileId: string) {
+    const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+    return this.prisma.repairReport.findMany({
+      where: { claimFileId },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        _count: { select: { items: true, images: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createReport(claimFileId: string, dto: CreateRepairReportDto, userId: string) {
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      include: {
+        assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
+        assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+    // Raporlayan: login olan kullanıcı
+    const reporter = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const autoReporterName = reporter ? `${reporter.firstName} ${reporter.lastName}` : undefined;
+
+    // Eksper ofisi: dto'dan geldiyse kullan, yoksa hasar dosyasındaki atanmış eksper/ofis kullanıcısının adını inspectorName olarak set et
+    const autoInspectorName = dto.inspectorName
+      ?? ((claimFile as any).assignedAdjuster
+        ? `${(claimFile as any).assignedAdjuster.firstName} ${(claimFile as any).assignedAdjuster.lastName}`
+        : ((claimFile as any).assignedOfficeUser
+          ? `${(claimFile as any).assignedOfficeUser.firstName} ${(claimFile as any).assignedOfficeUser.lastName}`
+          : undefined));
+
+    const count = await this.prisma.repairReport.count({ where: { claimFileId } });
+    const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;
+
+    return this.prisma.repairReport.create({
+      data: {
+        claimFileId,
+        reportNo,
+        reportType: dto.reportType ?? 'single',
+        reportDate: new Date(dto.reportDate),
+        inspectorName: autoInspectorName,
+        reporterName: autoReporterName,
+        findingsText: dto.findingsText,
+        legalNotes: dto.legalNotes,
+        quickDamageTypes: dto.quickDamageTypes ?? [],
+        quickDamageSize: dto.quickDamageSize,
+        departmentId: dto.departmentId,
+        expertOfficeId: dto.expertOfficeId,
+        createdByUserId: userId,
+      },
+      include: REPORT_INCLUDE,
+    });
+  }
+
+  async getReport(id: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id },
+      include: REPORT_INCLUDE,
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    return report;
+  }
+
+  async updateReport(id: string, dto: UpdateRepairReportDto) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const lockedStatuses = ['submitted', 'pending_approval', 'approved', 'sent_for_external_approval', 'externally_approved', 'externally_rejected'];
+    if (lockedStatuses.includes(report.status)) {
+      throw new BadRequestException('Bu durumdaki rapor düzenlenemez');
+    }
+
+    return this.prisma.repairReport.update({
+      where: { id },
+      data: {
+        ...dto,
+        reportDate: dto.reportDate ? new Date(dto.reportDate) : undefined,
+      },
+      include: REPORT_INCLUDE,
+    });
+  }
+
+  async deleteReport(id: string) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    if (report.status !== 'draft') throw new BadRequestException('Yalnızca taslak raporlar silinebilir');
+    await this.prisma.repairReport.delete({ where: { id } });
+    return { message: 'Rapor silindi' };
+  }
+
+  async submitReport(id: string) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const editableStatuses = ['draft', 'rejected'];
+    if (!editableStatuses.includes(report.status)) {
+      throw new BadRequestException('Bu rapor şu anda sunulamaz');
+    }
+    return this.prisma.repairReport.update({
+      where: { id },
+      data: { status: 'submitted' },
+    });
+  }
+
+  // ── Damage Types ─────────────────────────────────────────────────────────────
+
+  async addDamageType(reportId: string, dto: CreateDamageTypeDto) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    return this.prisma.reportDamageType.create({
+      data: {
+        reportId,
+        damageTypeCode: dto.damageTypeCode,
+        damageTypeName: dto.damageTypeName,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+  }
+
+  async removeDamageType(id: string) {
+    const dt = await this.prisma.reportDamageType.findUnique({ where: { id } });
+    if (!dt) throw new NotFoundException('Hasar nedeni bulunamadı');
+    // Unlink items before delete
+    await this.prisma.repairReportItem.updateMany({
+      where: { damageTypeId: id },
+      data: { damageTypeId: null },
+    });
+    await this.prisma.reportDamageType.delete({ where: { id } });
+    return { message: 'Hasar nedeni kaldırıldı' };
+  }
+
+  // ── Items ─────────────────────────────────────────────────────────────────
+
+  async addItem(reportId: string, dto: CreateReportItemDto) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const lockedStatuses = ['submitted', 'pending_approval', 'approved', 'sent_for_external_approval', 'externally_approved', 'externally_rejected'];
+    if (lockedStatuses.includes(report.status)) {
+      throw new BadRequestException('Bu durumdaki rapora kalem eklenemez');
+    }
+
+    if (report.reportType === 'multi' && !dto.damageTypeId) {
+      throw new BadRequestException('Çok hasarlı raporda kalem için hasar nedeni zorunludur');
+    }
+
+    const pricingType = dto.pricingType ?? 'unit';
+    const lumpSumPrice = dto.lumpSumPrice;
+    let supplierTotal: number;
+    let salesTotal: number;
+
+    if (pricingType === 'lumpsum' && lumpSumPrice != null) {
+      supplierTotal = lumpSumPrice;
+      salesTotal = lumpSumPrice;
+    } else {
+      supplierTotal = dto.quantity * dto.supplierUnitPrice;
+      salesTotal = dto.quantity * dto.salesUnitPrice;
+    }
+    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+
+    const item = await this.prisma.repairReportItem.create({
+      data: {
+        reportId,
+        workGroupId: dto.workGroupId,
+        damageTypeId: dto.damageTypeId,
+        location: dto.location,
+        jobDescription: dto.jobDescription,
+        description: dto.description,
+        quantity: dto.quantity,
+        unit: dto.unit,
+        supplierUnitPrice: dto.supplierUnitPrice,
+        salesUnitPrice: dto.salesUnitPrice,
+        supplierTotal,
+        salesTotal,
+        marginPct,
+        sortOrder: dto.sortOrder ?? 0,
+        metrajData: dto.metrajData as any,
+        pricingType,
+        lumpSumPrice: dto.lumpSumPrice,
+        materialIncluded: dto.materialIncluded ?? true,
+        laborIncluded: dto.laborIncluded ?? true,
+        damageCategory: dto.damageCategory || 'bina',
+      },
+      include: { workGroup: true, damageType: true },
+    });
+
+    // Record price history
+    await this.prisma.supplierPriceHistory.create({
+      data: {
+        workGroupId: dto.workGroupId,
+        jobDescription: dto.jobDescription,
+        unit: dto.unit,
+        supplierUnitPrice: dto.supplierUnitPrice,
+        salesUnitPrice: dto.salesUnitPrice,
+        claimFileId: report.claimFileId,
+      },
+    });
+
+    await this.recalculateTotals(reportId);
+    return item;
+  }
+
+  async addQuickRepairItems(reportId: string, dto: AddQuickRepairItemsDto) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const lockedStatuses = ['submitted', 'pending_approval', 'approved', 'sent_for_external_approval', 'externally_approved', 'externally_rejected'];
+    if (lockedStatuses.includes(report.status)) {
+      throw new BadRequestException('Bu durumdaki rapora kalem eklenemez');
+    }
+    if (!dto.items?.length) throw new BadRequestException('Eklenecek kalem seçilmedi');
+
+    const subGroups = await this.prisma.workSubGroup.findMany({
+      where: { id: { in: dto.items.map((item) => item.workSubGroupId) } },
+      include: { workGroup: true },
+    });
+    const subGroupMap = new Map(subGroups.map((subGroup) => [subGroup.id, subGroup]));
+    const created = [];
+    for (const item of dto.items) {
+      const subGroup = subGroupMap.get(item.workSubGroupId);
+      if (!subGroup) throw new NotFoundException('İş kalemi bulunamadı');
+      const quantity = item.quantity || 1;
+      const unitPrice = subGroup.unitPrice ? Number(subGroup.unitPrice) : 0;
+      const createdItem = await this.prisma.repairReportItem.create({
+        data: {
+          reportId,
+          workGroupId: subGroup.workGroupId,
+          jobDescription: subGroup.name,
+          description: item.note,
+          quantity,
+          unit: subGroup.unitType,
+          supplierUnitPrice: unitPrice,
+          salesUnitPrice: unitPrice,
+          supplierTotal: quantity * unitPrice,
+          salesTotal: quantity * unitPrice,
+          marginPct: 0,
+          damageCategory: 'bina',
+        },
+        include: { workGroup: true, damageType: true },
+      });
+      created.push(createdItem);
+    }
+
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: {
+        quickDamageTypes: dto.damageTypes ?? report.quickDamageTypes,
+      },
+    });
+    await this.damageRepairTemplates?.incrementUsageForItems(dto.items.map((item) => item.workSubGroupId), dto.damageTypes ?? [], dto.fileId);
+    await this.recalculateTotals(reportId);
+    return created;
+  }
+
+  async updateItem(itemId: string, dto: UpdateReportItemDto) {
+    const item = await this.prisma.repairReportItem.findUnique({ where: { id: itemId } });
+    if (!item) throw new NotFoundException('Kalem bulunamadı');
+
+    const pricingType = dto.pricingType ?? item.pricingType;
+    const quantity = dto.quantity ?? item.quantity;
+    const supplierUnitPrice = dto.supplierUnitPrice ?? item.supplierUnitPrice;
+    const salesUnitPrice = dto.salesUnitPrice ?? item.salesUnitPrice;
+    const lumpSumPrice = dto.lumpSumPrice ?? item.lumpSumPrice;
+
+    let supplierTotal: number;
+    let salesTotal: number;
+
+    if (pricingType === 'lumpsum' && lumpSumPrice != null) {
+      supplierTotal = lumpSumPrice;
+      salesTotal = lumpSumPrice;
+    } else {
+      supplierTotal = quantity * supplierUnitPrice;
+      salesTotal = quantity * salesUnitPrice;
+    }
+    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+
+    const updated = await this.prisma.repairReportItem.update({
+      where: { id: itemId },
+      data: {
+        ...dto,
+        supplierTotal,
+        salesTotal,
+        marginPct,
+        metrajData: dto.metrajData as any,
+      },
+      include: { workGroup: true, damageType: true },
+    });
+
+    await this.recalculateTotals(item.reportId);
+    return updated;
+  }
+
+  async removeItem(itemId: string) {
+    const item = await this.prisma.repairReportItem.findUnique({
+      where: { id: itemId },
+      include: { report: { select: { status: true } } },
+    });
+    if (!item) throw new NotFoundException('Kalem bulunamadı');
+    const lockedStatuses = ['submitted', 'pending_approval', 'approved', 'sent_for_external_approval', 'externally_approved', 'externally_rejected'];
+    if (lockedStatuses.includes((item as any).report?.status ?? '')) {
+      throw new BadRequestException('Bu durumdaki rapordan kalem silinemez');
+    }
+    await this.prisma.repairReportItem.delete({ where: { id: itemId } });
+    await this.recalculateTotals(item.reportId);
+    return { message: 'Kalem silindi' };
+  }
+
+  async reorderItems(_reportId: string, orders: Array<{ id: string; sortOrder: number }>) {
+    await Promise.all(
+      orders.map((o) =>
+        this.prisma.repairReportItem.update({
+          where: { id: o.id },
+          data: { sortOrder: o.sortOrder },
+        }),
+      ),
+    );
+    return { message: 'Sıralama güncellendi' };
+  }
+
+  private async recalculateTotals(reportId: string) {
+    const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
+    const totalSupplierCost = items.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
+    const totalSalesAmount = items.reduce((s: number, i: { salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
+      s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal), 0);
+    const grossProfit = totalSalesAmount - totalSupplierCost;
+    const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
+
+    const buildingDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
+      (i.damageCategory ?? 'bina') === 'bina' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
+    const goodsDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
+      (i.damageCategory ?? 'bina') === 'esya' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
+
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal },
+    });
+  }
+
+  // ── Images ────────────────────────────────────────────────────────────────
+
+  async addImage(
+    reportId: string,
+    file: Express.Multer.File,
+    category: string,
+    caption?: string,
+  ) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const count = await this.prisma.reportImage.count({ where: { reportId } });
+    return this.prisma.reportImage.create({
+      data: {
+        reportId,
+        storageKey: file.filename,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        category: category ?? 'damage',
+        caption,
+        sortOrder: count,
+      },
+    });
+  }
+
+  async getImages(reportId: string) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    return this.prisma.reportImage.findMany({
+      where: { reportId },
+      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
+    });
+  }
+
+  async updateImage(imageId: string, dto: { category?: string; caption?: string }) {
+    const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
+    if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
+    return this.prisma.reportImage.update({ where: { id: imageId }, data: dto });
+  }
+
+  async saveAnnotation(imageId: string, annotationData: Record<string, unknown>) {
+    const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
+    if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
+    return this.prisma.reportImage.update({
+      where: { id: imageId },
+      data: { hasAnnotation: true, annotationData: annotationData as any },
+    });
+  }
+
+  async deleteImage(imageId: string) {
+    const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
+    if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
+    // Attempt to delete physical file
+    try {
+      const filePath = path.join(this.uploadDir, img.storageKey);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {}
+    await this.prisma.reportImage.delete({ where: { id: imageId } });
+    return { message: 'Fotoğraf silindi' };
+  }
+
+  // ── Damage Summary ─────────────────────────────────────────────────────────
+
+  async getDamageSummary(reportId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        damageTypes: true,
+        items: { include: { damageType: true } },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const damageTypes = (report.damageTypes ?? []).map((dt: { id: string; damageTypeName: string }) => {
+      const dtItems = report.items.filter((i: { damageTypeId: string | null }) => i.damageTypeId === dt.id);
+      const supplierTotal = dtItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
+      const salesTotal = dtItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0);
+      const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+      return { id: dt.id, name: dt.damageTypeName, supplierTotal, salesTotal, marginPct };
+    });
+
+    const unassignedItems = report.items.filter((i: { damageTypeId: string | null }) => !i.damageTypeId);
+    const unassigned = {
+      supplierTotal: unassignedItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0),
+      salesTotal: unassignedItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0),
+    };
+
+    return { damageTypes, unassigned };
+  }
+
+  // ── PDF & Email ────────────────────────────────────────────────────────────
+
+  async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
+    const report = await this.getReport(reportId);
+    const buffer = await this.pdfService.generate(report as any, viewType);
+    return { buffer, report };
+  }
+
+  async sendEmail(reportId: string, dto: SendEmailDto) {
+    const report = await this.getReport(reportId);
+    const { buffer: pdfBuffer } = await this.generatePdf(reportId, dto.viewType);
+    const subject = dto.subject ?? `Hasar Onarım Raporu — ${report.reportNo}`;
+    return this.emailService.sendReport({
+      to: dto.to,
+      subject,
+      pdfBuffer,
+      reportNo: report.reportNo,
+      viewType: dto.viewType,
+    });
+  }
+
+  async getShareLink(reportId: string, userId: string) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    // Mevcut aktif paylaşım token'ını bul veya yeni oluştur
+    let approval = await this.prisma.externalApproval.findFirst({
+      where: {
+        reportId,
+        approverType: 'share_link',
+        status: 'pending',
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!approval) {
+      const token = randomUUID();
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 gün
+      approval = await this.prisma.externalApproval.create({
+        data: {
+          reportId,
+          approverType: 'share_link',
+          approverName: 'Paylaşım Linki',
+          channel: 'whatsapp',
+          token,
+          expiresAt,
+          sentByUserId: userId,
+        },
+      });
+    }
+
+    const baseUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
+    const url = `${baseUrl}/onay/${approval.token}`;
+    return {
+      url,
+      whatsappUrl: `https://wa.me/?text=${encodeURIComponent(`Hasar Onarım Raporu: ${url}`)}`,
+    };
+  }
+
+  // ── Download Token (WhatsApp) ─────────────────────────────────────────────
+
+  async createDownloadToken(reportId: string, view: 'internal' | 'external' = 'external') {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    // Clean expired tokens
+    const now = Date.now();
+    for (const [key, val] of downloadTokenStore.entries()) {
+      if (val.expiresAt < now) downloadTokenStore.delete(key);
+    }
+
+    const token = randomUUID();
+    downloadTokenStore.set(token, {
+      reportId,
+      view,
+      expiresAt: now + 5 * 60 * 1000, // 5 minutes
+    });
+
+    return { token, expiresInSeconds: 300 };
+  }
+
+  async getPdfByToken(token: string): Promise<{
+    buffer: Buffer | string;
+    reportNo: string;
+    view: string;
+    fileNo: string;
+    insuranceCompanyName: string | null;
+    expertOfficeName: string | null;
+  }> {
+    const entry = downloadTokenStore.get(token);
+    if (!entry || entry.expiresAt < Date.now()) {
+      throw new BadRequestException('Geçersiz veya süresi dolmuş token');
+    }
+
+    const report = await this.getReport(entry.reportId);
+    const buffer = await this.pdfService.generate(report as any, entry.view as 'internal' | 'external');
+    return {
+      buffer,
+      reportNo: report.reportNo,
+      view: entry.view,
+      fileNo: (report.claimFile as any)?.fileNo ?? report.reportNo,
+      insuranceCompanyName: (report.claimFile as any)?.insuranceCompany?.name ?? null,
+      expertOfficeName: (report.expertOffice as any)?.companyName ?? null,
+    };
+  }
+
+  // ── Approval Workflow ─────────────────────────────────────────────────────
+
+  private async createNotification(userId: string, type: string, title: string, body: string, relatedEntityId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        body,
+        channel: 'in_app',
+        status: 'pending',
+        relatedEntityType: 'repair_report',
+        relatedEntityId,
+      },
+    });
+  }
+
+  private async getApprovers(): Promise<Array<{ id: string; expoPushToken: string | null }>> {
+    // Users with admin or ops_manager role
+    return this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'ops_manager', 'manager'] } },
+      },
+      select: { id: true, expoPushToken: true },
+    });
+  }
+
+  async requestApproval(reportId: string, userId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: { createdBy: { select: { id: true, firstName: true, lastName: true } } },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    if (report.status !== 'draft' && report.status !== 'rejected') {
+      throw new BadRequestException('Yalnızca taslak veya reddedilmiş raporlar onaya gönderilebilir');
+    }
+
+    // Onaya gönderilmeden önce anomali analizi yap (non-blocking)
+    void this.triggerAnomalyAnalysisOnly(reportId);
+
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: { status: 'pending_approval' },
+    });
+
+    await this.prisma.reportApprovalHistory.create({
+      data: { reportId, userId, action: 'pending_approval' },
+    });
+
+    // Notify approvers
+    const approvers = await this.getApprovers();
+    for (const approver of approvers) {
+      if (approver.id !== userId) {
+        await this.createNotification(
+          approver.id,
+          'report_approval_requested',
+          'Onay Bekleyen Rapor',
+          `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+          reportId,
+        );
+      }
+    }
+
+    return this.getReport(reportId);
+  }
+
+  async approveReport(reportId: string, userId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        claimFile: { select: { id: true, fileNo: true } },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    if (report.status !== 'pending_approval') {
+      throw new BadRequestException('Yalnızca onay bekleyen raporlar onaylanabilir');
+    }
+
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: { status: 'approved' },
+    });
+
+    const approver = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+
+    await this.prisma.reportApprovalHistory.create({
+      data: { reportId, userId, action: 'approved' },
+    });
+
+    // Notify report creator (in-app)
+    await this.createNotification(
+      report.createdByUserId,
+      'report_approved',
+      'Raporunuz Onaylandı',
+      `${report.reportNo} numaralı raporunuz onaylandı.`,
+      reportId,
+    );
+
+    // Email bildirimi
+    if (this.claimEventEmail && (report.createdBy as any)?.email) {
+      void this.claimEventEmail.onReportApproved({
+        recipientEmail: (report.createdBy as any).email,
+        recipientUserId: report.createdByUserId,
+        reportNo: report.reportNo,
+        fileNo: (report.claimFile as any)?.fileNo ?? '',
+        approvedBy: approver ? `${approver.firstName} ${approver.lastName}` : '',
+        claimFileId: report.claimFileId,
+        reportId,
+      });
+    }
+
+    // Tedarikçi risk ve anomali analizi (async, non-blocking)
+    void this.triggerRiskAnalysis(reportId, report.claimFileId);
+
+    return this.getReport(reportId);
+  }
+
+  async rejectReport(reportId: string, userId: string, reason: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        claimFile: { select: { id: true, fileNo: true } },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    if (report.status !== 'pending_approval') {
+      throw new BadRequestException('Yalnızca onay bekleyen raporlar reddedilebilir');
+    }
+
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: { status: 'rejected' },
+    });
+
+    await this.prisma.reportApprovalHistory.create({
+      data: { reportId, userId, action: 'rejected', reason },
+    });
+
+    // Notify report creator (in-app)
+    await this.createNotification(
+      report.createdByUserId,
+      'report_rejected',
+      'Raporunuz Reddedildi',
+      `${report.reportNo} numaralı raporunuz reddedildi. Neden: ${reason || 'Belirtilmemiş'}`,
+      reportId,
+    );
+
+    // Email bildirimi
+    if (this.claimEventEmail && (report.createdBy as any)?.email) {
+      void this.claimEventEmail.onReportRejected({
+        recipientEmail: (report.createdBy as any).email,
+        recipientUserId: report.createdByUserId,
+        reportNo: report.reportNo,
+        fileNo: (report.claimFile as any)?.fileNo ?? '',
+        rejectionReason: reason || 'Belirtilmemiş',
+        claimFileId: report.claimFileId,
+        reportId,
+      });
+    }
+
+    return this.getReport(reportId);
+  }
+
+  async getApprovalHistory(reportId: string) {
+    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const data = await this.prisma.reportApprovalHistory.findMany({
+      where: { reportId },
+      include: { user: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return { data };
+  }
+
+  // ── Revizyon ──────────────────────────────────────────────────────────────
+
+  async reviseReport(reportId: string, userId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        items: { include: { damageType: true } },
+        images: true,
+        damageTypes: true,
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    if (report.status !== 'approved' && report.status !== 'externally_approved' && report.status !== 'externally_rejected') {
+      throw new BadRequestException('Yalnızca onaylanmış raporlar revize edilebilir');
+    }
+
+    // Zincirin kök id'sini bul
+    const originalId = report.originalReportId ?? report.id;
+
+    // Mevcut açık (draft/rejected) revizyon var mı kontrol et
+    const existingDraft = await this.prisma.repairReport.findFirst({
+      where: {
+        originalReportId: originalId,
+        status: { in: ['draft', 'rejected', 'pending_approval'] },
+      },
+    });
+    if (existingDraft) {
+      throw new BadRequestException('Bu rapor için zaten açık bir revizyon mevcut');
+    }
+
+    // En yüksek versionNo'yu bul
+    const allVersions = await this.prisma.repairReport.findMany({
+      where: {
+        OR: [{ id: originalId }, { originalReportId: originalId }],
+      },
+      select: { versionNo: true },
+    });
+    const maxVersion = allVersions.reduce((max, v) => Math.max(max, v.versionNo), 1);
+    const newVersionNo = maxVersion + 1;
+
+    // Yeni reportNo: temel numara + "-R" + yeni versiyon
+    const baseReportNo = report.reportNo.replace(/-R\d+$/, '');
+    const newReportNo = `${baseReportNo}-R${newVersionNo}`;
+
+    return this.prisma.$transaction(async (tx) => {
+      // Yeni raporu oluştur
+      const newReport = await tx.repairReport.create({
+        data: {
+          claimFileId: report.claimFileId,
+          reportNo: newReportNo,
+          reportType: report.reportType,
+          reportDate: report.reportDate,
+          inspectorName: report.inspectorName,
+          reporterName: report.reporterName,
+          findingsText: report.findingsText,
+          legalNotes: report.legalNotes,
+          departmentId: report.departmentId,
+          buildingDamageTotal: report.buildingDamageTotal,
+          goodsDamageTotal: report.goodsDamageTotal,
+          totalSupplierCost: report.totalSupplierCost,
+          totalSalesAmount: report.totalSalesAmount,
+          grossProfit: report.grossProfit,
+          grossMarginPct: report.grossMarginPct,
+          status: 'draft',
+          versionNo: newVersionNo,
+          originalReportId: originalId,
+          revisedAt: new Date(),
+          revisedByUserId: userId,
+          createdByUserId: userId,
+        },
+      });
+
+      // DamageType'ları kopyala; id eşlemesini sakla
+      const dtIdMap = new Map<string, string>();
+      for (const dt of report.damageTypes) {
+        const newDt = await tx.reportDamageType.create({
+          data: {
+            reportId: newReport.id,
+            damageTypeCode: dt.damageTypeCode,
+            damageTypeName: dt.damageTypeName,
+            sortOrder: dt.sortOrder,
+          },
+        });
+        dtIdMap.set(dt.id, newDt.id);
+      }
+
+      // Item'ları kopyala
+      for (const item of report.items) {
+        await tx.repairReportItem.create({
+          data: {
+            reportId: newReport.id,
+            workGroupId: item.workGroupId,
+            damageTypeId: item.damageTypeId ? (dtIdMap.get(item.damageTypeId) ?? null) : null,
+            location: item.location,
+            jobDescription: item.jobDescription,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            supplierUnitPrice: item.supplierUnitPrice,
+            salesUnitPrice: item.salesUnitPrice,
+            supplierTotal: item.supplierTotal,
+            salesTotal: item.salesTotal,
+            marginPct: item.marginPct,
+            sortOrder: item.sortOrder,
+            metrajData: item.metrajData ?? undefined,
+            pricingType: item.pricingType,
+            lumpSumPrice: item.lumpSumPrice,
+            materialIncluded: item.materialIncluded,
+            laborIncluded: item.laborIncluded,
+            damageCategory: item.damageCategory ?? 'bina',
+          },
+        });
+      }
+
+      // Image'ları kopyala (aynı storage key — dosyalar değişmiyor)
+      for (const img of report.images) {
+        await tx.reportImage.create({
+          data: {
+            reportId: newReport.id,
+            storageKey: img.storageKey,
+            annotatedKey: img.annotatedKey,
+            fileName: img.fileName,
+            mimeType: img.mimeType,
+            fileSize: img.fileSize,
+            category: img.category,
+            caption: img.caption,
+            hasAnnotation: img.hasAnnotation,
+            annotationData: img.annotationData ?? undefined,
+            sortOrder: img.sortOrder,
+          },
+        });
+      }
+
+      // ApprovalHistory kaydı
+      await tx.reportApprovalHistory.create({
+        data: {
+          reportId: newReport.id,
+          userId,
+          action: 'revision_created',
+          reason: `v${report.versionNo} üzerinden revizyon oluşturuldu`,
+        },
+      });
+
+      // getReport() bu transaction dışından okursa READ COMMITTED nedeniyle 404 alır
+      // — doğrudan tx client ile sorgula
+      const created = await tx.repairReport.findUnique({
+        where: { id: newReport.id },
+        include: REPORT_INCLUDE,
+      });
+      if (!created) throw new NotFoundException('Revizyon raporu oluşturulamadı');
+      return created;
+    });
+  }
+
+  async getVersions(reportId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, originalReportId: true },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const originalId = report.originalReportId ?? report.id;
+
+    const versions = await this.prisma.repairReport.findMany({
+      where: {
+        OR: [{ id: originalId }, { originalReportId: originalId }],
+      },
+      select: {
+        id: true,
+        reportNo: true,
+        versionNo: true,
+        status: true,
+        createdAt: true,
+        revisedAt: true,
+        totalSalesAmount: true,
+        grossMarginPct: true,
+        revisedBy: { select: { id: true, firstName: true, lastName: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        _count: { select: { items: true } },
+      },
+      orderBy: { versionNo: 'asc' },
+    });
+
+    return { data: versions };
+  }
+
+  // ── Diff / Karşılaştırma ──────────────────────────────────────────────────
+
+  async diffReports(reportAId: string, reportBId: string) {
+    const [reportA, reportB] = await Promise.all([
+      this.prisma.repairReport.findUnique({
+        where: { id: reportAId },
+        include: { items: { include: { workGroup: true } } },
+      }),
+      this.prisma.repairReport.findUnique({
+        where: { id: reportBId },
+        include: { items: { include: { workGroup: true } } },
+      }),
+    ]);
+
+    if (!reportA) throw new NotFoundException(`Rapor bulunamadı: ${reportAId}`);
+    if (!reportB) throw new NotFoundException(`Rapor bulunamadı: ${reportBId}`);
+
+    const mapByDescription = (items: typeof reportA.items) => {
+      const map = new Map<string, (typeof items)[number]>();
+      for (const item of items) {
+        map.set(item.jobDescription, item);
+      }
+      return map;
+    };
+
+    const mapA = mapByDescription(reportA.items);
+    const mapB = mapByDescription(reportB.items);
+
+    const allKeys = new Set([...mapA.keys(), ...mapB.keys()]);
+
+    const added: object[] = [];
+    const removed: object[] = [];
+    const changed: object[] = [];
+    const unchanged: object[] = [];
+
+    for (const key of allKeys) {
+      const itemA = mapA.get(key);
+      const itemB = mapB.get(key);
+
+      if (!itemA && itemB) {
+        added.push({
+          jobDescription: itemB.jobDescription,
+          workGroup: itemB.workGroup?.name,
+          quantity: itemB.quantity,
+          unit: itemB.unit,
+          salesUnitPrice: itemB.salesUnitPrice,
+          salesTotal: itemB.salesTotal,
+        });
+      } else if (itemA && !itemB) {
+        removed.push({
+          jobDescription: itemA.jobDescription,
+          workGroup: itemA.workGroup?.name,
+          quantity: itemA.quantity,
+          unit: itemA.unit,
+          salesUnitPrice: itemA.salesUnitPrice,
+          salesTotal: itemA.salesTotal,
+        });
+      } else if (itemA && itemB) {
+        const fields: Record<string, { before: unknown; after: unknown }> = {};
+        let hasChanges = false;
+
+        if (itemA.quantity !== itemB.quantity) {
+          fields.quantity = { before: itemA.quantity, after: itemB.quantity };
+          hasChanges = true;
+        }
+        if (itemA.salesUnitPrice !== itemB.salesUnitPrice) {
+          fields.salesUnitPrice = { before: itemA.salesUnitPrice, after: itemB.salesUnitPrice };
+          hasChanges = true;
+        }
+        if (itemA.salesTotal !== itemB.salesTotal) {
+          fields.salesTotal = { before: itemA.salesTotal, after: itemB.salesTotal };
+          hasChanges = true;
+        }
+        if (itemA.supplierUnitPrice !== itemB.supplierUnitPrice) {
+          fields.supplierUnitPrice = { before: itemA.supplierUnitPrice, after: itemB.supplierUnitPrice };
+          hasChanges = true;
+        }
+        if (itemA.unit !== itemB.unit) {
+          fields.unit = { before: itemA.unit, after: itemB.unit };
+          hasChanges = true;
+        }
+
+        if (hasChanges) {
+          changed.push({
+            jobDescription: itemA.jobDescription,
+            workGroup: itemA.workGroup?.name,
+            changes: fields,
+          });
+        } else {
+          unchanged.push({ jobDescription: itemA.jobDescription });
+        }
+      }
+    }
+
+    const priceDiff = reportB.totalSalesAmount - reportA.totalSalesAmount;
+
+    return {
+      data: {
+        reportA: {
+          id: reportA.id,
+          reportNo: reportA.reportNo,
+          versionNo: reportA.versionNo,
+          totalSalesAmount: reportA.totalSalesAmount,
+          status: reportA.status,
+        },
+        reportB: {
+          id: reportB.id,
+          reportNo: reportB.reportNo,
+          versionNo: reportB.versionNo,
+          totalSalesAmount: reportB.totalSalesAmount,
+          status: reportB.status,
+        },
+        summary: {
+          addedCount: added.length,
+          removedCount: removed.length,
+          changedCount: changed.length,
+          unchangedCount: unchanged.length,
+          priceDiff,
+          priceDiffPct:
+            reportA.totalSalesAmount !== 0
+              ? (priceDiff / reportA.totalSalesAmount) * 100
+              : null,
+        },
+        added,
+        removed,
+        changed,
+        unchanged,
+      },
+    };
+  }
+
+  // ─── Risk & Anomali Yardımcı Metodlar ───────────────────────────────────
+
+  private async triggerAnomalyAnalysisOnly(reportId: string): Promise<void> {
+    if (!this.anomalyDetection) return;
+    try {
+      await this.anomalyDetection.analyzeReport(reportId);
+    } catch (err) {
+      this.logger.error(`Anomaly analysis failed for report ${reportId}: ${err}`);
+    }
+  }
+
+  private async triggerRiskAnalysis(reportId: string, claimFileId: string): Promise<void> {
+    try {
+      // Anomali analizi
+      if (this.anomalyDetection) {
+        await this.anomalyDetection.analyzeReport(reportId);
+      }
+
+      // Tedarikçi risk skoru güncelle
+      if (this.vendorRisk) {
+        const costEntry = await this.prisma.costEntry.findFirst({
+          where: { claimFileId, vendorId: { not: null } },
+          select: { vendorId: true },
+        });
+        if (costEntry?.vendorId) {
+          await this.vendorRisk.recalculateAndSave(costEntry.vendorId);
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Risk analysis failed for report ${reportId}: ${err}`);
+    }
+  }
+}

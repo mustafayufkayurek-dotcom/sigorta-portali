@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" fill="none" role="img" aria-label="Meridyen Assistance Icon">
+  <defs>
+    <linearGradient id="shieldGradI" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E3A6E"/>
+      <stop offset="100%" stop-color="#0F2040"/>
+    </linearGradient>
+    <linearGradient id="goldGradI" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0B830"/>
+      <stop offset="100%" stop-color="#D4870A"/>
+    </linearGradient>
+    <filter id="shadowI" x="-12%" y="-8%" width="124%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#0A1428" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Shield body -->
+  <path
+    d="M32 4 L6 15 L6 38 C6 53 18 64 32 68 C46 64 58 53 58 38 L58 15 Z"
+    fill="url(#shieldGradI)"
+    filter="url(#shadowI)"
+  />
+
+  <!-- Gold top cap -->
+  <path
+    d="M32 4 L58 15 L54 17 L32 7.5 L10 17 L6 15 Z"
+    fill="url(#goldGradI)"
+  />
+
+  <!-- Inner shield stroke -->
+  <path
+    d="M32 9 L11 19 L11 38 C11 51 21 61 32 64.5 C43 61 53 51 53 38 L53 19 Z"
+    fill="none"
+    stroke="#2A5BA8"
+    stroke-width="0.6"
+    opacity="0.35"
+  />
+
+  <!-- M letterform with ladder steps -->
+  <!-- Left vertical -->
+  <line x1="16" y1="22" x2="16" y2="48" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <!-- Right vertical -->
+  <line x1="48" y1="22" x2="48" y2="48" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <!-- Left diagonal -->
+  <line x1="16" y1="22" x2="32" y2="34" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right diagonal -->
+  <line x1="48" y1="22" x2="32" y2="34" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Gold stair steps left side -->
+  <line x1="16" y1="29" x2="23" y2="29" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="16" y1="36" x2="23" y2="36" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="16" y1="43" x2="23" y2="43" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Gold stair steps right side -->
+  <line x1="41" y1="29" x2="48" y2="29" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="41" y1="36" x2="48" y2="36" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="41" y1="43" x2="48" y2="43" stroke="url(#goldGradI)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Gold dot at center peak -->
+  <circle cx="32" cy="34" r="2.5" fill="url(#goldGradI)"/>
+</svg>

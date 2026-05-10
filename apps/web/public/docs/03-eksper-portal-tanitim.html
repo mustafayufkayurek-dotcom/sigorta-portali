@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridyen Assistance — Eksper Portal Tanıtım Rehberi</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 10pt;
+      color: #1a1a2e;
+      background: #fff;
+      line-height: 1.65;
+    }
+    :root {
+      --navy: #0F2040;
+      --navy-mid: #1E3A6E;
+      --blue-accent: #4A6FA5;
+      --gold: #F0B830;
+      --gold-dark: #D4870A;
+      --light-bg: #F8FAFF;
+      --border: #D1DCF0;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: linear-gradient(150deg, var(--navy) 0%, var(--navy-mid) 60%, #1a4d8a 100%);
+      color: #fff;
+      padding: 40px 32px 32px;
+      position: relative;
+      overflow: hidden;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -90px; right: -70px;
+      width: 340px; height: 340px; border-radius: 50%;
+      background: rgba(240,184,48,0.07);
+    }
+    .hero-inner { position: relative; z-index: 1; }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(240,184,48,0.18);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .hero-title {
+      font-size: 22pt;
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .hero-title span { color: var(--gold); }
+    .hero-sub {
+      font-size: 11pt;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+    .hero-divider {
+      width: 56px; height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+      border-radius: 2px;
+      margin: 14px 0;
+    }
+    .hero-desc { font-size: 9.5pt; color: rgba(255,255,255,0.85); max-width: 145mm; line-height: 1.7; }
+
+    /* ─── Section ─── */
+    .section-wrap { padding: 24px 32px; }
+    .section-wrap.alt-bg { background: var(--light-bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-label { font-size: 7.5pt; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-dark); margin-bottom: 4px; }
+    .section-title { font-size: 14pt; font-weight: 800; color: var(--navy); line-height: 1.25; margin-bottom: 6px; }
+    .section-divider { width: 40px; height: 3px; background: linear-gradient(90deg, var(--gold), var(--gold-dark)); border-radius: 2px; margin: 8px 0 16px; }
+    .section-lead { font-size: 9.5pt; color: #4B5563; line-height: 1.65; }
+
+    /* ─── What is Portal ─── */
+    .portal-intro {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
+    }
+    .portal-intro-text { font-size: 9.5pt; color: #374151; line-height: 1.7; }
+    .portal-badge-box {
+      background: var(--navy);
+      border-radius: 6px;
+      padding: 16px 18px;
+      color: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .portal-badge-box .pb-label { font-size: 8pt; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+    .portal-badge-box .pb-title { font-size: 14pt; font-weight: 900; line-height: 1.2; margin-bottom: 8px; }
+    .portal-badge-box .pb-desc { font-size: 8.5pt; color: rgba(255,255,255,0.8); line-height: 1.6; }
+
+    /* ─── Steps ─── */
+    .steps-wrap { margin-top: 16px; }
+    .step-item {
+      display: flex;
+      gap: 16px;
+      position: relative;
+      padding-bottom: 16px;
+    }
+    .step-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 15px; top: 32px;
+      width: 2px;
+      height: calc(100% - 16px);
+      background: linear-gradient(180deg, var(--gold), rgba(240,184,48,0.2));
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .step-circle {
+      min-width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: var(--navy);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10pt; font-weight: 900;
+      flex-shrink: 0;
+      z-index: 1;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .step-content { padding-top: 4px; }
+    .step-content strong { display: block; color: var(--navy); font-size: 10pt; margin-bottom: 3px; }
+    .step-content p { font-size: 9pt; color: #4B5563; margin: 0; line-height: 1.6; }
+
+    /* ─── Status Flow ─── */
+    .status-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: 16px 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .status-step {
+      flex: 1;
+      text-align: center;
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      padding: 10px 8px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: var(--navy);
+      position: relative;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .status-step.active {
+      background: var(--navy-mid);
+      color: #fff;
+      border-color: var(--navy-mid);
+    }
+    .status-step.active.final { background: #065F46; border-color: #065F46; }
+    .status-arrow {
+      font-size: 12pt; color: var(--gold); padding: 0 4px; flex-shrink: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .status-step .step-icon { font-size: 14pt; display: block; margin-bottom: 4px; }
+
+    /* ─── Digital Approval Flow ─── */
+    .approval-flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .approval-node {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 10px;
+      text-align: center;
+      position: relative;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .approval-node::after {
+      content: '→';
+      position: absolute;
+      right: -16px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14pt;
+      color: var(--gold);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .approval-node:last-child::after { display: none; }
+    .approval-node .node-num {
+      width: 24px; height: 24px;
+      background: var(--navy-mid);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9pt; font-weight: 700;
+      margin: 0 auto 6px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .approval-node .node-label { font-size: 8.5pt; color: var(--navy); font-weight: 600; line-height: 1.4; }
+
+    /* ─── Dashboard Preview ─── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .dash-widget {
+      background: var(--navy);
+      border-radius: 6px;
+      padding: 14px;
+      color: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .dash-widget.light {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--navy);
+    }
+    .dash-widget-title { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin-bottom: 8px; }
+    .dash-widget.light .dash-widget-title { color: var(--navy-mid); }
+
+    /* Gauge mock */
+    .gauge-wrap { position: relative; width: 80px; height: 44px; margin: 0 auto; overflow: hidden; }
+    .gauge-bg {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 8px solid rgba(255,255,255,0.15);
+      position: absolute; top: 0; left: 0;
+      clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .gauge-fill {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 8px solid var(--gold);
+      position: absolute; top: 0; left: 0;
+      clip-path: polygon(0 50%, 75% 50%, 75% 0, 0 0);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .gauge-val { font-size: 12pt; font-weight: 900; color: var(--gold); text-align: center; margin-top: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .gauge-label { font-size: 7.5pt; color: rgba(255,255,255,0.7); text-align: center; }
+
+    .weather-line { font-size: 9pt; color: rgba(255,255,255,0.85); margin-bottom: 4px; }
+    .weather-temp { font-size: 18pt; font-weight: 900; color: #fff; }
+
+    .currency-row { display: flex; justify-content: space-between; font-size: 9pt; color: rgba(255,255,255,0.85); margin-bottom: 4px; }
+    .currency-val { font-weight: 700; color: var(--gold); }
+
+    /* ─── Insurers ─── */
+    .insurer-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .insurer-badge {
+      background: #fff;
+      border: 1.5px solid var(--navy-mid);
+      color: var(--navy);
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ─── Contact ─── */
+    .contact-box {
+      background: var(--navy);
+      border-radius: 6px;
+      padding: 20px 24px;
+      color: #fff;
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .contact-col h4 { color: var(--gold); font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .contact-col p { font-size: 9pt; color: rgba(255,255,255,0.85); margin-bottom: 4px; }
+
+    /* ─── Closing Band ─── */
+    .closing-band {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+      padding: 22px 32px;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .closing-badge {
+      display: inline-block;
+      background: rgba(240,184,48,0.18);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 6px 20px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .closing-title { font-size: 14pt; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .closing-sub { font-size: 9pt; color: rgba(255,255,255,0.7); }
+
+    /* ─── Footer ─── */
+    .doc-footer {
+      background: var(--navy);
+      color: rgba(255,255,255,0.6);
+      padding: 10px 32px;
+      font-size: 7.5pt;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .doc-footer strong { color: rgba(255,255,255,0.9); }
+
+    /* ─── Info Box ─── */
+    .info-box {
+      background: #EFF6FF;
+      border-left: 3px solid var(--blue-accent);
+      border-radius: 0 4px 4px 0;
+      padding: 10px 14px;
+      margin: 12px 0;
+      font-size: 9pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .info-box .box-label { font-weight: 700; color: var(--navy-mid); font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+    /* ─── Print ─── */
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { font-size: 9.5pt; }
+      .page-break { page-break-before: always; }
+    }
+
+    p { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-inner">
+    <div style="margin-bottom:24px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="210" height="54" role="img" aria-label="Meridyen Assistance">
+        <defs>
+          <linearGradient id="hsg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient>
+          <linearGradient id="hgg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient>
+        </defs>
+        <path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#hsg3)"/>
+        <path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#hgg3)" opacity="0.9"/>
+        <path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+        <path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+        <line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="78" y="36" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text>
+        <rect x="78" y="40" width="168" height="2" rx="1" fill="url(#hgg3)"/>
+        <text x="78" y="56" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text>
+      </svg>
+    </div>
+    <div class="hero-tag">Eksperlere Özel Yazılım</div>
+    <div class="hero-title">Eksper Portal<br><span>Tanıtım Rehberi</span></div>
+    <div class="hero-sub">Hasar Süreçlerini Dijital Ortamda Yönetin</div>
+    <div class="hero-divider"></div>
+    <div class="hero-desc">
+      Meridyen Assistance Eksper Portalı, sigorta hasarı süreçlerini sahadan merkeze taşır. İhbar gönderin, dosyaları takip edin, dijital onay verin — her şey tek platformda, her yerden erişilebilir.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     EKSPER PORTALI NEDİR?
+═══════════════════════════════════════════ -->
+<div class="section-wrap">
+  <div class="section-label">Genel Bakış</div>
+  <div class="section-title">Eksper Portalı Nedir?</div>
+  <div class="section-divider"></div>
+  <div class="portal-intro">
+    <div class="portal-intro-text">
+      <p style="margin-bottom:10px;">Eksper Portalı, Meridyen Assistance platformunun eksperlere özel modülüdür. Eksperler bu portal aracılığıyla ihbar bildirimlerini iletir, atanan dosyaları anlık takip eder ve dijital onay süreçlerini yönetir.</p>
+      <p style="margin-bottom:10px;">Portal; masaüstü tarayıcı ve mobil cihazlarla tam uyumludur. Sahada çalışan eksperler, yerinde inceleme sırasında tablet veya akıllı telefonlarından sisteme bağlanabilir.</p>
+      <p>Tüm işlemler gerçek zamanlı olarak merkez sistemiyle senkronize edilir; veri kaybı veya gecikme riski yoktur.</p>
+    </div>
+    <div class="portal-badge-box">
+      <div class="pb-label">Ana Avantaj</div>
+      <div class="pb-title">Eksperlere Özel Yazılım</div>
+      <div class="pb-desc">
+        Genel bir asistans veya CRM sistemi değil — sigorta hasarı süreçlerine özel geliştirilmiş, eksperin iş akışına uyarlanmış bir platform. Form alanlarından dashboard'a kadar her detay eksper deneyimi gözetilerek tasarlanmıştır.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     NASIL İHBAR GÖNDERİLİR?
+═══════════════════════════════════════════ -->
+<div class="section-wrap alt-bg">
+  <div class="section-label">Adım Adım</div>
+  <div class="section-title">Nasıl İhbar Gönderilir?</div>
+  <div class="section-divider"></div>
+  <div class="steps-wrap">
+    <div class="step-item">
+      <div class="step-circle">1</div>
+      <div class="step-content">
+        <strong>Portala Giriş</strong>
+        <p>Tarayıcınızdan sisteme erişin. E-posta adresiniz ve şifrenizle giriş yapın. Şifremi unuttum bağlantısıyla şifrenizi sıfırlayabilirsiniz.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">2</div>
+      <div class="step-content">
+        <strong>Yeni İhbar Formu</strong>
+        <p>Dashboard üzerindeki <strong>"+ Yeni İhbar"</strong> butonuna tıklayın. İhbar formu açılır.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">3</div>
+      <div class="step-content">
+        <strong>Sigortalı Bilgileri</strong>
+        <p>Poliçe numarası, sigorta şirketi ve sigortalının ad-soyad/unvan bilgilerini girin. Kayıtlı müşteri arama ile otomatik doldurma yapılabilir.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">4</div>
+      <div class="step-content">
+        <strong>Hasar Detayları</strong>
+        <p>Hasar türü (yangın, su baskını, deprem vb.), hasar tarihi, hasar adresi (il/ilçe/adres) ve kısa açıklama alanlarını doldurun.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">5</div>
+      <div class="step-content">
+        <strong>Dosya ve Fotoğraf Ekleme</strong>
+        <p>Saha fotoğrafları, belgeler ve destekleyici dosyaları sürükle-bırak yöntemiyle ekleyin. JPG, PNG ve PDF formatları desteklenir.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-circle">6</div>
+      <div class="step-content">
+        <strong>Gönder ve Takip Kodu Al</strong>
+        <p><strong>"Gönder"</strong> butonuna tıklayın. Sistem size otomatik bir dosya numarası atar. Bu numara ile ihbarınızı her zaman takip edebilirsiniz.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="box-label">Otomatik Bildirim</div>
+    İhbar gönderildikten sonra sisteme kayıtlı koordinatör anlık bildirim alır. 30 dakika içinde dosya işleme alınır.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DOSYA TAKİBİ
+═══════════════════════════════════════════ -->
+<div class="section-wrap">
+  <div class="section-label">Süreç Yönetimi</div>
+  <div class="section-title">Dosya Takibi</div>
+  <div class="section-divider"></div>
+  <p class="section-lead" style="margin-bottom:16px;">Gönderdiğiniz her ihbarın anlık durumunu portal üzerinden takip edebilirsiniz. Durum değişikliklerinde otomatik bildirim alırsınız.</p>
+
+  <div class="status-flow">
+    <div class="status-step active">
+      <span class="step-icon">&#128228;</span>
+      İhbar Alındı
+    </div>
+    <div class="status-arrow">&#8594;</div>
+    <div class="status-step active">
+      <span class="step-icon">&#128269;</span>
+      İncelemede
+    </div>
+    <div class="status-arrow">&#8594;</div>
+    <div class="status-step active">
+      <span class="step-icon">&#128296;</span>
+      Onarım Sürecinde
+    </div>
+    <div class="status-arrow">&#8594;</div>
+    <div class="status-step active final">
+      <span class="step-icon">&#9989;</span>
+      Tamamlandı
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="box-label">Gerçek Zamanlı Güncelleme</div>
+    Her durum değişikliğinde portal bildirim alanınıza mesaj düşer. İsteğe bağlı olarak SMS bildirimi de aktifleştirilebilir.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DİJİTAL ONAY SÜRECİ
+═══════════════════════════════════════════ -->
+<div class="section-wrap alt-bg">
+  <div class="section-label">Elektronik İmza</div>
+  <div class="section-title">Dijital Onay Süreci</div>
+  <div class="section-divider"></div>
+  <p class="section-lead" style="margin-bottom:16px;">Sözleşmeler ve belgeler fiziksel imza gerektirmeden güvenli biçimde onaylanabilir.</p>
+
+  <div class="approval-flow">
+    <div class="approval-node">
+      <div class="node-num">1</div>
+      <div class="node-label">Belge Hazırlanır ve Sisteme Yüklenir</div>
+    </div>
+    <div class="approval-node">
+      <div class="node-num">2</div>
+      <div class="node-label">SMS/E-posta ile Onay Bağlantısı Gönderilir</div>
+    </div>
+    <div class="approval-node">
+      <div class="node-num">3</div>
+      <div class="node-label">Eksper Bağlantıya Tıklar ve İnceler</div>
+    </div>
+    <div class="approval-node">
+      <div class="node-num">4</div>
+      <div class="node-label">Onay Verilir, Dosya Güncellenir</div>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:14px;">
+    <div class="box-label">Bağlantı Geçerlilik Süresi</div>
+    Onay bağlantıları 24 saat geçerlidir. Süresi dolan bağlantılar sistem üzerinden yenilenebilir.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DASHBOARD ÖZELLİKLERİ
+═══════════════════════════════════════════ -->
+<div class="section-wrap">
+  <div class="section-label">Ana Ekran</div>
+  <div class="section-title">Dashboard Özellikleri</div>
+  <div class="section-divider"></div>
+  <p class="section-lead" style="margin-bottom:16px;">Eksper dashboard'u günlük iş takibi için ihtiyaç duyduğunuz tüm bilgileri tek ekranda sunar.</p>
+
+  <div class="dashboard-grid">
+    <!-- SLA Gauge -->
+    <div class="dash-widget">
+      <div class="dash-widget-title">SLA Uyum Göstergesi</div>
+      <div class="gauge-wrap">
+        <div class="gauge-bg"></div>
+        <div class="gauge-fill"></div>
+      </div>
+      <div class="gauge-val">%98.5</div>
+      <div class="gauge-label">Müdahale Zamanında Tamamlanan</div>
+    </div>
+
+    <!-- Aktif Dosyalar Gauge -->
+    <div class="dash-widget">
+      <div class="dash-widget-title">Aktif Dosyalar</div>
+      <div style="text-align:center; padding:8px 0;">
+        <div style="font-size:28pt; font-weight:900; color:var(--gold); line-height:1;">12</div>
+        <div style="font-size:8pt; color:rgba(255,255,255,0.7);">Açık Hasar Dosyası</div>
+      </div>
+      <div style="font-size:8pt; color:rgba(255,255,255,0.6); text-align:center;">3 tanesi bu hafta eklendi</div>
+    </div>
+
+    <!-- Hava Durumu -->
+    <div class="dash-widget">
+      <div class="dash-widget-title">Hava Durumu</div>
+      <div class="weather-temp">22°C</div>
+      <div class="weather-line">İstanbul, Türkiye</div>
+      <div class="weather-line" style="font-size:8pt; color:rgba(255,255,255,0.6);">Parçalı Bulutlu</div>
+      <div class="weather-line" style="margin-top:4px; font-size:8pt;">Nem: %65 &nbsp;|&nbsp; Rüzgar: 12 km/s</div>
+    </div>
+
+    <!-- Döviz -->
+    <div class="dash-widget">
+      <div class="dash-widget-title">Döviz Kurları</div>
+      <div class="currency-row"><span>USD/TRY</span><span class="currency-val">32.45</span></div>
+      <div class="currency-row"><span>EUR/TRY</span><span class="currency-val">35.10</span></div>
+      <div class="currency-row"><span>GBP/TRY</span><span class="currency-val">41.20</span></div>
+      <div style="font-size:7.5pt; color:rgba(255,255,255,0.45); margin-top:4px;">Anlık kur verisi (TCMB)</div>
+    </div>
+
+    <!-- Haberler -->
+    <div class="dash-widget" style="grid-column: span 2;">
+      <div class="dash-widget-title">Sektör Haberleri</div>
+      <div style="font-size:8.5pt; color:rgba(255,255,255,0.85); line-height:1.6; margin-bottom:6px;">&#9679; Türkiye Sigorta Birliği yeni hasar yönetim kılavuzunu yayımladı</div>
+      <div style="font-size:8.5pt; color:rgba(255,255,255,0.85); line-height:1.6; margin-bottom:6px;">&#9679; Deprem riski yüksek bölgelerde prim oranları güncellendi</div>
+      <div style="font-size:8.5pt; color:rgba(255,255,255,0.85); line-height:1.6;">&#9679; Dijital ekspertiz uygulamaları 2025 yılında %40 artış gösterdi</div>
+    </div>
+
+    <!-- Bekleyen Onaylar -->
+    <div class="dash-widget light">
+      <div class="dash-widget-title" style="color:var(--navy-mid);">Bekleyen Onaylar</div>
+      <div style="text-align:center; padding:8px 0;">
+        <div style="font-size:24pt; font-weight:900; color:var(--gold-dark); line-height:1;">3</div>
+        <div style="font-size:8pt; color:#6B7280;">İmza Bekleyen Belge</div>
+      </div>
+      <div style="font-size:8pt; color:#9CA3AF; text-align:center;">Son 24 saatte 5 onay tamamlandı</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SİGORTA ŞİRKETLERİ
+═══════════════════════════════════════════ -->
+<div class="section-wrap alt-bg">
+  <div class="section-label">Ağ</div>
+  <div class="section-title">Sigorta Şirketleri Ağı</div>
+  <div class="section-divider"></div>
+  <p class="section-lead" style="margin-bottom:4px;">Meridyen Assistance, Türkiye'nin önde gelen sigorta şirketleriyle aktif iş birliği içindedir. Eksperler bu şirketlere ait dosyaları tek platform üzerinden yönetebilir.</p>
+  <div class="insurer-grid">
+    <div class="insurer-badge">Türkiye Sigorta</div>
+    <div class="insurer-badge">Anadolu Sigorta</div>
+    <div class="insurer-badge">Neova Sigorta</div>
+    <div class="insurer-badge">Ray Sigorta</div>
+    <div class="insurer-badge">Allianz Sigorta</div>
+    <div class="insurer-badge">Quick Sigorta</div>
+    <div class="insurer-badge">Bereket Sigorta</div>
+    <div class="insurer-badge">Sompo Sigorta</div>
+    <div class="insurer-badge">Hepiyi Sigorta</div>
+    <div class="insurer-badge">Aksigorta</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     HIZLI İLETİŞİM
+═══════════════════════════════════════════ -->
+<div class="section-wrap">
+  <div class="section-label">Destek</div>
+  <div class="section-title">Hızlı İletişim</div>
+  <div class="section-divider"></div>
+  <div class="contact-box">
+    <div class="contact-col">
+      <h4>Sabit Hat</h4>
+      <p>0 850 885 25 55</p>
+      <p style="font-size:8pt; color:rgba(255,255,255,0.55);">Hafta içi 08:00–18:00</p>
+    </div>
+    <div class="contact-col">
+      <h4>GSM (7/24)</h4>
+      <p>0533 633 07 13</p>
+      <p style="font-size:8pt; color:rgba(255,255,255,0.55);">Acil durumlar için</p>
+    </div>
+    <div class="contact-col">
+      <h4>E-posta</h4>
+      <p>info@meridyenassistance.com</p>
+      <p style="font-size:8pt; color:rgba(255,255,255,0.55);">www.safranbh.com</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     KAPANIŞ BANDI
+═══════════════════════════════════════════ -->
+<div class="closing-band">
+  <div class="closing-badge">Eksperlere Özel Yazılım</div>
+  <div class="closing-title">Meridyen Assistance ile Hasar Süreçlerinizi Dijitalleştirin</div>
+  <div style="width:40px;height:2px;background:var(--gold);margin:10px auto;border-radius:2px;"></div>
+  <div class="closing-sub">Safran Birleşik Hizmetler — 1999'dan Bu Yana Sektörün Güvenilir Adresi</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<div class="doc-footer">
+  <div><strong>Safran Birleşik Hizmetler</strong> — Meridyen Assistance &nbsp;|&nbsp; www.safranbh.com</div>
+  <div>Tüm hakları saklıdır &copy; 2025 &nbsp;|&nbsp; 0 850 885 25 55</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+# ─── Stage 1: Dependencies ────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.1 --activate
+
+# Copy workspace manifests
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install ALL dependencies (including dev, for prisma generate)
+RUN pnpm install --frozen-lockfile
+
+# ─── Stage 2: Build shared package ────────────────────────────────────────────
+FROM deps AS shared-build
+COPY packages/shared/ ./packages/shared/
+RUN pnpm --filter @sigorta/shared build
+
+# ─── Stage 3: Build backend ───────────────────────────────────────────────────
+FROM shared-build AS backend-build
+COPY apps/backend/ ./apps/backend/
+WORKDIR /app/apps/backend
+RUN pnpm exec prisma generate
+RUN pnpm run build
+
+# ─── Stage 4: Production image ────────────────────────────────────────────────
+FROM node:20-alpine AS production
+RUN apk add --no-cache wget dumb-init openssl openssl-dev
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
+ENV PRISMA_BINARY_PLATFORM=linux-musl-openssl-3.0.x
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.1 --activate
+
+# Copy workspace manifests
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install ALL dependencies from build stage (carries .prisma client)
+# We copy node_modules from build stage to avoid re-downloading and to get prisma client
+COPY --from=backend-build /app/node_modules ./node_modules
+COPY --from=backend-build /app/apps/backend/node_modules ./apps/backend/node_modules
+
+# Copy built artifacts
+COPY --from=backend-build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=backend-build /app/apps/backend/dist ./apps/backend/dist
+
+# Copy Prisma schema and regenerate with correct binary target for linux-musl
+COPY apps/backend/prisma ./apps/backend/prisma
+RUN cd apps/backend && node_modules/.bin/prisma generate
+
+# Copy PM2 config
+COPY apps/backend/ecosystem.config.js ./apps/backend/ecosystem.config.js
+
+# Install PM2 globally
+RUN npm install -g pm2
+
+WORKDIR /app/apps/backend
+
+EXPOSE 3000
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["pm2-runtime", "ecosystem.config.js"]

@@ -1,0 +1,404 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { ReportPdfService } from '../repair-reports/pdf/report-pdf.service';
+import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
+
+@Injectable()
+export class ExternalApprovalsService {
+  private readonly logger = new Logger(ExternalApprovalsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+    private pdfService: ReportPdfService,
+  ) {}
+
+  // ── Gönderim ──────────────────────────────────────────────────────────────
+
+  async send(reportId: string, dto: SendExternalApprovalDto, sentByUserId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        claimFile: { include: { insuranceCompany: true, customer: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const allowedStatuses = ['approved', 'sent_for_external_approval'];
+    if (!allowedStatuses.includes(report.status)) {
+      throw new BadRequestException('Yalnızca onaylanmış raporlar dış onaya gönderilebilir');
+    }
+
+    const token = randomUUID();
+    const expiresInHours = dto.expiresInHours ?? 72;
+    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+
+    const approval = await this.prisma.externalApproval.create({
+      data: {
+        reportId,
+        approverType: dto.approverType,
+        approverId: dto.approverId,
+        approverName: dto.approverName,
+        approverEmail: dto.approverEmail,
+        approverPhone: dto.approverPhone,
+        channel: dto.channel,
+        token,
+        expiresAt,
+        sentByUserId,
+      },
+    });
+
+    // Rapor durumunu güncelle
+    await this.prisma.repairReport.update({
+      where: { id: reportId },
+      data: { status: 'sent_for_external_approval' },
+    });
+
+    // Approval history kaydı
+    await this.prisma.reportApprovalHistory.create({
+      data: {
+        reportId,
+        userId: sentByUserId,
+        action: 'sent_for_external_approval',
+        reason: `${dto.channel} kanalı üzerinden ${dto.approverType === 'expert' ? 'ekspere' : 'sigorta şirketine'} gönderildi`,
+      },
+    });
+
+    // In-app bildirim (approverId varsa)
+    if (dto.approverId && dto.channel === 'in_app') {
+      await this.prisma.notification.create({
+        data: {
+          userId: dto.approverId,
+          type: 'external_approval_requested',
+          title: 'Onay Bekleniyor',
+          body: `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+          channel: 'in_app',
+          status: 'pending',
+          relatedEntityType: 'external_approval',
+          relatedEntityId: approval.id,
+        },
+      });
+    }
+
+    // E-posta gönderimi
+    if (dto.channel === 'email' && dto.approverEmail) {
+      await this.sendApprovalEmail(approval.id, report, dto.approverEmail, token);
+    }
+
+    const publicUrl = this.buildPublicUrl(token);
+    const whatsappUrl = this.buildWhatsAppUrl(token, report.reportNo, dto.approverPhone);
+
+    return { data: { ...approval, publicUrl, whatsappUrl } };
+  }
+
+  // ── Public: Token ile raporu görüntüle ──────────────────────────────────
+
+  async getByToken(token: string) {
+    const approval = await this.prisma.externalApproval.findUnique({
+      where: { token },
+      include: {
+        report: {
+          include: {
+            claimFile: {
+              include: { insuranceCompany: true, customer: true, propertyAddress: true },
+            },
+            items: { include: { workGroup: true, damageType: true }, orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }] },
+            damageTypes: { orderBy: { sortOrder: 'asc' } },
+            images: { orderBy: { sortOrder: 'asc' } },
+            createdBy: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    if (!approval) throw new NotFoundException('Geçersiz onay linki');
+
+    if (approval.status === 'expired' || approval.expiresAt < new Date()) {
+      if (approval.status !== 'expired') {
+        await this.prisma.externalApproval.update({ where: { token }, data: { status: 'expired' } });
+      }
+      throw new BadRequestException('Bu onay linkinin süresi dolmuş');
+    }
+
+    if (approval.status !== 'pending') {
+      return { data: approval, alreadyResponded: true };
+    }
+
+    return { data: approval, alreadyResponded: false };
+  }
+
+  // ── Public: Token ile yanıt ver ─────────────────────────────────────────
+
+  async respond(token: string, dto: RespondExternalApprovalDto) {
+    const approval = await this.prisma.externalApproval.findUnique({ where: { token } });
+    if (!approval) throw new NotFoundException('Geçersiz onay linki');
+
+    if (approval.status === 'expired' || approval.expiresAt < new Date()) {
+      throw new BadRequestException('Bu onay linkinin süresi dolmuş');
+    }
+    if (approval.status !== 'pending') {
+      throw new BadRequestException('Bu onay isteği zaten yanıtlanmış');
+    }
+
+    const newStatus = dto.action === 'approved' ? 'approved' : 'rejected';
+    const reportStatus = dto.action === 'approved' ? 'externally_approved' : 'externally_rejected';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.externalApproval.update({
+        where: { token },
+        data: {
+          status: newStatus,
+          respondedAt: new Date(),
+          comments: dto.comments,
+        },
+      });
+
+      await tx.repairReport.update({
+        where: { id: approval.reportId },
+        data: { status: reportStatus },
+      });
+
+      await tx.reportApprovalHistory.create({
+        data: {
+          reportId: approval.reportId,
+          userId: approval.sentByUserId,
+          action: reportStatus,
+          reason: dto.comments,
+        },
+      });
+    });
+
+    // Gönderen kişiye bildirim
+    await this.prisma.notification.create({
+      data: {
+        userId: approval.sentByUserId,
+        type: dto.action === 'approved' ? 'external_approval_approved' : 'external_approval_rejected',
+        title: dto.action === 'approved' ? 'Dış Onay Verildi' : 'Dış Onay Reddedildi',
+        body: dto.action === 'approved'
+          ? `Dış onay talebiniz onaylandı.`
+          : `Dış onay talebiniz reddedildi. ${dto.comments ? `Neden: ${dto.comments}` : ''}`,
+        channel: 'in_app',
+        status: 'pending',
+        relatedEntityType: 'external_approval',
+        relatedEntityId: approval.id,
+      },
+    });
+
+    return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
+  }
+
+  // ── Authenticated: ID ile yanıt ver (portal kullanıcıları) ────────────────
+
+  async respondAuth(id: string, dto: RespondExternalApprovalDto, _userId: string) {
+    const approval = await this.prisma.externalApproval.findUnique({ where: { id } });
+    if (!approval) throw new NotFoundException('Onay kaydı bulunamadı');
+
+    if (approval.status === 'expired' || approval.expiresAt < new Date()) {
+      throw new BadRequestException('Bu onay isteğinin süresi dolmuş');
+    }
+
+    if (approval.status !== 'pending') {
+      throw new BadRequestException('Bu onay isteği zaten yanıtlanmış');
+    }
+
+    const newStatus = dto.action === 'approved' ? 'approved' : 'rejected';
+    const reportStatus = dto.action === 'approved' ? 'externally_approved' : 'externally_rejected';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.externalApproval.update({
+        where: { id },
+        data: { status: newStatus, respondedAt: new Date(), comments: dto.comments },
+      });
+
+      await tx.repairReport.update({
+        where: { id: approval.reportId },
+        data: { status: reportStatus },
+      });
+
+      await tx.reportApprovalHistory.create({
+        data: {
+          reportId: approval.reportId,
+          userId: approval.sentByUserId,
+          action: reportStatus,
+          reason: dto.comments,
+        },
+      });
+    });
+
+    await this.prisma.notification.create({
+      data: {
+        userId: approval.sentByUserId,
+        type: dto.action === 'approved' ? 'external_approval_approved' : 'external_approval_rejected',
+        title: dto.action === 'approved' ? 'Dış Onay Verildi' : 'Dış Onay Reddedildi',
+        body: dto.action === 'approved'
+          ? 'Dış onay talebiniz onaylandı.'
+          : `Dış onay talebiniz reddedildi.${dto.comments ? ` Neden: ${dto.comments}` : ''}`,
+        channel: 'in_app',
+        status: 'pending',
+        relatedEntityType: 'external_approval',
+        relatedEntityId: approval.id,
+      },
+    });
+
+    return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
+  }
+
+  // ── Listeleme ─────────────────────────────────────────────────────────────
+
+  async listPending(approverType?: string, approverId?: string) {
+    const where: Record<string, unknown> = { status: 'pending' };
+    if (approverType) where['approverType'] = approverType;
+    if (approverId) where['approverId'] = approverId;
+
+    // Süresi dolmuş olanları güncelle
+    await this.prisma.externalApproval.updateMany({
+      where: { status: 'pending', expiresAt: { lt: new Date() } },
+      data: { status: 'expired' },
+    });
+
+    const data = await this.prisma.externalApproval.findMany({
+      where,
+      include: {
+        report: {
+          select: {
+            id: true,
+            reportNo: true,
+            status: true,
+            versionNo: true,
+            totalSalesAmount: true,
+            claimFile: { select: { fileNo: true, lossType: true, insuranceCompany: { select: { name: true } } } },
+          },
+        },
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { sentAt: 'desc' },
+    });
+
+    return { data };
+  }
+
+  async getDetail(id: string) {
+    const approval = await this.prisma.externalApproval.findUnique({
+      where: { id },
+      include: {
+        report: {
+          include: {
+            claimFile: { include: { insuranceCompany: true, customer: true } },
+            createdBy: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+        approver: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!approval) throw new NotFoundException('Onay talebi bulunamadı');
+    return { data: approval };
+  }
+
+  async listByReport(reportId: string) {
+    const data = await this.prisma.externalApproval.findMany({
+      where: { reportId },
+      include: {
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+        approver: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { data };
+  }
+
+  // ── Yardımcılar ───────────────────────────────────────────────────────────
+
+  private buildPublicUrl(token: string): string {
+    const base = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
+    return `${base}/onay/${token}`;
+  }
+
+  private buildWhatsAppUrl(token: string, reportNo: string, phone?: string): string {
+    const url = this.buildPublicUrl(token);
+    const message = `${reportNo} numaralı hasar onarım raporunu onaylamanız bekleniyor: ${url}`;
+    const recipient = phone ? `90${phone.replace(/\D/g, '')}` : '';
+    return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
+  }
+
+  private async sendApprovalEmail(
+    approvalId: string,
+    report: any,
+    email: string,
+    token: string,
+  ) {
+    const smtpHost = this.config.get<string>('SMTP_HOST');
+    if (!smtpHost) {
+      this.logger.warn('SMTP yapılandırması eksik — dış onay maili gönderilemedi');
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: this.config.get<number>('SMTP_PORT') ?? 587,
+        secure: false,
+        auth: {
+          user: this.config.get<string>('SMTP_USER'),
+          pass: this.config.get<string>('SMTP_PASS'),
+        },
+      });
+
+      const approvalUrl = this.buildPublicUrl(token);
+      let pdfBuffer: Buffer | string | null = null;
+      try {
+        pdfBuffer = await this.pdfService.generate(report as any, 'external');
+      } catch (_) {}
+
+      const mailOptions: Record<string, unknown> = {
+        from: this.config.get<string>('SMTP_USER'),
+        to: email,
+        subject: `Onay Talebi: ${report.reportNo} — Hasar Onarım Raporu`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1e40af;">Hasar Onarım Raporu Onay Talebi</h2>
+            <p>Sayın yetkili,</p>
+            <p><strong>${report.reportNo}</strong> numaralı hasar onarım raporu onayınızı beklemektedir.</p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="margin: 4px 0;"><strong>Rapor No:</strong> ${report.reportNo}</p>
+              <p style="margin: 4px 0;"><strong>Hasar Dosya No:</strong> ${report.claimFile?.fileNo ?? '—'}</p>
+              <p style="margin: 4px 0;"><strong>Sigorta Şirketi:</strong> ${report.claimFile?.insuranceCompany?.name ?? '—'}</p>
+            </div>
+            <p>Raporu incelemek ve onaylamak için aşağıdaki linke tıklayın:</p>
+            <a href="${approvalUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+              Raporu İncele ve Onayla
+            </a>
+            <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
+              Bu link 72 saat geçerlidir. Sorun yaşarsanız lütfen bizimle iletişime geçin.
+            </p>
+          </div>
+        `,
+        attachments: [] as any[],
+      };
+
+      if (pdfBuffer) {
+        (mailOptions.attachments as any[]).push({
+          filename: `onarim-raporu-${report.reportNo}.txt`,
+          content: pdfBuffer,
+          contentType: 'text/plain',
+        });
+      }
+
+      await transporter.sendMail(mailOptions);
+      this.logger.log(`Dış onay maili gönderildi: ${email} (approval: ${approvalId})`);
+    } catch (err) {
+      this.logger.error('Dış onay maili gönderilemedi', err);
+    }
+  }
+}

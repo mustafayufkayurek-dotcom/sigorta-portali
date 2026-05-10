@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E3A6E"/>
+      <stop offset="100%" stop-color="#0F2040"/>
+    </linearGradient>
+    <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0B830"/>
+      <stop offset="100%" stop-color="#D4870A"/>
+    </linearGradient>
+  </defs>
+  <path d="M16 2 L3 7.5 L3 19 C3 26.5 9 31.5 16 33.5 C23 31.5 29 26.5 29 19 L29 7.5 Z" fill="url(#sg)"/>
+  <path d="M16 2 L29 7.5 L27 8.5 L16 4.5 L5 8.5 L3 7.5 Z" fill="url(#gg)"/>
+  <line x1="10" y1="11" x2="10" y2="23" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="22" y1="11" x2="22" y2="23" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="10" y1="11" x2="16" y2="16" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="22" y1="11" x2="16" y2="16" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="10" y1="15" x2="13" y2="15" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="10" y1="18" x2="13" y2="18" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="10" y1="21" x2="13" y2="21" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="19" y1="15" x2="22" y2="15" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="19" y1="18" x2="22" y2="18" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="19" y1="21" x2="22" y2="21" stroke="url(#gg)" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="1.4" fill="url(#gg)"/>
+</svg>

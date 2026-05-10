@@ -1,0 +1,437 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getCases, EmergencyCase } from '@/utils/emergencyApi';
+
+const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
+const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
+
+function getToken() {
+  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+}
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString('tr-TR');
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  draft: 'Taslak',
+  sent: 'Gönderildi',
+  paid: 'Ödendi',
+  partial: 'Kısmi',
+  cancelled: 'İptal',
+  overdue: 'Gecikmiş',
+  none: '—',
+};
+const INVOICE_STATUS_COLORS: Record<string, string> = {
+  draft:     'badge badge-gray',
+  sent:      'badge badge-blue',
+  paid:      'badge badge-green',
+  partial:   'badge badge-amber',
+  cancelled: 'badge badge-red',
+  overdue:   'badge badge-red',
+  none:      'badge badge-gray',
+};
+
+function deriveInvoiceStatus(invoices: { status: string; invoiceType: string }[]): string {
+  if (!invoices || invoices.length === 0) return 'none';
+  const sales = invoices.filter((i) => i.invoiceType === 'sales');
+  if (sales.length === 0) return 'none';
+  if (sales.some((i) => i.status === 'overdue')) return 'overdue';
+  if (sales.some((i) => i.status === 'paid')) return 'paid';
+  if (sales.some((i) => i.status === 'partial')) return 'partial';
+  if (sales.some((i) => i.status === 'sent')) return 'sent';
+  return 'draft';
+}
+
+const EMERGENCY_STATUS_LABELS: Record<string, string> = {
+  GELEN: 'Gelen',
+  ATANDI: 'Atandı',
+  SAHADA: 'Sahada',
+  COZULDU: 'Çözüldü',
+  FATURALANDILDI: 'Faturalandı',
+};
+const EMERGENCY_STATUS_CLASSES: Record<string, string> = {
+  GELEN:          'badge badge-gray',
+  ATANDI:         'badge badge-blue',
+  SAHADA:         'badge badge-orange',
+  COZULDU:        'badge badge-green',
+  FATURALANDILDI: 'badge badge-purple',
+};
+
+// ─── Unified row type ──────────────────────────────────────────────────────────
+
+type UnifiedRow =
+  | { kind: 'hasar'; id: string; fileNo: string; customerName: string; date: string; subject: string; statusLabel: string; invoiceStatus: string; amount: string | null }
+  | { kind: 'acil'; id: string; fileNo: string; customerName: string; date: string; subject: string; statusCode: string; invoiceStatus: string; amount: string | null };
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+function StatCard({
+  label,
+  value,
+  badge,
+  accentClass,
+  iconBg,
+  icon,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  badge?: string;
+  accentClass?: string;
+  iconBg?: string;
+  icon?: React.ReactNode;
+  href?: string;
+}) {
+  const content = (
+    <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 ${accentClass ?? 'card-accent-blue'}`}>
+      {icon && (
+        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${iconBg ?? 'bg-blue-50'}`}>
+          {icon}
+        </div>
+      )}
+      <div className="flex flex-col min-w-0">
+        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide leading-none truncate">{label}</p>
+        <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums">{value}</span>
+        {badge && (
+          <span className="badge badge-blue self-start mt-0.5">{badge}</span>
+        )}
+      </div>
+    </div>
+  );
+  if (href) return <Link href={href} className="block">{content}</Link>;
+  return content;
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function OperasyonPage() {
+  const router = useRouter();
+
+  const [claims, setClaims] = useState<any[]>([]);
+  const [claimsTotal, setClaimsTotal] = useState(0);
+  const [claimsLoading, setClaimsLoading] = useState(true);
+  const [claimsError, setClaimsError] = useState('');
+
+  const [cases, setCases] = useState<EmergencyCase[]>([]);
+  const [casesLoading, setCasesLoading] = useState(true);
+
+  const [openCount, setOpenCount] = useState<number | null>(null);
+  const [todayCount, setTodayCount] = useState<number | null>(null);
+  const [overdueCount, setOverdueCount] = useState<number | null>(null);
+  const [invoicePendingCount, setInvoicePendingCount] = useState<number | null>(null);
+
+  const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
+  const [filterInvoice, setFilterInvoice] = useState('');
+
+  const loadClaims = useCallback(async () => {
+    setClaimsLoading(true);
+    setClaimsError('');
+    try {
+      const token = getToken();
+      const res = await fetch(`${API}/api/v1/claim-files?limit=50&sort=createdAt:desc`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setClaims(json.data ?? []);
+        setClaimsTotal(json.meta?.total ?? (json.data ?? []).length);
+      }
+    } catch { setClaimsError('Veriler yüklenemedi'); }
+    finally { setClaimsLoading(false); }
+  }, []);
+
+  const loadStats = useCallback(async () => {
+    const token = getToken();
+    const headers = { Authorization: `Bearer ${token}` };
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const [openRes, todayRes, overdueRes, invoiceRes] = await Promise.allSettled([
+        fetch(`${API}/api/v1/claim-files?limit=1&statusCode=open`, { headers }),
+        fetch(`${API}/api/v1/claim-files?limit=1&dateFrom=${today}&dateTo=${today}`, { headers }),
+        fetch(`${API}/api/v1/claim-files?limit=1&slaExceeded=true`, { headers }),
+        fetch(`${API}/api/v1/claim-files?limit=1&invoiceStatus=none`, { headers }),
+      ]);
+      if (openRes.status === 'fulfilled' && openRes.value.ok) { const j = await openRes.value.json(); setOpenCount(j.meta?.total ?? j.data?.length ?? 0); }
+      if (todayRes.status === 'fulfilled' && todayRes.value.ok) { const j = await todayRes.value.json(); setTodayCount(j.meta?.total ?? j.data?.length ?? 0); }
+      if (overdueRes.status === 'fulfilled' && overdueRes.value.ok) { const j = await overdueRes.value.json(); setOverdueCount(j.meta?.total ?? j.data?.length ?? 0); }
+      if (invoiceRes.status === 'fulfilled' && invoiceRes.value.ok) { const j = await invoiceRes.value.json(); setInvoicePendingCount(j.meta?.total ?? j.data?.length ?? 0); }
+    } catch { /* ignore */ }
+  }, []);
+
+  const loadCases = useCallback(async () => {
+    setCasesLoading(true);
+    try {
+      const res = await getCases();
+      setCases(res.data.slice(0, 50));
+    } catch { /* ignore */ }
+    finally { setCasesLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    loadClaims();
+    loadCases();
+    loadStats();
+  }, [loadClaims, loadCases, loadStats]);
+
+  const emergencyOpenCount = cases.filter((c) => c.status !== 'FATURALANDILDI').length;
+
+  const hasarRows: UnifiedRow[] = claims.map((claim) => {
+    const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
+    const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
+    const subject = claim.lossType ?? claim.departmentFileSubject?.name ?? claim.productBranch ?? '—';
+    return {
+      kind: 'hasar', id: claim.id,
+      fileNo: claim.fileNo ?? claim.claimNo ?? '—',
+      customerName, date: claim.createdAt, subject,
+      statusLabel: claim.currentStatus?.name ?? 'N/A',
+      invoiceStatus: invStatus,
+      amount: claim.totalAmount != null ? `${Number(claim.totalAmount).toLocaleString('tr-TR')} ₺` : null,
+    };
+  });
+
+  const acilRows: UnifiedRow[] = cases.map((c) => ({
+    kind: 'acil', id: c.id, fileNo: c.caseNo, customerName: c.customerName,
+    date: c.createdAt, subject: c.issueType ?? c.notes ?? '—',
+    statusCode: c.status,
+    invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
+    amount: null,
+  }));
+
+  const allRows: UnifiedRow[] = [...hasarRows, ...acilRows].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const filteredRows = allRows.filter((row) => {
+    if (filterType !== 'all' && row.kind !== filterType) return false;
+    if (filterInvoice && row.invoiceStatus !== filterInvoice) return false;
+    return true;
+  });
+
+  const isLoading = claimsLoading || casesLoading;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <div className="page-header-icon">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="page-title">Operasyon</h1>
+            <p className="page-subtitle">Tüm operasyonun kuş bakışı özeti</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/panel/hasar-dosyalari/yeni" className="btn-primary shadow-sm shadow-blue-200/60">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Yeni Hasar Dosyası
+          </Link>
+          <Link href="/panel/acil-yardim/yeni" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Yeni Acil Dosyası
+          </Link>
+        </div>
+      </div>
+
+      {/* Özet Kartları */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard
+          label="Açık Hasar Dosyası"
+          value={openCount ?? claimsTotal}
+          accentClass="card-accent-blue"
+          iconBg="bg-blue-50"
+          icon={<svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+          href="/panel/hasar-dosyalari?status=open"
+        />
+        <StatCard
+          label="Acil Yardım (Aktif)"
+          value={emergencyOpenCount}
+          accentClass="card-accent-amber"
+          iconBg="bg-amber-50"
+          icon={<svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+          href="/panel/acil-yardim"
+        />
+        <StatCard
+          label="Bugün Açılan"
+          value={todayCount ?? '—'}
+          accentClass="card-accent-green"
+          iconBg="bg-emerald-50"
+          icon={<svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+          href="/panel/hasar-dosyalari"
+        />
+        <StatCard
+          label="Fatura Bekleyen"
+          value={invoicePendingCount ?? '—'}
+          accentClass="card-accent-amber"
+          iconBg="bg-amber-50"
+          icon={<svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M7 7h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" /></svg>}
+          href="/panel/hasar-dosyalari?invoiceStatus=none"
+        />
+        <StatCard
+          label="Gecikmiş Dosya"
+          value={overdueCount ?? '—'}
+          accentClass="card-accent-red"
+          iconBg="bg-red-50"
+          icon={<svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          href="/panel/hasar-dosyalari?status=sla_exceeded"
+        />
+      </div>
+
+      {/* Birleşik Tablo */}
+      {claimsError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{claimsError}</div>}
+      <div className="table-container">
+        {/* Tablo başlık + filtreler */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+          <div className="section-heading mb-0">
+            <span className="section-heading-bar" />
+            <span className="section-heading-text">Tüm Dosyalar</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Tür filtresi */}
+            <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden text-xs font-medium">
+              {(['all', 'hasar', 'acil'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFilterType(t)}
+                  className={`px-3 py-1.5 transition-colors ${
+                    filterType === t
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {t === 'all' ? 'Hepsi' : t === 'hasar' ? 'Hasar' : 'Acil'}
+                </button>
+              ))}
+            </div>
+
+            {/* Fatura durumu filtresi */}
+            <select
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+              value={filterInvoice}
+              onChange={(e) => setFilterInvoice(e.target.value)}
+            >
+              <option value="">Fatura: Hepsi</option>
+              <option value="none">Fatura Yok</option>
+              <option value="draft">Taslak</option>
+              <option value="sent">Gönderildi</option>
+              <option value="paid">Ödendi</option>
+              <option value="overdue">Gecikmiş</option>
+            </select>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-slate-400">
+            <div className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-3" /><br/>Yükleniyor...
+          </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="table-head-row">
+                <tr>
+                  <th className="table-th">Tür</th>
+                  <th className="table-th">Dosya No</th>
+                  <th className="table-th">Müşteri</th>
+                  <th className="table-th">Tarih</th>
+                  <th className="table-th">İhbar Konusu</th>
+                  <th className="table-th">Durum</th>
+                  <th className="table-th">Fatura</th>
+                  <th className="table-th">Tutar</th>
+                </tr>
+              </thead>
+              <tbody className="table-body">
+                {filteredRows.map((row) => (
+                  <tr
+                    key={`${row.kind}-${row.id}`}
+                    className="table-row cursor-pointer"
+                    onClick={() =>
+                      router.push(
+                        row.kind === 'hasar'
+                          ? `/panel/hasar-dosyalari/${row.id}`
+                          : `/panel/acil-yardim/${row.id}`
+                      )
+                    }
+                  >
+                    <td className="table-td whitespace-nowrap">
+                      {row.kind === 'hasar' ? (
+                        <span className="badge badge-blue">Hasar</span>
+                      ) : (
+                        <span className="badge badge-orange">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                          Acil
+                        </span>
+                      )}
+                    </td>
+                    <td className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
+                      {row.fileNo}
+                    </td>
+                    <td className="table-td max-w-[140px] truncate whitespace-nowrap">
+                      {row.customerName}
+                    </td>
+                    <td className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</td>
+                    <td className="table-td text-slate-500 max-w-[160px] truncate whitespace-nowrap">
+                      {row.subject}
+                    </td>
+                    <td className="table-td whitespace-nowrap">
+                      {row.kind === 'hasar' ? (
+                        <span className="badge badge-blue">{row.statusLabel}</span>
+                      ) : (
+                        <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
+                          {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
+                        </span>
+                      )}
+                    </td>
+                    <td className="table-td whitespace-nowrap">
+                      <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
+                        {INVOICE_STATUS_LABELS[row.invoiceStatus]}
+                      </span>
+                    </td>
+                    <td className="table-td whitespace-nowrap font-semibold">
+                      {row.amount ?? <span className="text-slate-300">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-400">
+          {filteredRows.length} dosya gösteriliyor &bull; Toplam {claimsTotal + cases.length} kayıt
+        </div>
+      </div>
+
+      {/* Hızlı Butonlar */}
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-5">
+        <div className="section-heading">
+          <span className="section-heading-bar" />
+          <span className="section-heading-text">Hızlı İşlemler</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/panel/hasar-dosyalari" className="btn-secondary">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Tüm Hasar Dosyaları
+          </Link>
+          <Link href="/panel/acil-yardim" className="btn-secondary">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Tüm Acil Dosyaları
+          </Link>
+          <Link href="/panel/finans/faturalar" className="btn-secondary">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M7 7h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" /></svg>
+            Faturalar
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
