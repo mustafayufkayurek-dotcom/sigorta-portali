@@ -4,6 +4,7 @@ import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
 import {
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
+  DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC,
   DASHBOARD_OWNERSHIP_LOAD_TTL_SEC,
   DASHBOARD_OPS_TTL_SEC,
   DASHBOARD_SLA_TTL_SEC,
@@ -1257,6 +1258,23 @@ export class DashboardService {
   }
 
   async getFinanceBottlenecks() {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:finance-bottlenecks',
+      role: 'shared',
+    });
+    const cached = await this.cache.get<{
+      pendingPayments: Array<{
+        id: string;
+        fileNo: string;
+        amount: number;
+        daysPending: number;
+        insuranceCompany: string | null;
+      }>;
+      totalPendingAmount: number;
+      overdueInvoices: number;
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
     const paymentFiles = await this.prisma.claimFile.findMany({
       where: { currentStatus: { code: { in: ['payment_pending', 'finance_pending'] } } },
       select: { id: true, fileNo: true, updatedAt: true, invoicedAmount: true, actualCostAmount: true, insuranceCompany: { select: { name: true } } },
@@ -1275,7 +1293,9 @@ export class DashboardService {
     let overdueInvoices = 0;
     try { overdueInvoices = await this.prisma.invoice.count({ where: { status: 'overdue' } }); } catch {}
 
-    return { pendingPayments, totalPendingAmount: pendingPayments.reduce((s, p) => s + (p.amount || 0), 0), overdueInvoices };
+    const result = { pendingPayments, totalPendingAmount: pendingPayments.reduce((s, p) => s + (p.amount || 0), 0), overdueInvoices };
+    this.cache.set(cacheKey, result, DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC).catch(() => {});
+    return result;
   }
 
   async getActivityFeed(take: number = 20) {
