@@ -1,6 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PROVINCES } from './data/turkey-locations';
+import { seedPilotOperationData } from './seed-pilot-operation-data';
+
+// Production ortamında seed çalışmasını engelle (--force flag ile override edilebilir)
+if (process.env.NODE_ENV === 'production' && !process.argv.includes('--force')) {
+  console.error('⛔ Seed production ortamında çalıştırılamaz. Override için: npx tsx prisma/seed.ts --force');
+  process.exit(1);
+}
 
 const prisma = new PrismaClient();
 
@@ -277,14 +284,41 @@ async function main() {
   );
   console.log('✅ Created/updated 18 claim statuses');
 
+  await Promise.all(
+    [
+      { code: 'new', maxDurationHours: 24 },
+      { code: 'pre_review', maxDurationHours: 24 },
+      { code: 'adjuster_assigned', maxDurationHours: 18 },
+      { code: 'site_visit_planned', maxDurationHours: 48 },
+      { code: 'site_visit_done', maxDurationHours: 24 },
+      { code: 'budget_preparing', maxDurationHours: 36 },
+      { code: 'budget_submitted', maxDurationHours: 24 },
+      { code: 'budget_revision_requested', maxDurationHours: 24 },
+      { code: 'budget_approved', maxDurationHours: 24 },
+      { code: 'repair_planning', maxDurationHours: 48 },
+      { code: 'repair_in_progress', maxDurationHours: 120 },
+      { code: 'repair_completed', maxDurationHours: 24 },
+      { code: 'invoice_pending', maxDurationHours: 36 },
+      { code: 'invoice_submitted', maxDurationHours: 36 },
+      { code: 'payment_pending', maxDurationHours: 72 },
+      { code: 'partially_collected', maxDurationHours: 72 },
+    ].map((status) =>
+      prisma.claimStatus.update({
+        where: { code: status.code },
+        data: { maxDurationHours: status.maxDurationHours },
+      }),
+    ),
+  );
+  console.log('✅ Updated claim status SLA durations');
+
   // Create admin user (upsert by email)
   const hashedPassword = await bcrypt.hash('admin123', 10);
   await prisma.user.upsert({
     where: { email: 'admin@meridyenassistance.com' },
     update: { roleId: adminRole.id, status: 'active' },
     create: {
-      firstName: 'Admin',
-      lastName: 'User',
+      firstName: 'Sistem',
+      lastName: 'Yöneticisi',
       email: 'admin@meridyenassistance.com',
       passwordHash: hashedPassword,
       roleId: adminRole.id,
@@ -331,6 +365,8 @@ async function main() {
     },
   });
   console.log('✅ Created/updated insurance company user (sigorta@example.com / admin123)');
+
+  await seedPilotOperationData(prisma);
 
   // Demo: Adjuster kaydı oluştur ve expert kullanıcıya bağla
   const demoAdjuster = await prisma.adjuster.upsert({
