@@ -142,6 +142,8 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [fpToken, setFpToken] = useState('');
   const [fpDone, setFpDone] = useState(false);
 
+  void fpToken;
+
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setFpError('');
@@ -244,34 +246,25 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
               background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10,
               padding: '14px 16px', marginBottom: 16,
             }}>
-              <p style={{ fontSize: '0.84rem', color: '#166534', margin: 0, fontWeight: 500 }}>
-                Şifre sıfırlama bağlantısı oluşturuldu.
+              <p style={{ fontSize: '0.84rem', color: '#166534', margin: 0, fontWeight: 700 }}>
+                Şifre sıfırlama bağlantısı gönderildi
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#166534', margin: '8px 0 0' }}>
+                E-posta adresinize şifre sıfırlama bağlantısı gönderildi. Lütfen gelen kutunuzu kontrol edin. Bağlantı 15 dakika geçerlidir.
               </p>
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 10 }}>
-              Test modu — gerçek sistemde e-posta gönderilecektir. Şimdilik token:
-            </p>
-            <div style={{
-              background: '#f1f5f9', borderRadius: 8, padding: '10px 12px',
-              fontFamily: 'monospace', fontSize: '0.75rem', color: '#334155',
-              wordBreak: 'break-all', marginBottom: 18,
-            }}>
-              {fpToken}
-            </div>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 16 }}>
-              Bu token ile şifrenizi sıfırlayabilirsiniz:
-            </p>
-            <a
-              href={`/giris/sifre-sifirla?token=${fpToken}`}
+            <button
+              type="button"
+              onClick={onClose}
               style={{
-                display: 'block', textAlign: 'center', padding: '11px',
-                borderRadius: 10, background: 'linear-gradient(135deg, #123063 0%, #2d72d9 100%)',
+                width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+                background: 'linear-gradient(135deg, #123063 0%, #2d72d9 100%)',
                 color: '#fff', fontSize: '0.875rem', fontWeight: 700,
-                textDecoration: 'none', fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "'DM Sans', sans-serif", cursor: 'pointer',
               }}
             >
-              Şifremi Sıfırla
-            </a>
+              Giriş sayfasına dön
+            </button>
           </div>
         )}
       </div>
