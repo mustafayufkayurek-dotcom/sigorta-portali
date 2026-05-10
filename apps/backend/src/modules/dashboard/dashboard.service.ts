@@ -4,6 +4,7 @@ import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
 import {
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
+  DASHBOARD_OWNERSHIP_LOAD_TTL_SEC,
   DASHBOARD_OPS_TTL_SEC,
   DASHBOARD_SLA_TTL_SEC,
 } from '@/cache/cache.constants';
@@ -1201,6 +1202,22 @@ export class DashboardService {
   }
 
   async getOwnershipLoad() {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:ownership-load',
+      role: 'shared',
+    });
+    const cached = await this.cache.get<{
+      items: Array<{
+        userId: string;
+        userName: string;
+        role: string;
+        activeFiles: number;
+        criticalFiles: number;
+        avgDaysPerFile: number;
+      }>;
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
     const files = await this.prisma.claimFile.findMany({
       where: { currentStatus: { isClosedState: false } },
       select: {
@@ -1229,12 +1246,14 @@ export class DashboardService {
       }
     }
 
-    return {
+    const result = {
       items: Array.from(userMap.entries()).map(([userId, d]) => ({
         userId, userName: d.name, role: d.role, activeFiles: d.activeFiles, criticalFiles: d.criticalFiles,
         avgDaysPerFile: d.activeFiles > 0 ? Math.round(d.totalDays / d.activeFiles) : 0,
       })).sort((a, b) => b.activeFiles - a.activeFiles),
     };
+    this.cache.set(cacheKey, result, DASHBOARD_OWNERSHIP_LOAD_TTL_SEC).catch(() => {});
+    return result;
   }
 
   async getFinanceBottlenecks() {
