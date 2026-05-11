@@ -348,7 +348,7 @@ export default function YeniHasarDosyasiPage() {
       const payload: Record<string, unknown> = {
         insuranceCompanyId,
         policyNo: policyNo || 'N/A',
-        claimNo: claimNo || undefined,
+        claimNo: claimNo || 'N/A',
         productBranch,
         incidentDate: new Date(incidentDate).toISOString(),
         notificationDate: new Date(notificationDate).toISOString(),
