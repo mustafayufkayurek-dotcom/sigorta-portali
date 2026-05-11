@@ -48,7 +48,7 @@ export class AuthController {
   ) {}
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Throttle({ default: { limit: 20, ttl: 300000 } })
   @Post('login')
   @ApiOperation({ summary: 'Kullanıcı girişi' })
   async login(@Body() loginDto: LoginDto) {
