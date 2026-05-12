@@ -339,6 +339,10 @@ function Navbar({
                             <span className="text-base leading-none">🏷️</span>
                             Tanımlar
                           </Link>
+                          <Link href="/panel/ayarlar/durumlar" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
+                            <span className="text-base leading-none">🟦</span>
+                            Durumlar
+                          </Link>
                           <Link href="/panel/ayarlar/sigorta-sirketleri" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
                             <span className="text-base leading-none">🏢</span>
                             Sigorta Şirketleri
@@ -571,6 +575,7 @@ function Navbar({
                     <Link href="/panel/ayarlar/kurulum" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Kurulum Sihirbazı</Link>
                     <Link href="/panel/ayarlar/sablonlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Şablonlar</Link>
                     <Link href="/panel/ayarlar/tanimlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tanımlar</Link>
+                    <Link href="/panel/ayarlar/durumlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Durumlar</Link>
                     <Link href="/panel/ayarlar/sigorta-sirketleri" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Sigorta Şirketleri</Link>
                     <Link href="/panel/ayarlar/fiyat-yonetimi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Fiyat Yönetimi</Link>
                     <Link href="/panel/guvenlik/erisim-loglari" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Güvenlik</Link>

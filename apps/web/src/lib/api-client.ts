@@ -101,6 +101,8 @@ export const apiClient = {
     request<unknown>(url, { method: 'GET' }, params).then((r) => unwrapEnvelope<T>(r) as ApiEnvelope<T> & { meta?: TMeta }),
   post: <T>(url: string, body?: unknown) =>
     request<unknown>(url, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }).then(r => unwrap<T>(r)),
+  put: <T>(url: string, body?: unknown) =>
+    request<unknown>(url, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }).then(r => unwrap<T>(r)),
   patch: <T>(url: string, body?: unknown) =>
     request<unknown>(url, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }).then(r => unwrap<T>(r)),
   delete: <T>(url: string) => request<unknown>(url, { method: 'DELETE' }).then(r => unwrap<T>(r)),
