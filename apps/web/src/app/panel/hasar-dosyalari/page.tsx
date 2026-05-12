@@ -152,13 +152,13 @@ export default function ClaimFilesPage() {
     isLoading: loading,
     isError,
     refetch,
-  } = useApiQuery<{ data: any[]; meta?: { total?: number } }>(
+  } = useApiQuery<any[] | { data?: any[] }>(
     ['claim-files', queryParams],
     `/claim-files?${queryParams}`,
   );
 
-  const claims = claimsResponse?.data ?? [];
-  const total = claimsResponse?.meta?.total ?? 0;
+  const claims = Array.isArray(claimsResponse) ? claimsResponse : (claimsResponse?.data ?? []);
+  const total = claims.length;
 
   // --- TanStack Query: Pending Revisions ---
   const { data: revisionsData } = useApiQuery<{ data: { claimFileId?: string }[] }>(
@@ -188,6 +188,13 @@ export default function ClaimFilesPage() {
 
   return (
     <div className="space-y-5">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Hasar Dosyaları</span>
+      </nav>
+
       {/* Header */}
       <div className="page-header">
         <div className="flex items-center gap-3">

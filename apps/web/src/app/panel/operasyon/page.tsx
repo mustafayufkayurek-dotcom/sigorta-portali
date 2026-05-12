@@ -133,7 +133,7 @@ export default function OperasyonPage() {
     setClaimsError('');
     try {
       const token = getToken();
-      const res = await fetch(`${API}/api/v1/claim-files?limit=50&sort=createdAt:desc`, {
+      const res = await fetch(`${API}/claim-files?limit=50&sort=createdAt:desc`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -151,10 +151,10 @@ export default function OperasyonPage() {
     const today = new Date().toISOString().slice(0, 10);
     try {
       const [openRes, todayRes, overdueRes, invoiceRes] = await Promise.allSettled([
-        fetch(`${API}/api/v1/claim-files?limit=1&statusCode=open`, { headers }),
-        fetch(`${API}/api/v1/claim-files?limit=1&dateFrom=${today}&dateTo=${today}`, { headers }),
-        fetch(`${API}/api/v1/claim-files?limit=1&slaExceeded=true`, { headers }),
-        fetch(`${API}/api/v1/claim-files?limit=1&invoiceStatus=none`, { headers }),
+        fetch(`${API}/claim-files?limit=1&statusCode=open`, { headers }),
+        fetch(`${API}/claim-files?limit=1&dateFrom=${today}&dateTo=${today}`, { headers }),
+        fetch(`${API}/claim-files?limit=1&slaExceeded=true`, { headers }),
+        fetch(`${API}/claim-files?limit=1&invoiceStatus=none`, { headers }),
       ]);
       if (openRes.status === 'fulfilled' && openRes.value.ok) { const j = await openRes.value.json(); setOpenCount(j.meta?.total ?? j.data?.length ?? 0); }
       if (todayRes.status === 'fulfilled' && todayRes.value.ok) { const j = await todayRes.value.json(); setTodayCount(j.meta?.total ?? j.data?.length ?? 0); }
@@ -217,7 +217,14 @@ export default function OperasyonPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="page-header">
+            {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Operasyon</span>
+      </nav>
+
+<div className="page-header">
         <div className="flex items-center gap-3">
           <div className="page-header-icon">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -331,7 +338,7 @@ export default function OperasyonPage() {
 
         {isLoading ? (
           <div className="py-16 text-center text-sm text-slate-400">
-            <div className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-3" /><br/>Yükleniyor...
+            <div className="space-y-3 animate-pulse">{Array.from({length:6}).map((_,i)=><div key={i} className="h-12 rounded-lg bg-slate-200"/>)}</div>
           </div>
         ) : filteredRows.length === 0 ? (
           <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
