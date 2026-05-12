@@ -286,6 +286,13 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
       style={{ top: pos.top, left: pos.left, position: 'fixed', zIndex: 9999, width: 340 }}
       className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden pointer-events-none animate-in fade-in-0 zoom-in-95 duration-150"
     >
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Müşteriler</span>
+      </nav>
+
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-100">
         <div className="flex items-start justify-between gap-2">
@@ -465,7 +472,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
       </div>
 
       {loadingDetail ? (
-        <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Yükleniyor...</div>
+        <div className="space-y-3 animate-pulse p-4">{Array.from({length:4}).map((_,i)=><div key={i} className="h-10 rounded-lg bg-slate-200"/>)}</div>
       ) : !customer ? (
         <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Veri Alınamadı</div>
       ) : (
@@ -1521,6 +1528,13 @@ export default function MusterilerPage() {
 
   return (
     <div className="space-y-5">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Müşteriler</span>
+      </nav>
+
       {/* Header */}
       <div className="page-header">
         <div className="flex items-center gap-3">
@@ -1875,8 +1889,31 @@ export default function MusterilerPage() {
       )}
 
       {loading ? (
-        <div className="py-16 text-center text-slate-400">
-          <div className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-3" /><br/>Yükleniyor...
+        <div className="table-container">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="table-head-row">
+                <tr>
+                  <th className="table-th">İsim</th>
+                  <th className="table-th">Tip</th>
+                  <th className="table-th">Telefon</th>
+                  <th className="table-th">E-posta</th>
+                  <th className="table-th">Şehir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="border-t border-slate-100">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : !customers.length ? (
         <div className="table-container">

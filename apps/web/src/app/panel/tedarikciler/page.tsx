@@ -288,7 +288,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
       </div>
 
       {loadingDetail ? (
-        <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Yükleniyor...</div>
+        <div className="space-y-3 animate-pulse p-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-12 rounded-lg bg-slate-200 dark:bg-slate-700"/>)}</div>
       ) : !vendor ? (
         <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Veri alınamadı</div>
       ) : (
@@ -1066,6 +1066,13 @@ export default function VendorsPage() {
 
   return (
     <div className="space-y-5">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Tedarikçiler</span>
+      </nav>
+
       {/* ── Page Header ── */}
       <div className="page-header !mb-0">
         <div className="flex items-center gap-3">
@@ -1345,8 +1352,31 @@ export default function VendorsPage() {
 
       {/* ── Table ── */}
       {loading ? (
-        <div className="py-16 text-center text-slate-400">
-          <div className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-3" /><br/>Yükleniyor...
+        <div className="table-container">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="table-head-row">
+                <tr>
+                  <th className="table-th">İsim / Firma</th>
+                  <th className="table-th">Branş</th>
+                  <th className="table-th">Telefon</th>
+                  <th className="table-th">Şehir</th>
+                  <th className="table-th">Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="border-t border-slate-100">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : !vendors.length ? (
         <div className="table-container">

@@ -86,6 +86,16 @@ export default function TahsilatlarPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/finans" className="hover:text-blue-600 transition-colors">Finans</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Tahsilatlar</span>
+      </nav>
+
+
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tahsilatlar ve Ödemeler</h2>
         <p className="text-sm text-slate-400 dark:text-slate-500">Tamamlanan ve bekleyen tüm para hareketlerini görüntüleyin.</p>

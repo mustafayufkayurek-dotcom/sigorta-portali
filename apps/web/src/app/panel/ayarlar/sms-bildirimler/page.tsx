@@ -150,6 +150,7 @@ export default function SmsBildirimleriPage() {
     if (status === 'sent')
       return (
         <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">
+
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
           Gönderildi
         </span>

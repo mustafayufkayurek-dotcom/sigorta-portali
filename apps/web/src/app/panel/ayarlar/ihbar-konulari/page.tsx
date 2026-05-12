@@ -128,6 +128,7 @@ export default function IhbarKonulariPage() {
       title="İhbar Konuları"
       description="Hasar ve acil yardım dosyalarında kullanılacak ihbar konularını yönetin"
     >
+
       {/* Sekme */}
       <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl w-fit">
         {(['hasar', 'acil'] as Tab[]).map((tab) => (

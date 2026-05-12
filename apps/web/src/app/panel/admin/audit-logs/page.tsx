@@ -65,7 +65,7 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Audit Logs</h1>
+      <h1 className="text-xl font-semibold">Denetim Kayıtları</h1>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input className="border rounded px-2 py-1" placeholder="entityType" value={entityType} onChange={(e) => setEntityType(e.target.value)} />
         <input className="border rounded px-2 py-1" placeholder="userId" value={userId} onChange={(e) => setUserId(e.target.value)} />

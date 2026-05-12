@@ -734,7 +734,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       if (!localStorage.getItem('accessToken')) return;
       apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'PENDING', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
-        .catch(() => { setPendingRevisionCount(3); });
+        .catch((error: any) => {
+          const status = error?.response?.status;
+          if (status === 400 || status === 404) {
+            setPendingRevisionCount(0);
+            return;
+          }
+          setPendingRevisionCount(0);
+        });
     }
   }, [loading]);
 

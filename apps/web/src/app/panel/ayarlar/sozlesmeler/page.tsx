@@ -116,6 +116,7 @@ export default function SozlesmelerPage() {
       addButtonText="+ Yeni Sözleşme"
       onAdd={openNew}
     >
+
       <SettingsTable loading={loading} empty={agreements.length === 0} emptyText="Henüz sözleşme eklenmemiş.">
         <SettingsTableHead>
           <SettingsTableTh>Başlık</SettingsTableTh>

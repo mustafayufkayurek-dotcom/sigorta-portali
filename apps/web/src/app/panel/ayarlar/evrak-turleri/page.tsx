@@ -117,6 +117,7 @@ export default function EvrakTurleriPage() {
       addButtonText="+ Yeni Evrak Türü"
       onAdd={openCreate}
     >
+
       <SettingsTable loading={loading} empty={types.length === 0} emptyText="Henüz evrak türü tanımlanmamış.">
         <SettingsTableHead>
           <SettingsTableTh>Kod</SettingsTableTh>

@@ -211,6 +211,7 @@ export default function BolgeselZamlarPage() {
       description="Türkiye bölgelerine göre yüzdelik zam oranı tanımlayın. Zam uygulandığında: baz fiyat × (1 + zam oranı) = nihai fiyat."
       headerExtra={
         <div className="flex items-center gap-2">
+
           {regions.length === 0 && (
             <button
               onClick={handleSeed}

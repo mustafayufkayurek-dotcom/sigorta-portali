@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as IORedis from 'ioredis';
+import { CacheService } from '../../cache/cache.service';
 
 @Injectable()
 export class HealthService {
@@ -10,6 +11,7 @@ export class HealthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
   ) {}
 
   private getRedisClient(): IORedis.Redis {
@@ -25,6 +27,7 @@ export class HealthService {
   }
 
   async check() {
+    const cacheMetrics = await this.checkCache();
     const results = await Promise.allSettled([
       this.checkDatabase(),
       this.checkRedis(),
@@ -45,7 +48,24 @@ export class HealthService {
       services: {
         database: dbStatus,
         redis: redisStatus,
+        cache: cacheMetrics,
       },
+    };
+  }
+
+  private async checkCache() {
+    const enabled = this.cacheService.isEnabled();
+    if (!enabled) {
+      return { enabled, healthy: false, latencyMs: null, stats: this.cacheService.getStats() };
+    }
+
+    const startedAt = Date.now();
+    const healthy = await this.cacheService.isHealthy();
+    return {
+      enabled,
+      healthy,
+      latencyMs: Date.now() - startedAt,
+      stats: this.cacheService.getStats(),
     };
   }
 

@@ -149,7 +149,8 @@ export default function IliskiTurleriPage() {
       addButtonText="+ Yeni İlişki Türü"
       onAdd={openCreate}
       headerExtra={
-        types.length > 0 ? (
+        types.length >
+ 0 ? (
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 rounded-full px-2.5 py-1 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />

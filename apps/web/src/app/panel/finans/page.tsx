@@ -26,6 +26,35 @@ interface Transaction {
   durum: TxStatus;
 }
 
+interface OverheadEntryResponseItem {
+  id: string;
+  date?: string;
+  description?: string;
+  category?: string;
+  amount?: number;
+  type?: 'income' | 'expense' | 'gelir' | 'gider';
+  status?: 'completed' | 'pending' | 'cancelled' | TxStatus;
+}
+
+function mapTransaction(item: OverheadEntryResponseItem): Transaction {
+  const mappedType = item.type === 'income' ? 'gelir' : item.type === 'expense' ? 'gider' : (item.type ?? 'gider');
+  const mappedStatus =
+    item.status === 'completed' ? 'tamamlandi'
+      : item.status === 'pending' ? 'bekliyor'
+        : item.status === 'cancelled' ? 'iptal'
+          : (item.status ?? 'tamamlandi');
+
+  return {
+    id: item.id,
+    tarih: item.date ?? new Date().toISOString(),
+    aciklama: item.description ?? '—',
+    kategori: item.category ?? 'Genel',
+    tutar: item.amount ?? 0,
+    tip: mappedType,
+    durum: mappedStatus,
+  };
+}
+
 const DURUM_LABEL: Record<TxStatus, string> = {
   tamamlandi: 'Tamamlandı',
   bekliyor: 'Bekliyor',
@@ -49,9 +78,10 @@ export default function FinansDashboard() {
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    axios.get(`${API}/finance/transactions`, { headers: authHeader() })
+    axios.get(`${API}/finance/overhead/entries`, { headers: authHeader() })
       .then((r) => {
-        const data: Transaction[] = r.data?.data ?? r.data ?? [];
+        const rawData: OverheadEntryResponseItem[] = r.data?.data ?? r.data ?? [];
+        const data = rawData.map(mapTransaction);
         setTransactions(data);
         const gelir   = data.filter(t => t.tip === 'gelir' && t.durum === 'tamamlandi').reduce((s, t) => s + t.tutar, 0);
         const gider   = data.filter(t => t.tip === 'gider' && t.durum === 'tamamlandi').reduce((s, t) => s + t.tutar, 0);

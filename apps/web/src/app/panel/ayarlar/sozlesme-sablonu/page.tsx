@@ -189,7 +189,8 @@ export default function SozlesmeSablonuPage() {
       title="Tedarikçi Sözleşme Şablonu"
       description="Sözleşme maddelerini düzenleyin, sıralayın veya ekleyin."
       addButtonText="Madde Ekle"
-      onAdd={() => setShowAdd(true)}
+      onAdd={() =>
+ setShowAdd(true)}
       headerExtra={
         <button type="button" onClick={buildPreview} disabled={loading}
           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-700">

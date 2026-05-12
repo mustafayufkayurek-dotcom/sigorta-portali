@@ -110,6 +110,7 @@ export default function SigortaSirketleriPage() {
       addButtonText="+ Yeni Şirket"
       onAdd={openCreate}
     >
+
       {/* Filters */}
       <div className="mb-4 flex gap-2">
         {(['all', 'active', 'inactive'] as const).map((s) => (

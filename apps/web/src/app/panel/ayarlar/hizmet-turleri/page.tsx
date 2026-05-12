@@ -112,6 +112,7 @@ export default function HizmetTurleriPage() {
       title="Hizmet Türleri"
       description="Özel Müşteri eklerken sunulacak hizmet türü seçeneklerini yönetin"
     >
+
       {/* Yeni Ekle */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Yeni Hizmet Türü Ekle</p>

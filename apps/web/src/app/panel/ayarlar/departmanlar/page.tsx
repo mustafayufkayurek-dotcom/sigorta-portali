@@ -143,6 +143,7 @@ export default function DepartmanlarPage() {
       headerExtra={
         <button type="button" onClick={handleSeed} disabled={seeding}
           className="border border-slate-200 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+
           {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
         </button>
       }

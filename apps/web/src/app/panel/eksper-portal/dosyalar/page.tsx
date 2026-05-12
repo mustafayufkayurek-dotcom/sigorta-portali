@@ -55,6 +55,15 @@ export default function EksperDosyalarPage() {
 
   return (
     <div className="space-y-4">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/eksper-portal" className="hover:text-blue-600 transition-colors">Eksper Portal</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Dosyalar</span>
+      </nav>
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900">Atanmış Dosyalar</h2>
         <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{total} dosya</span>

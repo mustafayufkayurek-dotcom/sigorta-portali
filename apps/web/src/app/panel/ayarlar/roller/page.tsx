@@ -101,6 +101,7 @@ export default function RollerPage() {
       addButtonText="+ Yeni Rol"
       onAdd={openCreate}
     >
+
       <div className="mb-4">
         <input className={`${inputCls} max-w-xs`}
           placeholder="Rol ara..."

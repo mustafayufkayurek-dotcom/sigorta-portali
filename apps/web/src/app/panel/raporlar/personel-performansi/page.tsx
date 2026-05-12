@@ -76,6 +76,15 @@ export default function PersonelPerformansPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Personel Performansı</span>
+      </nav>
+
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">Personel Performans Raporu</h2>
         <div className="flex gap-2">

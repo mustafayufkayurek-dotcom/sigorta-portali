@@ -74,6 +74,15 @@ function MiniBar({ dist }: { dist: Record<string, number> }) {
   const max = Math.max(...entries.map(([, v]) => v), 1);
   return (
     <div className="flex items-end gap-0.5 h-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Branş Analizi</span>
+      </nav>
+
       {entries.map(([k, v], i) => (
         <div
           key={k}

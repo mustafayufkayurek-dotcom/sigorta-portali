@@ -62,6 +62,15 @@ export default function EksperRandevularPage() {
 
   return (
     <div className="space-y-4">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/eksper-portal" className="hover:text-blue-600 transition-colors">Eksper Portal</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Randevular</span>
+      </nav>
+
       <h2 className="text-2xl font-bold text-slate-900">Randevularım</h2>
 
       {error && (

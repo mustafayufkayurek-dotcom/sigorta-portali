@@ -104,6 +104,16 @@ export default function FaturalarPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <a href="/panel/finans" className="hover:text-blue-600 transition-colors">Finans</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Faturalar</span>
+      </nav>
+
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturalar</h2>

@@ -7,7 +7,8 @@ type OwnershipItem = {
   firstName: string;
   lastName: string;
   roleName: string;
-  activeCount: number;
+  activeCount?: number;
+  activeFiles?: number;
   overdueCount: number;
   avgDaysHeld: number;
 };
@@ -47,7 +48,9 @@ export default function OwnershipPage() {
         ? ((pendingRaw as { data: PendingAction[] }).data)
         : [];
 
-  const totalActive = load.reduce((s, i) => s + i.activeCount, 0);
+  const getActiveCount = (item: OwnershipItem) => item.activeCount ?? item.activeFiles ?? 0;
+
+  const totalActive = load.reduce((s, i) => s + getActiveCount(i), 0);
   const totalOverdue = load.reduce((s, i) => s + i.overdueCount, 0);
 
   return (
@@ -102,8 +105,9 @@ export default function OwnershipPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {load.map((item) => {
-                const loadPct = Math.min(100, (item.activeCount / Math.max(1, totalActive / load.length)) * 50);
-                const isHigh = item.activeCount > (totalActive / load.length) * 1.5;
+                const activeCount = getActiveCount(item);
+                const loadPct = Math.min(100, (activeCount / Math.max(1, totalActive / load.length)) * 50);
+                const isHigh = activeCount > (totalActive / load.length) * 1.5;
                 return (
                   <tr key={item.userId} className={isHigh ? 'bg-amber-50/40' : ''}>
                     <td className="px-5 py-3.5">
@@ -115,7 +119,7 @@ export default function OwnershipPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-slate-500 text-xs">{item.roleName}</td>
-                    <td className="px-4 py-3.5 text-center font-semibold text-slate-800">{item.activeCount}</td>
+                    <td className="px-4 py-3.5 text-center font-semibold text-slate-800">{activeCount}</td>
                     <td className="px-4 py-3.5 text-center">
                       {item.overdueCount > 0 ? (
                         <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 border border-red-200">

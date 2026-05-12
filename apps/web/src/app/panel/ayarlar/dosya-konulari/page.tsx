@@ -139,6 +139,7 @@ export default function DosyaKonulariPage() {
       title="Dosya Konuları"
       description="Her Departman için Dosya Konularını Tanımlayın"
     >
+
       <div className="grid grid-cols-4 gap-5">
         {/* Sol: Departman Listesi */}
         <div className="col-span-1">

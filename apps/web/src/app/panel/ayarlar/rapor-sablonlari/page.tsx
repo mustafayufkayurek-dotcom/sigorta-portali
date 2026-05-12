@@ -189,6 +189,7 @@ export default function RaporSablonlariPage() {
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
     >
+
       <SettingsTable
         loading={loading}
         empty={templates.length === 0}

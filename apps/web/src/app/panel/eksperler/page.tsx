@@ -364,6 +364,13 @@ export default function AdjustersPage() {
 
   return (
     <div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Eksperler</span>
+      </nav>
+
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Eksperler</h2>
@@ -403,7 +410,7 @@ export default function AdjustersPage() {
       </div>
 
       {loading ? (
-        <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>
+        <div className="space-y-3 animate-pulse p-4">{Array.from({length:6}).map((_,i)=><div key={i} className="h-12 rounded-lg bg-slate-200"/>)}</div>
       ) : !sorted.length ? (
         <div className="text-slate-400 py-16 text-center">Eksper bulunamadı.</div>
       ) : (

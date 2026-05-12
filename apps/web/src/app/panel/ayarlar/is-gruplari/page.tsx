@@ -300,6 +300,7 @@ export default function IsGruplariPage() {
       onAdd={openCreateGroup}
     >
 
+
       <SettingsTable loading={loading} empty={groups.length === 0} emptyText="Henüz İş Grubu Tanımlanmamış.">
         <SettingsTableHead>
           <SettingsTableTh>Kod</SettingsTableTh>

@@ -491,6 +491,7 @@ export default function VendorsPage() {
       onAdd={openCreate}
     >
 
+
       {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-100 p-4 mb-5 flex flex-wrap gap-3 items-center">
         <input

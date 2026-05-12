@@ -191,6 +191,7 @@ export default function SozlesmeSablonlariPage() {
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
     >
+
       <SettingsTable
         loading={loading}
         empty={templates.length === 0}

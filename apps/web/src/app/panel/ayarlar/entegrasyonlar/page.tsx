@@ -84,6 +84,7 @@ export default function EntegrasyonlarPage() {
       title="Entegrasyonlar"
       description="Üçüncü taraf servis entegrasyonlarını yapılandırın"
     >
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Sol: TÜRMOB Ayarları */}
         <div className="lg:col-span-2 space-y-6">

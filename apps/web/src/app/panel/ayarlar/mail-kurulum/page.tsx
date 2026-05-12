@@ -130,6 +130,7 @@ export default function MailKurulumPage() {
       title="Mail Kurulum"
       description="SMTP sunucu ayarlarını yapılandırın ve test edin"
     >
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Sol: SMTP Ayarları */}
         <div className="lg:col-span-2 space-y-6">

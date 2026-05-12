@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { CacheService } from '@/cache/cache.service';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cache: CacheService,
+  ) {}
 
   async findAll(params?: {
     page?: number;
@@ -57,23 +61,27 @@ export class TasksService {
   }
 
   async create(data: any) {
-    return this.prisma.task.create({
+    const created = await this.prisma.task.create({
       data,
       include: {
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    return created;
   }
 
   async update(id: string, data: any) {
     await this.findOne(id);
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data,
       include: {
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    return updated;
   }
 
   async remove(id: string) {
@@ -84,9 +92,11 @@ export class TasksService {
 
   async complete(id: string) {
     await this.findOne(id);
-    return this.prisma.task.update({
+    const completed = await this.prisma.task.update({
       where: { id },
       data: { status: 'completed', completedAt: new Date() },
     });
+    this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    return completed;
   }
 }

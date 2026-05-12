@@ -281,6 +281,7 @@ export default function FiyatListesiPage() {
             const subCount = wg.workSubGroups?.length ?? wg._count?.workSubGroups ?? 0;
             return (
               <div key={wg.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+
                 {/* Başlık */}
                 <div className="flex items-center gap-3 px-4 py-3.5">
                   <button

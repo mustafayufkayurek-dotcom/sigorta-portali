@@ -173,6 +173,7 @@ export default function EmailBildirimleriPage() {
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
     >
+
       <SettingsTable loading={loading} empty={templates.length === 0} emptyText="Henüz e-posta şablonu eklenmemiş.">
         <SettingsTableHead>
           <SettingsTableTh>Şablon Adı</SettingsTableTh>

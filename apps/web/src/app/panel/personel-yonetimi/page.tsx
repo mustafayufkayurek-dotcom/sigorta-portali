@@ -623,7 +623,14 @@ export default function PersonelYonetimiPage() {
   return (
     <div className="space-y-5">
       {/* Page header */}
-      <div className="page-header">
+            {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Personel Yönetimi</span>
+      </nav>
+
+<div className="page-header">
         <div className="flex items-center gap-3">
           <div className="page-header-icon">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

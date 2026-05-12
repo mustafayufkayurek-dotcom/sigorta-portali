@@ -127,6 +127,7 @@ export default function HizmetBranslaPage() {
         branches.length === 0 ? (
           <button type="button" onClick={handleSeed} disabled={seeding}
             className="flex items-center gap-2 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50">
+
             {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
           </button>
         ) : undefined

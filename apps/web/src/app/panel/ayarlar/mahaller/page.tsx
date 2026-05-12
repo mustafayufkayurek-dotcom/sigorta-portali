@@ -220,6 +220,7 @@ export default function MahallerPage() {
       addButtonText="+ Yeni Mahal"
       onAdd={openCreate}
     >
+
       <SettingsTable loading={loading} empty={locations.length === 0} emptyText="Henüz mahal tanımlanmamış.">
         <SettingsTableHead>
           <SettingsTableTh>Kod</SettingsTableTh>
