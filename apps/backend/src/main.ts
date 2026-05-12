@@ -29,6 +29,11 @@ async function bootstrap() {
     },
   });
 
+  // Trust proxy — Nginx arkasında gerçek client IP'sini al (X-Forwarded-For)
+  // Bu olmadan throttler tüm kullanıcıları aynı IP olarak görür
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   // Security
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
