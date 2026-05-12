@@ -64,6 +64,7 @@ export default function FinansDashboard() {
         setError('');
         setTransactions([]);
         setStats({ gelir: 0, gider: 0, bekleyen: 0, bekleyenCount: 0 });
+        setLoading(false);
       })
       .finally(() => setLoading(false));
   }, [router]);
@@ -82,7 +83,7 @@ export default function FinansDashboard() {
     <div className="min-h-screen bg-white dark:bg-slate-900 p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Finans Yönetimi</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Finans Özeti</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Gelir, gider ve tahsilat özetinizi buradan takip edin.</p>
       </div>
 

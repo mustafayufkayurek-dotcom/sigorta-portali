@@ -23,14 +23,29 @@ type PendingAction = {
 };
 
 export default function OwnershipPage() {
-  const { data: load = [], isLoading: loadLoading } = useApiQuery<OwnershipItem[]>(
+  const { data: loadRaw, isLoading: loadLoading } = useApiQuery<unknown>(
     ['ownership-load'],
     'dashboard/ownership-load',
   );
-  const { data: pending = [], isLoading: pendingLoading } = useApiQuery<PendingAction[]>(
+  const load: OwnershipItem[] = Array.isArray(loadRaw)
+    ? loadRaw
+    : Array.isArray((loadRaw as { items?: unknown[] } | undefined)?.items)
+      ? ((loadRaw as { items: OwnershipItem[] }).items)
+      : Array.isArray((loadRaw as { data?: unknown[] } | undefined)?.data)
+        ? ((loadRaw as { data: OwnershipItem[] }).data)
+        : [];
+
+  const { data: pendingRaw, isLoading: pendingLoading } = useApiQuery<unknown>(
     ['pending-actions'],
     'dashboard/pending-actions',
   );
+  const pending: PendingAction[] = Array.isArray(pendingRaw)
+    ? pendingRaw
+    : Array.isArray((pendingRaw as { items?: unknown[] } | undefined)?.items)
+      ? ((pendingRaw as { items: PendingAction[] }).items)
+      : Array.isArray((pendingRaw as { data?: unknown[] } | undefined)?.data)
+        ? ((pendingRaw as { data: PendingAction[] }).data)
+        : [];
 
   const totalActive = load.reduce((s, i) => s + i.activeCount, 0);
   const totalOverdue = load.reduce((s, i) => s + i.overdueCount, 0);

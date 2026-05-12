@@ -104,15 +104,25 @@ export default function RevisionRequestsPage() {
     return new URLSearchParams(params).toString();
   }, [statusFilter, priorityFilter]);
 
-  const { data: revisions = [], isLoading, error } = useApiQuery<RevisionRequest[]>(
+  const { data: revisionsRaw, isLoading, error } = useApiQuery<unknown>(
     ['revision-requests', queryParams],
     `revision-requests${queryParams ? `?${queryParams}` : ''}`,
   );
+  const revisions: RevisionRequest[] = Array.isArray(revisionsRaw)
+    ? revisionsRaw
+    : Array.isArray((revisionsRaw as { data?: unknown[] } | undefined)?.data)
+      ? ((revisionsRaw as { data: RevisionRequest[] }).data)
+      : [];
 
-  const { data: overdueData = [] } = useApiQuery<RevisionRequest[]>(
+  const { data: overdueRaw } = useApiQuery<unknown>(
     ['revision-requests-overdue'],
     'revision-requests/overdue',
   );
+  const overdueData: RevisionRequest[] = Array.isArray(overdueRaw)
+    ? overdueRaw
+    : Array.isArray((overdueRaw as { data?: unknown[] } | undefined)?.data)
+      ? ((overdueRaw as { data: RevisionRequest[] }).data)
+      : [];
 
   // Client-side search filter
   const filteredRevisions = useMemo(() => {
