@@ -13,6 +13,7 @@ import { UsersModule } from './modules/users/users.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { InsuranceCompaniesModule } from './modules/insurance-companies/insurance-companies.module';
 import { ClaimFilesModule } from './modules/claim-files/claim-files.module';
+import { ClaimStatusModule } from './modules/claim-status/claim-status.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -127,6 +128,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     RbacModule,
     InsuranceCompaniesModule,
     ClaimFilesModule,
+    ClaimStatusModule,
     CustomersModule,
     AddressesModule,
     TasksModule,
