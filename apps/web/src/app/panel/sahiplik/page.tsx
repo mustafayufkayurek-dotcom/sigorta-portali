@@ -51,7 +51,7 @@ export default function OwnershipPage() {
   const getActiveCount = (item: OwnershipItem) => item.activeCount ?? item.activeFiles ?? 0;
 
   const totalActive = load.reduce((s, i) => s + getActiveCount(i), 0);
-  const totalOverdue = load.reduce((s, i) => s + i.overdueCount, 0);
+  const totalOverdue = load.reduce((s, i) => s + (i.overdueCount ?? 0), 0);
 
   return (
     <div>
