@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -44,7 +45,10 @@ async function bootstrap() {
   });
 
   // Global filters
-  app.useGlobalFilters(new ThrottlerExceptionFilter());
+  app.useGlobalFilters(
+    new ThrottlerExceptionFilter(),
+    new GlobalExceptionFilter(),
+  );
 
   // Global validation pipe
   app.useGlobalPipes(
