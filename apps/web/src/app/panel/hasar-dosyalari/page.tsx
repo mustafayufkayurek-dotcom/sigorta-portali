@@ -101,18 +101,16 @@ export default function ClaimFilesPage() {
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
   // --- TanStack Query: Insurance Companies ---
-  const { data: insuranceData } = useApiQuery<{ data: InsuranceCompany[] }>(
+  const { data: insuranceCompanies = [] } = useApiQuery<InsuranceCompany[]>(
     ['insurance-companies'],
     '/insurance-companies?limit=200',
   );
-  const insuranceCompanies = insuranceData?.data ?? [];
 
   // --- TanStack Query: Claim Statuses ---
-  const { data: statusesData } = useApiQuery<{ data: ClaimStatus[] }>(
+  const { data: claimStatuses = [] } = useApiQuery<ClaimStatus[]>(
     ['claim-statuses'],
     '/claim-files/statuses',
   );
-  const claimStatuses = statusesData?.data ?? [];
 
   // URL status code → status filter (auto-select on first load)
   useMemo(() => {
@@ -152,22 +150,22 @@ export default function ClaimFilesPage() {
     isLoading: loading,
     isError,
     refetch,
-  } = useApiQuery<any[] | { data?: any[] }>(
+  } = useApiQuery<any[]>(
     ['claim-files', queryParams],
     `/claim-files?${queryParams}`,
   );
 
-  const claims = Array.isArray(claimsResponse) ? claimsResponse : (claimsResponse?.data ?? []);
+  const claims = claimsResponse ?? [];
   const total = claims.length;
 
   // --- TanStack Query: Pending Revisions ---
-  const { data: revisionsData } = useApiQuery<{ data: { claimFileId?: string }[] }>(
+  const { data: revisionsData = [] } = useApiQuery<{ claimFileId?: string }[]>(
     ['revision-requests-pending'],
     '/revision-requests?status=PENDING&limit=200',
   );
   const pendingRevisionMap = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const rev of (revisionsData?.data ?? [])) {
+    for (const rev of revisionsData) {
       if (rev.claimFileId) map[rev.claimFileId] = (map[rev.claimFileId] ?? 0) + 1;
     }
     return map;

@@ -121,36 +121,22 @@ export default function RevisionDetailPage() {
 
   // ── Queries ──────────────────────────────────────────────────────────────────
 
-  const { data: rawDetail, isLoading, error: pageError } = useApiQuery<RevisionDetail | { data: RevisionDetail }>(
+  const { data: detail, isLoading, error: pageError } = useApiQuery<RevisionDetail>(
     ['revision-request', id],
     `revision-requests/${id}`,
   );
 
-  const detail: RevisionDetail | null = rawDetail
-    ? ('data' in rawDetail && rawDetail.data && typeof rawDetail.data === 'object' && 'id' in (rawDetail.data as object)
-      ? (rawDetail as { data: RevisionDetail }).data
-      : rawDetail as RevisionDetail)
-    : null;
-
-  const { data: rawVersions } = useApiQuery<VersionItem[] | { data: VersionItem[] }>(
+  const { data: versions = [] } = useApiQuery<VersionItem[]>(
     ['report-versions', detail?.report?.id],
     `repair-reports/${detail?.report?.id}/versions`,
     { enabled: !!detail?.report?.id },
   );
-  const versions: VersionItem[] = rawVersions
-    ? (Array.isArray(rawVersions) ? rawVersions : (rawVersions as { data: VersionItem[] }).data ?? [])
-    : [];
 
-  const { data: rawDiff } = useApiQuery<DiffData | { data: DiffData }>(
+  const { data: diff } = useApiQuery<DiffData>(
     ['report-diff', detail?.report?.id, detail?.newReport?.id],
     `repair-reports/${detail?.report?.id}/diff?compareWith=${detail?.newReport?.id ?? ''}`,
     { enabled: !!(detail?.report?.id && detail?.newReport?.id) },
   );
-  const diff: DiffData | null = rawDiff
-    ? ('data' in rawDiff && rawDiff.data && typeof rawDiff.data === 'object' && 'changes' in (rawDiff.data as object)
-      ? (rawDiff as { data: DiffData }).data
-      : rawDiff as DiffData)
-    : null;
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 

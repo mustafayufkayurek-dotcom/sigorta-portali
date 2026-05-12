@@ -1,24 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
-function getToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('accessToken') ?? '';
-}
-
-function authHeaders(): HeadersInit {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${getToken()}`,
-  };
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.message ?? `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+import { apiClient } from '@/lib/api-client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,23 +117,13 @@ export async function getCases(params?: {
   overdueOnly?: boolean;
   assignedUserId?: string;
 }): Promise<{ data: EmergencyCase[] }> {
-  const q = new URLSearchParams();
-  if (params?.status) q.set('status', params.status);
-  if (params?.month) q.set('month', String(params.month));
-  if (params?.year) q.set('year', String(params.year));
-  if (params?.customerId) q.set('customerId', params.customerId);
-  if (params?.search) q.set('search', params.search);
-  if (params?.overdueOnly) q.set('overdueOnly', 'true');
-  if (params?.assignedUserId) q.set('assignedUserId', params.assignedUserId);
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases?${q}`, { headers: authHeaders() }),
-  );
+  const data = await apiClient.get<EmergencyCase[]>('/emergency/cases', params);
+  return { data };
 }
 
 export async function getCase(id: string): Promise<{ data: EmergencyCase }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${id}`, { headers: authHeaders() }),
-  );
+  const data = await apiClient.get<EmergencyCase>(`/emergency/cases/${id}`);
+  return { data };
 }
 
 export async function createCase(body: {
@@ -170,39 +140,24 @@ export async function createCase(body: {
   assignedUserId?: string;
   notes?: string;
 }): Promise<{ data: EmergencyCase }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.post<EmergencyCase>('/emergency/cases', body);
+  return { data };
 }
 
 export async function updateCaseStatus(
   id: string,
   status: EmergencyStatus,
 ): Promise<{ data: EmergencyCase }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${id}/status`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify({ status }),
-    }),
-  );
+  const data = await apiClient.patch<EmergencyCase>(`/emergency/cases/${id}/status`, { status });
+  return { data };
 }
 
 export async function updateCase(
   id: string,
   body: Partial<EmergencyCase>,
 ): Promise<{ data: EmergencyCase }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${id}`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.patch<EmergencyCase>(`/emergency/cases/${id}`, body);
+  return { data };
 }
 
 // ─── Cost Entries ─────────────────────────────────────────────────────────────
@@ -218,29 +173,18 @@ export async function addCostEntry(
     vendorId?: string;
   },
 ): Promise<{ data: EmergencyCostEntry }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${caseId}/costs`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.post<EmergencyCostEntry>(`/emergency/cases/${caseId}/costs`, body);
+  return { data };
 }
 
 export async function getCostEntries(
   caseId: string,
 ): Promise<{ data: EmergencyCostEntry[]; summary: { totalGelir: number; totalGider: number; netKar: number } }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${caseId}/costs`, { headers: authHeaders() }),
-  );
+  return apiClient.get<{ data: EmergencyCostEntry[]; summary: { totalGelir: number; totalGider: number; netKar: number } }>(`/emergency/cases/${caseId}/costs`);
 }
 
 export async function deleteCostEntry(caseId: string, costId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/v1/emergency/cases/${caseId}/costs/${costId}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await apiClient.delete<void>(`/emergency/cases/${caseId}/costs/${costId}`);
 }
 
 export async function updateCostEntry(
@@ -253,13 +197,8 @@ export async function updateCostEntry(
     vendorId?: string | null;
   },
 ): Promise<{ data: EmergencyCostEntry }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/cases/${caseId}/costs/${costId}`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.patch<EmergencyCostEntry>(`/emergency/cases/${caseId}/costs/${costId}`, body);
+  return { data };
 }
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
@@ -271,14 +210,9 @@ export async function getFinanceList(params?: {
   search?: string;
   invoiceStatus?: string;
 }): Promise<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }> {
-  const q = new URLSearchParams();
-  if (params?.month) q.set('month', String(params.month));
-  if (params?.year) q.set('year', String(params.year));
-  if (params?.customerId) q.set('customerId', params.customerId);
-  if (params?.search) q.set('search', params.search);
-  if (params?.invoiceStatus) q.set('invoiceStatus', params.invoiceStatus);
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/list?${q}`, { headers: authHeaders() }),
+  return apiClient.get<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }>(
+    '/emergency/finance/list',
+    params,
   );
 }
 
@@ -286,24 +220,18 @@ export async function getMonthlySummary(
   year: number,
   month: number,
 ): Promise<{ data: MonthlySummary }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/summary?year=${year}&month=${month}`, {
-      headers: authHeaders(),
-    }),
-  );
+  const data = await apiClient.get<MonthlySummary>('/emergency/finance/summary', { year, month });
+  return { data };
 }
 
 export async function getInvoiceDrafts(status?: string): Promise<{ data: EmergencyInvoiceDraft[] }> {
-  const q = status ? `?status=${status}` : '';
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/invoices${q}`, { headers: authHeaders() }),
-  );
+  const data = await apiClient.get<EmergencyInvoiceDraft[]>('/emergency/finance/invoices', status ? { status } : undefined);
+  return { data };
 }
 
 export async function getInvoiceDraft(id: string): Promise<{ data: EmergencyInvoiceDraft }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/invoices/${id}`, { headers: authHeaders() }),
-  );
+  const data = await apiClient.get<EmergencyInvoiceDraft>(`/emergency/finance/invoices/${id}`);
+  return { data };
 }
 
 export async function createInvoiceDraft(body: {
@@ -312,22 +240,13 @@ export async function createInvoiceDraft(body: {
   customerId?: string;
   notes?: string;
 }): Promise<{ data: EmergencyInvoiceDraft }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/invoices`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.post<EmergencyInvoiceDraft>('/emergency/finance/invoices', body);
+  return { data };
 }
 
 export async function approveInvoiceDraft(id: string): Promise<{ data: EmergencyInvoiceDraft }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/emergency/finance/invoices/${id}/approve`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-    }),
-  );
+  const data = await apiClient.patch<EmergencyInvoiceDraft>(`/emergency/finance/invoices/${id}/approve`);
+  return { data };
 }
 
 // ─── Vendors (for cost entry selector) ───────────────────────────────────────
@@ -340,11 +259,12 @@ export interface VendorOption {
 }
 
 export async function getEmergencyVendors(search?: string): Promise<{ data: VendorOption[]; meta: { total: number } }> {
-  const q = new URLSearchParams({ category: 'acil', status: 'active', limit: '100' });
-  if (search) q.set('search', search);
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/vendors?${q}`, { headers: authHeaders() }),
-  );
+  return apiClient.get<{ data: VendorOption[]; meta: { total: number } }>('/vendors', {
+    category: 'acil',
+    status: 'active',
+    limit: 100,
+    search,
+  });
 }
 
 export async function createVendorQuick(body: {
@@ -356,11 +276,6 @@ export async function createVendorQuick(body: {
   type: string;
   category: string;
 }): Promise<{ data: VendorOption }> {
-  return handleResponse(
-    await fetch(`${API_BASE}/api/v1/vendors`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(body),
-    }),
-  );
+  const data = await apiClient.post<VendorOption>('/vendors', body);
+  return { data };
 }

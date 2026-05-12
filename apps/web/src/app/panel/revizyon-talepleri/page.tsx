@@ -104,21 +104,19 @@ export default function RevisionRequestsPage() {
     return new URLSearchParams(params).toString();
   }, [statusFilter, priorityFilter]);
 
-  const { data: revisions, isLoading, error } = useApiQuery<RevisionRequest[]>(
+  const { data: revisions = [], isLoading, error } = useApiQuery<RevisionRequest[]>(
     ['revision-requests', queryParams],
     `revision-requests${queryParams ? `?${queryParams}` : ''}`,
   );
 
-  const { data: overdueData } = useApiQuery<RevisionRequest[]>(
+  const { data: overdueData = [] } = useApiQuery<RevisionRequest[]>(
     ['revision-requests-overdue'],
     'revision-requests/overdue',
   );
 
   // Client-side search filter
   const filteredRevisions = useMemo(() => {
-    if (!revisions) return [];
-    // Handle both { data: [...] } wrapper and direct array
-    const list = Array.isArray(revisions) ? revisions : (revisions as unknown as { data: RevisionRequest[] }).data ?? [];
+    const list = revisions;
     if (!search.trim()) return list;
     const q = search.toLowerCase();
     return list.filter((r) =>
@@ -133,7 +131,7 @@ export default function RevisionRequestsPage() {
 
   // Status summary computed from all loaded data
   const statusSummary = useMemo(() => {
-    const allList = Array.isArray(revisions) ? revisions : (revisions as unknown as { data: RevisionRequest[] })?.data ?? [];
+    const allList = revisions;
     const summary: Record<string, number> = { REQUESTED: 0, IN_PROGRESS: 0, COMPLETED: 0, REJECTED: 0, ESCALATED: 0 };
     allList.forEach((r) => { if (summary[r.status] !== undefined) summary[r.status]++; });
     return summary;
@@ -146,10 +144,17 @@ export default function RevisionRequestsPage() {
   };
 
   const hasFilters = !!(statusFilter || priorityFilter || search);
-  const overdueCount = overdueData ? (Array.isArray(overdueData) ? overdueData.length : (overdueData as unknown as { data: RevisionRequest[] }).data?.length ?? 0) : 0;
+  const overdueCount = overdueData.length;
 
   return (
     <div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <span>/</span>
+        <span className="text-slate-600 font-medium">Revizyon Talepleri</span>
+      </nav>
+
       {/* Page Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>

@@ -4,13 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCases, EmergencyCase } from '@/utils/emergencyApi';
+import { apiClient } from '@/lib/api-client';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-}
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('tr-TR');
 }
@@ -132,34 +127,26 @@ export default function OperasyonPage() {
     setClaimsLoading(true);
     setClaimsError('');
     try {
-      const token = getToken();
-      const res = await fetch(`${API}/claim-files?limit=50&sort=createdAt:desc`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setClaims(json.data ?? []);
-        setClaimsTotal(json.meta?.total ?? (json.data ?? []).length);
-      }
+      const response = await apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 50, sort: 'createdAt:desc' });
+      setClaims(response.data ?? []);
+      setClaimsTotal(response.meta?.total ?? response.data?.length ?? 0);
     } catch { setClaimsError('Veriler yüklenemedi'); }
     finally { setClaimsLoading(false); }
   }, []);
 
   const loadStats = useCallback(async () => {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
     const today = new Date().toISOString().slice(0, 10);
     try {
       const [openRes, todayRes, overdueRes, invoiceRes] = await Promise.allSettled([
-        fetch(`${API}/claim-files?limit=1&statusCode=open`, { headers }),
-        fetch(`${API}/claim-files?limit=1&dateFrom=${today}&dateTo=${today}`, { headers }),
-        fetch(`${API}/claim-files?limit=1&slaExceeded=true`, { headers }),
-        fetch(`${API}/claim-files?limit=1&invoiceStatus=none`, { headers }),
+        apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, statusCode: 'open' }),
+        apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, dateFrom: today, dateTo: today }),
+        apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, slaExceeded: true }),
+        apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, invoiceStatus: 'none' }),
       ]);
-      if (openRes.status === 'fulfilled' && openRes.value.ok) { const j = await openRes.value.json(); setOpenCount(j.meta?.total ?? j.data?.length ?? 0); }
-      if (todayRes.status === 'fulfilled' && todayRes.value.ok) { const j = await todayRes.value.json(); setTodayCount(j.meta?.total ?? j.data?.length ?? 0); }
-      if (overdueRes.status === 'fulfilled' && overdueRes.value.ok) { const j = await overdueRes.value.json(); setOverdueCount(j.meta?.total ?? j.data?.length ?? 0); }
-      if (invoiceRes.status === 'fulfilled' && invoiceRes.value.ok) { const j = await invoiceRes.value.json(); setInvoicePendingCount(j.meta?.total ?? j.data?.length ?? 0); }
+      if (openRes.status === 'fulfilled') setOpenCount(openRes.value.meta?.total ?? openRes.value.data?.length ?? 0);
+      if (todayRes.status === 'fulfilled') setTodayCount(todayRes.value.meta?.total ?? todayRes.value.data?.length ?? 0);
+      if (overdueRes.status === 'fulfilled') setOverdueCount(overdueRes.value.meta?.total ?? overdueRes.value.data?.length ?? 0);
+      if (invoiceRes.status === 'fulfilled') setInvoicePendingCount(invoiceRes.value.meta?.total ?? invoiceRes.value.data?.length ?? 0);
     } catch { /* ignore */ }
   }, []);
 

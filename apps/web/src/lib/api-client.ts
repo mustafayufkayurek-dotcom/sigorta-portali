@@ -15,6 +15,12 @@ export function getBaseUrl(): string {
 }
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;
+type ApiEnvelope<T> = {
+  success?: boolean;
+  data?: T;
+  meta?: unknown;
+  message?: string;
+};
 
 function buildUrl(url: string, params?: QueryParams): string {
   const base = getBaseUrl().replace(/\/$/, '');
@@ -76,8 +82,23 @@ function unwrap<T>(raw: unknown): T {
   return raw as T;
 }
 
+function unwrapEnvelope<T>(raw: unknown): ApiEnvelope<T> {
+  if (raw && typeof raw === 'object' && 'success' in raw && 'data' in raw) {
+    const envelope = raw as ApiEnvelope<T>;
+    return {
+      success: envelope.success,
+      data: envelope.data,
+      meta: envelope.meta,
+      message: envelope.message,
+    };
+  }
+  return { data: raw as T };
+}
+
 export const apiClient = {
   get: <T>(url: string, params?: QueryParams) => request<unknown>(url, { method: 'GET' }, params).then(r => unwrap<T>(r)),
+  getWithMeta: <T, TMeta = unknown>(url: string, params?: QueryParams) =>
+    request<unknown>(url, { method: 'GET' }, params).then((r) => unwrapEnvelope<T>(r) as ApiEnvelope<T> & { meta?: TMeta }),
   post: <T>(url: string, body?: unknown) =>
     request<unknown>(url, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }).then(r => unwrap<T>(r)),
   patch: <T>(url: string, body?: unknown) =>

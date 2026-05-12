@@ -10,6 +10,7 @@ import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { apiClient } from '@/lib/api-client';
 
 // ── Rol Bazlı Erişim ──────────────────────────────────────────────────────────
 type RoleCode = string;
@@ -81,9 +82,6 @@ function canSeeNavItem(path: string, roleCode: string): boolean {
   if (rule.roles.length === 0) return true;
   return rule.roles.includes(roleCode);
 }
-
-const _layoutApiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API_BASE = _layoutApiBase.endsWith('/api/v1') ? _layoutApiBase.replace(/\/api\/v1$/, '') : _layoutApiBase;
 
 // Ekran kodu → path eşlemesi (DB izin sistemi için)
 const SCREEN_TO_PATH: Record<string, string> = {
@@ -689,55 +687,36 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     setLoading(false);
 
     // Ekran izinlerini DB'den çek
-    fetch(`${API_BASE}/api/v1/users/me/permissions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => { if (json?.data?.screens) setAllowedScreens(json.data.screens); })
+    apiClient.get<{ screens?: string[] }>('/users/me/permissions')
+      .then((data) => { if (data?.screens) setAllowedScreens(data.screens); })
       .catch(() => { /* DB izin yoksa role-default'a düşülür */ });
   }, [router]);
 
   // Onaylanmamış sözleşme kontrolü
   useEffect(() => {
     if (loading) return;
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
-    fetch(`${API_BASE}/api/v1/agreements/pending`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (json?.data) setPendingAgreements(json.data);
+    if (!localStorage.getItem('accessToken')) return;
+    apiClient.get<any[]>('/agreements/pending')
+      .then((data) => {
+        if (data) setPendingAgreements(data);
       })
       .catch(() => {})
       .finally(() => setAgreementsChecked(true));
   }, [loading]);
 
   const fetchUnreadCount = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/api/v1/notifications/unread-count`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setUnreadCount(json?.data?.count ?? 0);
-      }
+      if (!localStorage.getItem('accessToken')) return;
+      const data = await apiClient.get<{ count?: number }>('/notifications/unread-count');
+      setUnreadCount(data?.count ?? 0);
     } catch {}
   }, []);
 
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/api/v1/notifications?limit=20`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setNotifications(json?.data ?? []);
-      }
+      if (!localStorage.getItem('accessToken')) return;
+      const data = await apiClient.get<AppNotification[]>('/notifications', { limit: 20 });
+      setNotifications(data ?? []);
     } catch {}
   }, []);
 
@@ -752,12 +731,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading) {
-      const token = localStorage.getItem('accessToken');
-      if (!token) return;
-      fetch(`${API_BASE}/api/v1/revision-requests?status=PENDING&limit=1`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.ok ? r.json() : null)
+      if (!localStorage.getItem('accessToken')) return;
+      apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'PENDING', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
         .catch(() => { setPendingRevisionCount(3); });
     }
@@ -770,26 +745,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   };
 
   const handleMarkRead = async (notifId: string) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     try {
-      await fetch(`${API_BASE}/api/v1/notifications/${notifId}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (!localStorage.getItem('accessToken')) return;
+      await apiClient.patch(`/notifications/${notifId}/read`);
       setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, status: 'read' } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch {}
   };
 
   const handleMarkAllRead = async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     try {
-      await fetch(`${API_BASE}/api/v1/notifications/read-all`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (!localStorage.getItem('accessToken')) return;
+      await apiClient.patch('/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, status: 'read' })));
       setUnreadCount(0);
     } catch {}
