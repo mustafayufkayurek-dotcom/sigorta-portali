@@ -2735,7 +2735,8 @@ export default function RepairReportPage() {
   const catColor: Record<string, string> = { before: 'bg-blue-100 text-blue-700', damage: 'bg-red-100 text-red-700', after: 'bg-green-100 text-green-700' };
 
   // Saha personeli maliyet gizleme
-  const isFieldStaff = currentUser?.role?.code === 'field_staff';
+  const normalizedRoleCode = String(currentUser?.role?.code ?? currentUser?.roleCode ?? '').toLowerCase();
+  const isFieldStaff = normalizedRoleCode === 'field_staff';
   // Saha personeli her zaman dış görünüm görsün
   const effectiveViewMode = isFieldStaff ? 'external' : viewMode;
 
