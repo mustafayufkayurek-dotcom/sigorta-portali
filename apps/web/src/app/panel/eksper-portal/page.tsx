@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/contexts/ToastContext';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -99,6 +100,7 @@ function maskPhoneSimple(raw: string): string {
 }
 
 function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
+  const { showToast } = useToast();
   const [form, setForm] = useState<IhbarFormData>({
     policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
@@ -129,6 +131,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     const e: Partial<Record<keyof IhbarFormData, string>> = {};
     if (!form.policeTuru) e.policeTuru = 'Zorunlu alan';
     if (!form.konu) e.konu = 'Zorunlu alan';
+    if (form.sigortaSirketi && !/^[0-9a-fA-F-]{36}$/.test(form.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
     if (!form.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
     if (!form.sigortaliTelefon || form.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
     if (!form.il) e.il = 'Zorunlu alan';
@@ -137,14 +140,23 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   };
 
   const handleSubmit = async () => {
-    if (!validate()) return;
+    if (saving) return;
+    if (!validate()) {
+      showToast('error', 'Lütfen zorunlu alanları kontrol edin.');
+      return;
+    }
     setSaving(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+      if (!token) {
+        throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      }
       const payload = {
         productBranch: form.konu,
         insuranceCompanyId: form.sigortaSirketi || undefined,
-        policyNo: form.policeNo || undefined,
+        policyNo: form.policeNo.trim() || undefined,
+        claimNo: `EXP-${Date.now().toString(36).toUpperCase()}`,
+        lossType: form.konu,
         description: form.aciklama || undefined,
         incidentDate: form.hasarTarihi ? new Date(form.hasarTarihi).toISOString() : undefined,
         notificationDate: new Date().toISOString(),
@@ -158,15 +170,21 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
+      const body = await res.json().catch(() => null);
       if (res.ok) {
-        const data = await res.json();
-        const fileNo = data?.data?.fileNumber ?? data?.data?.id?.slice(-8).toUpperCase() ?? 'YNI-' + Date.now().toString(36).toUpperCase();
+        const fileNo = body?.data?.fileNo ?? body?.data?.fileNumber ?? body?.data?.id?.slice(-8).toUpperCase() ?? 'YNI-' + Date.now().toString(36).toUpperCase();
+        showToast('success', `İhbar başarıyla gönderildi. Dosya no: ${fileNo}`);
         onSuccess(fileNo);
       } else {
-        throw new Error('api_error');
+        const message =
+          body?.message
+          ?? body?.error?.message
+          ?? (Array.isArray(body?.message) ? body.message.join(', ') : null)
+          ?? 'İhbar gönderilemedi. Lütfen tekrar deneyin.';
+        throw new Error(message);
       }
-    } catch {
-      alert('İhbar gönderilemedi. Lütfen tekrar deneyin.');
+    } catch (error: any) {
+      showToast('error', error?.message ?? 'İhbar gönderilemedi. Lütfen tekrar deneyin.');
     } finally {
       setSaving(false);
     }
@@ -226,7 +244,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Sigorta Şirketi</label>
             <select
-              className="input-base-sm"
+              className={`input-base-sm ${errors.sigortaSirketi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.sigortaSirketi}
               onChange={(e) => set('sigortaSirketi', e.target.value)}
             >
@@ -236,6 +254,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 : INSURANCE_COMPANIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)
               }
             </select>
+            {errors.sigortaSirketi && <p className="text-xs text-red-500 mt-1">{errors.sigortaSirketi}</p>}
           </div>
 
           {/* Poliçe Türü */}
