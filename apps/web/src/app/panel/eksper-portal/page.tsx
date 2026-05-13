@@ -84,6 +84,14 @@ type IhbarFormData = {
   aciklama: string;
 };
 
+type ProvinceOption = { id: string; plateCode: number; name: string };
+type DistrictOption = { id: string; name: string; provinceId: string };
+type InsuranceCompanyOption = { id: string; name: string };
+type UploadItem = { id: string; file: File; previewUrl: string };
+
+const MAX_IHBAR_PHOTO_COUNT = 6;
+const MAX_IHBAR_PHOTO_SIZE = 10 * 1024 * 1024;
+
 type IhbarModalProps = {
   onClose: () => void;
   onSuccess: (fileNo: string) => void;
@@ -99,10 +107,37 @@ function maskPhoneSimple(raw: string): string {
   return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
 }
 
+function getAccessToken() {
+  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? '' : '';
+}
+
+function authHeaders(extra?: Record<string, string>) {
+  const token = getAccessToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-fA-F-]{36}$/.test(value);
+}
+
+function toIsoDate(value: string) {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function normalizeApiMessage(body: any, fallback: string) {
+  if (Array.isArray(body?.message)) return body.message.join(', ');
+  return body?.message ?? body?.error?.message ?? fallback;
+}
+
 function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const { showToast } = useToast();
-  const [provinces, setProvinces] = useState<{ id: string; plateCode: number; name: string }[]>([]);
-  const [districts, setDistricts] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+  const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
+  const [districts, setDistricts] = useState<DistrictOption[]>([]);
   const [form, setForm] = useState<IhbarFormData>({
     policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
@@ -112,17 +147,36 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const [phoneDisplay, setPhoneDisplay] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof IhbarFormData, string>>>({});
   const [saving, setSaving] = useState(false);
-  const [insuranceCompanies, setInsuranceCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [loadingLookups, setLoadingLookups] = useState(true);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompanyOption[]>([]);
+  const [photos, setPhotos] = useState<UploadItem[]>([]);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-    fetch(`${API_V1}/insurance-companies?limit=200`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d) => setInsuranceCompanies(d?.data ?? []))
-      .catch(() => {});
+    let active = true;
+    (async () => {
+      try {
+        const [companyResponse, provinceResponse] = await Promise.all([
+          fetch(`${API_V1}/insurance-companies?limit=200`, { headers: authHeaders() }),
+          fetch(`${API_V1}/locations/provinces`, { headers: authHeaders() }),
+        ]);
+        const [companyBody, provinceBody] = await Promise.all([
+          companyResponse.json().catch(() => null),
+          provinceResponse.json().catch(() => null),
+        ]);
+        if (!active) return;
+        setInsuranceCompanies(companyResponse.ok ? (companyBody?.data ?? []) : []);
+        setProvinces(provinceResponse.ok ? (provinceBody?.data ?? []) : []);
+      } finally {
+        if (active) setLoadingLookups(false);
+      }
+    })();
+    return () => { active = false; };
   }, []);
+
+  useEffect(() => () => {
+    photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+  }, [photos]);
 
   const loadDistricts = useCallback(async (provinceId: string) => {
     if (!provinceId) {
@@ -130,11 +184,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       return;
     }
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-
     try {
+      setLoadingDistricts(true);
       const response = await fetch(`${API_V1}/locations/provinces/${provinceId}/districts`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(),
       });
       const body = await response.json().catch(() => null);
 
@@ -145,18 +198,9 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       setDistricts(body?.data ?? []);
     } catch {
       setDistricts([]);
+    } finally {
+      setLoadingDistricts(false);
     }
-  }, []);
-
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-
-    fetch(`${API_V1}/locations/provinces`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((response) => response.json())
-      .then((body) => setProvinces(body?.data ?? []))
-      .catch(() => setProvinces([]));
   }, []);
 
   const set = (key: keyof IhbarFormData, val: string) => {
@@ -168,57 +212,105 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     const e: Partial<Record<keyof IhbarFormData, string>> = {};
     if (!form.policeTuru) e.policeTuru = 'Zorunlu alan';
     if (!form.konu) e.konu = 'Zorunlu alan';
-    if (form.sigortaSirketi && !/^[0-9a-fA-F-]{36}$/.test(form.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
+    if (!form.sigortaSirketi || !isUuid(form.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
+    if (!form.policeNo.trim()) e.policeNo = 'Zorunlu alan';
     if (!form.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
     if (!form.sigortaliTelefon || form.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
     if (!form.il) e.il = 'Zorunlu alan';
+    if (form.il && !form.ilce) e.ilce = 'Zorunlu alan';
+    if (form.hasarTarihi && !toIsoDate(form.hasarTarihi)) e.hasarTarihi = 'Geçerli tarih giriniz';
+    if (form.policeTuru === 'ticari') {
+      if (!form.ticariUnvan.trim()) e.ticariUnvan = 'Zorunlu alan';
+      if (!form.vergiDairesi.trim()) e.vergiDairesi = 'Zorunlu alan';
+      if (!form.vergiNo.trim()) e.vergiNo = 'Zorunlu alan';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  const uploadPhotos = useCallback(async (reportId: string) => {
+    if (photos.length === 0) return;
+    await Promise.all(photos.map(async (photo) => {
+      const formData = new FormData();
+      formData.append('file', photo.file);
+      const response = await fetch(`${API_V1}/repair-reports/${reportId}/images`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: formData,
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(normalizeApiMessage(body, 'Fotoğraf yükleme başarısız oldu.'));
+      }
+    }));
+  }, [photos]);
+
   const handleSubmit = async () => {
-    if (saving) return;
+    if (saving || loadingLookups || loadingDistricts) return;
     if (!validate()) {
       showToast('error', 'Lütfen zorunlu alanları kontrol edin.');
       return;
     }
     setSaving(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+      const token = getAccessToken();
       if (!token) {
         throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
       }
+      const provinceName = provinces.find((province) => province.id === form.il)?.name ?? '';
       const payload = {
         productBranch: form.konu,
-        insuranceCompanyId: form.sigortaSirketi || undefined,
-        policyNo: form.policeNo.trim() || undefined,
+        insuranceCompanyId: form.sigortaSirketi,
+        policyNo: form.policeNo.trim(),
         claimNo: `EXP-${Date.now().toString(36).toUpperCase()}`,
         lossType: form.konu,
-        description: form.aciklama || undefined,
-        incidentDate: form.hasarTarihi ? new Date(form.hasarTarihi).toISOString() : undefined,
+        description: form.aciklama.trim() || undefined,
+        incidentDate: toIsoDate(form.hasarTarihi) ?? new Date().toISOString(),
         notificationDate: new Date().toISOString(),
         priority: 'normal',
-        insuredName: form.sigortaliAdi,
+        sourceChannel: 'expert_portal',
+        insuredName: form.sigortaliAdi.trim(),
         insuredPhone: form.sigortaliTelefon.replace(/\D/g, ''),
-        propertyAddress: [form.adresDetay, form.ilce, form.il].filter(Boolean).join(', '),
+        propertyAddress: [form.adresDetay.trim(), form.ilce.trim(), provinceName].filter(Boolean).join(', '),
+        city: provinceName || undefined,
+        district: form.ilce.trim() || undefined,
+        policeTuru: form.policeTuru,
+        ticariUnvan: form.ticariUnvan.trim() || undefined,
+        vergiDairesi: form.vergiDairesi.trim() || undefined,
+        vergiNo: form.vergiNo.trim() || undefined,
       };
       const res = await fetch(`${API_V1}/claim-files`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
+        const claimFileId = body?.data?.id;
+        if (claimFileId) {
+          const reportResponse = await fetch(`${API_V1}/claim-files/${claimFileId}/repair-reports`, {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              reportType: 'single',
+              reportDate: new Date().toISOString(),
+              findingsText: form.aciklama.trim() || 'Eksper portalı ihbar fotoğrafları',
+            }),
+          });
+          const reportBody = await reportResponse.json().catch(() => null);
+          if (!reportResponse.ok) {
+            throw new Error(normalizeApiMessage(reportBody, 'İhbar sonrası rapor oluşturulamadı.'));
+          }
+          const reportId = reportBody?.data?.id;
+          if (reportId) {
+            await uploadPhotos(reportId);
+          }
+        }
         const fileNo = body?.data?.fileNo ?? body?.data?.fileNumber ?? body?.data?.id?.slice(-8).toUpperCase() ?? 'YNI-' + Date.now().toString(36).toUpperCase();
         showToast('success', `İhbar başarıyla gönderildi. Dosya no: ${fileNo}`);
         onSuccess(fileNo);
       } else {
-        const message =
-          body?.message
-          ?? body?.error?.message
-          ?? (Array.isArray(body?.message) ? body.message.join(', ') : null)
-          ?? 'İhbar gönderilemedi. Lütfen tekrar deneyin.';
-        throw new Error(message);
+        throw new Error(normalizeApiMessage(body, 'İhbar gönderilemedi. Lütfen tekrar deneyin.'));
       }
     } catch (error: any) {
       showToast('error', error?.message ?? 'İhbar gönderilemedi. Lütfen tekrar deneyin.');
@@ -328,30 +420,33 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1.5">Ticari Ünvan</label>
                 <input
-                  className="input-base-sm"
+                  className={`input-base-sm ${errors.ticariUnvan ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                   placeholder="Şirket ünvanı"
                   value={form.ticariUnvan}
                   onChange={(e) => set('ticariUnvan', e.target.value)}
                 />
+                {errors.ticariUnvan && <p className="text-xs text-red-500 mt-1">{errors.ticariUnvan}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">Vergi Dairesi</label>
                   <input
-                    className="input-base-sm"
+                    className={`input-base-sm ${errors.vergiDairesi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                     placeholder="Vergi dairesi"
                     value={form.vergiDairesi}
                     onChange={(e) => set('vergiDairesi', e.target.value)}
                   />
+                  {errors.vergiDairesi && <p className="text-xs text-red-500 mt-1">{errors.vergiDairesi}</p>}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">Vergi Numarası</label>
                   <input
-                    className="input-base-sm"
+                    className={`input-base-sm ${errors.vergiNo ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                     placeholder="Vergi numarası"
                     value={form.vergiNo}
                     onChange={(e) => set('vergiNo', e.target.value)}
                   />
+                  {errors.vergiNo && <p className="text-xs text-red-500 mt-1">{errors.vergiNo}</p>}
                 </div>
               </div>
             </div>
@@ -361,11 +456,12 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Poliçe No</label>
             <input
-              className="input-base-sm"
-              placeholder="Opsiyonel"
+              className={`input-base-sm ${errors.policeNo ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              placeholder="Poliçe numarası"
               value={form.policeNo}
               onChange={(e) => set('policeNo', e.target.value)}
             />
+            {errors.policeNo && <p className="text-xs text-red-500 mt-1">{errors.policeNo}</p>}
           </div>
 
           {/* Sigortalı Adı + Telefon */}
@@ -416,7 +512,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                   onChange={async (e) => {
                     const provinceId = e.target.value;
                     setForm((prev) => ({ ...prev, il: provinceId, ilce: '' }));
-                    if (errors.il) setErrors((prev) => { const next = { ...prev }; delete next.il; return next; });
+                    if (errors.il || errors.ilce) setErrors((prev) => { const next = { ...prev }; delete next.il; delete next.ilce; return next; });
                     await loadDistricts(provinceId);
                   }}
                 >
@@ -431,16 +527,17 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               </div>
               <div>
                 <select
-                  className="input-base-sm"
+                  className={`input-base-sm ${errors.ilce ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                   value={form.ilce}
                   onChange={(e) => set('ilce', e.target.value)}
-                  disabled={!form.il || districts.length === 0}
+                  disabled={!form.il || districts.length === 0 || loadingDistricts}
                 >
-                  <option value="">İlçe seçiniz...</option>
+                  <option value="">{loadingDistricts ? 'İlçeler yükleniyor...' : 'İlçe seçiniz...'}</option>
                   {districts.map((district) => (
                     <option key={district.id} value={district.name}>{district.name}</option>
                   ))}
                 </select>
+                {errors.ilce && <p className="text-xs text-red-500 mt-1">{errors.ilce}</p>}
               </div>
             </div>
             <input
@@ -456,10 +553,11 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Hasar Tarihi</label>
             <input
               type="date"
-              className="input-base-sm"
+              className={`input-base-sm ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.hasarTarihi}
               onChange={(e) => set('hasarTarihi', e.target.value)}
             />
+            {errors.hasarTarihi && <p className="text-xs text-red-500 mt-1">{errors.hasarTarihi}</p>}
           </div>
 
           {/* Açıklama */}
@@ -474,14 +572,65 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             />
           </div>
 
-          {/* Fotoğraf (placeholder) */}
+          {/* Fotoğraf */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Fotoğraf Yükle</label>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50">
-              <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-xs text-slate-400">Fotoğraf yükleme yakında aktif olacak</p>
+            <div className="space-y-3">
+              <label className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50 block cursor-pointer hover:border-blue-300 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    const selectedFiles = Array.from(event.target.files ?? []);
+                    if (selectedFiles.length === 0) return;
+                    const remaining = Math.max(0, MAX_IHBAR_PHOTO_COUNT - photos.length);
+                    const nextFiles = selectedFiles.slice(0, remaining);
+                    const oversized = nextFiles.find((file) => file.size > MAX_IHBAR_PHOTO_SIZE);
+                    if (oversized) {
+                      showToast('error', 'Her fotoğraf en fazla 10 MB olabilir.');
+                      event.target.value = '';
+                      return;
+                    }
+                    const mapped = nextFiles.map((file) => ({
+                      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+                      file,
+                      previewUrl: URL.createObjectURL(file),
+                    }));
+                    setPhotos((prev) => [...prev, ...mapped].slice(0, MAX_IHBAR_PHOTO_COUNT));
+                    if (selectedFiles.length > remaining) {
+                      showToast('error', `En fazla ${MAX_IHBAR_PHOTO_COUNT} fotoğraf yükleyebilirsiniz.`);
+                    }
+                    event.target.value = '';
+                  }}
+                />
+                <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-xs text-slate-500">Fotoğrafları seçin</p>
+                <p className="text-[11px] text-slate-400 mt-1">Maksimum {MAX_IHBAR_PHOTO_COUNT} adet, dosya başına 10 MB</p>
+              </label>
+              {photos.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {photos.map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-slate-200 bg-white">
+                      <img src={photo.previewUrl} alt={photo.file.name} className="h-24 w-full object-cover" />
+                      <button
+                        type="button"
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white text-xs"
+                        onClick={() => {
+                          URL.revokeObjectURL(photo.previewUrl);
+                          setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
+                        }}
+                      >
+                        ×
+                      </button>
+                      <div className="px-2 py-1.5 text-[11px] text-slate-500 truncate">{photo.file.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -499,7 +648,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || loadingLookups || loadingDistricts}
             className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {saving ? (

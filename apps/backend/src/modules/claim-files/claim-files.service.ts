@@ -239,13 +239,53 @@ export class ClaimFilesService {
       throw new BadRequestException('Bu dosya numarası zaten kullanılıyor');
     }
 
+    const insuranceCompanyId = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
+    const policyNo = typeof rest.policyNo === 'string' ? rest.policyNo.trim() : '';
+    const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
+    const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
+    const lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
+
+    if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
+    if (!policyNo) throw new BadRequestException('Poliçe numarası zorunludur');
+    if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
+    if (!productBranch) throw new BadRequestException('Ürün branşı zorunludur');
+    if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
+
+    let propertyAddressId = rest.propertyAddressId ?? null;
+    const propertyAddressText = typeof rest.propertyAddress === 'string' ? rest.propertyAddress.trim() : '';
+    if (!propertyAddressId && propertyAddressText) {
+      const city = typeof rest.city === 'string' ? rest.city.trim() || '' : '';
+      const district = typeof rest.district === 'string' ? rest.district.trim() || '' : '';
+      const locationCode = `IHBAR-${Date.now().toString(36).toUpperCase()}`;
+      const address = await this.prisma.claimLocation.create({
+        data: {
+          code: locationCode,
+          name: propertyAddressText.slice(0, 120),
+          description: [district, city].filter(Boolean).join(' / ') || propertyAddressText,
+          status: 'active',
+        },
+      });
+      propertyAddressId = address.id;
+    }
+
     try {
       const created = await this.prisma.claimFile.create({
-        data: { ...rest, fileNo, currentStatusId },
+        data: {
+          ...rest,
+          insuranceCompanyId,
+          policyNo,
+          claimNo,
+          productBranch,
+          lossType,
+          propertyAddressId,
+          fileNo,
+          currentStatusId,
+        },
         include: {
           insuranceCompany: true,
           currentStatus: true,
           customer: true,
+          propertyAddress: true,
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true, email: true } },
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
