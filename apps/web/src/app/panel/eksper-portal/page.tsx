@@ -101,6 +101,8 @@ function maskPhoneSimple(raw: string): string {
 
 function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const { showToast } = useToast();
+  const [provinces, setProvinces] = useState<{ id: string; plateCode: number; name: string }[]>([]);
+  const [districts, setDistricts] = useState<{ id: string; name: string; provinceId: string }[]>([]);
   const [form, setForm] = useState<IhbarFormData>({
     policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
@@ -120,6 +122,41 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       .then((r) => r.json())
       .then((d) => setInsuranceCompanies(d?.data ?? []))
       .catch(() => {});
+  }, []);
+
+  const loadDistricts = useCallback(async (provinceId: string) => {
+    if (!provinceId) {
+      setDistricts([]);
+      return;
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+
+    try {
+      const response = await fetch(`${API_V1}/locations/provinces/${provinceId}/districts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(body?.message ?? 'İlçe listesi yüklenemedi');
+      }
+
+      setDistricts(body?.data ?? []);
+    } catch {
+      setDistricts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+
+    fetch(`${API_V1}/locations/provinces`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => response.json())
+      .then((body) => setProvinces(body?.data ?? []))
+      .catch(() => setProvinces([]));
   }, []);
 
   const set = (key: keyof IhbarFormData, val: string) => {
@@ -376,20 +413,34 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 <select
                   className={`input-base-sm ${errors.il ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                   value={form.il}
-                  onChange={(e) => set('il', e.target.value)}
+                  onChange={async (e) => {
+                    const provinceId = e.target.value;
+                    setForm((prev) => ({ ...prev, il: provinceId, ilce: '' }));
+                    if (errors.il) setErrors((prev) => { const next = { ...prev }; delete next.il; return next; });
+                    await loadDistricts(provinceId);
+                  }}
                 >
                   <option value="">İl seçiniz...</option>
-                  {TR_ILLER.map((il) => <option key={il} value={il}>{il}</option>)}
+                  {provinces.length > 0
+                    ? provinces.map((province) => (
+                      <option key={province.id} value={province.id}>{province.plateCode} - {province.name}</option>
+                    ))
+                    : TR_ILLER.map((il) => <option key={il} value={il}>{il}</option>)}
                 </select>
                 {errors.il && <p className="text-xs text-red-500 mt-1">{errors.il}</p>}
               </div>
               <div>
-                <input
+                <select
                   className="input-base-sm"
-                  placeholder="İlçe (opsiyonel)"
                   value={form.ilce}
                   onChange={(e) => set('ilce', e.target.value)}
-                />
+                  disabled={!form.il || districts.length === 0}
+                >
+                  <option value="">İlçe seçiniz...</option>
+                  {districts.map((district) => (
+                    <option key={district.id} value={district.name}>{district.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <input
