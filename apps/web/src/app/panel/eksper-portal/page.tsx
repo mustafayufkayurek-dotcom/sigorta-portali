@@ -40,17 +40,7 @@ const INSURANCE_COMPANIES = [
 
 // ─── İhbar Form Sabitleri ────────────────────────────────────────────────────
 
-const IHBAR_KONULARI = [
-  { value: 'yangin', label: 'Yangın' },
-  { value: 'su_basmasi', label: 'Su Basması / Boru Patlaması' },
-  { value: 'dogal_afet', label: 'Doğal Afet (Deprem / Sel / Fırtına)' },
-  { value: 'hirsizlik', label: 'Hırsızlık' },
-  { value: 'cam_kirilmasi', label: 'Cam Kırılması / Cephe Hasarı' },
-  { value: 'makine_kirilmasi', label: 'Makine Kırılması' },
-  { value: 'konut', label: 'Konut Hasarı' },
-  { value: 'isyeri', label: 'İşyeri Hasarı' },
-  { value: 'diger', label: 'Diğer' },
-];
+// İhbar konuları artık API'den çekiliyor (admin paneli tanımları ile senkron)
 
 const TR_ILLER = [
   'Adana','Adıyaman','Afyonkarahisar','Ağrı','Amasya','Ankara','Antalya','Artvin',
@@ -139,6 +129,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const { showToast } = useToast();
   const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
   const [districts, setDistricts] = useState<DistrictOption[]>([]);
+  const [ihbarKonulari, setIhbarKonulari] = useState<{ value: string; label: string }[]>([]);
   const [form, setForm] = useState<IhbarFormData>({
     dosyaNo: '', policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
@@ -157,17 +148,25 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     let active = true;
     (async () => {
       try {
-        const [companyResponse, provinceResponse] = await Promise.all([
+        const [companyResponse, provinceResponse, konuResponse] = await Promise.all([
           fetch(`${API_V1}/insurance-companies?limit=200`, { headers: authHeaders() }),
           fetch(`${API_V1}/locations/provinces`, { headers: authHeaders() }),
+          fetch(`${API_V1}/system-settings/ihbar-konulari`),
         ]);
-        const [companyBody, provinceBody] = await Promise.all([
+        const [companyBody, provinceBody, konuBody] = await Promise.all([
           companyResponse.json().catch(() => null),
           provinceResponse.json().catch(() => null),
+          konuResponse.json().catch(() => null),
         ]);
         if (!active) return;
         setInsuranceCompanies(companyResponse.ok ? (companyBody?.data ?? []) : []);
         setProvinces(provinceResponse.ok ? (provinceBody?.data ?? []) : []);
+        if (konuResponse.ok && konuBody?.data) {
+          const hasar: string[] = konuBody.data.hasar ?? [];
+          const acil: string[] = konuBody.data.acil ?? [];
+          const all = [...hasar, ...acil.filter((a: string) => !hasar.includes(a))];
+          setIhbarKonulari(all.map((k: string) => ({ value: k, label: k })));
+        }
       } finally {
         if (active) setLoadingLookups(false);
       }
@@ -366,7 +365,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               onChange={(e) => set('konu', e.target.value)}
             >
               <option value="">Seçiniz...</option>
-              {IHBAR_KONULARI.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+              {ihbarKonulari.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
             </select>
             {errors.konu && <p className="text-xs text-red-500 mt-1">{errors.konu}</p>}
           </div>

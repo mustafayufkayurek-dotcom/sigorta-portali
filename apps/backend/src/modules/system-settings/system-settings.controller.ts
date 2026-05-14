@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig } from './system-settings.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
+import { Public } from '@/common/decorators/public.decorator';
 
 @ApiTags('system-settings')
 @ApiBearerAuth()
@@ -268,7 +269,7 @@ export class SystemSettingsController {
   }
 
   @Get('ihbar-konulari')
-  @RequirePermissions('settings.view', 'claim.view', 'claim.create', 'emergency.view', 'emergency.create')
+  @Public()
   @ApiOperation({ summary: 'İhbar konularını getir (hasar ve acil kategorileri)' })
   async getIhbarKonulari() {
     const data = await this.service.getIhbarKonulari();
