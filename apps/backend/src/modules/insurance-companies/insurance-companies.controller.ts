@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InsuranceCompaniesService } from './insurance-companies.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
+import { Public } from '@/common/decorators/public.decorator';
 
 @ApiTags('insurance-companies')
 @ApiBearerAuth()
@@ -11,8 +12,8 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
 export class InsuranceCompaniesController {
   constructor(private readonly insuranceCompaniesService: InsuranceCompaniesService) {}
 
+  @Public()
   @Get()
-  @RequirePermissions('insurance_company.view')
   @ApiOperation({ summary: 'Sigorta şirketlerini listele' })
   async findAll(@Query() query: any) {
     const result = await this.insuranceCompaniesService.findAll(query);
