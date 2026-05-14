@@ -16,13 +16,26 @@ import { logger } from '../logger/winston.logger';
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
-    if (exception instanceof HttpException) {
-      throw exception;
-    }
-
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    if (exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const exceptionResponse = exception.getResponse();
+      const message =
+        typeof exceptionResponse === 'string'
+          ? exceptionResponse
+          : (exceptionResponse as any)?.message ?? exception.message;
+
+      return response.status(status).json({
+        statusCode: status,
+        message,
+        error: exception.name,
+        path: request.url,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     if (exception instanceof PrismaClientValidationError) {
       return response.status(HttpStatus.BAD_REQUEST).json({
