@@ -151,7 +151,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         const [companyResponse, provinceResponse, konuResponse] = await Promise.all([
           fetch(`${API_V1}/insurance-companies?limit=200`, { headers: authHeaders() }),
           fetch(`${API_V1}/locations/provinces`, { headers: authHeaders() }),
-          fetch(`${API_V1}/system-settings/ihbar-konulari`),
+          fetch(`${API_V1}/claim-subjects/active?category=hasar`, { headers: authHeaders() }),
         ]);
         const [companyBody, provinceBody, konuBody] = await Promise.all([
           companyResponse.json().catch(() => null),
@@ -162,10 +162,8 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         setInsuranceCompanies(companyResponse.ok ? (companyBody?.data ?? []) : []);
         setProvinces(provinceResponse.ok ? (provinceBody?.data ?? []) : []);
         if (konuResponse.ok && konuBody?.data) {
-          const hasar: string[] = konuBody.data.hasar ?? [];
-          const acil: string[] = konuBody.data.acil ?? [];
-          const all = [...hasar, ...acil.filter((a: string) => !hasar.includes(a))];
-          setIhbarKonulari(all.map((k: string) => ({ value: k, label: k })));
+          const subjects = konuBody.data ?? [];
+          setIhbarKonulari(subjects.map((s: any) => ({ value: s.code, label: s.name })));
         }
       } finally {
         if (active) setLoadingLookups(false);

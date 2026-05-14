@@ -38,7 +38,7 @@ async function main() {
     { code: 'insurance_company.delete', name: 'Sigorta Şirketi Sil', module: 'insurance_company', action: 'delete' },
 
     // Claim file
-    { code: 'claim_file.view', 'claim_file.create', 'claim_file.update', name: 'Hasar Dosyalarını Görüntüle', module: 'claim_file', action: 'view' },
+    { code: 'claim_file.view', name: 'Hasar Dosyalarını Görüntüle', module: 'claim_file', action: 'view' },
     { code: 'claim_file.create', name: 'Hasar Dosyası Oluştur', module: 'claim_file', action: 'create' },
     { code: 'claim_file.update', name: 'Hasar Dosyası Güncelle', module: 'claim_file', action: 'update' },
     { code: 'claim_file.delete', name: 'Hasar Dosyası Sil', module: 'claim_file', action: 'delete' },
@@ -59,7 +59,7 @@ async function main() {
     { code: 'task.complete', name: 'Görevi Tamamla', module: 'task', action: 'complete' },
 
     // Document
-    { code: 'document.view', 'document.upload', name: 'Dokümanları Görüntüle', module: 'document', action: 'view' },
+    { code: 'document.view', name: 'Dokümanları Görüntüle', module: 'document', action: 'view' },
     { code: 'document.upload', name: 'Doküman Yükle', module: 'document', action: 'upload' },
     { code: 'document.delete', name: 'Doküman Sil', module: 'document', action: 'delete' },
 
@@ -173,10 +173,10 @@ async function main() {
   const managerPermCodes = [
     'user.view', 'user.create', 'user.update',
     'insurance_company.view',
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
     'customer.view', 'customer.create', 'customer.update',
     'task.view', 'task.create', 'task.update', 'task.complete',
-    'document.view', 'document.upload', 'document.upload',
+    'document.view', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'dashboard.view',
     'invoice.view', 'invoice.create', 'invoice.update', 'invoice.delete',
@@ -189,10 +189,10 @@ async function main() {
 
   // Office staff permissions
   const officePermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.create', 'claim_file.update', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.status_change',
     'customer.view', 'customer.create', 'customer.update',
     'task.view', 'task.create', 'task.update', 'task.complete',
-    'document.view', 'document.upload', 'document.upload',
+    'document.view', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'invoice.view', 'invoice.create',
     'payment.view', 'payment.create',
@@ -202,25 +202,25 @@ async function main() {
 
   // Field staff permissions
   const fieldPermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update',
+    'claim_file.view', 'claim_file.update',
     'task.view', 'task.update', 'task.complete',
-    'document.view', 'document.upload', 'document.upload',
+    'document.view', 'document.upload',
     'note.view', 'note.create',
   ];
   await assignPermissions(fieldStaffRole.id, fieldPermCodes, createdPermissions);
 
   // Adjuster permissions
   const adjusterPermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.update', 'claim_file.status_change',
     'task.view', 'task.complete',
-    'document.view', 'document.upload', 'document.upload',
+    'document.view', 'document.upload',
     'note.view', 'note.create',
   ];
   await assignPermissions(adjusterRole.id, adjusterPermCodes, createdPermissions);
 
   // Finance permissions
   const financePermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update',
+    'claim_file.view', 'claim_file.update',
     'document.view', 'document.upload',
     'note.view', 'note.create',
     'dashboard.view',
@@ -322,7 +322,7 @@ async function main() {
       email: 'admin@meridyenassistance.com',
       passwordHash: hashedPassword,
       roleId: adminRole.id,
-      employeeCode: 'ADM001',
+      employeeCode: 'MRD001',
       status: 'active',
       isWebUser: true,
       isMobileUser: false,
@@ -960,7 +960,82 @@ async function main() {
   }
   console.log(`✅ Created/updated ${branches.length} branches`);
 
-  // ── Departmanlar / Hasar Türleri ──────────────────────────────────────────
+  // ── Domain Ayrıştırma: İhbar Konuları (ClaimSubject) ───────────────────────
+  const claimSubjects = [
+    // Hasar konuları
+    { code: 'konut-yangin', name: 'Konut Yangın', category: 'hasar', sortOrder: 1 },
+    { code: 'endustriyel-yangin', name: 'Endüstriyel Yangın', category: 'hasar', sortOrder: 2 },
+    { code: 'dahili-su', name: 'Dahili Su', category: 'hasar', sortOrder: 3 },
+    { code: 'hirsizlik', name: 'Hırsızlık', category: 'hasar', sortOrder: 4 },
+    { code: 'cam-kirilmasi', name: 'Cam Kırılması', category: 'hasar', sortOrder: 5 },
+    { code: 'dogal-afet', name: 'Doğal Afet', category: 'hasar', sortOrder: 6 },
+    { code: 'sel', name: 'Sel', category: 'hasar', sortOrder: 7 },
+    { code: 'firtina', name: 'Fırtına', category: 'hasar', sortOrder: 8 },
+    { code: 'deprem', name: 'Deprem', category: 'hasar', sortOrder: 9 },
+    { code: 'makine-kirilmasi', name: 'Makine Kırılması', category: 'hasar', sortOrder: 10 },
+    { code: 'elektronik-cihaz', name: 'Elektronik Cihaz', category: 'hasar', sortOrder: 11 },
+    { code: 'diger-hasar', name: 'Diğer', category: 'hasar', sortOrder: 12 },
+    // Acil yardım konuları
+    { code: 'su-baskini', name: 'Su Baskını', category: 'acil_yardim', sortOrder: 1 },
+    { code: 'cati-hasari', name: 'Çatı Hasarı', category: 'acil_yardim', sortOrder: 2 },
+    { code: 'cam-kirigi', name: 'Cam Kırığı', category: 'acil_yardim', sortOrder: 3 },
+    { code: 'kapi-kilit-arizasi', name: 'Kapı/Kilit Arızası', category: 'acil_yardim', sortOrder: 4 },
+    { code: 'elektrik-arizasi', name: 'Elektrik Arızası', category: 'acil_yardim', sortOrder: 5 },
+    { code: 'dogalgaz-arizasi', name: 'Doğalgaz Arızası', category: 'acil_yardim', sortOrder: 6 },
+    { code: 'yangin-hasari-acil', name: 'Yangın Hasarı', category: 'acil_yardim', sortOrder: 7 },
+    { code: 'hirsizlik-guvenlik', name: 'Hırsızlık/Güvenlik', category: 'acil_yardim', sortOrder: 8 },
+    { code: 'boru-patlamasi', name: 'Boru Patlaması', category: 'acil_yardim', sortOrder: 9 },
+    { code: 'asansor-arizasi', name: 'Asansör Arızası', category: 'acil_yardim', sortOrder: 10 },
+    { code: 'diger-acil', name: 'Diğer', category: 'acil_yardim', sortOrder: 11 },
+  ];
+
+  for (const cs of claimSubjects) {
+    await prisma.claimSubject.upsert({
+      where: { code: cs.code },
+      update: { name: cs.name, category: cs.category, sortOrder: cs.sortOrder },
+      create: { ...cs, isActive: true, metadata: {} },
+    });
+  }
+  console.log(`✅ Created/updated ${claimSubjects.length} claim subjects`);
+
+  // ── Domain Ayrıştırma: Gerçek Departmanlar (Organizasyon Birimleri) ────────
+  const realDepartments = [
+    {
+      code: 'hasar-onarim',
+      name: 'Hasar Onarım',
+      description: 'Hasar dosyaları operasyonel yönetim departmanı',
+      color: '#3B82F6',
+      reportFormat: 'repair',
+      sortOrder: 1,
+    },
+    {
+      code: 'acil-yardim',
+      name: 'Acil Yardım',
+      description: 'Acil yardım operasyon departmanı',
+      color: '#EF4444',
+      reportFormat: 'emergency',
+      sortOrder: 2,
+    },
+    {
+      code: 'sovtaj',
+      name: 'Sovtaj',
+      description: 'Sovtaj operasyon departmanı',
+      color: '#10B981',
+      reportFormat: 'repair',
+      sortOrder: 3,
+    },
+  ];
+
+  for (const dept of realDepartments) {
+    await prisma.department.upsert({
+      where: { code: dept.code },
+      update: { name: dept.name, description: dept.description, color: dept.color, reportFormat: dept.reportFormat, sortOrder: dept.sortOrder },
+      create: { ...dept, isSystem: true, status: 'active' },
+    });
+  }
+  console.log(`✅ Created/updated ${realDepartments.length} real departments (organizational units)`);
+
+  // ── DEPRECATED: Eski Departments (Hasar Türleri) - backward compat için kalsın ───
   const departments = [
     {
       code: 'konut-yangin',

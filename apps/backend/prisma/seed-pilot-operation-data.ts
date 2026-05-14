@@ -68,18 +68,23 @@ export async function seedPilotOperationData(prisma: PrismaClient) {
     { name: 'Ankara Merkez Operasyon', city: 'Ankara', region: 'İç Anadolu', address: 'Mustafa Kemal Mah. 2142. Cad. No:18 Çankaya/Ankara', phone: '03125559898' },
   ];
 
-  const branchMap = new Map<string, Awaited<ReturnType<typeof prisma.branch.upsert>>>();
+  const branchMap = new Map<string, any>();
   for (const branchSeed of branchSeeds) {
-    const branch = await prisma.branch.upsert({
-      where: { name: branchSeed.name },
-      update: {
-        city: branchSeed.city,
-        region: branchSeed.region,
-        address: branchSeed.address,
-        phone: branchSeed.phone,
-      },
-      create: branchSeed,
-    });
+    const existing = await prisma.branch.findFirst({ where: { name: branchSeed.name } });
+    let branch;
+    if (existing) {
+      branch = await prisma.branch.update({
+        where: { id: existing.id },
+        data: {
+          city: branchSeed.city,
+          region: branchSeed.region,
+          address: branchSeed.address,
+          phone: branchSeed.phone,
+        },
+      });
+    } else {
+      branch = await prisma.branch.create({ data: branchSeed });
+    }
     branchMap.set(branch.name, branch);
   }
 
@@ -295,48 +300,55 @@ export async function seedPilotOperationData(prisma: PrismaClient) {
     },
   ];
 
-  const customerMap = new Map<string, Awaited<ReturnType<typeof prisma.customer.upsert>>>();
+  const customerMap = new Map<string, any>();
   for (const seed of customerSeeds) {
-    const customer = await prisma.customer.upsert({
-      where: { email: seed.email },
-      update: {
-        type: 'bireysel',
-        entityType: 'individual',
-        subType: 'insured',
-        firstName: seed.firstName,
-        lastName: seed.lastName,
-        fullName: `${seed.firstName} ${seed.lastName}`,
-        phone: seed.phone,
-        city: seed.city,
-        district: seed.district,
-        address: seed.address,
-        notes: seed.notes,
-        serviceType: 'HASAR',
-        serviceBranches: ['KONUT', 'ISYERI'],
-        satisfactionScore: seed.satisfactionScore,
-        source: 'insurance_referral',
-        status: 'active',
-      },
-      create: {
-        type: 'bireysel',
-        entityType: 'individual',
-        subType: 'insured',
-        email: seed.email,
-        firstName: seed.firstName,
-        lastName: seed.lastName,
-        fullName: `${seed.firstName} ${seed.lastName}`,
-        phone: seed.phone,
-        city: seed.city,
-        district: seed.district,
-        address: seed.address,
-        notes: seed.notes,
-        serviceType: 'HASAR',
-        serviceBranches: ['KONUT', 'ISYERI'],
-        satisfactionScore: seed.satisfactionScore,
-        source: 'insurance_referral',
-        status: 'active',
-      },
-    });
+    const existing = await prisma.customer.findFirst({ where: { email: seed.email } });
+    let customer;
+    if (existing) {
+      customer = await prisma.customer.update({
+        where: { id: existing.id },
+        data: {
+          type: 'bireysel',
+          entityType: 'individual',
+          subType: 'insured',
+          firstName: seed.firstName,
+          lastName: seed.lastName,
+          fullName: `${seed.firstName} ${seed.lastName}`,
+          phone: seed.phone,
+          city: seed.city,
+          district: seed.district,
+          address: seed.address,
+          notes: seed.notes,
+          serviceType: 'HASAR',
+          serviceBranches: ['KONUT', 'ISYERI'],
+          satisfactionScore: seed.satisfactionScore,
+          source: 'insurance_referral',
+          status: 'active',
+        },
+      });
+    } else {
+      customer = await prisma.customer.create({
+        data: {
+          type: 'bireysel',
+          entityType: 'individual',
+          subType: 'insured',
+          email: seed.email,
+          firstName: seed.firstName,
+          lastName: seed.lastName,
+          fullName: `${seed.firstName} ${seed.lastName}`,
+          phone: seed.phone,
+          city: seed.city,
+          district: seed.district,
+          address: seed.address,
+          notes: seed.notes,
+          serviceType: 'HASAR',
+          serviceBranches: ['KONUT', 'ISYERI'],
+          satisfactionScore: seed.satisfactionScore,
+          source: 'insurance_referral',
+          status: 'active',
+        },
+      });
+    }
     customerMap.set(seed.email, customer);
   }
 

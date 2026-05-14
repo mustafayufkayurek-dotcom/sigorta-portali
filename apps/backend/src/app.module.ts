@@ -28,6 +28,8 @@ import { VendorsModule } from './modules/vendors/vendors.module';
 import { WorkGroupsModule } from './modules/work-groups/work-groups.module';
 import { RepairReportsModule } from './modules/repair-reports/repair-reports.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
+import { ClaimSubjectsModule } from './modules/claim-subjects/claim-subjects.module';
+import { ClaimResponsibilitiesModule } from './modules/claim-responsibilities/claim-responsibilities.module';
 import { SpeechModule } from './modules/speech/speech.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { DocumentTypesModule } from './modules/document-types/document-types.module';
@@ -143,6 +145,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     WorkGroupsModule,
     RepairReportsModule,
     DepartmentsModule,
+    ClaimSubjectsModule,
+    ClaimResponsibilitiesModule,
     SpeechModule,
     LocationsModule,
     DocumentTypesModule,

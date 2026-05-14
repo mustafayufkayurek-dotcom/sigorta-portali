@@ -245,6 +245,11 @@ export class ClaimFilesService {
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
     const lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
 
+    // Domain Ayrıştırma: claimSubjectId tercih, departmentFileSubjectId backward-compat
+    const claimSubjectId = rest.claimSubjectId ?? null;
+    const departmentFileSubjectId = rest.departmentFileSubjectId ?? null;
+    const departmentId = rest.departmentId ?? null;
+
     if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
     if (!policyNo) throw new BadRequestException('Poliçe numarası zorunludur');
     if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
@@ -278,6 +283,9 @@ export class ClaimFilesService {
           propertyAddressId,
           fileNo,
           currentStatusId,
+          claimSubjectId,
+          departmentFileSubjectId,
+          departmentId,
         },
         include: {
           insuranceCompany: true,
