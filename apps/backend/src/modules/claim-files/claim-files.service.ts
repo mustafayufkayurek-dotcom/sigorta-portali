@@ -218,8 +218,8 @@ export class ClaimFilesService {
   }
 
   async create(data: any) {
-    const { fileNo: _ignored, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
-    const fileNo = await this.generateFileNo();
+    const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
+    const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : await this.generateFileNo();
 
     // currentStatusId yoksa otomatik 'new' durumunu bul
     let currentStatusId = rest.currentStatusId;

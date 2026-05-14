@@ -68,6 +68,7 @@ const TR_ILLER = [
 // ─── İhbar Modal Bileşeni ────────────────────────────────────────────────────
 
 type IhbarFormData = {
+  dosyaNo: string;
   policeTuru: 'bireysel' | 'ticari' | '';
   konu: string;
   sigortaSirketi: string;
@@ -139,7 +140,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
   const [districts, setDistricts] = useState<DistrictOption[]>([]);
   const [form, setForm] = useState<IhbarFormData>({
-    policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
+    dosyaNo: '', policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
     sigortaliAdi: '', sigortaliTelefon: '', il: '', ilce: '', adresDetay: '',
     hasarTarihi: '', aciklama: '',
@@ -259,6 +260,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       }
       const provinceName = provinces.find((province) => province.id === form.il)?.name ?? '';
       const payload = {
+        fileNo: form.dosyaNo.trim() || undefined,
         productBranch: form.konu,
         insuranceCompanyId: form.sigortaSirketi,
         policyNo: form.policeNo.trim(),
@@ -384,6 +386,20 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               }
             </select>
             {errors.sigortaSirketi && <p className="text-xs text-red-500 mt-1">{errors.sigortaSirketi}</p>}
+          </div>
+
+          {/* Dosya Numarası */}
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1.5">
+              Dosya Numarası
+            </label>
+            <input
+              type="text"
+              className="input-base-sm"
+              placeholder="Boş bırakılırsa otomatik üretilir"
+              value={form.dosyaNo}
+              onChange={(e) => set('dosyaNo', e.target.value)}
+            />
           </div>
 
           {/* Poliçe Türü */}
