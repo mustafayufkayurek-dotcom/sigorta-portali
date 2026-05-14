@@ -277,6 +277,14 @@ model ClaimFile {
   lastHumanActionAt       DateTime? @map("last_human_action_at")
   statusChangedAt         DateTime? @map("status_changed_at")
 
+  // Eksper Portal İhbar Ek Bilgileri
+  policyType            String?   @map("policy_type")         // bireysel | ticari
+  commercialTitle       String?   @map("commercial_title")     // Ticari ünvan
+  taxOffice             String?   @map("tax_office")           // Vergi dairesi
+  taxNumber             String?   @map("tax_number")           // Vergi numarası
+  insuredName           String?   @map("insured_name")         // Sigortalı adı
+  insuredPhone          String?   @map("insured_phone")        // Sigortalı telefon
+
   closedAt              DateTime? @map("closed_at")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")

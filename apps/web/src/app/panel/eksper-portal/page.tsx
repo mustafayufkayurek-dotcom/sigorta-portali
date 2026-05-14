@@ -274,10 +274,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         propertyAddress: [form.adresDetay.trim(), form.ilce.trim(), provinceName].filter(Boolean).join(', '),
         city: provinceName || undefined,
         district: form.ilce.trim() || undefined,
-        policeTuru: form.policeTuru,
-        ticariUnvan: form.ticariUnvan.trim() || undefined,
-        vergiDairesi: form.vergiDairesi.trim() || undefined,
-        vergiNo: form.vergiNo.trim() || undefined,
+        policyType: form.policeTuru,
+        commercialTitle: form.ticariUnvan.trim() || undefined,
+        taxOffice: form.vergiDairesi.trim() || undefined,
+        taxNumber: form.vergiNo.trim() || undefined,
       };
       const res = await fetch(`${API_V1}/claim-files`, {
         method: 'POST',
