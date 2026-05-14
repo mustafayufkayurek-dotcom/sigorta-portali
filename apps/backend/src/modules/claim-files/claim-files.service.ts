@@ -256,13 +256,11 @@ export class ClaimFilesService {
     if (!propertyAddressId && propertyAddressText) {
       const city = typeof data.city === 'string' ? data.city.trim() || '' : '';
       const district = typeof data.district === 'string' ? data.district.trim() || '' : '';
-      const locationCode = `IHBAR-${Date.now().toString(36).toUpperCase()}`;
-      const address = await this.prisma.claimLocation.create({
+      const address = await this.prisma.address.create({
         data: {
-          code: locationCode,
-          name: propertyAddressText.slice(0, 120),
-          description: [district, city].filter(Boolean).join(' / ') || propertyAddressText,
-          status: 'active',
+          city: city || 'Belirtilmemiş',
+          district: district || undefined,
+          addressLine: propertyAddressText,
         },
       });
       propertyAddressId = address.id;
