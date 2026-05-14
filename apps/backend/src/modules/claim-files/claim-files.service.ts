@@ -218,7 +218,7 @@ export class ClaimFilesService {
   }
 
   async create(data: any) {
-    const { fileNo: _ignored, ...rest } = data;
+    const { fileNo: _ignored, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
     const fileNo = await this.generateFileNo();
 
     // currentStatusId yoksa otomatik 'new' durumunu bul
@@ -252,10 +252,10 @@ export class ClaimFilesService {
     if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
 
     let propertyAddressId = rest.propertyAddressId ?? null;
-    const propertyAddressText = typeof rest.propertyAddress === 'string' ? rest.propertyAddress.trim() : '';
+    const propertyAddressText = typeof data.propertyAddress === 'string' ? data.propertyAddress.trim() : '';
     if (!propertyAddressId && propertyAddressText) {
-      const city = typeof rest.city === 'string' ? rest.city.trim() || '' : '';
-      const district = typeof rest.district === 'string' ? rest.district.trim() || '' : '';
+      const city = typeof data.city === 'string' ? data.city.trim() || '' : '';
+      const district = typeof data.district === 'string' ? data.district.trim() || '' : '';
       const locationCode = `IHBAR-${Date.now().toString(36).toUpperCase()}`;
       const address = await this.prisma.claimLocation.create({
         data: {
