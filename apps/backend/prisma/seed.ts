@@ -38,7 +38,7 @@ async function main() {
     { code: 'insurance_company.delete', name: 'Sigorta Şirketi Sil', module: 'insurance_company', action: 'delete' },
 
     // Claim file
-    { code: 'claim_file.view', name: 'Hasar Dosyalarını Görüntüle', module: 'claim_file', action: 'view' },
+    { code: 'claim_file.view', 'claim_file.create', 'claim_file.update', name: 'Hasar Dosyalarını Görüntüle', module: 'claim_file', action: 'view' },
     { code: 'claim_file.create', name: 'Hasar Dosyası Oluştur', module: 'claim_file', action: 'create' },
     { code: 'claim_file.update', name: 'Hasar Dosyası Güncelle', module: 'claim_file', action: 'update' },
     { code: 'claim_file.delete', name: 'Hasar Dosyası Sil', module: 'claim_file', action: 'delete' },
@@ -59,7 +59,7 @@ async function main() {
     { code: 'task.complete', name: 'Görevi Tamamla', module: 'task', action: 'complete' },
 
     // Document
-    { code: 'document.view', name: 'Dokümanları Görüntüle', module: 'document', action: 'view' },
+    { code: 'document.view', 'document.upload', name: 'Dokümanları Görüntüle', module: 'document', action: 'view' },
     { code: 'document.upload', name: 'Doküman Yükle', module: 'document', action: 'upload' },
     { code: 'document.delete', name: 'Doküman Sil', module: 'document', action: 'delete' },
 
@@ -173,10 +173,10 @@ async function main() {
   const managerPermCodes = [
     'user.view', 'user.create', 'user.update',
     'insurance_company.view',
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
     'customer.view', 'customer.create', 'customer.update',
     'task.view', 'task.create', 'task.update', 'task.complete',
-    'document.view', 'document.upload',
+    'document.view', 'document.upload', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'dashboard.view',
     'invoice.view', 'invoice.create', 'invoice.update', 'invoice.delete',
@@ -189,10 +189,10 @@ async function main() {
 
   // Office staff permissions
   const officePermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.create', 'claim_file.update', 'claim_file.status_change',
     'customer.view', 'customer.create', 'customer.update',
     'task.view', 'task.create', 'task.update', 'task.complete',
-    'document.view', 'document.upload',
+    'document.view', 'document.upload', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'invoice.view', 'invoice.create',
     'payment.view', 'payment.create',
@@ -202,26 +202,26 @@ async function main() {
 
   // Field staff permissions
   const fieldPermCodes = [
-    'claim_file.view', 'claim_file.update',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update',
     'task.view', 'task.update', 'task.complete',
-    'document.view', 'document.upload',
+    'document.view', 'document.upload', 'document.upload',
     'note.view', 'note.create',
   ];
   await assignPermissions(fieldStaffRole.id, fieldPermCodes, createdPermissions);
 
   // Adjuster permissions
   const adjusterPermCodes = [
-    'claim_file.view', 'claim_file.update', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update', 'claim_file.status_change',
     'task.view', 'task.complete',
-    'document.view', 'document.upload',
+    'document.view', 'document.upload', 'document.upload',
     'note.view', 'note.create',
   ];
   await assignPermissions(adjusterRole.id, adjusterPermCodes, createdPermissions);
 
   // Finance permissions
   const financePermCodes = [
-    'claim_file.view', 'claim_file.update',
-    'document.view',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.update',
+    'document.view', 'document.upload',
     'note.view', 'note.create',
     'dashboard.view',
     'invoice.view', 'invoice.create', 'invoice.update', 'invoice.delete',
@@ -233,8 +233,8 @@ async function main() {
 
   // Expert permissions (harici eksper portal)
   const expertPermCodes = [
-    'claim_file.view',
-    'document.view',
+    'claim_file.view', 'claim_file.create', 'claim_file.update',
+    'document.view', 'document.upload',
     'note.view', 'note.create',
     'report.view',
   ];
@@ -242,8 +242,8 @@ async function main() {
 
   // Insurance company user permissions
   const insuranceCompanyUserPermCodes = [
-    'claim_file.view',
-    'document.view',
+    'claim_file.view', 'claim_file.create', 'claim_file.update',
+    'document.view', 'document.upload',
     'invoice.view',
     'report.view',
   ];
