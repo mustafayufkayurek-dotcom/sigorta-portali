@@ -2,41 +2,70 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
-// Default permissions per role until permission table is populated
 const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ADMIN: ['*'], // Admin has all permissions
   OFFICE_STAFF: [
     'customer.view', 'customer.create', 'customer.update',
-    'file.view', 'file.create', 'file.update', 'file.assign',
-    'supplier.view', 'supplier.create', 'supplier.update',
-    'expert.view',
-    'report.view', 'report.create', 'report.update',
-    'expense.view', 'expense.create',
-    'notification.view',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign',
+    'vendor.view', 'vendor.create', 'vendor.update',
+    'adjuster.view',
+    'report.view', 'report.create',
+    'budget.view', 'budget.create',
     'task.view', 'task.create', 'task.update',
   ],
   FIELD_STAFF: [
     'customer.view',
-    'file.view', 'file.update',
-    'report.view', 'report.create', 'report.update',
-    'expense.view', 'expense.create',
-    'notification.view',
+    'claim_file.view', 'claim_file.update',
+    'report.view', 'report.create',
+    'budget.view', 'budget.create',
     'task.view', 'task.update',
   ],
   FINANS: [
     'customer.view',
-    'file.view',
-    'finance.view', 'finance.create', 'finance.update',
+    'claim_file.view',
     'invoice.view', 'invoice.create', 'invoice.update',
-    'expense.view', 'expense.create', 'expense.approve',
+    'budget.view', 'budget.create', 'budget.review',
     'payment.view', 'payment.create', 'payment.update',
     'report.view',
   ],
   ACCOUNTANT: [
-    'customer.view', 'file.view',
-    'finance.view', 'finance.create', 'finance.update',
-    'invoice.view', 'invoice.create',
-    'expense.view', 'expense.approve',
+    'customer.view', 'claim_file.view',
+    'invoice.view', 'invoice.create', 'invoice.update',
+    'payment.view',
+    'budget.view', 'budget.review',
+    'report.view',
+  ],
+  MANAGER: [
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
+    'customer.view', 'customer.create', 'customer.update',
+    'dashboard.view',
+    'document.upload', 'document.view',
+    'insurance_company.view',
+    'invoice.create', 'invoice.delete', 'invoice.update', 'invoice.view',
+    'location.view',
+    'note.create', 'note.update', 'note.view',
+    'payment.create', 'payment.update', 'payment.view',
+    'report.view',
+    'task.complete', 'task.create', 'task.update', 'task.view',
+    'user.create', 'user.update', 'user.view',
+    'bank_account.create', 'bank_account.delete', 'bank_account.update', 'bank_account.view',
+  ],
+  ADJUSTER: [
+    'claim_file.view', 'claim_file.update', 'claim_file.status_change',
+    'document.upload', 'document.view',
+    'note.create', 'note.view',
+    'task.complete', 'task.view',
+  ],
+  EXPERT: [
+    'claim_file.view', 'claim_file.create', 'claim_file.update',
+    'document.upload', 'document.view',
+    'note.create', 'note.view',
+    'report.view',
+  ],
+  INSURANCE_COMPANY_USER: [
+    'claim_file.view',
+    'document.view',
+    'invoice.view',
     'report.view',
   ],
 };
@@ -67,10 +96,12 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    // Use DB permissions if available, otherwise fall back to role defaults
-    const effectivePermissions = user.permissions?.length > 0
-      ? user.permissions
-      : (ROLE_DEFAULT_PERMISSIONS[roleCode] || []);
+    let effectivePermissions = user.permissions || [];
+
+    if (effectivePermissions.length === 0) {
+      console.warn('FALLBACK_PERMISSION_USED', { userId: user.userId, roleCode });
+      effectivePermissions = ROLE_DEFAULT_PERMISSIONS[roleCode] || [];
+    }
 
     const hasPermission = requiredPermissions.some((permission) =>
       effectivePermissions.includes(permission) || effectivePermissions.includes('*'),
