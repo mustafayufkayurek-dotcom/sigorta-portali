@@ -128,6 +128,7 @@ export default function YeniHasarDosyasiPage() {
   const [policyNo, setPolicyNo] = useState('');
   const [claimNo, setClaimNo] = useState('');
   const [productBranch, setProductBranch] = useState('');
+  const [lossType, setLossType] = useState('');
   const [incidentDate, setIncidentDate] = useState('');
   const [notificationDate, setNotificationDate] = useState('');
   const [priority, setPriority] = useState('normal');
@@ -292,11 +293,12 @@ export default function YeniHasarDosyasiPage() {
     const errs: Record<string, string> = {};
     if (!insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
     if (!productBranch) errs.productBranch = 'Branş zorunludur.';
+    if (!lossType) errs.lossType = 'Hasar türü zorunludur.';
     if (!incidentDate) errs.incidentDate = 'Hasar tarihi zorunludur.';
     if (!notificationDate) errs.notificationDate = 'Bildirim tarihi zorunludur.';
     if (!selectedCustomer && !showNewCustomerForm) errs.customer = 'Müşteri seçiniz.';
     if (showNewCustomerForm) {
-      if (newCustomerType === 'individual' && !newCustomerFirstName && !newCustomerLastName) {
+      if (newCustomerType === 'individual' && (!newCustomerFirstName.trim() || !newCustomerLastName.trim())) {
         errs.customer = 'Ad Soyad zorunludur.';
       }
       if (newCustomerType === 'corporate' && !newCustomerCompanyName) errs.customer = 'Şirket adı zorunludur.';
@@ -350,6 +352,7 @@ export default function YeniHasarDosyasiPage() {
         policyNo: policyNo || 'N/A',
         claimNo: claimNo || 'N/A',
         productBranch,
+        lossType,
         incidentDate: new Date(incidentDate).toISOString(),
         notificationDate: new Date(notificationDate).toISOString(),
         priority,
@@ -360,7 +363,11 @@ export default function YeniHasarDosyasiPage() {
       if (currentStatusId) payload.currentStatusId = currentStatusId;
 
       const res = await axios.post(`${API}/claim-files`, payload, { headers: authHeader() });
-      router.push(`/panel/hasar-dosyalari/${res.data.data.id}`);
+      const createdId = res.data?.data?.id;
+      if (!createdId) {
+        throw new Error('Oluşturulan dosya kimliği alınamadı');
+      }
+      await router.push(`/panel/hasar-dosyalari/${createdId}`);
     } catch (e: unknown) {
       if (axios.isAxiosError(e)) {
         const msg = e.response?.data?.message;
@@ -417,13 +424,24 @@ export default function YeniHasarDosyasiPage() {
             </div>
 
             <div>
+              <label className="text-xs text-slate-500 block mb-1.5">Hasar Türü <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+              <input
+                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.lossType ? 'border-red-400' : 'border-slate-200'}`}
+                placeholder="Örn. Su sızıntısı"
+                value={lossType}
+                onChange={(e) => setLossType(e.target.value)}
+              />
+              {errors.lossType && <p className="text-xs text-red-500 mt-0.5">{errors.lossType}</p>}
+            </div>
+
+            <div>
               <label className="text-xs text-slate-500 block mb-1.5">Poliçe No</label>
               <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Opsiyonel" value={policyNo} onChange={(e) => setPolicyNo(e.target.value)} />
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Hasar No / Dosya No</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Dosya numarasını girin" value={claimNo} onChange={(e) => setClaimNo(e.target.value)} />
+              <label className="text-xs text-slate-500 block mb-1.5">Manuel Dosya Numarası</label>
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Dosya numarasını manuel girin" value={claimNo} onChange={(e) => setClaimNo(e.target.value)} />
             </div>
 
             <div>

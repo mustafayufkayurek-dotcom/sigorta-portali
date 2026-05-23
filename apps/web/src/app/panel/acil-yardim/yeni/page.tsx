@@ -775,6 +775,11 @@ export default function YeniAcilDosyaPage() {
               İptal
             </Link>
           </div>
+          {Object.keys(errors).length > 0 && !errors.general && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Lütfen zorunlu alanları ve hata mesajlarını kontrol edin.
+            </div>
+          )}
         </div>
       </form>
 

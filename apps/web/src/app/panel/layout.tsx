@@ -11,6 +11,9 @@ import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
+import axios from 'axios';
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
 
 // ── Rol Bazlı Erişim ──────────────────────────────────────────────────────────
 type RoleCode = string;
@@ -148,8 +151,8 @@ function Navbar({
   pendingRevisionCount, onLogout,
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
-  allowedScreens,
-}: NavbarProps) {
+  allowedScreens, companyLogo, companyName,
+}: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
     allowedScreens !== null
@@ -206,23 +209,42 @@ function Navbar({
         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
     }`;
 
+  const logoContent = companyLogo ? (
+    <img
+      src={companyLogo}
+      alt={companyName}
+      className="block h-10 w-auto max-w-[200px] object-contain rounded-md"
+      onError={() => { /* parent will fallback */ }}
+    />
+  ) : (
+    <>
+      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
+        <svg className="w-4.5 h-4.5 text-white" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      </div>
+      <div className="flex flex-col leading-none">
+        <span className="text-slate-900 text-[14px] font-extrabold tracking-tight">Meridyen</span>
+        <span className="text-slate-400 text-[10px] font-medium tracking-wider uppercase">Assistance</span>
+      </div>
+    </>
+  );
+
   return (
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar">
       <div className="mx-auto max-w-screen-2xl px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <div className="flex items-center gap-5 min-w-0">
-            <Link href="/panel" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
-                <svg className="w-4.5 h-4.5 text-white" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="text-slate-900 text-[14px] font-extrabold tracking-tight">Meridyen</span>
-                <span className="text-slate-400 text-[10px] font-medium tracking-wider uppercase">Assistance</span>
-              </div>
-            </Link>
+            <a
+              href="https://meridyenassistance.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 shrink-0"
+              title="Meridyen Assistance web sitesini yeni sekmede aç"
+            >
+              {logoContent}
+            </a>
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide max-w-[min(100vw-20rem,56rem)] lg:max-w-none lg:overflow-visible">
@@ -350,6 +372,10 @@ function Navbar({
                           <Link href="/panel/ayarlar/fiyat-yonetimi" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
                             <span className="text-base leading-none">💰</span>
                             Fiyat Yönetimi
+                          </Link>
+                          <Link href="/panel/ayarlar/test-notlari-gorev-takip" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
+                            <span className="text-base leading-none">🧪</span>
+                            Test Notları / Görev Takip
                           </Link>
                           <div className="my-1 border-t border-slate-100" />
                           <Link href="/panel/guvenlik/erisim-loglari" className="block mx-1 px-3 py-2.5 text-sm text-slate-500 hover:bg-slate-50/60 hover:text-slate-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
@@ -578,6 +604,7 @@ function Navbar({
                     <Link href="/panel/ayarlar/durumlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Durumlar</Link>
                     <Link href="/panel/ayarlar/sigorta-sirketleri" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Sigorta Şirketleri</Link>
                     <Link href="/panel/ayarlar/fiyat-yonetimi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Fiyat Yönetimi</Link>
+                    <Link href="/panel/ayarlar/test-notlari-gorev-takip" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Test Notları / Görev Takip</Link>
                     <Link href="/panel/guvenlik/erisim-loglari" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Güvenlik</Link>
                   </>
                 )}
@@ -642,21 +669,37 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [pendingAgreements, setPendingAgreements] = useState<PendingAgreement[]>([]);
   const [agreementsChecked, setAgreementsChecked] = useState(false);
   const [allowedScreens, setAllowedScreens] = useState<string[] | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Tema localStorage'dan oku — SSR safe
+  // Tema localStorage'dan oku — SSR safe + canlı güncelleme
   useEffect(() => {
-    try {
-      // Dark mode devre dışı — her zaman açık tema
-      const html = document.documentElement;
-      html.classList.remove('dark');
-      const saved = localStorage.getItem('app-theme');
-      if (saved) {
-        const { colorScheme } = JSON.parse(saved) as { mode?: string; colorScheme?: string };
-        if (colorScheme) {
-          html.setAttribute('data-color-scheme', colorScheme);
+    const applyTheme = () => {
+      try {
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const html = document.documentElement;
+        const saved = localStorage.getItem('app-theme');
+        if (saved) {
+          const { mode, colorScheme } = JSON.parse(saved) as { mode?: string; colorScheme?: string };
+          const shouldUseDark = mode === 'dark' || (mode === 'system' && media.matches);
+          html.classList.toggle('dark', shouldUseDark);
+          if (colorScheme) {
+            html.setAttribute('data-color-scheme', colorScheme);
+          }
+        } else {
+          html.classList.toggle('dark', media.matches);
         }
-      }
-    } catch { /* localStorage erişim hatası yoksay */ }
+      } catch { /* localStorage erişim hatası yoksay */ }
+    };
+    applyTheme();
+    // Kurulum sayfasından tema değişince anında uygula
+    const onStorage = (e: StorageEvent) => { if (e.key === 'app-theme') applyTheme(); };
+    const onCustom = () => applyTheme();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('theme-changed', onCustom);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('theme-changed', onCustom);
+    };
   }, []);
 
   // Scroll reset: route değişiminde sayfayı yukarı sıfırla
@@ -687,19 +730,61 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       router.push('/giris');
       return;
     }
-    const userData = localStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
-    setLoading(false);
-
-    // Ekran izinlerini DB'den çek
-    apiClient.get<{ screens?: string[] }>('/users/me/permissions')
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => {
+        const me = response.data?.data ?? response.data;
+        if (me) {
+          setUser(me);
+          localStorage.setItem('user', JSON.stringify(me));
+        } else {
+          throw new Error('auth/me boş döndü');
+        }
+        return apiClient.get<{ screens?: string[] }>('/users/me/permissions');
+      })
       .then((data) => { if (data?.screens) setAllowedScreens(data.screens); })
-      .catch(() => { /* DB izin yoksa role-default'a düşülür */ });
+      .catch(async (error) => {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (refreshToken) {
+            try {
+              const refreshResponse = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/refresh`, {
+                refreshToken,
+              });
+              const tokens = refreshResponse.data?.data;
+              if (tokens?.accessToken && tokens?.refreshToken) {
+                localStorage.setItem('accessToken', tokens.accessToken);
+                localStorage.setItem('refreshToken', tokens.refreshToken);
+                const retryMe = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/me`, {
+                  headers: { Authorization: `Bearer ${tokens.accessToken}` },
+                });
+                const me = retryMe.data?.data ?? retryMe.data;
+                if (me) {
+                  setUser(me);
+                  localStorage.setItem('user', JSON.stringify(me));
+                  const permissions = await apiClient.get<{ screens?: string[] }>('/users/me/permissions');
+                  if (permissions?.screens) setAllowedScreens(permissions.screens);
+                  return;
+                }
+              }
+            } catch {}
+          }
+        }
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        router.push('/giris');
+      })
+      .finally(() => {
+        setLoading(false);
+        setAuthChecked(true);
+      });
   }, [router]);
 
   // Onaylanmamış sözleşme kontrolü
   useEffect(() => {
-    if (loading) return;
+    if (loading || !authChecked) return;
     if (!localStorage.getItem('accessToken')) return;
     apiClient.get<any[]>('/agreements/pending')
       .then((data) => {
@@ -726,7 +811,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, []);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && authChecked) {
       fetchUnreadCount();
       const interval = setInterval(fetchUnreadCount, 60000);
       return () => clearInterval(interval);
@@ -735,7 +820,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [loading, fetchUnreadCount]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && authChecked) {
       if (!localStorage.getItem('accessToken')) return;
       apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'PENDING', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
@@ -834,6 +919,23 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const accessDenied =
     !loading && !isPortalUser && !isPublicPanelPath && roleCode !== '' && !hasRouteAccess(pathname, roleCode);
 
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
+
+  useEffect(() => {
+    axios.get(`${API_BASE}/system-settings/company-info`)
+      .then((r) => {
+        const d = r.data?.data ?? {};
+        if (d.logoUrl) {
+          const isDataUri = d.logoUrl.startsWith('data:');
+          const busted = isDataUri ? d.logoUrl : (d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`);
+          setCompanyLogo(busted);
+        }
+        if (d.name) setCompanyName(d.name);
+      })
+      .catch(() => {});
+  }, []);
+
   const navbarProps = {
     user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
     pendingRevisionCount, onLogout: handleLogout,
@@ -841,7 +943,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     onNotifClose: () => setNotifOpen(false),
     notifications, onMarkRead: handleMarkRead, onMarkAllRead: handleMarkAllRead,
     onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
-    allowedScreens,
+    allowedScreens, companyLogo, companyName,
   };
 
   if (loading) {

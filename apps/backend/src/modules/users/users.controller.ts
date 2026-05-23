@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { BulkDeleteUsersDto, NormalizedScreenPermission, UpdateInsuranceCompanyScopesDto, UpdateScreenPermissionsDto } from './users.dto';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -59,6 +60,21 @@ export class UsersController {
   @ApiOperation({ summary: 'Kullanıcı sil' })
   async remove(@Param('id') id: string) {
     const data = await this.usersService.remove(id);
+    return { success: true, data };
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('user.delete')
+  @ApiOperation({ summary: 'Toplu kullanıcı sil' })
+  async bulkDelete(
+    @Body() dto: BulkDeleteUsersDto,
+    @CurrentUser() currentUser: any,
+  ) {
+    const roleCode = String(currentUser?.role?.code ?? currentUser?.roleCode ?? '').toUpperCase();
+    if (roleCode !== 'ADMIN') {
+      throw new BadRequestException('Bu işlem yalnızca admin kullanıcılar tarafından yapılabilir');
+    }
+    const data = await this.usersService.bulkDelete(dto.ids, currentUser?.id);
     return { success: true, data };
   }
 
@@ -132,9 +148,28 @@ export class UsersController {
   @ApiOperation({ summary: 'Kullanıcı ekran izinlerini güncelle (admin)' })
   async upsertScreenPermissions(
     @Param('id') id: string,
-    @Body() dto: { screens: Array<{ code: string; canView: boolean; canEdit?: boolean }> },
+    @Body() dto: UpdateScreenPermissionsDto,
   ) {
-    const data = await this.usersService.upsertScreenPermissions(id, dto.screens);
+    const payloadScreens = dto.normalizedScreens ?? dto.screens ?? dto.screenPermissions ?? [];
+    const normalizedScreens: NormalizedScreenPermission[] = payloadScreens
+      .map((screen) => ({
+        code: screen.code ?? screen.screenCode ?? '',
+        canView: screen.canView,
+        canEdit: screen.canEdit,
+      }))
+      .filter((screen) => screen.code.length > 0);
+    const data = await this.usersService.upsertScreenPermissions(id, normalizedScreens);
+    return { success: true, data };
+  }
+
+  @Put(':id/insurance-company-scopes')
+  @RequirePermissions('user.update')
+  @ApiOperation({ summary: 'Kullanıcı sigorta şirketi kapsamlarını güncelle (admin)' })
+  async updateInsuranceCompanyScopes(
+    @Param('id') id: string,
+    @Body() dto: UpdateInsuranceCompanyScopesDto,
+  ) {
+    const data = await this.usersService.updateInsuranceCompanyScopes(id, dto.insuranceCompanyIds ?? []);
     return { success: true, data };
   }
 }

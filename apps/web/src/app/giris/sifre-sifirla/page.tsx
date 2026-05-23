@@ -17,9 +17,21 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
 
   useEffect(() => {
     if (!token) setError('Geçersiz veya eksik token. Lütfen tekrar şifre sıfırlama talebinde bulunun.');
+    axios.get(`${API}/system-settings/company-info`)
+      .then((r) => {
+        const d = r.data?.data ?? {};
+        if (d.logoUrl) {
+          const busted = d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`;
+          setCompanyLogo(busted);
+        }
+        if (d.name) setCompanyName(d.name);
+      })
+      .catch(() => {});
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,13 +258,24 @@ function ResetPasswordForm() {
       <div className="rp-root">
         <div className="rp-card">
           <div className="rp-logo">
-            <div className="rp-logo-shield">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" fillOpacity="0.9"/>
-                <path d="M9 12l2 2 4-4" stroke="rgba(45,114,217,1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span className="rp-logo-text">Meridyen <span>Assistance</span></span>
+            {companyLogo ? (
+              <img
+                src={companyLogo}
+                alt={companyName}
+                style={{ height: 36, width: 'auto', maxWidth: 160, objectFit: 'contain', borderRadius: 6 }}
+                onError={() => setCompanyLogo(null)}
+              />
+            ) : (
+              <>
+                <div className="rp-logo-shield">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" fillOpacity="0.9"/>
+                    <path d="M9 12l2 2 4-4" stroke="rgba(45,114,217,1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <span className="rp-logo-text">Meridyen <span>Assistance</span></span>
+              </>
+            )}
           </div>
 
           <h2 className="rp-heading">Yeni Şifre Belirle</h2>

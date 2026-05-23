@@ -1,0 +1,86 @@
+{
+  "status": 200,
+  "headers": {
+    "server": "nginx/1.25.5",
+    "date": "Sun, 17 May 2026 16:30:31 GMT",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "1069",
+    "connection": "keep-alive",
+    "vary": "Accept-Encoding, Origin",
+    "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "cross-origin",
+    "origin-agent-cluster": "?1",
+    "referrer-policy": "no-referrer, strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=15552000; includeSubDomains, max-age=63072000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff, nosniff",
+    "x-dns-prefetch-control": "off",
+    "x-download-options": "noopen",
+    "x-frame-options": "SAMEORIGIN, SAMEORIGIN",
+    "x-permitted-cross-domain-policies": "none",
+    "x-xss-protection": "0, 1; mode=block",
+    "access-control-allow-origin": "https://app.meridyen-tr.com",
+    "access-control-allow-credentials": "true",
+    "x-ratelimit-limit": "100",
+    "x-ratelimit-remaining": "99",
+    "x-ratelimit-reset": "60",
+    "etag": "W/\"42d-cdEMGvk75palXMhihtJ0YdcwjVg\"",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(self)"
+  },
+  "body": {
+    "data": [
+      {
+        "id": "e931493f-9c43-4a63-92c9-67584d65c124",
+        "code": "hasar-onarim",
+        "name": "Hasar Onarım",
+        "description": "Hasar dosyaları operasyonel yönetim departmanı",
+        "color": "#3B82F6",
+        "reportFormat": "repair",
+        "sortOrder": 1,
+        "isSystem": false,
+        "status": "active",
+        "createdAt": "2026-05-14T18:24:00.115Z",
+        "updatedAt": "2026-05-14T18:24:00.115Z",
+        "_count": {
+          "fileSubjects": 0,
+          "claimFiles": 0
+        }
+      },
+      {
+        "id": "74ff932f-29df-48dd-90ba-1a1996952557",
+        "code": "acil-yardim",
+        "name": "Acil Yardım",
+        "description": "Acil yardım operasyon departmanı",
+        "color": "#EF4444",
+        "reportFormat": "emergency",
+        "sortOrder": 2,
+        "isSystem": false,
+        "status": "active",
+        "createdAt": "2026-05-14T18:24:00.115Z",
+        "updatedAt": "2026-05-14T19:43:25.651Z",
+        "_count": {
+          "fileSubjects": 0,
+          "claimFiles": 0
+        }
+      },
+      {
+        "id": "66b65da2-f23e-41c5-8f02-ce774e95c24e",
+        "code": "sovtaj",
+        "name": "Sovtaj",
+        "description": "Sovtaj operasyon departmanı",
+        "color": "#10B981",
+        "reportFormat": "repair",
+        "sortOrder": 3,
+        "isSystem": false,
+        "status": "active",
+        "createdAt": "2026-05-14T18:24:00.115Z",
+        "updatedAt": "2026-05-14T18:24:00.115Z",
+        "_count": {
+          "fileSubjects": 0,
+          "claimFiles": 0
+        }
+      }
+    ]
+  },
+  "text": "{\"data\":[{\"id\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"code\":\"hasar-onarim\",\"name\":\"Hasar Onarım\",\"description\":\"Hasar dosyaları operasyonel yönetim departmanı\",\"color\":\"#3B82F6\",\"reportFormat\":\"repair\",\"sortOrder\":1,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}},{\"id\":\"74ff932f-29df-48dd-90ba-1a1996952557\",\"code\":\"acil-yardim\",\"name\":\"Acil Yardım\",\"description\":\"Acil yardım operasyon departmanı\",\"color\":\"#EF4444\",\"reportFormat\":\"emergency\",\"sortOrder\":2,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T19:43:25.651Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}},{\"id\":\"66b65da2-f23e-41c5-8f02-ce774e95c24e\",\"code\":\"sovtaj\",\"name\":\"Sovtaj\",\"description\":\"Sovtaj operasyon departmanı\",\"color\":\"#10B981\",\"reportFormat\":\"repair\",\"sortOrder\":3,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}}]}"
+}

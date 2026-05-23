@@ -744,13 +744,17 @@ export class SystemSettingsService {
 
   // ── Theme Config ──────────────────────────────────────────────────────────
 
-  async getThemeConfig(): Promise<{ mode: 'light' | 'dark'; colorScheme: string }> {
+  async getThemeConfig(): Promise<{ mode: 'light' | 'dark' | 'system'; colorScheme: string }> {
     const value = await this.get('theme_config');
-    return (value as any) ?? { mode: 'light', colorScheme: 'blue' };
+    return (value as any) ?? { mode: 'system', colorScheme: 'blue' };
   }
 
-  async setThemeConfig(config: { mode: 'light' | 'dark'; colorScheme: string }): Promise<typeof config> {
-    await this.set('theme_config', config);
-    return config;
+  async setThemeConfig(config: { mode: 'light' | 'dark' | 'system'; colorScheme: string }): Promise<typeof config> {
+    const normalized = {
+      mode: ['light', 'dark', 'system'].includes(config.mode) ? config.mode : 'system',
+      colorScheme: config.colorScheme || 'blue',
+    } as const;
+    await this.set('theme_config', normalized);
+    return normalized;
   }
 }

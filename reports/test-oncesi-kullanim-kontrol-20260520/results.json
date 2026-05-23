@@ -1,0 +1,200 @@
+[
+  {
+    "area": "Kullanıcı Yönetimi",
+    "screen": "Rol yönetimi",
+    "flow": "Rol listesi görüntüleme/oluşturma",
+    "expected": "Admin rol listesine erişir ve yeni rol aksiyonunu görebilir/başlatabilir.",
+    "actual": "Rol ekranı içerik gösteriyor.",
+    "status": "PASS",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/roles-page.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/roles-api.txt"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Kullanıcı Yönetimi",
+    "screen": "Departman yönetimi",
+    "flow": "Departman listesi görüntüleme/oluşturma",
+    "expected": "Admin departman listesine erişir ve yeni departman aksiyonunu görür.",
+    "actual": "Departman ekranı içerik gösteriyor.",
+    "status": "PASS",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/departments-page.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/departments-api.txt"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Kullanıcı Yönetimi",
+    "screen": "Kullanıcı düzenleme",
+    "flow": "Screen-permission ve insurance-company scope görüntüleme",
+    "expected": "Kullanıcı düzenleme formunda yetki ve sigorta kapsamı alanları görünür.",
+    "actual": "Yetki alanı: yok, sigorta scope alanı: var, URL=https://app.meridyen-tr.com/panel/ayarlar/kullanicilar",
+    "status": "FAIL",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/user-edit-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Kullanıcı Yönetimi",
+    "screen": "Kullanıcı oluşturma",
+    "flow": "Kullanıcı oluşturma tam akışı ve validasyon",
+    "expected": "Yeni kullanıcı formu açılır, zorunlu alan validasyonu görünür.",
+    "actual": "Form görünürlüğü: var, validasyon: yok",
+    "status": "FAIL",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/user-create-validation.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Dosya/İhbar Akışı",
+    "screen": "Dosya oluşturma",
+    "flow": "Manuel dosya numarası ve sigorta seçimi ile oluşturma ekranı",
+    "expected": "Dosya oluşturma formu açılır, manuel dosya no ve sigorta alanları bulunur.",
+    "actual": "Dosya no alanı: yok, sigorta seçimi: yok, URL=https://app.meridyen-tr.com/panel/dosyalar/yeni",
+    "status": "FAIL",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/claim-create-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Dosya/İhbar Akışı",
+    "screen": "Dosya listesi/düzenleme",
+    "flow": "Dosya düzenleme erişimi",
+    "expected": "Mevcut dosyadan düzenleme ekranına geçilir.",
+    "actual": "Liste görünürlüğü: var, düzenleme formu: yok, URL=https://app.meridyen-tr.com/panel/dosyalar",
+    "status": "FAIL",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/claim-edit-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Dosya/İhbar Akışı",
+    "screen": "İhbar oluşturma/düzenleme",
+    "flow": "İhbar akışı erişimi ve form alanları",
+    "expected": "İhbar ekranında oluşturma/düzenleme yapılabilir.",
+    "actual": "İhbar akışı tespit edilemedi. URL=https://app.meridyen-tr.com/panel/ihbarlar",
+    "status": "FAIL",
+    "priority": "P0",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/notification-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Referans Veriler",
+    "screen": "Evrak türleri ve ihbar konuları",
+    "flow": "Referans liste verileri görüntüleme",
+    "expected": "Evrak türleri ve ihbar konuları listeleri boş/kayıp olmadan görünür.",
+    "actual": "Evrak türleri: görülmedi, ihbar konuları: görüldü",
+    "status": "FAIL",
+    "priority": "P1",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/settings-reference-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Yetki ve Erişim",
+    "screen": "Admin erişimi",
+    "flow": "Admin ekranlarına tam erişim",
+    "expected": "Admin ana ayar ekranlarına yetki engeli olmadan erişir.",
+    "actual": "Bazı admin sayfaları engellendi: [{\"url\":\"https://app.meridyen-tr.com/panel\",\"final\":\"https://app.meridyen-tr.com/giris\",\"title\":\"Meridyen Assistance\"},{\"url\":\"https://app.meridyen-tr.com/panel/ayarlar\",\"final\":\"https://app.meridyen-tr.com/giris\",\"title\":\"Meridyen Assistance\"},{\"url\":\"https://app.meridyen-tr.com/panel/ayarlar/kullanicilar\",\"final\":\"https://app.meridyen-tr.com/panel/ayarlar/kullanicilar\",\"title\":\"Meridyen Assistance\"},{\"url\":\"https://app.meridyen-tr.com/panel/dosyalar\",\"final\":\"https://app.meridyen-tr.com/panel/dosyalar\",\"title\":\"Meridyen Assistance\"}]",
+    "status": "FAIL",
+    "priority": "P1",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/admin-access-visited.json",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/admin-access-last-page.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Yetki ve Erişim",
+    "screen": "Yetki dışı erişim denemesi",
+    "flow": "Anonim kullanıcı admin sayfasına yönlendirilir",
+    "expected": "Girişsiz erişimde login/yetki ekranına yönlendirme olur.",
+    "actual": "Final URL=https://app.meridyen-tr.com/panel/ayarlar/kullanicilar",
+    "status": "FAIL",
+    "priority": "P1",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/unauthorized-access.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Form Kullanımı",
+    "screen": "Genel form validasyonu",
+    "flow": "Zorunlu alan ve submit feedback",
+    "expected": "Boş submitte validasyon/feedback mesajı görünür.",
+    "actual": "Validasyon=false, feedback=false",
+    "status": "FAIL",
+    "priority": "P1",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/form-validation-claim.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Bildirim/Operasyon",
+    "screen": "In-app bildirimler",
+    "flow": "Bildirim ekranı/öğesi görünürlüğü",
+    "expected": "Uygulama içi bildirim alanı erişilebilir.",
+    "actual": "Bildirim öğesi görünmedi.",
+    "status": "FAIL",
+    "priority": "P2",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/dashboard-notifications.png"
+    ],
+    "notes": ""
+  },
+  {
+    "area": "Genel UX",
+    "screen": "Boş durumlar / kaydetmeme / yanlış yönlendirme",
+    "flow": "Ana panoda çıkmaza sokan akış kontrolü",
+    "expected": "Ana ekran temel gezinmede boş hata/çıkmaz yaratmaz.",
+    "actual": "Dashboard üzerinde hata metni bulundu.",
+    "status": "FAIL",
+    "priority": "P2",
+    "evidence": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-after-submit.png",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/login-url.txt",
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/evidence/dashboard-ux.png"
+    ],
+    "notes": ""
+  }
+]

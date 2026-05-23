@@ -74,6 +74,7 @@ import { ServiceTypesModule } from './modules/service-types/service-types.module
 import { DamageRepairTemplatesModule } from './modules/damage-repair-templates/damage-repair-templates.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
+import { TestNotesModule } from './modules/test-notes/test-notes.module';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -191,6 +192,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     DamageRepairTemplatesModule,
     AuditLogsModule,
     TimelineModule,
+    TestNotesModule,
     CacheModule,
   ],
   providers: [

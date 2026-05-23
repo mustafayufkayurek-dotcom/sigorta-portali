@@ -404,7 +404,7 @@ export default function ClaimFilesPage() {
                     <tr
                       key={claim.id}
                       className={`table-row cursor-pointer ${revCount > 0 ? 'border-l-4 border-amber-300' : ''}`}
-                      onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}`)}
+                      onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
                     >
                       <td className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claim.fileNo ?? claim.claimNo ?? '—'}</td>
                       <td className="table-td text-xs font-medium whitespace-nowrap max-w-[160px] truncate">{customerName}</td>

@@ -64,12 +64,8 @@ export class SystemSettingsController {
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Test maili gönder' })
   async sendTestMail(@Body() body: { to: string }) {
-    try {
-      await this.service.sendTestMail(body.to);
-      return { success: true, message: `Test maili ${body.to} adresine gönderildi.` };
-    } catch (err: any) {
-      return { success: false, message: err?.message ?? 'SMTP yapılandırması henüz tamamlanmamış' };
-    }
+    await this.service.sendTestMail(body.to);
+    return { success: true, message: `Test maili ${body.to} adresine gönderildi.` };
   }
 
   @Get('turmob-config')
@@ -373,8 +369,8 @@ export class SystemSettingsController {
   // ── Company Info ─────────────────────────────────────────────────────────
 
   @Get('company-info')
-  @RequirePermissions('settings.view')
-  @ApiOperation({ summary: 'Şirket bilgilerini getir' })
+  @Public()
+  @ApiOperation({ summary: 'Şirket bilgilerini getir (public)' })
   async getCompanyInfo() {
     const data = await this.service.getCompanyInfo();
     return { success: true, data };
@@ -484,7 +480,7 @@ export class SystemSettingsController {
   @Put('theme-config')
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Tema yapılandırmasını güncelle' })
-  async setThemeConfig(@Body() body: { mode: 'light' | 'dark'; colorScheme: string }) {
+  async setThemeConfig(@Body() body: { mode: 'light' | 'dark' | 'system'; colorScheme: string }) {
     const data = await this.service.setThemeConfig(body);
     return { success: true, data };
   }

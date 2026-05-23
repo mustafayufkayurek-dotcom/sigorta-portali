@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface SettingsPageLayoutProps {
   title: string;
@@ -9,6 +10,8 @@ interface SettingsPageLayoutProps {
   onAdd?: () => void;
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
+  backHref?: string;
+  backText?: string;
 }
 
 export function SettingsPageLayout({
@@ -18,11 +21,21 @@ export function SettingsPageLayout({
   onAdd,
   children,
   headerExtra,
+  backHref,
+  backText = '← Geri',
 }: SettingsPageLayoutProps) {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
+          {backHref && (
+            <Link
+              href={backHref}
+              className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
+            >
+              {backText}
+            </Link>
+          )}
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
           {description && (
             <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{description}</p>

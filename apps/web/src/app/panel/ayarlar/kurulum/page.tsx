@@ -55,7 +55,7 @@ interface IntegrationConfig {
 }
 
 interface ThemeConfig {
-  mode: 'light' | 'dark';
+  mode: 'light' | 'dark' | 'system';
   colorScheme: string;
 }
 
@@ -81,8 +81,8 @@ interface Role {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
-const labelCls = 'block text-xs font-semibold text-slate-600 mb-1';
+const inputCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
+const labelCls = 'block text-xs font-semibold text-slate-600 mb-1 dark:text-slate-400';
 
 const PROTECTED_EMAIL = 'admin@meridyenassistance.com';
 
@@ -768,8 +768,8 @@ function MailTab() {
     if (!testEmail) { setError('Test e-posta adresi girin.'); return; }
     setTesting(true); setError(''); setSuccess('');
     try {
-      await axios.post(`${API}/system-settings/mail-config/test`, { to: testEmail }, { headers: authHeader() });
-      setSuccess(`Test e-postası ${testEmail} adresine gönderildi.`);
+      const response = await axios.post(`${API}/system-settings/mail-config/test`, { to: testEmail }, { headers: authHeader() });
+      setSuccess(response.data?.message ?? `Test e-postası ${testEmail} adresine gönderildi.`);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'Test e-postası gönderilemedi.');
     } finally { setTesting(false); }
@@ -1034,7 +1034,8 @@ function EntegrasyonlarTab() {
 
 function SistemTab() {
   const [form, setForm] = useState<SystemConfig>({ currency: 'TRY', dateFormat: 'DD.MM.YYYY', language: 'tr', maxFileSizeMb: 10, timezone: 'Europe/Istanbul' });
-  const [theme, setTheme] = useState<ThemeConfig>({ mode: 'light', colorScheme: 'blue' });
+  const [theme, setTheme] = useState<ThemeConfig>({ mode: 'system', colorScheme: 'blue' });
+  const [themeHydrated, setThemeHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -1061,8 +1062,26 @@ function SistemTab() {
         const saved = localStorage.getItem('app-theme');
         if (saved) setTheme(JSON.parse(saved));
       } catch { /* ignore */ }
-    }).finally(() => setLoading(false));
+    }).finally(() => {
+      setLoading(false);
+      setThemeHydrated(true);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!themeHydrated) return;
+    try {
+      localStorage.setItem('app-theme', JSON.stringify({ mode: theme.mode, colorScheme: theme.colorScheme }));
+      const html = document.documentElement;
+      const shouldUseDark = theme.mode === 'dark'
+        || (theme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      html.classList.toggle('dark', shouldUseDark);
+      if (theme.colorScheme) {
+        html.setAttribute('data-color-scheme', theme.colorScheme);
+      }
+      window.dispatchEvent(new Event('theme-changed'));
+    } catch { /* ignore */ }
+  }, [theme, themeHydrated]);
 
   const handleSave = async () => {
     setSaving(true); setError(''); setSuccess('');
@@ -1075,11 +1094,9 @@ function SistemTab() {
       try {
         localStorage.setItem('app-theme', JSON.stringify({ mode: theme.mode, colorScheme: theme.colorScheme }));
         const html = document.documentElement;
-        if (theme.mode === 'dark') {
-          html.classList.add('dark');
-        } else {
-          html.classList.remove('dark');
-        }
+        const shouldUseDark = theme.mode === 'dark'
+          || (theme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        html.classList.toggle('dark', shouldUseDark);
         if (theme.colorScheme) {
           html.setAttribute('data-color-scheme', theme.colorScheme);
         }
@@ -1146,7 +1163,7 @@ function SistemTab() {
       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Tema ve Görünüm</h3>
       <div className="space-y-4 mb-6">
         <div className="flex gap-3">
-          {(['light', 'dark'] as const).map((m) => (
+          {(['light', 'dark', 'system'] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -1155,8 +1172,8 @@ function SistemTab() {
                 theme.mode === m ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
               }`}
             >
-              <span>{m === 'light' ? '☀️' : '🌙'}</span>
-              {m === 'light' ? 'Açık Mod' : 'Koyu Mod'}
+              <span>{m === 'light' ? '☀️' : m === 'dark' ? '🌙' : '🖥️'}</span>
+              {m === 'light' ? 'Açık Mod' : m === 'dark' ? 'Koyu Mod' : 'Sistem'}
             </button>
           ))}
         </div>
@@ -1191,10 +1208,10 @@ function SistemTab() {
 
 function TabCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-      <div className="px-6 py-4 border-b border-slate-100">
-        <h2 className="text-base font-bold text-slate-900">{title}</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+        <p className="text-sm text-slate-500 mt-0.5 dark:text-slate-400">{description}</p>
       </div>
       <div className="px-6 py-5">{children}</div>
     </div>
@@ -1263,11 +1280,11 @@ function ActionBtn({ title, onClick, danger, children }: { title: string; onClic
 
 function CardSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
-      <div className="h-4 bg-slate-200 rounded w-48 mb-2" />
-      <div className="h-3 bg-slate-100 rounded w-64 mb-6" />
+    <div className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse dark:border-slate-700 dark:bg-slate-900">
+      <div className="h-4 bg-slate-200 rounded w-48 mb-2 dark:bg-slate-700" />
+      <div className="h-3 bg-slate-100 rounded w-64 mb-6 dark:bg-slate-800" />
       <div className="grid grid-cols-2 gap-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-lg" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-lg dark:bg-slate-800" />)}
       </div>
     </div>
   );
@@ -1294,7 +1311,10 @@ function EmptyState({ msg }: { msg: string }) {
 
 function ErrorAlert({ msg, onClose }: { msg: string; onClose: () => void }) {
   return (
-    <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+    <div className="sticky top-0 z-40 mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 shadow-sm">
+      <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
       <span className="flex-1">{msg}</span>
       <button type="button" onClick={onClose} className="text-red-400 hover:text-red-600">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1305,9 +1325,9 @@ function ErrorAlert({ msg, onClose }: { msg: string; onClose: () => void }) {
 
 function SuccessAlert({ msg }: { msg: string }) {
   return (
-    <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700 flex items-center gap-2">
+    <div className="sticky top-0 z-40 mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700 flex items-center gap-2 shadow-sm">
       <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-      {msg}
+      <span>{msg}</span>
     </div>
   );
 }

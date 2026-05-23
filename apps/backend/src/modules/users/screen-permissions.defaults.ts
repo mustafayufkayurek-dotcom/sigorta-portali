@@ -12,6 +12,7 @@ export const ALL_SCREEN_CODES = [
   'guvenlik',
   'harita',
   'personel_yonetimi',
+  'test_notes_admin',
 ] as const;
 
 export type ScreenCode = (typeof ALL_SCREEN_CODES)[number];
@@ -30,6 +31,7 @@ export const SCREEN_LABELS: Record<string, string> = {
   guvenlik:          'Güvenlik',
   harita:            'Harita',
   personel_yonetimi: 'Personel Yönetimi',
+  test_notes_admin: 'Test Notları ve Görev Takip',
 };
 
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
@@ -37,6 +39,7 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
     'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon', 'eksperler',
     'musteriler', 'tedarikciler', 'raporlar', 'ayarlar', 'kullanicilar',
     'guvenlik', 'harita', 'personel_yonetimi',
+    'test_notes_admin',
   ],
   office_staff: [
     'hasar_dosyalari', 'musteriler', 'tedarikciler', 'eksperler',

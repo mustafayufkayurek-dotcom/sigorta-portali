@@ -27,6 +27,8 @@ interface User {
   createdAt: string;
 }
 
+type FormErrors = Partial<Record<keyof UserFormState, string>> & { general?: string };
+
 interface UserFormState {
   firstName: string;
   lastName: string;
@@ -100,10 +102,12 @@ function Modal({
 function FormField({
   label,
   required,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -113,6 +117,7 @@ function FormField({
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -152,6 +157,8 @@ export default function KullanicilarPage() {
   const [form, setForm] = useState<UserFormState>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Şifre sıfırlama
   const [resetPwd, setResetPwd] = useState('');
@@ -222,7 +229,40 @@ export default function KullanicilarPage() {
     if (selected.size === filtered.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(filtered.map((u) => u.id)));
+      setSelected(
+        new Set(
+          filtered
+            .filter((u) => u.email !== PROTECTED_ADMIN_EMAIL && u.id !== currentUserId)
+            .map((u) => u.id),
+        ),
+      );
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = filtered
+      .filter((u) => selected.has(u.id))
+      .map((u) => u.id)
+      .filter(Boolean);
+
+    if (ids.length === 0) return;
+
+    const confirmed = window.confirm(`${ids.length} kullanıcı silinecek, emin misiniz?`);
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      await axios.post(
+        `${API}/users/bulk-delete`,
+        { ids },
+        { headers: authHeader() },
+      );
+      setSelected(new Set());
+      await loadUsers();
+    } catch (err: any) {
+      window.alert(err?.response?.data?.message ?? 'Toplu silme sırasında hata oluştu.');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -231,6 +271,7 @@ export default function KullanicilarPage() {
   const openAdd = () => {
     setForm(DEFAULT_FORM);
     setFormError('');
+    setFormErrors({});
     setEditingUser(null);
     setModal('add');
   };
@@ -245,6 +286,7 @@ export default function KullanicilarPage() {
       roleId: u.role?.id ?? '',
     });
     setFormError('');
+    setFormErrors({});
     setEditingUser(u);
     setModal('edit');
   };
@@ -254,27 +296,34 @@ export default function KullanicilarPage() {
     setEditingUser(null);
     setForm(DEFAULT_FORM);
     setFormError('');
+    setFormErrors({});
     setResetPwd('');
     setResetPwdError('');
+  };
+
+  const validateUserForm = () => {
+    const nextErrors: FormErrors = {};
+    if (!form.firstName.trim()) nextErrors.firstName = 'Ad zorunludur.';
+    if (!form.lastName.trim()) nextErrors.lastName = 'Soyad zorunludur.';
+    if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
+    if (!form.roleId) nextErrors.roleId = 'Rol zorunludur.';
+    if (modal === 'add' && !form.password.trim()) nextErrors.password = 'Şifre zorunludur.';
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
+    if (!validateUserForm()) {
+      setFormError('Lütfen zorunlu alanları doldurun.');
+      return;
+    }
     setSaving(true);
     setFormError('');
+    setFormErrors({});
     try {
       if (modal === 'add') {
-        if (!form.password) {
-          setFormError('Şifre zorunludur.');
-          setSaving(false);
-          return;
-        }
-        if (!form.email) {
-          setFormError('E-posta zorunludur.');
-          setSaving(false);
-          return;
-        }
         const dupEmail = users.find((u) => u.email.toLowerCase() === form.email.toLowerCase());
         if (dupEmail) {
           setFormError('Bu e-posta adresiyle kayıtlı bir kullanıcı zaten mevcut!');
@@ -445,6 +494,14 @@ export default function KullanicilarPage() {
             <span className="text-sm text-slate-600 font-medium">{selected.size} kullanıcı seçildi</span>
             <button
               type="button"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-60"
+            >
+              {bulkDeleting ? 'Siliniyor...' : 'Seçilenleri Sil'}
+            </button>
+            <button
+              type="button"
               onClick={() => handleBulkStatus('active')}
               className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-medium hover:bg-green-100 transition-colors"
             >
@@ -534,19 +591,26 @@ export default function KullanicilarPage() {
                   >
                     {/* Checkbox */}
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(u.id)}
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                          selected.has(u.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 hover:border-blue-400'
-                        }`}
-                      >
-                        {selected.has(u.id) && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
+                      {u.email === PROTECTED_ADMIN_EMAIL || u.id === currentUserId ? (
+                        <span
+                          className="inline-flex h-4 w-4 rounded border-2 border-slate-200 bg-slate-100"
+                          title={u.id === currentUserId ? 'Kendi hesabınızı seçemezsiniz' : 'Sistem yöneticisi seçilemez'}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleSelect(u.id)}
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                            selected.has(u.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 hover:border-blue-400'
+                          }`}
+                        >
+                          {selected.has(u.id) && (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     {/* Ad Soyad */}
@@ -740,21 +804,27 @@ export default function KullanicilarPage() {
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Ad" required>
+              <FormField label="Ad" required error={formErrors.firstName}>
                 <input
                   type="text"
                   value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, firstName: e.target.value });
+                    setFormErrors((prev) => ({ ...prev, firstName: undefined, general: undefined }));
+                  }}
                   onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }}
                   className={inputCls}
                   placeholder="Ad"
                 />
               </FormField>
-              <FormField label="Soyad" required>
+              <FormField label="Soyad" required error={formErrors.lastName}>
                 <input
                   type="text"
                   value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, lastName: e.target.value });
+                    setFormErrors((prev) => ({ ...prev, lastName: undefined, general: undefined }));
+                  }}
                   onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }}
                   className={inputCls}
                   placeholder="Soyad"
@@ -762,11 +832,14 @@ export default function KullanicilarPage() {
               </FormField>
             </div>
 
-            <FormField label="E-posta" required>
+            <FormField label="E-posta" required error={formErrors.email}>
               <input
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, email: e.target.value });
+                  setFormErrors((prev) => ({ ...prev, email: undefined, general: undefined }));
+                }}
                 className={inputCls}
                 placeholder="ornek@sirket.com"
                 disabled={false}
@@ -787,20 +860,27 @@ export default function KullanicilarPage() {
             <FormField
               label={modal === 'add' ? 'Şifre' : 'Yeni Şifre (isteğe bağlı)'}
               required={modal === 'add'}
+              error={formErrors.password}
             >
               <input
                 type="password"
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, password: e.target.value });
+                  setFormErrors((prev) => ({ ...prev, password: undefined, general: undefined }));
+                }}
                 className={inputCls}
                 placeholder={modal === 'add' ? 'En az 6 karakter' : 'Boş bırakırsanız değişmez'}
               />
             </FormField>
 
-            <FormField label="Rol" required>
+            <FormField label="Rol" required error={formErrors.roleId}>
               <select
                 value={form.roleId}
-                onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, roleId: e.target.value });
+                  setFormErrors((prev) => ({ ...prev, roleId: undefined, general: undefined }));
+                }}
                 className={inputCls}
               >
                 <option value="">Rol Seçin...</option>
@@ -823,7 +903,7 @@ export default function KullanicilarPage() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || !form.firstName || !form.lastName || !form.email || !form.roleId}
+                disabled={saving}
                 className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Kaydediliyor...' : modal === 'add' ? 'Kullanıcı Oluştur' : 'Değişiklikleri Kaydet'}

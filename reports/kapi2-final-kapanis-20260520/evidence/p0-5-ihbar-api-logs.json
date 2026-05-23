@@ -1,0 +1,42 @@
+[
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/auth/login",
+    "status": 201,
+    "body": "{\"success\":true,\"data\":{\"user\":{\"id\":\"9e30eb31-a576-4e9d-a4f1-daef7886274d\",\"email\":\"admin@meridyenassistance.com\",\"firstName\":\"Sistem\",\"lastName\":\"Yöneticisi\",\"phone\":null,\"status\":\"active\",\"adjusterId\":null,\"role\":{\"id\":\"7e239eda-685c-4492-8239-144eeaccfad4\",\"code\":\"admin\",\"name\":\"Yönetici\"},\"branch\":null,\"permissions\":[\"task.complete\",\"user.view\",\"user.update\",\"user.create\",\"user.delete\",\"document.view\",\"invoice.delete\",\"payment.view\",\"document.upload\",\"document.delete\",\"payment.create\",\"note.view\",\"payment.update\",\"note.create\",\"note.update\",\"bank_account.view\",\"note.delete\",\"bank_account.create\",\"bank_account.update\",\"dashboard.view\",\"bank_account.delete\",\"invoice.view\",\"report.view\",\"role.view\",\"location.view\",\"role.create\",\"invoice.create\",\"role.update\",\"role.delete\",\"invoice.update\",\"insurance_company.view\",\"insurance_company.create\",\"customer.view\",\"customer.create\",\"insurance_company.update\",\"customer.update\",\"insurance_company.delete\",\"customer.delete\",\"task.create\",\"task.view\",\"task.update\",\"claim_file.view\",\"task.delete\",\"claim_file.create\",\"claim_file.update\",\"claim_file.delete\",\"claim_file.status_change\",\"claim_file.assign\",\"adjuster.assign\",\"audit_log.view\",\"adjuster.delete\",\"adjuster.report.review\",\"settings.manage\",\"adjuster.update\",\"adjuster.report.create\",\"budget.create\",\"vendor.update\",\"vendor_statement.create\",\"adjuster.view\",\"vendor_statement.view\",\"vendor.create\",\"adjuster.create\",\"budget.submit\",\"role.manage\",\"system.manage\",\"vendor_statement.manage\","
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/auth/me",
+    "status": 200,
+    "body": "{\"success\":true,\"data\":{\"id\":\"9e30eb31-a576-4e9d-a4f1-daef7886274d\",\"email\":\"admin@meridyenassistance.com\",\"firstName\":\"Sistem\",\"lastName\":\"Yöneticisi\",\"phone\":null,\"status\":\"active\",\"adjusterId\":null,\"role\":{\"id\":\"7e239eda-685c-4492-8239-144eeaccfad4\",\"code\":\"admin\",\"name\":\"Yönetici\"},\"branch\":null,\"permissions\":[\"task.complete\",\"user.view\",\"user.update\",\"user.create\",\"user.delete\",\"document.view\",\"invoice.delete\",\"payment.view\",\"document.upload\",\"document.delete\",\"payment.create\",\"note.view\",\"payment.update\",\"note.create\",\"note.update\",\"bank_account.view\",\"note.delete\",\"bank_account.create\",\"bank_account.update\",\"dashboard.view\",\"bank_account.delete\",\"invoice.view\",\"report.view\",\"role.view\",\"location.view\",\"role.create\",\"invoice.create\",\"role.update\",\"role.delete\",\"invoice.update\",\"insurance_company.view\",\"insurance_company.create\",\"customer.view\",\"customer.create\",\"insurance_company.update\",\"customer.update\",\"insurance_company.delete\",\"customer.delete\",\"task.create\",\"task.view\",\"task.update\",\"claim_file.view\",\"task.delete\",\"claim_file.create\",\"claim_file.update\",\"claim_file.delete\",\"claim_file.status_change\",\"claim_file.assign\",\"adjuster.assign\",\"audit_log.view\",\"adjuster.delete\",\"adjuster.report.review\",\"settings.manage\",\"adjuster.update\",\"adjuster.report.create\",\"budget.create\",\"vendor.update\",\"vendor_statement.create\",\"adjuster.view\",\"vendor_statement.view\",\"vendor.create\",\"adjuster.create\",\"budget.submit\",\"role.manage\",\"system.manage\",\"vendor_statement.manage\",\"vendor."
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/users/me/permissions",
+    "status": 200,
+    "body": "{\"success\":true,\"data\":{\"screens\":[\"hasar_dosyalari\",\"acil_yardim\",\"finans\",\"operasyon\",\"eksperler\",\"musteriler\",\"tedarikciler\",\"raporlar\",\"ayarlar\",\"kullanicilar\",\"guvenlik\",\"harita\",\"personel_yonetimi\"]}}"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/agreements/pending",
+    "status": 200,
+    "body": "{\"data\":[]}"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/notifications/unread-count",
+    "status": 200,
+    "body": "{\"success\":true,\"data\":{\"count\":0}}"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/revision-requests?status=PENDING&limit=1",
+    "status": 400,
+    "body": "{\"statusCode\":400,\"message\":[\"property limit should not exist\",\"status must be one of the following values: REQUESTED, IN_PROGRESS, COMPLETED, REJECTED, ESCALATED\"],\"error\":\"BadRequestException\",\"path\":\"/api/v1/revision-requests?status=PENDING&limit=1\",\"timestamp\":\"2026-05-20T18:56:09.474Z\"}"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/departments",
+    "status": 200,
+    "body": "{\"data\":[{\"id\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"code\":\"hasar-onarim\",\"name\":\"Hasar Onarım\",\"description\":\"Hasar dosyaları operasyonel yönetim departmanı\",\"color\":\"#3B82F6\",\"reportFormat\":\"repair\",\"sortOrder\":1,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}},{\"id\":\"74ff932f-29df-48dd-90ba-1a1996952557\",\"code\":\"acil-yardim\",\"name\":\"Acil Yardım\",\"description\":\"Acil yardım operasyon departmanı\",\"color\":\"#EF4444\",\"reportFormat\":\"emergency\",\"sortOrder\":2,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T19:43:25.651Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}},{\"id\":\"66b65da2-f23e-41c5-8f02-ce774e95c24e\",\"code\":\"sovtaj\",\"name\":\"Sovtaj\",\"description\":\"Sovtaj operasyon departmanı\",\"color\":\"#10B981\",\"reportFormat\":\"repair\",\"sortOrder\":3,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\",\"_count\":{\"fileSubjects\":0,\"claimFiles\":0}}]}"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/api/v1/system-settings/ihbar-konulari",
+    "status": 200,
+    "body": "{\"success\":true,\"data\":{\"hasar\":[\"Konut Yangın\",\"Endüstriyel Yangın\",\"Dahili Su\",\"Hırsızlık\",\"Cam Kırılması\",\"Doğal Afet\",\"Sel\",\"Fırtına\",\"Deprem\",\"Makine Kırılması\",\"Elektronik Cihaz\",\"Diğer\"],\"acil\":[]}}"
+  }
+]

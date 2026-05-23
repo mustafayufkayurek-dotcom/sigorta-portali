@@ -42,6 +42,7 @@ export class DepartmentsService {
 
   async findAll() {
     return this.prisma.department.findMany({
+      where: { status: 'active' },
       include: {
         _count: { select: { fileSubjects: true, claimFiles: true } },
       },
@@ -63,9 +64,17 @@ export class DepartmentsService {
 
   async create(dto: CreateDepartmentDto) {
     const existing = await this.prisma.department.findUnique({ where: { code: dto.code } });
-    if (existing) throw new BadRequestException('Bu kod zaten kullanımda');
-    const nameConflict = await this.prisma.department.findFirst({ where: { name: dto.name } });
-    if (nameConflict) throw new ConflictException('Bu isimde bir departman zaten mevcut');
+    if (existing && existing.status.toLowerCase() !== 'active') {
+      // Pasif kayıt var — geri yükle
+      const restored = await this.prisma.department.update({
+        where: { id: existing.id },
+        data: { ...dto, status: 'active' },
+      });
+      return restored;
+    }
+    if (existing) throw new BadRequestException('Bu kod zaten aktif bir departmanda kullanılıyor');
+    const nameConflict = await this.prisma.department.findFirst({ where: { name: dto.name, status: 'active' } });
+    if (nameConflict) throw new ConflictException('Bu isimde aktif bir departman zaten mevcut');
     const dept = await this.prisma.department.create({ data: dto });
 
     // Seed default field configs for the report format
@@ -91,8 +100,17 @@ export class DepartmentsService {
   async remove(id: string) {
     const dept = await this.findOne(id);
     if (dept.isSystem) throw new BadRequestException('Sistem departmanları silinemez');
-    await this.prisma.department.delete({ where: { id } });
-    return { success: true };
+    try {
+      await this.prisma.department.update({
+        where: { id },
+        data: { status: 'inactive' },
+      });
+      return { success: true, message: 'Departman pasifleştirildi' };
+    } catch (error) {
+      throw new BadRequestException(
+        'Departman pasifleştirilemedi. Bu departmana bağlı aktif kayıtlar olabilir.',
+      );
+    }
   }
 
   // ─── File Subjects ────────────────────────────────────────────────────────

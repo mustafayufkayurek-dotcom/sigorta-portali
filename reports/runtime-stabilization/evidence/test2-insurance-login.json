@@ -1,0 +1,65 @@
+{
+  "status": 201,
+  "headers": {
+    "server": "nginx/1.25.5",
+    "date": "Sun, 17 May 2026 16:31:06 GMT",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "1148",
+    "connection": "keep-alive",
+    "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "cross-origin",
+    "origin-agent-cluster": "?1",
+    "referrer-policy": "no-referrer, strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=15552000; includeSubDomains, max-age=63072000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff, nosniff",
+    "x-dns-prefetch-control": "off",
+    "x-download-options": "noopen",
+    "x-frame-options": "SAMEORIGIN, SAMEORIGIN",
+    "x-permitted-cross-domain-policies": "none",
+    "x-xss-protection": "0, 1; mode=block",
+    "access-control-allow-origin": "https://app.meridyen-tr.com",
+    "vary": "Origin",
+    "access-control-allow-credentials": "true",
+    "x-ratelimit-limit": "20",
+    "x-ratelimit-remaining": "19",
+    "x-ratelimit-reset": "300",
+    "etag": "W/\"47c-Hue5lZng8mSSKRifPQlDEJsxGaw\"",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(self)"
+  },
+  "body": {
+    "success": true,
+    "data": {
+      "user": {
+        "id": "1f503e2a-c28c-41dc-a5bd-f63442c7e1a0",
+        "email": "rt.insurance.scope.1779035506060@meridyenassistance.com",
+        "firstName": "Rt Insurance",
+        "lastName": "Scope",
+        "phone": null,
+        "status": "active",
+        "adjusterId": null,
+        "role": {
+          "id": "c0bc2641-2530-417f-98f9-499c5c189fec",
+          "code": "insurance_company_user",
+          "name": "Sigorta Şirketi"
+        },
+        "branch": null,
+        "permissions": [
+          "report.view",
+          "claim_file.view",
+          "document.view",
+          "invoice.view"
+        ],
+        "insuranceCompanyScopes": [],
+        "isMobileUser": false,
+        "isWebUser": true,
+        "lastLoginAt": "2026-05-17T16:31:06.078Z"
+      },
+      "tokens": {
+        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxZjUwM2UyYS1jMjhjLTQxZGMtYTViZC1mNjM0NDJjN2UxYTAiLCJlbWFpbCI6InJ0Lmluc3VyYW5jZS5zY29wZS4xNzc5MDM1NTA2MDYwQG1lcmlkeWVuYXNzaXN0YW5jZS5jb20iLCJpYXQiOjE3NzkwMzU0NjYsImV4cCI6MTc3OTAzNjM2Nn0.f8lp7wrsP0uG9gloSC0h-pNkvuSROecg7psV3aKs9dQ",
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxZjUwM2UyYS1jMjhjLTQxZGMtYTViZC1mNjM0NDJjN2UxYTAiLCJlbWFpbCI6InJ0Lmluc3VyYW5jZS5zY29wZS4xNzc5MDM1NTA2MDYwQG1lcmlkeWVuYXNzaXN0YW5jZS5jb20iLCJpYXQiOjE3NzkwMzU0NjYsImV4cCI6MTc3OTY0MDI2Nn0.XebrSTjQnegkHkVM8mI4-L6QQbPw3EDQmgAH4bflfPg"
+      }
+    }
+  },
+  "text": "{\"success\":true,\"data\":{\"user\":{\"id\":\"1f503e2a-c28c-41dc-a5bd-f63442c7e1a0\",\"email\":\"rt.insurance.scope.1779035506060@meridyenassistance.com\",\"firstName\":\"Rt Insurance\",\"lastName\":\"Scope\",\"phone\":null,\"status\":\"active\",\"adjusterId\":null,\"role\":{\"id\":\"c0bc2641-2530-417f-98f9-499c5c189fec\",\"code\":\"insurance_company_user\",\"name\":\"Sigorta Şirketi\"},\"branch\":null,\"permissions\":[\"report.view\",\"claim_file.view\",\"document.view\",\"invoice.view\"],\"insuranceCompanyScopes\":[],\"isMobileUser\":false,\"isWebUser\":true,\"lastLoginAt\":\"2026-05-17T16:31:06.078Z\"},\"tokens\":{\"accessToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxZjUwM2UyYS1jMjhjLTQxZGMtYTViZC1mNjM0NDJjN2UxYTAiLCJlbWFpbCI6InJ0Lmluc3VyYW5jZS5zY29wZS4xNzc5MDM1NTA2MDYwQG1lcmlkeWVuYXNzaXN0YW5jZS5jb20iLCJpYXQiOjE3NzkwMzU0NjYsImV4cCI6MTc3OTAzNjM2Nn0.f8lp7wrsP0uG9gloSC0h-pNkvuSROecg7psV3aKs9dQ\",\"refreshToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxZjUwM2UyYS1jMjhjLTQxZGMtYTViZC1mNjM0NDJjN2UxYTAiLCJlbWFpbCI6InJ0Lmluc3VyYW5jZS5zY29wZS4xNzc5MDM1NTA2MDYwQG1lcmlkeWVuYXNzaXN0YW5jZS5jb20iLCJpYXQiOjE3NzkwMzU0NjYsImV4cCI6MTc3OTY0MDI2Nn0.XebrSTjQnegkHkVM8mI4-L6QQbPw3EDQmgAH4bflfPg\"}}}"
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "i": 0,
+    "option": {
+      "value": "fc996bc5-4bbc-4d95-8485-190218f979e6",
+      "text": "Aksigorta"
+    }
+  },
+  {
+    "i": 1,
+    "option": {
+      "value": "yangin",
+      "text": "Yangın"
+    }
+  },
+  {
+    "i": 2,
+    "option": {
+      "value": "f3a22854-9d65-462a-87e8-73251a8310e5",
+      "text": "Yeni"
+    }
+  },
+  {
+    "i": 3,
+    "option": {
+      "value": "low",
+      "text": "Düşük"
+    }
+  },
+  {
+    "i": 4,
+    "option": {
+      "value": "71c5c944-4d4f-415c-ab60-0e7512ce4eb0",
+      "text": "1 - Adana"
+    }
+  }
+]

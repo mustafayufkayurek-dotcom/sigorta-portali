@@ -90,18 +90,75 @@ export class UsersService {
 
     applyTitleCase(data, ['firstName', 'lastName']);
 
-    const { password, ...rest } = data;
+    const { password, departmentMemberships, responsibilityAssignments, serviceAreas, insuranceCompanyIds, ...rest } = data;
+    if (!password) {
+      throw new BadRequestException('Şifre zorunludur');
+    }
+    await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        ...rest,
-        passwordHash: hashedPassword,
-      },
-      include: {
-        role: true,
-        branch: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          ...rest,
+          passwordHash: hashedPassword,
+        },
+        include: {
+          role: true,
+          branch: true,
+        },
+      });
+
+      if (Array.isArray(departmentMemberships) && departmentMemberships.length > 0) {
+        await tx.userDepartmentMembership.createMany({
+          data: departmentMemberships.map((item: any) => ({
+            userId: createdUser.id,
+            departmentId: item.departmentId,
+            isPrimary: item.isPrimary === true,
+            roleScope: item.roleScope ?? null,
+            isActive: item.isActive ?? true,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      if (Array.isArray(responsibilityAssignments) && responsibilityAssignments.length > 0) {
+        await tx.claimResponsibilityAssignment.createMany({
+          data: responsibilityAssignments.map((item: any) => ({
+            userId: createdUser.id,
+            departmentId: item.departmentId,
+            regionType: item.regionType ?? (item.countrywide === false ? 'city' : 'countrywide'),
+            regionValues: item.regionValues ?? [],
+            coverageType: item.coverageType ?? 'all',
+            coverageConfig: item.coverageConfig ?? {},
+            priority: typeof item.priority === 'number' ? item.priority : 0,
+            isActive: item.isActive ?? true,
+          })),
+        });
+      }
+
+      if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
+        await tx.userServiceArea.createMany({
+          data: serviceAreas.map((item: any) => ({
+            userId: createdUser.id,
+            provinceId: item.provinceId,
+            districtId: item.districtId ?? null,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      if (Array.isArray(insuranceCompanyIds) && insuranceCompanyIds.length > 0) {
+        await tx.userInsuranceCompanyScope.createMany({
+          data: insuranceCompanyIds.map((insuranceCompanyId: string) => ({
+            userId: createdUser.id,
+            insuranceCompanyId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return createdUser;
     });
 
     const { passwordHash, ...result } = user;
@@ -125,14 +182,36 @@ export class UsersService {
       delete data.password;
     }
 
-    const updated = await this.prisma.user.update({
+    const roleChanged = data.roleId !== undefined && data.roleId !== user.roleId;
+    const updateArgs: any = {
       where: { id },
       data,
       include: {
         role: true,
         branch: true,
       },
-    });
+    };
+
+    const updated = roleChanged
+      ? await this.prisma.$transaction(async (tx) => {
+          await tx.screenPermission.deleteMany({ where: { userId: id } });
+          await tx.userServiceArea.deleteMany({ where: { userId: id } });
+          await tx.userDepartmentMembership.deleteMany({ where: { userId: id } });
+          await tx.claimResponsibilityAssignment.deleteMany({ where: { userId: id } });
+
+          this.auditLogsService.log({
+            entityType: 'User',
+            entityId: id,
+            action: 'ROLE_SWITCH_CLEANUP',
+            oldValue: { roleId: user.roleId },
+            newValue: { roleId: data.roleId },
+            userId: id,
+            userEmail: user.email,
+          });
+
+          return tx.user.update(updateArgs);
+        })
+      : await this.prisma.user.update(updateArgs);
 
     if (data.roleId !== undefined || data.status !== undefined) {
       this.auditLogsService.log({
@@ -146,8 +225,44 @@ export class UsersService {
       });
     }
 
-    const { passwordHash, ...result } = updated;
+    const finalUpdated = updated ?? await this.prisma.user.findUnique({ where: { id } });
+    if (!finalUpdated) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    const { passwordHash, ...result } = finalUpdated;
     return result;
+  }
+
+  private async validateNestedUserRelations(
+    departmentMemberships?: Array<{ departmentId: string; isPrimary?: boolean }>,
+    responsibilityAssignments?: Array<{ departmentId: string }>,
+  ) {
+    if (!Array.isArray(departmentMemberships) || departmentMemberships.length === 0) {
+      return;
+    }
+
+    const primaryCount = departmentMemberships.filter((item) => item.isPrimary === true).length;
+    if (primaryCount < 1) {
+      throw new BadRequestException('En az 1 adet birincil departman üyeliği zorunludur');
+    }
+
+    const departmentIds = [...new Set(departmentMemberships.map((item) => item.departmentId).filter(Boolean))];
+    const existingDepartments = await this.prisma.department.findMany({
+      where: { id: { in: departmentIds } },
+      select: { id: true },
+    });
+    if (existingDepartments.length !== departmentIds.length) {
+      throw new BadRequestException('Geçersiz departman seçimi');
+    }
+
+    if (Array.isArray(responsibilityAssignments) && responsibilityAssignments.length > 0) {
+      const membershipSet = new Set(departmentIds);
+      const invalidAssignment = responsibilityAssignments.find((item) => !membershipSet.has(item.departmentId));
+      if (invalidAssignment) {
+        throw new BadRequestException('Sorumluluk ataması seçili departmanlardan biri için yapılmalıdır');
+      }
+    }
   }
 
   async remove(id: string) {
@@ -162,6 +277,49 @@ export class UsersService {
 
     await this.prisma.user.delete({ where: { id } });
     return { message: 'Kullanıcı silindi' };
+  }
+
+  async bulkDelete(ids: string[], actorUserId?: string) {
+    const uniqueIds = [...new Set(ids.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException('Silinecek kullanıcı seçilmedi');
+    }
+
+    if (actorUserId && uniqueIds.includes(actorUserId)) {
+      throw new BadRequestException('Kendi hesabınızı toplu silme ile silemezsiniz');
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, email: true },
+    });
+
+    if (users.length !== uniqueIds.length) {
+      throw new NotFoundException('Silinecek kullanıcılardan biri bulunamadı');
+    }
+
+    if (users.some((user) => user.email === 'admin@example.com')) {
+      throw new BadRequestException('Sistem yöneticisi toplu silme ile silinemez');
+    }
+
+    await this.prisma.user.updateMany({
+      where: { id: { in: uniqueIds } },
+      data: { status: 'INACTIVE' },
+    });
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: uniqueIds.join(','),
+      action: 'BULK_DEACTIVATE',
+      oldValue: users,
+      userId: actorUserId ?? '',
+    });
+
+    return {
+      deletedCount: uniqueIds.length,
+      ids: uniqueIds,
+      message: `${uniqueIds.length} kullanıcı silindi`,
+    };
   }
 
   async saveExpoPushToken(userId: string, token: string) {
@@ -243,6 +401,9 @@ export class UsersService {
   async upsertScreenPermissions(userId: string, screens: Array<{ code: string; canView: boolean; canEdit?: boolean }>) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (!screens || !Array.isArray(screens)) {
+      return { message: 'Ekran izinleri güncellendi' };
+    }
 
     await Promise.all(
       screens.map((s) =>
@@ -255,5 +416,36 @@ export class UsersService {
     );
 
     return { message: 'Ekran izinleri güncellendi' };
+  }
+
+  async updateInsuranceCompanyScopes(userId: string, insuranceCompanyIds: string[]) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    const normalizedIds = Array.isArray(insuranceCompanyIds) ? [...new Set(insuranceCompanyIds.filter(Boolean))] : [];
+
+    await this.prisma.userInsuranceCompanyScope.deleteMany({ where: { userId } });
+
+    if (normalizedIds.length > 0) {
+      const companies = await this.prisma.insuranceCompany.findMany({
+        where: { id: { in: normalizedIds } },
+        select: { id: true },
+      });
+      const validIds = new Set(companies.map((company) => company.id));
+      const missingIds = normalizedIds.filter((id) => !validIds.has(id));
+      if (missingIds.length > 0) {
+        throw new BadRequestException(`Geçersiz sigorta şirketi kimlikleri: ${missingIds.join(', ')}`);
+      }
+
+      await this.prisma.userInsuranceCompanyScope.createMany({
+        data: normalizedIds.map((insuranceCompanyId) => ({ userId, insuranceCompanyId })),
+        skipDuplicates: true,
+      });
+    }
+
+    return {
+      message: 'Sigorta şirketi kapsamları güncellendi',
+      insuranceCompanyIds: normalizedIds,
+    };
   }
 }

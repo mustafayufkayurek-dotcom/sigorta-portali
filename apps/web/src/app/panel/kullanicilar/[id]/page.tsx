@@ -16,7 +16,7 @@ const TABS: { id: UserTab; label: string; adminOnly?: boolean }[] = [
   { id: 'profil', label: 'Profil' },
   { id: 'bolgeler', label: 'Hizmet Bölgeleri' },
   { id: 'randevular', label: 'Randevuları' },
-  { id: 'ekranlar', label: 'Ekran İzinleri', adminOnly: true },
+  { id: 'ekranlar', label: 'Ekran İzinleri' },
 ];
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -319,13 +319,17 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setLoading(true);
     axios
       .get(`${API}/users/${userId}/screen-permissions?roleCode=${roleCode}`, { headers: authHeader() })
       .then((r) => setRows(r.data.data?.screens ?? []))
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError('Ekran izinleri yüklenemedi.');
+      })
       .finally(() => setLoading(false));
   }, [userId, roleCode]);
 
@@ -338,6 +342,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
     try {
       await axios.put(
         `${API}/users/${userId}/screen-permissions`,
@@ -348,6 +353,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       console.error(e);
+      setError('Ekran izinleri kaydedilemedi.');
     } finally {
       setSaving(false);
     }
@@ -362,6 +368,14 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
           Kullanıcının görebileceği ekranları belirleyin. Varsayılan değerler rol temellidir.
           Buradan yapılan değişiklikler rol varsayılanını ezer.
         </p>
+        {error && (
+          <div className="sticky top-0 z-40 mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 shadow-sm flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -433,12 +447,17 @@ export default function KullaniciDetayPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<UserTab>('profil');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [canManageScreens, setCanManageScreens] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const raw = localStorage.getItem('user') ?? '{}';
-      try { setIsAdmin((JSON.parse(raw)?.role?.code ?? '').toLowerCase() === 'admin'); } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(raw);
+        const roleCode = String(parsed?.role?.code ?? '').toLowerCase();
+        const permissions: string[] = parsed?.permissions ?? [];
+        setCanManageScreens(roleCode === 'admin' || permissions.includes('user.update') || permissions.includes('user.view'));
+      } catch { /* ignore */ }
     }
   }, []);
 
@@ -472,7 +491,7 @@ export default function KullaniciDetayPage() {
     );
   }
 
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+  const visibleTabs = TABS.filter((t) => t.id !== 'ekranlar' || canManageScreens);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -518,7 +537,7 @@ export default function KullaniciDetayPage() {
         {activeTab === 'profil' && <ProfilTab user={user} />}
         {activeTab === 'bolgeler' && <BolgelerTab user={user} onUpdate={loadUser} />}
         {activeTab === 'randevular' && <RandevularTab userId={id!} />}
-        {activeTab === 'ekranlar' && isAdmin && (
+        {activeTab === 'ekranlar' && canManageScreens && (
           <EkranlarTab userId={id!} roleCode={user?.role?.code ?? ''} />
         )}
       </div>

@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://app.meridyen-tr.com/panel",
+    "final": "https://app.meridyen-tr.com/giris",
+    "title": "Meridyen Assistance"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/panel/ayarlar",
+    "final": "https://app.meridyen-tr.com/giris",
+    "title": "Meridyen Assistance"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/panel/ayarlar/kullanicilar",
+    "final": "https://app.meridyen-tr.com/panel/ayarlar/kullanicilar",
+    "title": "Meridyen Assistance"
+  },
+  {
+    "url": "https://app.meridyen-tr.com/panel/dosyalar",
+    "final": "https://app.meridyen-tr.com/panel/dosyalar",
+    "title": "Meridyen Assistance"
+  }
+]

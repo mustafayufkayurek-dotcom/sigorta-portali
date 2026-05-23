@@ -179,6 +179,8 @@ model User {
 
   // Ekran İzinleri
   screenPermissions          ScreenPermission[]
+  createdTestNotes           TestNote[]                @relation("TestNoteCreatedBy")
+  assignedWorkItems          WorkItem[]                @relation("WorkItemAssignee")
   // Masraf İzleme
   createdExpenses            Expense[]                 @relation("ExpenseCreatedBy")
   approvedExpenses           Expense[]                 @relation("ExpenseApprovedBy")
@@ -2873,6 +2875,108 @@ enum ExpenseApprovalStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum WorkItemSource {
+  TEST_NOTU
+  KULLANICI_TALEBI
+  TEKNIK
+  DANISMAN
+}
+
+enum WorkPriority {
+  P0
+  P1
+  P2
+  KARAR_GEREKLI
+}
+
+enum WorkItemStatus {
+  ACIK
+  DEVAM_EDIYOR
+  TAMAMLANDI
+  IPTAL
+}
+
+enum TestNoteStatus {
+  YENI
+  INCELEMEDE
+  DUZELTME_BEKLIYOR
+  CANLIDA
+  KABUL
+  BACKLOG
+}
+
+model WorkItem {
+  id               String         @id @default(uuid())
+  siraNo           Int            @default(autoincrement()) @unique @map("sira_no")
+  konu             String
+  kaynak           WorkItemSource
+  oncelik          WorkPriority
+  sorumluId        String?        @map("sorumlu_id")
+  hedefTarih       DateTime?      @map("hedef_tarih")
+  hatirlatmaTarih  DateTime?      @map("hatirlatma_tarih")
+  durum            WorkItemStatus @default(ACIK)
+  kullaniciYorumu  String?        @map("kullanici_yorumu")
+  kanit            String?
+  kapanisNotu      String?        @map("kapanis_notu")
+  managerIslemNotu String?        @map("manager_islem_notu")
+  islemTarihi      DateTime?      @map("islem_tarihi")
+  isArchived       Boolean        @default(false) @map("is_archived")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  sorumlu User? @relation("WorkItemAssignee", fields: [sorumluId], references: [id], onDelete: SetNull)
+
+  @@index([durum])
+  @@index([oncelik])
+  @@index([sorumluId])
+  @@map("work_items")
+}
+
+model TestNote {
+  id                 String          @id @default(uuid())
+  testNo             String          @unique @map("test_no")
+  ekranModul         String          @map("ekran_modul")
+  kullaniciGozlemi   String          @map("kullanici_gozlemi")
+  beklenenDavranis   String          @map("beklenen_davranis")
+  ekranGoruntusu     String?         @map("ekran_goruntusu")
+  oncelik            WorkPriority
+  durum              TestNoteStatus  @default(YENI)
+  tekrarDurumu       Boolean         @default(false) @map("tekrar_durumu")
+  managerIslemNotu   String?         @map("manager_islem_notu")
+  islemTarihi        DateTime?       @map("islem_tarihi")
+  isArchived         Boolean         @default(false) @map("is_archived")
+  createdById        String          @map("created_by_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  createdBy User             @relation("TestNoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  format    TestNoteFormat?
+
+  @@index([durum])
+  @@index([oncelik])
+  @@index([createdById])
+  @@map("test_notes")
+}
+
+model TestNoteFormat {
+  id                    String       @id @default(uuid())
+  testNoteId            String       @unique @map("test_note_id")
+  sorunOzeti            String       @map("sorun_ozeti")
+  beklenenDavranis      String       @map("beklenen_davranis")
+  etkiSinifi            String       @map("etki_sinifi")
+  oncelik               WorkPriority
+  muhendislikTalimati   String       @map("muhendislik_talimati")
+  kabulKriteri          String       @map("kabul_kriteri")
+  kanitBeklentisi       String       @map("kanit_beklentisi")
+  onayli                Boolean      @default(false)
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  testNote TestNote @relation(fields: [testNoteId], references: [id], onDelete: Cascade)
+
+  @@map("test_note_formats")
 }
 
 enum ExpenseOperationSubject {

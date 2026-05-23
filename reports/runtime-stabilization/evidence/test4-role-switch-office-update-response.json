@@ -1,0 +1,469 @@
+{
+  "status": 200,
+  "headers": {
+    "server": "nginx/1.25.5",
+    "date": "Sun, 17 May 2026 16:31:07 GMT",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "11060",
+    "connection": "keep-alive",
+    "vary": "Accept-Encoding, Origin",
+    "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "cross-origin",
+    "origin-agent-cluster": "?1",
+    "referrer-policy": "no-referrer, strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=15552000; includeSubDomains, max-age=63072000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff, nosniff",
+    "x-dns-prefetch-control": "off",
+    "x-download-options": "noopen",
+    "x-frame-options": "SAMEORIGIN, SAMEORIGIN",
+    "x-permitted-cross-domain-policies": "none",
+    "x-xss-protection": "0, 1; mode=block",
+    "access-control-allow-origin": "https://app.meridyen-tr.com",
+    "access-control-allow-credentials": "true",
+    "x-ratelimit-limit": "100",
+    "x-ratelimit-remaining": "99",
+    "x-ratelimit-reset": "60",
+    "etag": "W/\"2b34-L7O7kQQOlksXjvA4n/VyFMy1jCc\"",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(self)"
+  },
+  "body": {
+    "success": true,
+    "data": {
+      "id": "8654e149-81c4-4a78-9e20-01ab6c6ac94d",
+      "branchId": null,
+      "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+      "adjusterId": null,
+      "firstName": "Rt Switch",
+      "lastName": "Screen",
+      "email": "rt.roleswitch.1779035507405@meridyenassistance.com",
+      "phone": null,
+      "status": "active",
+      "lastLoginAt": null,
+      "employeeCode": null,
+      "isMobileUser": false,
+      "isWebUser": true,
+      "expoPushToken": null,
+      "createdAt": "2026-05-17T16:31:07.002Z",
+      "updatedAt": "2026-05-17T16:31:07.242Z",
+      "role": {
+        "id": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+        "code": "office_staff",
+        "name": "Ofis Personeli",
+        "description": "Ofis operasyon personeli",
+        "createdAt": "2026-05-06T20:54:55.344Z",
+        "updatedAt": "2026-05-10T16:09:34.623Z",
+        "rolePermissions": [
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "8e57fb86-3a47-4536-8426-ea9e53b14f13",
+            "permission": {
+              "id": "8e57fb86-3a47-4536-8426-ea9e53b14f13",
+              "code": "note.view",
+              "name": "Notları Görüntüle",
+              "module": "note",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.279Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "ffa096ba-8e91-4681-87a2-af6b49fd64a6",
+            "permission": {
+              "id": "ffa096ba-8e91-4681-87a2-af6b49fd64a6",
+              "code": "claim_file.update",
+              "name": "Hasar Dosyası Güncelle",
+              "module": "claim_file",
+              "action": "update",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.277Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "f2784e7c-a1fa-4844-80a9-8a320bc89290",
+            "permission": {
+              "id": "f2784e7c-a1fa-4844-80a9-8a320bc89290",
+              "code": "task.complete",
+              "name": "Görevi Tamamla",
+              "module": "task",
+              "action": "complete",
+              "createdAt": "2026-05-06T20:54:55.265Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "e92535a3-fcac-4ba6-a801-e4afb574704f",
+            "permission": {
+              "id": "e92535a3-fcac-4ba6-a801-e4afb574704f",
+              "code": "customer.create",
+              "name": "Müşteri Oluştur",
+              "module": "customer",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "6f703e54-3f93-4511-b8ca-72805befc514",
+            "permission": {
+              "id": "6f703e54-3f93-4511-b8ca-72805befc514",
+              "code": "claim_file.create",
+              "name": "Hasar Dosyası Oluştur",
+              "module": "claim_file",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.277Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "a805d981-745b-41f6-a2d2-ff8dbcf87952",
+            "permission": {
+              "id": "a805d981-745b-41f6-a2d2-ff8dbcf87952",
+              "code": "note.create",
+              "name": "Not Oluştur",
+              "module": "note",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.280Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "bdfae6b1-d1f3-4f3a-9b55-1c68957041d6",
+            "permission": {
+              "id": "bdfae6b1-d1f3-4f3a-9b55-1c68957041d6",
+              "code": "claim_file.status_change",
+              "name": "Hasar Durumu Değiştir",
+              "module": "claim_file",
+              "action": "status_change",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.277Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "4f5fb8b4-0505-4452-acc1-22547b5afbb7",
+            "permission": {
+              "id": "4f5fb8b4-0505-4452-acc1-22547b5afbb7",
+              "code": "document.view",
+              "name": "Dokümanları Görüntüle",
+              "module": "document",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "22449833-a485-4c3f-afe7-da4d80f402c0",
+            "permission": {
+              "id": "22449833-a485-4c3f-afe7-da4d80f402c0",
+              "code": "claim_file.view",
+              "name": "Hasar Dosyalarını Görüntüle",
+              "module": "claim_file",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.277Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "1502847d-cd88-4558-8bf9-305bb1ac57d2",
+            "permission": {
+              "id": "1502847d-cd88-4558-8bf9-305bb1ac57d2",
+              "code": "task.create",
+              "name": "Görev Oluştur",
+              "module": "task",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.265Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "de4d180e-da7a-4cc2-a6fd-2af1c7b0b7f2",
+            "permission": {
+              "id": "de4d180e-da7a-4cc2-a6fd-2af1c7b0b7f2",
+              "code": "invoice.create",
+              "name": "Fatura Oluştur",
+              "module": "invoice",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.281Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "ab6fd79c-1395-473c-a580-7361db8559fc",
+            "permission": {
+              "id": "ab6fd79c-1395-473c-a580-7361db8559fc",
+              "code": "payment.create",
+              "name": "Ödeme Kaydet",
+              "module": "payment",
+              "action": "create",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.279Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "5e818aaf-444b-4abc-9c71-e914f5010e03",
+            "permission": {
+              "id": "5e818aaf-444b-4abc-9c71-e914f5010e03",
+              "code": "bank_account.view",
+              "name": "Banka Hesaplarını Görüntüle",
+              "module": "bank_account",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.280Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "09a3a4d3-be1e-4d9a-8c47-a6378390a0e9",
+            "permission": {
+              "id": "09a3a4d3-be1e-4d9a-8c47-a6378390a0e9",
+              "code": "task.view",
+              "name": "Görevleri Görüntüle",
+              "module": "task",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "fbc772d7-0592-4e96-9a93-484a1cd9c173",
+            "permission": {
+              "id": "fbc772d7-0592-4e96-9a93-484a1cd9c173",
+              "code": "note.update",
+              "name": "Not Güncelle",
+              "module": "note",
+              "action": "update",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.280Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "583860f5-5943-42ca-a45f-6f1a456af9e2",
+            "permission": {
+              "id": "583860f5-5943-42ca-a45f-6f1a456af9e2",
+              "code": "invoice.view",
+              "name": "Faturaları Görüntüle",
+              "module": "invoice",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.281Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "d42565eb-8aef-4773-83b2-5075fa99008d",
+            "permission": {
+              "id": "d42565eb-8aef-4773-83b2-5075fa99008d",
+              "code": "customer.view",
+              "name": "Müşterileri Görüntüle",
+              "module": "customer",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.277Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "572e4974-c1a8-4df3-ab50-f79133c7e957",
+            "permission": {
+              "id": "572e4974-c1a8-4df3-ab50-f79133c7e957",
+              "code": "document.upload",
+              "name": "Doküman Yükle",
+              "module": "document",
+              "action": "upload",
+              "createdAt": "2026-05-06T20:54:55.262Z",
+              "updatedAt": "2026-05-10T16:09:34.279Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "83ef6275-e856-43b1-8552-7594389e0a7d",
+            "permission": {
+              "id": "83ef6275-e856-43b1-8552-7594389e0a7d",
+              "code": "task.update",
+              "name": "Görev Güncelle",
+              "module": "task",
+              "action": "update",
+              "createdAt": "2026-05-06T20:54:55.265Z",
+              "updatedAt": "2026-05-10T16:09:34.279Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "fd1d56dd-995f-4f7d-97f4-3d7eae540961",
+            "permission": {
+              "id": "fd1d56dd-995f-4f7d-97f4-3d7eae540961",
+              "code": "payment.view",
+              "name": "Ödemeleri Görüntüle",
+              "module": "payment",
+              "action": "view",
+              "createdAt": "2026-05-06T20:54:55.263Z",
+              "updatedAt": "2026-05-10T16:09:34.282Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "8b65d321-7c7c-47e4-9d5b-7614ac1077f2",
+            "permission": {
+              "id": "8b65d321-7c7c-47e4-9d5b-7614ac1077f2",
+              "code": "customer.update",
+              "name": "Müşteri Güncelle",
+              "module": "customer",
+              "action": "update",
+              "createdAt": "2026-05-06T20:54:55.264Z",
+              "updatedAt": "2026-05-10T16:09:34.278Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "c11737a3-632e-4bb4-9d30-d62832a18d48",
+            "permission": {
+              "id": "c11737a3-632e-4bb4-9d30-d62832a18d48",
+              "code": "adjuster.assign",
+              "name": "Eksper Ata",
+              "module": "adjuster",
+              "action": "assign",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "fe80ec88-24a3-4bbb-85d4-ca0e38b97283",
+            "permission": {
+              "id": "fe80ec88-24a3-4bbb-85d4-ca0e38b97283",
+              "code": "adjuster.view",
+              "name": "Eksperleri Görüntüle",
+              "module": "adjuster",
+              "action": "view",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "fa6f9c0d-606a-4ac9-b2c8-410a6843ef27",
+            "permission": {
+              "id": "fa6f9c0d-606a-4ac9-b2c8-410a6843ef27",
+              "code": "vendor.create",
+              "name": "Tedarikçi Oluştur",
+              "module": "vendor",
+              "action": "create",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "1e7505dc-3bee-481c-94db-3348b06ef676",
+            "permission": {
+              "id": "1e7505dc-3bee-481c-94db-3348b06ef676",
+              "code": "budget.view",
+              "name": "Bütçeleri Görüntüle",
+              "module": "budget",
+              "action": "view",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "2551263f-f2c5-43a7-ad92-ae3a66b2a7d4",
+            "permission": {
+              "id": "2551263f-f2c5-43a7-ad92-ae3a66b2a7d4",
+              "code": "vendor.view",
+              "name": "Tedarikçileri Görüntüle",
+              "module": "vendor",
+              "action": "view",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          },
+          {
+            "roleId": "49881ed6-d820-4bc1-9cf7-4d8666239de2",
+            "permissionId": "9ac65c86-7d90-48db-babb-c2b9eca159ac",
+            "permission": {
+              "id": "9ac65c86-7d90-48db-babb-c2b9eca159ac",
+              "code": "report.create",
+              "name": "Rapor Oluştur",
+              "module": "report",
+              "action": "create",
+              "createdAt": "2026-05-16T17:22:01.665Z",
+              "updatedAt": "2026-05-16T17:22:01.665Z"
+            }
+          }
+        ]
+      },
+      "branch": null,
+      "userInsuranceCompanyScopes": [],
+      "departmentMemberships": [
+        {
+          "id": "d02ae5ac-08d3-4a04-96ba-033b6df571a7",
+          "userId": "8654e149-81c4-4a78-9e20-01ab6c6ac94d",
+          "departmentId": "e931493f-9c43-4a63-92c9-67584d65c124",
+          "roleScope": null,
+          "isPrimary": true,
+          "isActive": true,
+          "createdAt": "2026-05-17T16:31:07.009Z",
+          "updatedAt": "2026-05-17T16:31:07.009Z",
+          "department": {
+            "id": "e931493f-9c43-4a63-92c9-67584d65c124",
+            "code": "hasar-onarim",
+            "name": "Hasar Onarım",
+            "description": "Hasar dosyaları operasyonel yönetim departmanı",
+            "color": "#3B82F6",
+            "reportFormat": "repair",
+            "sortOrder": 1,
+            "isSystem": false,
+            "status": "active",
+            "createdAt": "2026-05-14T18:24:00.115Z",
+            "updatedAt": "2026-05-14T18:24:00.115Z"
+          }
+        }
+      ],
+      "responsibilityAssignments": [
+        {
+          "id": "12bdabb9-acfb-4c7e-915f-431de4d66abd",
+          "userId": "8654e149-81c4-4a78-9e20-01ab6c6ac94d",
+          "departmentId": "e931493f-9c43-4a63-92c9-67584d65c124",
+          "regionType": "countrywide",
+          "regionValues": [],
+          "coverageType": "field",
+          "coverageConfig": {},
+          "priority": 50,
+          "isActive": true,
+          "createdAt": "2026-05-17T16:31:07.013Z",
+          "updatedAt": "2026-05-17T16:31:07.013Z",
+          "department": {
+            "id": "e931493f-9c43-4a63-92c9-67584d65c124",
+            "code": "hasar-onarim",
+            "name": "Hasar Onarım",
+            "description": "Hasar dosyaları operasyonel yönetim departmanı",
+            "color": "#3B82F6",
+            "reportFormat": "repair",
+            "sortOrder": 1,
+            "isSystem": false,
+            "status": "active",
+            "createdAt": "2026-05-14T18:24:00.115Z",
+            "updatedAt": "2026-05-14T18:24:00.115Z"
+          }
+        }
+      ],
+      "serviceAreas": []
+    }
+  },
+  "text": "{\"success\":true,\"data\":{\"id\":\"8654e149-81c4-4a78-9e20-01ab6c6ac94d\",\"branchId\":null,\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"adjusterId\":null,\"firstName\":\"Rt Switch\",\"lastName\":\"Screen\",\"email\":\"rt.roleswitch.1779035507405@meridyenassistance.com\",\"phone\":null,\"status\":\"active\",\"lastLoginAt\":null,\"employeeCode\":null,\"isMobileUser\":false,\"isWebUser\":true,\"expoPushToken\":null,\"createdAt\":\"2026-05-17T16:31:07.002Z\",\"updatedAt\":\"2026-05-17T16:31:07.242Z\",\"role\":{\"id\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"code\":\"office_staff\",\"name\":\"Ofis Personeli\",\"description\":\"Ofis operasyon personeli\",\"createdAt\":\"2026-05-06T20:54:55.344Z\",\"updatedAt\":\"2026-05-10T16:09:34.623Z\",\"rolePermissions\":[{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"8e57fb86-3a47-4536-8426-ea9e53b14f13\",\"permission\":{\"id\":\"8e57fb86-3a47-4536-8426-ea9e53b14f13\",\"code\":\"note.view\",\"name\":\"Notları Görüntüle\",\"module\":\"note\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.279Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"ffa096ba-8e91-4681-87a2-af6b49fd64a6\",\"permission\":{\"id\":\"ffa096ba-8e91-4681-87a2-af6b49fd64a6\",\"code\":\"claim_file.update\",\"name\":\"Hasar Dosyası Güncelle\",\"module\":\"claim_file\",\"action\":\"update\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.277Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"f2784e7c-a1fa-4844-80a9-8a320bc89290\",\"permission\":{\"id\":\"f2784e7c-a1fa-4844-80a9-8a320bc89290\",\"code\":\"task.complete\",\"name\":\"Görevi Tamamla\",\"module\":\"task\",\"action\":\"complete\",\"createdAt\":\"2026-05-06T20:54:55.265Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"e92535a3-fcac-4ba6-a801-e4afb574704f\",\"permission\":{\"id\":\"e92535a3-fcac-4ba6-a801-e4afb574704f\",\"code\":\"customer.create\",\"name\":\"Müşteri Oluştur\",\"module\":\"customer\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"6f703e54-3f93-4511-b8ca-72805befc514\",\"permission\":{\"id\":\"6f703e54-3f93-4511-b8ca-72805befc514\",\"code\":\"claim_file.create\",\"name\":\"Hasar Dosyası Oluştur\",\"module\":\"claim_file\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.277Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"a805d981-745b-41f6-a2d2-ff8dbcf87952\",\"permission\":{\"id\":\"a805d981-745b-41f6-a2d2-ff8dbcf87952\",\"code\":\"note.create\",\"name\":\"Not Oluştur\",\"module\":\"note\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.280Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"bdfae6b1-d1f3-4f3a-9b55-1c68957041d6\",\"permission\":{\"id\":\"bdfae6b1-d1f3-4f3a-9b55-1c68957041d6\",\"code\":\"claim_file.status_change\",\"name\":\"Hasar Durumu Değiştir\",\"module\":\"claim_file\",\"action\":\"status_change\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.277Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"4f5fb8b4-0505-4452-acc1-22547b5afbb7\",\"permission\":{\"id\":\"4f5fb8b4-0505-4452-acc1-22547b5afbb7\",\"code\":\"document.view\",\"name\":\"Dokümanları Görüntüle\",\"module\":\"document\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"22449833-a485-4c3f-afe7-da4d80f402c0\",\"permission\":{\"id\":\"22449833-a485-4c3f-afe7-da4d80f402c0\",\"code\":\"claim_file.view\",\"name\":\"Hasar Dosyalarını Görüntüle\",\"module\":\"claim_file\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.277Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"1502847d-cd88-4558-8bf9-305bb1ac57d2\",\"permission\":{\"id\":\"1502847d-cd88-4558-8bf9-305bb1ac57d2\",\"code\":\"task.create\",\"name\":\"Görev Oluştur\",\"module\":\"task\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.265Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"de4d180e-da7a-4cc2-a6fd-2af1c7b0b7f2\",\"permission\":{\"id\":\"de4d180e-da7a-4cc2-a6fd-2af1c7b0b7f2\",\"code\":\"invoice.create\",\"name\":\"Fatura Oluştur\",\"module\":\"invoice\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.281Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"ab6fd79c-1395-473c-a580-7361db8559fc\",\"permission\":{\"id\":\"ab6fd79c-1395-473c-a580-7361db8559fc\",\"code\":\"payment.create\",\"name\":\"Ödeme Kaydet\",\"module\":\"payment\",\"action\":\"create\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.279Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"5e818aaf-444b-4abc-9c71-e914f5010e03\",\"permission\":{\"id\":\"5e818aaf-444b-4abc-9c71-e914f5010e03\",\"code\":\"bank_account.view\",\"name\":\"Banka Hesaplarını Görüntüle\",\"module\":\"bank_account\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.280Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"09a3a4d3-be1e-4d9a-8c47-a6378390a0e9\",\"permission\":{\"id\":\"09a3a4d3-be1e-4d9a-8c47-a6378390a0e9\",\"code\":\"task.view\",\"name\":\"Görevleri Görüntüle\",\"module\":\"task\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"fbc772d7-0592-4e96-9a93-484a1cd9c173\",\"permission\":{\"id\":\"fbc772d7-0592-4e96-9a93-484a1cd9c173\",\"code\":\"note.update\",\"name\":\"Not Güncelle\",\"module\":\"note\",\"action\":\"update\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.280Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"583860f5-5943-42ca-a45f-6f1a456af9e2\",\"permission\":{\"id\":\"583860f5-5943-42ca-a45f-6f1a456af9e2\",\"code\":\"invoice.view\",\"name\":\"Faturaları Görüntüle\",\"module\":\"invoice\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.281Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"d42565eb-8aef-4773-83b2-5075fa99008d\",\"permission\":{\"id\":\"d42565eb-8aef-4773-83b2-5075fa99008d\",\"code\":\"customer.view\",\"name\":\"Müşterileri Görüntüle\",\"module\":\"customer\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.277Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"572e4974-c1a8-4df3-ab50-f79133c7e957\",\"permission\":{\"id\":\"572e4974-c1a8-4df3-ab50-f79133c7e957\",\"code\":\"document.upload\",\"name\":\"Doküman Yükle\",\"module\":\"document\",\"action\":\"upload\",\"createdAt\":\"2026-05-06T20:54:55.262Z\",\"updatedAt\":\"2026-05-10T16:09:34.279Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"83ef6275-e856-43b1-8552-7594389e0a7d\",\"permission\":{\"id\":\"83ef6275-e856-43b1-8552-7594389e0a7d\",\"code\":\"task.update\",\"name\":\"Görev Güncelle\",\"module\":\"task\",\"action\":\"update\",\"createdAt\":\"2026-05-06T20:54:55.265Z\",\"updatedAt\":\"2026-05-10T16:09:34.279Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"fd1d56dd-995f-4f7d-97f4-3d7eae540961\",\"permission\":{\"id\":\"fd1d56dd-995f-4f7d-97f4-3d7eae540961\",\"code\":\"payment.view\",\"name\":\"Ödemeleri Görüntüle\",\"module\":\"payment\",\"action\":\"view\",\"createdAt\":\"2026-05-06T20:54:55.263Z\",\"updatedAt\":\"2026-05-10T16:09:34.282Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"8b65d321-7c7c-47e4-9d5b-7614ac1077f2\",\"permission\":{\"id\":\"8b65d321-7c7c-47e4-9d5b-7614ac1077f2\",\"code\":\"customer.update\",\"name\":\"Müşteri Güncelle\",\"module\":\"customer\",\"action\":\"update\",\"createdAt\":\"2026-05-06T20:54:55.264Z\",\"updatedAt\":\"2026-05-10T16:09:34.278Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"c11737a3-632e-4bb4-9d30-d62832a18d48\",\"permission\":{\"id\":\"c11737a3-632e-4bb4-9d30-d62832a18d48\",\"code\":\"adjuster.assign\",\"name\":\"Eksper Ata\",\"module\":\"adjuster\",\"action\":\"assign\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"fe80ec88-24a3-4bbb-85d4-ca0e38b97283\",\"permission\":{\"id\":\"fe80ec88-24a3-4bbb-85d4-ca0e38b97283\",\"code\":\"adjuster.view\",\"name\":\"Eksperleri Görüntüle\",\"module\":\"adjuster\",\"action\":\"view\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"fa6f9c0d-606a-4ac9-b2c8-410a6843ef27\",\"permission\":{\"id\":\"fa6f9c0d-606a-4ac9-b2c8-410a6843ef27\",\"code\":\"vendor.create\",\"name\":\"Tedarikçi Oluştur\",\"module\":\"vendor\",\"action\":\"create\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"1e7505dc-3bee-481c-94db-3348b06ef676\",\"permission\":{\"id\":\"1e7505dc-3bee-481c-94db-3348b06ef676\",\"code\":\"budget.view\",\"name\":\"Bütçeleri Görüntüle\",\"module\":\"budget\",\"action\":\"view\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"2551263f-f2c5-43a7-ad92-ae3a66b2a7d4\",\"permission\":{\"id\":\"2551263f-f2c5-43a7-ad92-ae3a66b2a7d4\",\"code\":\"vendor.view\",\"name\":\"Tedarikçileri Görüntüle\",\"module\":\"vendor\",\"action\":\"view\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}},{\"roleId\":\"49881ed6-d820-4bc1-9cf7-4d8666239de2\",\"permissionId\":\"9ac65c86-7d90-48db-babb-c2b9eca159ac\",\"permission\":{\"id\":\"9ac65c86-7d90-48db-babb-c2b9eca159ac\",\"code\":\"report.create\",\"name\":\"Rapor Oluştur\",\"module\":\"report\",\"action\":\"create\",\"createdAt\":\"2026-05-16T17:22:01.665Z\",\"updatedAt\":\"2026-05-16T17:22:01.665Z\"}}]},\"branch\":null,\"userInsuranceCompanyScopes\":[],\"departmentMemberships\":[{\"id\":\"d02ae5ac-08d3-4a04-96ba-033b6df571a7\",\"userId\":\"8654e149-81c4-4a78-9e20-01ab6c6ac94d\",\"departmentId\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"roleScope\":null,\"isPrimary\":true,\"isActive\":true,\"createdAt\":\"2026-05-17T16:31:07.009Z\",\"updatedAt\":\"2026-05-17T16:31:07.009Z\",\"department\":{\"id\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"code\":\"hasar-onarim\",\"name\":\"Hasar Onarım\",\"description\":\"Hasar dosyaları operasyonel yönetim departmanı\",\"color\":\"#3B82F6\",\"reportFormat\":\"repair\",\"sortOrder\":1,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\"}}],\"responsibilityAssignments\":[{\"id\":\"12bdabb9-acfb-4c7e-915f-431de4d66abd\",\"userId\":\"8654e149-81c4-4a78-9e20-01ab6c6ac94d\",\"departmentId\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"regionType\":\"countrywide\",\"regionValues\":[],\"coverageType\":\"field\",\"coverageConfig\":{},\"priority\":50,\"isActive\":true,\"createdAt\":\"2026-05-17T16:31:07.013Z\",\"updatedAt\":\"2026-05-17T16:31:07.013Z\",\"department\":{\"id\":\"e931493f-9c43-4a63-92c9-67584d65c124\",\"code\":\"hasar-onarim\",\"name\":\"Hasar Onarım\",\"description\":\"Hasar dosyaları operasyonel yönetim departmanı\",\"color\":\"#3B82F6\",\"reportFormat\":\"repair\",\"sortOrder\":1,\"isSystem\":false,\"status\":\"active\",\"createdAt\":\"2026-05-14T18:24:00.115Z\",\"updatedAt\":\"2026-05-14T18:24:00.115Z\"}}],\"serviceAreas\":[]}}"
+}

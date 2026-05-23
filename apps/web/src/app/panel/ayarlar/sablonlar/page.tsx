@@ -744,7 +744,10 @@ function EmptyState({ msg }: { msg: string }) {
 
 function ErrorAlert({ msg, onClose }: { msg: string; onClose: () => void }) {
   return (
-    <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+    <div className="sticky top-0 z-40 mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 shadow-sm">
+      <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
       <span className="flex-1">{msg}</span>
       <button type="button" onClick={onClose} className="text-red-400 hover:text-red-600">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

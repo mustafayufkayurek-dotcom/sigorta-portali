@@ -330,6 +330,7 @@ export default function AlanZorunluluklariPage() {
     <SettingsPageLayout
       title="Alan Zorunlulukları"
       description="Tanımlama formlarındaki alanların zorunluluk durumlarını yönetin"
+      backHref="/panel/ayarlar"
     >
 
       {/* Sekmeler */}
