@@ -116,12 +116,12 @@ export default function TestNotlariGorevTakipPage() {
     }
   };
 
-  const handleNoteSubmit = async (payload: Record<string, unknown>) => {
+  const handleNoteSubmit = async (item: TestNote | null, payload: Record<string, unknown>) => {
     setSaving(true);
     setError('');
     try {
-      if (editingNote) {
-        await updateTestNote(editingNote.id, payload);
+      if (item) {
+        await updateTestNote(item.id, payload);
       } else {
         await createTestNote(payload);
       }
@@ -253,7 +253,7 @@ export default function TestNotlariGorevTakipPage() {
             <TestNotuForm
               initial={editingNote}
               onCancel={() => { setShowNoteForm(false); setEditingNote(null); }}
-              onSubmit={handleNoteSubmit}
+              onSubmit={(payload) => handleNoteSubmit(editingNote, payload)}
               saving={saving}
             />
           ) : null}
@@ -261,8 +261,11 @@ export default function TestNotlariGorevTakipPage() {
             items={testNotes}
             selectedId={selectedNote?.id}
             onSelect={(item) => { setSelectedNote(item); setFormat(item.format ?? null); }}
-            onEdit={(item) => { setEditingNote(item); setShowNoteForm(true); }}
+            onEdit={async (item, payload) => {
+              await handleNoteSubmit(item, payload);
+            }}
             onDelete={handleDeleteNote}
+            saving={saving}
           />
         </div>
       ) : null}

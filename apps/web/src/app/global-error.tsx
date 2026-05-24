@@ -24,7 +24,7 @@ export default function GlobalError({
           <p className="text-gray-600 mb-6">
             Sunucuda beklenmedik bir hata oluştu. Lütfen daha sonra tekrar deneyin.
           </p>
-          {error.digest && (
+          {!!error.digest && (
             <p className="text-sm text-gray-400 mb-6 font-mono">Hata Kodu: {error.digest}</p>
           )}
           <div className="flex gap-3 justify-center">
