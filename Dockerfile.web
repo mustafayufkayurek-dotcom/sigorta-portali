@@ -29,6 +29,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Ensure standalone output
 WORKDIR /app/apps/web
+RUN rm -rf .next
 RUN pnpm run build
 
 # ─── Stage 4: Production image ────────────────────────────────────────────────

@@ -730,7 +730,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       router.push('/giris');
       return;
     }
-    axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/me`, {
+    const apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+    axios.get(`${apiBase}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((response) => {
@@ -741,30 +742,38 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         } else {
           throw new Error('auth/me boş döndü');
         }
-        return apiClient.get<{ screens?: string[] }>('/users/me/permissions');
+        return axios.get(`${apiBase}/users/me/permissions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       })
-      .then((data) => { if (data?.screens) setAllowedScreens(data.screens); })
+      .then((response) => {
+        const data = response.data?.data ?? response.data;
+        if (data?.screens) setAllowedScreens(data.screens);
+      })
       .catch(async (error) => {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
           const refreshToken = localStorage.getItem('refreshToken');
           if (refreshToken) {
             try {
-              const refreshResponse = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/refresh`, {
+              const refreshResponse = await axios.post(`${apiBase}/auth/refresh`, {
                 refreshToken,
               });
               const tokens = refreshResponse.data?.data;
               if (tokens?.accessToken && tokens?.refreshToken) {
                 localStorage.setItem('accessToken', tokens.accessToken);
                 localStorage.setItem('refreshToken', tokens.refreshToken);
-                const retryMe = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1') + `/auth/me`, {
+                const retryMe = await axios.get(`${apiBase}/auth/me`, {
                   headers: { Authorization: `Bearer ${tokens.accessToken}` },
                 });
                 const me = retryMe.data?.data ?? retryMe.data;
                 if (me) {
                   setUser(me);
                   localStorage.setItem('user', JSON.stringify(me));
-                  const permissions = await apiClient.get<{ screens?: string[] }>('/users/me/permissions');
-                  if (permissions?.screens) setAllowedScreens(permissions.screens);
+                  const permissions = await axios.get(`${apiBase}/users/me/permissions`, {
+                    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+                  });
+                  const permData = permissions.data?.data ?? permissions.data;
+                  if (permData?.screens) setAllowedScreens(permData.screens);
                   return;
                 }
               }
@@ -780,7 +789,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         setLoading(false);
         setAuthChecked(true);
       });
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Onaylanmamış sözleşme kontrolü
   useEffect(() => {
