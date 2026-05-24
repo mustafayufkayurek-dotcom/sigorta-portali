@@ -313,13 +313,13 @@ function DepartmanlarTab() {
     try {
       await axios.delete(`${API}/departments/${deleteTarget.id}`, { headers: authHeader() });
       showToast('success', 'Departman silindi.');
-      setDeleteTarget(null); fetchDepts();
+      await fetchDepts();
     } catch (e: any) {
-      setDeleting(false);
       showToast('error', e.response?.data?.message ?? 'Silme başarısız.');
+    } finally {
+      setDeleting(false);
       setDeleteTarget(null);
     }
-    finally { setDeleting(false); }
   };
 
   const toggleSort = (key: 'name' | 'code') => {
