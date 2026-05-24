@@ -221,6 +221,11 @@ export class ClaimFilesService {
     const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
     const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : await this.generateFileNo();
 
+    // fileNo zorunlu — boş veya undefined gelirse hata ver
+    if (!fileNo) {
+      throw new BadRequestException('Dosya numarası zorunludur');
+    }
+
     // currentStatusId yoksa otomatik 'new' durumunu bul
     let currentStatusId = rest.currentStatusId;
     if (!currentStatusId) {
@@ -760,8 +765,8 @@ export class ClaimFilesService {
     fileNo: string,
     excludeId?: string,
     excludeType?: 'hasar' | 'acil',
-  ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null }> {
-    // Check ClaimFile table (exclude self if updating a ClaimFile)
+  ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null; matchedRecord?: { id: string; status?: string } | null }> {
+    // Check ClaimFile table — ClaimFile modelinde status alanı yok, tüm kayıtlar aktif kabul edilir
     const claimWhere: any = { fileNo };
     if (excludeType === 'hasar' && excludeId) claimWhere.id = { not: excludeId };
     const existingClaim = await this.prisma.claimFile.findFirst({
@@ -769,21 +774,21 @@ export class ClaimFilesService {
       select: { id: true },
     });
     if (existingClaim) {
-      return { exists: true, usedBy: 'hasar' };
+      return { exists: true, usedBy: 'hasar', matchedRecord: { id: existingClaim.id } };
     }
 
-    // Check EmergencyCase table (exclude self if updating an EmergencyCase)
-    const emergencyWhere: any = { fileNo };
+    // Check EmergencyCase table — EmergencyCase modelinde status alanı var, INACTIVE kayıtlar hariç
+    const emergencyWhere: any = { fileNo, status: { not: 'INACTIVE' } };
     if (excludeType === 'acil' && excludeId) emergencyWhere.id = { not: excludeId };
     const existingEmergency = await this.prisma.emergencyCase.findFirst({
       where: emergencyWhere,
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (existingEmergency) {
-      return { exists: true, usedBy: 'acil' };
+      return { exists: true, usedBy: 'acil', matchedRecord: { id: existingEmergency.id, status: existingEmergency.status ?? undefined } };
     }
 
-    return { exists: false, usedBy: null };
+    return { exists: false, usedBy: null, matchedRecord: null };
   }
 
   // ── Ofis-Saha İş Akışı ────────────────────────────────────────────────────

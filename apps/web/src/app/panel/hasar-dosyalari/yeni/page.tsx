@@ -126,7 +126,7 @@ export default function YeniHasarDosyasiPage() {
   // Dosya bilgileri
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [policyNo, setPolicyNo] = useState('');
-  const [claimNo, setClaimNo] = useState('');
+  const [fileNo, setFileNo] = useState('');
   const [productBranch, setProductBranch] = useState('');
   const [lossType, setLossType] = useState('');
   const [incidentDate, setIncidentDate] = useState('');
@@ -134,6 +134,10 @@ export default function YeniHasarDosyasiPage() {
   const [priority, setPriority] = useState('normal');
   const [description, setDescription] = useState('');
   const [currentStatusId, setCurrentStatusId] = useState('');
+
+  // fileNo çakışma kontrolü
+  const [fileNoError, setFileNoError] = useState<string | null>(null);
+  const [fileNoChecking, setFileNoChecking] = useState(false);
 
   // Müşteri
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -289,8 +293,27 @@ export default function YeniHasarDosyasiPage() {
     } catch { setNameDupWarn(null); }
   };
 
+  const checkFileNoDuplicate = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) { setFileNoError(null); return; }
+    setFileNoChecking(true);
+    try {
+      const res = await axios.get(`${API}/claim-files/check-file-no?fileNo=${encodeURIComponent(trimmed)}`, { headers: authHeader() });
+      const data = res.data.data;
+      if (data.exists) {
+        const where = data.usedBy === 'hasar' ? 'hasar dosyasında' : 'acil yardım dosyasında';
+        setFileNoError(`Bu dosya numarası zaten ${where} kullanılıyor`);
+      } else {
+        setFileNoError(null);
+      }
+    } catch { setFileNoError(null); }
+    finally { setFileNoChecking(false); }
+  };
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
+    if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
+    if (fileNoError) errs.fileNo = fileNoError;
     if (!insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
     if (!productBranch) errs.productBranch = 'Branş zorunludur.';
     if (!lossType) errs.lossType = 'Hasar türü zorunludur.';
@@ -348,9 +371,10 @@ export default function YeniHasarDosyasiPage() {
       }
 
       const payload: Record<string, unknown> = {
+        fileNo: fileNo.trim(),
         insuranceCompanyId,
         policyNo: policyNo || 'N/A',
-        claimNo: claimNo || 'N/A',
+        claimNo: fileNo.trim() || 'N/A',
         productBranch,
         lossType,
         incidentDate: new Date(incidentDate).toISOString(),
@@ -435,13 +459,21 @@ export default function YeniHasarDosyasiPage() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Poliçe No</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Opsiyonel" value={policyNo} onChange={(e) => setPolicyNo(e.target.value)} />
+              <label className="text-xs text-slate-500 block mb-1.5">Dosya No <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+              <input
+                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.fileNo ? 'border-red-400' : 'border-slate-200'}`}
+                placeholder="Dosya numarasını manuel girin"
+                value={fileNo}
+                onChange={(e) => { setFileNo(e.target.value); setFileNoError(null); }}
+                onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); checkFileNoDuplicate(v); }}
+              />
+              {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
+              {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Manuel Dosya Numarası</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Dosya numarasını manuel girin" value={claimNo} onChange={(e) => setClaimNo(e.target.value)} />
+              <label className="text-xs text-slate-500 block mb-1.5">Poliçe No</label>
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Opsiyonel" value={policyNo} onChange={(e) => setPolicyNo(e.target.value)} />
             </div>
 
             <div>
