@@ -83,7 +83,7 @@ export default function TestNotlariGorevTakipPage() {
         setTestNotes(notesRes.data ?? []);
         setWorkItems(workRes.data ?? []);
         setUsers(usersRes);
-        if ((notesRes.data ?? []).length > 0) {
+        if ((notesRes.data ?? []).length > 0 && !selectedNote) {
           setSelectedNote(notesRes.data[0]);
           setFormat(notesRes.data[0].format ?? null);
         }
@@ -96,7 +96,8 @@ export default function TestNotlariGorevTakipPage() {
         setError('Veriler yüklenemedi.');
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const summary = useMemo(() => ({
     notes: testNotes.length,
