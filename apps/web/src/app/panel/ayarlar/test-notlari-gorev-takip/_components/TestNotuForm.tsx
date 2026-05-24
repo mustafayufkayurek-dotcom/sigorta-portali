@@ -13,12 +13,32 @@ type Props = {
 };
 
 export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
+  const [ekranModul, setEkranModul] = useState(initial?.ekranModul ?? '');
+  const [kullaniciGozlemi, setKullaniciGozlemi] = useState(initial?.kullaniciGozlemi ?? '');
+  const [beklenenDavranis, setBeklenenDavranis] = useState(initial?.beklenenDavranis ?? '');
+  const [oncelik, setOncelik] = useState<string>(initial?.oncelik ?? 'P2');
+  const [durum, setDurum] = useState<string>(initial?.durum ?? 'YENI');
+  const [tekrarDurumu, setTekrarDurumu] = useState(initial?.tekrarDurumu ?? false);
+  const [isArchived, setIsArchived] = useState(initial?.isArchived ?? false);
+  const [managerIslemNotu, setManagerIslemNotu] = useState(initial?.managerIslemNotu ?? '');
   const [ekranGoruntusu, setEkranGoruntusu] = useState(initial?.ekranGoruntusu ?? '');
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
 
   const canSubmit = useMemo(() => !saving && !uploading, [saving, uploading]);
+
+  useEffect(() => {
+    setEkranModul(initial?.ekranModul ?? '');
+    setKullaniciGozlemi(initial?.kullaniciGozlemi ?? '');
+    setBeklenenDavranis(initial?.beklenenDavranis ?? '');
+    setOncelik(initial?.oncelik ?? 'P2');
+    setDurum(initial?.durum ?? 'YENI');
+    setTekrarDurumu(initial?.tekrarDurumu ?? false);
+    setIsArchived(initial?.isArchived ?? false);
+    setManagerIslemNotu(initial?.managerIslemNotu ?? '');
+    setEkranGoruntusu(initial?.ekranGoruntusu ?? '');
+  }, [initial?.id]);
 
   useEffect(() => {
     let active = true;
@@ -72,30 +92,30 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
     }
   };
 
-  const submit = async (formData: FormData) => {
+  const submit = async () => {
     await onSubmit({
-      ekranModul: String(formData.get('ekranModul') ?? ''),
-      kullaniciGozlemi: String(formData.get('kullaniciGozlemi') ?? ''),
-      beklenenDavranis: String(formData.get('beklenenDavranis') ?? ''),
+      ekranModul,
+      kullaniciGozlemi,
+      beklenenDavranis,
       ekranGoruntusu: ekranGoruntusu || undefined,
-      oncelik: String(formData.get('oncelik') ?? 'P2'),
-      durum: String(formData.get('durum') ?? 'YENI'),
-      tekrarDurumu: formData.get('tekrarDurumu') === 'on',
-      isArchived: formData.get('isArchived') === 'on',
-      managerIslemNotu: String(formData.get('managerIslemNotu') ?? '') || undefined,
+      oncelik,
+      durum,
+      tekrarDurumu,
+      isArchived,
+      managerIslemNotu: managerIslemNotu || undefined,
     });
   };
 
   return (
     <form
-      action={submit}
+      onSubmit={(e) => { e.preventDefault(); submit(); }}
       encType="multipart/form-data"
       className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Ekran / Modül</label>
-          <input name="ekranModul" defaultValue={initial?.ekranModul ?? ''} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
+          <input value={ekranModul} onChange={(e) => setEkranModul(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Ekran Görüntüsü (Storage Key)</label>
@@ -133,37 +153,37 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Öncelik</label>
-          <select name="oncelik" defaultValue={initial?.oncelik ?? 'P2'} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select value={oncelik} onChange={(e) => setOncelik(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             {TEST_NOTE_PRIORITIES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Durum</label>
-          <select name="durum" defaultValue={initial?.durum ?? 'YENI'} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select value={durum} onChange={(e) => setDurum(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             {TEST_NOTE_STATUSES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </div>
       </div>
       <div>
         <label className="mb-1 block text-xs font-semibold text-slate-500">Kullanıcı Gözlemi</label>
-        <textarea name="kullaniciGozlemi" defaultValue={initial?.kullaniciGozlemi ?? ''} className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
+        <textarea value={kullaniciGozlemi} onChange={(e) => setKullaniciGozlemi(e.target.value)} className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
       </div>
       <div>
         <label className="mb-1 block text-xs font-semibold text-slate-500">Beklenen Davranış</label>
-        <textarea name="beklenenDavranis" defaultValue={initial?.beklenenDavranis ?? ''} className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
+        <textarea value={beklenenDavranis} onChange={(e) => setBeklenenDavranis(e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
       </div>
       <div>
         <label className="mb-1 block text-xs font-semibold text-slate-500">Yapılan İşlem (Manager Notu)</label>
-        <textarea name="managerIslemNotu" defaultValue={initial?.managerIslemNotu ?? ''} placeholder="Bu nota dair ne yapıldı? Örn: 'Logo boyutu düzeltildi, yeni sekme davranışı eklendi, canlıya alındı.'" className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+        <textarea value={managerIslemNotu} onChange={(e) => setManagerIslemNotu(e.target.value)} placeholder="Bu nota dair ne yapıldı? Örn: 'Logo boyutu düzeltildi, yeni sekme davranışı eklendi, canlıya alındı.'" className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
         {initial?.islemTarihi && <div className="mt-1 text-[10px] text-slate-400">Son işlem: {new Date(initial.islemTarihi).toLocaleString('tr-TR')}</div>}
       </div>
       <div className="flex flex-wrap gap-4">
         <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="tekrarDurumu" defaultChecked={initial?.tekrarDurumu ?? false} />
+          <input type="checkbox" checked={tekrarDurumu} onChange={(e) => setTekrarDurumu(e.target.checked)} />
           Tekrar durumu var
         </label>
         <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" name="isArchived" defaultChecked={initial?.isArchived ?? false} />
+          <input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} />
           Arşivde
         </label>
       </div>
