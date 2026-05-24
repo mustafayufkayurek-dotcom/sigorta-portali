@@ -10,10 +10,14 @@ networks:
 
 volumes:
   postgres_data:
+    external: true
+    name: app_postgres_data
   redis_data:
+    external: true
+    name: app_redis_data
   minio_data:
-  nginx_certs:
-  nginx_html:
+    external: true
+    name: app_minio_data
 
 services:
   # ─── Nginx Reverse Proxy ──────────────────────────────────────────────────
@@ -26,8 +30,8 @@ services:
       - '443:443'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - nginx_certs:/etc/letsencrypt:ro
-      - nginx_html:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -52,8 +56,8 @@ services:
     image: certbot/certbot:latest
     container_name: sigorta-certbot
     volumes:
-      - nginx_certs:/etc/letsencrypt
-      - nginx_html:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
     entrypoint: >
       /bin/sh -c "trap exit TERM;
       while :; do
@@ -105,10 +109,6 @@ services:
       LOGO_FIRM_NO: ${LOGO_FIRM_NO:-1}
       LOGO_COMPANY_CODE_PREFIX: ${LOGO_COMPANY_CODE_PREFIX:-SHS_}
       LOGO_TOKEN_CACHE_TTL_MINUTES: ${LOGO_TOKEN_CACHE_TTL_MINUTES:-55}
-      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
-      JWT_BLACKLIST_ENABLED: ${JWT_BLACKLIST_ENABLED:-true}
-      UPLOAD_VALIDATION_ENABLED: ${UPLOAD_VALIDATION_ENABLED:-true}
-      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,7 +142,6 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       backend:
         condition: service_healthy
