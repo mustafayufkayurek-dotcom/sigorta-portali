@@ -9,17 +9,23 @@ interface KpiCardProps {
   color: string;
   subtext?: string;
   emptyHint?: string;
+  onClick?: () => void;
   trend?: {
     value: number;
     isPositive: boolean;
   };
 }
 
-export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, trend }: KpiCardProps) {
+export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, onClick, trend }: KpiCardProps) {
   const isZeroValue = typeof value === 'number' ? value === 0 : value === '0' || value === '₺0';
+  const Wrapper = onClick ? 'button' : 'div';
 
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-900">
+    <Wrapper
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={`group w-full text-left rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-900 ${onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40' : ''}`}
+    >
       <div className="flex items-center gap-3">
         <div className={`rounded-lg p-2 transition-transform group-hover:scale-110 ${color}`}>
           <Icon className="h-5 w-5 text-white" />
@@ -42,6 +48,6 @@ export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, t
           )}
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }

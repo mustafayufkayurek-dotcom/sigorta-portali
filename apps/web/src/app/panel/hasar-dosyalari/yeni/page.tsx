@@ -11,19 +11,6 @@ const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
 function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
-const PRODUCT_BRANCHES = [
-  { value: 'yangin', label: 'Yangın' },
-  { value: 'su_basmasi', label: 'Su Basması' },
-  { value: 'dogal_afet', label: 'Doğal Afet' },
-  { value: 'hirsizlik', label: 'Hırsızlık' },
-  { value: 'cam_kirilmasi', label: 'Cam Kırılması' },
-  { value: 'makine_kırılması', label: 'Makine Kırılması' },
-  { value: 'elektronik_cihaz', label: 'Elektronik Cihaz' },
-  { value: 'konut', label: 'Konut' },
-  { value: 'isyeri', label: 'İşyeri' },
-  { value: 'diger', label: 'Diğer' },
-];
-
 const PRIORITIES = [
   { value: 'low', label: 'Düşük' },
   { value: 'normal', label: 'Normal' },
@@ -118,6 +105,7 @@ export default function YeniHasarDosyasiPage() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [statuses, setStatuses] = useState<ClaimStatus[]>([]);
+  const [claimSubjects, setClaimSubjects] = useState<string[]>([]);
 
   // Loading / saving
   const [saving, setSaving] = useState(false);
@@ -127,7 +115,6 @@ export default function YeniHasarDosyasiPage() {
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [policyNo, setPolicyNo] = useState('');
   const [fileNo, setFileNo] = useState('');
-  const [productBranch, setProductBranch] = useState('');
   const [lossType, setLossType] = useState('');
   const [incidentDate, setIncidentDate] = useState('');
   const [notificationDate, setNotificationDate] = useState('');
@@ -176,12 +163,20 @@ export default function YeniHasarDosyasiPage() {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [icRes, provRes] = await Promise.all([
+      const [icRes, provRes, subjectsRes] = await Promise.all([
         axios.get(`${API}/insurance-companies?limit=200`, { headers: authHeader() }),
         axios.get(`${API}/locations/provinces`, { headers: authHeader() }),
+        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch(() => null),
       ]);
       setInsuranceCompanies(icRes.data.data || []);
       setProvinces(provRes.data.data || []);
+      const subjectData = subjectsRes?.data?.data;
+      const subjects = Array.isArray(subjectData?.hasar)
+        ? subjectData.hasar
+        : Array.isArray(subjectData)
+          ? subjectData
+          : [];
+      setClaimSubjects(subjects.map((s: string) => toTitleCaseTR(String(s).trim())).filter(Boolean));
     } catch (e) { console.error(e); }
   }, []);
 
@@ -301,8 +296,7 @@ export default function YeniHasarDosyasiPage() {
       const res = await axios.get(`${API}/claim-files/check-file-no?fileNo=${encodeURIComponent(trimmed)}`, { headers: authHeader() });
       const data = res.data.data;
       if (data.exists) {
-        const where = data.usedBy === 'hasar' ? 'hasar dosyasında' : 'acil yardım dosyasında';
-        setFileNoError(`Bu dosya numarası zaten ${where} kullanılıyor`);
+        setFileNoError('Bu dosya numarası zaten hasar dosyasında kullanılıyor');
       } else {
         setFileNoError(null);
       }
@@ -315,8 +309,7 @@ export default function YeniHasarDosyasiPage() {
     if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
     if (fileNoError) errs.fileNo = fileNoError;
     if (!insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
-    if (!productBranch) errs.productBranch = 'Branş zorunludur.';
-    if (!lossType) errs.lossType = 'Hasar türü zorunludur.';
+    if (!lossType) errs.lossType = 'Hasar konusu zorunludur.';
     if (!incidentDate) errs.incidentDate = 'Hasar tarihi zorunludur.';
     if (!notificationDate) errs.notificationDate = 'Bildirim tarihi zorunludur.';
     if (!selectedCustomer && !showNewCustomerForm) errs.customer = 'Müşteri seçiniz.';
@@ -375,7 +368,7 @@ export default function YeniHasarDosyasiPage() {
         insuranceCompanyId,
         policyNo: policyNo || 'N/A',
         claimNo: fileNo.trim() || 'N/A',
-        productBranch,
+        productBranch: 'diger',
         lossType,
         incidentDate: new Date(incidentDate).toISOString(),
         notificationDate: new Date(notificationDate).toISOString(),
@@ -437,24 +430,14 @@ export default function YeniHasarDosyasiPage() {
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">Hasar Konusu <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
               <select
-                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.productBranch ? 'border-red-400' : 'border-slate-200'}`}
-                value={productBranch}
-                onChange={(e) => setProductBranch(e.target.value)}
-              >
-                <option value="">Seçiniz...</option>
-                {PRODUCT_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-              </select>
-              {errors.productBranch && <p className="text-xs text-red-500 mt-0.5">{errors.productBranch}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Hasar Konusu (Detay) <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-              <input
-                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.lossType ? 'border-red-400' : 'border-slate-200'}`}
-                placeholder="Örn. Su sızıntısı"
+                className={`w-full border rounded-lg px-3 py-2 text-sm bg-white ${errors.lossType ? 'border-red-400' : 'border-slate-200'}`}
                 value={lossType}
                 onChange={(e) => setLossType(e.target.value)}
-              />
+              >
+                <option value="">Seçiniz...</option>
+                {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+                {claimSubjects.length === 0 && <option value="Diğer">Diğer</option>}
+              </select>
               {errors.lossType && <p className="text-xs text-red-500 mt-0.5">{errors.lossType}</p>}
             </div>
 

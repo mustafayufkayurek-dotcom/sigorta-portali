@@ -17,14 +17,20 @@ export function toTitleCaseTR(str: string): string {
     .split(/(\s+)/)
     .map((part) => {
       if (/^\s+$/.test(part)) return part;
-      const first = part.charAt(0);
-      const rest = part.slice(1);
-      const upperFirst = upperMap[first] ?? first.toUpperCase();
-      const lowerRest = rest
-        .split('')
-        .map((c) => lowerMap[c] ?? c.toLowerCase())
+      return part
+        .split(/(-+)/)
+        .map((segment) => {
+          if (/^-+$/.test(segment) || !segment) return segment;
+          const first = segment.charAt(0);
+          const rest = segment.slice(1);
+          const upperFirst = upperMap[first] ?? first.toUpperCase();
+          const lowerRest = rest
+            .split('')
+            .map((c) => lowerMap[c] ?? c.toLowerCase())
+            .join('');
+          return upperFirst + lowerRest;
+        })
         .join('');
-      return upperFirst + lowerRest;
     })
     .join('');
 }

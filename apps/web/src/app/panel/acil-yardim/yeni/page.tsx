@@ -393,13 +393,12 @@ export default function YeniAcilDosyaPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-slate-500 block mb-1.5">
-                  Dosya Numarası
-                  <span className="ml-1.5 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1 py-0.5">Zorunlu Alan</span>
+                  Dosya No <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
                 </label>
                 <input
                   type="text"
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 ${fileNoError || errors.fileNo ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                  placeholder="Dosya numarası giriniz"
+                  placeholder="Örn: ACIL-2026-001"
                   value={fileNo}
                   onChange={(e) => { setFileNo(e.target.value); setFileNoError(null); }}
                   onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); checkFileNoDuplicate(v); }}
@@ -415,8 +414,7 @@ export default function YeniAcilDosyaPage() {
 
               <div>
                 <label className="text-xs text-slate-500 block mb-1.5">
-                  İhbar Konusu
-                  <span className="ml-1.5 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1 py-0.5">Zorunlu Alan</span>
+                  İhbar Konusu <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
                 </label>
                 <select
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 ${errors.issueType ? 'border-red-400' : 'border-slate-200'}`}

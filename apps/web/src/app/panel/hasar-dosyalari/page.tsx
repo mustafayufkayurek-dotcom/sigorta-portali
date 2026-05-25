@@ -250,8 +250,9 @@ export default function ClaimFilesPage() {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative min-w-[220px] flex-1">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+          <div className="relative md:col-span-2 xl:col-span-1">
+            <label className="mb-1 block text-[11px] font-semibold text-slate-500">Arama</label>
             <SearchInput
               placeholder="Dosya No, Sigortalı..."
               value={search}
@@ -259,36 +260,54 @@ export default function ClaimFilesPage() {
               onClear={() => { setSearch(''); setPage(1); }}
             />
           </div>
-          <select className="input-base-sm flex-shrink-0 w-44" value={insuranceFilter} onChange={(e) => { setInsuranceFilter(e.target.value); setPage(1); }}>
-            <option value="">Tüm Müşteriler</option>
-            {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select className="input-base-sm flex-shrink-0 w-40" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-            <option value="">Tüm Durumlar</option>
-            <option value="__sla_exceeded__">SLA Aşanlar</option>
-            {claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select className="input-base-sm flex-shrink-0 w-40" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
-            <option value="">Tüm Faturalar</option>
-            <option value="none">Fatura Yok</option>
-            <option value="draft">Taslak</option>
-            <option value="sent">Gönderildi</option>
-            <option value="paid">Ödendi</option>
-            <option value="partial">Kısmi Ödendi</option>
-            <option value="overdue">Gecikmiş</option>
-            <option value="cancelled">İptal</option>
-          </select>
-          <select className="input-base-sm flex-shrink-0 w-36" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}>
-            <option value="">Tüm Öncelikler</option>
-            <option value="low">Düşük</option>
-            <option value="normal">Normal</option>
-            <option value="high">Yüksek</option>
-            <option value="critical">Kritik</option>
-          </select>
-          <input type="date" className="input-base-sm flex-shrink-0 w-40" placeholder="Başlangıç" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
-          <input type="date" className="input-base-sm flex-shrink-0 w-40" placeholder="Bitiş" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Müşteri</span>
+            <select className="input-base-sm w-full" value={insuranceFilter} onChange={(e) => { setInsuranceFilter(e.target.value); setPage(1); }}>
+              <option value="">Tüm Müşteriler</option>
+              {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Durum</span>
+            <select className="input-base-sm w-full" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+              <option value="">Tüm Durumlar</option>
+              <option value="__sla_exceeded__">SLA Aşanlar</option>
+              {claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Fatura</span>
+            <select className="input-base-sm w-full" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
+              <option value="">Tüm Faturalar</option>
+              <option value="none">Fatura Yok</option>
+              <option value="draft">Taslak</option>
+              <option value="sent">Gönderildi</option>
+              <option value="paid">Ödendi</option>
+              <option value="partial">Kısmi Ödendi</option>
+              <option value="overdue">Gecikmiş</option>
+              <option value="cancelled">İptal</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Öncelik</span>
+            <select className="input-base-sm w-full" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}>
+              <option value="">Tüm Öncelikler</option>
+              <option value="low">Düşük</option>
+              <option value="normal">Normal</option>
+              <option value="high">Yüksek</option>
+              <option value="critical">Kritik</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Başlangıç</span>
+            <input type="date" className="input-base-sm w-full" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Bitiş</span>
+            <input type="date" className="input-base-sm w-full" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
+          </label>
           {hasFilters && (
-            <button type="button" onClick={clearFilters} className="flex-shrink-0 text-xs text-slate-400 hover:text-red-500 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap">
+            <button type="button" onClick={clearFilters} className="self-end text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap">
               Temizle ×
             </button>
           )}

@@ -14,9 +14,10 @@ import { formatCurrency } from '../../utils/formatters';
 
 interface PrimaryKpiGroupProps {
   staggerIndex?: number;
+  onNavigate?: (path: string) => void;
 }
 
-export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
+export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGroupProps) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
 
@@ -56,6 +57,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               value={ops?.totalClaims ?? '—'}
               color="bg-blue-600"
               emptyHint="Henüz kayıtlı dosya bulunmuyor."
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
             />
             <KpiCard
               icon={Clock}
@@ -64,6 +66,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               color="bg-indigo-600"
               subtext={ops ? `${ops.closedClaims} kapatıldı` : undefined}
               emptyHint="Takipte aktif dosya yok."
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
             />
             <KpiCard
               icon={AlertTriangle}
@@ -71,6 +74,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               value={ops?.slaViolationCount ?? '—'}
               color={ops && ops.slaViolationCount > 0 ? 'bg-red-600' : 'bg-emerald-600'}
               emptyHint="Riskte bekleyen SLA ihlali görünmüyor."
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=sla_exceeded')}
             />
             <KpiCard
               icon={BellRing}
@@ -78,6 +82,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               value={pendingCount || '—'}
               color="bg-amber-600"
               emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
             />
             <KpiCard
               icon={TrendingUp}
@@ -85,6 +90,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               value={ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
               color="bg-rose-600"
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
             />
           </>
         )}

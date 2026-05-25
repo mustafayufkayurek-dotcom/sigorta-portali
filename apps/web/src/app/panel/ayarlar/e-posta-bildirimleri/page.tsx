@@ -45,13 +45,18 @@ const defaultMailConfig: MailConfig = {
 
 const DEFAULT_NOTIFICATION_ITEMS: NotificationItem[] = [
   { key: 'file_assigned', label: 'Dosya Atama', enabled: true },
+  { key: 'field_visit_planned', label: 'Tespit Planlama', enabled: true },
+  { key: 'repair_completed', label: 'Onarım Tamamlandı', enabled: true },
+  { key: 'report_sent_for_approval', label: 'Rapor Onaya Gönderildi', enabled: true },
   { key: 'appointment_reminder', label: 'Randevu Hatırlatma', enabled: true },
-  { key: 'report_approval', label: 'Rapor Onay', enabled: true },
+  { key: 'report_approval', label: 'Rapor Onay Talep', enabled: true },
+  { key: 'progress_payment_approval', label: 'Hakediş Onay', enabled: true },
+  { key: 'payment_approval', label: 'Ödeme Onay', enabled: true },
   { key: 'invoice_notification', label: 'Fatura Bildirimi', enabled: true },
   { key: 'file_opened', label: 'Dosya Açıldı', enabled: false },
   { key: 'file_closed', label: 'Dosya Kapatıldı', enabled: false },
   { key: 'revision_requested', label: 'Revizyon Talep', enabled: true },
-  { key: 'payment_received', label: 'Ödeme Alındı', enabled: false },
+  { key: 'payment_received', label: 'Tahsilat Yapıldı', enabled: false },
 ];
 
 const defaultNotificationSettings: NotificationSettings = {

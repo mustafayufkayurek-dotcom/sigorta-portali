@@ -57,13 +57,18 @@ const CONTRACT_TYPES = [
 
 const EMAIL_EVENTS = [
   { value: 'file_assigned',      label: 'Dosya Atama' },
+  { value: 'field_visit_planned', label: 'Tespit Planlama' },
+  { value: 'repair_completed',   label: 'Onarım Tamamlandı' },
+  { value: 'report_sent_for_approval', label: 'Rapor Onaya Gönderildi' },
   { value: 'appointment_reminder',label: 'Randevu Hatırlatma' },
-  { value: 'report_approval',    label: 'Rapor Onay' },
+  { value: 'report_approval',    label: 'Rapor Onay Talep' },
+  { value: 'progress_payment_approval', label: 'Hakediş Onay' },
+  { value: 'payment_approval',   label: 'Ödeme Onay' },
   { value: 'invoice_notification',label: 'Fatura Bildirimi' },
   { value: 'file_opened',        label: 'Dosya Açıldı' },
   { value: 'file_closed',        label: 'Dosya Kapatıldı' },
   { value: 'revision_requested', label: 'Revizyon Talep' },
-  { value: 'payment_received',   label: 'Ödeme Alındı' },
+  { value: 'payment_received',   label: 'Tahsilat Yapıldı' },
 ];
 
 const REPORT_PLACEHOLDERS = [
