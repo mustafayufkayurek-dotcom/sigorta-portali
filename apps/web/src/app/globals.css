@@ -136,6 +136,67 @@
   @apply bg-white rounded-2xl border border-slate-200/70 shadow-card p-4 mb-5;
 }
 
+/* Dark tema görünürlüğü
+   Bazı eski ekranlar Tailwind dark varyantı taşımadığı için sadece html.dark
+   sınıfı değişiyor, kullanıcı ekranda belirgin fark göremiyordu. Bu köprü
+   katmanı kalıcı refactor değildir; mevcut yardımcı sınıfların koyu temada
+   görünür davranmasını sağlar. */
+.dark body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .bg-white,
+.dark .table-container,
+.dark .filter-bar,
+.dark .stat-card {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/80,
+.dark .table-head-row {
+  background-color: #1f2937 !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .page-title {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .page-subtitle {
+  color: #cbd5e1 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/70,
+.dark .border-slate-200\/80 {
+  border-color: #334155 !important;
+}
+
+.dark .input-base,
+.dark .input-base-sm,
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0f172a;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8;
+}
+
 /* Stat Kart */
 .stat-card {
   @apply relative bg-white rounded-2xl border border-slate-200/70 shadow-card

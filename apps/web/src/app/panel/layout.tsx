@@ -213,7 +213,7 @@ function Navbar({
     <img
       src={companyLogo}
       alt={companyName}
-      className="block h-12 lg:h-14 w-auto max-w-[280px] object-contain rounded-md"
+      className="block h-[58px] lg:h-[64px] w-auto max-w-[320px] object-contain rounded-md scale-125 origin-left"
       onError={() => { /* parent will fallback */ }}
     />
   ) : (
@@ -233,7 +233,7 @@ function Navbar({
   return (
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
       <div className="mx-auto max-w-screen-2xl px-4">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-5 min-w-0">
             <a
