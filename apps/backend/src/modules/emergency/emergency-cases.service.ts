@@ -56,16 +56,6 @@ export class EmergencyCasesService {
     fileNo: string,
     excludeId?: string,
   ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null }> {
-    // Check ClaimFile table
-    const existingClaim = await this.prisma.claimFile.findFirst({
-      where: { fileNo },
-      select: { id: true },
-    });
-    if (existingClaim) {
-      return { exists: true, usedBy: 'hasar' };
-    }
-
-    // Check EmergencyCase table (exclude self when updating)
     const emergencyWhere: any = { fileNo };
     if (excludeId) emergencyWhere.id = { not: excludeId };
     const existingEmergency = await this.prisma.emergencyCase.findFirst({

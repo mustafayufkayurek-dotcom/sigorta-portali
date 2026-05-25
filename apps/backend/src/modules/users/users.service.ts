@@ -18,6 +18,9 @@ export class UsersService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if ((params as any)?.includeInactive !== 'true') {
+      where.status = { notIn: ['inactive', 'INACTIVE'] };
+    }
     if (params?.roleId) where.roleId = params.roleId;
     if (params?.branchId) where.branchId = params.branchId;
 
@@ -275,8 +278,11 @@ export class UsersService {
       throw new BadRequestException('Sistem yöneticisi silinemez');
     }
 
-    await this.prisma.user.delete({ where: { id } });
-    return { message: 'Kullanıcı silindi' };
+    await this.prisma.user.update({
+      where: { id },
+      data: { status: 'inactive' },
+    });
+    return { message: 'Kullanıcı pasifleştirildi' };
   }
 
   async bulkDelete(ids: string[], actorUserId?: string) {
@@ -304,7 +310,7 @@ export class UsersService {
 
     await this.prisma.user.updateMany({
       where: { id: { in: uniqueIds } },
-      data: { status: 'INACTIVE' },
+      data: { status: 'inactive' },
     });
 
     this.auditLogsService.log({
@@ -318,7 +324,7 @@ export class UsersService {
     return {
       deletedCount: uniqueIds.length,
       ids: uniqueIds,
-      message: `${uniqueIds.length} kullanıcı silindi`,
+      message: `${uniqueIds.length} kullanıcı pasifleştirildi`,
     };
   }
 

@@ -200,28 +200,10 @@ export class ClaimFilesService {
     return claimFile;
   }
 
-  private async generateFileNo(): Promise<string> {
-    const year = new Date().getFullYear();
-    // Bu yıl kaç dosya var?
-    const count = await this.prisma.claimFile.count({
-      where: {
-        fileNo: { startsWith: `HD-${year}-` },
-      },
-    });
-    const seq = String(count + 1).padStart(4, '0');
-    const candidate = `HD-${year}-${seq}`;
-    // Çakışma durumunda sıra no artır
-    const existing = await this.prisma.claimFile.findUnique({ where: { fileNo: candidate } });
-    if (!existing) return candidate;
-    // Güvenli fallback: timestamp ile benzersizlik
-    return `HD-${year}-${Date.now()}`;
-  }
-
   async create(data: any) {
     const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
-    const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : await this.generateFileNo();
+    const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : '';
 
-    // fileNo zorunlu — boş veya undefined gelirse hata ver
     if (!fileNo) {
       throw new BadRequestException('Dosya numarası zorunludur');
     }
@@ -766,7 +748,6 @@ export class ClaimFilesService {
     excludeId?: string,
     excludeType?: 'hasar' | 'acil',
   ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null; matchedRecord?: { id: string; status?: string } | null }> {
-    // Check ClaimFile table — ClaimFile modelinde status alanı yok, tüm kayıtlar aktif kabul edilir
     const claimWhere: any = { fileNo };
     if (excludeType === 'hasar' && excludeId) claimWhere.id = { not: excludeId };
     const existingClaim = await this.prisma.claimFile.findFirst({
@@ -775,17 +756,6 @@ export class ClaimFilesService {
     });
     if (existingClaim) {
       return { exists: true, usedBy: 'hasar', matchedRecord: { id: existingClaim.id } };
-    }
-
-    // Check EmergencyCase table — EmergencyCase modelinde status alanı var, INACTIVE kayıtlar hariç
-    const emergencyWhere: any = { fileNo, status: { not: 'INACTIVE' } };
-    if (excludeType === 'acil' && excludeId) emergencyWhere.id = { not: excludeId };
-    const existingEmergency = await this.prisma.emergencyCase.findFirst({
-      where: emergencyWhere,
-      select: { id: true, status: true },
-    });
-    if (existingEmergency) {
-      return { exists: true, usedBy: 'acil', matchedRecord: { id: existingEmergency.id, status: existingEmergency.status ?? undefined } };
     }
 
     return { exists: false, usedBy: null, matchedRecord: null };

@@ -283,11 +283,10 @@ export default function YeniAcilDosyaPage() {
     if (!trimmed) { setFileNoError(null); return; }
     setFileNoChecking(true);
     try {
-      const res = await axios.get(`${API}/claim-files/check-file-no?fileNo=${encodeURIComponent(trimmed)}`, { headers: authHeader() });
+      const res = await axios.get(`${API}/emergency/cases/check-file-no?fileNo=${encodeURIComponent(trimmed)}`, { headers: authHeader() });
       const data = res.data.data;
       if (data.exists) {
-        const where = data.usedBy === 'hasar' ? 'hasar dosyasında' : 'acil yardım dosyasında';
-        setFileNoError(`Bu dosya numarası zaten ${where} kullanılıyor`);
+        setFileNoError('Bu dosya numarası zaten acil yardım dosyasında kullanılıyor');
       } else {
         setFileNoError(null);
       }

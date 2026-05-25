@@ -247,7 +247,7 @@ export default function KullanicilarPage() {
 
     if (ids.length === 0) return;
 
-    const confirmed = window.confirm(`${ids.length} kullanıcı silinecek, emin misiniz?`);
+    const confirmed = window.confirm(`${ids.length} kullanıcı pasifleştirilecek, emin misiniz?`);
     if (!confirmed) return;
 
     setBulkDeleting(true);
@@ -260,7 +260,7 @@ export default function KullanicilarPage() {
       setSelected(new Set());
       await loadUsers();
     } catch (err: any) {
-      window.alert(err?.response?.data?.message ?? 'Toplu silme sırasında hata oluştu.');
+      window.alert(err?.response?.data?.message ?? 'Toplu pasifleştirme sırasında hata oluştu.');
     } finally {
       setBulkDeleting(false);
     }
@@ -498,7 +498,7 @@ export default function KullanicilarPage() {
               disabled={bulkDeleting}
               className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-60"
             >
-              {bulkDeleting ? 'Siliniyor...' : 'Seçilenleri Sil'}
+              {bulkDeleting ? 'Pasifleştiriliyor...' : 'Seçilenleri Pasifleştir'}
             </button>
             <button
               type="button"
