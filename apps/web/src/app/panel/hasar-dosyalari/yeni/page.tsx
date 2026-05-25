@@ -435,7 +435,7 @@ export default function YeniHasarDosyasiPage() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Branş <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+              <label className="text-xs text-slate-500 block mb-1.5">Hasar Konusu <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
               <select
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.productBranch ? 'border-red-400' : 'border-slate-200'}`}
                 value={productBranch}
@@ -448,7 +448,7 @@ export default function YeniHasarDosyasiPage() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Hasar Türü <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+              <label className="text-xs text-slate-500 block mb-1.5">Hasar Konusu (Detay) <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
               <input
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.lossType ? 'border-red-400' : 'border-slate-200'}`}
                 placeholder="Örn. Su sızıntısı"
@@ -462,7 +462,7 @@ export default function YeniHasarDosyasiPage() {
               <label className="text-xs text-slate-500 block mb-1.5">Dosya No <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
               <input
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.fileNo ? 'border-red-400' : 'border-slate-200'}`}
-                placeholder="Dosya numarasını manuel girin"
+                placeholder="Örn: HAS-2026-001"
                 value={fileNo}
                 onChange={(e) => { setFileNo(e.target.value); setFileNoError(null); }}
                 onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); checkFileNoDuplicate(v); }}
