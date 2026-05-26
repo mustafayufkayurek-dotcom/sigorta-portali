@@ -11,7 +11,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({
   title = 'Operasyon Merkezi',
-  subtitle = 'Meridyen Assistance — Anlık Durum Paneli',
+  subtitle = 'Meridyen Assistance — Dosya akışı, aksiyon ve finans karar ekranı',
   actions,
 }: DashboardHeaderProps) {
   return (

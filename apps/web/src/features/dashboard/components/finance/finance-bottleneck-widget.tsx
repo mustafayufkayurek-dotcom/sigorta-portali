@@ -50,7 +50,7 @@ export function FinanceBottleneckWidget({ onNavigate, staggerIndex = 0 }: Financ
                 <button
                   key={`${item.fileNo}-${item.insuranceCompany}`}
                   type="button"
-                  onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+                  onClick={() => onNavigate?.(`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`)}
                   className="grid w-full grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 md:grid-cols-4"
                 >
                   <span className="font-semibold">{item.fileNo}</span>

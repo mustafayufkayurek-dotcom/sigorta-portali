@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 
@@ -21,13 +21,19 @@ type QuickFilter = 'tumu' | 'incoming' | 'outgoing';
 
 export default function TahsilatlarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlPaymentType = searchParams.get('paymentType') as QuickFilter | null;
+  const urlStatus = searchParams.get('status') ?? '';
+  const urlSearch = searchParams.get('search') ?? '';
   const [payments, setPayments] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('tumu');
-  const [filters, setFilters] = useState<any>({ paymentType: '', status: '', method: '', page: 1, limit: 20 });
+  const [search, setSearch] = useState(urlSearch);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(
+    urlPaymentType === 'incoming' || urlPaymentType === 'outgoing' ? urlPaymentType : 'tumu',
+  );
+  const [filters, setFilters] = useState<any>({ paymentType: '', status: urlStatus, method: '', page: 1, limit: 20 });
   const [sortKey, setSortKey] = useState<SortKey>('paymentDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [totals, setTotals] = useState({ incoming: 0, outgoing: 0, pendingIncoming: 0 });

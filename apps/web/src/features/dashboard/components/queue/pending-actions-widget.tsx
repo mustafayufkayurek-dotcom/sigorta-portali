@@ -39,7 +39,7 @@ export function PendingActionsWidget({ onNavigate, staggerIndex = 0 }: PendingAc
             <button
               key={item.id || `${item.fileNo}-${item.action}`}
               type="button"
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              onClick={() => onNavigate?.(`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`)}
               className="grid w-full grid-cols-1 gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-left transition-colors hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 md:grid-cols-4"
             >
               <span className="font-semibold text-slate-900 dark:text-white">{item.fileNo}</span>

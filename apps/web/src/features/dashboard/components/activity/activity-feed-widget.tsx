@@ -36,7 +36,7 @@ export function ActivityFeedWidget({ onNavigate, staggerIndex = 0 }: ActivityFee
             <button
               key={`${item.fileNo}-${item.createdAt}-${idx}`}
               type="button"
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              onClick={() => onNavigate?.(`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`)}
               className="flex w-full items-start gap-3 rounded-lg border border-slate-100 p-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
             >
               <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />

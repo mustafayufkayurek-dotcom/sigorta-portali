@@ -66,7 +66,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               color="bg-indigo-600"
               subtext={ops ? `${ops.closedClaims} kapatıldı` : undefined}
               emptyHint="Takipte aktif dosya yok."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
             />
             <KpiCard
               icon={AlertTriangle}
@@ -82,7 +82,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               value={pendingCount || '—'}
               color="bg-amber-600"
               emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
             />
             <KpiCard
               icon={TrendingUp}
@@ -90,7 +90,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               value={ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
               color="bg-rose-600"
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              onClick={() => onNavigate?.('/panel/finans/tahsilatlar?paymentType=incoming&status=pending')}
             />
           </>
         )}

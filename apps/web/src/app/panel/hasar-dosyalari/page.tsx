@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -85,12 +85,15 @@ export default function ClaimFilesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlStatusCode = searchParams.get('status');
+  const urlSearch = searchParams.get('search') ?? '';
+  const urlInvoiceStatus = searchParams.get('invoiceStatus') ?? '';
+  const urlPriority = searchParams.get('priority') ?? '';
 
   // Filters state
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch);
   const [statusFilter, setStatusFilter] = useState('');
-  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState(urlInvoiceStatus);
+  const [priorityFilter, setPriorityFilter] = useState(urlPriority);
   const [insuranceFilter, setInsuranceFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -113,7 +116,7 @@ export default function ClaimFilesPage() {
   );
 
   // URL status code → status filter (auto-select on first load)
-  useMemo(() => {
+  useEffect(() => {
     if (urlStatusCode && claimStatuses.length > 0 && !statusFilter) {
       if (urlStatusCode === 'sla_exceeded') {
         setStatusFilter('__sla_exceeded__');
@@ -128,7 +131,7 @@ export default function ClaimFilesPage() {
         if (match) setStatusFilter(match.id);
       }
     }
-  }, [urlStatusCode, claimStatuses]);
+  }, [urlStatusCode, claimStatuses, statusFilter]);
 
   // --- TanStack Query: Claim Files (main list) ---
   const queryParams = useMemo(() => {
@@ -218,6 +221,9 @@ export default function ClaimFilesPage() {
                 {urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
                 {urlStatusCode === 'closed' && <span className="ml-2 text-emerald-500 font-semibold">· Kapalı Dosyalar</span>}
                 {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-red-500 font-semibold">· SLA Aşanlar</span>}
+                {search && <span className="ml-2 text-blue-500 font-semibold">· Arama: {search}</span>}
+                {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-red-500 font-semibold">· Gecikmiş fatura</span>}
+                {invoiceStatusFilter === 'pending' && <span className="ml-2 text-amber-500 font-semibold">· Bekleyen tahsilat</span>}
               </p>
             )}
           </div>

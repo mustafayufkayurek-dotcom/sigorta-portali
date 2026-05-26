@@ -30,7 +30,7 @@ export function CriticalAlertsWidget({ onNavigate, staggerIndex = 0 }: CriticalA
         <div className="grid min-h-[172px] grid-cols-1 gap-4 md:grid-cols-2">
           <button
             type="button"
-            onClick={() => onNavigate?.('/panel/hasar-dosyalari?filter=sla_exceeded')}
+            onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=sla_exceeded')}
             className="rounded-lg bg-white/10 p-4 text-left transition-colors hover:bg-white/20"
           >
             <p className="text-4xl font-bold">{data.slaEscalations?.length ?? 0}</p>
@@ -38,7 +38,7 @@ export function CriticalAlertsWidget({ onNavigate, staggerIndex = 0 }: CriticalA
           </button>
           <button
             type="button"
-            onClick={() => onNavigate?.('/panel/hasar-dosyalari?filter=inactive')}
+            onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
             className="rounded-lg bg-white/10 p-4 text-left transition-colors hover:bg-white/20"
           >
             <p className="text-4xl font-bold">{data.inactiveFiles?.length ?? 0}</p>
