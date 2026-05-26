@@ -20,6 +20,11 @@ export default function PanelPage() {
   const showLoadingBar = dashboardRequestCount > 0;
 
   const handleNavigate = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.location.assign(path);
+      return;
+    }
+
     router.push(path);
   };
 
