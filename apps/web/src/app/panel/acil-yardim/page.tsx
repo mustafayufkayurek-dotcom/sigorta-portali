@@ -176,8 +176,9 @@ export default function AcilYardimPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push('/panel/hasar-dosyalari')}
+            onClick={() => router.push('/panel/operasyon')}
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            title="Operasyon merkezine dön"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -189,8 +190,8 @@ export default function AcilYardimPage() {
             </svg>
           </div>
           <div>
-            <h1 className="page-title">Acil Yardım Dosyaları</h1>
-            <p className="page-subtitle">{cases.length} aktif dosya</p>
+            <h1 className="page-title">Acil Yardım Operasyon Merkezi</h1>
+            <p className="page-subtitle">{cases.length} aktif acil yardım dosyası</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

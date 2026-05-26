@@ -725,8 +725,41 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   useEffect(() => {
+    const clearAuth = () => {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authPersistence');
+      localStorage.removeItem('tokenExpiry');
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('authSession');
+    };
+
+    const hasValidSessionScope = () => {
+      const persistence = localStorage.getItem('authPersistence');
+      const sessionActive = sessionStorage.getItem('authSession') === 'active';
+      return persistence === 'remember' || sessionActive;
+    };
+
+    const persistTokens = (accessToken: string, refreshToken: string) => {
+      const persistence = localStorage.getItem('authPersistence');
+      if (persistence === 'remember') {
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        return;
+      }
+      sessionStorage.setItem('accessToken', accessToken);
+      sessionStorage.setItem('refreshToken', refreshToken);
+      sessionStorage.setItem('authSession', 'active');
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('authPersistence', 'session');
+    };
+
     const token = localStorage.getItem('accessToken');
-    if (!token) {
+    if (!token || !hasValidSessionScope()) {
+      clearAuth();
       router.push('/giris');
       return;
     }
@@ -760,8 +793,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               });
               const tokens = refreshResponse.data?.data;
               if (tokens?.accessToken && tokens?.refreshToken) {
-                localStorage.setItem('accessToken', tokens.accessToken);
-                localStorage.setItem('refreshToken', tokens.refreshToken);
+                persistTokens(tokens.accessToken, tokens.refreshToken);
                 const retryMe = await axios.get(`${apiBase}/auth/me`, {
                   headers: { Authorization: `Bearer ${tokens.accessToken}` },
                 });
@@ -780,9 +812,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             } catch {}
           }
         }
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        clearAuth();
         router.push('/giris');
       })
       .finally(() => {
@@ -872,6 +902,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     localStorage.clear();
+    sessionStorage.clear();
     router.push('/giris');
   };
 

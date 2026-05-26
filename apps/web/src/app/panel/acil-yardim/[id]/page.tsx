@@ -446,16 +446,18 @@ export default function VakaDetayPage() {
   const currentIdx = STATUS_STEPS.indexOf(vaka.status);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-5xl mx-auto space-y-5">
       {/* Back + header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
         <Link href="/panel/acil-yardim" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Acil Yardım Operasyon Akışı</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            {vaka.fileNo && <span className="text-xs font-mono text-slate-500">Dosya No: {vaka.fileNo}</span>}
             <span className="text-xs font-mono text-slate-400">{vaka.caseNo}</span>
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${URGENCY_COLOR[vaka.urgency]}`}>
               {URGENCY_LABELS[vaka.urgency]}
@@ -468,13 +470,14 @@ export default function VakaDetayPage() {
               </span>
             )}
           </div>
-          <h1 className="text-lg font-bold text-slate-900 truncate">{vaka.customerName}</h1>
+          <h1 className="text-xl font-bold text-slate-900 truncate mt-1">{vaka.customerName}</h1>
+          <p className="text-xs text-slate-500 mt-1">Bu ekran yalnız Acil Yardım dosyalarının durum, maliyet ve evrak akışını yönetir.</p>
         </div>
       </div>
 
       {/* Durum Stepper */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Durum</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Acil Yardım Süreç Durumu</p>
         <div className="flex items-center gap-1">
           {STATUS_STEPS.map((s, i) => {
             const isActive = s === vaka.status;

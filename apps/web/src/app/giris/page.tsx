@@ -301,7 +301,8 @@ export default function LoginPage() {
       .then((r) => {
         const d = r.data?.data ?? {};
         if (d.logoUrl) {
-          const busted = d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`;
+          const isDataUri = d.logoUrl.startsWith('data:');
+          const busted = isDataUri ? d.logoUrl : (d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`);
           setCompanyLogo(busted);
         }
         if (d.name) setCompanyName(d.name);
@@ -327,16 +328,24 @@ export default function LoginPage() {
         localStorage.setItem('accessToken', tokens.accessToken);
         localStorage.setItem('refreshToken', tokens.refreshToken);
         localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('authPersistence', 'remember');
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('refreshToken');
+        sessionStorage.removeItem('authSession');
         // 7 gün için token süresini kaydet
         const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
         localStorage.setItem('tokenExpiry', String(expiry));
       } else {
-        // Session storage kullan
+        // Sayfa geçişlerinde mevcut API yardımcıları localStorage okuduğu için token
+        // kısa süreli olarak iki yerde tutulur; kalıcılık session işaretiyle sınırlandırılır.
         sessionStorage.setItem('accessToken', tokens.accessToken);
         sessionStorage.setItem('refreshToken', tokens.refreshToken);
+        sessionStorage.setItem('authSession', 'active');
         localStorage.setItem('accessToken', tokens.accessToken);
         localStorage.setItem('refreshToken', tokens.refreshToken);
+        localStorage.setItem('authPersistence', 'session');
         localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('tokenExpiry');
       }
       localStorage.setItem('user', JSON.stringify(user));
 
