@@ -4,6 +4,7 @@ import { useIsFetching } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { DashboardShell, DashboardHeader, DashboardGrid } from './_components';
 import { PrimaryKpiGroup } from '@/features/dashboard/components/kpi';
+import { OperationFlowStrip } from '@/features/dashboard/components/flow';
 import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
 import { PendingActionsWidget } from '@/features/dashboard/components/queue';
 import { SlaRiskWidget } from '@/features/dashboard/components/sla';
@@ -34,6 +35,8 @@ export default function PanelPage() {
       <DashboardHeader />
 
       <PrimaryKpiGroup onNavigate={handleNavigate} staggerIndex={0} />
+
+      <OperationFlowStrip onNavigate={handleNavigate} />
 
       <CriticalAlertsWidget onNavigate={handleNavigate} staggerIndex={1} />
 

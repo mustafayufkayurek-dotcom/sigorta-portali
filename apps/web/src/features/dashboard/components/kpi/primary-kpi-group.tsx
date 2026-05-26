@@ -29,7 +29,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
   return (
     <WidgetBoundary>
       <section
-        className={`grid grid-cols-2 gap-3 transition-all duration-500 ease-out lg:grid-cols-3 xl:grid-cols-6 ${
+        className={`grid grid-cols-1 gap-3 transition-all duration-500 ease-out sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 ${
           isLoading ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
         }`}
         style={{ transitionDelay: `${staggerIndex * 100}ms` }}

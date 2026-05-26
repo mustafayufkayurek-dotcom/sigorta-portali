@@ -31,18 +31,18 @@ export function CriticalAlertsWidget({ onNavigate, staggerIndex = 0 }: CriticalA
           <button
             type="button"
             onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=sla_exceeded')}
-            className="rounded-lg bg-white/10 p-4 text-left transition-colors hover:bg-white/20"
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-left transition-colors hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/20 dark:hover:bg-red-950/40"
           >
-            <p className="text-4xl font-bold">{data.slaEscalations?.length ?? 0}</p>
-            <p className="mt-1 text-sm font-medium">SLA Aşan Dosyalar</p>
+            <p className="text-4xl font-bold text-red-700 dark:text-red-300">{data.slaEscalations?.length ?? 0}</p>
+            <p className="mt-1 text-sm font-medium text-red-900 dark:text-red-100">SLA Aşan Dosyalar</p>
           </button>
           <button
             type="button"
             onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
-            className="rounded-lg bg-white/10 p-4 text-left transition-colors hover:bg-white/20"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-left transition-colors hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/20 dark:hover:bg-amber-950/40"
           >
-            <p className="text-4xl font-bold">{data.inactiveFiles?.length ?? 0}</p>
-            <p className="mt-1 text-sm font-medium">Hareketsiz Dosyalar (48h+)</p>
+            <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">{data.inactiveFiles?.length ?? 0}</p>
+            <p className="mt-1 text-sm font-medium text-amber-900 dark:text-amber-100">Hareketsiz Dosyalar (48 saat üzeri)</p>
           </button>
         </div>
       )}

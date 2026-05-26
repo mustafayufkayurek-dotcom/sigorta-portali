@@ -24,10 +24,10 @@ export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, o
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`group w-full text-left rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-900 ${onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40' : ''}`}
+      className={`group min-h-[116px] w-full rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-900/80 ${onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className={`rounded-lg p-2 transition-transform group-hover:scale-110 ${color}`}>
+        <div className={`rounded-md p-2 ${color}`}>
           <Icon className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0 flex-1">
