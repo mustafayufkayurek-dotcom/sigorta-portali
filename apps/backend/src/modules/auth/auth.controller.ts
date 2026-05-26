@@ -6,6 +6,7 @@ import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from '@/common/decorators/public.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { RegisterDto, RefreshTokenDto } from '@sigorta/shared';
 import { JwtService } from '@nestjs/jwt';
 import { TokenBlacklistService } from './token-blacklist.service';
@@ -59,8 +60,8 @@ export class AuthController {
     };
   }
 
-  @Public()
   @Post('register')
+  @RequirePermissions('user.create')
   @ApiOperation({ summary: 'Yeni kullanıcı kaydı' })
   async register(@Body() registerDto: RegisterDto) {
     const result = await this.authService.register(registerDto);
@@ -89,7 +90,7 @@ export class AuthController {
     return {
       success: true,
       data: result,
-      message: 'Şifre sıfırlama token\'ı oluşturuldu',
+      message: 'Eğer bu e-posta sistemde kayıtlıysa şifre sıfırlama bağlantısı gönderilecektir.',
     };
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -176,7 +177,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
           ) : (
             <div
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
             />
           )}
         </div>

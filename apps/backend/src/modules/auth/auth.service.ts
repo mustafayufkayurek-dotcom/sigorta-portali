@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -208,11 +208,11 @@ export class AuthService {
     });
   }
 
-  async forgotPassword(email: string): Promise<{ token: string }> {
+  async forgotPassword(email: string): Promise<{ requested: true }> {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      throw new NotFoundException('Bu email adresi kayıtlı değil');
+      return { requested: true };
     }
 
     // Invalidate existing unused tokens for this user
@@ -228,7 +228,7 @@ export class AuthService {
       data: { userId: user.id, token, expiresAt },
     });
 
-    return { token };
+    return { requested: true };
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -258,7 +258,10 @@ export class AuthService {
   }
 
   private async verifyCaptcha(token: string): Promise<boolean> {
-    const secretKey = this.config.get('RECAPTCHA_SECRET_KEY', '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe');
+    const secretKey = this.config.get<string>('RECAPTCHA_SECRET_KEY');
+    if (!secretKey) {
+      return false;
+    }
     return new Promise((resolve) => {
       const postData = querystring.stringify({ secret: secretKey, response: token });
       const req = https.request(

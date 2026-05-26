@@ -26,7 +26,7 @@ async function bootstrap() {
     prefix: '/uploads',
     setHeaders: (res: any) => {
       res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Origin', process.env.WEB_URL || 'http://localhost:3001');
     },
   });
 
@@ -62,15 +62,17 @@ async function bootstrap() {
   // API prefix
   app.setGlobalPrefix('api/v1');
 
-  // Swagger documentation
-  const config = new DocumentBuilder()
-    .setTitle('Sigorta Hasar Yönetim Sistemi API')
-    .setDescription('API documentation for insurance claim management system')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger documentation must stay closed in production unless explicitly enabled.
+  if (process.env.ENABLE_SWAGGER === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Sigorta Hasar Yönetim Sistemi API')
+      .setDescription('API documentation for insurance claim management system')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
@@ -78,7 +80,9 @@ async function bootstrap() {
   const port = process.env.BACKEND_PORT || 3000;
   await app.listen(port);
   logger.info(`Backend is running on port ${port}`);
-  logger.info(`API Documentation: http://localhost:${port}/api/docs`);
+  if (process.env.ENABLE_SWAGGER === 'true') {
+    logger.info(`API Documentation: http://localhost:${port}/api/docs`);
+  }
 
   // Graceful shutdown handler
   const shutdown = async (signal: string) => {

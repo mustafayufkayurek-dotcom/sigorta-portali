@@ -98,7 +98,7 @@ export class PermissionsGuard implements CanActivate {
 
     let effectivePermissions = user.permissions || [];
 
-    if (effectivePermissions.length === 0) {
+    if (effectivePermissions.length === 0 && process.env.PERMISSION_FALLBACK_ENABLED === 'true') {
       console.warn('FALLBACK_PERMISSION_USED', { userId: user.userId, roleCode });
       effectivePermissions = ROLE_DEFAULT_PERMISSIONS[roleCode] || [];
     }

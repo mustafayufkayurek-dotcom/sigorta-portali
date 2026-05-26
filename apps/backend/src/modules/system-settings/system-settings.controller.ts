@@ -49,15 +49,31 @@ export class SystemSettingsController {
   @ApiOperation({ summary: 'Mail yapılandırmasını getir' })
   async getMailConfig() {
     const data = await this.service.getMailConfig();
-    return { success: true, data };
+    return {
+      success: true,
+      data: {
+        ...data,
+        password: data.password ? '***' : '',
+      },
+    };
   }
 
   @Put('mail-config')
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Mail yapılandırmasını güncelle' })
   async setMailConfig(@Body() body: MailConfig) {
-    const data = await this.service.setMailConfig(body);
-    return { success: true, data };
+    const existing = await this.service.getMailConfig();
+    const data = await this.service.setMailConfig({
+      ...body,
+      password: body.password === '***' ? (existing?.password ?? '') : (body.password ?? ''),
+    });
+    return {
+      success: true,
+      data: {
+        ...data,
+        password: data.password ? '***' : '',
+      },
+    };
   }
 
   @Post('mail-config/test')

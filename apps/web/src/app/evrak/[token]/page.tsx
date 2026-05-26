@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 import {
   getPublicDocument,
   markDocumentViewed,
@@ -171,7 +172,7 @@ export default function EvrakOnayPage() {
           {doc?.renderedContent && (
             <div
               className="w-full"
-              dangerouslySetInnerHTML={{ __html: doc.renderedContent }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.renderedContent) }}
             />
           )}
         </div>

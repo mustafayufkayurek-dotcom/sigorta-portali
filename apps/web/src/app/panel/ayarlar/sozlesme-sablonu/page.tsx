@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -291,7 +292,7 @@ export default function SozlesmeSablonuPage() {
                   <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{idx + 1}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800">{clause.title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: clause.content.replace(/<[^>]+>/g, ' ').slice(0, 150) + '…' }} />
+                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(clause.content.replace(/<[^>]+>/g, ' ').slice(0, 150) + '…') }} />
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button type="button" onClick={() => startEdit(clause)}
@@ -366,7 +367,7 @@ export default function SozlesmeSablonuPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewHtml) }} />
             </div>
           </div>
         </div>

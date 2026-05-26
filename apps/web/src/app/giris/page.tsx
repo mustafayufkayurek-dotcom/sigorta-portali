@@ -139,18 +139,14 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [fpEmail, setFpEmail] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
   const [fpError, setFpError] = useState('');
-  const [fpToken, setFpToken] = useState('');
   const [fpDone, setFpDone] = useState(false);
-
-  void fpToken;
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setFpError('');
     setFpLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/auth/forgot-password`, { email: fpEmail });
-      setFpToken(res.data.data.token);
+      await axios.post(`${API_URL}/auth/forgot-password`, { email: fpEmail });
       setFpDone(true);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };

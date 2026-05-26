@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 import {
   EditButton,
   DeleteButton,
@@ -243,7 +244,7 @@ export default function EmailBildirimleriPage() {
               <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
                 <p className="text-xs text-slate-500"><span className="font-medium">Konu:</span> {form.subject || <span className="italic text-slate-300">boş</span>}</p>
               </div>
-              <div className="p-4 min-h-48 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: form.body || '<p class="text-slate-300 italic">İçerik yok</p>' }} />
+              <div className="p-4 min-h-48 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.body || '<p class="text-slate-300 italic">İçerik yok</p>') }} />
             </div>
           </div>
         ) : (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { sanitizeHtml } from '@/utils/sanitize-html';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -190,7 +191,7 @@ export default function SozlesmePage() {
           </div>
           <div
             className="p-6 text-sm leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: contract.renderedContent }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(contract.renderedContent) }}
           />
         </div>
 
