@@ -565,7 +565,7 @@ export default function YeniAcilDosyaPage() {
                   {newCustomerType === 'individual' ? (
                     <>
                       <div>
-                        <label className="text-xs text-slate-500 block mb-1.5">Ad *</label>
+                        <label className="text-xs text-slate-500 block mb-1.5">Ad <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
                         <input
                           className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-white"
                           placeholder="Zorunlu"
@@ -575,7 +575,7 @@ export default function YeniAcilDosyaPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-500 block mb-1.5">Soyad *</label>
+                        <label className="text-xs text-slate-500 block mb-1.5">Soyad <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
                         <input
                           className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-white"
                           placeholder="Zorunlu"
@@ -592,7 +592,7 @@ export default function YeniAcilDosyaPage() {
                     </>
                   ) : (
                     <div className="md:col-span-2">
-                      <label className="text-xs text-slate-500 block mb-1.5">Şirket Adı *</label>
+                      <label className="text-xs text-slate-500 block mb-1.5">Şirket Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
                       <input
                         className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-white"
                         placeholder="Zorunlu Alan"
@@ -631,7 +631,7 @@ export default function YeniAcilDosyaPage() {
                   <div>
                     <label className="text-xs text-slate-500 block mb-1.5">
                       Telefon
-                      <span className="ml-1.5 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1 py-0.5">Zorunlu Alan</span>
+                      <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
                     </label>
                     <div className="flex gap-1.5 items-center">
                       <span className="flex-shrink-0 w-8 h-9 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400">
@@ -717,7 +717,7 @@ export default function YeniAcilDosyaPage() {
               <div className="md:col-span-2">
                 <label className="text-xs text-slate-500 block mb-1.5">
                   Adres
-                  <span className="ml-1.5 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1 py-0.5">Zorunlu Alan</span>
+                  <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
                 </label>
                 <input
                   type="text"

@@ -409,11 +409,11 @@ export default function YeniHasarDosyasiPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
-        <button type="button" onClick={() => router.back()} className="text-sm text-slate-500 hover:text-slate-700">← Geri</button>
+        <button type="button" onClick={() => router.push('/panel/hasar-dosyalari')} className="text-sm text-slate-500 hover:text-slate-700">← Geri</button>
         <h2 className="text-2xl font-bold text-slate-800">Yeni Hasar Dosyası</h2>
       </div>
 
-      <div className="space-y-6">
+      <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); handleSubmit(); }}>
         {/* ── Dosya Bilgileri ── */}
         <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <h3 className="text-sm font-semibold text-slate-700 mb-4 border-b border-slate-100 pb-2">Dosya Bilgileri</h3>
@@ -784,12 +784,12 @@ export default function YeniHasarDosyasiPage() {
           </div>
         )}
         <div className="flex gap-3 pb-8">
-          <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
             {saving ? 'Kaydediliyor...' : 'Dosyayı Oluştur'}
           </button>
-          <button type="button" onClick={() => router.back()} className="flex-1 border border-slate-200 py-3 rounded-xl text-sm text-slate-600 hover:bg-slate-50">İptal</button>
+          <button type="button" onClick={() => router.push('/panel/hasar-dosyalari')} className="flex-1 border border-slate-200 py-3 rounded-xl text-sm text-slate-600 hover:bg-slate-50">İptal</button>
         </div>
-      </div>
+      </form>
 
       {/* Customer Select Modal */}
       <CustomerSelectModal
