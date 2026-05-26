@@ -11,6 +11,7 @@ import {
 import { AgreementsService } from './agreements.service';
 import { CreateAgreementDto, UpdateAgreementDto, AcceptAgreementDto } from './dto/agreements.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 
 @Controller()
 export class AgreementsController {
@@ -18,6 +19,7 @@ export class AgreementsController {
 
   // Admin: tüm sözleşmeler
   @Get('agreements')
+  @RequirePermissions('agreement.manage')
   async findAll() {
     const data = await this.service.findAll();
     return { data };
@@ -52,12 +54,14 @@ export class AgreementsController {
 
   // Sözleşmeyi kabul etmiş kullanıcılar (admin)
   @Get('agreements/:id/acceptances')
+  @RequirePermissions('agreement.manage')
   async getAcceptances(@Param('id') id: string) {
     const data = await this.service.getAcceptances(id);
     return { data };
   }
 
   @Post('agreements')
+  @RequirePermissions('agreement.manage')
   async create(@Body() dto: CreateAgreementDto) {
     const data = await this.service.create(dto);
     return { data };
@@ -76,12 +80,14 @@ export class AgreementsController {
   }
 
   @Patch('agreements/:id')
+  @RequirePermissions('agreement.manage')
   async update(@Param('id') id: string, @Body() dto: UpdateAgreementDto) {
     const data = await this.service.update(id, dto);
     return { data };
   }
 
   @Delete('agreements/:id')
+  @RequirePermissions('agreement.manage')
   async remove(@Param('id') id: string) {
     return this.service.remove(id);
   }

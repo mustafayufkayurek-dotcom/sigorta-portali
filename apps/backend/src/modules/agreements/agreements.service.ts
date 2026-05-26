@@ -47,8 +47,11 @@ export class AgreementsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.agreement.delete({ where: { id } });
-    return { message: 'Sözleşme silindi' };
+    await this.prisma.agreement.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return { message: 'Sözleşme pasifleştirildi' };
   }
 
   // Kullanıcının onaylaması gereken aktif sözleşmeleri döndür

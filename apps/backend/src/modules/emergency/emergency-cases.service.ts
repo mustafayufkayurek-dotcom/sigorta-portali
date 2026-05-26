@@ -205,7 +205,9 @@ export class EmergencyCasesService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.emergencyCase.delete({ where: { id } });
+    throw new BadRequestException(
+      'Acil yardım dosyası kalıcı olarak silinemez. Dosyayı durum akışı ile sonuçlandırın.',
+    );
   }
 
   // ─── Maliyet Girişleri ────────────────────────────────────────────────────
@@ -245,7 +247,9 @@ export class EmergencyCasesService {
   async removeCostEntry(caseId: string, costId: string) {
     const entry = await this.prisma.emergencyCostEntry.findFirst({ where: { id: costId, caseId } });
     if (!entry) throw new NotFoundException('Maliyet kaydı bulunamadı');
-    await this.prisma.emergencyCostEntry.delete({ where: { id: costId } });
+    throw new BadRequestException(
+      'Maliyet kaydı kalıcı olarak silinemez. Yanlış kayıt için düzeltme veya ters kayıt yöntemi kullanılmalıdır.',
+    );
   }
 
   async updateCostEntry(caseId: string, costId: string, dto: UpdateCostEntryDto) {

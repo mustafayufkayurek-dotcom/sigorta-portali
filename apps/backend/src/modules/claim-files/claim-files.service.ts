@@ -361,9 +361,9 @@ export class ClaimFilesService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.claimFile.delete({ where: { id } });
-    await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
-    return { message: 'Hasar dosyası silindi' };
+    throw new BadRequestException(
+      'Hasar dosyası kalıcı olarak silinemez. Dosyayı kapatma veya iptal durum akışı ile pasifleştirin.',
+    );
   }
 
   async assign(id: string, dto: any) {

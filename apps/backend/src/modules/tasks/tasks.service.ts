@@ -23,7 +23,11 @@ export class TasksService {
     const where: any = {};
     if (params?.claimFileId) where.claimFileId = params.claimFileId;
     if (params?.assignedUserId) where.assignedUserId = params.assignedUserId;
-    if (params?.status) where.status = params.status;
+    if (params?.status) {
+      where.status = params.status;
+    } else {
+      where.status = { not: 'cancelled' };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.task.findMany({
@@ -86,8 +90,12 @@ export class TasksService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.task.delete({ where: { id } });
-    return { message: 'Görev silindi' };
+    await this.prisma.task.update({
+      where: { id },
+      data: { status: 'cancelled' },
+    });
+    this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    return { message: 'Görev iptal edildi' };
   }
 
   async complete(id: string) {

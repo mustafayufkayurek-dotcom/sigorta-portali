@@ -18,7 +18,7 @@ export class VendorDocumentsService {
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
 
     const data = await this.prisma.vendorDocument.findMany({
-      where: { vendorId },
+      where: { vendorId, status: 'active' },
       orderBy: { createdAt: 'desc' },
       include: {
         documentType: { select: { id: true, code: true, name: true } },
@@ -98,7 +98,7 @@ export class VendorDocumentsService {
   }
 
   async getSignedUrl(id: string, expiresIn = 900): Promise<{ url: string; fileName: string; mimeType: string }> {
-    const doc = await this.prisma.vendorDocument.findUnique({ where: { id } });
+    const doc = await this.prisma.vendorDocument.findFirst({ where: { id, status: 'active' } });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
 
     const url = await this.storage.getSignedUrl(doc.storageKey, expiresIn);
@@ -106,7 +106,7 @@ export class VendorDocumentsService {
   }
 
   async getThumbnailSignedUrl(id: string, expiresIn = 900): Promise<{ url: string }> {
-    const doc = await this.prisma.vendorDocument.findUnique({ where: { id } });
+    const doc = await this.prisma.vendorDocument.findFirst({ where: { id, status: 'active' } });
     if (!doc || !doc.thumbnailKey) throw new NotFoundException('Thumbnail bulunamadı');
 
     const url = await this.storage.getSignedUrl(doc.thumbnailKey, expiresIn);
@@ -117,12 +117,10 @@ export class VendorDocumentsService {
     const doc = await this.prisma.vendorDocument.findUnique({ where: { id } });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
 
-    await this.storage.delete(doc.storageKey);
-    if (doc.thumbnailKey) {
-      await this.storage.delete(doc.thumbnailKey);
-    }
-
-    await this.prisma.vendorDocument.delete({ where: { id } });
-    return { message: 'Evrak silindi' };
+    await this.prisma.vendorDocument.update({
+      where: { id },
+      data: { status: 'inactive' },
+    });
+    return { message: 'Evrak pasifleştirildi' };
   }
 }

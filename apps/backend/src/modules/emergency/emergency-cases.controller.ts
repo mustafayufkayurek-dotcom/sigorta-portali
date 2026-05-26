@@ -19,17 +19,20 @@ import { UpdateEmergencyStatusDto } from './dto/update-emergency-status.dto';
 import { CreateCostEntryDto } from './dto/create-cost-entry.dto';
 import { UpdateCostEntryDto } from './dto/update-cost-entry.dto';
 import { EmergencyStatus } from '@prisma/client';
+import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 
 @Controller('emergency/cases')
 export class EmergencyCasesController {
   constructor(private readonly service: EmergencyCasesService) {}
 
   @Post()
+  @RequirePermissions('claim_file.create')
   create(@Body() dto: CreateEmergencyCaseDto, @Request() req: any) {
     return this.service.create(dto, req.user?.id ?? 'system');
   }
 
   @Get()
+  @RequirePermissions('claim_file.view')
   findAll(
     @Query('status') status?: EmergencyStatus,
     @Query('month') month?: string,
@@ -49,6 +52,7 @@ export class EmergencyCasesController {
   }
 
   @Get('check-file-no')
+  @RequirePermissions('claim_file.view')
   async checkFileNo(
     @Query('fileNo') fileNo: string,
     @Query('excludeId') excludeId?: string,
@@ -59,21 +63,25 @@ export class EmergencyCasesController {
   }
 
   @Get(':id')
+  @RequirePermissions('claim_file.view')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
   }
 
   @Patch(':id')
+  @RequirePermissions('claim_file.update')
   update(@Param('id') id: string, @Body() dto: UpdateEmergencyCaseDto) {
     return this.service.update(id, dto);
   }
 
   @Patch(':id/status')
+  @RequirePermissions('claim_file.status_change')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateEmergencyStatusDto) {
     return this.service.updateStatus(id, dto);
   }
 
   @Delete(':id')
+  @RequirePermissions('claim_file.delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string) {
     return this.service.remove(id);
@@ -82,6 +90,7 @@ export class EmergencyCasesController {
   // ─── Maliyet Girişleri ──────────────────────────────────────────────────────
 
   @Post(':id/costs')
+  @RequirePermissions('claim_file.update', 'budget.create')
   addCost(
     @Param('id') id: string,
     @Body() dto: CreateCostEntryDto,
@@ -91,17 +100,20 @@ export class EmergencyCasesController {
   }
 
   @Get(':id/costs')
+  @RequirePermissions('claim_file.view', 'budget.view')
   findCosts(@Param('id') id: string) {
     return this.service.findCostEntries(id);
   }
 
   @Delete(':id/costs/:costId')
+  @RequirePermissions('claim_file.update', 'budget.create')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeCost(@Param('id') id: string, @Param('costId') costId: string) {
     return this.service.removeCostEntry(id, costId);
   }
 
   @Patch(':id/costs/:costId')
+  @RequirePermissions('claim_file.update', 'budget.create')
   updateCost(
     @Param('id') id: string,
     @Param('costId') costId: string,

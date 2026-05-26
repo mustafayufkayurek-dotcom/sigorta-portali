@@ -11,7 +11,11 @@ export class InsuranceCompaniesService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (params?.status) where.status = params.status;
+    if (params?.status && params.status !== 'all') {
+      where.status = params.status;
+    } else {
+      where.status = 'active';
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.insuranceCompany.findMany({
@@ -84,7 +88,10 @@ export class InsuranceCompaniesService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.insuranceCompany.delete({ where: { id } });
-    return { message: 'Sigorta şirketi silindi' };
+    await this.prisma.insuranceCompany.update({
+      where: { id },
+      data: { status: 'inactive' },
+    });
+    return { message: 'Sigorta şirketi pasifleştirildi' };
   }
 }
