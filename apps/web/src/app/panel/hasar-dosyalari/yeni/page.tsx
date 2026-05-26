@@ -83,6 +83,10 @@ function TRPhoneInput({ value, onChange, onBlur, className = '', placeholder = '
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+function openNativeDatePicker(input: HTMLInputElement & { showPicker?: () => void }) {
+  input.showPicker?.();
+}
+
 type InsuranceCompany = { id: string; name: string };
 type Province = { id: string; plateCode: number; name: string };
 type District = { id: string; name: string };
@@ -466,6 +470,8 @@ export default function YeniHasarDosyasiPage() {
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
                 value={incidentDate}
                 onChange={(e) => setIncidentDate(e.target.value)}
+                onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               />
               {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
             </div>
@@ -477,6 +483,8 @@ export default function YeniHasarDosyasiPage() {
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.notificationDate ? 'border-red-400' : 'border-slate-200'}`}
                 value={notificationDate}
                 onChange={(e) => setNotificationDate(e.target.value)}
+                onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               />
               {errors.notificationDate && <p className="text-xs text-red-500 mt-0.5">{errors.notificationDate}</p>}
             </div>

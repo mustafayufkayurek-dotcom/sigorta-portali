@@ -26,7 +26,8 @@ function ResetPasswordForm() {
       .then((r) => {
         const d = r.data?.data ?? {};
         if (d.logoUrl) {
-          const busted = d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`;
+          const isDataUri = d.logoUrl.startsWith('data:');
+          const busted = isDataUri ? d.logoUrl : (d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`);
           setCompanyLogo(busted);
         }
         if (d.name) setCompanyName(d.name);
