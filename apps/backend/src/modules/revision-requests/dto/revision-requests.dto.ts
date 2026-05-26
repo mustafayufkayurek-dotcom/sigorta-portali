@@ -4,10 +4,14 @@ import {
   IsEnum,
   IsArray,
   IsDateString,
+  IsInt,
   IsNotEmpty,
   IsUUID,
+  Max,
   MinLength,
+  Min,
 } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export enum RevisionStatus {
   REQUESTED = 'REQUESTED',
@@ -75,6 +79,7 @@ export class UpdateRevisionStatusDto {
 
 export class ListRevisionRequestsDto {
   @IsOptional()
+  @Transform(({ value }) => (value === 'PENDING' ? RevisionStatus.REQUESTED : value))
   @IsEnum(RevisionStatus)
   status?: RevisionStatus;
 
@@ -84,11 +89,28 @@ export class ListRevisionRequestsDto {
 
   @IsOptional()
   @IsUUID()
+  claimFileId?: string;
+
+  @IsOptional()
+  @IsUUID()
   assignedToId?: string;
 
   @IsOptional()
   @IsEnum(RevisionPriority)
   priority?: RevisionPriority;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number = 50;
 }
 
 export class CreateRevisionMessageDto {

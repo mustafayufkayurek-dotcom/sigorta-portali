@@ -3383,7 +3383,7 @@ function YazismalarTab({ claimId }: { claimId: string }) {
 
 // ─── Revizyonlar Tab ──────────────────────────────────────────────────────────
 
-type RevisionStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'ESCALATED';
+type RevisionStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'ESCALATED';
 type RevisionPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
 type RevisionRequest = {
@@ -3403,7 +3403,7 @@ type RevisionRequest = {
 };
 
 const REV_STATUS_LABELS: Record<RevisionStatus, string> = {
-  PENDING: 'Bekliyor',
+  REQUESTED: 'Talep Edildi',
   IN_PROGRESS: 'Devam Ediyor',
   COMPLETED: 'Tamamlandı',
   REJECTED: 'Reddedildi',
@@ -3411,7 +3411,7 @@ const REV_STATUS_LABELS: Record<RevisionStatus, string> = {
 };
 
 const REV_STATUS_BADGE: Record<RevisionStatus, string> = {
-  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  REQUESTED: 'bg-amber-50 text-amber-700 border border-amber-200',
   IN_PROGRESS: 'bg-blue-50 text-blue-700 border border-blue-200',
   COMPLETED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   REJECTED: 'bg-slate-100 text-slate-500 border border-slate-200',
@@ -3449,7 +3449,7 @@ function RevizuonlarTab({ claimId }: { claimId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const pendingCount = revisions.filter((r) => r.status === 'PENDING').length;
+  const pendingCount = revisions.filter((r) => r.status === 'REQUESTED').length;
   const escalatedCount = revisions.filter((r) => r.status === 'ESCALATED').length;
 
   return (

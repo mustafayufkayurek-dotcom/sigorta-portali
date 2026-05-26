@@ -862,7 +862,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!loading && authChecked) {
       if (!localStorage.getItem('accessToken')) return;
-      apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'PENDING', limit: 1 })
+      apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'REQUESTED', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
         .catch(() => { setPendingRevisionCount(0); });
     }

@@ -77,27 +77,41 @@ export class RevisionRequestsService {
 
   async findAll(query: ListRevisionRequestsDto) {
     const where: Record<string, unknown> = {};
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
 
     if (query.status) where.status = query.status;
     if (query.reportId) where.reportId = query.reportId;
+    if (query.claimFileId) where.report = { claimFileId: query.claimFileId };
     if (query.assignedToId) where.assignedToId = query.assignedToId;
     if (query.priority) where.priority = query.priority;
 
-    const data = await this.prisma.reportRevisionRequest.findMany({
-      where,
-      include: {
-        report: { select: { id: true, reportNo: true, status: true } },
-        requestedBy: { select: { id: true, firstName: true, lastName: true } },
-        assignedTo: { select: { id: true, firstName: true, lastName: true } },
-        _count: { select: { messages: true } },
-      },
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.reportRevisionRequest.findMany({
+        where,
+        include: {
+          report: { select: { id: true, claimFileId: true, reportNo: true, status: true } },
+          requestedBy: { select: { id: true, firstName: true, lastName: true } },
+          assignedTo: { select: { id: true, firstName: true, lastName: true } },
+          _count: { select: { messages: true } },
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.reportRevisionRequest.count({ where }),
+    ]);
 
-    return { data };
+    return {
+      data: data.map((item) => ({
+        ...item,
+        claimFileId: item.report?.claimFileId ?? null,
+      })),
+      meta: { total, page, limit },
+    };
   }
 
   // ── Talep Detayı ─────────────────────────────────────────────────────────

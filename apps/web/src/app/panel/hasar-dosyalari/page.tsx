@@ -164,7 +164,7 @@ export default function ClaimFilesPage() {
   // --- TanStack Query: Pending Revisions ---
   const { data: revisionsData = [] } = useApiQuery<{ claimFileId?: string }[]>(
     ['revision-requests-pending'],
-    '/revision-requests?status=PENDING&limit=200',
+    '/revision-requests?status=REQUESTED&limit=200',
   );
   const pendingRevisionMap = useMemo(() => {
     const map: Record<string, number> = {};
