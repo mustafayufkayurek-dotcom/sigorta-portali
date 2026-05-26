@@ -3,6 +3,11 @@ export type OperationsResponse = {
   totalClaims: number;
   openClaims: number;
   closedClaims: number;
+  totalEmergencyCases: number;
+  openEmergencyCases: number;
+  closedEmergencyCases: number;
+  totalOperationalFiles: number;
+  openOperationalFiles: number;
   pendingTasks: number;
   slaViolationCount: number;
   overdueCollectionAmount: number;

@@ -29,13 +29,13 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
   return (
     <WidgetBoundary>
       <section
-        className={`grid grid-cols-2 gap-3 transition-all duration-500 ease-out lg:grid-cols-4 xl:grid-cols-5 ${
+        className={`grid grid-cols-2 gap-3 transition-all duration-500 ease-out lg:grid-cols-3 xl:grid-cols-6 ${
           isLoading ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
         }`}
         style={{ transitionDelay: `${staggerIndex * 100}ms` }}
       >
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
+          Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           ))
         ) : isError ? (
@@ -53,20 +53,30 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
           <>
             <KpiCard
               icon={FileText}
-              label="Toplam Dosya"
-              value={ops?.totalClaims ?? '—'}
+              label="Toplam Operasyon"
+              value={ops?.totalOperationalFiles ?? ops?.totalClaims ?? '—'}
               color="bg-blue-600"
-              emptyHint="Henüz kayıtlı dosya bulunmuyor."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari')}
+              subtext={ops ? `${ops.openOperationalFiles} açık takip` : undefined}
+              emptyHint="Henüz kayıtlı operasyon dosyası bulunmuyor."
+              onClick={() => onNavigate?.('/panel')}
             />
             <KpiCard
               icon={Clock}
-              label="Açık Dosya"
-              value={ops?.openClaims ?? '—'}
+              label="Hasar Dosyası"
+              value={ops?.totalClaims ?? '—'}
               color="bg-indigo-600"
-              subtext={ops ? `${ops.closedClaims} kapatıldı` : undefined}
-              emptyHint="Takipte aktif dosya yok."
+              subtext={ops ? `${ops.openClaims} açık, ${ops.closedClaims} kapalı` : undefined}
+              emptyHint="Kayıtlı hasar dosyası yok."
               onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
+            />
+            <KpiCard
+              icon={BellRing}
+              label="Acil Yardım"
+              value={ops?.totalEmergencyCases ?? '—'}
+              color="bg-cyan-600"
+              subtext={ops ? `${ops.openEmergencyCases} açık, ${ops.closedEmergencyCases} kapalı` : undefined}
+              emptyHint="Kayıtlı acil yardım dosyası yok."
+              onClick={() => onNavigate?.('/panel/acil-yardim')}
             />
             <KpiCard
               icon={AlertTriangle}

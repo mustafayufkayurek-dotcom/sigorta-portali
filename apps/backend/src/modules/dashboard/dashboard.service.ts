@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
@@ -27,6 +28,11 @@ export class DashboardService {
       totalClaims: number;
       openClaims: number;
       closedClaims: number;
+      totalEmergencyCases: number;
+      openEmergencyCases: number;
+      closedEmergencyCases: number;
+      totalOperationalFiles: number;
+      openOperationalFiles: number;
       pendingTasks: number;
       slaViolationCount: number;
       overdueCollectionAmount: number;
@@ -38,15 +44,36 @@ export class DashboardService {
     const scopeWhere = scopeUserId
       ? { OR: [{ assignedOfficeUserId: scopeUserId }, { assignedFieldUserId: scopeUserId }] }
       : {};
+    const emergencyScopeWhere = scopeUserId ? { assignedUserId: scopeUserId } : {};
+    const closedEmergencyStatuses: EmergencyStatus[] = [
+      EmergencyStatus.COZULDU,
+      EmergencyStatus.FATURALANDILDI,
+    ];
 
-    const [totalClaims, openClaims, closedClaims, pendingTasks, slaViolationCount, overdueAgg] =
-      await Promise.all([
+    const [
+      totalClaims,
+      openClaims,
+      closedClaims,
+      totalEmergencyCases,
+      openEmergencyCases,
+      closedEmergencyCases,
+      pendingTasks,
+      slaViolationCount,
+      overdueAgg,
+    ] = await Promise.all([
         this.prisma.claimFile.count({ where: scopeWhere }),
         this.prisma.claimFile.count({
           where: { ...scopeWhere, currentStatus: { isClosedState: false } },
         }),
         this.prisma.claimFile.count({
           where: { ...scopeWhere, currentStatus: { isClosedState: true } },
+        }),
+        this.prisma.emergencyCase.count({ where: emergencyScopeWhere }),
+        this.prisma.emergencyCase.count({
+          where: { ...emergencyScopeWhere, status: { notIn: closedEmergencyStatuses } },
+        }),
+        this.prisma.emergencyCase.count({
+          where: { ...emergencyScopeWhere, status: { in: closedEmergencyStatuses } },
         }),
         this.prisma.task.count({ where: { status: 'pending' } }),
         this.prisma.claimFile.count({
@@ -66,6 +93,11 @@ export class DashboardService {
       totalClaims,
       openClaims,
       closedClaims,
+      totalEmergencyCases,
+      openEmergencyCases,
+      closedEmergencyCases,
+      totalOperationalFiles: totalClaims + totalEmergencyCases,
+      openOperationalFiles: openClaims + openEmergencyCases,
       pendingTasks,
       slaViolationCount,
       overdueCollectionAmount: overdueAgg._sum.totalAmount ?? 0,
