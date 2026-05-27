@@ -1,12 +1,9 @@
 'use client';
 
 import { ArrowRight, Banknote, FileText, ListTodo, Siren } from 'lucide-react';
+import Link from 'next/link';
 import { useDashboardOperations, usePendingActions } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
-
-interface OperationFlowStripProps {
-  onNavigate?: (path: string) => void;
-}
 
 type FlowItem = {
   title: string;
@@ -17,7 +14,7 @@ type FlowItem = {
   path: string;
 };
 
-export function OperationFlowStrip({ onNavigate }: OperationFlowStripProps) {
+export function OperationFlowStrip() {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
   const ops = opsQuery.data;
@@ -30,7 +27,7 @@ export function OperationFlowStrip({ onNavigate }: OperationFlowStripProps) {
       detail: ops ? `${ops.totalClaims} toplam dosya` : 'Veri bekleniyor',
       icon: FileText,
       iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
-      path: '/panel/hasar-dosyalari?status=open',
+      path: '/panel/hasar-dosyalari',
     },
     {
       title: 'Acil Yardım',
@@ -46,7 +43,7 @@ export function OperationFlowStrip({ onNavigate }: OperationFlowStripProps) {
       detail: 'Operasyon takibi',
       icon: ListTodo,
       iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-      path: '/panel/hasar-dosyalari?status=open',
+      path: '/panel/hasar-dosyalari',
     },
     {
       title: 'Geciken Tahsilat',
@@ -75,10 +72,9 @@ export function OperationFlowStrip({ onNavigate }: OperationFlowStripProps) {
         {items.map((item) => {
           const Icon = item.icon;
           return (
-            <button
+            <Link
               key={item.title}
-              type="button"
-              onClick={() => onNavigate?.(item.path)}
+              href={item.path}
               className="group flex min-h-[92px] items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -96,7 +92,7 @@ export function OperationFlowStrip({ onNavigate }: OperationFlowStripProps) {
                 <span className="text-xl font-semibold text-slate-950 dark:text-white">{item.value}</span>
                 <ArrowRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
               </div>
-            </button>
+            </Link>
           );
         })}
       </div>

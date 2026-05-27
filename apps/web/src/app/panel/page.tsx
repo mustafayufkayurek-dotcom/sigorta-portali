@@ -41,7 +41,7 @@ export default function PanelPage() {
 
       <PrimaryKpiGroup onNavigate={handleNavigate} staggerIndex={0} />
 
-      <OperationFlowStrip onNavigate={handleNavigate} />
+      <OperationFlowStrip />
 
       <CriticalAlertsWidget onNavigate={handleNavigate} staggerIndex={1} />
 
