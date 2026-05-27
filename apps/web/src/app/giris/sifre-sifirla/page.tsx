@@ -63,7 +63,7 @@ function ResetPasswordForm() {
   return (
     <>
       <style>{`
-        @import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap");
+        @import url(https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap);
 
         :root {
           --navy: #0b1f3a;
