@@ -142,23 +142,38 @@
    katmanı kalıcı refactor değildir; mevcut yardımcı sınıfların koyu temada
    görünür davranmasını sağlar. */
 .dark body {
-  background: #0f172a;
-  color: #e2e8f0;
+  background: #020617;
+  color: #e5edf7;
+}
+
+.dark main,
+.dark .min-h-screen {
+  background-color: #020617 !important;
 }
 
 .dark .bg-white,
 .dark .table-container,
 .dark .filter-bar,
-.dark .stat-card {
-  background-color: #111827 !important;
-  border-color: #334155 !important;
+.dark .stat-card,
+.dark [class*="shadow-card"] {
+  background-color: #0f172a !important;
+  border-color: #253247 !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28) !important;
 }
 
 .dark .bg-slate-50,
 .dark .bg-slate-50\/50,
 .dark .bg-slate-50\/80,
 .dark .table-head-row {
-  background-color: #1f2937 !important;
+  background-color: #111827 !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.16) !important;
+}
+
+.dark .text-blue-700 {
+  color: #bfdbfe !important;
 }
 
 .dark .text-slate-900,
@@ -172,14 +187,14 @@
 .dark .text-slate-500,
 .dark .text-slate-400,
 .dark .page-subtitle {
-  color: #cbd5e1 !important;
+  color: #b6c2d2 !important;
 }
 
 .dark .border-slate-100,
 .dark .border-slate-200,
 .dark .border-slate-200\/70,
 .dark .border-slate-200\/80 {
-  border-color: #334155 !important;
+  border-color: #253247 !important;
 }
 
 .dark .input-base,
@@ -187,14 +202,18 @@
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #0f172a;
-  border-color: #475569;
+  background-color: #111827;
+  border-color: #334155;
   color: #f8fafc;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #94a3b8;
+  color: #8fa1b7;
+}
+
+.dark button:not([class*="bg-blue-600"]):not([class*="bg-red-"]):not([class*="bg-green-"]) {
+  border-color: #334155;
 }
 
 /* Stat Kart */

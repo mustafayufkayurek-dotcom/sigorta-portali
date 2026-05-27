@@ -213,7 +213,7 @@ function Navbar({
     <img
       src={companyLogo}
       alt={companyName}
-      className="block h-11 lg:h-12 w-auto max-w-[220px] object-contain rounded-md"
+      className="block max-h-10 w-auto max-w-[124px] object-contain"
       onError={() => { /* parent will fallback */ }}
     />
   ) : (
@@ -231,16 +231,16 @@ function Navbar({
   );
 
   return (
-    <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
+    <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
       <div className="mx-auto max-w-screen-2xl px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex h-[72px] items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-5 min-w-0">
             <a
               href="https://meridyenassistance.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-16 min-w-[96px] items-center justify-center gap-2.5 shrink-0 overflow-visible"
+              className="flex h-14 min-w-[124px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-sm transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
               title="Meridyen Assistance web sitesini yeni sekmede aç"
             >
               {logoContent}
