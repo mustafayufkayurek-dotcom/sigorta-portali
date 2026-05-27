@@ -694,6 +694,11 @@ export class SystemSettingsService {
       throw new BadRequestException('Mail yapılandırması eksik veya henüz kaydedilmemiş.');
     }
 
+    const subject = 'Test E-postası — Sigorta Hasar Sistemi';
+    const logEntry = await this.prisma.emailLog.create({
+      data: { to, subject, status: 'queued' },
+    });
+
     const secure = config.security === 'SSL';
     const transportOptions: nodemailer.TransportOptions = {
       host: config.host,
@@ -716,9 +721,19 @@ export class SystemSettingsService {
       const result = await transporter.sendMail({
         from: `"${config.fromName || 'Sigorta Hasar Sistemi'}" <${config.fromEmail || config.username}>`,
         to,
-        subject: 'Test E-postası — Sigorta Hasar Sistemi',
+        subject,
         text: 'Bu bir test e-postasıdır. Mail yapılandırmanız başarıyla çalışmaktadır.',
         html: '<p>Bu bir <strong>test e-postasıdır</strong>. Mail yapılandırmanız başarıyla çalışmaktadır.</p>',
+      });
+      await this.prisma.emailLog.update({
+        where: { id: logEntry.id },
+        data: {
+          status: result.rejected?.length ? 'failed' : 'sent',
+          sentAt: result.rejected?.length ? null : new Date(),
+          errorMsg: result.rejected?.length
+            ? `Reddedilen alıcılar: ${result.rejected.map(String).join(', ')}`
+            : null,
+        },
       });
       return {
         accepted: (result.accepted ?? []).map(String),
@@ -727,6 +742,13 @@ export class SystemSettingsService {
         response: result.response,
       };
     } catch (err: any) {
+      await this.prisma.emailLog.update({
+        where: { id: logEntry.id },
+        data: {
+          status: 'failed',
+          errorMsg: err?.message ?? 'Mail gönderilemedi. SMTP bağlantısını kontrol edin.',
+        },
+      });
       throw new BadRequestException(err?.message ?? 'Mail gönderilemedi. SMTP bağlantısını kontrol edin.');
     }
   }
