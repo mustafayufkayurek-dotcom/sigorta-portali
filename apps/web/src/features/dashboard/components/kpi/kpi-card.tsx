@@ -1,6 +1,7 @@
 'use client';
 
 import { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 
 interface KpiCardProps {
   icon: LucideIcon;
@@ -9,6 +10,7 @@ interface KpiCardProps {
   color: string;
   subtext?: string;
   emptyHint?: string;
+  href?: string;
   onClick?: () => void;
   trend?: {
     value: number;
@@ -16,16 +18,12 @@ interface KpiCardProps {
   };
 }
 
-export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, onClick, trend }: KpiCardProps) {
+export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, href, onClick, trend }: KpiCardProps) {
   const isZeroValue = typeof value === 'number' ? value === 0 : value === '0' || value === '₺0';
-  const Wrapper = onClick ? 'button' : 'div';
+  const isInteractive = Boolean(href || onClick);
+  const className = `group min-h-[116px] w-full rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-900/80 ${isInteractive ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40' : ''}`;
 
-  return (
-    <Wrapper
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-      className={`group min-h-[116px] w-full rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-900/80 ${onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40' : ''}`}
-    >
+  const content = (
       <div className="flex items-center gap-3">
         <div className={`rounded-md p-2 ${color}`}>
           <Icon className="h-5 w-5 text-white" />
@@ -48,6 +46,27 @@ export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, o
           )}
         </div>
       </div>
-    </Wrapper>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
+    </div>
   );
 }

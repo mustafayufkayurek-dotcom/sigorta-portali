@@ -14,10 +14,9 @@ import { formatCurrency } from '../../utils/formatters';
 
 interface PrimaryKpiGroupProps {
   staggerIndex?: number;
-  onNavigate?: (path: string) => void;
 }
 
-export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGroupProps) {
+export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
 
@@ -58,7 +57,6 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               color="bg-blue-600"
               subtext={ops ? `${ops.openOperationalFiles} açık takip` : undefined}
               emptyHint="Henüz kayıtlı operasyon dosyası bulunmuyor."
-              onClick={() => onNavigate?.('/panel')}
             />
             <KpiCard
               icon={Clock}
@@ -67,7 +65,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               color="bg-indigo-600"
               subtext={ops ? `${ops.openClaims} açık, ${ops.closedClaims} kapalı` : undefined}
               emptyHint="Kayıtlı hasar dosyası yok."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
+              href="/panel/hasar-dosyalari"
             />
             <KpiCard
               icon={BellRing}
@@ -76,7 +74,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               color="bg-cyan-600"
               subtext={ops ? `${ops.openEmergencyCases} açık, ${ops.closedEmergencyCases} kapalı` : undefined}
               emptyHint="Kayıtlı acil yardım dosyası yok."
-              onClick={() => onNavigate?.('/panel/acil-yardim')}
+              href="/panel/acil-yardim"
             />
             <KpiCard
               icon={AlertTriangle}
@@ -84,7 +82,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               value={ops?.slaViolationCount ?? '—'}
               color={ops && ops.slaViolationCount > 0 ? 'bg-red-600' : 'bg-emerald-600'}
               emptyHint="Riskte bekleyen SLA ihlali görünmüyor."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=sla_exceeded')}
+              href={ops && ops.slaViolationCount > 0 ? '/panel/hasar-dosyalari?status=sla_exceeded' : undefined}
             />
             <KpiCard
               icon={BellRing}
@@ -92,7 +90,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               value={pendingCount || '—'}
               color="bg-amber-600"
               emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
-              onClick={() => onNavigate?.('/panel/hasar-dosyalari?status=open')}
+              href={pendingCount > 0 ? '/panel/hasar-dosyalari' : undefined}
             />
             <KpiCard
               icon={TrendingUp}
@@ -100,7 +98,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, onNavigate }: PrimaryKpiGrou
               value={ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
               color="bg-rose-600"
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
-              onClick={() => onNavigate?.('/panel/finans/tahsilatlar?paymentType=incoming&status=pending')}
+              href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
             />
           </>
         )}

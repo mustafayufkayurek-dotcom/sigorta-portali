@@ -5,13 +5,13 @@ import { usePendingActions } from '../../hooks/use-dashboard-data';
 import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
 import { StatusBadge } from '@/components/ui';
 import { getDaysAgo } from '../../utils/formatters';
+import Link from 'next/link';
 
 interface PendingActionsWidgetProps {
-  onNavigate?: (path: string) => void;
   staggerIndex?: number;
 }
 
-export function PendingActionsWidget({ onNavigate, staggerIndex = 0 }: PendingActionsWidgetProps) {
+export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = usePendingActions();
 
   return (
@@ -36,10 +36,9 @@ export function PendingActionsWidget({ onNavigate, staggerIndex = 0 }: PendingAc
       ) : (
         <div className="space-y-2">
           {data.items.slice(0, 8).map((item) => (
-            <button
+            <Link
               key={item.id || `${item.fileNo}-${item.action}`}
-              type="button"
-              onClick={() => onNavigate?.(`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`)}
+              href={`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`}
               className="grid w-full grid-cols-1 gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-left transition-colors hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 md:grid-cols-4"
             >
               <span className="font-semibold text-slate-900 dark:text-white">{item.fileNo}</span>
@@ -52,7 +51,7 @@ export function PendingActionsWidget({ onNavigate, staggerIndex = 0 }: PendingAc
                 }
                 size="sm"
               />
-            </button>
+            </Link>
           ))}
         </div>
       )}

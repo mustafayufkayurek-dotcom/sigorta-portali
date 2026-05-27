@@ -39,13 +39,13 @@ export default function PanelPage() {
       </div>
       <DashboardHeader />
 
-      <PrimaryKpiGroup onNavigate={handleNavigate} staggerIndex={0} />
+      <PrimaryKpiGroup staggerIndex={0} />
 
       <OperationFlowStrip />
 
-      <CriticalAlertsWidget onNavigate={handleNavigate} staggerIndex={1} />
+      <CriticalAlertsWidget staggerIndex={1} />
 
-      <PendingActionsWidget onNavigate={handleNavigate} staggerIndex={2} />
+      <PendingActionsWidget staggerIndex={2} />
 
       <DashboardGrid>
         <SlaRiskWidget staggerIndex={3} />
