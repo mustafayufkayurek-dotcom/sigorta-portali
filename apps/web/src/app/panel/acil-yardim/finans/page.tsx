@@ -28,6 +28,7 @@ const OVERDUE_LABEL: Record<string, string> = {
 function FinansPageInner() {
   const searchParams = useSearchParams();
   const initInvoiceStatus = searchParams.get('invoiceStatus') ?? '';
+  const focusCaseId = searchParams.get('caseId');
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -55,12 +56,20 @@ function FinansPageInner() {
       setRows(listRes.data);
       setListSummary(listRes.summary);
       setMonthly(monthRes.data);
+      if (focusCaseId) {
+        const focused = listRes.data.find((row) => row.id === focusCaseId);
+        if (focused && !focused.isFaturalandildi) {
+          setSelected(new Set([focused.id]));
+          setBulkCustomerName(focused.customerName);
+          setShowBulkModal(true);
+        }
+      }
     } catch {
       // sessiz
     } finally {
       setLoading(false);
     }
-  }, [year, month, filterSearch, invoiceStatus]);
+  }, [year, month, filterSearch, invoiceStatus, focusCaseId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -246,7 +255,7 @@ function FinansPageInner() {
                       />
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(row.createdAt)}</td>
+                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(row.fileDate ?? row.createdAt)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-blue-600">
                       {row.customerName}

@@ -24,7 +24,7 @@ export class EmergencyFinanceService {
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);
       const end = new Date(filters.year, filters.month, 1);
-      where.createdAt = { gte: start, lt: end };
+      where.fileDate = { gte: start, lt: end };
     }
 
     const cases = await this.prisma.emergencyCase.findMany({
@@ -33,7 +33,7 @@ export class EmergencyFinanceService {
         costEntries: true,
         invoiceItems: { include: { draft: { select: { id: true, draftNo: true, status: true } } } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ fileDate: 'desc' }, { createdAt: 'desc' }],
     });
 
     const now = Date.now();
@@ -58,6 +58,7 @@ export class EmergencyFinanceService {
         issueType: c.issueType,
         urgency: c.urgency,
         status: c.status,
+        fileDate: c.fileDate,
         createdAt: c.createdAt,
         resolvedAt: c.resolvedAt,
         invoicedAt: c.invoicedAt,
@@ -188,7 +189,7 @@ export class EmergencyFinanceService {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 1);
     const cases = await this.prisma.emergencyCase.findMany({
-      where: { createdAt: { gte: start, lt: end } },
+      where: { fileDate: { gte: start, lt: end } },
       include: { costEntries: true },
     });
     const totalCases = cases.length;

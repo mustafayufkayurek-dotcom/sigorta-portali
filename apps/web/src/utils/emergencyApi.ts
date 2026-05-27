@@ -19,6 +19,7 @@ export interface EmergencyCase {
   issueType: string;
   urgency: EmergencyUrgency;
   status: EmergencyStatus;
+  fileDate: string;
   assignedVendorId?: string | null;
   assignedUserId?: string | null;
   notes?: string | null;
@@ -84,6 +85,7 @@ export interface FinanceRow {
   issueType: string;
   urgency: EmergencyUrgency;
   status: EmergencyStatus;
+  fileDate: string;
   createdAt: string;
   resolvedAt?: string | null;
   invoicedAt?: string | null;
@@ -159,6 +161,7 @@ export async function createCase(body: {
   city?: string;
   district?: string;
   issueType: string;
+  fileDate: string;
   urgency?: EmergencyUrgency;
   assignedVendorId?: string;
   assignedUserId?: string;

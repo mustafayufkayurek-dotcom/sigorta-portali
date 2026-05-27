@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   getCase, updateCaseStatus, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
@@ -269,6 +270,7 @@ const EMPTY_COST_FORM = { description: '', amount: '', entryDate: new Date().toI
 
 export default function VakaDetayPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
 
   const [vaka, setVaka] = useState<EmergencyCase | null>(null);
@@ -318,6 +320,9 @@ export default function VakaDetayPage() {
     try {
       const res = await updateCaseStatus(id, newStatus);
       setVaka(res.data);
+      if (newStatus === 'COZULDU') {
+        router.push(`/panel/acil-yardim/finans?caseId=${id}`);
+      }
     } catch {
       // sessiz
     } finally {
@@ -525,6 +530,10 @@ export default function VakaDetayPage() {
               <p className="text-sm text-slate-700">{vaka.notes}</p>
             </div>
           )}
+          <div>
+            <p className="text-xs text-slate-400">Dosya Tarihi</p>
+            <p className="font-medium">{fmtDate(vaka.fileDate ?? vaka.createdAt)}</p>
+          </div>
           <div>
             <p className="text-xs text-slate-400">Oluşturuldu</p>
             <p className="font-medium">{fmtDate(vaka.createdAt)}</p>

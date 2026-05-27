@@ -81,6 +81,11 @@ export class EmergencyCasesService {
     }
 
     const caseNo = await this.generateCaseNo();
+    const fileDate = new Date(dto.fileDate);
+    if (Number.isNaN(fileDate.getTime())) {
+      throw new BadRequestException('Dosya tarihi geçerli olmalıdır');
+    }
+
     const created = await this.prisma.emergencyCase.create({
       data: {
         caseNo,
@@ -93,6 +98,7 @@ export class EmergencyCasesService {
         district: dto.district,
         issueType: dto.issueType,
         urgency: dto.urgency ?? 'NORMAL',
+        fileDate,
         assignedVendorId: dto.assignedVendorId,
         assignedUserId: dto.assignedUserId,
         notes: dto.notes,
@@ -124,7 +130,7 @@ export class EmergencyCasesService {
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);
       const end = new Date(filters.year, filters.month, 1);
-      where.createdAt = { gte: start, lt: end };
+      where.fileDate = { gte: start, lt: end };
     }
 
     const cases = await this.prisma.emergencyCase.findMany({
@@ -134,7 +140,7 @@ export class EmergencyCasesService {
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
         costEntries: true,
       },
-      orderBy: [{ urgency: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ urgency: 'desc' }, { fileDate: 'desc' }, { createdAt: 'desc' }],
     });
 
     const enriched = cases.map((c) => this.enrichCase(c));

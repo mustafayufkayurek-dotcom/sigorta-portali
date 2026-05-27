@@ -125,6 +125,7 @@ export default function YeniAcilDosyaPage() {
   const [fileNo, setFileNo] = useState('');
   const [fileNoError, setFileNoError] = useState<string | null>(null);
   const [fileNoChecking, setFileNoChecking] = useState(false);
+  const [fileDate, setFileDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [issueType, setIssueType] = useState('');
   const [urgency, setUrgency] = useState<EmergencyUrgency>('NORMAL');
   const [address, setAddress] = useState('');
@@ -297,6 +298,7 @@ export default function YeniAcilDosyaPage() {
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
+    if (!fileDate) errs.fileDate = 'Dosya tarihi zorunludur.';
     if (!issueType) errs.issueType = 'İhbar konusu seçiniz.';
     if (!address.trim()) errs.address = 'Adres zorunludur.';
     if (fileNoError) errs.fileNo = fileNoError;
@@ -355,6 +357,7 @@ export default function YeniAcilDosyaPage() {
         customerPhone: selectedCustomer?.phone?.toString() || newCustomerPhone || undefined,
         customerId,
         fileNo: fileNo.trim() || undefined,
+        fileDate: new Date(fileDate).toISOString(),
         address: address.trim(),
         city: province?.name || undefined,
         district: district?.name || undefined,
@@ -410,6 +413,19 @@ export default function YeniAcilDosyaPage() {
                     <p className="text-xs text-red-700">{fileNoError || errors.fileNo}</p>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 block mb-1.5">
+                  Dosya Tarihi <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
+                </label>
+                <input
+                  type="date"
+                  className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 ${errors.fileDate ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                  value={fileDate}
+                  onChange={(e) => setFileDate(e.target.value)}
+                />
+                {errors.fileDate && <p className="text-xs text-red-500 mt-0.5">{errors.fileDate}</p>}
               </div>
 
               <div>

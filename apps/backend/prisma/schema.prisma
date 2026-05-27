@@ -2534,6 +2534,7 @@ model EmergencyCase {
   assignedVendorId String?          @map("assigned_vendor_id")
   assignedUserId   String?          @map("assigned_user_id")
   notes            String?
+  fileDate         DateTime         @default(now()) @map("file_date")
   resolvedAt       DateTime?        @map("resolved_at")
   invoicedAt       DateTime?        @map("invoiced_at")
   createdByUserId  String           @map("created_by_user_id")
@@ -2552,6 +2553,7 @@ model EmergencyCase {
 
   @@index([status])
   @@index([urgency])
+  @@index([fileDate])
   @@index([createdAt])
   @@map("emergency_cases")
 }
