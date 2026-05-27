@@ -14,8 +14,10 @@ interface SlaRiskWidgetProps {
 export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = useSlaSummary();
   const [showDetail, setShowDetail] = useState(false);
+  const byStatus = Array.isArray(data?.byStatus) ? data.byStatus : [];
 
-  const slaOverall = useMemo(() => computeSlaOverall(data), [data]);
+  const safeData = useMemo(() => ({ byStatus }), [byStatus]);
+  const slaOverall = useMemo(() => computeSlaOverall(safeData), [safeData]);
   const slaCards = useMemo(() => mapSlaToCards(slaOverall), [slaOverall]);
 
   return (
@@ -30,7 +32,7 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
     >
       {isLoading || isFetching ? (
         <WidgetSkeleton variant="card" rows={4} />
-      ) : !data?.byStatus?.length ? (
+      ) : !byStatus.length ? (
         <WidgetEmpty
           icon={Shield}
           message="Aktif dosya bulunmuyor. İlk dosyanızı ekleyin →"
@@ -70,7 +72,7 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
           </div>
           {showDetail && (
             <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-              {data.byStatus.map((item) => (
+              {byStatus.map((item) => (
                 <div key={item.statusCode} className="flex items-center justify-between text-sm">
                   <span className="text-slate-700 dark:text-slate-300">{item.statusName}</span>
                   <div className="flex gap-3">

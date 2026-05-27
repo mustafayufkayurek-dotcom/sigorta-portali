@@ -12,6 +12,7 @@ interface FinanceBottleneckWidgetProps {
 
 export function FinanceBottleneckWidget({ onNavigate, staggerIndex = 0 }: FinanceBottleneckWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = useFinanceBottlenecks();
+  const pendingPayments = Array.isArray(data?.pendingPayments) ? data.pendingPayments : [];
 
   return (
     <WidgetShell
@@ -25,7 +26,7 @@ export function FinanceBottleneckWidget({ onNavigate, staggerIndex = 0 }: Financ
     >
       {isLoading || isFetching ? (
         <WidgetSkeleton rows={4} />
-      ) : !data?.pendingPayments?.length && !data?.overdueInvoices ? (
+      ) : !pendingPayments.length && !data?.overdueInvoices ? (
         <WidgetEmpty
           icon={TrendingUp}
           message="Fatura kaydı bulunmuyor."
@@ -44,9 +45,9 @@ export function FinanceBottleneckWidget({ onNavigate, staggerIndex = 0 }: Financ
               <p className="text-2xl font-bold text-red-600">{data?.overdueInvoices || 0}</p>
             </div>
           </div>
-          {(data?.pendingPayments || []).length > 0 && (
+          {pendingPayments.length > 0 && (
             <div className="space-y-2">
-              {data!.pendingPayments.slice(0, 5).map((item) => (
+              {pendingPayments.slice(0, 5).map((item) => (
                 <button
                   key={`${item.fileNo}-${item.insuranceCompany}`}
                   type="button"

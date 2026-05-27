@@ -13,6 +13,7 @@ interface PendingActionsWidgetProps {
 
 export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = usePendingActions();
+  const items = Array.isArray(data?.items) ? data.items : [];
 
   return (
     <WidgetShell
@@ -26,7 +27,7 @@ export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetP
     >
       {isLoading || isFetching ? (
         <WidgetSkeleton rows={4} />
-      ) : !data?.items?.length ? (
+      ) : !items.length ? (
         <WidgetEmpty
           icon={Shield}
           message="Henüz bekleyen aksiyon yok. Yeni hasar dosyası oluşturun →"
@@ -35,7 +36,7 @@ export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetP
         />
       ) : (
         <div className="space-y-2">
-          {data.items.slice(0, 8).map((item) => (
+          {items.slice(0, 8).map((item) => (
             <Link
               key={item.id || `${item.fileNo}-${item.action}`}
               href={`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`}

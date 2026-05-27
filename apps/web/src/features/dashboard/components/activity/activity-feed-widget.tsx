@@ -12,6 +12,7 @@ interface ActivityFeedWidgetProps {
 
 export function ActivityFeedWidget({ onNavigate, staggerIndex = 0 }: ActivityFeedWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = useActivityFeed(20);
+  const items = Array.isArray(data?.items) ? data.items : [];
 
   return (
     <WidgetShell
@@ -25,14 +26,14 @@ export function ActivityFeedWidget({ onNavigate, staggerIndex = 0 }: ActivityFee
     >
       {isLoading || isFetching ? (
         <WidgetSkeleton rows={5} />
-      ) : !data?.items?.length ? (
+      ) : !items.length ? (
         <WidgetEmpty
           icon={Inbox}
           message="Henüz aktivite kaydı yok."
         />
       ) : (
         <div className="space-y-2">
-          {data.items.slice(0, 10).map((item, idx) => (
+          {items.slice(0, 10).map((item, idx) => (
             <button
               key={`${item.fileNo}-${item.createdAt}-${idx}`}
               type="button"

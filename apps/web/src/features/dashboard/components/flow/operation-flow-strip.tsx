@@ -18,7 +18,8 @@ export function OperationFlowStrip() {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
   const ops = opsQuery.data;
-  const pendingCount = pendingQuery.data?.items?.length ?? 0;
+  const pendingItems = Array.isArray(pendingQuery.data?.items) ? pendingQuery.data.items : [];
+  const pendingCount = pendingItems.length;
 
   const items: FlowItem[] = [
     {
@@ -40,10 +41,10 @@ export function OperationFlowStrip() {
     {
       title: 'Bekleyen Aksiyon',
       value: pendingCount,
-      detail: 'Operasyon takibi',
+      detail: pendingCount > 0 ? 'İşlem bekleyen kayıtlar' : 'Bekleyen kayıt yok',
       icon: ListTodo,
       iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-      path: '/panel/hasar-dosyalari',
+      path: '/panel/hasar-dosyalari?status=open',
     },
     {
       title: 'Geciken Tahsilat',
@@ -59,7 +60,7 @@ export function OperationFlowStrip() {
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">Günlük İş Akışı</h2>
+          <h2 className="text-base font-semibold text-slate-950 dark:text-white">Günün Akışı</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.
           </p>

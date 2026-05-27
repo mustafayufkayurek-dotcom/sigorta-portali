@@ -21,7 +21,8 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
   const pendingQuery = usePendingActions();
 
   const ops = opsQuery.data;
-  const pendingCount = pendingQuery.data?.items?.length ?? 0;
+  const pendingItems = Array.isArray(pendingQuery.data?.items) ? pendingQuery.data.items : [];
+  const pendingCount = pendingItems.length;
   const isLoading = opsQuery.isLoading || pendingQuery.isLoading || opsQuery.isFetching;
   const isError = opsQuery.isError;
 
@@ -90,7 +91,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               value={pendingCount || '—'}
               color="bg-amber-600"
               emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
-              href={pendingCount > 0 ? '/panel/hasar-dosyalari' : undefined}
+              href={pendingCount > 0 ? '/panel/hasar-dosyalari?status=open' : undefined}
             />
             <KpiCard
               icon={TrendingUp}

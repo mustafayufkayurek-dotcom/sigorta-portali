@@ -10,20 +10,21 @@ interface OwnershipLoadWidgetProps {
 
 export function OwnershipLoadWidget({ staggerIndex = 0 }: OwnershipLoadWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = useOwnershipLoad();
+  const items = Array.isArray(data?.items) ? data.items : [];
 
   return (
     <WidgetShell
-      title="Ownership Yoğunluğu"
+      title="Dosya Sahipliği Yoğunluğu"
       icon={<Users className="h-5 w-5 text-indigo-500" />}
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       error={isError}
-      errorMessage={error?.message || 'Ownership verisi yüklenemedi.'}
+      errorMessage={error?.message || 'Dosya sahipliği verisi yüklenemedi.'}
       onRetry={() => void refetch()}
     >
       {isLoading || isFetching ? (
         <WidgetSkeleton variant="table" rows={4} />
-      ) : !data?.items?.length ? (
+      ) : !items.length ? (
         <WidgetEmpty
           icon={Users}
           message="Personel ataması yapılmamış. Personel yönetimi →"
@@ -42,7 +43,7 @@ export function OwnershipLoadWidget({ staggerIndex = 0 }: OwnershipLoadWidgetPro
               </tr>
             </thead>
             <tbody>
-              {data.items.map((item) => (
+              {items.map((item) => (
                 <tr
                   key={item.userId || item.userName}
                   className={`border-b border-slate-100 dark:border-slate-800 ${item.criticalFiles > 0 ? 'bg-red-50 dark:bg-red-950/20' : ''}`}
