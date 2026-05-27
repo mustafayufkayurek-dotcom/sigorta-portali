@@ -19,6 +19,7 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
   const safeData = useMemo(() => ({ byStatus }), [byStatus]);
   const slaOverall = useMemo(() => computeSlaOverall(safeData), [safeData]);
   const slaCards = useMemo(() => mapSlaToCards(slaOverall), [slaOverall]);
+  const hasRisk = slaOverall.atRisk > 0 || slaOverall.critical > 0;
 
   return (
     <WidgetShell
@@ -63,12 +64,16 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
             >
               Statü detayı {showDetail ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
-            <Link
-              href="/panel/hasar-dosyalari"
-              className="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Dosyaları görüntüle
-            </Link>
+            {hasRisk ? (
+              <Link
+                href="/panel/hasar-dosyalari?status=sla_exceeded"
+                className="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Riskli dosyaları görüntüle
+              </Link>
+            ) : (
+              <span className="text-xs font-medium text-slate-400">Aktif SLA riski yok</span>
+            )}
           </div>
           {showDetail && (
             <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
