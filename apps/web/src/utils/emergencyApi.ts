@@ -106,6 +106,20 @@ export interface MonthlySummary {
   netKar: number;
 }
 
+function asList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.items)) return record.items as T[];
+    if (Array.isArray(record.data)) return record.data as T[];
+    if (record.data && typeof record.data === 'object') {
+      const data = record.data as Record<string, unknown>;
+      if (Array.isArray(data.items)) return data.items as T[];
+    }
+  }
+  return [];
+}
+
 // ─── Emergency Cases ──────────────────────────────────────────────────────────
 
 export async function getCases(params?: {
@@ -117,8 +131,8 @@ export async function getCases(params?: {
   overdueOnly?: boolean;
   assignedUserId?: string;
 }): Promise<{ data: EmergencyCase[] }> {
-  const data = await apiClient.get<EmergencyCase[]>('/emergency/cases', params);
-  return { data };
+  const data = await apiClient.get<unknown>('/emergency/cases', params);
+  return { data: asList<EmergencyCase>(data) };
 }
 
 export async function getCase(id: string): Promise<{ data: EmergencyCase }> {
