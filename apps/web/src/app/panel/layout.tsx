@@ -213,7 +213,7 @@ function Navbar({
     <img
       src={companyLogo}
       alt={companyName}
-      className="block h-9 lg:h-10 w-auto max-w-[180px] object-contain rounded-md"
+      className="block h-11 lg:h-12 w-auto max-w-[220px] object-contain rounded-md"
       onError={() => { /* parent will fallback */ }}
     />
   ) : (
@@ -240,7 +240,7 @@ function Navbar({
               href="https://meridyenassistance.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-16 items-center gap-2.5 shrink-0 overflow-visible"
+              className="flex h-16 min-w-[96px] items-center justify-center gap-2.5 shrink-0 overflow-visible"
               title="Meridyen Assistance web sitesini yeni sekmede aç"
             >
               {logoContent}
