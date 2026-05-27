@@ -210,10 +210,15 @@ export default function DurumlarPage() {
   return (
     <SettingsPageLayout
       title="Durumlar"
-      description="Hasar dosyalarında kullanılacak durumları yönetin."
+      description="Hasar ve operasyon dosyalarının ekranda hangi aşamada görüneceğini, kapanmış veya beklemede sayılıp sayılmayacağını ve takip sırasını yönetin."
       addButtonText="+ Yeni Durum"
       onAdd={openCreate}
     >
+      <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
+        Bu sayfa dosya akışındaki durum etiketlerini yönetir. Buradaki kayıtlar dashboard sayıları, dosya listesi filtreleri,
+        bekleme/kapanış ayrımları ve süreç sıralaması üzerinde etkilidir.
+      </div>
+
       {error && !showModal && (
         <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}

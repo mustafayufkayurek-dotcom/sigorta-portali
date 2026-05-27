@@ -145,9 +145,14 @@ const TAB_HINTS: Record<string, { title: string; desc: string; tip: string }> = 
     desc: 'Hasar türüne göre önerilecek hızlı onarım kalemlerini yönetin.',
     tip: 'Aynı hasar türü ve iş kalemi kombinasyonu bir kez tanımlanabilir.',
   },
+  'sigorta-sirketleri': {
+    title: 'Sigorta Şirketleri',
+    desc: 'Dosya açılışı, müşteri ilişkisi ve finans kayıtlarında kullanılan sigorta şirketi tanımlarına buradan erişin.',
+    tip: 'Sigorta şirketi kayıtları ayrı detay ve evrak yönetimi içerdiği için kendi sayfasında açılır; bu sekme Tanımlar içinden doğru konuma yönlendirir.',
+  },
 };
 
-type TabId = 'departmanlar' | 'musteri-tipleri' | 'iliski-turleri' | 'hizmet-turleri' | 'ihbar-konulari' | 'evrak-turleri' | 'is-gruplari' | 'hasar-turu-sablonlari' | 'birim-secenekleri' | 'musteri-kaynaklari' | 'alan-zorunluluklari';
+type TabId = 'departmanlar' | 'musteri-tipleri' | 'iliski-turleri' | 'hizmet-turleri' | 'ihbar-konulari' | 'evrak-turleri' | 'is-gruplari' | 'hasar-turu-sablonlari' | 'sigorta-sirketleri' | 'birim-secenekleri' | 'musteri-kaynaklari' | 'alan-zorunluluklari';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'departmanlar',        label: 'Departmanlar',        icon: '🏢' },
@@ -158,6 +163,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'evrak-turleri',       label: 'Evrak Türleri',       icon: '📁' },
   { id: 'is-gruplari',         label: 'İş Grupları',         icon: '🗂️' },
   { id: 'hasar-turu-sablonlari', label: 'Hasar Türü Şablonları', icon: '⚡' },
+  { id: 'sigorta-sirketleri',  label: 'Sigorta Şirketleri',  icon: '🏦' },
   { id: 'birim-secenekleri',   label: 'Birim Seçenekleri',   icon: '📐' },
   { id: 'musteri-kaynaklari',  label: 'Müşteri Kaynakları',  icon: '🌐' },
   { id: 'alan-zorunluluklari', label: 'Alan Zorunlulukları', icon: '⚙️' },
@@ -221,6 +227,7 @@ export default function TanimlarPage() {
         {activeTab === 'evrak-turleri'       && <EvrakTurleriTab />}
         {activeTab === 'is-gruplari'         && <IsGruplariTab />}
         {activeTab === 'hasar-turu-sablonlari' && <HasarTuruSablonlariTab />}
+        {activeTab === 'sigorta-sirketleri'  && <SigortaSirketleriYonlendirmeTab />}
         {activeTab === 'birim-secenekleri'   && <BirimSecenekleriTab />}
         {activeTab === 'musteri-kaynaklari'  && <MusteriKaynaklariTab />}
         {activeTab === 'alan-zorunluluklari' && <AlanZorunluluklariInlineTab />}
@@ -256,6 +263,32 @@ function HasarTuruSablonlariTab() {
   const edit = (template: any) => { setEditingId(template.id); setForm({ workSubGroupId: template.workSubGroupId, defaultQuantitySmall: String(template.defaultQuantitySmall ?? 1), defaultQuantityMedium: String(template.defaultQuantityMedium ?? 1), defaultQuantityLarge: String(template.defaultQuantityLarge ?? 1), sortOrder: String(template.sortOrder ?? 0) }); };
   const remove = async (id: string) => { if (!confirm('Şablon silinsin mi?')) return; await axios.delete(`${API}/damage-repair-templates/${id}`, { headers: authHeader() }); loadTemplates(); };
   return <div className="space-y-5">{error && <ErrorAlert msg={error} onClose={() => setError('')} />}<div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid gap-3 md:grid-cols-[220px_1fr_110px_110px_110px_90px_auto] md:items-end"><div><label className={labelCls}>Hasar türü</label><select value={damageType} onChange={(e) => setDamageType(e.target.value)} className={inputCls}>{DAMAGE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div><label className={labelCls}>İş kalemi</label><select value={form.workSubGroupId} onChange={(e) => setForm((prev) => ({ ...prev, workSubGroupId: e.target.value }))} className={inputCls}><option value="">Seçiniz</option>{subGroups.map((sub: any) => <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>)}</select></div>{(['defaultQuantitySmall', 'defaultQuantityMedium', 'defaultQuantityLarge'] as const).map((key, index) => <div key={key}><label className={labelCls}>{['Küçük', 'Orta', 'Büyük'][index]}</label><input type="number" value={form[key]} onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))} className={inputCls} /></div>)}<div><label className={labelCls}>Sıra</label><input type="number" value={form.sortOrder} onChange={(e) => setForm((prev) => ({ ...prev, sortOrder: e.target.value }))} className={inputCls} /></div><div className="flex gap-2"><button type="button" onClick={save} disabled={!form.workSubGroupId} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{editingId ? 'Güncelle' : 'Ekle'}</button>{editingId && <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">İptal</button>}</div></div></div><div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><table className="w-full text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3 text-left">Kalem</th><th>Küçük</th><th>Orta</th><th>Büyük</th><th>Kullanım</th><th>Sıra</th><th></th></tr></thead><tbody>{templates.map((template) => <tr key={template.id} className="border-t border-slate-100"><td className="px-4 py-3"><strong>{template.workSubGroup?.name}</strong><div className="text-xs text-slate-400">{template.workSubGroup?.code}</div></td><td className="text-center">{template.defaultQuantitySmall ?? 1}</td><td className="text-center">{template.defaultQuantityMedium ?? 1}</td><td className="text-center">{template.defaultQuantityLarge ?? 1}</td><td className="text-center">{template.usageCount}</td><td className="text-center">{template.sortOrder}</td><td className="px-4 py-3"><RowActions onEdit={() => edit(template)} onDelete={() => remove(template.id)} /></td></tr>)}{templates.length === 0 && <tr><td colSpan={7}><EmptyState msg="Bu hasar türü için şablon yok." /></td></tr>}</tbody></table></div></div>;
+}
+
+function SigortaSirketleriYonlendirmeTab() {
+  return (
+    <TabCard
+      title={TAB_HINTS['sigorta-sirketleri'].title}
+      description={TAB_HINTS['sigorta-sirketleri'].desc}
+      hint={TAB_HINTS['sigorta-sirketleri'].tip}
+    >
+      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Sigorta şirketi tanımlarını yönet</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Şirket bilgileri, iletişim alanları, durum bilgisi ve şirket evrakları mevcut sigorta şirketleri ekranında tutulur.
+            Tanımlar içinden bu karta alınarak konumu görünür hale getirildi.
+          </p>
+        </div>
+        <a
+          href="/panel/ayarlar/sigorta-sirketleri"
+          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+        >
+          Sigorta Şirketleri Sayfasına Git
+        </a>
+      </div>
+    </TabCard>
+  );
 }
 
 // ── Departmanlar ──────────────────────────────────────────────────────────────
