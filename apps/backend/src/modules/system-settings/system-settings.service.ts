@@ -679,7 +679,16 @@ export class SystemSettingsService {
     return updated;
   }
 
-  async sendTestMail(to: string): Promise<void> {
+  async sendTestMail(to: string): Promise<{
+    accepted: string[];
+    rejected: string[];
+    messageId?: string;
+    response?: string;
+  }> {
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new BadRequestException('Geçerli bir alıcı e-posta adresi giriniz.');
+    }
+
     const config = await this.getMailConfig();
     if (!config || !config.host || !config.username || !config.password) {
       throw new BadRequestException('Mail yapılandırması eksik veya henüz kaydedilmemiş.');
@@ -703,13 +712,20 @@ export class SystemSettingsService {
     const transporter = nodemailer.createTransport(transportOptions);
 
     try {
-      await transporter.sendMail({
+      await transporter.verify();
+      const result = await transporter.sendMail({
         from: `"${config.fromName || 'Sigorta Hasar Sistemi'}" <${config.fromEmail || config.username}>`,
         to,
         subject: 'Test E-postası — Sigorta Hasar Sistemi',
         text: 'Bu bir test e-postasıdır. Mail yapılandırmanız başarıyla çalışmaktadır.',
         html: '<p>Bu bir <strong>test e-postasıdır</strong>. Mail yapılandırmanız başarıyla çalışmaktadır.</p>',
       });
+      return {
+        accepted: (result.accepted ?? []).map(String),
+        rejected: (result.rejected ?? []).map(String),
+        messageId: result.messageId,
+        response: result.response,
+      };
     } catch (err: any) {
       throw new BadRequestException(err?.message ?? 'Mail gönderilemedi. SMTP bağlantısını kontrol edin.');
     }

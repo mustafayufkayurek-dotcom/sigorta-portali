@@ -80,8 +80,14 @@ export class SystemSettingsController {
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Test maili gönder' })
   async sendTestMail(@Body() body: { to: string }) {
-    await this.service.sendTestMail(body.to);
-    return { success: true, message: `Test maili ${body.to} adresine gönderildi.` };
+    const data = await this.service.sendTestMail(body.to);
+    return {
+      success: true,
+      message: data.rejected.length > 0
+        ? `Test e-postası SMTP sunucusuna iletildi ancak bazı alıcılar reddedildi.`
+        : `Test e-postası SMTP sunucusu tarafından kabul edildi: ${body.to}`,
+      data,
+    };
   }
 
   @Get('turmob-config')

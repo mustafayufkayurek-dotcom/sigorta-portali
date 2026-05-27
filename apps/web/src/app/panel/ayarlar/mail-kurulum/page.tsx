@@ -109,7 +109,17 @@ export default function MailKurulumPage() {
         { to: testEmail },
         { headers: authHeader() },
       );
-      setTestSuccess(res.data?.message ?? 'Test Maili Gönderildi.');
+      const detail = res.data?.data;
+      const accepted = Array.isArray(detail?.accepted) ? detail.accepted.join(', ') : '';
+      const rejected = Array.isArray(detail?.rejected) ? detail.rejected.join(', ') : '';
+      const response = detail?.response ? ` SMTP cevabı: ${detail.response}` : '';
+      const deliveryNote = accepted
+        ? ` Kabul edilen alıcı: ${accepted}.`
+        : '';
+      const rejectionNote = rejected
+        ? ` Reddedilen alıcı: ${rejected}.`
+        : '';
+      setTestSuccess(`${res.data?.message ?? 'Test e-postası SMTP sunucusuna iletildi.'}${deliveryNote}${rejectionNote}${response}`);
     } catch (e: any) {
       setTestError(e.response?.data?.message ?? 'Test Maili Gönderilemedi.');
     } finally {
@@ -287,6 +297,9 @@ export default function MailKurulumPage() {
               {testSuccess && (
                 <div className="rounded-lg bg-green-50 border border-green-100 px-3 py-2">
                   <p className="text-xs text-green-700">{testSuccess}</p>
+                  <p className="mt-1 text-[11px] text-green-700/80">
+                    Bu sonuç SMTP sunucusunun kabul cevabıdır. Gelen kutusunda görünmüyorsa spam/karantina ve alıcı sunucu filtresi kontrol edilmelidir.
+                  </p>
                 </div>
               )}
               {testError && (
