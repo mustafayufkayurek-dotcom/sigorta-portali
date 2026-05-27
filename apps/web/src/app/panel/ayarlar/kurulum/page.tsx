@@ -59,6 +59,21 @@ interface ThemeConfig {
   colorScheme: string;
 }
 
+const DEFAULT_THEME: ThemeConfig = { mode: 'light', colorScheme: 'blue' };
+
+function applyThemePreference(nextTheme: ThemeConfig) {
+  try {
+    localStorage.setItem('app-theme', JSON.stringify(nextTheme));
+    const html = document.documentElement;
+    const shouldUseDark = nextTheme.mode === 'dark'
+      || (nextTheme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    html.classList.toggle('dark', shouldUseDark);
+    html.style.colorScheme = shouldUseDark ? 'dark' : 'light';
+    html.setAttribute('data-color-scheme', nextTheme.colorScheme || DEFAULT_THEME.colorScheme);
+    window.dispatchEvent(new Event('theme-changed'));
+  } catch { /* ignore */ }
+}
+
 interface User {
   id: string;
   firstName: string;
@@ -1034,7 +1049,7 @@ function EntegrasyonlarTab() {
 
 function SistemTab() {
   const [form, setForm] = useState<SystemConfig>({ currency: 'TRY', dateFormat: 'DD.MM.YYYY', language: 'tr', maxFileSizeMb: 10, timezone: 'Europe/Istanbul' });
-  const [theme, setTheme] = useState<ThemeConfig>({ mode: 'system', colorScheme: 'blue' });
+  const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
   const [themeHydrated, setThemeHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1048,19 +1063,19 @@ function SistemTab() {
     ]).then(([sr, tr]) => {
       if (sr.data.data) setForm(sr.data.data);
       if (tr.data.data) {
-        setTheme(tr.data.data);
+        setTheme({ ...DEFAULT_THEME, ...tr.data.data });
       } else {
         // localStorage'dan oku fallback
         try {
           const saved = localStorage.getItem('app-theme');
-          if (saved) setTheme(JSON.parse(saved));
+          if (saved) setTheme({ ...DEFAULT_THEME, ...JSON.parse(saved) });
         } catch { /* ignore */ }
       }
     }).catch(() => {
       // localStorage fallback on error
       try {
         const saved = localStorage.getItem('app-theme');
-        if (saved) setTheme(JSON.parse(saved));
+        if (saved) setTheme({ ...DEFAULT_THEME, ...JSON.parse(saved) });
       } catch { /* ignore */ }
     }).finally(() => {
       setLoading(false);
@@ -1070,17 +1085,7 @@ function SistemTab() {
 
   useEffect(() => {
     if (!themeHydrated) return;
-    try {
-      localStorage.setItem('app-theme', JSON.stringify({ mode: theme.mode, colorScheme: theme.colorScheme }));
-      const html = document.documentElement;
-      const shouldUseDark = theme.mode === 'dark'
-        || (theme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      html.classList.toggle('dark', shouldUseDark);
-      if (theme.colorScheme) {
-        html.setAttribute('data-color-scheme', theme.colorScheme);
-      }
-      window.dispatchEvent(new Event('theme-changed'));
-    } catch { /* ignore */ }
+    applyThemePreference(theme);
   }, [theme, themeHydrated]);
 
   const handleSave = async () => {
@@ -1090,17 +1095,7 @@ function SistemTab() {
         axios.put(`${API}/system-settings/system-config`, form, { headers: authHeader() }),
         axios.put(`${API}/system-settings/theme-config`, theme, { headers: authHeader() }),
       ]);
-      // Temayı localStorage'a kaydet ve anında uygula
-      try {
-        localStorage.setItem('app-theme', JSON.stringify({ mode: theme.mode, colorScheme: theme.colorScheme }));
-        const html = document.documentElement;
-        const shouldUseDark = theme.mode === 'dark'
-          || (theme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        html.classList.toggle('dark', shouldUseDark);
-        if (theme.colorScheme) {
-          html.setAttribute('data-color-scheme', theme.colorScheme);
-        }
-      } catch { /* ignore */ }
+      applyThemePreference(theme);
       setSuccess('Sistem ayarları kaydedildi.');
       setTimeout(() => setSuccess(''), 3000);
     } catch { setError('Kayıt sırasında hata oluştu.'); }
@@ -1169,7 +1164,9 @@ function SistemTab() {
               type="button"
               onClick={() => setTheme(p => ({ ...p, mode: m }))}
               className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                theme.mode === m ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                theme.mode === m
+                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-100'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500'
               }`}
             >
               <span>{m === 'light' ? '☀️' : m === 'dark' ? '🌙' : '🖥️'}</span>
@@ -1186,7 +1183,9 @@ function SistemTab() {
                 type="button"
                 onClick={() => setTheme(p => ({ ...p, colorScheme: c.value }))}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                  theme.colorScheme === c.value ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  theme.colorScheme === c.value
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-100'
+                    : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500'
                 }`}
               >
                 <span className={`w-4 h-4 rounded-full ${c.cls}`} />

@@ -213,7 +213,7 @@ function Navbar({
     <img
       src={companyLogo}
       alt={companyName}
-      className="block h-12 lg:h-14 w-auto max-w-[220px] object-contain rounded-md"
+      className="block h-9 lg:h-10 w-auto max-w-[180px] object-contain rounded-md"
       onError={() => { /* parent will fallback */ }}
     />
   ) : (
@@ -675,19 +675,21 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const applyTheme = () => {
       try {
-        const media = window.matchMedia('(prefers-color-scheme: dark)');
         const html = document.documentElement;
         const saved = localStorage.getItem('app-theme');
+        let shouldUseDark = false;
         if (saved) {
           const { mode, colorScheme } = JSON.parse(saved) as { mode?: string; colorScheme?: string };
-          const shouldUseDark = mode === 'dark' || (mode === 'system' && media.matches);
-          html.classList.toggle('dark', shouldUseDark);
+          const media = window.matchMedia('(prefers-color-scheme: dark)');
+          shouldUseDark = mode === 'dark' || (mode === 'system' && media.matches);
           if (colorScheme) {
             html.setAttribute('data-color-scheme', colorScheme);
           }
         } else {
-          html.classList.toggle('dark', media.matches);
+          html.setAttribute('data-color-scheme', 'blue');
         }
+        html.classList.toggle('dark', shouldUseDark);
+        html.style.colorScheme = shouldUseDark ? 'dark' : 'light';
       } catch { /* localStorage erişim hatası yoksay */ }
     };
     applyTheme();
