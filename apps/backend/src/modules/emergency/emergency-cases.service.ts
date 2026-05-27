@@ -70,19 +70,21 @@ export class EmergencyCasesService {
   }
 
   async create(dto: CreateEmergencyCaseDto, userId: string) {
-    // fileNo benzersizlik kontrolü (dolu ise)
-    if (dto.fileNo?.trim()) {
-      const { exists } = await this.checkFileNo(dto.fileNo.trim());
-      if (exists) {
-        throw new ConflictException('Bu dosya numarası zaten kullanılıyor');
-      }
+    const fileNo = dto.fileNo?.trim();
+    if (!fileNo) {
+      throw new BadRequestException('Dosya numarası zorunludur');
+    }
+
+    const { exists } = await this.checkFileNo(fileNo);
+    if (exists) {
+      throw new ConflictException('Bu dosya numarası zaten kullanılıyor');
     }
 
     const caseNo = await this.generateCaseNo();
     const created = await this.prisma.emergencyCase.create({
       data: {
         caseNo,
-        fileNo: dto.fileNo,
+        fileNo,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         customerId: dto.customerId,

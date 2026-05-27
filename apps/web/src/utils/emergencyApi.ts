@@ -120,6 +120,16 @@ function asList<T>(value: unknown): T[] {
   return [];
 }
 
+function asEntity<T>(value: unknown): T {
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if ('data' in record && record.data && typeof record.data === 'object') {
+      return record.data as T;
+    }
+  }
+  return value as T;
+}
+
 // ─── Emergency Cases ──────────────────────────────────────────────────────────
 
 export async function getCases(params?: {
@@ -136,8 +146,8 @@ export async function getCases(params?: {
 }
 
 export async function getCase(id: string): Promise<{ data: EmergencyCase }> {
-  const data = await apiClient.get<EmergencyCase>(`/emergency/cases/${id}`);
-  return { data };
+  const data = await apiClient.get<unknown>(`/emergency/cases/${id}`);
+  return { data: asEntity<EmergencyCase>(data) };
 }
 
 export async function createCase(body: {
@@ -154,24 +164,24 @@ export async function createCase(body: {
   assignedUserId?: string;
   notes?: string;
 }): Promise<{ data: EmergencyCase }> {
-  const data = await apiClient.post<EmergencyCase>('/emergency/cases', body);
-  return { data };
+  const data = await apiClient.post<unknown>('/emergency/cases', body);
+  return { data: asEntity<EmergencyCase>(data) };
 }
 
 export async function updateCaseStatus(
   id: string,
   status: EmergencyStatus,
 ): Promise<{ data: EmergencyCase }> {
-  const data = await apiClient.patch<EmergencyCase>(`/emergency/cases/${id}/status`, { status });
-  return { data };
+  const data = await apiClient.patch<unknown>(`/emergency/cases/${id}/status`, { status });
+  return { data: asEntity<EmergencyCase>(data) };
 }
 
 export async function updateCase(
   id: string,
   body: Partial<EmergencyCase>,
 ): Promise<{ data: EmergencyCase }> {
-  const data = await apiClient.patch<EmergencyCase>(`/emergency/cases/${id}`, body);
-  return { data };
+  const data = await apiClient.patch<unknown>(`/emergency/cases/${id}`, body);
+  return { data: asEntity<EmergencyCase>(data) };
 }
 
 // ─── Cost Entries ─────────────────────────────────────────────────────────────
@@ -187,8 +197,8 @@ export async function addCostEntry(
     vendorId?: string;
   },
 ): Promise<{ data: EmergencyCostEntry }> {
-  const data = await apiClient.post<EmergencyCostEntry>(`/emergency/cases/${caseId}/costs`, body);
-  return { data };
+  const data = await apiClient.post<unknown>(`/emergency/cases/${caseId}/costs`, body);
+  return { data: asEntity<EmergencyCostEntry>(data) };
 }
 
 export async function getCostEntries(
@@ -211,8 +221,8 @@ export async function updateCostEntry(
     vendorId?: string | null;
   },
 ): Promise<{ data: EmergencyCostEntry }> {
-  const data = await apiClient.patch<EmergencyCostEntry>(`/emergency/cases/${caseId}/costs/${costId}`, body);
-  return { data };
+  const data = await apiClient.patch<unknown>(`/emergency/cases/${caseId}/costs/${costId}`, body);
+  return { data: asEntity<EmergencyCostEntry>(data) };
 }
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
@@ -234,18 +244,18 @@ export async function getMonthlySummary(
   year: number,
   month: number,
 ): Promise<{ data: MonthlySummary }> {
-  const data = await apiClient.get<MonthlySummary>('/emergency/finance/summary', { year, month });
-  return { data };
+  const data = await apiClient.get<unknown>('/emergency/finance/summary', { year, month });
+  return { data: asEntity<MonthlySummary>(data) };
 }
 
 export async function getInvoiceDrafts(status?: string): Promise<{ data: EmergencyInvoiceDraft[] }> {
-  const data = await apiClient.get<EmergencyInvoiceDraft[]>('/emergency/finance/invoices', status ? { status } : undefined);
-  return { data };
+  const data = await apiClient.get<unknown>('/emergency/finance/invoices', status ? { status } : undefined);
+  return { data: asList<EmergencyInvoiceDraft>(data) };
 }
 
 export async function getInvoiceDraft(id: string): Promise<{ data: EmergencyInvoiceDraft }> {
-  const data = await apiClient.get<EmergencyInvoiceDraft>(`/emergency/finance/invoices/${id}`);
-  return { data };
+  const data = await apiClient.get<unknown>(`/emergency/finance/invoices/${id}`);
+  return { data: asEntity<EmergencyInvoiceDraft>(data) };
 }
 
 export async function createInvoiceDraft(body: {
@@ -254,13 +264,13 @@ export async function createInvoiceDraft(body: {
   customerId?: string;
   notes?: string;
 }): Promise<{ data: EmergencyInvoiceDraft }> {
-  const data = await apiClient.post<EmergencyInvoiceDraft>('/emergency/finance/invoices', body);
-  return { data };
+  const data = await apiClient.post<unknown>('/emergency/finance/invoices', body);
+  return { data: asEntity<EmergencyInvoiceDraft>(data) };
 }
 
 export async function approveInvoiceDraft(id: string): Promise<{ data: EmergencyInvoiceDraft }> {
-  const data = await apiClient.patch<EmergencyInvoiceDraft>(`/emergency/finance/invoices/${id}/approve`);
-  return { data };
+  const data = await apiClient.patch<unknown>(`/emergency/finance/invoices/${id}/approve`);
+  return { data: asEntity<EmergencyInvoiceDraft>(data) };
 }
 
 // ─── Vendors (for cost entry selector) ───────────────────────────────────────
@@ -290,6 +300,6 @@ export async function createVendorQuick(body: {
   type: string;
   category: string;
 }): Promise<{ data: VendorOption }> {
-  const data = await apiClient.post<VendorOption>('/vendors', body);
-  return { data };
+  const data = await apiClient.post<unknown>('/vendors', body);
+  return { data: asEntity<VendorOption>(data) };
 }

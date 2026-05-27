@@ -15,8 +15,8 @@ export class CreateEmergencyCaseDto {
   customerId?: string;
 
   @IsString()
-  @IsOptional()
-  fileNo?: string;
+  @IsNotEmpty()
+  fileNo!: string;
 
   @IsString()
   @IsNotEmpty()
