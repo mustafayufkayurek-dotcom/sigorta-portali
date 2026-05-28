@@ -109,6 +109,26 @@ function canSeeNavItemDynamic(navPath: string, allowedScreens: string[]): boolea
   return allowedScreens.includes(match[0]);
 }
 
+const CONTEXT_BACK_LINKS: Record<string, { href: string; label: string }> = {
+  '/panel/admin/audit-logs': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
+  '/panel/finans/banka-hesaplari': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/dosya-pl': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/fatura-talepleri': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/karlilik': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/masraflar': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/portfolyo-pl': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/finans/sabit-giderler': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/guvenlik/erisim-loglari': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
+  '/panel/itirazlar': { href: '/panel/operasyon', label: 'Operasyon sayfasına dön' },
+  '/panel/masraflar': { href: '/panel/finans', label: 'Finans sayfasına dön' },
+  '/panel/ozel-dosyalar': { href: '/panel', label: 'Dashboard sayfasına dön' },
+  '/panel/sigorta-sirketleri': { href: '/panel', label: 'Dashboard sayfasına dön' },
+};
+
+function getContextBackLink(pathname: string) {
+  return CONTEXT_BACK_LINKS[pathname] ?? null;
+}
+
 interface AppNotification {
   id: string;
   type: string;
@@ -992,6 +1012,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
     allowedScreens, companyLogo, companyName,
   };
+  const contextBackLink = getContextBackLink(pathname);
 
   if (loading) {
     return (
@@ -1040,7 +1061,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         )}
         <main className="flex-1">
           <div className="mx-auto max-w-screen-2xl px-4 py-6">
-            <TopProgressBar /><ToastProvider>{children}</ToastProvider>
+            <TopProgressBar />
+            {contextBackLink && (
+              <Link
+                href={contextBackLink.href}
+                className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              >
+                <span aria-hidden="true">←</span>
+                {contextBackLink.label}
+              </Link>
+            )}
+            <ToastProvider>{children}</ToastProvider>
           </div>
         </main>
         <SessionTimeoutBar />

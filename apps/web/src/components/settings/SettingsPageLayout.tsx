@@ -24,7 +24,7 @@ export function SettingsPageLayout({
   backHref,
   backText = '← Geri',
 }: SettingsPageLayoutProps) {
-  const effectiveBackHref = backHref ?? '/panel/ayarlar/kurulum';
+  const effectiveBackHref = backHref ?? '/panel/ayarlar';
 
   return (
     <div>
