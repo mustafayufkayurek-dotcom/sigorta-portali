@@ -78,7 +78,7 @@ export default function TestNotlariGorevTakipPage() {
       return;
     }
     setLoading(true);
-    Promise.all([fetchTestNotes({ page: 1, limit: 100 }), fetchWorkItems({ page: 1, limit: 100 }), fetchUsers()])
+    Promise.all([fetchTestNotes({ page: 1, limit: 100, isArchived: false }), fetchWorkItems({ page: 1, limit: 100 }), fetchUsers()])
       .then(([notesRes, workRes, usersRes]) => {
         setTestNotes(notesRes.data ?? []);
         setWorkItems(workRes.data ?? []);
@@ -106,7 +106,7 @@ export default function TestNotlariGorevTakipPage() {
   }), [testNotes, workItems]);
 
   const refreshAll = async () => {
-    const [notesRes, workRes] = await Promise.all([fetchTestNotes({ page: 1, limit: 100 }), fetchWorkItems({ page: 1, limit: 100 })]);
+    const [notesRes, workRes] = await Promise.all([fetchTestNotes({ page: 1, limit: 100, isArchived: false }), fetchWorkItems({ page: 1, limit: 100 })]);
     setTestNotes(notesRes.data ?? []);
     setWorkItems(workRes.data ?? []);
     if (selectedNote) {

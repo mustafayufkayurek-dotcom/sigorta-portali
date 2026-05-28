@@ -41,6 +41,12 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
   }, [initial?.id]);
 
   useEffect(() => {
+    if (durum === 'KABUL') {
+      setIsArchived(true);
+    }
+  }, [durum]);
+
+  useEffect(() => {
     let active = true;
     const loadSignedUrl = async () => {
       if (!ekranGoruntusu) {
@@ -162,6 +168,11 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
           <select value={durum} onChange={(e) => setDurum(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             {TEST_NOTE_STATUSES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
+          {durum === 'KABUL' && (
+            <div className="mt-1 text-[11px] font-medium text-emerald-700">
+              Kabul seçildiğinde not kapanır ve açık test listesinde görünmez.
+            </div>
+          )}
         </div>
       </div>
       <div>
@@ -183,7 +194,7 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
           Tekrar durumu var
         </label>
         <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} />
+          <input type="checkbox" checked={isArchived} disabled={durum === 'KABUL'} onChange={(e) => setIsArchived(e.target.checked)} />
           Arşivde
         </label>
       </div>

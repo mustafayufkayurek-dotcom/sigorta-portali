@@ -85,6 +85,7 @@ export class TestNotesService {
 
   async createTestNote(dto: CreateTestNoteDto, userId: string) {
     const testNo = await this.generateNextTestNo();
+    const durum = dto.durum ?? 'YENI';
     const created = await this.db.testNote.create({
       data: {
         testNo,
@@ -93,9 +94,9 @@ export class TestNotesService {
         beklenenDavranis: dto.beklenenDavranis.trim(),
         ekranGoruntusu: dto.ekranGoruntusu?.trim() || null,
         oncelik: dto.oncelik as any,
-        durum: (dto.durum ?? 'YENI') as any,
+        durum: durum as any,
         tekrarDurumu: dto.tekrarDurumu ?? false,
-        isArchived: dto.isArchived ?? false,
+        isArchived: durum === 'KABUL' ? true : (dto.isArchived ?? false),
         createdById: userId,
       },
       include: {
@@ -117,6 +118,7 @@ export class TestNotesService {
 
   async updateTestNote(id: string, dto: UpdateTestNoteDto, userId: string) {
     const previous = await this.findOneTestNote(id);
+    const shouldArchive = dto.durum === 'KABUL';
     const updated = await this.db.testNote.update({
       where: { id },
       data: {
@@ -127,7 +129,7 @@ export class TestNotesService {
         ...(dto.oncelik !== undefined ? { oncelik: dto.oncelik as any } : {}),
         ...(dto.durum !== undefined ? { durum: dto.durum as any } : {}),
         ...(dto.tekrarDurumu !== undefined ? { tekrarDurumu: dto.tekrarDurumu } : {}),
-        ...(dto.isArchived !== undefined ? { isArchived: dto.isArchived } : {}),
+        ...(shouldArchive ? { isArchived: true } : dto.isArchived !== undefined ? { isArchived: dto.isArchived } : {}),
         ...(dto.managerIslemNotu !== undefined ? { managerIslemNotu: dto.managerIslemNotu?.trim() || null } : {}),
         ...(dto.managerIslemNotu !== undefined || dto.durum !== undefined ? { islemTarihi: new Date() } : {}),
       },
