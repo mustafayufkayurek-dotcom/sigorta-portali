@@ -412,7 +412,60 @@ export default function ClaimFilesPage() {
         </div>
       ) : (
         <div className="table-container">
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 p-3 md:hidden">
+            {visibleClaims.map((claim: any) => {
+              const customerName = claim.insuranceCompany?.name ?? '—';
+              const insuredName = claim.customer?.fullName ?? claim.customer?.companyName
+                ?? ((claim.customer?.firstName || claim.customer?.lastName)
+                  ? `${claim.customer.firstName ?? ''} ${claim.customer.lastName ?? ''}`.trim()
+                  : '—');
+              const revCount = pendingRevisionMap[claim.id] ?? 0;
+              const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
+              const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
+              return (
+                <button
+                  key={claim.id}
+                  type="button"
+                  onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-mono text-sm font-bold text-slate-900">{claim.fileNo ?? claim.claimNo ?? '—'}</div>
+                      <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
+                    </div>
+                    <ClaimStatusBadge status={claim.currentStatus} />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-slate-400">Sigortalı</p>
+                      <p className="mt-0.5 truncate font-medium text-slate-700">{insuredName}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Tarih</p>
+                      <p className="mt-0.5 font-medium text-slate-700">{fmtDate(claim.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Fatura</p>
+                      <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>
+                        {INVOICE_STATUS_LABELS[invStatus] ?? invStatus}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Tutar</p>
+                      <p className="mt-0.5 font-semibold text-slate-700">{fmtAmount(totalAmount)}</p>
+                    </div>
+                  </div>
+                  {revCount > 0 && (
+                    <div className="mt-3">
+                      <span className="badge badge-amber">{revCount} revizyon bekliyor</span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="table-head-row">
                 <tr>
