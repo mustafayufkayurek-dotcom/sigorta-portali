@@ -213,7 +213,7 @@ function Navbar({
     <img
       src={companyLogo}
       alt={companyName}
-      className="block max-h-10 w-auto max-w-[124px] object-contain"
+      className="block max-h-9 w-auto max-w-[118px] object-contain"
       onError={() => { /* parent will fallback */ }}
     />
   ) : (
@@ -240,7 +240,7 @@ function Navbar({
               href="https://meridyenassistance.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-14 min-w-[124px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-sm transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
+              className="flex h-12 min-w-[118px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-2.5 shadow-sm transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
               title="Meridyen Assistance web sitesini yeni sekmede aç"
             >
               {logoContent}
@@ -319,6 +319,9 @@ function Navbar({
                           <Link href="/panel/finans/dosya-pl" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Portföy P&amp;L</Link>
                           <Link href="/panel/finans/sabit-giderler" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Sabit Giderler</Link>
                           <Link href="/panel/finans/masraflar" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Masraflar</Link>
+                          {canSee('/panel/carilerim') && (
+                            <Link href="/panel/carilerim" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Carilerim</Link>
+                          )}
                           <div className="my-1.5 border-t border-slate-100" />
                           <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raporlar</p>
                           <Link href="/panel/raporlar/dosya-performansi" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Dosya Performansı</Link>
@@ -331,10 +334,6 @@ function Navbar({
 
                   {canSee('/panel/harita') && (
                     <Link href="/panel/harita" className={navLinkCls('/panel/harita')}>Harita</Link>
-                  )}
-
-                  {canSee('/panel/carilerim') && (
-                    <Link href="/panel/carilerim" className={navLinkCls('/panel/carilerim')}>Carilerim</Link>
                   )}
 
                   {/* Ayarlar Dropdown */}
@@ -592,7 +591,12 @@ function Navbar({
                 )}
                 {canSee('/panel/finans') && (
                   <>
+                    <Link href="/panel/finans" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Finans Özeti</Link>
                     <Link href="/panel/finans/faturalar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Faturalar</Link>
+                    <Link href="/panel/finans/tahsilatlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tahsilatlar ve Ödemeler</Link>
+                    {canSee('/panel/carilerim') && (
+                      <Link href="/panel/carilerim" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Carilerim</Link>
+                    )}
                     <Link href="/panel/raporlar/dosya-performansi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Raporlar</Link>
                   </>
                 )}
