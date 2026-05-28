@@ -234,6 +234,21 @@ export interface NotificationSettings {
     label: string;
     enabled: boolean;
   }[];
+  signalRules?: {
+    key: string;
+    name: string;
+    area: 'operasyon' | 'finans' | 'sistem' | 'gorev';
+    level: 'bilgi' | 'uyari' | 'kritik';
+    trigger: string;
+    targetRoles: string[];
+    channels: {
+      inApp: boolean;
+      telegram: boolean;
+      email: boolean;
+    };
+    repeatPolicy: string;
+    active: boolean;
+  }[];
 }
 
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -247,6 +262,63 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
     { key: 'file_closed', label: 'Dosya Kapatıldı', enabled: false },
     { key: 'revision_requested', label: 'Revizyon Talep', enabled: true },
     { key: 'payment_received', label: 'Ödeme Alındı', enabled: false },
+  ],
+  signalRules: [
+    {
+      key: 'disk_critical',
+      name: 'Disk alanı kritik seviyede',
+      area: 'sistem',
+      level: 'kritik',
+      trigger: 'Disk kullanımı yüzde 95 ve üzerine çıktığında',
+      targetRoles: ['Sistem Yöneticisi'],
+      channels: { inApp: false, telegram: true, email: false },
+      repeatPolicy: 'Durum değişince ve günlük özet içinde',
+      active: true,
+    },
+    {
+      key: 'api_unhealthy',
+      name: 'API sağlık kontrolü başarısız',
+      area: 'sistem',
+      level: 'kritik',
+      trigger: 'API sağlık kontrolü başarısız olduğunda',
+      targetRoles: ['Sistem Yöneticisi'],
+      channels: { inApp: false, telegram: true, email: false },
+      repeatPolicy: 'Durum değişince',
+      active: true,
+    },
+    {
+      key: 'sla_risk',
+      name: 'SLA riski oluştu',
+      area: 'operasyon',
+      level: 'uyari',
+      trigger: 'Dosya hedef süresine yaklaştığında',
+      targetRoles: ['Operasyon', 'Sistem Yöneticisi'],
+      channels: { inApp: true, telegram: false, email: false },
+      repeatPolicy: 'Günlük özet ve dosya kartı üzerinde',
+      active: true,
+    },
+    {
+      key: 'overdue_collection',
+      name: 'Geciken tahsilat',
+      area: 'finans',
+      level: 'uyari',
+      trigger: 'Vadesi geçen tahsilat kaydı oluştuğunda',
+      targetRoles: ['Finans', 'Sistem Yöneticisi'],
+      channels: { inApp: true, telegram: false, email: false },
+      repeatPolicy: 'Günlük özet ve finans ekranı üzerinde',
+      active: true,
+    },
+    {
+      key: 'pending_task',
+      name: 'Bekleyen görev veya aksiyon',
+      area: 'gorev',
+      level: 'bilgi',
+      trigger: 'Sorumlu kişiye atanmış açık görev bulunduğunda',
+      targetRoles: ['Operasyon', 'Sistem Yöneticisi'],
+      channels: { inApp: true, telegram: false, email: false },
+      repeatPolicy: 'Kullanıcı ekranında sürekli görünür',
+      active: true,
+    },
   ],
 };
 
@@ -637,6 +709,9 @@ export class SystemSettingsService {
       notifications: Array.isArray(data.notifications) && data.notifications.length > 0
         ? data.notifications
         : DEFAULT_NOTIFICATION_SETTINGS.notifications,
+      signalRules: Array.isArray(data.signalRules) && data.signalRules.length > 0
+        ? data.signalRules
+        : DEFAULT_NOTIFICATION_SETTINGS.signalRules,
     };
   }
 
@@ -648,6 +723,9 @@ export class SystemSettingsService {
       notifications: Array.isArray(settings.notifications) && settings.notifications.length > 0
         ? settings.notifications
         : current.notifications,
+      signalRules: Array.isArray(settings.signalRules) && settings.signalRules.length > 0
+        ? settings.signalRules
+        : current.signalRules,
     };
     await this.set('notification_settings', merged);
     return merged;

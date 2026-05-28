@@ -55,6 +55,32 @@ interface IntegrationConfig {
   };
 }
 
+interface SignalRule {
+  key: string;
+  name: string;
+  area: 'operasyon' | 'finans' | 'sistem' | 'gorev';
+  level: 'bilgi' | 'uyari' | 'kritik';
+  trigger: string;
+  targetRoles: string[];
+  channels: {
+    inApp: boolean;
+    telegram: boolean;
+    email: boolean;
+  };
+  repeatPolicy: string;
+  active: boolean;
+}
+
+interface NotificationSettings {
+  emailEnabled: boolean;
+  notifications: {
+    key: string;
+    label: string;
+    enabled: boolean;
+  }[];
+  signalRules: SignalRule[];
+}
+
 interface ThemeConfig {
   mode: 'light' | 'dark' | 'system';
   colorScheme: string;
@@ -104,7 +130,7 @@ const PROTECTED_EMAIL = 'admin@meridyenassistance.com';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'genel' | 'kullanicilar' | 'roller' | 'alan-zorunluluklari' | 'mail' | 'sms' | 'entegrasyonlar' | 'sistem';
+type TabId = 'genel' | 'kullanicilar' | 'roller' | 'alan-zorunluluklari' | 'mail' | 'sms' | 'uyari-sinyalizasyon' | 'entegrasyonlar' | 'sistem';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'genel',              label: 'Genel Bilgiler',     icon: '🏢' },
@@ -113,6 +139,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'alan-zorunluluklari',label: 'Alan Zorunlulukları',icon: '📋' },
   { id: 'mail',               label: 'Mail Kurulum',       icon: '✉️' },
   { id: 'sms',                label: 'SMS Bildirimleri',   icon: '📱' },
+  { id: 'uyari-sinyalizasyon',label: 'Uyarı ve Sinyalizasyon', icon: '🔔' },
   { id: 'entegrasyonlar',     label: 'Entegrasyonlar',     icon: '🔗' },
   { id: 'sistem',             label: 'Sistem Ayarları',    icon: '⚙️' },
 ];
@@ -178,6 +205,7 @@ export default function KurulumPage() {
           {activeTab === 'alan-zorunluluklari'  && <AlanZorunluluklariTab />}
           {activeTab === 'mail'                 && <MailTab />}
           {activeTab === 'sms'                  && <SmsTab />}
+          {activeTab === 'uyari-sinyalizasyon'  && <UyariSinyalizasyonTab />}
           {activeTab === 'entegrasyonlar'       && <EntegrasyonlarTab />}
           {activeTab === 'sistem'               && <SistemTab />}
         </div>
@@ -948,6 +976,241 @@ function SmsTab() {
           <input className={inputCls} value={form.senderId} onChange={(e) => setForm(p => ({ ...p, senderId: e.target.value }))} placeholder="MERIDYEN" />
           <p className="text-xs text-slate-400 mt-1">Gönderen adı — max 11 karakter</p>
         </div>
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <SaveBtn loading={saving} onClick={handleSave} />
+      </div>
+    </TabCard>
+  );
+}
+
+// ── Tab: Uyarı ve Sinyalizasyon ──────────────────────────────────────────────
+
+const DEFAULT_SIGNAL_RULES: SignalRule[] = [
+  {
+    key: 'disk_critical',
+    name: 'Disk alanı kritik seviyede',
+    area: 'sistem',
+    level: 'kritik',
+    trigger: 'Disk kullanımı yüzde 95 ve üzerine çıktığında',
+    targetRoles: ['Sistem Yöneticisi'],
+    channels: { inApp: false, telegram: true, email: false },
+    repeatPolicy: 'Durum değişince ve günlük özet içinde',
+    active: true,
+  },
+  {
+    key: 'api_unhealthy',
+    name: 'API sağlık kontrolü başarısız',
+    area: 'sistem',
+    level: 'kritik',
+    trigger: 'API sağlık kontrolü başarısız olduğunda',
+    targetRoles: ['Sistem Yöneticisi'],
+    channels: { inApp: false, telegram: true, email: false },
+    repeatPolicy: 'Durum değişince',
+    active: true,
+  },
+  {
+    key: 'sla_risk',
+    name: 'SLA riski oluştu',
+    area: 'operasyon',
+    level: 'uyari',
+    trigger: 'Dosya hedef süresine yaklaştığında',
+    targetRoles: ['Operasyon', 'Sistem Yöneticisi'],
+    channels: { inApp: true, telegram: false, email: false },
+    repeatPolicy: 'Günlük özet ve dosya kartı üzerinde',
+    active: true,
+  },
+  {
+    key: 'overdue_collection',
+    name: 'Geciken tahsilat',
+    area: 'finans',
+    level: 'uyari',
+    trigger: 'Vadesi geçen tahsilat kaydı oluştuğunda',
+    targetRoles: ['Finans', 'Sistem Yöneticisi'],
+    channels: { inApp: true, telegram: false, email: false },
+    repeatPolicy: 'Günlük özet ve finans ekranı üzerinde',
+    active: true,
+  },
+  {
+    key: 'pending_task',
+    name: 'Bekleyen görev veya aksiyon',
+    area: 'gorev',
+    level: 'bilgi',
+    trigger: 'Sorumlu kişiye atanmış açık görev bulunduğunda',
+    targetRoles: ['Operasyon', 'Sistem Yöneticisi'],
+    channels: { inApp: true, telegram: false, email: false },
+    repeatPolicy: 'Kullanıcı ekranında sürekli görünür',
+    active: true,
+  },
+];
+
+function UyariSinyalizasyonTab() {
+  const [form, setForm] = useState<NotificationSettings>({ emailEnabled: true, notifications: [], signalRules: DEFAULT_SIGNAL_RULES });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    axios.get(`${API}/system-settings/notification-settings`, { headers: authHeader() })
+      .then((r) => {
+        const data = r.data.data ?? {};
+        setForm({
+          emailEnabled: data.emailEnabled ?? true,
+          notifications: Array.isArray(data.notifications) ? data.notifications : [],
+          signalRules: Array.isArray(data.signalRules) && data.signalRules.length > 0 ? data.signalRules : DEFAULT_SIGNAL_RULES,
+        });
+      })
+      .catch(() => setError('Uyarı kuralları yüklenemedi.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const updateRule = (key: string, patch: Partial<SignalRule>) => {
+    setForm((prev) => ({
+      ...prev,
+      signalRules: prev.signalRules.map((rule) => rule.key === key ? { ...rule, ...patch } : rule),
+    }));
+  };
+
+  const updateRuleChannels = (key: string, channel: keyof SignalRule['channels'], checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      signalRules: prev.signalRules.map((rule) => rule.key === key
+        ? { ...rule, channels: { ...rule.channels, [channel]: checked } }
+        : rule),
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      await axios.put(`${API}/system-settings/notification-settings`, form, { headers: authHeader() });
+      setSuccess('Uyarı ve sinyalizasyon kuralları kaydedildi.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      setError('Kayıt sırasında hata oluştu.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const levelCls = (level: SignalRule['level']) => {
+    if (level === 'kritik') return 'bg-red-50 text-red-700 border-red-200';
+    if (level === 'uyari') return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-blue-50 text-blue-700 border-blue-200';
+  };
+
+  if (loading) return <CardSkeleton />;
+
+  return (
+    <TabCard title="Uyarı ve Sinyalizasyon Kuralları" description="Yazılım içi kullanıcı sinyalleri, Telegram operasyon alarmları ve e-posta bildirimlerini tek merkezden yönetin.">
+      {error && <ErrorAlert msg={error} onClose={() => setError('')} />}
+      {success && <SuccessAlert msg={success} />}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        {[
+          { title: 'Yazılım İçi Sinyal', text: 'Kullanıcıların panelde göreceği görev, risk ve aksiyon uyarılarıdır.', tone: 'blue' },
+          { title: 'Telegram Operasyon Alarmı', text: 'Sistem yöneticisine giden teknik ve kritik servis alarmlarıdır.', tone: 'red' },
+          { title: 'E-posta Bildirimi', text: 'Dış iletişim veya resmi bilgilendirme gerektiren bildirimler için kullanılır.', tone: 'emerald' },
+        ].map((item) => (
+          <div key={item.title} className={`rounded-lg border p-4 ${item.tone === 'red' ? 'border-red-100 bg-red-50/60' : item.tone === 'emerald' ? 'border-emerald-100 bg-emerald-50/60' : 'border-blue-100 bg-blue-50/60'}`}>
+            <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">{item.text}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Kural</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Seviye</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Tetikleyici</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Kanallar</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Roller</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {form.signalRules.map((rule) => (
+              <tr key={rule.key} className={!rule.active ? 'bg-slate-50/70' : ''}>
+                <td className="px-4 py-4 align-top">
+                  <div className="font-semibold text-slate-800">{rule.name}</div>
+                  <div className="mt-1 text-xs text-slate-400">{rule.area === 'gorev' ? 'Görev' : toTitleCaseTR(rule.area)}</div>
+                </td>
+                <td className="px-4 py-4 align-top">
+                  <select
+                    className={`${inputCls} min-w-[110px]`}
+                    value={rule.level}
+                    onChange={(e) => updateRule(rule.key, { level: e.target.value as SignalRule['level'] })}
+                  >
+                    <option value="bilgi">Bilgi</option>
+                    <option value="uyari">Uyarı</option>
+                    <option value="kritik">Kritik</option>
+                  </select>
+                  <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${levelCls(rule.level)}`}>
+                    {rule.level === 'uyari' ? 'Uyarı' : toTitleCaseTR(rule.level)}
+                  </span>
+                </td>
+                <td className="px-4 py-4 align-top min-w-[260px]">
+                  <textarea
+                    className={`${inputCls} min-h-[76px] resize-y`}
+                    value={rule.trigger}
+                    onChange={(e) => updateRule(rule.key, { trigger: e.target.value })}
+                  />
+                  <input
+                    className={`${inputCls} mt-2`}
+                    value={rule.repeatPolicy}
+                    onChange={(e) => updateRule(rule.key, { repeatPolicy: e.target.value })}
+                    placeholder="Tekrar kuralı"
+                  />
+                </td>
+                <td className="px-4 py-4 align-top min-w-[170px]">
+                  {[
+                    { key: 'inApp', label: 'Yazılım içi' },
+                    { key: 'telegram', label: 'Telegram' },
+                    { key: 'email', label: 'E-posta' },
+                  ].map((channel) => (
+                    <label key={channel.key} className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={rule.channels[channel.key as keyof SignalRule['channels']]}
+                        onChange={(e) => updateRuleChannels(rule.key, channel.key as keyof SignalRule['channels'], e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {channel.label}
+                    </label>
+                  ))}
+                </td>
+                <td className="px-4 py-4 align-top min-w-[190px]">
+                  <input
+                    className={inputCls}
+                    value={rule.targetRoles.join(', ')}
+                    onChange={(e) => updateRule(rule.key, { targetRoles: e.target.value.split(',').map((role) => role.trim()).filter(Boolean) })}
+                    placeholder="Rol adları"
+                  />
+                </td>
+                <td className="px-4 py-4 align-top">
+                  <button
+                    type="button"
+                    onClick={() => updateRule(rule.key, { active: !rule.active })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${rule.active ? 'bg-blue-600' : 'bg-slate-300'}`}
+                    aria-label={`${rule.name} durumunu değiştir`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${rule.active ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <p className={`mt-2 text-xs font-semibold ${rule.active ? 'text-green-600' : 'text-slate-400'}`}>{rule.active ? 'Aktif' : 'Pasif'}</p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        Kritik teknik olaylarda Telegram açık kalmalı; kullanıcı iş akışını ilgilendiren konularda yazılım içi sinyal tercih edilmelidir. Böylece operasyon ekibi gereksiz teknik mesajlarla yorulmaz.
       </div>
 
       <div className="mt-6 flex justify-end">
