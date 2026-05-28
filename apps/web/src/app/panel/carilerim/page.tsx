@@ -61,6 +61,9 @@ export default function CarilerimPage() {
   const filtered = customers.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()),
   );
+  const totalFiles = customers.reduce((sum, customer) => sum + customer.totalFiles, 0);
+  const openFiles = customers.reduce((sum, customer) => sum + customer.openFiles, 0);
+  const closedFiles = customers.reduce((sum, customer) => sum + customer.closedFiles, 0);
 
   if (loading) {
     return (
@@ -86,14 +89,38 @@ export default function CarilerimPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Finans / Cari İzleme</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900">Carilerim</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">
+              Atanmış müşterileri, açık dosyaları ve son işlem hareketini tek ekranda izleyin.
+            </p>
+          </div>
+          <div className="grid min-w-full grid-cols-3 gap-3 lg:min-w-[420px]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cari</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{customers.length}</p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">Açık Dosya</p>
+              <p className="mt-1 text-xl font-bold text-emerald-700">{openFiles}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Toplam Dosya</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{totalFiles}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Carilerim</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Atanmış dosyalardaki müşterileriniz</p>
+          <h2 className="text-sm font-semibold text-slate-800">Cari Listesi</h2>
+          <p className="mt-0.5 text-xs text-slate-400">{closedFiles} kapalı dosya bilgisi arşiv niteliğinde gösterilir.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <span className="font-medium text-slate-700">{customers.length}</span> müşteri
-        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-500"><span className="font-medium text-slate-700">{filtered.length}</span> kayıt gösteriliyor</div>
       </div>
 
       {/* Search */}

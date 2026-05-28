@@ -38,6 +38,30 @@ const PLAN_META: Record<string, { label: string; short: string; badgeCls: string
   },
 };
 
+const EXPENSE_GUIDE = [
+  {
+    title: 'Dosya Bütçesi',
+    tag: 'Planlanan',
+    body: 'Ekspertiz, servis, standart parça, saha operasyonu ve dosya açılışında öngörülen olağan maliyetler bu gruba yazılır.',
+    example: 'Örnek: Standart onarım malzemesi veya dosya için beklenen hizmet bedeli.',
+    cls: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200',
+  },
+  {
+    title: 'Ek İşler',
+    tag: 'Bütçe dışı',
+    body: 'İlk bütçede yer almayan, sonradan doğan veya müşteriye/sigortaya ayrıca açıklanması gereken masraflar bu gruba yazılır.',
+    example: 'Örnek: Ek keşif, ilave işçilik, sonradan çıkan parça veya özel saha gideri.',
+    cls: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200',
+  },
+  {
+    title: 'Kayıt Disiplini',
+    tag: 'Zorunlu',
+    body: 'Her masraf mutlaka dosya numarasına bağlanmalı, açıklama alanında işin nedeni anlaşılır yazılmalı ve gerçek işlem tarihi seçilmelidir.',
+    example: 'Örnek açıklama: Yangın dosyası yerinde keşif ulaşım gideri.',
+    cls: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
+  },
+];
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface FileOption {
   id:          string;
@@ -262,6 +286,37 @@ export default function MasraflarPage() {
           </p>
         </div>
       </div>
+
+      {/* Masraf kalemi rehberi */}
+      <section className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Masraf Kalemi Rehberi</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Kayıt sırasında hangi kalemin hangi kategoriye yazılacağını hızlıca ayırt etmek için kullanılır.
+            </p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+            İpucu
+          </span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {EXPENSE_GUIDE.map((item) => (
+            <div key={item.title} className={`rounded-xl border p-4 ${item.cls}`}>
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="text-sm font-semibold">{item.title}</h4>
+                <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide dark:bg-slate-900/40">
+                  {item.tag}
+                </span>
+              </div>
+              <p className="mt-2 text-xs leading-5 opacity-90">{item.body}</p>
+              <p className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-[11px] leading-5 opacity-90 dark:bg-slate-900/40">
+                {item.example}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Masraf Ekleme Formu */}
       {showForm && (

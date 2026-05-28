@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 
@@ -66,6 +67,45 @@ const DURUM_COLOR: Record<TxStatus, string> = {
   bekliyor: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400',
   iptal: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',
 };
+
+const FINANCE_MODULES = [
+  {
+    title: 'Tahsilatlar ve Ödemeler',
+    href: '/panel/finans/tahsilatlar',
+    purpose: 'Gelir ve gider hareketlerini takip eder.',
+    action: 'Bekleyen tahsilat veya ödeme varsa buradan işlem yapılır.',
+  },
+  {
+    title: 'Faturalar',
+    href: '/panel/finans/faturalar',
+    purpose: 'Kesilen ve bekleyen faturaları listeler.',
+    action: 'Fatura durumu kontrol edilir, eksik belge varsa dosyaya dönülür.',
+  },
+  {
+    title: 'Masraflar',
+    href: '/panel/finans/masraflar',
+    purpose: 'Dosya bütçesi ve ek iş masraflarını dosya bazında izler.',
+    action: 'Masraf kalemi dosyaya bağlanır, kategori ipucuna göre kaydedilir.',
+  },
+  {
+    title: 'Carilerim',
+    href: '/panel/carilerim',
+    purpose: 'Atanmış müşteri ve dosya ilişkilerini tek yerde gösterir.',
+    action: 'Müşteri dosyaları hızlıca açılır ve operasyon geçmişi izlenir.',
+  },
+  {
+    title: 'Sabit Giderler',
+    href: '/panel/finans/sabit-giderler',
+    purpose: 'Dönemsel işletme giderlerini finans izlemeye dahil eder.',
+    action: 'Kira, personel, abonelik gibi düzenli giderler kayda alınır.',
+  },
+  {
+    title: 'Kârlılık Analizi',
+    href: '/panel/finans/karlilik',
+    purpose: 'Gelir, gider ve net sonuç farkını yorumlar.',
+    action: 'Dosya veya dönem bazlı kârlılık kontrol edilir.',
+  },
+];
 
 export default function FinansDashboard() {
   const router = useRouter();
@@ -156,6 +196,38 @@ export default function FinansDashboard() {
           }
         />
       </div>
+
+      {/* Finance module guide */}
+      <section className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Finans Çalışma Akışı</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Finans menüsü altındaki sayfaların hangi amaçla kullanılacağını ve hangi işlem için açılacağını gösterir.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 p-4">
+          {FINANCE_MODULES.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 p-4 hover:border-blue-200 hover:bg-blue-50/50 dark:hover:border-blue-800 dark:hover:bg-blue-950/30 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.purpose}</p>
+                </div>
+                <span className="text-slate-300 group-hover:text-blue-500 transition-colors">→</span>
+              </div>
+              <p className="mt-3 rounded-lg bg-white/80 dark:bg-slate-800/70 px-3 py-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                {item.action}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Net Bar */}
       {stats.gelir > 0 && (
