@@ -20,9 +20,32 @@ function getHeaders() {
 type ApprovalItem = {
   id: string;
   status: string;
-  report?: { reportNumber?: string; claimFile?: { fileNumber?: string } };
+  expiresAt?: string;
+  sentAt?: string;
+  report?: {
+    reportNo?: string;
+    reportNumber?: string;
+    claimFile?: {
+      fileNo?: string;
+      fileNumber?: string;
+      lossType?: string;
+      insuranceCompany?: { name?: string };
+    };
+  };
   reportId?: string;
   createdAt?: string;
+};
+
+type ExpertClaimFile = {
+  id: string;
+  fileNo?: string;
+  fileNumber?: string;
+  lossType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastActivityAt?: string | null;
+  insuranceCompany?: { name?: string };
+  currentStatus?: { name?: string; code?: string; colorCode?: string };
 };
 
 const INSURANCE_COMPANIES = [
@@ -841,13 +864,26 @@ function statusDot(s: string) {
   return map[s] ?? 'bg-slate-400';
 }
 
+function formatShortDate(value?: string | null) {
+  if (!value) return 'Tarih yok';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Tarih yok';
+  return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function fileNumberOf(file?: Pick<ExpertClaimFile, 'fileNo' | 'fileNumber'> | null) {
+  return file?.fileNo ?? file?.fileNumber ?? 'Dosya no yok';
+}
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export default function EksperPortalPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [expiredCount, setExpiredCount] = useState<number>(0);
   const [assignedCount, setAssignedCount] = useState<number>(0);
+  const [assignedFiles, setAssignedFiles] = useState<ExpertClaimFile[]>([]);
   const [recentApprovals, setRecentApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -870,14 +906,18 @@ export default function EksperPortalPage() {
     if (!adjusterId) { setLoading(false); return; }
 
     Promise.all([
-      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${adjusterId}`, { headers: getHeaders() }).then((r) => r.json()),
+      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${adjusterId}&includeExpired=true`, { headers: getHeaders() }).then((r) => r.json()),
       fetch(`${API}/claim-files?assignedAdjusterId=${adjusterId}&limit=5`, { headers: getHeaders() }).then((r) => r.json()),
     ])
       .then(([approvals, files]) => {
         const list: ApprovalItem[] = approvals?.data ?? [];
-        setPendingCount(list.length);
+        const pending = list.filter((item) => item.status === 'pending');
+        const expired = list.filter((item) => item.status === 'expired');
+        setPendingCount(pending.length);
+        setExpiredCount(expired.length);
         setRecentApprovals(list.slice(0, 5));
         setAssignedCount(files?.meta?.total ?? 0);
+        setAssignedFiles((files?.data ?? []).slice(0, 5));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -912,7 +952,9 @@ export default function EksperPortalPage() {
   const userName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : 'Eksper';
 
   const approvalPendingCount = pendingCount;
-  const approvalExpiredCount = 0;
+  const approvalExpiredCount = expiredCount;
+  const activeFileGaugeMax = Math.max(10, assignedCount, approvalPendingCount + approvalExpiredCount);
+  const onTimeRatio = assignedCount === 0 ? 100 : Math.max(0, Math.round(((assignedCount - approvalExpiredCount) / assignedCount) * 100));
 
   return (
     <div className="min-h-screen bg-slate-50 -m-6 px-0">
@@ -1055,12 +1097,20 @@ export default function EksperPortalPage() {
           </div>
         </div>
 
-        {/* ── Aktif Dosya Sayısı ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
-            <GaugeChart value={Math.min(assignedCount, 50)} max={50} label="Aktif Dosya Sayısı" unit="" size={140} />
+            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Aktif Dosya Sayısı" unit="" size={140} />
             <p className="text-[10px] text-slate-400 text-center mt-1">{`Toplam: ${assignedCount}`}</p>
           </div>
+          <Link href="/panel/eksper-portal/onaylar" className="rounded-2xl bg-white border border-amber-200 p-4 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
+            <GaugeChart value={approvalPendingCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Onay Bekleyen Dosyalar" unit="" size={140} />
+            <p className="text-[10px] text-amber-600 text-center mt-1">İnceleme bekleyen dış onaylar</p>
+          </Link>
+          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-2xl bg-white border border-red-200 p-4 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
+            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Dosyalar" unit="" size={140} />
+            <p className="text-[10px] text-red-600 text-center mt-1">{onTimeRatio}% zamanında takip oranı</p>
+          </Link>
         </div>
 
         {/* ── Alt Grid: Aktiviteler + İstatistikler ────────────────────────── */}
@@ -1077,14 +1127,15 @@ export default function EksperPortalPage() {
                 Tümünü Gör →
               </Link>
             </div>
-            {recentApprovals.length === 0 ? (
+            {recentApprovals.length === 0 && assignedFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-3">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <p className="text-sm text-slate-400">Henüz aktivite bulunmuyor</p>
+                <p className="text-sm font-medium text-slate-500">Bugün gösterilecek dosya aktivitesi yok</p>
+                <p className="text-xs text-slate-400">Yeni atama veya onay talebi oluştuğunda burada görünecek.</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -1103,7 +1154,7 @@ export default function EksperPortalPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-slate-700 truncate">
-                          {a.report?.claimFile?.fileNumber ?? a.report?.reportNumber ?? `Dosya #${a.id.slice(-6)}`}
+                          {fileNumberOf(a.report?.claimFile) ?? a.report?.reportNo ?? a.report?.reportNumber ?? `Dosya #${a.id.slice(-6)}`}
                         </p>
                         <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
@@ -1114,8 +1165,11 @@ export default function EksperPortalPage() {
                           {statusLabel(a.status)}
                         </span>
                       </div>
-                      {a.report?.reportNumber && (
-                        <p className="text-xs text-slate-400 truncate">{a.report.reportNumber}</p>
+                      {(a.report?.reportNo || a.report?.reportNumber || a.expiresAt) && (
+                        <p className="text-xs text-slate-400 truncate">
+                          {a.report?.reportNo ?? a.report?.reportNumber ?? 'Onay talebi'}
+                          {a.expiresAt ? ` · Son tarih: ${formatShortDate(a.expiresAt)}` : ''}
+                        </p>
                       )}
                     </div>
                     {a.status === 'pending' && (
@@ -1127,6 +1181,36 @@ export default function EksperPortalPage() {
                       </Link>
                     )}
                   </div>
+                ))}
+                {assignedFiles.slice(0, Math.max(0, 5 - recentApprovals.length)).map((file, i) => (
+                  <Link
+                    key={file.id}
+                    href="/panel/eksper-portal/dosyalar"
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                      {i < assignedFiles.length - 1 && (
+                        <div className="w-px h-6 bg-slate-200 mt-1" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-700 truncate">{fileNumberOf(file)}</p>
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          Atanmış Dosya
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 truncate">
+                        {file.currentStatus?.name ?? 'Durum yok'}
+                        {file.insuranceCompany?.name ? ` · ${file.insuranceCompany.name}` : ''}
+                        {file.lastActivityAt || file.updatedAt ? ` · Son işlem: ${formatShortDate(file.lastActivityAt ?? file.updatedAt)}` : ''}
+                      </p>
+                    </div>
+                    <span className="flex-shrink-0 text-xs bg-slate-50 text-slate-500 border border-slate-200 px-3 py-1 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
+                      Aç
+                    </span>
+                  </Link>
                 ))}
               </div>
             )}

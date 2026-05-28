@@ -39,8 +39,9 @@ export class ExternalApprovalsController {
   async listPending(
     @Query('approverType') approverType?: string,
     @Query('approverId') approverId?: string,
+    @Query('includeExpired') includeExpired?: string,
   ) {
-    return this.service.listPending(approverType, approverId);
+    return this.service.listPending(approverType, approverId, includeExpired === 'true');
   }
 
   @Get('external-approvals/:id')

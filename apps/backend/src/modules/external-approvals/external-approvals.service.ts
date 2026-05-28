@@ -254,16 +254,21 @@ export class ExternalApprovalsService {
 
   // ── Listeleme ─────────────────────────────────────────────────────────────
 
-  async listPending(approverType?: string, approverId?: string) {
-    const where: Record<string, unknown> = { status: 'pending' };
-    if (approverType) where['approverType'] = approverType;
-    if (approverId) where['approverId'] = approverId;
+  async listPending(approverType?: string, approverId?: string, includeExpired = false) {
+    const baseWhere: Record<string, unknown> = {};
+    if (approverType) baseWhere['approverType'] = approverType;
+    if (approverId) baseWhere['approverId'] = approverId;
 
-    // Süresi dolmuş olanları güncelle
+    // Süresi dolmuş olanları listeleme öncesi güncelle.
     await this.prisma.externalApproval.updateMany({
       where: { status: 'pending', expiresAt: { lt: new Date() } },
       data: { status: 'expired' },
     });
+
+    const where: Record<string, unknown> = {
+      ...baseWhere,
+      status: includeExpired ? { in: ['pending', 'expired'] } : 'pending',
+    };
 
     const data = await this.prisma.externalApproval.findMany({
       where,
