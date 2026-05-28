@@ -117,7 +117,7 @@ export default function AdjusterProfilePage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex items-start gap-4">
-        <button type="button" onClick={() => router.back()} className="text-slate-400 hover:text-slate-700 text-sm mt-1">← Geri</button>
+        <button type="button" onClick={() => router.push('/panel/eksperler')} className="text-slate-400 hover:text-slate-700 text-sm mt-1">← Geri</button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">

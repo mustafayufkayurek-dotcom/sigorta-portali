@@ -394,7 +394,7 @@ export default function VendorDetailPage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
-        <button type="button" onClick={() => router.back()} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
+        <button type="button" onClick={() => router.push('/panel/ayarlar/tedarikciler')} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-slate-900">{vendor.name}</h2>
           <p className="text-sm text-slate-400">{vendor.type ?? ''} · {vendor.city ?? ''}</p>

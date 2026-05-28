@@ -232,7 +232,7 @@ export default function RevisionDetailPage() {
     return (
       <div className="py-20 text-center">
         <p className="text-slate-400">{pageError ? 'Revizyon talebi yüklenirken hata oluştu.' : 'Revizyon talebi bulunamadı.'}</p>
-        <button type="button" onClick={() => router.back()} className="mt-4 text-sm text-blue-600 hover:text-blue-700">
+        <button type="button" onClick={() => router.push('/panel/revizyon-talepleri')} className="mt-4 text-sm text-blue-600 hover:text-blue-700">
           ← Geri Dön
         </button>
       </div>
@@ -245,7 +245,7 @@ export default function RevisionDetailPage() {
     <div>
       {/* Page Header */}
       <div className="mb-6 flex items-center gap-3">
-        <button type="button" onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 transition-colors">
+        <button type="button" onClick={() => router.push('/panel/revizyon-talepleri')} className="text-slate-400 hover:text-slate-600 transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
