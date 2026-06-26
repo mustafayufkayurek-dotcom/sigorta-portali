@@ -148,6 +148,7 @@ export default function ProfilPage() {
       if (updatedUser) {
         setProfile(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        window.dispatchEvent(new CustomEvent('user-updated', { detail: updatedUser }));
       }
       setPwdSuccess('Şifreniz başarıyla güncellendi.');
       setOldPassword('');

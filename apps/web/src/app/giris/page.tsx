@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API } from '@/utils/api';
+import { CORPORATE_LOGO_DARK } from '@/constants/brand';
 
 const API_URL = API;
 
@@ -278,7 +279,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
 
   useEffect(() => {
@@ -292,19 +292,14 @@ export default function LoginPage() {
     } catch {
       // localStorage erişim hatası sessizce yoksay
     }
-    // Fetch company logo from public API (no auth required)
+    // Fetch public company name only; login logo is fixed to the accepted static brand asset.
     axios.get(`${API_URL}/system-settings/company-info`)
       .then((r) => {
         const d = r.data?.data ?? {};
-        if (d.logoUrl) {
-          const isDataUri = d.logoUrl.startsWith('data:');
-          const busted = isDataUri ? d.logoUrl : (d.logoUrl.includes('?') ? d.logoUrl : `${d.logoUrl}?v=${Date.now()}`);
-          setCompanyLogo(busted);
-        }
         if (d.name) setCompanyName(d.name);
       })
       .catch(() => {
-        // fallback: keep defaults
+        // fallback: keep local logo asset
       });
   }, []);
 
@@ -315,7 +310,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
       const { tokens, user } = response.data.data;
@@ -377,11 +372,15 @@ export default function LoginPage() {
         * { box-sizing: border-box; }
 
         .login-root {
+          --login-nav-h: 80px;
+          --login-strip-h: 88px;
           min-height: 100vh;
+          max-height: 100vh;
           display: flex;
           flex-direction: column;
           background: var(--white);
           font-family: 'DM Sans', sans-serif;
+          overflow: hidden;
         }
 
         /* ── TOP NAV BAR ── */
@@ -389,71 +388,119 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 40px;
+          padding: 10px 32px;
+          min-height: var(--login-nav-h);
           background: var(--navy);
           border-bottom: 1px solid rgba(255,255,255,0.08);
-          position: sticky;
-          top: 0;
+          flex-shrink: 0;
           z-index: 50;
         }
         .top-nav-logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          flex-shrink: 0;
         }
-        .logo-shield {
-          width: 36px;
-          height: 36px;
-          background: linear-gradient(135deg, var(--blue-light), var(--accent));
-          border-radius: 8px;
-          display: flex;
+        .logo-brand-shell {
+          display: inline-flex;
           align-items: center;
           justify-content: center;
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 8px 18px;
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.22),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
         }
-        .logo-text {
-          font-family: 'Sora', sans-serif;
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #fff;
-          letter-spacing: -0.02em;
+        .logo-static-img {
+          display: block;
+          width: clamp(240px, 26vw, 320px);
+          height: clamp(48px, 5.6vw, 62px);
+          object-fit: cover;
+          object-position: 10% 46%;
         }
-        .logo-text span {
-          color: var(--accent);
+        .nav-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          margin-left: auto;
+          text-align: right;
+          gap: 0;
+          min-width: 0;
+          width: auto;
+          max-width: 320px;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
         }
         .nav-contacts {
-          display: flex;
-          gap: 24px;
-          align-items: center;
+          display: grid;
+          grid-template-columns: repeat(2, max-content);
+          column-gap: 12px;
+          row-gap: 4px;
+          align-items: flex-end;
+          justify-content: flex-end;
+          text-align: right;
+          padding: 0;
+          border: 0;
+          background: transparent;
+        }
+        .nav-contact-title {
+          color: rgba(255,255,255,0.92);
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0;
+          grid-column: 1 / -1;
         }
         .nav-contact-item {
           display: flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 6px;
           color: rgba(255,255,255,0.75);
-          font-size: 0.8rem;
+          font-size: 0.74rem;
           font-weight: 500;
+          line-height: 1.15;
+          text-decoration: none;
+          transition: color 160ms ease, opacity 160ms ease;
+        }
+        .nav-contact-whatsapp {
+          grid-column: 1 / -1;
+          justify-self: end;
+        }
+        .nav-contact-item:hover {
+          color: #ffffff;
         }
         .nav-contact-item svg {
           color: var(--accent);
           flex-shrink: 0;
         }
+        .nav-contact-whatsapp {
+          color: #bbf7d0;
+        }
+        .nav-contact-whatsapp svg {
+          color: #4ade80;
+        }
         .status-pill {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.12);
+          background: #ecfdf5;
+          border: 1px solid #bbf7d0;
           border-radius: 999px;
-          padding: 5px 12px;
-          color: rgba(255,255,255,0.8);
+          padding: 6px 10px;
+          color: #166534;
           font-size: 0.75rem;
-          font-weight: 500;
+          font-weight: 700;
+          white-space: nowrap;
         }
         .status-dot {
-          width: 7px;
-          height: 7px;
-          background: #4ade80;
+          width: 9px;
+          height: 9px;
+          background: #dc2626;
           border-radius: 50%;
+          box-shadow: 0 0 0 3px rgba(220,38,38,0.16);
           animation: pulse-dot 2s infinite;
         }
         @keyframes pulse-dot {
@@ -464,19 +511,22 @@ export default function LoginPage() {
         /* ── HERO SPLIT ── */
         .hero-section {
           display: flex;
-          flex: 1;
+          flex: 1 1 auto;
           min-height: 0;
+          max-height: calc(100vh - var(--login-nav-h) - var(--login-strip-h));
+          overflow: hidden;
         }
 
         /* ── LEFT MARKETING PANEL ── */
         .marketing-panel {
           flex: 1 1 55%;
           background: linear-gradient(150deg, var(--navy) 0%, var(--navy-mid) 55%, var(--blue) 100%);
-          padding: 56px 56px 0;
+          padding: 36px 40px 0;
           display: flex;
           flex-direction: column;
           position: relative;
           overflow: hidden;
+          min-height: 0;
         }
         .marketing-panel::before {
           content: '';
@@ -524,12 +574,12 @@ export default function LoginPage() {
 
         .hero-title {
           font-family: 'Sora', sans-serif;
-          font-size: clamp(1.8rem, 2.8vw, 2.6rem);
+          font-size: clamp(2rem, 3vw, 2.85rem);
           font-weight: 800;
           color: #fff;
-          line-height: 1.18;
+          line-height: 1.16;
           letter-spacing: -0.03em;
-          margin-bottom: 16px;
+          margin-bottom: 18px;
         }
         .hero-title-accent {
           background: linear-gradient(90deg, var(--accent), #7dd3fc);
@@ -539,12 +589,12 @@ export default function LoginPage() {
         }
 
         .hero-sub {
-          color: rgba(186,210,245,0.85);
-          font-size: 1rem;
+          color: rgba(186,210,245,0.9);
+          font-size: 1.06rem;
           line-height: 1.65;
-          max-width: 440px;
-          margin-bottom: 40px;
-          font-weight: 400;
+          max-width: 460px;
+          margin-bottom: 42px;
+          font-weight: 500;
         }
 
         /* ── Feature Cards ── */
@@ -625,6 +675,7 @@ export default function LoginPage() {
           width: 420px;
           display: flex;
           flex-direction: column;
+          position: relative;
           background: var(--slate-light);
           border-left: 1px solid rgba(0,0,0,0.06);
         }
@@ -636,13 +687,37 @@ export default function LoginPage() {
           justify-content: center;
           padding: 48px 40px;
         }
+        .login-legal-note {
+          border-top: 1px solid #e2e8f0;
+          padding: 14px 40px 18px;
+          text-align: center;
+          color: #64748b;
+          font-size: 0.74rem;
+          font-weight: 600;
+          line-height: 1.45;
+          background: rgba(255,255,255,0.72);
+        }
+        .login-legal-note span {
+          display: block;
+        }
         .login-heading {
           font-family: 'Sora', sans-serif;
           font-size: 1.45rem;
           font-weight: 700;
           color: var(--navy);
           letter-spacing: -0.03em;
+          margin: 0;
+        }
+        .login-header {
+          display: flex;
+          align-items: center;
           margin-bottom: 4px;
+        }
+        .login-panel-status {
+          position: absolute;
+          top: 18px;
+          right: 24px;
+          z-index: 2;
         }
         .login-sub {
           color: var(--slate);
@@ -801,6 +876,7 @@ export default function LoginPage() {
           font-size: 0.72rem;
           color: #9ca3af;
           margin-top: 24px;
+          line-height: 1.55;
         }
 
         /* ── reCAPTCHA wrapper ── */
@@ -813,9 +889,10 @@ export default function LoginPage() {
         /* ── INSURERS MARQUEE STRIP ── */
         .insurers-strip {
           background: var(--navy);
-          padding: 20px 0 16px;
+          padding: 14px 0 12px;
           overflow: hidden;
           border-top: 1px solid rgba(255,255,255,0.06);
+          flex-shrink: 0;
         }
         .insurers-strip-label {
           text-align: center;
@@ -876,9 +953,20 @@ export default function LoginPage() {
         .fade-up-5 { animation: fade-up 0.55s ease both 0.45s; }
 
         /* ── RESPONSIVE ── */
-        @media (max-width: 1100px) {
+        @media (max-width: 1023px) {
           .login-panel { flex: 0 0 380px; width: 380px; }
           .marketing-panel { padding: 44px 40px 0; }
+          .logo-static-img {
+            width: clamp(200px, 34vw, 260px);
+            height: clamp(40px, 6vw, 52px);
+          }
+          .logo-brand-shell {
+            padding: 7px 14px;
+          }
+          .nav-right {
+            max-width: 300px;
+            margin-right: 0;
+          }
         }
         @media (max-width: 900px) {
           .hero-section { flex-direction: column; }
@@ -886,11 +974,56 @@ export default function LoginPage() {
           .login-panel { flex: none; width: 100%; border-left: none; border-top: 1px solid rgba(0,0,0,0.06); }
           .login-scroll { padding: 36px 24px; }
           .stats-band { grid-template-columns: repeat(2, 1fr); }
-          .nav-contacts { display: none; }
+          .nav-contacts { display: flex; }
+          .logo-static-img {
+            width: clamp(188px, 52vw, 240px);
+            height: clamp(38px, 8vw, 48px);
+          }
         }
         @media (max-width: 540px) {
           .feature-grid { grid-template-columns: 1fr; }
-          .top-nav { padding: 12px 20px; }
+          .top-nav {
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 20px;
+            gap: 10px;
+          }
+          .top-nav-logo {
+            width: 100%;
+            justify-content: center;
+          }
+          .logo-static-img {
+            width: min(92vw, 260px);
+            height: 46px;
+          }
+          .logo-brand-shell {
+            width: 100%;
+            max-width: 320px;
+            padding: 8px 16px;
+          }
+          .nav-right {
+            width: 100%;
+            min-width: 0;
+            max-width: none;
+            align-items: center;
+            text-align: center;
+            padding: 0;
+          }
+          .nav-contacts {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 12px;
+          }
+          .nav-contact-title {
+            flex-basis: 100%;
+            text-align: center;
+          }
+          .nav-contact-title { font-size: 0.68rem; }
+          .nav-contact-item { font-size: 0.7rem; }
+          .login-header { align-items: flex-start; }
+          .login-panel-status { top: 14px; right: 16px; }
           .stats-band { grid-template-columns: repeat(2, 1fr); }
         }
       `}</style>
@@ -900,46 +1033,39 @@ export default function LoginPage() {
         {/* ── TOP NAV ── */}
         <nav className="top-nav">
           <div className="top-nav-logo">
-            {companyLogo ? (
+            <div className="logo-brand-shell">
               <img
-                src={companyLogo}
+                src={CORPORATE_LOGO_DARK}
                 alt={companyName}
-                className="logo-img"
-                style={{ height: 36, width: 'auto', maxWidth: 160, objectFit: 'contain', borderRadius: 6 }}
-                onError={() => setCompanyLogo(null)}
+                className="logo-static-img"
               />
-            ) : (
-              <>
-                <div className="logo-shield">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="white" fillOpacity="0.9"/>
-                    <path d="M9 12l2 2 4-4" stroke="rgba(45,114,217,1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <span className="logo-text">Meridyen <span>Assistance</span></span>
-              </>
-            )}
-          </div>
-
-          <div className="nav-contacts">
-            <div className="nav-contact-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L8.5 10.5s1 3 5 5l1.113-1.724a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.163 21 3 14.837 3 7V5z"/>
-              </svg>
-              <span>0 850 885 25 55</span>
-            </div>
-            <div className="nav-contact-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                <line x1="12" y1="18" x2="12.01" y2="18"/>
-              </svg>
-              <span>GSM: 0533 633 07 13</span>
             </div>
           </div>
 
-          <div className="status-pill">
-            <span className="status-dot" />
-            Sistem Aktif
+          <div className="nav-right">
+            <div className="nav-contacts">
+              <div className="nav-contact-title">Destek Hattı</div>
+              <a className="nav-contact-item" href="tel:+908508852555" aria-label="Telefon ile destek hattını ara">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L8.5 10.5s1 3 5 5l1.113-1.724a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.163 21 3 14.837 3 7V5z"/>
+                </svg>
+                <span>0 850 885 25 55</span>
+              </a>
+              <a className="nav-contact-item" href="tel:+905336330713" aria-label="GSM destek hattını ara">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                  <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+                <span>0533 633 07 13</span>
+              </a>
+              <a className="nav-contact-item nav-contact-whatsapp" href="https://wa.me/905336330713" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp destek hattını aç">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.5 11.7a8.5 8.5 0 01-12.6 7.4L4 20l.9-3.8a8.5 8.5 0 1115.6-4.5z"/>
+                  <path d="M9.2 8.8c.2-.5.4-.5.7-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2.1.4 0 .5l-.4.5c-.1.1-.2.3-.1.5.3.7 1.1 1.7 2.2 2.2.2.1.3.1.5-.1l.6-.7c.1-.2.3-.2.5-.1l1.7.8c.2.1.4.2.4.4 0 .4-.2 1.2-.8 1.5-.5.3-1.7.3-3.3-.5-2.8-1.3-4.5-3.9-4.7-5.6-.1-.6.1-.9.4-1z"/>
+                </svg>
+                <span>WhatsApp Destek</span>
+              </a>
+            </div>
           </div>
         </nav>
 
@@ -979,8 +1105,14 @@ export default function LoginPage() {
 
           {/* ── RIGHT LOGIN FORM ── */}
           <div className="login-panel">
+            <div className="status-pill login-panel-status">
+              <span className="status-dot" />
+              Sistem Aktif
+            </div>
             <div className="login-scroll">
-              <h2 className="login-heading fade-up-1">Sisteme Giriş</h2>
+              <div className="login-header fade-up-1">
+                <h2 className="login-heading">Kullanıcı Girişi</h2>
+              </div>
               <p className="login-sub fade-up-2">Kurumsal bilgilerinizle giriş yapın.</p>
 
               {error && (
@@ -1088,6 +1220,10 @@ export default function LoginPage() {
               <p className="login-footer">
                 © {mounted ? new Date().getFullYear() : ''} Meridyen Assistance. Tüm hakları saklıdır.
               </p>
+            </div>
+            <div className="login-legal-note">
+              <span>Meridyen Asistans</span>
+              <span>Safran Birleşik Hizmetler Yan Kuruluşudur</span>
             </div>
           </div>
         </div>

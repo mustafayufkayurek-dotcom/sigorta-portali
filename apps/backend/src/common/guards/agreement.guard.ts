@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AgreementsService } from '../../modules/agreements/agreements.service';
+import { resolveUserId } from '../utils/resolve-user-id';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 export const SKIP_AGREEMENT_GUARD_KEY = 'skipAgreementGuard';
@@ -48,9 +49,10 @@ export class AgreementGuard implements CanActivate {
     if (path.includes('/auth/')) return true;
 
     try {
-      const hasAccepted = await this.agreementsService.hasUserAcceptedAll(user.id);
+      const userId = resolveUserId(user);
+      const hasAccepted = await this.agreementsService.hasUserAcceptedAll(userId);
       if (!hasAccepted) {
-        const pending = await this.agreementsService.getPendingForUser(user.id);
+        const pending = await this.agreementsService.getPendingForUser(userId);
         throw new ForbiddenException({
           code: 'AGREEMENTS_PENDING',
           message: 'Önce aktif sözleşmeleri onaylamanız gerekiyor.',

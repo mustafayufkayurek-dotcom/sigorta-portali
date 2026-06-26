@@ -1033,16 +1033,47 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, []);
 
   // Onaylanmamış sözleşme kontrolü
+  const loadPendingAgreements = useCallback(async () => {
+    if (!localStorage.getItem('accessToken')) {
+      setAgreementsChecked(true);
+      return;
+    }
+    try {
+      const data = await apiClient.get<PendingAgreement[]>('/agreements/pending');
+      setPendingAgreements(Array.isArray(data) ? data : []);
+    } catch {
+      setPendingAgreements([]);
+    } finally {
+      setAgreementsChecked(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (loading || !authChecked) return;
-    if (!localStorage.getItem('accessToken')) return;
-    apiClient.get<any[]>('/agreements/pending')
-      .then((data) => {
-        if (data) setPendingAgreements(data);
-      })
-      .catch(() => {})
-      .finally(() => setAgreementsChecked(true));
-  }, [loading]);
+    void loadPendingAgreements();
+  }, [loading, authChecked, loadPendingAgreements]);
+
+  useEffect(() => {
+    const handleRefetch = () => { void loadPendingAgreements(); };
+    const handleUserUpdated = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail) setUser(detail);
+    };
+    window.addEventListener('agreements-refetch', handleRefetch);
+    window.addEventListener('user-updated', handleUserUpdated);
+    return () => {
+      window.removeEventListener('agreements-refetch', handleRefetch);
+      window.removeEventListener('user-updated', handleUserUpdated);
+    };
+  }, [loadPendingAgreements]);
+
+  useEffect(() => {
+    if (loading || !agreementsChecked) return;
+    if (pendingAgreements.length > 0) return;
+    if (user?.mustChangePassword && pathname !== '/panel/profil') {
+      router.replace('/panel/profil');
+    }
+  }, [loading, agreementsChecked, pendingAgreements.length, user?.mustChangePassword, pathname, router]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -1166,12 +1197,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, roleCode]);
 
-  useEffect(() => {
-    if (!loading && user?.mustChangePassword && pathname !== '/panel/profil') {
-      router.replace('/panel/profil');
-    }
-  }, [loading, user?.mustChangePassword, pathname, router]);
-
   const isPublicPanelPath = pathname === '/panel/profil';
   const mustChangePassword = user?.mustChangePassword === true;
   const accessDenied =
@@ -1279,7 +1304,20 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {agreementsChecked && pendingAgreements.length > 0 && (
           <AgreementConsentModal
             pendingAgreements={pendingAgreements}
-            onAllAccepted={() => setPendingAgreements([])}
+            onAllAccepted={() => {
+              setPendingAgreements([]);
+              try {
+                const raw = localStorage.getItem('user');
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (parsed?.mustChangePassword) {
+                    router.replace('/panel/profil');
+                  }
+                }
+              } catch {
+                /* ignore */
+              }
+            }}
           />
         )}
         <main className="flex-1">

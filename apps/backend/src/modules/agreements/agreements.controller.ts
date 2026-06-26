@@ -12,6 +12,7 @@ import { AgreementsService } from './agreements.service';
 import { CreateAgreementDto, UpdateAgreementDto, AcceptAgreementDto } from './dto/agreements.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
+import { resolveUserId } from '@/common/utils/resolve-user-id';
 
 @Controller()
 export class AgreementsController {
@@ -35,14 +36,14 @@ export class AgreementsController {
   // Mevcut kullanıcının onaylaması gereken sözleşmeler
   @Get('agreements/pending')
   async getPending(@CurrentUser() user: any) {
-    const data = await this.service.getPendingForUser(user.id);
+    const data = await this.service.getPendingForUser(resolveUserId(user));
     return { data };
   }
 
   // Mevcut kullanıcının kabul ettiği sözleşmeler
   @Get('agreements/my-acceptances')
   async myAcceptances(@CurrentUser() user: any) {
-    const data = await this.service.getUserAcceptances(user.id);
+    const data = await this.service.getUserAcceptances(resolveUserId(user));
     return { data };
   }
 
@@ -75,7 +76,7 @@ export class AgreementsController {
       req.socket?.remoteAddress ||
       null;
     const userAgent = req.headers['user-agent'] ?? null;
-    const data = await this.service.accept(user.id, dto, ipAddress, userAgent);
+    const data = await this.service.accept(resolveUserId(user), dto, ipAddress, userAgent);
     return { data };
   }
 
