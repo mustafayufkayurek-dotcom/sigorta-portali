@@ -32,6 +32,9 @@ interface AgreementAcceptance {
   acceptedAt: string;
   ipAddress?: string | null;
   signature?: string | null;
+  acceptedVersion?: string | null;
+  titleSnapshot?: string | null;
+  contentHash?: string | null;
   agreement: {
     id: string;
     title: string;
@@ -305,12 +308,19 @@ export default function ProfilPage() {
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{acc.agreement.title}</p>
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {acc.titleSnapshot ?? acc.agreement.title}
+                    </p>
                     <p className="text-xs text-slate-500">
-                      {typeLabels[acc.agreement.type] ?? acc.agreement.type} — v{acc.agreement.version}
+                      {typeLabels[acc.agreement.type] ?? acc.agreement.type} — v{acc.acceptedVersion ?? acc.agreement.version}
                     </p>
                     {acc.signature && (
-                      <p className="text-xs text-slate-400 mt-0.5">İmza: {acc.signature}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Dijital imza: {acc.signature}</p>
+                    )}
+                    {acc.contentHash && (
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono truncate" title={acc.contentHash}>
+                        Hash: {acc.contentHash.slice(0, 16)}…
+                      </p>
                     )}
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
@@ -17,6 +18,11 @@ interface CompanyInfo {
   taxNumber?: string;
   tradeRegistryNo?: string;
   website?: string;
+  kvkkEmail?: string;
+  appUrl?: string;
+  payrollEmployerName?: string;
+  payrollEmployerAddress?: string;
+  payrollEmployerTaxNumber?: string;
 }
 
 interface SystemConfig {
@@ -101,18 +107,6 @@ function applyThemePreference(nextTheme: ThemeConfig) {
   } catch { /* ignore */ }
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string | null;
-  status: string;
-  role?: { id: string; name: string; code: string } | null;
-  lastLoginAt?: string | null;
-  createdAt: string;
-}
-
 interface Role {
   id: string;
   name: string;
@@ -125,8 +119,6 @@ interface Role {
 
 const inputCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
 const labelCls = 'block text-xs font-semibold text-slate-600 mb-1 dark:text-slate-400';
-
-const PROTECTED_EMAIL = 'admin@meridyenassistance.com';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -147,7 +139,23 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function KurulumPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>('genel');
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'kullanicilar') {
+      router.replace('/panel/kullanicilar');
+    }
+  }, [router, searchParams]);
+
+  const selectTab = (tabId: TabId) => {
+    if (tabId === 'kullanicilar') {
+      router.push('/panel/kullanicilar');
+      return;
+    }
+    setActiveTab(tabId);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -183,7 +191,7 @@ export default function KurulumPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
                   activeTab === tab.id
                     ? 'border-blue-600 text-blue-700 bg-blue-50/50'
@@ -200,7 +208,6 @@ export default function KurulumPage() {
         {/* Content */}
         <div>
           {activeTab === 'genel'               && <GenelBilgilerTab />}
-          {activeTab === 'kullanicilar'         && <KullanicilarTab />}
           {activeTab === 'roller'               && <RollerTab />}
           {activeTab === 'alan-zorunluluklari'  && <AlanZorunluluklariTab />}
           {activeTab === 'mail'                 && <MailTab />}
@@ -217,7 +224,12 @@ export default function KurulumPage() {
 // ── Tab: Genel Bilgiler ───────────────────────────────────────────────────────
 
 function GenelBilgilerTab() {
-  const [form, setForm] = useState<CompanyInfo>({ name: '', logoUrl: '', address: '', phone: '', email: '', taxNumber: '', tradeRegistryNo: '', website: '' });
+  const emptyForm: CompanyInfo = {
+    name: '', logoUrl: '', address: '', phone: '', email: '', taxNumber: '', tradeRegistryNo: '', website: '',
+    kvkkEmail: '', appUrl: 'https://app.meridyen-tr.com',
+    payrollEmployerName: '', payrollEmployerAddress: '', payrollEmployerTaxNumber: '',
+  };
+  const [form, setForm] = useState<CompanyInfo>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -230,7 +242,13 @@ function GenelBilgilerTab() {
     axios.get(`${API}/system-settings/company-info`, { headers: authHeader() })
       .then((r) => {
         const d = r.data.data ?? {};
-        setForm({ name: d.name ?? '', logoUrl: d.logoUrl ?? '', address: d.address ?? '', phone: d.phone ?? '', email: d.email ?? '', taxNumber: d.taxNumber ?? '', tradeRegistryNo: d.tradeRegistryNo ?? '', website: d.website ?? '' });
+        setForm({
+          name: d.name ?? '', logoUrl: d.logoUrl ?? '', address: d.address ?? '', phone: d.phone ?? '',
+          email: d.email ?? '', taxNumber: d.taxNumber ?? '', tradeRegistryNo: d.tradeRegistryNo ?? '',
+          website: d.website ?? '', kvkkEmail: d.kvkkEmail ?? '', appUrl: d.appUrl ?? 'https://app.meridyen-tr.com',
+          payrollEmployerName: d.payrollEmployerName ?? '', payrollEmployerAddress: d.payrollEmployerAddress ?? '',
+          payrollEmployerTaxNumber: d.payrollEmployerTaxNumber ?? '',
+        });
         if (d.logoUrl) setLogoPreview(d.logoUrl);
       })
       .catch(() => {})
@@ -264,7 +282,7 @@ function GenelBilgilerTab() {
   if (loading) return <CardSkeleton />;
 
   return (
-    <TabCard title="Genel Bilgiler" description="Şirketinize ait temel bilgileri ve logonuzu yönetin.">
+    <TabCard title="Genel Bilgiler" description="Şirket bilgileri KVKK/gizlilik sözleşmelerine otomatik yansır. Bordro işvereni tanımlandığında ilgili bilgilendirme maddesi eklenir.">
       {error && <ErrorAlert msg={error} onClose={() => setError('')} />}
       {success && <SuccessAlert msg={success} />}
 
@@ -344,245 +362,15 @@ function GenelBilgilerTab() {
           <input className={inputCls} value={form.website ?? ''} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://www.sirket.com" />
         </div>
       </div>
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        Vergi no, adres, KVKK e-postası ve Safran (bordro işvereni) bilgileri için{' '}
+        <Link href="/panel/ayarlar/sirket-bilgileri" className="font-semibold text-blue-600 hover:underline">Ayarlar → Şirket Bilgileri</Link>
+        {' '}sayfasını kullanın.
+      </div>
       <div className="mt-6 flex justify-end">
         <SaveBtn loading={saving} onClick={handleSave} />
       </div>
-    </TabCard>
-  );
-}
-
-// ── Tab: Kullanıcılar ─────────────────────────────────────────────────────────
-
-function KullanicilarTab() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', roleId: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [resetTarget, setResetTarget] = useState<User | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [resetting, setResetting] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [showResetPwd, setShowResetPwd] = useState(false);
-
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [ur, rr] = await Promise.all([
-        axios.get(`${API}/users`, { headers: authHeader() }),
-        axios.get(`${API}/roles`, { headers: authHeader() }),
-      ]);
-      setUsers(ur.data.data ?? []);
-      setRoles(rr.data.data ?? []);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  const filtered = users.filter(u =>
-    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const openCreate = () => { setEditUser(null); setForm({ firstName: '', lastName: '', email: '', phone: '', password: '', roleId: roles[0]?.id ?? '' }); setError(''); setShowPwd(false); setShowModal(true); };
-  const openEdit = (u: User) => { setEditUser(u); setForm({ firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone ?? '', password: '', roleId: u.role?.id ?? '' }); setError(''); setShowPwd(false); setShowModal(true); };
-
-  const handleSave = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) { setError('Ad, soyad ve e-posta zorunludur.'); return; }
-    if (!editUser && !form.password.trim()) { setError('Yeni kullanıcı için şifre zorunludur.'); return; }
-    setSaving(true); setError('');
-    try {
-      const payload: any = { firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone || undefined, roleId: form.roleId || undefined };
-      if (form.password.trim()) payload.password = form.password;
-      if (editUser) {
-        await axios.put(`${API}/users/${editUser.id}`, payload, { headers: authHeader() });
-      } else {
-        await axios.post(`${API}/users`, payload, { headers: authHeader() });
-      }
-      setShowModal(false);
-      fetchAll();
-    } catch (e: any) {
-      setError(e.response?.data?.message ?? 'İşlem başarısız.');
-    } finally { setSaving(false); }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      await axios.delete(`${API}/users/${deleteTarget.id}`, { headers: authHeader() });
-      setDeleteTarget(null);
-      fetchAll();
-    } catch { /* ignore */ }
-    finally { setDeleting(false); }
-  };
-
-  const handleReset = async () => {
-    if (!resetTarget || !newPassword.trim()) return;
-    setResetting(true);
-    try {
-      await axios.post(`${API}/users/${resetTarget.id}/reset-password`, { newPassword }, { headers: authHeader() });
-      setResetTarget(null);
-      setNewPassword('');
-    } catch { /* ignore */ }
-    finally { setResetting(false); }
-  };
-
-  const fmtDate = (d?: string | null) => !d ? '—' : new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
-
-  return (
-    <TabCard title="Kullanıcılar" description="Sistem kullanıcılarını yönetin.">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <input
-          className={`${inputCls} max-w-xs`}
-          placeholder="Ad, soyad veya e-posta ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button type="button" onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Yeni Kullanıcı
-        </button>
-      </div>
-
-      {loading ? <RowSkeleton /> : filtered.length === 0 ? (
-        <EmptyState msg={search ? 'Arama sonucu bulunamadı.' : 'Henüz kullanıcı eklenmemiş.'} />
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-              <tr>
-                <th className="text-left px-5 py-3">Kullanıcı</th>
-                <th className="text-left px-5 py-3 hidden md:table-cell">E-posta</th>
-                <th className="text-left px-5 py-3 hidden lg:table-cell">Rol</th>
-                <th className="text-center px-5 py-3">Durum</th>
-                <th className="text-left px-5 py-3 hidden lg:table-cell">Son Giriş</th>
-                <th className="px-5 py-3 w-32"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
-                        {(u.firstName[0] ?? '') + (u.lastName[0] ?? '')}
-                      </div>
-                      <span className="font-medium text-slate-800">{u.firstName} {u.lastName}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-slate-500 hidden md:table-cell">{u.email}</td>
-                  <td className="px-5 py-3 hidden lg:table-cell">
-                    {u.role ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">{u.role.name}</span> : <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className="px-5 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.status === 'active' ? 'bg-green-100 text-green-700' : u.status === 'suspended' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                      {u.status === 'active' ? 'Aktif' : u.status === 'suspended' ? 'Askıya Alındı' : 'Pasif'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-slate-400 text-xs hidden lg:table-cell">{fmtDate(u.lastLoginAt)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <ActionBtn title="Düzenle" onClick={() => openEdit(u)}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </ActionBtn>
-                      <ActionBtn title="Şifre Sıfırla" onClick={() => { setResetTarget(u); setNewPassword(''); }}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                      </ActionBtn>
-                      {u.email !== PROTECTED_EMAIL && (
-                        <ActionBtn title="Sil" danger onClick={() => setDeleteTarget(u)}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </ActionBtn>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <Modal title={editUser ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı'} onClose={() => setShowModal(false)}>
-          {error && <ErrorAlert msg={error} onClose={() => setError('')} />}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Ad <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.firstName} onChange={(e) => setForm(p => ({ ...p, firstName: e.target.value }))} onBlur={(e) => setForm(p => ({ ...p, firstName: toTitleCaseTR(e.target.value) }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Soyad <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.lastName} onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))} onBlur={(e) => setForm(p => ({ ...p, lastName: toTitleCaseTR(e.target.value) }))} />
-            </div>
-            <div className="col-span-2">
-              <label className={labelCls}>E-posta <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Telefon</label>
-              <input className={inputCls} value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Rol</label>
-              <select className={inputCls} value={form.roleId} onChange={(e) => setForm(p => ({ ...p, roleId: e.target.value }))}>
-                <option value="">— Rol Seç —</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className={labelCls}>{editUser ? 'Yeni Şifre' : 'Şifre'} <span className="text-xs font-normal text-slate-400 ml-1">{editUser ? '(Boş bırakılırsa değişmez)' : '(Zorunlu)'}</span></label>
-              <div className="relative">
-                <input className={inputCls} type={showPwd ? 'text' : 'password'} style={{ paddingRight: 40 }} placeholder={editUser ? 'Değiştirmek için yeni şifre girin' : ''} value={form.password} onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))} />
-                <button type="button" tabIndex={-1} onClick={() => setShowPwd(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                  <EyeIcon show={showPwd} />
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-5">
-            <CancelBtn onClick={() => setShowModal(false)} />
-            <SaveBtn loading={saving} onClick={handleSave} />
-          </div>
-        </Modal>
-      )}
-
-      {/* Delete Confirm */}
-      {deleteTarget && (
-        <ConfirmModal
-          title="Kullanıcıyı Sil"
-          message={`"${deleteTarget.firstName} ${deleteTarget.lastName}" kullanıcısını silmek istediğinize emin misiniz?`}
-          loading={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
-          danger
-        />
-      )}
-
-      {/* Reset Password */}
-      {resetTarget && (
-        <Modal title="Şifre Sıfırla" onClose={() => setResetTarget(null)}>
-          <p className="text-sm text-slate-600 mb-3">{resetTarget.firstName} {resetTarget.lastName} için yeni şifre belirleyin.</p>
-          <label className={labelCls}>Yeni Şifre <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-          <div className="relative">
-            <input className={inputCls} type={showResetPwd ? 'text' : 'password'} style={{ paddingRight: 40 }} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            <button type="button" tabIndex={-1} onClick={() => setShowResetPwd(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-              <EyeIcon show={showResetPwd} />
-            </button>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <CancelBtn onClick={() => setResetTarget(null)} />
-            <SaveBtn loading={resetting} onClick={handleReset} label="Sıfırla" />
-          </div>
-        </Modal>
-      )}
     </TabCard>
   );
 }

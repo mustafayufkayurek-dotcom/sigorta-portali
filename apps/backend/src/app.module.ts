@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { join } from 'path';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -57,6 +58,9 @@ import { ServiceBranchesModule } from './modules/service-branches/service-branch
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { HealthModule } from './modules/health/health.module';
 import { AgreementsModule } from './modules/agreements/agreements.module';
+import { PlatformModulesModule } from './modules/platform-modules/platform-modules.module';
+import { HrModule } from './modules/hr/hr.module';
+import { FixedAssetsModule } from './modules/fixed-assets/fixed-assets.module';
 import { VendorStatementsModule } from './modules/vendor-statements/vendor-statements.module';
 import { MarketPricesModule } from './modules/market-prices/market-prices.module';
 import { VendorRiskModule } from './modules/vendor-risk/vendor-risk.module';
@@ -75,6 +79,7 @@ import { DamageRepairTemplatesModule } from './modules/damage-repair-templates/d
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { TestNotesModule } from './modules/test-notes/test-notes.module';
+import { CrmModule } from './modules/crm/crm.module';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -85,7 +90,11 @@ import { ThrottlerGuard } from '@nestjs/throttler';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: [
+        '.env',
+        join(process.cwd(), '.env'),
+        join(process.cwd(), '..', '..', '.env'),
+      ],
     }),
     JwtModule.registerAsync({
       global: true,
@@ -175,6 +184,9 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     AnalyticsModule,
     HealthModule,
     AgreementsModule,
+    PlatformModulesModule,
+    HrModule,
+    FixedAssetsModule,
     VendorStatementsModule,
     MarketPricesModule,
     VendorRiskModule,
@@ -193,6 +205,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     AuditLogsModule,
     TimelineModule,
     TestNotesModule,
+    CrmModule,
     CacheModule,
   ],
   providers: [

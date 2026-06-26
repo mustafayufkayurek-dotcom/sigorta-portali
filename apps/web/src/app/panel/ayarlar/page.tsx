@@ -31,7 +31,9 @@ const groups = [
     title: "Kurulum ve Yetki",
     description: "Sistem kimliği, kullanıcı rolleri ve güvenlik kuralları.",
     items: [
-      { title: "Kurulum", href: "/panel/ayarlar/kurulum", icon: Settings, description: "Şirket bilgileri, kullanıcılar, tema ve temel sistem ayarları." },
+      { title: "Kullanıcılar", href: "/panel/kullanicilar", icon: Users, description: "Kullanıcı davet et, geçici şifre üret ve arşiv yönetimi." },
+      { title: "Kurulum", href: "/panel/ayarlar/kurulum", icon: Settings, description: "Tema, logo ve temel sistem ayarları." },
+      { title: "Şirket Bilgileri", href: "/panel/ayarlar/sirket-bilgileri", icon: Building2, description: "Meridyen + opsiyonel Safran bilgileri; sözleşmelere otomatik yansır." },
       { title: "Roller", href: "/panel/ayarlar/roller", icon: ShieldCheck, description: "Rol ve yetki tanımları." },
       { title: "Alan Zorunlulukları", href: "/panel/ayarlar/alan-zorunluluklari", icon: SlidersHorizontal, description: "Form alanlarının zorunluluk ve görünürlük ayarları." },
       { title: "Test Notları / Görev Takip", href: "/panel/ayarlar/test-notlari-gorev-takip", icon: TestTube2, description: "Geçici test notları, kararlar ve iş takip ekranı." },

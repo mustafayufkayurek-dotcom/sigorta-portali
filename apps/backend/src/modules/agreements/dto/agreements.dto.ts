@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsIn, IsISO8601 } from 'class-validator';
 
 export class CreateAgreementDto {
   @IsString()
@@ -51,7 +51,15 @@ export class AcceptAgreementDto {
   @IsNotEmpty()
   agreementId!: string;
 
-  @IsOptional()
   @IsString()
-  signature?: string;
+  @IsNotEmpty()
+  signature!: string;
+
+  @IsOptional()
+  @IsISO8601()
+  scrolledAt?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  checkboxConfirmedAt?: string;
 }

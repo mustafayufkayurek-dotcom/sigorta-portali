@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { KVKK_DEFAULT_CONTENT, GIZLILIK_DEFAULT_CONTENT } from '@sigorta/shared';
 import { PROVINCES } from './data/turkey-locations';
 import { seedPilotOperationData } from './seed-pilot-operation-data';
 
@@ -197,6 +198,8 @@ async function main() {
     'invoice.view', 'invoice.create',
     'payment.view', 'payment.create',
     'bank_account.view',
+    'dashboard.view',
+    'location.view',
   ];
   await assignPermissions(officeStaffRole.id, officePermCodes, createdPermissions);
 
@@ -671,96 +674,9 @@ async function main() {
   // ── KVKK ve Gizlilik Taahhütnamesi ────────────────────────────────────────
   console.log('📄 Seeding default agreements...');
 
-  const kvkkContent = `<h2>KİŞİSEL VERİLERİN KORUNMASI KANUNU KAPSAMINDA AYDINLATMA METNİ</h2>
-
-<p>Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında veri sorumlusu sıfatıyla hareket eden şirketimiz tarafından hazırlanmıştır.</p>
-
-<h3>1. Veri Sorumlusunun Kimliği</h3>
-<p>Şirketimiz, KVKK kapsamında veri sorumlusu sıfatına sahip olup kişisel verileriniz tarafımızca işlenmektedir.</p>
-
-<h3>2. İşlenen Kişisel Veriler</h3>
-<p>Sisteme giriş ve kullanım süreçlerinde aşağıdaki kişisel verileriniz işlenmektedir:</p>
-<ul>
-  <li>Ad, soyad, e-posta adresi, telefon numarası (kimlik ve iletişim bilgileri)</li>
-  <li>Kullanıcı adı ve şifre bilgileri (güvenlik bilgileri)</li>
-  <li>IP adresi, tarayıcı bilgisi, giriş tarihi/saati (log kayıtları)</li>
-  <li>Görev kapsamında girilen hasar dosyası ve ilgili belgeler (mesleki bilgiler)</li>
-</ul>
-
-<h3>3. Kişisel Verilerin İşlenme Amaçları</h3>
-<p>Kişisel verileriniz aşağıdaki amaçlarla işlenmektedir:</p>
-<ul>
-  <li>Sistemin kullanımı ve yönetimi</li>
-  <li>Kullanıcı kimliğinin doğrulanması ve güvenliğin sağlanması</li>
-  <li>Hasar dosyalarının takibi ve yönetimi</li>
-  <li>Yasal yükümlülüklerin yerine getirilmesi</li>
-  <li>Yetkili kişi, kurum ve kuruluşlara bilgi verilmesi</li>
-</ul>
-
-<h3>4. Kişisel Verilerin Aktarılması</h3>
-<p>Kişisel verileriniz; yasal zorunluluklar dahilinde yetkili kamu kurumları ve yargı mercileriyle, iş süreçlerimizin yürütülmesi amacıyla hizmet aldığımız iş ortaklarımızla KVKK'nın 8. maddesi kapsamında paylaşılabilir.</p>
-
-<h3>5. Kişisel Veri Toplamanın Yöntemi ve Hukuki Sebebi</h3>
-<p>Kişisel verileriniz; sistem kayıt formu, oturum açma ekranı ve sistem kullanımı sırasında elektronik ortamda toplanmaktadır. Hukuki dayanak; KVKK'nın 5/2-c maddesi (sözleşmenin ifası), 5/2-ç maddesi (hukuki yükümlülük) ve 5/2-f maddesi (meşru menfaat) kapsamındadır.</p>
-
-<h3>6. Kişisel Veri Sahibinin Hakları</h3>
-<p>KVKK'nın 11. maddesi uyarınca aşağıdaki haklara sahipsiniz:</p>
-<ul>
-  <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme</li>
-  <li>Kişisel verileriniz işlenmişse buna ilişkin bilgi talep etme</li>
-  <li>Kişisel verilerinizin işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme</li>
-  <li>Yurt içinde veya yurt dışında kişisel verilerinizin aktarıldığı üçüncü kişileri bilme</li>
-  <li>Kişisel verilerinizin eksik veya yanlış işlenmiş olması hâlinde bunların düzeltilmesini isteme</li>
-  <li>KVKK'nın 7. maddesinde öngörülen şartlar çerçevesinde kişisel verilerinizin silinmesini veya yok edilmesini isteme</li>
-  <li>İşlenen verilerin münhasıran otomatik sistemler vasıtasıyla analiz edilmesi suretiyle aleyhinize bir sonucun ortaya çıkmasına itiraz etme</li>
-  <li>Kişisel verilerinizin kanuna aykırı olarak işlenmesi sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme</li>
-</ul>
-
-<p>Haklarınızı kullanmak için şirketimizin iletişim kanallarına başvurabilirsiniz.</p>
-
-<p><strong>Bu metni okuduğunuzu ve içeriğini anladığınızı beyan etmenizi rica ederiz.</strong></p>`;
-
-  const gizlilikContent = `<h2>GİZLİLİK VE KİŞİSEL VERİ KORUMA TAAHHÜTNAME</h2>
-
-<p>Bu taahhütname, çalışan/tedarikçi olarak sistem erişimi sağlayan tüm kullanıcılar tarafından kabul edilmesi zorunlu bir belgedir.</p>
-
-<h3>1. Gizlilik Yükümlülüğü</h3>
-<p>Sisteme erişim sağlayan kişi olarak aşağıdaki hususları kabul ve taahhüt ederim:</p>
-<ul>
-  <li>Sistem üzerinde erişeceğim tüm kişisel verileri, ticari bilgileri ve gizli bilgileri üçüncü kişilerle paylaşmayacağımı,</li>
-  <li>Sistemde işlediğim bilgileri yalnızca görevim kapsamında kullanacağımı,</li>
-  <li>Herhangi bir yetkisiz kişiye sistem erişim bilgilerimi (kullanıcı adı, şifre) vermeyeceğimi,</li>
-  <li>Sistemde gördüğüm bilgileri kopyalamayacağımı, dışarı çıkarmayacağımı ve kötüye kullanmayacağımı.</li>
-</ul>
-
-<h3>2. Kişisel Veri Güvenliği</h3>
-<p>Sistemde işlediğim kişisel verilerin güvenliğini sağlamak amacıyla:</p>
-<ul>
-  <li>Güçlü ve benzersiz şifre kullanacağımı,</li>
-  <li>Şifremi düzenli aralıklarla değiştireceğimi,</li>
-  <li>Sistemden çıkarken oturumu kapattığımdan emin olacağımı,</li>
-  <li>Fark ettiğim güvenlik açıklarını derhal yetkililere bildireceğimi</li>
-</ul>
-<p>kabul ve taahhüt ederim.</p>
-
-<h3>3. Yetkisiz Erişim Yasağı</h3>
-<p>Görevim kapsamı dışındaki verilere, dosyalara veya kayıtlara erişmeyeceğimi kabul ederim. Görev tanımım dışında sistem üzerinde işlem yapmayacağımı taahhüt ederim.</p>
-
-<h3>4. Veri İhlali Bildirimi</h3>
-<p>Bir veri ihlali veya güvenlik tehdidi fark ettiğimde, durumu derhal ve gecikmeksizin sistem yöneticisine bildireceğimi kabul ederim.</p>
-
-<h3>5. Görev Sona Ermesinde Yükümlülükler</h3>
-<p>Görevimin sona ermesi veya sistem erişimimin kaldırılması durumunda:</p>
-<ul>
-  <li>Sistemden edindiğim tüm bilgilerin gizliliğini korumaya devam edeceğimi,</li>
-  <li>Elimdeki tüm sistem belgelerini ve kopyaları iade edeceğimi veya imha edeceğimi</li>
-</ul>
-<p>taahhüt ederim.</p>
-
-<h3>6. Yasal Yaptırımlar</h3>
-<p>Bu taahhütnameye aykırı davranışlarımın, 6698 sayılı KVKK, 5237 sayılı Türk Ceza Kanunu ve ilgili diğer mevzuat kapsamında yasal yaptırımlara yol açabileceğini bildiğimi kabul ederim.</p>
-
-<p><strong>Yukarıdaki taahhütlerin tamamını okuduğumu, anladığımı ve kabul ettiğimi beyan ederim.</strong></p>`;
+  const kvkkContent = KVKK_DEFAULT_CONTENT;
+  const gizlilikContent = GIZLILIK_DEFAULT_CONTENT;
+  const agreementVersion = '1.2';
 
   await Promise.all([
     prisma.agreement.upsert({
@@ -770,12 +686,13 @@ async function main() {
         title: 'KVKK Aydınlatma Metni',
         content: kvkkContent,
         type: 'kvkk',
-        version: '1.0',
+        version: agreementVersion,
         isActive: true,
       },
       update: {
         title: 'KVKK Aydınlatma Metni',
         content: kvkkContent,
+        version: agreementVersion,
         isActive: true,
       },
     }),
@@ -786,12 +703,13 @@ async function main() {
         title: 'Gizlilik ve Kişisel Veri Koruma Taahhütnamesi',
         content: gizlilikContent,
         type: 'gizlilik',
-        version: '1.0',
+        version: agreementVersion,
         isActive: true,
       },
       update: {
         title: 'Gizlilik ve Kişisel Veri Koruma Taahhütnamesi',
         content: gizlilikContent,
+        version: agreementVersion,
         isActive: true,
       },
     }),

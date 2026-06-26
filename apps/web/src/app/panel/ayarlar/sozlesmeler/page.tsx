@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { DEFAULT_AGREEMENT_TEMPLATES } from '@sigorta/shared';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
@@ -28,28 +29,62 @@ interface Agreement {
   isActive: boolean; content: string; createdAt: string; updatedAt: string;
 }
 
+interface AcceptanceRow {
+  id: string;
+  acceptedAt: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  signature?: string | null;
+  acceptedVersion?: string | null;
+  titleSnapshot?: string | null;
+  contentHash?: string | null;
+  scrolledAt?: string | null;
+  checkboxConfirmedAt?: string | null;
+  user: { id: string; firstName: string; lastName: string; email: string };
+}
+
 const typeLabels: Record<string, string> = {
   kvkk: 'KVKK Aydınlatma Metni',
   gizlilik: 'Gizlilik Taahhütnamesi',
   is_sozlesmesi: 'İş Sözleşmesi',
 };
 
-const KVKK_TEMPLATE = `<h2>KİŞİSEL VERİLERİN KORUNMASI KANUNU AYDINLATMA METNİ</h2>
-<p>6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında, kişisel verilerinizin işlenmesine ilişkin bilgilendirme yapmak amacıyla bu aydınlatma metni hazırlanmıştır.</p>
-<h3>1. Veri Sorumlusu</h3>
-<p>Şirketimiz, kişisel verilerinizin işlenmesinde veri sorumlusu sıfatıyla hareket etmektedir.</p>
-<h3>2. İşlenen Kişisel Veriler</h3>
-<p>Kimlik bilgileri (ad, soyad, TC kimlik numarası), iletişim bilgileri (telefon, e-posta, adres), finansal bilgiler ve mesleki bilgiler işlenebilmektedir.</p>
-<h3>3. Kişisel Veri İşlemenin Amaçları</h3>
-<p>Kişisel verileriniz; hizmet sözleşmesinin ifası, yasal yükümlülüklerin yerine getirilmesi ve iş süreçlerinin yürütülmesi amacıyla işlenmektedir.</p>`;
-
-const GIZLILIK_TEMPLATE = `<h2>GİZLİLİK TAAHHÜTNAME</h2>
-<p>Bu taahhütname, çalışanlar/hizmet sağlayıcılar ile şirketimiz arasında gizlilik yükümlülüklerini düzenlemektedir.</p>
-<h3>1. Gizli Bilgilerin Tanımı</h3>
-<p>Şirkete ait müşteri verileri, finansal bilgiler, iş süreçleri, teknik bilgiler ve bu taahhütname kapsamında paylaşılan tüm bilgiler gizli kabul edilir.</p>`;
-
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString('tr-TR', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function exportAcceptancesCsv(agreement: Agreement, rows: AcceptanceRow[]) {
+  const headers = [
+    'Kullanıcı', 'E-posta', 'İmza', 'Onay Versiyonu', 'Belge Başlığı',
+    'İçerik Hash', 'Onay Tarihi', 'Scroll Tarihi', 'Checkbox Tarihi', 'IP', 'User-Agent',
+  ];
+  const escape = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => [
+      escape(`${r.user.firstName} ${r.user.lastName}`.trim()),
+      escape(r.user.email),
+      escape(r.signature ?? ''),
+      escape(r.acceptedVersion ?? ''),
+      escape(r.titleSnapshot ?? agreement.title),
+      escape(r.contentHash ?? ''),
+      escape(r.acceptedAt),
+      escape(r.scrolledAt ?? ''),
+      escape(r.checkboxConfirmedAt ?? ''),
+      escape(r.ipAddress ?? ''),
+      escape(r.userAgent ?? ''),
+    ].join(',')),
+  ];
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sozlesme-onaylari-${agreement.type}-v${agreement.version}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function SozlesmelerPage() {
@@ -62,6 +97,9 @@ export default function SozlesmelerPage() {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Agreement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [acceptancesTarget, setAcceptancesTarget] = useState<Agreement | null>(null);
+  const [acceptances, setAcceptances] = useState<AcceptanceRow[]>([]);
+  const [acceptancesLoading, setAcceptancesLoading] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -74,24 +112,37 @@ export default function SozlesmelerPage() {
 
   useEffect(() => { load(); }, []);
 
-  function openNew() { setEditItem(null); setForm({ title: '', type: 'kvkk', version: '1.0', content: '', isActive: true }); setError(''); setShowModal(true); }
+  function openNew() { setEditItem(null); setForm({ title: '', type: 'kvkk', version: '1.1', content: '', isActive: true }); setError(''); setShowModal(true); }
   function openEdit(item: Agreement) { setEditItem(item); setForm({ title: item.title, type: item.type, version: item.version, content: item.content, isActive: item.isActive }); setError(''); setShowModal(true); }
 
   function applyTemplate() {
-    if (form.type === 'kvkk') setForm((f) => ({ ...f, content: KVKK_TEMPLATE }));
-    if (form.type === 'gizlilik') setForm((f) => ({ ...f, content: GIZLILIK_TEMPLATE }));
+    if (form.type === 'kvkk') setForm((f) => ({ ...f, content: DEFAULT_AGREEMENT_TEMPLATES.kvkk }));
+    else if (form.type === 'gizlilik') setForm((f) => ({ ...f, content: DEFAULT_AGREEMENT_TEMPLATES.gizlilik }));
+  }
+
+  async function openAcceptances(item: Agreement) {
+    setAcceptancesTarget(item);
+    setAcceptances([]);
+    setAcceptancesLoading(true);
+    try {
+      const res = await fetch(`${API}/agreements/${item.id}/acceptances`, { headers: authHeader() });
+      const json = await res.json();
+      setAcceptances(json?.data ?? []);
+    } finally {
+      setAcceptancesLoading(false);
+    }
   }
 
   async function handleSave() {
-    setError('');
-    setSaving(true);
+    if (!form.title.trim() || !form.content.trim()) { setError('Başlık ve içerik zorunludur.'); return; }
+    setSaving(true); setError('');
     try {
       const url = editItem ? `${API}/agreements/${editItem.id}` : `${API}/agreements`;
       const method = editItem ? 'PATCH' : 'POST';
       const res = await fetch(url, { method, headers: authHeader(), body: JSON.stringify(form) });
-      if (!res.ok) { const json = await res.json(); throw new Error(json?.message ?? 'Kayıt başarısız'); }
+      if (!res.ok) { const j = await res.json(); throw new Error(j?.message ?? 'Kaydedilemedi'); }
       setShowModal(false); await load();
-    } catch (err: any) { setError(err.message); }
+    } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   }
 
@@ -112,7 +163,7 @@ export default function SozlesmelerPage() {
   return (
     <SettingsPageLayout
       title="Sözleşme Yönetimi"
-      description="KVKK ve gizlilik belgelerini yönetin"
+      description="KVKK ve gizlilik belgelerini yönetin. Şirket bilgileri Ayarlar → Kurulum → Genel Bilgiler'den otomatik doldurulur."
       addButtonText="+ Yeni Sözleşme"
       onAdd={openNew}
     >
@@ -143,6 +194,14 @@ export default function SozlesmelerPage() {
               </SettingsTableTd>
               <SettingsTableTd className="text-xs text-slate-400">{fmtDate(a.updatedAt)}</SettingsTableTd>
               <SettingsTableActions>
+                <button
+                  type="button"
+                  onClick={() => openAcceptances(a)}
+                  className="text-xs font-medium text-emerald-700 hover:text-emerald-800 px-2 py-1 rounded-lg hover:bg-emerald-50"
+                  title="Dijital onay kayıtları"
+                >
+                  Onaylar
+                </button>
                 <EditButton onClick={() => openEdit(a)} />
                 <DeleteButton onClick={() => setDeleteTarget(a)} />
               </SettingsTableActions>
@@ -169,7 +228,8 @@ export default function SozlesmelerPage() {
           </div>
           <div>
             <label className={labelCls}>Versiyon</label>
-            <input type="text" className={inputCls} value={form.version} onChange={(e) => setForm((f) => ({ ...f, version: e.target.value }))} placeholder="1.0" />
+            <input type="text" className={inputCls} value={form.version} onChange={(e) => setForm((f) => ({ ...f, version: e.target.value }))} placeholder="1.1" />
+            <p className="text-xs text-amber-600 mt-1">İçerik değiştiğinde versiyonu artırın; kullanıcılar yeniden onaylar.</p>
           </div>
         </div>
         <div>
@@ -177,7 +237,7 @@ export default function SozlesmelerPage() {
             <label className={labelCls}>İçerik (HTML) <span className="text-red-500">*</span></label>
             {!editItem && (
               <button type="button" onClick={applyTemplate} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                Şablon Uygula
+                Meridyen Şablonu Uygula
               </button>
             )}
           </div>
@@ -198,6 +258,77 @@ export default function SozlesmelerPage() {
           <span className="text-sm text-slate-700">Aktif — kullanıcılardan onay istenir</span>
         </label>
       </SettingsModal>
+
+      {/* Dijital onay kayıtları */}
+      {acceptancesTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Dijital Onay Kayıtları</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {acceptancesTarget.title} — v{acceptancesTarget.version}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {acceptances.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => exportAcceptancesCsv(acceptancesTarget, acceptances)}
+                    className="text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg"
+                  >
+                    CSV İndir
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAcceptancesTarget(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              {acceptancesLoading ? (
+                <p className="text-sm text-slate-400 text-center py-8">Yükleniyor...</p>
+              ) : acceptances.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">Henüz onay kaydı yok.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 border-b">
+                      <th className="pb-2 pr-3">Kullanıcı</th>
+                      <th className="pb-2 pr-3">İmza</th>
+                      <th className="pb-2 pr-3">Versiyon</th>
+                      <th className="pb-2 pr-3">Onay</th>
+                      <th className="pb-2 pr-3">IP</th>
+                      <th className="pb-2">Hash</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {acceptances.map((r) => (
+                      <tr key={r.id} className="border-b border-slate-50">
+                        <td className="py-2.5 pr-3">
+                          <p className="font-medium text-slate-900">{r.user.firstName} {r.user.lastName}</p>
+                          <p className="text-xs text-slate-400">{r.user.email}</p>
+                        </td>
+                        <td className="py-2.5 pr-3 text-slate-700">{r.signature ?? '—'}</td>
+                        <td className="py-2.5 pr-3 text-slate-600">{r.acceptedVersion ?? '—'}</td>
+                        <td className="py-2.5 pr-3 text-xs text-slate-500">{fmtDate(r.acceptedAt)}</td>
+                        <td className="py-2.5 pr-3 text-xs text-slate-400 font-mono">{r.ipAddress ?? '—'}</td>
+                        <td className="py-2.5 text-xs text-slate-400 font-mono truncate max-w-[120px]" title={r.contentHash ?? ''}>
+                          {r.contentHash ? `${r.contentHash.slice(0, 12)}…` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <DeleteConfirmDialog isOpen={deleteTarget !== null} onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm} deleting={deleting} itemName={deleteTarget?.title} />

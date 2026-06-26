@@ -137,6 +137,7 @@ export interface CustomerSubType {
 
 const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
   { value: 'sigorta_sirketi',  label: 'Sigorta Şirketi',  forType: 'corporate',  color: 'blue'   },
+  { value: 'asistan_firmasi',  label: 'Asistan Firması',  forType: 'corporate',  color: 'orange' },
   { value: 'eksper',           label: 'Eksper',           forType: 'individual', color: 'purple' },
   { value: 'eksper_firmasi',   label: 'Eksper Firması',   forType: 'corporate',  color: 'purple' },
   { value: 'insured',          label: 'Sigortalı',        forType: 'both',       color: 'orange' },
@@ -180,6 +181,19 @@ export interface CompanyInfo {
   taxNumber?: string;
   tradeRegistryNo?: string;
   website?: string;
+  /** KVKK başvuru e-postası; boşsa email kullanılır */
+  kvkkEmail?: string;
+  /** Sözleşmelerde geçen uygulama adresi */
+  appUrl?: string;
+  /** Bordro / iş sözleşmesi işvereni (ör. Safran Birleşik Hizmetler) */
+  payrollEmployerName?: string;
+  payrollEmployerAddress?: string;
+  payrollEmployerTaxNumber?: string;
+  /** true ise sözleşmelere bordro işvereni bilgilendirme maddesi eklenir */
+  payrollEmployerEnabled?: boolean;
+  payrollEmployerTradeRegistryNo?: string;
+  payrollEmployerPhone?: string;
+  payrollEmployerEmail?: string;
 }
 
 export interface SmsConfig {
@@ -209,6 +223,15 @@ const DEFAULT_COMPANY_INFO: CompanyInfo = {
   taxNumber: '',
   tradeRegistryNo: '',
   website: '',
+  kvkkEmail: '',
+  appUrl: 'https://app.meridyen-tr.com',
+  payrollEmployerName: '',
+  payrollEmployerAddress: '',
+  payrollEmployerTaxNumber: '',
+  payrollEmployerEnabled: false,
+  payrollEmployerTradeRegistryNo: '',
+  payrollEmployerPhone: '',
+  payrollEmployerEmail: '',
 };
 
 export interface SystemConfig {
@@ -735,7 +758,7 @@ export class SystemSettingsService {
 
   async getCompanyInfo(): Promise<CompanyInfo> {
     const value = await this.get('company_info');
-    return (value as CompanyInfo) ?? DEFAULT_COMPANY_INFO;
+    return { ...DEFAULT_COMPANY_INFO, ...(value as Partial<CompanyInfo> ?? {}) };
   }
 
   async setCompanyInfo(info: CompanyInfo): Promise<CompanyInfo> {

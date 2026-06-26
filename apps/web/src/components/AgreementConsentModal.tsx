@@ -37,6 +37,8 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [signatureWarning, setSignatureWarning] = useState('');
+  const [scrolledAt, setScrolledAt] = useState<string | null>(null);
+  const [checkboxConfirmedAt, setCheckboxConfirmedAt] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Resolve logged-in user's full name from localStorage
@@ -88,6 +90,8 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
     setScrolledToBottom(false);
     setChecked(false);
     setSignature('');
+    setScrolledAt(null);
+    setCheckboxConfirmedAt(null);
     setError('');
 
     fetch(`${API}/agreements/${current.id}`, { headers: authHeader() })
@@ -101,18 +105,26 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
     const el = e.currentTarget;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
       setScrolledToBottom(true);
+      if (!scrolledAt) setScrolledAt(new Date().toISOString());
     }
   }
 
+  const signatureValid = signature.trim().length > 0 && !signatureWarning;
+
   async function handleAccept() {
-    if (!checked) return;
+    if (!checked || !signatureValid) return;
     setError('');
     setSaving(true);
     try {
       const res = await fetch(`${API}/agreements/accept`, {
         method: 'POST',
         headers: authHeader(),
-        body: JSON.stringify({ agreementId: current.id, signature: signature.trim() || undefined }),
+        body: JSON.stringify({
+          agreementId: current.id,
+          signature: toTitleCaseTR(signature.trim()),
+          scrolledAt: scrolledAt ?? new Date().toISOString(),
+          checkboxConfirmedAt: checkboxConfirmedAt ?? new Date().toISOString(),
+        }),
       });
       if (!res.ok) {
         const json = await res.json();
@@ -193,7 +205,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
           {/* Dijital imza */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Ad Soyad (Dijital İmza) <span className="text-gray-400 text-xs font-normal">— opsiyonel</span>
+              Ad Soyad (Dijital İmza) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -220,7 +232,17 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
               type="button"
               role="checkbox"
               aria-checked={checked}
-              onClick={() => scrolledToBottom && setChecked((v) => !v)}
+              onClick={() => {
+                if (!scrolledToBottom) return;
+                setChecked((v) => {
+                  const next = !v;
+                  if (next && !checkboxConfirmedAt) {
+                    setCheckboxConfirmedAt(new Date().toISOString());
+                  }
+                  if (!next) setCheckboxConfirmedAt(null);
+                  return next;
+                });
+              }}
               disabled={!scrolledToBottom}
               className={`mt-0.5 w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
                 checked
@@ -248,7 +270,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
           <button
             type="button"
             onClick={handleAccept}
-            disabled={!checked || saving}
+            disabled={!checked || !signatureValid || saving}
             className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: 'linear-gradient(135deg, #1a4080 0%, #1e5aa8 100%)' }}
           >

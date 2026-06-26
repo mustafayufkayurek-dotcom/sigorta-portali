@@ -76,7 +76,13 @@ export class AgreementsController {
       req.socket?.remoteAddress ||
       null;
     const userAgent = req.headers['user-agent'] ?? null;
-    const data = await this.service.accept(resolveUserId(user), dto, ipAddress, userAgent);
+    const data = await this.service.accept(
+      resolveUserId(user),
+      dto,
+      ipAddress,
+      userAgent,
+      user?.email ?? null,
+    );
     return { data };
   }
 

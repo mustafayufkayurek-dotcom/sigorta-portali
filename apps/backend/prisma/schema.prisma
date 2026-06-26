@@ -191,6 +191,12 @@ model User {
   fileActivityLogs           FileActivityLog[]         @relation("FileActivityActor")
   createdFileAppointments    FileAppointment[]         @relation("FileAppointmentCreatedBy")
 
+  // Personel modülü (pod — ileride bağlanacak)
+  hrEmployeeProfile          HrEmployeeProfile?
+  hrManagedEmployees         HrEmployeeProfile[]       @relation("HrEmployeeManager")
+  hrDocumentsSigned          HrDocument[]              @relation("HrDocumentSignedBy")
+  hrDocumentsUploaded        HrDocument[]              @relation("HrDocumentUploadedBy")
+
   @@index([email])
   @@index([roleId])
   @@index([branchId])
@@ -1030,6 +1036,7 @@ model Department {
   // Domain Ayrıştırma: Çoklu Departman ve Dosya Sorumlusu
   members                   UserDepartmentMembership[] @relation("DepartmentMembers")
   responsibilityAssignments ClaimResponsibilityAssignment[] @relation("DepartmentResponsibilities")
+  hrEmployeeProfiles        HrEmployeeProfile[]
 
   @@index([status])
   @@map("departments")
@@ -2017,13 +2024,19 @@ model Agreement {
 }
 
 model AgreementAcceptance {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  agreementId String   @map("agreement_id")
-  acceptedAt  DateTime @default(now()) @map("accepted_at")
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  signature   String?  // ad soyad yazarak imza
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  agreementId         String    @map("agreement_id")
+  acceptedAt          DateTime  @default(now()) @map("accepted_at")
+  ipAddress           String?   @map("ip_address")
+  userAgent           String?   @map("user_agent")
+  signature           String?   // ad soyad yazarak dijital imza
+  acceptedVersion     String?   @map("accepted_version")
+  titleSnapshot       String?   @map("title_snapshot")
+  contentHash         String?   @map("content_hash")
+  contentSnapshot     String?   @db.Text @map("content_snapshot")
+  scrolledAt          DateTime? @map("scrolled_at")
+  checkboxConfirmedAt DateTime? @map("checkbox_confirmed_at")
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
@@ -3215,4 +3228,134 @@ model ClaimResponsibilityAssignment {
   @@index([priority])
   @@index([isActive])
   @@map("claim_responsibility_assignments")
+}
+
+// ─── Platform Modül Pod Sistemi (Personel, Demirbaş vb.) ─────────────────────
+
+model PlatformModule {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  sortOrder   Int      @default(0) @map("sort_order")
+  config      Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_modules")
+}
+
+model HrEmployeeProfile {
+  id                  String    @id @default(uuid())
+  userId              String    @unique @map("user_id")
+  personnelNo         String?   @unique @map("personnel_no")
+  payrollEmployerName String?   @map("payroll_employer_name")
+  employmentType      String    @default("indefinite") @map("employment_type")
+  hireDate            DateTime? @map("hire_date") @db.Date
+  terminationDate     DateTime? @map("termination_date") @db.Date
+  departmentId        String?   @map("department_id")
+  managerUserId       String?   @map("manager_user_id")
+  status              String    @default("active")
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department        Department?       @relation(fields: [departmentId], references: [id])
+  manager           User?             @relation("HrEmployeeManager", fields: [managerUserId], references: [id])
+  attendanceEntries HrAttendanceEntry[]
+  leaveRequests     HrLeaveRequest[]
+  documents         HrDocument[]
+  assignedAssets    FixedAsset[]      @relation("AssetAssignee")
+
+  @@index([status])
+  @@index([departmentId])
+  @@map("hr_employee_profiles")
+}
+
+model HrAttendanceEntry {
+  id                String   @id @default(uuid())
+  employeeProfileId String   @map("employee_profile_id")
+  workDate          DateTime @map("work_date") @db.Date
+  minutesWorked     Int?     @map("minutes_worked")
+  entryType         String   @map("entry_type")
+  source            String   @default("manual")
+  notes             String?
+  createdByUserId   String?  @map("created_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeProfileId, workDate, entryType])
+  @@index([workDate])
+  @@map("hr_attendance_entries")
+}
+
+model HrLeaveRequest {
+  id                String    @id @default(uuid())
+  employeeProfileId String    @map("employee_profile_id")
+  leaveType         String    @map("leave_type")
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime  @map("end_date") @db.Date
+  status            String    @default("pending")
+  reason            String?
+  approvedByUserId  String?   @map("approved_by_user_id")
+  approvedAt        DateTime? @map("approved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+
+  @@index([employeeProfileId])
+  @@index([status])
+  @@map("hr_leave_requests")
+}
+
+model HrDocument {
+  id                String    @id @default(uuid())
+  employeeProfileId String?   @map("employee_profile_id")
+  documentType      String    @map("document_type")
+  title             String
+  fileName          String?   @map("file_name")
+  storageKey        String?   @map("storage_key")
+  contentHash       String?   @map("content_hash")
+  requiresSignature Boolean   @default(false) @map("requires_signature")
+  signedAt          DateTime? @map("signed_at")
+  signedByUserId    String?   @map("signed_by_user_id")
+  signatureMeta     Json?     @map("signature_meta")
+  archivedAt        DateTime? @map("archived_at")
+  uploadedByUserId  String?   @map("uploaded_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  employeeProfile HrEmployeeProfile? @relation(fields: [employeeProfileId], references: [id], onDelete: SetNull)
+  signedBy        User?               @relation("HrDocumentSignedBy", fields: [signedByUserId], references: [id])
+  uploadedBy      User?               @relation("HrDocumentUploadedBy", fields: [uploadedByUserId], references: [id])
+
+  @@index([employeeProfileId])
+  @@index([documentType])
+  @@map("hr_documents")
+}
+
+model FixedAsset {
+  id                 String    @id @default(uuid())
+  assetCode          String    @unique @map("asset_code")
+  name               String
+  category           String?
+  serialNumber       String?   @map("serial_number")
+  purchaseDate       DateTime? @map("purchase_date") @db.Date
+  assignedEmployeeId String?   @map("assigned_employee_id")
+  status             String    @default("active")
+  location           String?
+  notes              String?
+  archivedAt         DateTime? @map("archived_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  assignedEmployee HrEmployeeProfile? @relation("AssetAssignee", fields: [assignedEmployeeId], references: [id])
+
+  @@index([status])
+  @@map("fixed_assets")
 }
