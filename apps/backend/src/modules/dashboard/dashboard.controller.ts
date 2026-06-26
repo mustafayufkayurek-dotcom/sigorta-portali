@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { DashboardService } from './dashboard.service';
@@ -137,9 +137,11 @@ export class DashboardController {
   @Get('dashboard/critical-alerts')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'SLA escalation + hareketsiz dosyalar' })
-  async getCriticalAlerts() {
+  async getCriticalAlerts(@CurrentUser() user: any) {
     try {
-      return { success: true, data: await this.dashboardService.getCriticalAlerts() };
+      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
+      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      return { success: true, data: await this.dashboardService.getCriticalAlerts(scopeUserId) };
     } catch { return { success: true, data: { slaEscalations: [], inactiveFiles: [], totalCritical: 0 } }; }
   }
 
@@ -155,16 +157,22 @@ export class DashboardController {
   @Get('dashboard/sla-summary')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Aşama bazlı SLA dağılımı' })
-  async getSlaSummary() {
+  async getSlaSummary(@CurrentUser() user: any) {
     try {
-      return { success: true, data: await this.dashboardService.getSlaSummary() };
+      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
+      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      return { success: true, data: await this.dashboardService.getSlaSummary(scopeUserId) };
     } catch { return { success: true, data: { byStatus: [], overall: { total: 0, healthy: 0, atRisk: 0, critical: 0 } } }; }
   }
 
   @Get('dashboard/ownership-load')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Kişi başı dosya yükü' })
-  async getOwnershipLoad() {
+  async getOwnershipLoad(@CurrentUser() user: any) {
+    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
+    if (roleCode === 'office_staff') {
+      throw new ForbiddenException('Personel iş yükü raporu yalnızca yönetici kullanıcılar içindir');
+    }
     try {
       return { success: true, data: await this.dashboardService.getOwnershipLoad() };
     } catch { return { success: true, data: { items: [] } }; }

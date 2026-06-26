@@ -18,6 +18,19 @@ export class DashboardService {
     private cache: CacheService,
   ) {}
 
+  private scopedOpenClaimFileWhere(scopeUserId?: string) {
+    const base = { currentStatus: { isClosedState: false } };
+    if (!scopeUserId) return base;
+    return {
+      ...base,
+      OR: [
+        { assignedOfficeUserId: scopeUserId },
+        { assignedFieldUserId: scopeUserId },
+        { currentResponsibleUserId: scopeUserId },
+      ],
+    };
+  }
+
   async getOperationsKpis(scopeUserId?: string) {
     const cacheKey = this.cache.buildKey({
       resource: 'dashboard:operations',
@@ -1081,10 +1094,11 @@ export class DashboardService {
 
   // ── Sprint 3: Operasyon Hiyerarşisi ──────────────────────────────────────
 
-  async getCriticalAlerts() {
+  async getCriticalAlerts(scopeUserId?: string) {
     const cacheKey = this.cache.buildKey({
       resource: 'dashboard:critical-alerts',
-      role: 'shared',
+      role: scopeUserId ? 'office_staff' : 'shared',
+      userId: scopeUserId,
     });
     const cached = await this.cache.get<{
       slaEscalations: Array<{
@@ -1109,7 +1123,7 @@ export class DashboardService {
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
     const openFiles = await this.prisma.claimFile.findMany({
-      where: { currentStatus: { isClosedState: false } },
+      where: this.scopedOpenClaimFileWhere(scopeUserId),
       include: {
         currentStatus: true,
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
@@ -1138,7 +1152,7 @@ export class DashboardService {
 
     const inactiveFiles = await this.prisma.claimFile.findMany({
       where: {
-        currentStatus: { isClosedState: false },
+        ...this.scopedOpenClaimFileWhere(scopeUserId),
         lastActivityAt: { lt: fortyEightHoursAgo },
       },
       select: { id: true, fileNo: true, lastActivityAt: true, currentStatus: { select: { name: true } } },
@@ -1185,10 +1199,11 @@ export class DashboardService {
     };
   }
 
-  async getSlaSummary() {
+  async getSlaSummary(scopeUserId?: string) {
     const cacheKey = this.cache.buildKey({
       resource: 'dashboard:sla-summary',
-      role: 'shared',
+      role: scopeUserId ? 'office_staff' : 'shared',
+      userId: scopeUserId,
     });
     const cached = await this.cache.get<{
       byStatus: Array<{ statusName: string; statusCode: string; total: number; normal: number; warning: number; critical: number; escalated: number }>;
@@ -1198,7 +1213,7 @@ export class DashboardService {
 
     const now = new Date();
     const openFiles = await this.prisma.claimFile.findMany({
-      where: { currentStatus: { isClosedState: false } },
+      where: this.scopedOpenClaimFileWhere(scopeUserId),
       include: { currentStatus: true },
     });
 

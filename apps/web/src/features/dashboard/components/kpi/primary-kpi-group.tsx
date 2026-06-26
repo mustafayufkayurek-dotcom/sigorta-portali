@@ -14,9 +14,10 @@ import { formatCurrency } from '../../utils/formatters';
 
 interface PrimaryKpiGroupProps {
   staggerIndex?: number;
+  hideFinance?: boolean;
 }
 
-export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
+export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false }: PrimaryKpiGroupProps) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
 
@@ -29,13 +30,15 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
   return (
     <WidgetBoundary>
       <section
-        className={`grid grid-cols-1 gap-3 transition-all duration-500 ease-out sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 ${
+        className={`grid grid-cols-1 gap-3 transition-all duration-500 ease-out sm:grid-cols-2 lg:grid-cols-3 ${
+          hideFinance ? 'xl:grid-cols-5' : 'xl:grid-cols-6'
+        } ${
           isLoading ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
         }`}
         style={{ transitionDelay: `${staggerIndex * 100}ms` }}
       >
         {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
+          Array.from({ length: hideFinance ? 5 : 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           ))
         ) : isError ? (
@@ -93,6 +96,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
               href={pendingCount > 0 ? '/panel/hasar-dosyalari?status=open' : undefined}
             />
+            {!hideFinance && (
             <KpiCard
               icon={TrendingUp}
               label="Geciken Tahsilat"
@@ -101,6 +105,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0 }: PrimaryKpiGroupProps) {
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
               href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
             />
+            )}
           </>
         )}
       </section>

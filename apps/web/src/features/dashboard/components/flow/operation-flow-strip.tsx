@@ -14,7 +14,7 @@ type FlowItem = {
   path: string;
 };
 
-export function OperationFlowStrip() {
+export function OperationFlowStrip({ hideFinance = false }: { hideFinance?: boolean }) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
   const ops = opsQuery.data;
@@ -46,14 +46,16 @@ export function OperationFlowStrip() {
       iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
       path: '/panel/hasar-dosyalari?status=open',
     },
-    {
+    ...(hideFinance
+      ? []
+      : [{
       title: 'Geciken Tahsilat',
       value: ops ? formatCurrency(ops.overdueCollectionAmount) : '—',
       detail: 'Finans takibi',
       icon: Banknote,
       iconClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
       path: '/panel/finans/tahsilatlar?paymentType=incoming&status=pending',
-    },
+    }]),
   ];
 
   return (
@@ -62,14 +64,16 @@ export function OperationFlowStrip() {
         <div>
           <h2 className="text-base font-semibold text-slate-950 dark:text-white">Günün Akışı</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.
+            {hideFinance
+              ? 'Size atanan dosya ve aksiyon hareketlerini tek sırada izleyin.'
+              : 'Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.'}
           </p>
         </div>
         {(opsQuery.isFetching || pendingQuery.isFetching) && (
           <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${hideFinance ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`}>
         {items.map((item) => {
           const Icon = item.icon;
           return (

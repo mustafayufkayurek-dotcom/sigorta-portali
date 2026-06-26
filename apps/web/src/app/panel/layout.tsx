@@ -10,6 +10,7 @@ import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
 import { RunningLightsText } from '@/components/ui/RunningLightsText';
+import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
@@ -60,7 +61,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -96,7 +97,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -289,10 +290,12 @@ const SETTINGS_NAV_GROUPS: NavigationGroup[] = [
 function getPanelMainLinks({
   isExpert,
   isInsuranceCompanyUser,
+  isOfficeStaff,
   pendingRevisionCount,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
+  isOfficeStaff: boolean;
   pendingRevisionCount: number;
 }): NavigationLink[] {
   return isExpert
@@ -308,6 +311,15 @@ function getPanelMainLinks({
           { title: 'Bekleyen Onaylar', href: '/panel/sigorta-portal/onaylar', icon: ShieldCheck },
           { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
         ]
+      : isOfficeStaff
+        ? [
+            { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
+            { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+            { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
+            { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
+            { title: 'Eksperler', href: '/panel/eksperler', icon: UserCog },
+            { title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell },
+          ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
           { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
@@ -396,7 +408,12 @@ function Navbar({
     return () => document.removeEventListener('pointerdown', handler);
   }, [onNotifClose]);
 
-  const mainLinks = getPanelMainLinks({ isExpert, isInsuranceCompanyUser, pendingRevisionCount });
+  const mainLinks = getPanelMainLinks({
+    isExpert,
+    isInsuranceCompanyUser,
+    isOfficeStaff: isOfficeStaffRole(roleCode),
+    pendingRevisionCount,
+  });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
   const displayLogo = companyLogo || CORPORATE_LOGO_LIGHT;
@@ -694,7 +711,12 @@ function PanelSidebar({
     }
   }, [collapsed]);
 
-  const mainLinks = getPanelMainLinks({ isExpert, isInsuranceCompanyUser, pendingRevisionCount });
+  const mainLinks = getPanelMainLinks({
+    isExpert,
+    isInsuranceCompanyUser,
+    isOfficeStaff: isOfficeStaffRole(roleCode),
+    pendingRevisionCount,
+  });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
   const hasActiveChild = (link: NavigationLink) => Boolean(link.children?.some((child) => isActive(child.href)));
