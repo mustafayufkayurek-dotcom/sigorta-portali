@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailConfig } from '@/modules/system-settings/system-settings.service';
-import { buildEmailHtml, EmailTemplateData } from './email.template';
+import { buildEmailHtml, buildWelcomeInviteEmailHtml, EmailTemplateData } from './email.template';
 
 export type EmailSendResult = {
   sent: boolean;
@@ -68,6 +68,11 @@ export class EmailService {
   }
 
   private async resolveMailTransport(): Promise<{ transporter: nodemailer.Transporter; from: string } | null> {
+    const dbTransport = await this.resolveDbMailTransport();
+    if (dbTransport) {
+      return dbTransport;
+    }
+
     if (this.smtpReady && this.transporter) {
       return {
         transporter: this.transporter,
@@ -75,6 +80,10 @@ export class EmailService {
       };
     }
 
+    return null;
+  }
+
+  private async resolveDbMailTransport(): Promise<{ transporter: nodemailer.Transporter; from: string } | null> {
     const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'mail_config' } });
     const mailConfig = setting?.value as MailConfig | undefined;
     if (!mailConfig || !this.isUsableSmtpConfig(mailConfig.host, mailConfig.username, mailConfig.password)) {
@@ -126,6 +135,20 @@ export class EmailService {
       this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
       return { sent: false, errorMsg };
     }
+  }
+
+  /** Hoş geldin / davet e-postası */
+  async sendWelcomeInviteEmail(
+    to: string,
+    params: { fullName: string; email: string; temporaryPassword: string; loginUrl: string },
+  ): Promise<EmailSendResult> {
+    const html = buildWelcomeInviteEmailHtml({
+      fullName: params.fullName,
+      email: params.email,
+      temporaryPassword: params.temporaryPassword,
+      loginUrl: params.loginUrl,
+    });
+    return this.sendEmail(to, 'Meridyen Assistance — Hesap Davetiniz', html);
   }
 
   /** Template tabanlı email gönder */
