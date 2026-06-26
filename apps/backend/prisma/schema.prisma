@@ -99,6 +99,8 @@ model User {
   email        String    @unique
   phone        String?
   passwordHash String    @map("password_hash")
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  temporaryPasswordIssuedAt DateTime? @map("temporary_password_issued_at")
   status       String    @default("active")
   lastLoginAt  DateTime? @map("last_login_at")
   employeeCode String?   @unique @map("employee_code")

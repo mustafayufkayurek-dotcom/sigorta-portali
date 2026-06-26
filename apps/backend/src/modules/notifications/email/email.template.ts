@@ -22,7 +22,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
     ? `
     <div style="text-align:center;margin:32px 0;">
       <a href="${data.actionUrl}"
-         style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;letter-spacing:.3px;">
+         style="display:inline-block;background:#1852a0;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;letter-spacing:.3px;">
         ${data.actionLabel ?? 'Dosyayı Görüntüle'}
       </a>
     </div>`
@@ -42,12 +42,12 @@ export function buildEmailHtml(data: EmailTemplateData): string {
 
         <!-- Header -->
         <tr>
-          <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 32px;">
+          <td style="background:linear-gradient(135deg,#0b1f3a 0%,#1852a0 100%);padding:28px 32px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-.3px;">Sigorta Hasar Sistemi</div>
-                  <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;">Otomatik Bildirim</div>
+                  <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-.3px;">Meridyen Assistance</div>
+                  <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;">Hasar Platformu</div>
                 </td>
               </tr>
             </table>
@@ -83,4 +83,26 @@ export function buildEmailHtml(data: EmailTemplateData): string {
   </table>
 </body>
 </html>`;
+}
+
+/** Kullanıcı davet / hoş geldin e-postası */
+export function buildWelcomeInviteEmailHtml(params: {
+  fullName: string;
+  email: string;
+  temporaryPassword: string;
+  loginUrl: string;
+}): string {
+  return buildEmailHtml({
+    title: 'Meridyen Assistance Hesabınız Hazır',
+    preheader: 'Geçici şifrenizle giriş yapıp ilk oturumda şifrenizi güncelleyebilirsiniz.',
+    rows: [
+      { label: 'Ad Soyad', value: params.fullName || '—' },
+      { label: 'Giriş E-postası', value: params.email },
+      { label: 'Geçici Şifre', value: params.temporaryPassword },
+      { label: 'Giriş Adresi', value: params.loginUrl },
+    ],
+    actionUrl: params.loginUrl,
+    actionLabel: 'Giriş Yap ve Şifre Belirle',
+    footerNote: 'Güvenliğiniz için ilk girişten sonra şifrenizi değiştirmeniz gerekir. Bu e-postayı kimseyle paylaşmayın.',
+  });
 }

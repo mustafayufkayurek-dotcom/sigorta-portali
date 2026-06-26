@@ -39,6 +39,16 @@ class ResetPasswordDto {
   newPassword!: string;
 }
 
+class ChangePasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  oldPassword!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  newPassword!: string;
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -129,6 +139,22 @@ export class AuthController {
     return {
       success: true,
       message: 'Çıkış yapıldı',
+    };
+  }
+
+  @ApiBearerAuth()
+  @Post('change-password')
+  @ApiOperation({ summary: 'Oturum açıkken şifre değiştir' })
+  async changePassword(
+    @CurrentUser() user: any,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(user.id, dto.oldPassword, dto.newPassword);
+    const userData = await this.authService.getMe(user.id);
+    return {
+      success: true,
+      message: 'Şifreniz başarıyla güncellendi',
+      data: userData,
     };
   }
 

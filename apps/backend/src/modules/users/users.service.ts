@@ -12,6 +12,11 @@ function normalizeUserEmail(email: string): string {
   return String(email ?? '').trim().toLowerCase();
 }
 
+function isInactiveUserStatus(status: string | null | undefined): boolean {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  return normalized === 'inactive' || normalized === 'passive' || normalized === 'pasif' || normalized === 'archived';
+}
+
 function generateTemporaryPassword(length = 12): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lower = 'abcdefghijkmnopqrstuvwxyz';
@@ -58,7 +63,7 @@ export class UsersService {
 
     const where: any = {};
     if ((params as any)?.includeInactive !== 'true') {
-      where.status = { notIn: ['inactive', 'INACTIVE'] };
+      where.status = { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] };
     }
     if (params?.roleId) where.roleId = params.roleId;
     if (params?.branchId) where.branchId = params.branchId;
@@ -154,6 +159,9 @@ export class UsersService {
     });
 
     if (existingUser) {
+      if (isInactiveUserStatus(existingUser.status)) {
+        return this.reinviteInactiveUser(existingUser, data);
+      }
       throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor');
     }
 
@@ -172,6 +180,8 @@ export class UsersService {
           ...rest,
           email: normalizedEmail,
           passwordHash: hashedPassword,
+          mustChangePassword: true,
+          temporaryPasswordIssuedAt: new Date(),
           status: rest.status ?? 'active',
         },
         include: {
@@ -247,6 +257,58 @@ export class UsersService {
     };
   }
 
+  private async reinviteInactiveUser(existingUser: { id: string; email: string; status: string }, data: any) {
+    applyTitleCase(data, ['firstName', 'lastName']);
+
+    const temporaryPassword = typeof data.password === 'string' && data.password.trim().length > 0
+      ? data.password.trim()
+      : generateTemporaryPassword();
+
+    const {
+      password: _password,
+      email: _email,
+      departmentMemberships,
+      responsibilityAssignments,
+      serviceAreas,
+      insuranceCompanyIds,
+      ...rest
+    } = data;
+
+    const reactivated = await this.update(existingUser.id, {
+      ...rest,
+      status: 'active',
+      password: temporaryPassword,
+      departmentMemberships,
+      responsibilityAssignments,
+      serviceAreas,
+      insuranceCompanyIds,
+    });
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: existingUser.id,
+      action: 'USER_REINVITE',
+      oldValue: { status: existingUser.status, email: existingUser.email },
+      newValue: { status: 'active', email: existingUser.email },
+      userId: existingUser.id,
+      userEmail: existingUser.email,
+    });
+
+    const welcomeEmail = await this.sendWelcomeInviteEmail({
+      email: existingUser.email,
+      firstName: reactivated.firstName,
+      lastName: reactivated.lastName,
+      temporaryPassword,
+    });
+
+    return {
+      ...reactivated,
+      temporaryPassword,
+      welcomeEmail,
+      reinvited: true,
+    };
+  }
+
   private async sendWelcomeInviteEmail(params: {
     email: string;
     firstName: string;
@@ -256,22 +318,12 @@ export class UsersService {
     const loginUrl = `${this.config.get<string>('APP_URL', 'http://localhost:3001')}/giris`;
     const fullName = `${params.firstName} ${params.lastName}`.trim();
 
-    const result = await this.emailService.sendTemplateEmail(
-      params.email,
-      'Meridyen Assistance — Hesap Davetiniz',
-      {
-        title: 'Hesabınız Oluşturuldu',
-        preheader: 'Geçici şifrenizle sisteme giriş yapabilirsiniz.',
-        rows: [
-          { label: 'Ad Soyad', value: fullName || '—' },
-          { label: 'E-posta', value: params.email },
-          { label: 'Geçici Şifre', value: params.temporaryPassword },
-        ],
-        actionUrl: loginUrl,
-        actionLabel: 'Giriş Yap',
-        footerNote: 'Güvenliğiniz için ilk girişten sonra şifrenizi değiştirmeniz önerilir.',
-      },
-    );
+    const result = await this.emailService.sendWelcomeInviteEmail(params.email, {
+      fullName,
+      email: params.email,
+      temporaryPassword: params.temporaryPassword,
+      loginUrl: loginUrl,
+    });
 
     if (!result.sent) {
       return {
@@ -302,6 +354,7 @@ export class UsersService {
 
     const {
       password,
+      oldPassword,
       departmentMemberships,
       responsibilityAssignments,
       serviceAreas,
@@ -312,7 +365,19 @@ export class UsersService {
 
     const updateData: any = { ...rest };
     if (password) {
-      updateData.passwordHash = await bcrypt.hash(password, 10);
+      if (oldPassword) {
+        const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+        if (!isCurrentPasswordValid) {
+          throw new BadRequestException('Mevcut şifre hatalı');
+        }
+        updateData.passwordHash = await bcrypt.hash(password, 10);
+        updateData.mustChangePassword = false;
+        updateData.temporaryPasswordIssuedAt = null;
+      } else {
+        updateData.passwordHash = await bcrypt.hash(password, 10);
+        updateData.mustChangePassword = true;
+        updateData.temporaryPasswordIssuedAt = new Date();
+      }
     }
 
     const roleChanged = updateData.roleId !== undefined && updateData.roleId !== user.roleId;
@@ -513,7 +578,11 @@ export class UsersService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          mustChangePassword: true,
+          temporaryPasswordIssuedAt: issuedAt,
+        },
       });
       await tx.refreshToken.updateMany({
         where: { userId: id, revokedAt: null },

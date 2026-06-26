@@ -8,6 +8,10 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuthTokens, RegisterDto } from '@sigorta/shared';
 
+function normalizeAuthEmail(email: string): string {
+  return String(email ?? '').trim().toLowerCase();
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -17,8 +21,13 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail) {
+      return null;
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { role: true },
     });
 
@@ -40,7 +49,8 @@ export class AuthService {
   }
 
   async login(loginDto: { email: string; password: string; recaptchaToken?: string }): Promise<{ user: any; tokens: AuthTokens }> {
-    if (loginDto.email.toLowerCase().endsWith('@example.com')) {
+    const normalizedEmail = normalizeAuthEmail(loginDto.email);
+    if (normalizedEmail.endsWith('@example.com')) {
       throw new UnauthorizedException(
         'Bu email adresi ile giriş yapılamaz. Lütfen gerçek email adresinizi kullanın.',
       );
@@ -53,7 +63,7 @@ export class AuthService {
       }
     }
 
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+    const user = await this.validateUser(normalizedEmail, loginDto.password);
 
     if (!user) {
       throw new UnauthorizedException('E-posta veya şifre hatalı');
@@ -209,7 +219,8 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<{ requested: true }> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = normalizeAuthEmail(email);
+    const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (!user) {
       return { requested: true };
@@ -248,7 +259,11 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash: hashedPassword },
+      data: {
+        passwordHash: hashedPassword,
+        mustChangePassword: false,
+        temporaryPasswordIssuedAt: null,
+      },
     });
 
     await this.prisma.passwordResetToken.update({
@@ -342,6 +357,33 @@ export class AuthService {
       isMobileUser: user.isMobileUser,
       isWebUser: user.isWebUser,
       lastLoginAt: user.lastLoginAt,
+      mustChangePassword: user.mustChangePassword,
     };
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Kullanıcı bulunamadı');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Mevcut şifre hatalı');
+    }
+
+    if (newPassword.length < 6) {
+      throw new BadRequestException('Yeni şifre en az 6 karakter olmalıdır');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+        temporaryPasswordIssuedAt: null,
+      },
+    });
   }
 }

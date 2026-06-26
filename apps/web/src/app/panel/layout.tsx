@@ -8,10 +8,42 @@ import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
+import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
+import { RunningLightsText } from '@/components/ui/RunningLightsText';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
+import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Bell,
+  BookOpenText,
+  Building2,
+  ClipboardList,
+  FileCog,
+  FileText,
+  GitBranch,
+  Landmark,
+  Layers3,
+  Mail,
+  MapPin,
+  MessageSquareText,
+  MonitorCheck,
+  PackageCheck,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  TestTube2,
+  Users,
+  UserCog,
+  Wrench,
+  WalletCards,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
 
@@ -31,6 +63,8 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/eksper-crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/eksperler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
@@ -65,6 +99,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/eksperler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/eksper-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/sigorta-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
@@ -88,10 +123,13 @@ function canSeeNavItem(path: string, roleCode: string): boolean {
 
 // Ekran kodu → path eşlemesi (DB izin sistemi için)
 const SCREEN_TO_PATH: Record<string, string> = {
+  dashboard:         '/panel',
   hasar_dosyalari:   '/panel/hasar-dosyalari',
   acil_yardim:       '/panel/acil-yardim',
   finans:            '/panel/finans',
   operasyon:         '/panel/operasyon',
+  sahiplik:          '/panel/sahiplik',
+  crm:               '/panel/crm',
   eksperler:         '/panel/eksperler',
   musteriler:        '/panel/musteriler',
   tedarikciler:      '/panel/tedarikciler',
@@ -103,8 +141,32 @@ const SCREEN_TO_PATH: Record<string, string> = {
   personel_yonetimi: '/panel/personel-yonetimi',
 };
 
-function canSeeNavItemDynamic(navPath: string, allowedScreens: string[]): boolean {
-  const match = Object.entries(SCREEN_TO_PATH).find(([, p]) => navPath.startsWith(p));
+const LOCKED_MAIN_NAV_PATHS = new Set([
+  '/panel',
+  '/panel/operasyon',
+  '/panel/personel-yonetimi',
+  '/panel/sahiplik',
+  '/panel/musteriler',
+  '/panel/tedarikciler',
+  '/panel/crm',
+  '/panel/finans',
+  '/panel/harita',
+  '/panel/ayarlar',
+  '/panel/ayarlar/departmanlar',
+]);
+
+function isLockedMainNavPath(navPath: string) {
+  return Array.from(LOCKED_MAIN_NAV_PATHS).some((path) => navPath === path || navPath.startsWith(path + '/'));
+}
+
+function canSeeNavItemDynamic(navPath: string, allowedScreens: string[], roleCode: string): boolean {
+  if (isLockedMainNavPath(navPath)) {
+    return canSeeNavItem(navPath, roleCode);
+  }
+
+  const match = Object.entries(SCREEN_TO_PATH)
+    .sort(([, a], [, b]) => b.length - a.length)
+    .find(([, p]) => navPath === p || navPath.startsWith(p + '/'));
   if (!match) return true;
   return allowedScreens.includes(match[0]);
 }
@@ -141,6 +203,126 @@ interface AppNotification {
   readAt?: string | null;
 }
 
+interface NavigationLink {
+  title: string;
+  href: string;
+  badge?: string;
+  alertCount?: number;
+  children?: NavigationLink[];
+  icon?: LucideIcon;
+}
+
+interface NavigationGroup {
+  title: string;
+  links: NavigationLink[];
+  icon: LucideIcon;
+}
+
+const SETTINGS_NAV_GROUPS: NavigationGroup[] = [
+  {
+    title: 'Kullanıcı ve Yetki',
+    icon: UserCog,
+    links: [
+      { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users },
+      { title: 'Roller', href: '/panel/ayarlar/roller', icon: ShieldCheck },
+    ],
+  },
+  {
+    title: 'Kurumsal Ayarlar',
+    icon: Settings,
+    links: [
+      { title: 'Alan Zorunlulukları', href: '/panel/ayarlar/alan-zorunluluklari', icon: SlidersHorizontal },
+      { title: 'Mail ve Bildirim Merkezi', href: '/panel/ayarlar/e-posta-bildirimleri', icon: Mail },
+      { title: 'Şablonlar', href: '/panel/ayarlar/sablonlar', icon: FileCog },
+      { title: 'Sözleşmeler', href: '/panel/ayarlar/sozlesmeler', icon: ScrollText },
+    ],
+  },
+  {
+    title: 'Zorunlu Tanımlar',
+    icon: BookOpenText,
+    links: [
+      {
+        title: 'Tanımlar Merkezi',
+        href: '/panel/ayarlar/tanimlar',
+        icon: BookOpenText,
+        children: [
+          { title: 'Sigorta Şirketleri', href: '/panel/ayarlar/sigorta-sirketleri', icon: Building2 },
+          { title: 'Tedarikçi Tanımları', href: '/panel/ayarlar/tedarikciler', icon: Users },
+          { title: 'Müşteri Tipleri', href: '/panel/ayarlar/musteri-tipleri', icon: Users },
+          { title: 'Departmanlar', href: '/panel/ayarlar/departmanlar', icon: Building2 },
+          { title: 'İlişki Türleri', href: '/panel/ayarlar/iliski-turleri', icon: GitBranch },
+        ],
+      },
+      { title: 'İhbar Konuları', href: '/panel/ayarlar/ihbar-konulari', icon: MessageSquareText },
+      { title: 'Evrak Türleri', href: '/panel/ayarlar/evrak-turleri', icon: FileText },
+      { title: 'Hizmet Türleri', href: '/panel/ayarlar/hizmet-turleri', icon: Wrench },
+      { title: 'Mahal & Bölgeler', href: '/panel/ayarlar/mahaller', icon: MapPin },
+    ],
+  },
+  {
+    title: 'Operasyon Tanımları',
+    icon: Layers3,
+    links: [
+      { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch },
+      { title: 'Tedarikçi Branşları', href: '/panel/ayarlar/hizmet-branslari', icon: PackageCheck },
+      { title: 'İş Grupları', href: '/panel/ayarlar/is-gruplari', icon: Layers3 },
+    ],
+  },
+  {
+    title: 'Finans ve Fiyatlandırma',
+    icon: Receipt,
+    links: [
+      { title: 'Fiyat Listesi', href: '/panel/ayarlar/fiyat-listesi', icon: Receipt },
+      { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: WalletCards },
+      { title: 'Bölgesel Zamlar', href: '/panel/ayarlar/bolgesel-zamlar', icon: Landmark },
+    ],
+  },
+  {
+    title: 'Yönetim ve Denetim',
+    icon: TestTube2,
+    links: [
+      { title: 'Pilot Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
+    ],
+  },
+];
+
+function getPanelMainLinks({
+  isExpert,
+  isInsuranceCompanyUser,
+  pendingRevisionCount,
+}: {
+  isExpert: boolean;
+  isInsuranceCompanyUser: boolean;
+  pendingRevisionCount: number;
+}): NavigationLink[] {
+  return isExpert
+    ? [
+        { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: Users },
+        { title: 'Bekleyen Onaylar', href: '/panel/eksper-portal/onaylar', icon: ShieldCheck },
+        { title: 'Atanmış Dosyalar', href: '/panel/eksper-portal/dosyalar', icon: ClipboardList },
+        { title: 'Randevular', href: '/panel/eksper-portal/randevular', icon: Bell },
+      ]
+    : isInsuranceCompanyUser
+      ? [
+          { title: 'Sigorta Paneli', href: '/panel/sigorta-portal', icon: Building2 },
+          { title: 'Bekleyen Onaylar', href: '/panel/sigorta-portal/onaylar', icon: ShieldCheck },
+          { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
+        ]
+      : [
+          { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
+          { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+          { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog },
+          { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users },
+          { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
+          { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
+          { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
+          { title: 'CRM', href: '/panel/crm', icon: GitBranch },
+          { title: 'Finans', href: '/panel/finans', icon: Receipt },
+          { title: 'Harita', href: '/panel/harita', icon: MapPin },
+          { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
+        ];
+}
+
 // ── Üst Navbar ────────────────────────────────────────────────────────────────
 interface NavbarProps {
   user: any;
@@ -167,7 +349,7 @@ interface NavbarProps {
 }
 
 function Navbar({
-  user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
+  user, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
   pendingRevisionCount, onLogout,
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
@@ -176,18 +358,14 @@ function Navbar({
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
     allowedScreens !== null
-      ? canSeeNavItemDynamic(path, allowedScreens)
+      ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
       : canSeeNavItem(path, roleCode);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [yonetimDropOpen, setYonetimDropOpen] = useState(false);
-  const [settingsDropOpen, setSettingsDropOpen] = useState(false);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const yonetimDropRef = useRef<HTMLDivElement>(null);
-  const settingsDropRef = useRef<HTMLDivElement>(null);
   const profileDropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -211,8 +389,6 @@ function Navbar({
     const handler = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
-      if (yonetimDropRef.current && !yonetimDropRef.current.contains(target)) setYonetimDropOpen(false);
-      if (settingsDropRef.current && !settingsDropRef.current.contains(target)) setSettingsDropOpen(false);
       if (profileDropRef.current && !profileDropRef.current.contains(target)) setProfileDropOpen(false);
       if (notifRef.current && !notifRef.current.contains(target)) onNotifClose();
     };
@@ -220,34 +396,21 @@ function Navbar({
     return () => document.removeEventListener('pointerdown', handler);
   }, [onNotifClose]);
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+  const mainLinks = getPanelMainLinks({ isExpert, isInsuranceCompanyUser, pendingRevisionCount });
+  const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const navLinkCls = (href: string) =>
-    `text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap ${
-      isActive(href)
-        ? 'text-blue-700 bg-blue-50 font-semibold'
-        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-    }`;
-
-  const logoContent = companyLogo ? (
+  const displayLogo = companyLogo || CORPORATE_LOGO_LIGHT;
+  const logoContent = (
     <img
-      src={companyLogo}
+      src={displayLogo}
       alt={companyName}
-      className="block max-h-9 w-auto max-w-[118px] object-contain"
-      onError={() => { /* parent will fallback */ }}
+      className="block max-h-[52px] w-auto max-w-[220px] object-contain object-left"
+      onError={(e) => {
+        if (e.currentTarget.src !== CORPORATE_LOGO_LIGHT) {
+          e.currentTarget.src = CORPORATE_LOGO_LIGHT;
+        }
+      }}
     />
-  ) : (
-    <>
-      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200">
-        <svg className="w-4.5 h-4.5 text-white" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      </div>
-      <div className="flex flex-col leading-none">
-        <span className="text-slate-900 text-[14px] font-extrabold tracking-tight">Meridyen</span>
-        <span className="text-slate-400 text-[10px] font-medium tracking-wider uppercase">Assistance</span>
-      </div>
-    </>
   );
 
   return (
@@ -260,154 +423,12 @@ function Navbar({
               href="https://meridyenassistance.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-12 min-w-[118px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-2.5 shadow-sm transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
+              className="flex h-14 min-w-[176px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-md transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
               title="Meridyen Assistance web sitesini yeni sekmede aç"
             >
               {logoContent}
             </a>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide max-w-[min(100vw-20rem,56rem)] lg:max-w-none lg:overflow-visible">
-              {isExpert && (
-                <>
-                  <Link href="/panel/eksper-portal" className={navLinkCls('/panel/eksper-portal')}>Dashboard</Link>
-                  <Link href="/panel/eksper-portal/onaylar" className={navLinkCls('/panel/eksper-portal/onaylar')}>Bekleyen Onaylar</Link>
-                  <Link href="/panel/eksper-portal/dosyalar" className={navLinkCls('/panel/eksper-portal/dosyalar')}>Atanmış Dosyalar</Link>
-                  <Link href="/panel/eksper-portal/randevular" className={navLinkCls('/panel/eksper-portal/randevular')}>Randevular</Link>
-                </>
-              )}
-              {isInsuranceCompanyUser && (
-                <>
-                  <Link href="/panel/sigorta-portal" className={navLinkCls('/panel/sigorta-portal')}>Dashboard</Link>
-                  <Link href="/panel/sigorta-portal/onaylar" className={navLinkCls('/panel/sigorta-portal/onaylar')}>Bekleyen Onaylar</Link>
-                  <Link href="/panel/sigorta-portal/dosyalar" className={navLinkCls('/panel/sigorta-portal/dosyalar')}>Dosyalar</Link>
-                </>
-              )}
-              {!isPortalUser && (
-                <>
-                  <Link href="/panel" className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-lg ${pathname === '/panel' ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}>Dashboard</Link>
-                  {canSee('/panel/hasar-dosyalari') && (
-                    <Link href="/panel/operasyon" className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
-                      isActive('/panel/operasyon') || isActive('/panel/hasar-dosyalari') || isActive('/panel/acil-yardim')
-                        ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                    }`}>
-                      Operasyon
-                      {pendingRevisionCount > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold">
-                          {pendingRevisionCount > 99 ? '99+' : pendingRevisionCount}
-                        </span>
-                      )}
-                    </Link>
-                  )}
-                  {canSee('/panel/personel-yonetimi') && (
-                    <Link href="/panel/personel-yonetimi" className={navLinkCls('/panel/personel-yonetimi')}>Personel</Link>
-                  )}
-                  {canSee('/panel/sahiplik') && (
-                    <Link href="/panel/sahiplik" className={navLinkCls('/panel/sahiplik')}>Sahiplik</Link>
-                  )}
-
-                  {/* Müşteriler — düz link */}
-                  {canSee('/panel/musteriler') && (
-                    <Link href="/panel/musteriler" className={navLinkCls('/panel/musteriler')}>Müşteriler</Link>
-                  )}
-
-                  {/* Tedarikçiler — bağımsız link */}
-                  {canSee('/panel/tedarikciler') && (
-                    <Link href="/panel/tedarikciler" className={navLinkCls('/panel/tedarikciler')}>Tedarikçiler</Link>
-                  )}
-
-                  {/* Portal Dropdown (Kaldırıldı — İçerikler portal kullanıcılarına özel) */}
-
-                  {/* Finans Dropdown (eski adı: Yönetim) */}
-                  {canSee('/panel/finans') && (
-                    <div className="relative z-[60]" ref={yonetimDropRef}>
-                      <button type="button" onClick={() => { setYonetimDropOpen((v) => !v); setSettingsDropOpen(false); }} className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
-                        pathname.startsWith('/panel/finans') || pathname.startsWith('/panel/raporlar') || pathname.startsWith('/panel/carilerim')
-                          ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`} aria-expanded={yonetimDropOpen}>
-                        Finans
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      {yonetimDropOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-[70]">
-                          <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Finans</p>
-                          <Link href="/panel/finans" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Finans Özeti</Link>
-                          <Link href="/panel/finans/fatura-talepleri" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Fatura Talepleri</Link>
-                          <Link href="/panel/finans/faturalar" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Faturalar</Link>
-                          <Link href="/panel/finans/tahsilatlar" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Tahsilatlar ve Ödemeler</Link>
-                          <Link href="/panel/finans/karlilik" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Kârlılık Analizi</Link>
-                          <Link href="/panel/finans/dosya-pl" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Portföy P&amp;L</Link>
-                          <Link href="/panel/finans/sabit-giderler" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Sabit Giderler</Link>
-                          <Link href="/panel/finans/masraflar" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Masraflar</Link>
-                          {canSee('/panel/carilerim') && (
-                            <Link href="/panel/carilerim" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Carilerim</Link>
-                          )}
-                          <div className="my-1.5 border-t border-slate-100" />
-                          <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raporlar</p>
-                          <Link href="/panel/raporlar/dosya-performansi" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Dosya Performansı</Link>
-                          <Link href="/panel/raporlar/finansal" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>Finansal Rapor</Link>
-                          <Link href="/panel/raporlar/sla" className="block mx-1 px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setYonetimDropOpen(false)}>SLA Raporu</Link>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {canSee('/panel/harita') && (
-                    <Link href="/panel/harita" className={navLinkCls('/panel/harita')}>Harita</Link>
-                  )}
-
-                  {/* Ayarlar Dropdown */}
-                  {canSee('/panel/ayarlar') && (
-                    <div className="relative z-[60]" ref={settingsDropRef}>
-                      <button type="button" onClick={() => { setSettingsDropOpen((v) => !v); setYonetimDropOpen(false); }} className={`text-xs lg:text-sm font-medium transition-all px-2 md:px-2 lg:px-2.5 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1 md:gap-1 lg:gap-1.5 ${
-                        pathname.startsWith('/panel/ayarlar') || pathname.startsWith('/panel/kullanicilar') || pathname.startsWith('/panel/guvenlik')
-                          ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                      }`} aria-expanded={settingsDropOpen}>
-                        Ayarlar
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      {settingsDropOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-[70]">
-                          <Link href="/panel/ayarlar/kurulum" className="block mx-1 px-3 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">⚙️</span>
-                            Kurulum Sihirbazı
-                          </Link>
-                          <Link href="/panel/ayarlar/sablonlar" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">📝</span>
-                            Şablonlar
-                          </Link>
-                          <Link href="/panel/ayarlar/tanimlar" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">🏷️</span>
-                            Tanımlar
-                          </Link>
-                          <Link href="/panel/ayarlar/durumlar" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">🟦</span>
-                            Durumlar
-                          </Link>
-                          <Link href="/panel/ayarlar/sigorta-sirketleri" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">🏢</span>
-                            Sigorta Şirketleri
-                          </Link>
-                          <Link href="/panel/ayarlar/fiyat-yonetimi" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">💰</span>
-                            Fiyat Yönetimi
-                          </Link>
-                          <Link href="/panel/ayarlar/test-notlari-gorev-takip" className="block mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">🧪</span>
-                            Test Notları / Görev Takip
-                          </Link>
-                          <div className="my-1 border-t border-slate-100" />
-                          <Link href="/panel/guvenlik/erisim-loglari" className="block mx-1 px-3 py-2.5 text-sm text-slate-500 hover:bg-slate-50/60 hover:text-slate-700 rounded-lg transition-colors flex items-center gap-2" onClick={() => setSettingsDropOpen(false)}>
-                            <span className="text-base leading-none">🔒</span>
-                            Güvenlik
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </nav>
           </div>
 
           {/* Right side */}
@@ -583,69 +604,24 @@ function Navbar({
         {/* Mobil menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-100 py-3 space-y-0.5">
-            {!isPortalUser && (
-              <>
-                <Link href="/panel" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-                {canSee('/panel/hasar-dosyalari') && (
-                  <Link
-                    href="/panel/operasyon"
-                    className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Operasyon
-                    {pendingRevisionCount > 0 && (
-                      <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold">
-                        {pendingRevisionCount > 99 ? '99+' : pendingRevisionCount}
-                      </span>
-                    )}
-                  </Link>
-                )}
-                {canSee('/panel/personel-yonetimi') && (
-                  <Link href="/panel/personel-yonetimi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Personel</Link>
-                )}
-                {canSee('/panel/musteriler') && (
-                  <Link href="/panel/musteriler" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Müşteriler</Link>
-                )}
-                {canSee('/panel/tedarikciler') && (
-                  <Link href="/panel/tedarikciler" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tedarikçiler</Link>
-                )}
-                {canSee('/panel/finans') && (
-                  <>
-                    <Link href="/panel/finans" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Finans Özeti</Link>
-                    <Link href="/panel/finans/faturalar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Faturalar</Link>
-                    <Link href="/panel/finans/tahsilatlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tahsilatlar ve Ödemeler</Link>
-                    {canSee('/panel/carilerim') && (
-                      <Link href="/panel/carilerim" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Carilerim</Link>
-                    )}
-                    <Link href="/panel/raporlar/dosya-performansi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Raporlar</Link>
-                  </>
-                )}
-                {canSee('/panel/ayarlar') && (
-                  <>
-                    <Link href="/panel/ayarlar/kurulum" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Kurulum Sihirbazı</Link>
-                    <Link href="/panel/ayarlar/sablonlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Şablonlar</Link>
-                    <Link href="/panel/ayarlar/tanimlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Tanımlar</Link>
-                    <Link href="/panel/ayarlar/durumlar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Durumlar</Link>
-                    <Link href="/panel/ayarlar/sigorta-sirketleri" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Sigorta Şirketleri</Link>
-                    <Link href="/panel/ayarlar/fiyat-yonetimi" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Fiyat Yönetimi</Link>
-                    <Link href="/panel/ayarlar/test-notlari-gorev-takip" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Test Notları / Görev Takip</Link>
-                    <Link href="/panel/guvenlik/erisim-loglari" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Güvenlik</Link>
-                  </>
-                )}
-              </>
-            )}
-            {isExpert && (
-              <>
-                <Link href="/panel/eksper-portal" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-                <Link href="/panel/eksper-portal/onaylar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Bekleyen Onaylar</Link>
-              </>
-            )}
-            {isInsuranceCompanyUser && (
-              <>
-                <Link href="/panel/sigorta-portal" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-                <Link href="/panel/sigorta-portal/dosyalar" className="block px-3 py-2 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(false)}>Dosyalar</Link>
-              </>
-            )}
+            {visibleMainLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                  <span className="truncate">{link.title}</span>
+                </span>
+                {link.alertCount && link.alertCount > 0 ? (
+                  <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {link.alertCount > 99 ? '99+' : link.alertCount}
+                  </span>
+                ) : null}
+              </Link>
+            ))}
             <div className="border-t border-slate-100 pt-2 mt-2">
               <button type="button"
                 onClick={() => { setMobileMenuOpen(false); onLogout(); }}
@@ -658,6 +634,182 @@ function Navbar({
         )}
       </div>
     </header>
+  );
+}
+
+interface PanelSidebarProps {
+  pathname: string;
+  roleCode: string;
+  isPortalUser: boolean;
+  isExpert: boolean;
+  isInsuranceCompanyUser: boolean;
+  pendingRevisionCount: number;
+  allowedScreens: string[] | null;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  hidden?: boolean;
+}
+
+function isSettingsPath(pathname: string) {
+  return (
+    pathname === '/panel/ayarlar' ||
+    pathname.startsWith('/panel/ayarlar/') ||
+    pathname === '/panel/kullanicilar' ||
+    pathname.startsWith('/panel/kullanicilar/')
+  );
+}
+
+function PanelSidebar({
+  pathname,
+  roleCode,
+  isPortalUser,
+  isExpert,
+  isInsuranceCompanyUser,
+  pendingRevisionCount,
+  allowedScreens,
+  collapsed,
+  onToggleCollapsed,
+  hidden = false,
+}: PanelSidebarProps) {
+  if (hidden) return null;
+
+  const canSee = (path: string) =>
+    allowedScreens !== null
+      ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
+      : canSeeNavItem(path, roleCode);
+
+  const isActive = (href: string) => {
+    const normalizedHref = href.split('?')[0];
+    return normalizedHref === '/panel'
+      ? pathname === '/panel'
+      : pathname === normalizedHref || pathname.startsWith(normalizedHref + '/');
+  };
+
+  const isSettingsActive = isSettingsPath(pathname);
+  const [openSettingsGroups, setOpenSettingsGroups] = useState<string[]>(() => SETTINGS_NAV_GROUPS.map((group) => group.title));
+
+  useEffect(() => {
+    if (collapsed) {
+      setOpenSettingsGroups([]);
+    }
+  }, [collapsed]);
+
+  const mainLinks = getPanelMainLinks({ isExpert, isInsuranceCompanyUser, pendingRevisionCount });
+
+  const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
+  const hasActiveChild = (link: NavigationLink) => Boolean(link.children?.some((child) => isActive(child.href)));
+
+  const linkClass = (href: string, compact = false, forceActive?: boolean) => {
+    const active = forceActive ?? isActive(href);
+    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-semibold transition ${
+      active
+        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+    }`;
+  };
+
+  return (
+    <aside
+      className={`hidden shrink-0 border-r border-slate-200 bg-white transition-[width] duration-200 md:block dark:border-slate-800 dark:bg-slate-950 ${
+        collapsed ? 'w-[74px]' : 'w-[286px]'
+      }`}
+    >
+      <div className="sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto px-3 py-4">
+        <div className={`mb-3 flex items-center ${collapsed ? 'justify-center px-0' : 'justify-between px-3'}`}>
+          {!collapsed ? (
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Menü</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:hover:bg-slate-800"
+            aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+            title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <nav className="space-y-1">
+          {visibleMainLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={linkClass(link.href, false, link.href === '/panel/kullanicilar' ? isSettingsActive : undefined)}
+              title={collapsed ? link.title : undefined}
+            >
+              <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
+                {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
+                {!collapsed ? <span className="truncate">{link.title}</span> : null}
+              </span>
+              {!collapsed && link.alertCount && link.alertCount > 0 ? (
+                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {link.alertCount > 99 ? '99+' : link.alertCount}
+                </span>
+              ) : null}
+            </Link>
+          ))}
+        </nav>
+
+        {canSee('/panel/ayarlar') && isSettingsActive && !collapsed && (
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="mt-3 space-y-3">
+              {SETTINGS_NAV_GROUPS.map((group) => (
+                <section key={group.title}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenSettingsGroups((current) =>
+                        current.includes(group.title)
+                          ? current.filter((title) => title !== group.title)
+                          : [...current, group.title],
+                      );
+                    }}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 transition hover:bg-white hover:text-slate-600 dark:hover:bg-slate-800"
+                    aria-expanded={openSettingsGroups.includes(group.title)}
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <group.icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{group.title}</span>
+                    </span>
+                    <span className="text-[11px]">{openSettingsGroups.includes(group.title) ? '−' : '+'}</span>
+                  </button>
+                  {openSettingsGroups.includes(group.title) && (
+                    <div className="mt-1 space-y-0.5">
+                      {group.links.map((link) => (
+                        <div key={link.href}>
+                          <Link href={link.href} className={linkClass(link.href, true)}>
+                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                              {link.icon ? <link.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : null}
+                              <span className="truncate">{link.title}</span>
+                            </span>
+                            {link.children ? (
+                              <span className="text-[11px] text-slate-400">{hasActiveChild(link) || isActive(link.href) ? '−' : '+'}</span>
+                            ) : null}
+                          </Link>
+                          {link.children && (hasActiveChild(link) || isActive(link.href)) && (
+                            <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
+                              {link.children.map((child) => (
+                                <Link key={child.href} href={child.href} className={linkClass(child.href, true)}>
+                                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                                    {child.icon ? <child.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : null}
+                                    <span className="truncate">{child.title}</span>
+                                  </span>
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -810,6 +962,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         if (data?.screens) setAllowedScreens(data.screens);
       })
       .catch(async (error) => {
+        if (axios.isAxiosError(error) && error.response?.status === 403) {
+          const payload = error.response.data as { message?: string | { code?: string; message?: string }; code?: string };
+          const message = typeof payload?.message === 'string'
+            ? payload.message
+            : payload?.message?.message;
+          const code = payload?.code ?? (typeof payload?.message === 'object' ? payload.message?.code : undefined);
+          if (code === 'AGREEMENTS_PENDING' || (typeof message === 'string' && message.includes('sözleşme'))) {
+            return;
+          }
+        }
         if (axios.isAxiosError(error) && error.response?.status === 401) {
           const refreshToken = localStorage.getItem('refreshToken');
           if (refreshToken) {
@@ -982,9 +1144,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, roleCode]);
 
+  useEffect(() => {
+    if (!loading && user?.mustChangePassword && pathname !== '/panel/profil') {
+      router.replace('/panel/profil');
+    }
+  }, [loading, user?.mustChangePassword, pathname, router]);
+
   const isPublicPanelPath = pathname === '/panel/profil';
+  const mustChangePassword = user?.mustChangePassword === true;
   const accessDenied =
-    !loading && !isPortalUser && !isPublicPanelPath && roleCode !== '' && !hasRouteAccess(pathname, roleCode);
+    !loading && !isPortalUser && !isPublicPanelPath && !mustChangePassword && roleCode !== '' && !hasRouteAccess(pathname, roleCode);
 
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
@@ -1012,15 +1181,33 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
     allowedScreens, companyLogo, companyName,
   };
-  const contextBackLink = getContextBackLink(pathname);
+  const contextBackLink = isSettingsPath(pathname) ? null : getContextBackLink(pathname);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem('panel-sidebar-collapsed') === 'true');
+    } catch {
+      /* localStorage kullanılamıyorsa varsayılan geniş menü */
+    }
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((value) => {
+      const next = !value;
+      try {
+        localStorage.setItem('panel-sidebar-collapsed', String(next));
+      } catch {
+        /* sessiz */
+      }
+      return next;
+    });
+  };
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-400">Yükleniyor...</p>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <RunningLightsText text="Oturum hazırlanıyor" size="lg" variant="emerald" />
       </div>
     );
   }
@@ -1053,6 +1240,20 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
+        <div className="flex min-h-0 flex-1">
+          <PanelSidebar
+            pathname={pathname}
+            roleCode={roleCode}
+            isPortalUser={isPortalUser}
+            isExpert={isExpert}
+            isInsuranceCompanyUser={isInsuranceCompanyUser}
+            pendingRevisionCount={pendingRevisionCount}
+            allowedScreens={allowedScreens}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={toggleSidebarCollapsed}
+            hidden={mustChangePassword}
+          />
+          <div className="min-w-0 flex-1">
         {agreementsChecked && pendingAgreements.length > 0 && (
           <AgreementConsentModal
             pendingAgreements={pendingAgreements}
@@ -1062,6 +1263,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <main className="flex-1">
           <div className="mx-auto max-w-screen-2xl px-4 py-6">
             <TopProgressBar />
+            <GlobalActivityStrip />
             {contextBackLink && (
               <Link
                 href={contextBackLink.href}
@@ -1074,6 +1276,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <ToastProvider>{children}</ToastProvider>
           </div>
         </main>
+          </div>
+        </div>
         <SessionTimeoutBar />
       </div>
       <ReactQueryDevtools initialIsOpen={false} />

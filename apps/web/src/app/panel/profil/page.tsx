@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -20,6 +21,7 @@ interface UserProfile {
   email: string;
   phone?: string | null;
   status: string;
+  mustChangePassword?: boolean;
   lastLoginAt?: string | null;
   createdAt: string;
   role?: { id: string; name: string; code: string } | null;
@@ -70,6 +72,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function ProfilPage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [acceptances, setAcceptances] = useState<AgreementAcceptance[]>([]);
@@ -136,15 +139,23 @@ export default function ProfilPage() {
 
     setPwdSaving(true);
     try {
-      await axios.patch(
-        `${API}/users/${profile?.id}`,
-        { password: newPassword, oldPassword },
+      const response = await axios.post(
+        `${API}/auth/change-password`,
+        { oldPassword, newPassword },
         { headers: authHeader() },
       );
+      const updatedUser = response.data?.data;
+      if (updatedUser) {
+        setProfile(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
       setPwdSuccess('Şifreniz başarıyla güncellendi.');
       setOldPassword('');
       setNewPassword('');
       setNewPasswordRepeat('');
+      if (updatedUser?.mustChangePassword === false) {
+        setTimeout(() => router.push('/panel'), 1200);
+      }
     } catch (err: any) {
       setPwdError(
         err.response?.data?.message ||
@@ -179,9 +190,18 @@ export default function ProfilPage() {
   }
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`;
+  const mustChangePassword = profile.mustChangePassword === true;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {mustChangePassword && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-900">İlk giriş — şifrenizi güncellemeniz gerekiyor</p>
+          <p className="mt-1 text-sm text-amber-800">
+            Size iletilen geçici şifreyle giriş yaptınız. Devam etmeden önce aşağıdan kalıcı bir şifre belirleyin.
+          </p>
+        </div>
+      )}
       {/* Profil başlık kartı */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <div className="flex items-center gap-5">
@@ -304,7 +324,7 @@ export default function ProfilPage() {
       </SectionCard>
 
       {/* Şifre Değiştir */}
-      <SectionCard title="Şifre Değiştir">
+      <SectionCard title={mustChangePassword ? 'Kalıcı Şifre Belirle' : 'Şifre Değiştir'}>
         <form onSubmit={handleChangePassword} className="space-y-4">
           {pwdError && (
             <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
@@ -489,7 +509,7 @@ export default function ProfilPage() {
                 Güncelleniyor...
               </span>
             ) : (
-              'Şifremi Güncelle'
+              mustChangePassword ? 'Kalıcı Şifremi Kaydet' : 'Şifremi Güncelle'
             )}
           </button>
         </form>
