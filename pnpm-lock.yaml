@@ -152,6 +152,9 @@ importers:
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
     devDependencies:
       '@nestjs/cli':
         specifier: ^10.3.0
