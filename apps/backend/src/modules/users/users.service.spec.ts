@@ -23,7 +23,15 @@ describe('UsersService', () => {
       log: jest.fn(),
     };
 
-    service = new UsersService(prisma, auditLogsService);
+    const emailService = {
+      sendTemplateEmail: jest.fn().mockResolvedValue({ sent: true }),
+    };
+
+    const config = {
+      get: jest.fn((_key: string, defaultValue?: string) => defaultValue),
+    };
+
+    service = new UsersService(prisma, auditLogsService, emailService as any, config as any);
   });
 
   describe('validateNestedUserRelations', () => {

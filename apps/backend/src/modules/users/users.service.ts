@@ -1,15 +1,54 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { ALL_SCREEN_CODES, SCREEN_LABELS, getDefaultScreensForRole } from './screen-permissions.defaults';
+
+function normalizeUserEmail(email: string): string {
+  return String(email ?? '').trim().toLowerCase();
+}
+
+function generateTemporaryPassword(length = 12): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#%';
+  const pool = `${upper}${lower}${digits}${symbols}`;
+  const chars = [
+    upper[randomInt(upper.length)],
+    lower[randomInt(lower.length)],
+    digits[randomInt(digits.length)],
+    symbols[randomInt(symbols.length)],
+  ];
+
+  while (chars.length < length) {
+    chars.push(pool[randomInt(pool.length)]);
+  }
+
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
+}
+
+const PROTECTED_SYSTEM_EMAILS = new Set([
+  'admin@example.com',
+  'admin@meridyenassistance.com',
+]);
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly emailService: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   async findAll(params?: { page?: number; limit?: number; roleId?: string; branchId?: string }) {
@@ -32,6 +71,28 @@ export class UsersService {
         include: {
           role: true,
           branch: true,
+          departmentMemberships: {
+            where: { isActive: true },
+            include: {
+              department: {
+                select: { id: true, code: true, name: true },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+          userInsuranceCompanyScopes: {
+            include: {
+              insuranceCompany: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+          serviceAreas: {
+            include: {
+              province: { select: { id: true, name: true, plateCode: true } },
+              district: { select: { id: true, name: true } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -83,8 +144,13 @@ export class UsersService {
   }
 
   async create(data: any) {
+    const normalizedEmail = normalizeUserEmail(data.email);
+    if (!normalizedEmail) {
+      throw new BadRequestException('Geçerli bir e-posta adresi girilmelidir');
+    }
+
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -94,17 +160,19 @@ export class UsersService {
     applyTitleCase(data, ['firstName', 'lastName']);
 
     const { password, departmentMemberships, responsibilityAssignments, serviceAreas, insuranceCompanyIds, ...rest } = data;
-    if (!password) {
-      throw new BadRequestException('Şifre zorunludur');
-    }
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const temporaryPassword = typeof password === 'string' && password.trim().length > 0
+      ? password.trim()
+      : generateTemporaryPassword();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
           ...rest,
+          email: normalizedEmail,
           passwordHash: hashedPassword,
+          status: rest.status ?? 'active',
         },
         include: {
           role: true,
@@ -165,7 +233,59 @@ export class UsersService {
     });
 
     const { passwordHash, ...result } = user;
-    return result;
+    const welcomeEmail = await this.sendWelcomeInviteEmail({
+      email: normalizedEmail,
+      firstName: result.firstName,
+      lastName: result.lastName,
+      temporaryPassword,
+    });
+
+    return {
+      ...result,
+      temporaryPassword,
+      welcomeEmail,
+    };
+  }
+
+  private async sendWelcomeInviteEmail(params: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    temporaryPassword: string;
+  }): Promise<{ sent: boolean; message: string }> {
+    const loginUrl = `${this.config.get<string>('APP_URL', 'http://localhost:3001')}/giris`;
+    const fullName = `${params.firstName} ${params.lastName}`.trim();
+
+    const result = await this.emailService.sendTemplateEmail(
+      params.email,
+      'Meridyen Assistance — Hesap Davetiniz',
+      {
+        title: 'Hesabınız Oluşturuldu',
+        preheader: 'Geçici şifrenizle sisteme giriş yapabilirsiniz.',
+        rows: [
+          { label: 'Ad Soyad', value: fullName || '—' },
+          { label: 'E-posta', value: params.email },
+          { label: 'Geçici Şifre', value: params.temporaryPassword },
+        ],
+        actionUrl: loginUrl,
+        actionLabel: 'Giriş Yap',
+        footerNote: 'Güvenliğiniz için ilk girişten sonra şifrenizi değiştirmeniz önerilir.',
+      },
+    );
+
+    if (!result.sent) {
+      return {
+        sent: false,
+        message: result.errorMsg
+          ? `Hoş geldin e-postası gönderilemedi: ${result.errorMsg} Geçici şifreyi kullanıcıya manuel iletin.`
+          : 'Hoş geldin e-postası gönderilemedi. Geçici şifreyi kullanıcıya manuel iletin.',
+      };
+    }
+
+    return {
+      sent: true,
+      message: 'Hoş geldin e-postası gönderildi.',
+    };
   }
 
   async update(id: string, data: any) {
@@ -174,63 +294,168 @@ export class UsersService {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (user.email === 'admin@example.com') {
+    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
       throw new BadRequestException('Sistem yöneticisi düzenlenemez');
     }
 
     applyTitleCase(data, ['firstName', 'lastName']);
 
-    if (data.password) {
-      data.passwordHash = await bcrypt.hash(data.password, 10);
-      delete data.password;
+    const {
+      password,
+      departmentMemberships,
+      responsibilityAssignments,
+      serviceAreas,
+      insuranceCompanyIds,
+      ...rest
+    } = data;
+    await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
+
+    const updateData: any = { ...rest };
+    if (password) {
+      updateData.passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const roleChanged = data.roleId !== undefined && data.roleId !== user.roleId;
-    const updateArgs: any = {
-      where: { id },
-      data,
-      include: {
-        role: true,
-        branch: true,
+    const roleChanged = updateData.roleId !== undefined && updateData.roleId !== user.roleId;
+    const hasNestedUpdates =
+      Array.isArray(departmentMemberships) ||
+      Array.isArray(responsibilityAssignments) ||
+      Array.isArray(serviceAreas) ||
+      Array.isArray(insuranceCompanyIds);
+
+    const include = {
+      role: true,
+      branch: true,
+      departmentMemberships: {
+        where: { isActive: true },
+        include: {
+          department: {
+            select: { id: true, code: true, name: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' as const },
+      },
+      userInsuranceCompanyScopes: {
+        include: {
+          insuranceCompany: {
+            select: { id: true, name: true },
+          },
+        },
+      },
+      serviceAreas: {
+        include: {
+          province: { select: { id: true, name: true, plateCode: true } },
+          district: { select: { id: true, name: true } },
+        },
       },
     };
+    const updateArgs: any = {
+      where: { id },
+      data: updateData,
+      include,
+    };
 
-    const updated = roleChanged
+    const updated = roleChanged || hasNestedUpdates
       ? await this.prisma.$transaction(async (tx) => {
-          await tx.screenPermission.deleteMany({ where: { userId: id } });
-          await tx.userServiceArea.deleteMany({ where: { userId: id } });
-          await tx.userDepartmentMembership.deleteMany({ where: { userId: id } });
-          await tx.claimResponsibilityAssignment.deleteMany({ where: { userId: id } });
+          if (roleChanged) {
+            await tx.screenPermission.deleteMany({ where: { userId: id } });
+          }
+          if (roleChanged || Array.isArray(serviceAreas)) {
+            await tx.userServiceArea.deleteMany({ where: { userId: id } });
+          }
+          if (roleChanged || Array.isArray(departmentMemberships)) {
+            await tx.userDepartmentMembership.deleteMany({ where: { userId: id } });
+          }
+          if (roleChanged || Array.isArray(responsibilityAssignments)) {
+            await tx.claimResponsibilityAssignment.deleteMany({ where: { userId: id } });
+          }
+          if (roleChanged || Array.isArray(insuranceCompanyIds)) {
+            await tx.userInsuranceCompanyScope.deleteMany({ where: { userId: id } });
+          }
 
-          this.auditLogsService.log({
-            entityType: 'User',
-            entityId: id,
-            action: 'ROLE_SWITCH_CLEANUP',
-            oldValue: { roleId: user.roleId },
-            newValue: { roleId: data.roleId },
-            userId: id,
-            userEmail: user.email,
-          });
+          if (roleChanged) {
+            this.auditLogsService.log({
+              entityType: 'User',
+              entityId: id,
+              action: 'ROLE_SWITCH_CLEANUP',
+              oldValue: { roleId: user.roleId },
+              newValue: { roleId: updateData.roleId },
+              userId: id,
+              userEmail: user.email,
+            });
+          }
 
-          return tx.user.update(updateArgs);
+          await tx.user.update(updateArgs);
+
+          if (Array.isArray(departmentMemberships) && departmentMemberships.length > 0) {
+            await tx.userDepartmentMembership.createMany({
+              data: departmentMemberships.map((item: any) => ({
+                userId: id,
+                departmentId: item.departmentId,
+                isPrimary: item.isPrimary === true,
+                roleScope: item.roleScope ?? null,
+                isActive: item.isActive ?? true,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          if (Array.isArray(responsibilityAssignments) && responsibilityAssignments.length > 0) {
+            await tx.claimResponsibilityAssignment.createMany({
+              data: responsibilityAssignments.map((item: any) => ({
+                userId: id,
+                departmentId: item.departmentId,
+                regionType: item.regionType ?? (item.countrywide === false ? 'city' : 'countrywide'),
+                regionValues: item.regionValues ?? [],
+                coverageType: item.coverageType ?? 'all',
+                coverageConfig: item.coverageConfig ?? {},
+                priority: typeof item.priority === 'number' ? item.priority : 0,
+                isActive: item.isActive ?? true,
+              })),
+            });
+          }
+
+          if (Array.isArray(serviceAreas)) {
+            if (serviceAreas.length > 0) {
+              await tx.userServiceArea.createMany({
+                data: serviceAreas.map((item: any) => ({
+                  userId: id,
+                  provinceId: item.provinceId,
+                  districtId: item.districtId ?? null,
+                })),
+                skipDuplicates: true,
+              });
+            }
+          }
+
+          if (Array.isArray(insuranceCompanyIds) && insuranceCompanyIds.length > 0) {
+            await tx.userInsuranceCompanyScope.createMany({
+              data: insuranceCompanyIds.map((insuranceCompanyId: string) => ({
+                userId: id,
+                insuranceCompanyId,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          return tx.user.findUnique({ where: { id }, include });
         })
       : await this.prisma.user.update(updateArgs);
 
-    if (data.roleId !== undefined || data.status !== undefined) {
+    const finalUpdated = updated ?? await this.prisma.user.findUnique({ where: { id } });
+    if (!finalUpdated) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    if (updateData.roleId !== undefined || updateData.status !== undefined) {
       this.auditLogsService.log({
         entityType: 'User',
         entityId: id,
         action: 'UPDATE',
         oldValue: { roleId: user.roleId, status: user.status },
-        newValue: { roleId: updated.roleId, status: updated.status },
+        newValue: { roleId: finalUpdated.roleId, status: finalUpdated.status },
         userId: id,
-        userEmail: updated.email,
+        userEmail: finalUpdated.email,
       });
-    }
-
-    const finalUpdated = updated ?? await this.prisma.user.findUnique({ where: { id } });
-    if (!finalUpdated) {
-      throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
     const { passwordHash, ...result } = finalUpdated;
@@ -268,13 +493,56 @@ export class UsersService {
     }
   }
 
+  async issueTemporaryPassword(id: string, actor?: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
+      throw new BadRequestException('Sistem yöneticisi için geçici şifre üretilemez');
+    }
+
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const issuedAt = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: { passwordHash },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: issuedAt },
+      });
+    });
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: id,
+      action: 'TEMPORARY_PASSWORD_ISSUED',
+      newValue: {
+        issuedForEmail: user.email,
+        issuedForRole: user.role?.code ?? null,
+      },
+      userId: actor?.id ?? actor?.userId ?? 'system',
+      userEmail: actor?.email ?? actor?.userEmail ?? 'system',
+    });
+
+    return { temporaryPassword };
+  }
+
   async remove(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (user.email === 'admin@example.com') {
+    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
       throw new BadRequestException('Sistem yöneticisi silinemez');
     }
 

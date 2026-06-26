@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Patch, Param, Delete, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Patch, Param, Delete, Query, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
@@ -93,6 +93,24 @@ export class UsersController {
       throw new BadRequestException('Kendi hesabınızı pasife alamazsınız');
     }
     const data = await this.usersService.update(id, updateUserDto);
+    return { success: true, data };
+  }
+
+  @Post(':id/temporary-password')
+  @RequirePermissions('user.update')
+  @ApiOperation({ summary: 'Mevcut kullanıcı için geçici şifre üret' })
+  async issueTemporaryPassword(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    const roleCode = String(currentUser?.roleCode ?? currentUser?.role?.code ?? '').toUpperCase();
+    if (roleCode !== 'ADMIN') {
+      throw new ForbiddenException('Geçici şifre yalnızca admin kullanıcı tarafından üretilebilir');
+    }
+    if ((currentUser?.id ?? currentUser?.userId) === id) {
+      throw new BadRequestException('Kendi hesabınız için geçici şifre üretemezsiniz');
+    }
+    const data = await this.usersService.issueTemporaryPassword(id, currentUser);
     return { success: true, data };
   }
 

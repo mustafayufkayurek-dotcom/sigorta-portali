@@ -2,7 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
+import { MailConfig } from '@/modules/system-settings/system-settings.service';
 import { buildEmailHtml, EmailTemplateData } from './email.template';
+
+export type EmailSendResult = {
+  sent: boolean;
+  errorMsg?: string;
+};
 
 @Injectable()
 export class EmailService {
@@ -14,42 +20,93 @@ export class EmailService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const host = this.config.get<string>('SMTP_HOST');
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
-
-    if (host && user && pass) {
+    if (this.isUsableSmtpConfig(
+      this.config.get<string>('SMTP_HOST'),
+      this.config.get<string>('SMTP_USER'),
+      this.config.get<string>('SMTP_PASS'),
+    )) {
       this.transporter = nodemailer.createTransport({
-        host,
+        host: this.config.get<string>('SMTP_HOST'),
         port: Number(this.config.get<string>('SMTP_PORT', '587')),
         secure: this.config.get<string>('SMTP_PORT', '587') === '465',
-        auth: { user, pass },
+        auth: {
+          user: this.config.get<string>('SMTP_USER'),
+          pass: this.config.get<string>('SMTP_PASS'),
+        },
       });
       this.smtpReady = true;
     } else {
-      this.logger.warn('SMTP ayarları eksik — email gönderimi devre dışı.');
+      this.logger.warn('SMTP env ayarları eksik veya örnek değer — DB mail_config yedek olarak denenecek.');
       this.smtpReady = false;
     }
   }
 
+  private isUsableSmtpConfig(host?: string, user?: string, pass?: string): boolean {
+    if (!host?.trim() || !user?.trim() || !pass?.trim()) return false;
+    if (host.trim().toLowerCase() === 'smtp.example.com') return false;
+    if (/@example\.com$/i.test(user.trim())) return false;
+    return true;
+  }
+
+  private buildTransporterFromMailConfig(config: MailConfig): nodemailer.Transporter {
+    const secure = config.security === 'SSL';
+    const transportOptions: nodemailer.TransportOptions = {
+      host: config.host,
+      port: config.port || 587,
+      secure,
+      auth: {
+        user: config.username,
+        pass: config.password,
+      },
+    } as nodemailer.TransportOptions;
+
+    if (config.security === 'TLS') {
+      (transportOptions as nodemailer.TransportOptions & { requireTLS?: boolean }).requireTLS = true;
+    }
+
+    return nodemailer.createTransport(transportOptions);
+  }
+
+  private async resolveMailTransport(): Promise<{ transporter: nodemailer.Transporter; from: string } | null> {
+    if (this.smtpReady && this.transporter) {
+      return {
+        transporter: this.transporter,
+        from: this.config.get<string>('SMTP_FROM', 'no-reply@meridyen.local'),
+      };
+    }
+
+    const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'mail_config' } });
+    const mailConfig = setting?.value as MailConfig | undefined;
+    if (!mailConfig || !this.isUsableSmtpConfig(mailConfig.host, mailConfig.username, mailConfig.password)) {
+      return null;
+    }
+
+    return {
+      transporter: this.buildTransporterFromMailConfig(mailConfig),
+      from: `"${mailConfig.fromName || 'Meridyen Assistance'}" <${mailConfig.fromEmail || mailConfig.username}>`,
+    };
+  }
+
   /** Ham HTML ile email gönder */
-  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+  async sendEmail(to: string, subject: string, html: string): Promise<EmailSendResult> {
     const logEntry = await this.prisma.emailLog.create({
       data: { to, subject, status: 'queued' },
     });
 
-    if (!this.smtpReady || !this.transporter) {
-      this.logger.warn(`Email kuyruğa alındı ama SMTP hazır değil — to: ${to}, subject: ${subject}`);
+    const transport = await this.resolveMailTransport();
+    if (!transport) {
+      const errorMsg = 'SMTP ayarları yapılandırılmamış. Ayarlar → Mail sekmesinden veya .env SMTP_* değişkenlerinden yapılandırın.';
+      this.logger.warn(`Email gönderilemedi (SMTP yok) → ${to} | ${subject}`);
       await this.prisma.emailLog.update({
         where: { id: logEntry.id },
-        data: { status: 'failed', errorMsg: 'SMTP ayarları yapılandırılmamış' },
+        data: { status: 'failed', errorMsg },
       });
-      return;
+      return { sent: false, errorMsg };
     }
 
     try {
-      await this.transporter.sendMail({
-        from: this.config.get<string>('SMTP_FROM', 'no-reply@sigorta.local'),
+      await transport.transporter.sendMail({
+        from: transport.from,
         to,
         subject,
         html,
@@ -59,13 +116,15 @@ export class EmailService {
         data: { status: 'sent', sentAt: new Date() },
       });
       this.logger.log(`Email gönderildi → ${to} | ${subject}`);
-    } catch (err: any) {
-      const errorMsg: string = err?.message ?? String(err);
+      return { sent: true };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       await this.prisma.emailLog.update({
         where: { id: logEntry.id },
         data: { status: 'failed', errorMsg },
       });
       this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
+      return { sent: false, errorMsg };
     }
   }
 
@@ -74,9 +133,9 @@ export class EmailService {
     to: string,
     subject: string,
     templateData: EmailTemplateData,
-  ): Promise<void> {
+  ): Promise<EmailSendResult> {
     const html = buildEmailHtml(templateData);
-    await this.sendEmail(to, subject, html);
+    return this.sendEmail(to, subject, html);
   }
 
   /** Kullanıcının email tercihini kontrol ederek gönder */
@@ -86,18 +145,17 @@ export class EmailService {
     to: string,
     subject: string,
     templateData: EmailTemplateData,
-  ): Promise<void> {
+  ): Promise<EmailSendResult> {
     const prefs = await this.prisma.userEmailPreferences.findUnique({
       where: { userId },
     });
 
-    // Varsayılan: tercih kaydı yoksa hepsi açık
-    const allowed = prefs ? (prefs as any)[preferenceKey] : true;
+    const allowed = prefs ? Boolean((prefs as any)[preferenceKey]) : true;
     if (!allowed) {
       this.logger.debug(`Email atlandı (tercih kapalı) → userId: ${userId}, pref: ${preferenceKey}`);
-      return;
+      return { sent: false, errorMsg: 'Kullanıcı e-posta tercihi kapalı.' };
     }
 
-    await this.sendTemplateEmail(to, subject, templateData);
+    return this.sendTemplateEmail(to, subject, templateData);
   }
 }

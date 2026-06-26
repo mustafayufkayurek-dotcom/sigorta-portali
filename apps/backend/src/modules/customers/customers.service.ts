@@ -117,6 +117,8 @@ export class CustomersService {
       type?: string;
       search?: string;
       customerType?: string;
+      subType?: string;
+      serviceType?: string;
       status?: string;
       tags?: string | string[];
       source?: string;
@@ -131,6 +133,17 @@ export class CustomersService {
     const where: Record<string, unknown> = {};
     if (params?.type) where.type = params.type;
     if (params?.customerType) (where as any).entityType = params.customerType;
+    if (params?.subType) (where as any).subType = params.subType;
+    if (params?.serviceType) {
+      const normalized = params.serviceType.trim().toLowerCase().replace(/-/g, '_');
+      if (normalized === 'acil_yardim') {
+        (where as any).serviceType = { in: ['acil_yardim', 'ACIL_YARDIM'] };
+      } else if (normalized === 'hasar') {
+        (where as any).serviceType = { in: ['hasar', 'HASAR'] };
+      } else {
+        (where as any).serviceType = params.serviceType;
+      }
+    }
     if (params?.status) (where as any).status = params.status;
     if (params?.source) (where as any).source = params.source;
 

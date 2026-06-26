@@ -117,7 +117,7 @@ export class ClaimResponsibilitiesService {
       if (a.coverageType === 'specific_subjects' && claimSubjectId) {
         const cfg = a.coverageConfig as any;
         const allowedSubjects = cfg?.claimSubjectIds ?? [];
-        if (!allowedSubjects.includes(claimSubjectId)) continue;
+        if (allowedSubjects.length > 0 && !allowedSubjects.includes(claimSubjectId)) continue;
       }
 
       // Region matching
