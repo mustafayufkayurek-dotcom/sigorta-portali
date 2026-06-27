@@ -1052,62 +1052,11 @@ function TabCard({ title, description, children }: { title: string; description:
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <button type="button" onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div className="px-6 py-5">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function ConfirmModal({ title, message, loading, onConfirm, onCancel, danger }: { title: string; message: string; loading: boolean; onConfirm: () => void; onCancel: () => void; danger?: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
-        <h3 className="text-base font-semibold text-slate-900 mb-2">{title}</h3>
-        <p className="text-sm text-slate-600 mb-5">{message}</p>
-        <div className="flex justify-end gap-2">
-          <CancelBtn onClick={onCancel} />
-          <button type="button" onClick={onConfirm} disabled={loading} className={`px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-            {loading ? 'İşleniyor...' : 'Onayla'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SaveBtn({ loading, onClick, label = 'Kaydet' }: { loading: boolean; onClick: () => void; label?: string }) {
   return (
     <button type="button" onClick={onClick} disabled={loading} className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2">
       {loading && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
       {loading ? 'Kaydediliyor...' : label}
-    </button>
-  );
-}
-
-function CancelBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-      İptal
-    </button>
-  );
-}
-
-function ActionBtn({ title, onClick, danger, children }: { title: string; onClick: () => void; danger?: boolean; children: React.ReactNode }) {
-  return (
-    <button type="button" title={title} onClick={onClick} className={`p-1.5 rounded-lg transition-colors ${danger ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
-      {children}
     </button>
   );
 }
@@ -1120,25 +1069,6 @@ function CardSkeleton() {
       <div className="grid grid-cols-2 gap-4">
         {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-lg dark:bg-slate-800" />)}
       </div>
-    </div>
-  );
-}
-
-function RowSkeleton() {
-  return (
-    <div className="space-y-2 animate-pulse">
-      {[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-lg" />)}
-    </div>
-  );
-}
-
-function EmptyState({ msg }: { msg: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-14 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-        <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0H4" /></svg>
-      </div>
-      <p className="text-sm text-slate-500">{msg}</p>
     </div>
   );
 }
