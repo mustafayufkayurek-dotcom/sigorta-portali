@@ -73,6 +73,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       });
     }
 
+    const payloadTooLarge =
+      exception instanceof Error &&
+      (exception.name === 'PayloadTooLargeError' || /entity too large/i.test(exception.message));
+    if (payloadTooLarge) {
+      return response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        message: 'İstek boyutu çok büyük. Logo için en fazla 5 MB kullanın.',
+        error: 'Payload Too Large',
+        path: request.url,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const error =
       exception instanceof Error
         ? exception

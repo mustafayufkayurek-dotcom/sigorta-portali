@@ -9,8 +9,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import axios from 'axios';
-import { Archive, Check, Copy, KeyRound, Loader2, Pencil, Plus, Search, UserCheck, X } from 'lucide-react';
+import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, UserCheck, X } from 'lucide-react';
+import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
 import { validateEmail } from '@/utils/validators';
@@ -123,7 +126,11 @@ function CredentialSuccessPanel({
         </div>
       </div>
 
-      <p className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-slate-700">
+      <p className={`mt-3 rounded-xl px-3 py-2 text-xs leading-5 ${
+        mailMessage?.toLowerCase().includes('gönderilemedi')
+          ? 'border border-amber-200 bg-amber-50 text-amber-900'
+          : 'bg-white/70 text-slate-700'
+      }`}>
         {mailMessage || 'Hoş geldin maili gönderimi denendi.'}
       </p>
 
@@ -288,6 +295,10 @@ function normalizeUserStatus(status?: string | null): UserStatus {
   return 'suspended';
 }
 
+function canReinviteByEmail(status: UserStatus): boolean {
+  return status === 'inactive' || status === 'archived';
+}
+
 function normalizeUser(user: User): User {
   return {
     ...user,
@@ -375,13 +386,30 @@ function Modal({
 }) {
   const isSuccess = variant === 'success';
   const widthClass = isSuccess || size === 'lg' ? 'max-w-3xl' : 'max-w-2xl';
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/35" onClick={onClose} />
-      <div className={`relative flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-xl shadow-xl ring-1 ring-slate-900/10 ${
-        isSuccess ? 'bg-emerald-50' : 'bg-white'
-      } ${widthClass}`}>
+  useEffect(() => {
+    setMounted(true);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`relative flex max-h-[calc(100vh-2rem)] w-full flex-col overflow-hidden rounded-xl shadow-2xl ring-1 ring-slate-900/10 ${
+          isSuccess ? 'bg-emerald-50' : 'bg-white'
+        } ${widthClass}`}
+      >
         <div className={`flex items-center justify-between px-6 py-4 ${
           isSuccess ? 'border-b border-emerald-200 bg-emerald-50' : 'border-b border-slate-200 bg-white'
         }`}>
@@ -401,7 +429,8 @@ function Modal({
         </div>
         <div className={`min-h-0 overflow-y-auto ${isSuccess ? 'p-0' : 'px-6 py-5'}`}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1184,18 +1213,23 @@ export default function KullanicilarPage() {
       }
 
       if (modal === 'add') {
-        const dupEmail = users.find((u) => u.email.toLowerCase() === form.email.toLowerCase());
-        if (dupEmail) {
-          if (normalizeUserStatus(dupEmail.status) === 'inactive') {
-            setInactiveDuplicateUser(dupEmail);
-            setFormError('Bu kullanıcı pasif durumda. Aynı e-posta ile yeni kullanıcı açılamaz; mevcut kullanıcıyı yeniden aktifleştirebilirsiniz.');
-          } else {
-            setFormError('Bu e-posta adresiyle aktif bir kullanıcı zaten mevcut!');
-          }
+        const normalizedEmail = form.email.trim().toLowerCase();
+        const dupEmail = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+        const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
+
+        if (dupStatus === 'active') {
+          setFormError('Bu e-posta adresiyle aktif bir kullanıcı zaten mevcut!');
           setSaving(false);
           return;
         }
-        payload.email = form.email.trim().toLowerCase();
+
+        if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {
+          setInactiveDuplicateUser(dupEmail);
+        } else {
+          setInactiveDuplicateUser(null);
+        }
+
+        payload.email = normalizedEmail;
         const response = await axios.post(
           `${API}/users`,
           payload,
@@ -1208,8 +1242,11 @@ export default function KullanicilarPage() {
           setCreatedCredential({
             email: created.email ?? payload.email,
             temporaryPassword: oneTimePassword,
-            mailMessage,
+            mailMessage: created?.reinvited
+              ? `${mailMessage} Pasif/arşiv kullanıcı yeniden davet edildi.`
+              : mailMessage,
           });
+          setInactiveDuplicateUser(null);
           await loadUsers();
           return;
         } else {
@@ -1410,6 +1447,12 @@ export default function KullanicilarPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/panel/ayarlar"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-700"
+      >
+        ← Ayarlar
+      </Link>
       {/* Başlık */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1521,10 +1564,7 @@ export default function KullanicilarPage() {
       {/* Tablo */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
-          <div className="py-16 text-center text-sm text-slate-500">
-            <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-blue-500" />
-            Yükleniyor...
-          </div>
+          <PageLoadingState text="Kullanıcılar yükleniyor" compact />
         ) : filtered.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-sm font-medium text-slate-700">
@@ -1820,10 +1860,10 @@ export default function KullanicilarPage() {
 
             {inactiveDuplicateUser && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
-                <p className="font-semibold">Pasif kullanıcı bulundu</p>
+                <p className="font-semibold">Pasif veya arşiv kullanıcı bulundu</p>
                 <p className="mt-1 text-xs leading-5 text-amber-800">
-                  {inactiveDuplicateUser.firstName} {inactiveDuplicateUser.lastName} kullanıcısı bu e-posta ile arşivde tutuluyor.
-                  Aynı e-posta ile yeni kullanıcı açmak yerine kullanıcıyı aktifleştirip rol, kapsam ve geçici şifre adımlarını güncelleyebilirsiniz.
+                  {inactiveDuplicateUser.firstName} {inactiveDuplicateUser.lastName} bu e-posta ile kayıtlı.
+                  Davet Gönder ile aynı e-posta yeniden aktifleştirilir; yeni geçici şifre üretilir.
                 </p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <button

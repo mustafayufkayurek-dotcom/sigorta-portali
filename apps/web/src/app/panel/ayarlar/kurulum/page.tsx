@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { toTitleCaseTR, sanitizeCode } from '@/utils/text-helpers';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,28 +107,13 @@ function applyThemePreference(nextTheme: ThemeConfig) {
   } catch { /* ignore */ }
 }
 
-interface Role {
-  id: string;
-  name: string;
-  code: string;
-  description?: string | null;
-  _count?: { users: number };
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 const inputCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
 const labelCls = 'block text-xs font-semibold text-slate-600 mb-1 dark:text-slate-400';
 
-// ── Tab definitions ──────────────────────────────────────────────────────────
-
-type TabId = 'genel' | 'kullanicilar' | 'roller' | 'alan-zorunluluklari' | 'mail' | 'sms' | 'uyari-sinyalizasyon' | 'entegrasyonlar' | 'sistem';
+type TabId = 'genel' | 'mail' | 'sms' | 'uyari-sinyalizasyon' | 'entegrasyonlar' | 'sistem';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: 'genel',              label: 'Genel Bilgiler',     icon: '🏢' },
-  { id: 'kullanicilar',       label: 'Kullanıcılar',       icon: '👥' },
-  { id: 'roller',             label: 'Roller',             icon: '🔐' },
-  { id: 'alan-zorunluluklari',label: 'Alan Zorunlulukları',icon: '📋' },
+  { id: 'genel',              label: 'Tema ve Logo',       icon: '🎨' },
   { id: 'mail',               label: 'Mail Kurulum',       icon: '✉️' },
   { id: 'sms',                label: 'SMS Bildirimleri',   icon: '📱' },
   { id: 'uyari-sinyalizasyon',label: 'Uyarı ve Sinyalizasyon', icon: '🔔' },
@@ -144,16 +129,21 @@ export default function KurulumPage() {
   const [activeTab, setActiveTab] = useState<TabId>('genel');
 
   useEffect(() => {
-    if (searchParams.get('tab') === 'kullanicilar') {
+    const legacyTab = searchParams.get('tab');
+    if (legacyTab === 'kullanicilar') {
       router.replace('/panel/kullanicilar');
+      return;
+    }
+    if (legacyTab === 'roller') {
+      router.replace('/panel/ayarlar/roller');
+      return;
+    }
+    if (legacyTab === 'alan-zorunluluklari') {
+      router.replace('/panel/ayarlar/alan-zorunluluklari');
     }
   }, [router, searchParams]);
 
   const selectTab = (tabId: TabId) => {
-    if (tabId === 'kullanicilar') {
-      router.push('/panel/kullanicilar');
-      return;
-    }
     setActiveTab(tabId);
   };
 
@@ -178,7 +168,7 @@ export default function KurulumPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Geri
+            ← Ayarlar
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Kurulum Sihirbazı</h1>
           <p className="text-sm text-slate-500 mt-1">Sistem ayarlarını yapılandırın ve yönetin.</p>
@@ -208,8 +198,6 @@ export default function KurulumPage() {
         {/* Content */}
         <div>
           {activeTab === 'genel'               && <GenelBilgilerTab />}
-          {activeTab === 'roller'               && <RollerTab />}
-          {activeTab === 'alan-zorunluluklari'  && <AlanZorunluluklariTab />}
           {activeTab === 'mail'                 && <MailTab />}
           {activeTab === 'sms'                  && <SmsTab />}
           {activeTab === 'uyari-sinyalizasyon'  && <UyariSinyalizasyonTab />}
@@ -269,22 +257,36 @@ function GenelBilgilerTab() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Şirket adı zorunludur.'); return; }
     setSaving(true); setError(''); setSuccess('');
     try {
-      await axios.put(`${API}/system-settings/company-info`, form, { headers: authHeader() });
-      setSuccess('Şirket bilgileri kaydedildi.');
+      await axios.put(
+        `${API}/system-settings/company-info`,
+        { logoUrl: form.logoUrl ?? '' },
+        { headers: authHeader() },
+      );
+      setSuccess('Logo kaydedildi.');
       setTimeout(() => setSuccess(''), 3000);
-    } catch { setError('Kayıt sırasında hata oluştu.'); }
-    finally { setSaving(false); }
+    } catch {
+      setError('Kayıt sırasında hata oluştu. Dosya boyutu 5 MB\'ı geçmemelidir.');
+    } finally { setSaving(false); }
   };
 
   if (loading) return <CardSkeleton />;
 
   return (
-    <TabCard title="Genel Bilgiler" description="Şirket bilgileri KVKK/gizlilik sözleşmelerine otomatik yansır. Bordro işvereni tanımlandığında ilgili bilgilendirme maddesi eklenir.">
+    <TabCard title="Tema ve Logo" description="Şirket logosu panelde ve belgelerde kullanılır. Unvan, vergi, KVKK ve sözleşme alanları Şirket Bilgileri sayfasındadır.">
       {error && <ErrorAlert msg={error} onClose={() => setError('')} />}
       {success && <SuccessAlert msg={success} />}
+
+      <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-800">
+        Şirket unvanı, vergi no, KVKK e-postası ve Safran bilgileri için{' '}
+        <Link href="/panel/ayarlar/sirket-bilgileri" className="font-semibold underline">Şirket Bilgileri</Link>
+        {' '}sayfasını kullanın. Kullanıcı ve rol yönetimi{' '}
+        <Link href="/panel/kullanicilar" className="font-semibold underline">Kullanıcılar</Link>
+        {' '}ve{' '}
+        <Link href="/panel/ayarlar/roller" className="font-semibold underline">Roller</Link>
+        {' '}sayfalarındadır.
+      </div>
 
       {/* Logo Upload */}
       <div className="mb-6">
@@ -332,226 +334,8 @@ function GenelBilgilerTab() {
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileChange(f); }} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          <label className={labelCls}>Şirket Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-          <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Meridyen Assistance Ltd. Şti." />
-        </div>
-        <div>
-          <label className={labelCls}>Telefon</label>
-          <input className={inputCls} value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+90 212 000 00 00" />
-        </div>
-        <div>
-          <label className={labelCls}>E-posta</label>
-          <input className={inputCls} type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="info@sirket.com" />
-        </div>
-        <div>
-          <label className={labelCls}>Vergi No</label>
-          <input className={inputCls} value={form.taxNumber ?? ''} onChange={(e) => setForm({ ...form, taxNumber: e.target.value })} placeholder="1234567890" />
-        </div>
-        <div>
-          <label className={labelCls}>Ticaret Sicil No</label>
-          <input className={inputCls} value={form.tradeRegistryNo ?? ''} onChange={(e) => setForm({ ...form, tradeRegistryNo: e.target.value })} placeholder="12345" />
-        </div>
-        <div className="md:col-span-2">
-          <label className={labelCls}>Adres</label>
-          <textarea className={inputCls} rows={2} value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Şirket adresi" />
-        </div>
-        <div>
-          <label className={labelCls}>Web Sitesi</label>
-          <input className={inputCls} value={form.website ?? ''} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://www.sirket.com" />
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-        Vergi no, adres, KVKK e-postası ve Safran (bordro işvereni) bilgileri için{' '}
-        <Link href="/panel/ayarlar/sirket-bilgileri" className="font-semibold text-blue-600 hover:underline">Ayarlar → Şirket Bilgileri</Link>
-        {' '}sayfasını kullanın.
-      </div>
       <div className="mt-6 flex justify-end">
-        <SaveBtn loading={saving} onClick={handleSave} />
-      </div>
-    </TabCard>
-  );
-}
-
-// ── Tab: Roller ───────────────────────────────────────────────────────────────
-
-function RollerTab() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<Role | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', description: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const fetchRoles = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API}/roles`, { headers: authHeader() });
-      setRoles(res.data.data ?? []);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchRoles(); }, [fetchRoles]);
-
-  const filtered = roles.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.code.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const openCreate = () => { setEditing(null); setForm({ name: '', code: '', description: '' }); setError(''); setShowModal(true); };
-  const openEdit = (r: Role) => { setEditing(r); setForm({ name: r.name, code: r.code, description: r.description ?? '' }); setError(''); setShowModal(true); };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) { setError('Rol adı zorunludur.'); return; }
-    if (!form.code.trim()) { setError('Kod zorunludur.'); return; }
-    if (!/^[A-Z_]+$/.test(form.code)) { setError('Kod yalnızca büyük harf ve alt çizgi (_) içerebilir.'); return; }
-    const dupName = roles.find(r => r.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || r.id !== editing.id));
-    if (dupName) { setError('Bu isimde bir rol zaten mevcut.'); return; }
-    const dupCode = roles.find(r => r.code.trim().toUpperCase() === form.code.trim().toUpperCase() && (!editing || r.id !== editing.id));
-    if (dupCode) { setError('Bu kodda bir rol zaten mevcut.'); return; }
-    setSaving(true); setError('');
-    try {
-      if (editing) {
-        await axios.put(`${API}/roles/${editing.id}`, form, { headers: authHeader() });
-      } else {
-        await axios.post(`${API}/roles`, form, { headers: authHeader() });
-      }
-      setShowModal(false);
-      fetchRoles();
-    } catch (e: any) {
-      setError(e.response?.data?.message ?? 'İşlem başarısız.');
-    } finally { setSaving(false); }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      await axios.delete(`${API}/roles/${deleteTarget.id}`, { headers: authHeader() });
-      setDeleteTarget(null);
-      fetchRoles();
-    } catch { /* ignore */ }
-    finally { setDeleting(false); }
-  };
-
-  return (
-    <TabCard title="Roller" description="Sistem rollerini ve izinleri yönetin.">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <input className={`${inputCls} max-w-xs`} placeholder="Rol ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        <button type="button" onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Yeni Rol
-        </button>
-      </div>
-
-      {loading ? <RowSkeleton /> : filtered.length === 0 ? (
-        <EmptyState msg={search ? 'Arama sonucu bulunamadı.' : 'Henüz rol tanımlanmamış.'} />
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-              <tr>
-                <th className="text-left px-5 py-3">Rol Adı</th>
-                <th className="text-left px-5 py-3">Kod</th>
-                <th className="text-left px-5 py-3 hidden md:table-cell">Açıklama</th>
-                <th className="text-center px-5 py-3 hidden lg:table-cell">Kullanıcı</th>
-                <th className="px-5 py-3 w-24"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-5 py-3 font-medium text-slate-800">{r.name}</td>
-                  <td className="px-5 py-3 font-mono text-xs text-slate-500 bg-slate-50/50">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600">{r.code}</span>
-                  </td>
-                  <td className="px-5 py-3 text-slate-500 hidden md:table-cell">{r.description ?? '—'}</td>
-                  <td className="px-5 py-3 text-center hidden lg:table-cell">
-                    <span className="text-xs font-medium text-slate-600">{r._count?.users ?? 0}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <ActionBtn title="Düzenle" onClick={() => openEdit(r)}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </ActionBtn>
-                      <ActionBtn title="Sil" danger onClick={() => setDeleteTarget(r)}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </ActionBtn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {showModal && (
-        <Modal title={editing ? 'Rolü Düzenle' : 'Yeni Rol'} onClose={() => setShowModal(false)}>
-          {error && <ErrorAlert msg={error} onClose={() => setError('')} />}
-          <div className="space-y-3">
-            <div>
-              <label className={labelCls}>Rol Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div>
-              <label className={labelCls}>Kod <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu — büyük harf ve _ )</span></label>
-              <input
-                className={`${inputCls} font-mono uppercase`}
-                value={form.code}
-                onChange={(e) => setForm(p => ({ ...p, code: sanitizeCode(e.target.value) }))}
-                onInput={(e) => { const t = e.currentTarget; t.value = sanitizeCode(t.value); }}
-                placeholder="ADMIN_ROLE"
-              />
-              <p className="text-xs text-slate-400 mt-1">Sadece büyük İngilizce harf, rakam ve alt çizgi (_) kullanın</p>
-            </div>
-            <div>
-              <label className={labelCls}>Açıklama</label>
-              <input className={inputCls} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-5">
-            <CancelBtn onClick={() => setShowModal(false)} />
-            <SaveBtn loading={saving} onClick={handleSave} />
-          </div>
-        </Modal>
-      )}
-
-      {deleteTarget && (
-        <ConfirmModal
-          title="Rolü Sil"
-          message={`"${deleteTarget.name}" rolünü silmek istediğinize emin misiniz?`}
-          loading={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
-          danger
-        />
-      )}
-    </TabCard>
-  );
-}
-
-// ── Tab: Alan Zorunlulukları (Gömülü redirect) ────────────────────────────────
-
-function AlanZorunluluklariTab() {
-  return (
-    <TabCard title="Alan Zorunlulukları" description="Form alanlarının zorunluluk durumlarını yapılandırın.">
-      <div className="py-4">
-        <p className="text-sm text-slate-600 mb-4">Alan zorunlulukları, form doldurma sırasında hangi alanların zorunlu olduğunu belirler.</p>
-        <a
-          href="/panel/ayarlar/alan-zorunluluklari"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Alan Zorunlulukları Sayfasını Aç
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-        </a>
+        <SaveBtn loading={saving} onClick={handleSave} label="Logoyu Kaydet" />
       </div>
     </TabCard>
   );

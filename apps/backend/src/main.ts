@@ -19,7 +19,12 @@ if (process.env.SENTRY_DSN) {
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log'],
+    bodyParser: true,
   });
+
+  // Logo (base64) gibi ayar kayıtları için varsayılan 100kb limitini yükselt
+  app.useBodyParser('json', { limit: '5mb' });
+  app.useBodyParser('urlencoded', { limit: '5mb', extended: true });
 
   // Static file serving for uploads
   app.useStaticAssets(join(process.cwd(), 'uploads'), {

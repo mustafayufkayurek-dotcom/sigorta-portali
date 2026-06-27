@@ -761,9 +761,11 @@ export class SystemSettingsService {
     return { ...DEFAULT_COMPANY_INFO, ...(value as Partial<CompanyInfo> ?? {}) };
   }
 
-  async setCompanyInfo(info: CompanyInfo): Promise<CompanyInfo> {
-    await this.set('company_info', info);
-    return info;
+  async setCompanyInfo(info: Partial<CompanyInfo>): Promise<CompanyInfo> {
+    const current = await this.getCompanyInfo();
+    const updated: CompanyInfo = { ...current, ...info };
+    await this.set('company_info', updated);
+    return updated;
   }
 
   // ── System Config ──────────────────────────────────────────────────────────

@@ -21,23 +21,21 @@ export function SettingsPageLayout({
   onAdd,
   children,
   headerExtra,
-  backHref,
-  backText = '← Geri',
+  backHref = '/panel/ayarlar',
+  backText = '← Ayarlar',
 }: SettingsPageLayoutProps) {
-  const effectiveBackHref = backHref ?? '/panel/ayarlar';
-
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          {effectiveBackHref && (
+          {backHref ? (
             <Link
-              href={effectiveBackHref}
+              href={backHref}
               className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
             >
               {backText}
             </Link>
-          )}
+          ) : null}
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
           {description && (
             <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{description}</p>

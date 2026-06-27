@@ -73,12 +73,20 @@ export default function SirketBilgileriPage() {
   async function handleSave() {
     if (!form.name.trim()) { setError('Operasyon şirketi adı zorunludur.'); return; }
     setSaving(true); setError(''); setSuccess('');
+    const { logoUrl: _logo, ...payload } = form;
     try {
-      await axios.put(`${API}/system-settings/company-info`, form, { headers: authHeader() });
+      await axios.put(`${API}/system-settings/company-info`, payload, { headers: authHeader() });
       setSuccess('Şirket bilgileri kaydedildi. KVKK/gizlilik metinleri bir sonraki girişte güncellenmiş içerikle sunulur.');
       setTimeout(() => setSuccess(''), 4000);
-    } catch {
-      setError('Kayıt sırasında hata oluştu.');
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status === 413) {
+        setError('Kayıt boyutu çok büyük. Logo için Kurulum sayfasını kullanın.');
+      } else if (status === 403) {
+        setError('Bu işlem için ayar yönetimi yetkisi gerekir.');
+      } else {
+        setError('Kayıt sırasında hata oluştu.');
+      }
     } finally {
       setSaving(false);
     }

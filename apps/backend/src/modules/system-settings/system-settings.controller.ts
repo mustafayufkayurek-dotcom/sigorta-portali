@@ -401,7 +401,7 @@ export class SystemSettingsController {
   @Put('company-info')
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Şirket bilgilerini güncelle' })
-  async setCompanyInfo(@Body() body: CompanyInfo) {
+  async setCompanyInfo(@Body() body: Partial<CompanyInfo>) {
     const data = await this.service.setCompanyInfo(body);
     return { success: true, data };
   }

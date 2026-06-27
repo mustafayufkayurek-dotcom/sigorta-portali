@@ -221,9 +221,12 @@ interface NavigationGroup {
 
 const SETTINGS_NAV_GROUPS: NavigationGroup[] = [
   {
-    title: 'Kullanıcı ve Yetki',
+    title: 'Kurulum ve Yetki',
     icon: UserCog,
     links: [
+      { title: 'Ayarlar Ana Sayfa', href: '/panel/ayarlar', icon: Settings },
+      { title: 'Kurulum', href: '/panel/ayarlar/kurulum', icon: Settings },
+      { title: 'Şirket Bilgileri', href: '/panel/ayarlar/sirket-bilgileri', icon: Building2 },
       { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users },
       { title: 'Roller', href: '/panel/ayarlar/roller', icon: ShieldCheck },
     ],
@@ -324,7 +327,6 @@ function getPanelMainLinks({
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
           { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
           { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog },
-          { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
           { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
           { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -668,12 +670,7 @@ interface PanelSidebarProps {
 }
 
 function isSettingsPath(pathname: string) {
-  return (
-    pathname === '/panel/ayarlar' ||
-    pathname.startsWith('/panel/ayarlar/') ||
-    pathname === '/panel/kullanicilar' ||
-    pathname.startsWith('/panel/kullanicilar/')
-  );
+  return pathname === '/panel/ayarlar' || pathname.startsWith('/panel/ayarlar/');
 }
 
 function PanelSidebar({
@@ -757,7 +754,7 @@ function PanelSidebar({
             <Link
               key={link.href}
               href={link.href}
-              className={linkClass(link.href, false, link.href === '/panel/kullanicilar' ? isSettingsActive : undefined)}
+              className={linkClass(link.href)}
               title={collapsed ? link.title : undefined}
             >
               <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
