@@ -161,6 +161,7 @@ assert_status_and_body "GET /api/v1/health returns 200 and status ok" "200" "/ap
 assert_status_and_body "GET /giris returns 200" "200" "/giris"
 
 LOGIN_PAYLOAD=$(printf '{"email":"%s","password":"%s"}' "$LOGIN_EMAIL" "$LOGIN_PASSWORD")
+ACCESS_TOKEN=""
 
 if curl_capture "POST" "/api/v1/auth/login" "$LOGIN_PAYLOAD" && { [ "$CURL_CAPTURE_STATUS" = "200" ] || [ "$CURL_CAPTURE_STATUS" = "201" ]; }; then
   ACCESS_TOKEN="$(extract_access_token "$CURL_CAPTURE_BODY")"
@@ -170,13 +171,15 @@ if curl_capture "POST" "/api/v1/auth/login" "$LOGIN_PAYLOAD" && { [ "$CURL_CAPTU
     fail "POST /api/v1/auth/login returns success and access token"
   fi
 else
-  fail "POST /api/v1/auth/login returns success and access token"
+  fail "POST /api/v1/auth/login returns success and access token (LOGIN_EMAIL/LOGIN_PASSWORD kontrol edin)"
 fi
 
-assert_auth_json "GET /api/v1/claim-files returns 200 and data array" "/api/v1/claim-files" "200" '"data":[' "$ACCESS_TOKEN"
-assert_auth_json "GET /api/v1/dashboard/ownership-load returns 200" "/api/v1/dashboard/ownership-load" "200" "" "$ACCESS_TOKEN"
-assert_auth_json "GET /api/v1/dashboard/pending-actions returns 200" "/api/v1/dashboard/pending-actions" "200" "" "$ACCESS_TOKEN"
-assert_auth_json "GET /api/v1/finance/overhead/entries returns 200" "/api/v1/finance/overhead/entries" "200" "" "$ACCESS_TOKEN"
+if [ -n "$ACCESS_TOKEN" ]; then
+  assert_auth_json "GET /api/v1/claim-files returns 200 and data array" "/api/v1/claim-files" "200" '"data":[' "$ACCESS_TOKEN"
+  assert_auth_json "GET /api/v1/dashboard/ownership-load returns 200" "/api/v1/dashboard/ownership-load" "200" "" "$ACCESS_TOKEN"
+  assert_auth_json "GET /api/v1/dashboard/pending-actions returns 200" "/api/v1/dashboard/pending-actions" "200" "" "$ACCESS_TOKEN"
+  assert_auth_json "GET /api/v1/finance/overhead/entries returns 200" "/api/v1/finance/overhead/entries" "200" "" "$ACCESS_TOKEN"
+fi
 
 assert_frontend_route "GET /panel returns 200" "/panel"
 assert_frontend_route "GET /panel/hasar-dosyalari returns 200" "/panel/hasar-dosyalari"
