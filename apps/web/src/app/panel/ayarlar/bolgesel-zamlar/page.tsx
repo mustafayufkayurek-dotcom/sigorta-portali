@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import {
   SettingsTable,
   SettingsTableHead,
@@ -209,6 +210,8 @@ export default function BolgeselZamlarPage() {
     <SettingsPageLayout
       title="Bölgesel Zamlar"
       description="Türkiye bölgelerine göre yüzdelik zam oranı tanımlayın. Zam uygulandığında: baz fiyat × (1 + zam oranı) = nihai fiyat."
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
 
@@ -288,7 +291,6 @@ export default function BolgeselZamlarPage() {
             <SettingsTable>
               <SettingsTableHead>
                 <SettingsTableTh>Bölge</SettingsTableTh>
-                <SettingsTableTh>Kod</SettingsTableTh>
                 <SettingsTableTh>Mevcut Zam Oranı</SettingsTableTh>
                 <SettingsTableTh>Son Geçerlilik Tarihi</SettingsTableTh>
                 <SettingsTableTh>İşlemler</SettingsTableTh>
@@ -300,9 +302,6 @@ export default function BolgeselZamlarPage() {
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${REGION_COLORS[r.code] ?? 'bg-slate-100 text-slate-700'}`}>
                         {r.name}
                       </span>
-                    </SettingsTableTd>
-                    <SettingsTableTd>
-                      <span className="text-xs font-mono text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">{r.code}</span>
                     </SettingsTableTd>
                     <SettingsTableTd>
                       {r.latestAdjustment ? (

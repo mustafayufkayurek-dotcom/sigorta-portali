@@ -4,11 +4,8 @@ import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
   return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });

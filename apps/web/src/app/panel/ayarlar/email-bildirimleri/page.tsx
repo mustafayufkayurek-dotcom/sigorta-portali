@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { sanitizeHtml } from '@/utils/sanitize-html';
 import {
@@ -20,10 +21,6 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 const TRIGGER_EVENTS = [
   { value: 'file_opened', label: 'Dosya Açıldı' },

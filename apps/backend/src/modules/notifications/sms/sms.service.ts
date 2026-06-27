@@ -2,6 +2,8 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ISmsProvider, SMS_PROVIDER } from './sms-provider.interface';
 import { ConfigService } from '@nestjs/config';
+import { SmsConfig } from '@/modules/system-settings/system-settings.service';
+import { resolveDbSmsProvider, resolveEnvSmsProvider } from './sms-provider.resolver';
 
 export type SmsNotificationType = 'appointment_sms' | 'appointment_whatsapp' | 'claim_assignment';
 
@@ -18,6 +20,28 @@ export class SmsService {
     this.providerName = this.config.get<string>('SMS_PROVIDER', 'console');
   }
 
+  private async resolveSmsProvider(): Promise<{ provider: ISmsProvider; name: string }> {
+    const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'sms_config' } });
+    const dbConfig = setting?.value as SmsConfig | undefined;
+    const fromDb = resolveDbSmsProvider(dbConfig ?? null);
+    if (fromDb) {
+      return fromDb;
+    }
+
+    const fromEnv = resolveEnvSmsProvider(this.config);
+    if (fromEnv.name !== 'console') {
+      return fromEnv;
+    }
+
+    return { provider: this.smsProvider, name: this.providerName };
+  }
+
+  private async sendViaResolvedProvider(to: string, message: string): Promise<string> {
+    const resolved = await this.resolveSmsProvider();
+    await resolved.provider.send(to, message);
+    return resolved.name;
+  }
+
   async send(
     userId: string,
     to: string,
@@ -25,7 +49,7 @@ export class SmsService {
     type: SmsNotificationType,
     relatedEntityId?: string,
   ): Promise<void> {
-    await this.smsProvider.send(to, message);
+    await this.sendViaResolvedProvider(to, message);
 
     await this.prisma.notification.create({
       data: {
@@ -60,7 +84,8 @@ export class SmsService {
     };
 
     try {
-      await this.smsProvider.send(to, templateContent);
+      const providerName = await this.sendViaResolvedProvider(to, templateContent);
+      logData.provider = providerName;
 
       await this.prisma.smsLog.create({
         data: {
@@ -90,13 +115,13 @@ export class SmsService {
    */
   async sendTestSms(to: string, message: string): Promise<{ success: boolean; error?: string }> {
     try {
-      await this.smsProvider.send(to, message);
+      const providerName = await this.sendViaResolvedProvider(to, message);
 
       await this.prisma.smsLog.create({
         data: {
           to,
           message,
-          provider: this.providerName,
+          provider: providerName,
           status: 'sent',
           sentAt: new Date(),
         },
@@ -104,11 +129,12 @@ export class SmsService {
 
       return { success: true };
     } catch (err: any) {
+      const resolved = await this.resolveSmsProvider();
       await this.prisma.smsLog.create({
         data: {
           to,
           message,
-          provider: this.providerName,
+          provider: resolved.name,
           status: 'failed',
           errorMsg: err?.message ?? 'Bilinmeyen hata',
         },

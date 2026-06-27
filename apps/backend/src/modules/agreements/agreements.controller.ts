@@ -23,34 +23,34 @@ export class AgreementsController {
   @RequirePermissions('agreement.manage')
   async findAll() {
     const data = await this.service.findAll();
-    return { data };
+    return { success: true, data };
   }
 
   // Aktif sözleşmeleri listele (herkes erişebilir)
   @Get('agreements/active')
   async findActive() {
     const data = await this.service.findActive();
-    return { data };
+    return { success: true, data };
   }
 
   // Mevcut kullanıcının onaylaması gereken sözleşmeler
   @Get('agreements/pending')
   async getPending(@CurrentUser() user: any) {
     const data = await this.service.getPendingForUser(resolveUserId(user));
-    return { data };
+    return { success: true, data };
   }
 
   // Mevcut kullanıcının kabul ettiği sözleşmeler
   @Get('agreements/my-acceptances')
   async myAcceptances(@CurrentUser() user: any) {
     const data = await this.service.getUserAcceptances(resolveUserId(user));
-    return { data };
+    return { success: true, data };
   }
 
   @Get('agreements/:id')
   async findOne(@Param('id') id: string) {
     const data = await this.service.findOne(id);
-    return { data };
+    return { success: true, data };
   }
 
   // Sözleşmeyi kabul etmiş kullanıcılar (admin)
@@ -58,14 +58,14 @@ export class AgreementsController {
   @RequirePermissions('agreement.manage')
   async getAcceptances(@Param('id') id: string) {
     const data = await this.service.getAcceptances(id);
-    return { data };
+    return { success: true, data };
   }
 
   @Post('agreements')
   @RequirePermissions('agreement.manage')
   async create(@Body() dto: CreateAgreementDto) {
     const data = await this.service.create(dto);
-    return { data };
+    return { success: true, data };
   }
 
   // Sözleşmeyi onayla
@@ -83,14 +83,14 @@ export class AgreementsController {
       userAgent,
       user?.email ?? null,
     );
-    return { data };
+    return { success: true, data };
   }
 
   @Patch('agreements/:id')
   @RequirePermissions('agreement.manage')
   async update(@Param('id') id: string, @Body() dto: UpdateAgreementDto) {
     const data = await this.service.update(id, dto);
-    return { data };
+    return { success: true, data };
   }
 
   @Delete('agreements/:id')

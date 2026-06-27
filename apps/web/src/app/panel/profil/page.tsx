@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import AgreementConsentModal from '@/components/AgreementConsentModal';
+import { apiClient } from '@/lib/api-client';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -43,6 +45,25 @@ interface AgreementAcceptance {
   };
 }
 
+interface PendingAgreement {
+  id: string;
+  title: string;
+  type: string;
+  version: string;
+}
+
+function normalizePendingAgreements(raw: unknown): PendingAgreement[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)) {
+    return (raw as { data: PendingAgreement[] }).data;
+  }
+  return [];
+}
+
+function isStaleAcceptance(acc: AgreementAcceptance): boolean {
+  return !acc.contentHash || !acc.acceptedVersion;
+}
+
 function fmtDate(d?: string | null) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('tr-TR', {
@@ -79,6 +100,29 @@ export default function ProfilPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [acceptances, setAcceptances] = useState<AgreementAcceptance[]>([]);
+  const [pendingAgreements, setPendingAgreements] = useState<PendingAgreement[]>([]);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+
+  const loadAcceptances = useCallback(async () => {
+    try {
+      const rows = await apiClient.get<AgreementAcceptance[]>('/agreements/my-acceptances');
+      setAcceptances(Array.isArray(rows) ? rows : []);
+    } catch {
+      setAcceptances([]);
+    }
+  }, []);
+
+  const loadPendingAgreements = useCallback(async () => {
+    try {
+      const rows = await apiClient.get<PendingAgreement[]>('/agreements/pending');
+      const pending = normalizePendingAgreements(rows);
+      setPendingAgreements(pending);
+      return pending;
+    } catch {
+      setPendingAgreements([]);
+      return [];
+    }
+  }, []);
 
   // Şifre değiştir formu
   const [oldPassword, setOldPassword] = useState('');
@@ -115,12 +159,12 @@ export default function ProfilPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Kabul edilen sözleşmeler
-    fetch(`${API}/agreements/my-acceptances`, { headers: authHeader() })
-      .then((r) => r.json())
-      .then((json) => setAcceptances(json?.data ?? []))
-      .catch(() => {});
-  }, []);
+    // Kabul edilen ve bekleyen sözleşmeler
+    void loadAcceptances();
+    void loadPendingAgreements().then((pending) => {
+      if (pending.length > 0) setShowConsentModal(true);
+    });
+  }, [loadAcceptances, loadPendingAgreements]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,15 +339,35 @@ export default function ProfilPage() {
 
       {/* Kabul Edilen Sözleşmeler */}
       <SectionCard title="Sözleşmeler ve Onaylar">
+        {pendingAgreements.length > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-900">
+              {pendingAgreements.length} sözleşme yeniden onayınızı bekliyor
+            </p>
+            <p className="mt-1 text-xs text-amber-800">
+              7 Mayıs kayıtları eski formatta kaldı. Yeni delil zinciri için belgeleri tekrar okuyup dijital imza ile onaylamanız gerekiyor.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowConsentModal(true)}
+              className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-amber-600 px-4 text-xs font-semibold text-white hover:bg-amber-700"
+            >
+              Sözleşmeleri Onayla
+            </button>
+          </div>
+        )}
+
         {acceptances.length === 0 ? (
           <p className="text-sm text-slate-400">Henüz onaylanmış sözleşme yok.</p>
         ) : (
           <div className="space-y-3">
-            {acceptances.map((acc) => (
-              <div key={acc.id} className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            {acceptances.map((acc) => {
+              const stale = isStaleAcceptance(acc);
+              return (
+              <div key={acc.id} className={`flex items-start justify-between gap-4 p-3 rounded-xl border ${stale ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${stale ? 'bg-amber-100' : 'bg-green-100'}`}>
+                    <svg className={`w-4 h-4 ${stale ? 'text-amber-600' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
@@ -322,14 +386,20 @@ export default function ProfilPage() {
                         Hash: {acc.contentHash.slice(0, 16)}…
                       </p>
                     )}
+                    {stale && (
+                      <p className="mt-1 text-xs font-medium text-amber-700">Yeniden onay gerekli</p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs text-green-600 font-medium">Onaylandı</p>
+                  <p className={`text-xs font-medium ${stale ? 'text-amber-700' : 'text-green-600'}`}>
+                    {stale ? 'Güncellenmeli' : 'Onaylandı'}
+                  </p>
                   <p className="text-xs text-slate-400 mt-0.5">{fmtDate(acc.acceptedAt)}</p>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </SectionCard>
@@ -525,6 +595,19 @@ export default function ProfilPage() {
           </button>
         </form>
       </SectionCard>
+
+      {showConsentModal && pendingAgreements.length > 0 && (
+        <AgreementConsentModal
+          pendingAgreements={pendingAgreements}
+          onDismiss={() => setShowConsentModal(false)}
+          onAllAccepted={() => {
+            setShowConsentModal(false);
+            setPendingAgreements([]);
+            void loadAcceptances();
+            window.dispatchEvent(new Event('agreements-refetch'));
+          }}
+        />
+      )}
     </div>
   );
 }

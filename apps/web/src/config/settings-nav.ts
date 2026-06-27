@@ -1,0 +1,111 @@
+import type { LucideIcon } from 'lucide-react';
+import {
+  Bell,
+  BookOpenText,
+  Building2,
+  FileCog,
+  FileText,
+  GitBranch,
+  Landmark,
+  Layers3,
+  MapPin,
+  MessageSquareText,
+  PackageCheck,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  Tags,
+  TestTube2,
+  UserCog,
+  Users,
+} from 'lucide-react';
+
+export interface SettingsNavLink {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  description?: string;
+  /** Hub kartında yalnızca yetkili kullanıcıya göster */
+  requiresTestNotesAccess?: boolean;
+}
+
+export interface SettingsNavGroup {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  links: SettingsNavLink[];
+}
+
+/** Ayarlar hub kartları — tek kaynak (sol menüde alt liste yok) */
+export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
+  {
+    title: 'Kurulum ve Yetki',
+    description: 'Sistem kimliği, iletişim, kullanıcılar ve güvenlik.',
+    icon: UserCog,
+    links: [
+      { title: 'Şirket Bilgileri', href: '/panel/ayarlar/sirket-bilgileri', icon: Building2, description: 'Unvan, iletişim, logo ve KVKK bilgileri.' },
+      { title: 'Mail ve Bildirim Merkezi', href: '/panel/ayarlar/e-posta-bildirimleri', icon: Bell, description: 'SMTP kurulumu, test maili ve e-posta bildirim kuralları.' },
+      { title: 'SMS Bildirimleri', href: '/panel/ayarlar/sms-bildirimler', icon: MessageSquareText, description: 'Atama mesaj şablonu, test SMS ve gönderim geçmişi.' },
+      { title: 'Entegrasyon Merkezi', href: '/panel/ayarlar/entegrasyonlar', icon: Settings, description: 'SMS sağlayıcısı, TÜRMOB ve Logo Wings ERP bağlantıları.' },
+      { title: 'Sözleşmeler', href: '/panel/ayarlar/sozlesmeler', icon: ScrollText, description: 'Kullanıcı onay metinleri.' },
+      { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users, description: 'Davet, geçici şifre ve arşiv.' },
+      { title: 'Roller', href: '/panel/ayarlar/roller', icon: ShieldCheck, description: 'Rol ve yetki tanımları.' },
+      { title: 'Alan Zorunlulukları', href: '/panel/ayarlar/alan-zorunluluklari', icon: SlidersHorizontal, description: 'Form alanı zorunluluk ve görünürlük.' },
+      { title: 'Test Notları / Görev Takip', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2, description: 'Canlı geri bildirim ve görev takibi.', requiresTestNotesAccess: true },
+    ],
+  },
+  {
+    title: 'Operasyon Tanımları',
+    description: 'Dosya, konu, durum ve evrak tanımları.',
+    icon: BookOpenText,
+    links: [
+      { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Tanım ailelerine hızlı erişim.' },
+      { title: 'Departmanlar', href: '/panel/ayarlar/departmanlar', icon: Building2, description: 'Operasyon birimleri.' },
+      { title: 'İlişki Türleri', href: '/panel/ayarlar/iliski-turleri', icon: GitBranch, description: 'Cari ilişki türleri.' },
+      { title: 'Dosya Konuları', href: '/panel/ayarlar/dosya-konulari', icon: BookOpenText, description: 'Departman bazlı dosya konuları.' },
+      { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch, description: 'Dosya durumları ve süreç sırası.' },
+      { title: 'Evrak Türleri', href: '/panel/ayarlar/evrak-turleri', icon: FileText, description: 'Departman bazlı evrak setleri.' },
+      { title: 'Eskalasyon Kuralları', href: '/panel/ayarlar/eskalasyon-kurallari', icon: Bell, description: 'SLA ve eskalasyon bildirim kuralları.' },
+    ],
+  },
+  {
+    title: 'Hizmet, Maliyet ve Bölge',
+    description: 'Saha hizmetleri, fiyat ve maliyet kırılımları.',
+    icon: Layers3,
+    links: [
+      { title: 'İş Grupları', href: '/panel/ayarlar/is-gruplari', icon: Layers3, description: 'İş grubu ve alt grup hiyerarşisi.' },
+      { title: 'Hizmet Türleri', href: '/panel/ayarlar/hizmet-turleri', icon: PackageCheck, description: 'Hasar ve acil yardım hizmet türleri (Konut Yangın, Acil Su vb.).' },
+      { title: 'Fiyat Listesi', href: '/panel/ayarlar/fiyat-listesi', icon: Receipt, description: 'Birim fiyat ve iş kalemleri.' },
+      { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: Tags, description: 'Ana grup ve masraf kalemi hiyerarşisi.' },
+      { title: 'Mahal ve Bölgeler', href: '/panel/ayarlar/mahaller', icon: MapPin, description: 'Rapor mahal ve alt bölge tanımları.' },
+      { title: 'Bölgesel Zamlar', href: '/panel/ayarlar/bolgesel-zamlar', icon: Landmark, description: 'Bölge bazlı fiyat etkileri.' },
+    ],
+  },
+  {
+    title: 'Doküman ve Şablon',
+    description: 'Rapor ve sistem şablonları.',
+    icon: FileCog,
+    links: [
+      { title: 'Şablonlar', href: '/panel/ayarlar/sablonlar', icon: FileCog, description: 'Sistem şablonları.' },
+    ],
+  },
+];
+
+/** Eski URL yönlendirmeleri */
+export const SETTINGS_LEGACY_REDIRECTS: Record<string, string> = {
+  '/panel/ayarlar/kurulum': '/panel/ayarlar/sirket-bilgileri',
+  '/panel/ayarlar/mail-kurulum': '/panel/ayarlar/e-posta-bildirimleri',
+  '/panel/ayarlar/hizmet-branslari': '/panel/ayarlar/hizmet-turleri',
+  '/panel/ayarlar/ihbar-konulari': '/panel/ayarlar/dosya-konulari',
+  '/panel/ayarlar/sigorta-sirketleri': '/panel/musteriler',
+  '/panel/ayarlar/tedarikciler': '/panel/tedarikciler',
+  '/panel/ayarlar/musteri-tipleri': '/panel/musteriler',
+  '/panel/ayarlar/fiyat-yonetimi': '/panel/ayarlar/fiyat-listesi',
+  '/panel/ayarlar/sozlesme-sablonu': '/panel/ayarlar/sozlesme-sablonlari',
+};
+
+export function flattenSettingsNavLinks(): SettingsNavLink[] {
+  return SETTINGS_NAV_GROUPS.flatMap((g) => g.links);
+}

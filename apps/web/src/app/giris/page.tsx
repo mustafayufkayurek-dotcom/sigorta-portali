@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API } from '@/utils/api';
 import { CORPORATE_LOGO_DARK } from '@/constants/brand';
+import {
+  attemptAutoLogin,
+  storeAuthAfterLogin,
+  loadRememberedLoginForm,
+  setRememberMePreference,
+} from '@/utils/auth-session';
 
 const API_URL = API;
 
@@ -273,25 +279,30 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [formReady, setFormReady] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
+  const authHydrated = useRef(false);
 
   useEffect(() => {
     setMounted(true);
-    try {
-      const savedEmail = localStorage.getItem('rememberedEmail');
-      if (savedEmail) {
-        setEmail(savedEmail);
-        setRememberMe(true);
-      }
-    } catch {
-      // localStorage erişim hatası sessizce yoksay
+    if (!authHydrated.current) {
+      authHydrated.current = true;
+      const saved = loadRememberedLoginForm();
+      if (saved.email) setEmail(saved.email);
+      setRememberMe(saved.remember);
+      setFormReady(true);
     }
+
+    attemptAutoLogin(API_URL).then((ok) => {
+      if (ok) router.replace('/panel');
+    });
+
     // Fetch public company name only; login logo is fixed to the accepted static brand asset.
     axios.get(`${API_URL}/system-settings/company-info`)
       .then((r) => {
@@ -301,43 +312,35 @@ export default function LoginPage() {
       .catch(() => {
         // fallback: keep local logo asset
       });
-  }, []);
+  }, [router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRememberChange = (checked: boolean) => {
+    setRememberMe(checked);
+    setRememberMePreference(checked, checked ? email : undefined);
+  };
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
+    const shouldRemember = rememberMe;
+
     setLoading(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const response = await axios.post(`${API_URL}/auth/login`, {
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
       });
-      const { tokens, user } = response.data.data;
-
-      if (rememberMe) {
-        localStorage.setItem('accessToken', tokens.accessToken);
-        localStorage.setItem('refreshToken', tokens.refreshToken);
-        localStorage.setItem('rememberedEmail', email);
-        localStorage.setItem('authPersistence', 'remember');
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('refreshToken');
-        sessionStorage.removeItem('authSession');
-        // 7 gün için token süresini kaydet
-        const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        localStorage.setItem('tokenExpiry', String(expiry));
-      } else {
-        // Sayfa geçişlerinde mevcut API yardımcıları localStorage okuduğu için token
-        // kısa süreli olarak iki yerde tutulur; kalıcılık session işaretiyle sınırlandırılır.
-        sessionStorage.setItem('accessToken', tokens.accessToken);
-        sessionStorage.setItem('refreshToken', tokens.refreshToken);
-        sessionStorage.setItem('authSession', 'active');
-        localStorage.setItem('accessToken', tokens.accessToken);
-        localStorage.setItem('refreshToken', tokens.refreshToken);
-        localStorage.setItem('authPersistence', 'session');
-        localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('tokenExpiry');
+      const payload = response.data?.data ?? response.data;
+      const tokens = payload?.tokens;
+      const user = payload?.user;
+      if (!tokens?.accessToken || !user) {
+        throw new Error('Giriş yanıtı beklenen formatta değil.');
       }
+
+      storeAuthAfterLogin(tokens, shouldRemember, normalizedEmail);
+      setRememberMePreference(shouldRemember, normalizedEmail);
       localStorage.setItem('user', JSON.stringify(user));
 
       router.push('/panel');
@@ -800,30 +803,45 @@ export default function LoginPage() {
           justify-content: space-between;
           margin-bottom: 20px;
         }
-        .checkbox-label {
+        .remember-choice {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           cursor: pointer;
-          font-size: 0.82rem;
-          color: #374151;
           user-select: none;
         }
-        .checkbox-box {
-          width: 18px;
-          height: 18px;
+        .remember-checkbox {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 20px;
+          height: 20px;
+          margin: 0;
+          border: 2px solid #cbd5e1;
           border-radius: 5px;
-          border: 2px solid #d1d5db;
           background: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.15s, border-color 0.15s;
+          cursor: pointer;
           flex-shrink: 0;
+          display: grid;
+          place-content: center;
+          transition: background 0.15s, border-color 0.15s;
         }
-        .checkbox-box.checked {
+        .remember-checkbox:checked {
           background: var(--blue-light);
           border-color: var(--blue-light);
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: center;
+          background-size: 12px 12px;
+        }
+        .remember-checkbox:focus-visible {
+          outline: 2px solid var(--blue-light);
+          outline-offset: 2px;
+        }
+        .checkbox-text {
+          font-size: 0.82rem;
+          color: #374151;
+          cursor: pointer;
+          line-height: 1.2;
         }
         .forgot-link {
           font-size: 0.78rem;
@@ -1182,20 +1200,16 @@ export default function LoginPage() {
 
                 {/* Remember / Forgot */}
                 <div className="remember-row">
-                  <label
-                    className="checkbox-label"
-                    onClick={() => setRememberMe((v) => !v)}
-                    role="checkbox"
-                    aria-checked={rememberMe}
-                  >
-                    <div className={`checkbox-box${rememberMe ? ' checked' : ''}`}>
-                      {rememberMe && (
-                        <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    Beni Hatırla
+                  <label htmlFor="remember-me" className="remember-choice">
+                    <input
+                      type="checkbox"
+                      id="remember-me"
+                      name="remember"
+                      checked={formReady ? rememberMe : false}
+                      onChange={(e) => handleRememberChange(e.target.checked)}
+                      className="remember-checkbox"
+                    />
+                    <span className="checkbox-text">Beni Hatırla</span>
                   </label>
                   <button type="button" className="forgot-link" onClick={() => setShowForgot(true)}>Şifremi Unuttum</button>
                 </div>

@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, UserCheck, X } from 'lucide-react';
+import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
@@ -297,6 +297,10 @@ function normalizeUserStatus(status?: string | null): UserStatus {
 
 function canReinviteByEmail(status: UserStatus): boolean {
   return status === 'inactive' || status === 'archived';
+}
+
+function userMailbox(user: Pick<User, 'email' | 'archivedEmail'>): string {
+  return (user.archivedEmail ?? user.email).trim().toLowerCase();
 }
 
 function normalizeUser(user: User): User {
@@ -1113,7 +1117,7 @@ export default function KullanicilarPage() {
       const hasBranch = form.selectedSubjects.some((item) => item !== FIELD_OTHER_SUBJECT_LABEL);
       const hasOther = form.selectedSubjects.includes(FIELD_OTHER_SUBJECT_LABEL);
       if (!hasBranch && !hasOther) {
-        nextErrors.selectedSubjects = 'En az bir hizmet branşı seçilmelidir.';
+        nextErrors.selectedSubjects = 'En az bir hizmet türü seçilmelidir.';
       }
       if (hasOther && !form.otherSubjectNotes.trim()) {
         nextErrors.otherSubjectNotes = 'Diğer seçildiğinde açıklama girilmelidir.';
@@ -1214,7 +1218,7 @@ export default function KullanicilarPage() {
 
       if (modal === 'add') {
         const normalizedEmail = form.email.trim().toLowerCase();
-        const dupEmail = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+        const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
         const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
 
         if (dupStatus === 'active') {
@@ -1307,10 +1311,10 @@ export default function KullanicilarPage() {
   };
 
   const handleToggleStatus = async (u: User) => {
-    if (u.status === 'archived') {
+    if (u.status === 'archived' || u.status === 'inactive') {
       setConfirmAction({
         title: 'Kullanıcıyı yeniden aktifleştir',
-        description: `${u.firstName} ${u.lastName} (${u.archivedEmail ?? u.email}) kullanıcısı arşivden çıkarılacak.`,
+        description: `${u.firstName} ${u.lastName} (${u.archivedEmail ?? u.email}) kullanıcısı yeniden aktifleştirilecek.`,
         confirmLabel: 'Yeniden Aktifleştir',
         onConfirm: async () => {
           try {
@@ -1332,50 +1336,51 @@ export default function KullanicilarPage() {
       return;
     }
 
-    const newStatus = u.status === 'active' ? 'inactive' : 'active';
-    if (newStatus === 'inactive') {
+    if (u.status === 'active') {
       setConfirmAction({
-        title: 'Kullanıcıyı pasifleştir',
-        description: `${u.firstName} ${u.lastName} (${u.email}) kullanıcısı pasif hale getirilecek.`,
-        confirmLabel: 'Pasifleştir',
+        title: 'Kullanıcıyı arşivle',
+        description: `${u.firstName} ${u.lastName} (${u.email}) arşivlenecek. E-posta adresi serbest kalır; gerekirse kalıcı silinebilir.`,
+        confirmLabel: 'Arşivle',
         variant: 'danger',
         onConfirm: async () => {
           try {
-            await axios.patch(
-              `${API}/users/${u.id}`,
-              { status: newStatus },
-              { headers: authHeader() },
-            );
-            setUserStatusInList(u.id, 'inactive');
-            setActionMessage({ type: 'success', text: 'Kullanıcı pasifleştirildi.' });
+            await axios.delete(`${API}/users/${u.id}`, { headers: authHeader() });
+            setUserStatusInList(u.id, 'archived');
+            setActionMessage({ type: 'success', text: 'Kullanıcı arşivlendi.' });
             await loadUsers();
           } catch (err: any) {
-            setActionMessage({ type: 'error', text: err?.response?.data?.message ?? 'Kullanıcı durumu güncellenemedi.' });
+            setActionMessage({ type: 'error', text: err?.response?.data?.message ?? 'Kullanıcı arşivlenemedi.' });
           } finally {
             setConfirmAction(null);
           }
         },
       });
-      return;
     }
-    try {
-      const response = await axios.patch(
-        `${API}/users/${u.id}`,
-        { status: newStatus },
-        { headers: authHeader() },
-      );
-      const updatedUser = response.data?.data;
-      if (updatedUser?.id) {
-        setUsers((prev) => prev.map((item) => (item.id === updatedUser.id ? normalizeUser({ ...item, ...updatedUser }) : item)));
-      } else {
-        setUserStatusInList(u.id, 'active');
-      }
-      setActionMessage({ type: 'success', text: 'Kullanıcı aktifleştirildi.' });
-      await loadUsers();
-      setUserStatusInList(u.id, 'active');
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err?.response?.data?.message ?? 'Kullanıcı durumu güncellenemedi.' });
-    }
+  };
+
+  const handlePermanentDelete = async (u: User) => {
+    setConfirmAction({
+      title: 'Kullanıcıyı kalıcı sil',
+      description: `${u.firstName} ${u.lastName} (${u.archivedEmail ?? u.email}) veritabanından kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      confirmLabel: 'Kalıcı Sil',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API}/users/${u.id}/permanent`, { headers: authHeader() });
+          setActionMessage({ type: 'success', text: 'Kullanıcı kalıcı olarak silindi.' });
+          setSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(u.id);
+            return next;
+          });
+          await loadUsers();
+        } catch (err: any) {
+          setActionMessage({ type: 'error', text: err?.response?.data?.message ?? 'Kalıcı silme başarısız.' });
+        } finally {
+          setConfirmAction(null);
+        }
+      },
+    });
   };
 
   const handleBulkStatus = async (newStatus: 'active' | 'inactive') => {
@@ -1757,6 +1762,18 @@ export default function KullanicilarPage() {
                           </button>
                         )}
 
+                        {rowStatus === 'archived' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
+                          <button
+                            type="button"
+                            onClick={() => handlePermanentDelete(u)}
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
+                            title="Arşivlenmiş kullanıcıyı veritabanından kalıcı olarak siler."
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Kalıcı Sil
+                          </button>
+                        )}
+
                         {rowStatus === 'active' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
                           <button
                             type="button"
@@ -1862,7 +1879,8 @@ export default function KullanicilarPage() {
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
                 <p className="font-semibold">Pasif veya arşiv kullanıcı bulundu</p>
                 <p className="mt-1 text-xs leading-5 text-amber-800">
-                  {inactiveDuplicateUser.firstName} {inactiveDuplicateUser.lastName} bu e-posta ile kayıtlı.
+                  {inactiveDuplicateUser.firstName} {inactiveDuplicateUser.lastName} ({userMailbox(inactiveDuplicateUser)}) bu e-posta ile kayıtlı.
+                  Yeni kayıt açmak yerine mevcut kullanıcı yeniden davet edilecek.
                   Davet Gönder ile aynı e-posta yeniden aktifleştirilir; yeni geçici şifre üretilir.
                 </p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -2266,13 +2284,13 @@ export default function KullanicilarPage() {
 
                 {form.operationArea && (
                   <FormField
-                    label={form.operationArea === 'hasar' ? 'Hasar Onarım — Hizmet Branşları' : 'Acil Yardım — Hizmet Branşları'}
+                    label={form.operationArea === 'hasar' ? 'Hasar Onarım — Hizmet Türleri' : 'Acil Yardım — Hizmet Türleri'}
                     required
                     error={formErrors.selectedSubjects}
                   >
                     {selectedServiceBranches.length === 0 ? (
                       <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-                        Bu çalışma alanı için aktif hizmet branşı bulunamadı. Liste Ayarlar → Hizmet Branşları ekranından gelir.
+                        Bu çalışma alanı için aktif hizmet türü bulunamadı. Liste Ayarlar → Hizmet Türleri ekranından gelir.
                       </p>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -2313,7 +2331,7 @@ export default function KullanicilarPage() {
                       </div>
                     )}
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Liste Ayarlar → Hizmet Branşları ekranındaki iş kolu tanımlarından gelir.
+                      Liste Ayarlar → Hizmet Türleri ekranındaki tanımlardan gelir.
                     </p>
                   </FormField>
                 )}

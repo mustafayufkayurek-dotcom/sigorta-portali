@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
+import { clearAuth, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred } from '@/utils/auth-session';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
@@ -19,29 +20,18 @@ import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
-  BookOpenText,
   Building2,
   ClipboardList,
-  FileCog,
-  FileText,
   GitBranch,
-  Landmark,
-  Layers3,
-  Mail,
   MapPin,
-  MessageSquareText,
   MonitorCheck,
   PackageCheck,
   Receipt,
-  ScrollText,
   Settings,
   ShieldCheck,
-  SlidersHorizontal,
-  TestTube2,
   Users,
+  TestTube2,
   UserCog,
-  Wrench,
-  WalletCards,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -69,6 +59,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/eksperler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
+  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -106,6 +97,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/sigorta-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
+  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -140,6 +132,7 @@ const SCREEN_TO_PATH: Record<string, string> = {
   guvenlik:          '/panel/guvenlik',
   harita:            '/panel/harita',
   personel_yonetimi: '/panel/personel-yonetimi',
+  test_notes_admin: '/panel/ayarlar/test-notlari-gorev-takip',
 };
 
 const LOCKED_MAIN_NAV_PATHS = new Set([
@@ -213,82 +206,18 @@ interface NavigationLink {
   icon?: LucideIcon;
 }
 
-interface NavigationGroup {
-  title: string;
-  links: NavigationLink[];
-  icon: LucideIcon;
+interface PanelSidebarProps {
+  pathname: string;
+  roleCode: string;
+  isPortalUser: boolean;
+  isExpert: boolean;
+  isInsuranceCompanyUser: boolean;
+  pendingRevisionCount: number;
+  allowedScreens: string[] | null;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  hidden?: boolean;
 }
-
-const SETTINGS_NAV_GROUPS: NavigationGroup[] = [
-  {
-    title: 'Kurulum ve Yetki',
-    icon: UserCog,
-    links: [
-      { title: 'Ayarlar Ana Sayfa', href: '/panel/ayarlar', icon: Settings },
-      { title: 'Kurulum', href: '/panel/ayarlar/kurulum', icon: Settings },
-      { title: 'Şirket Bilgileri', href: '/panel/ayarlar/sirket-bilgileri', icon: Building2 },
-      { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users },
-      { title: 'Roller', href: '/panel/ayarlar/roller', icon: ShieldCheck },
-    ],
-  },
-  {
-    title: 'Kurumsal Ayarlar',
-    icon: Settings,
-    links: [
-      { title: 'Alan Zorunlulukları', href: '/panel/ayarlar/alan-zorunluluklari', icon: SlidersHorizontal },
-      { title: 'Mail ve Bildirim Merkezi', href: '/panel/ayarlar/e-posta-bildirimleri', icon: Mail },
-      { title: 'Şablonlar', href: '/panel/ayarlar/sablonlar', icon: FileCog },
-      { title: 'Sözleşmeler', href: '/panel/ayarlar/sozlesmeler', icon: ScrollText },
-    ],
-  },
-  {
-    title: 'Zorunlu Tanımlar',
-    icon: BookOpenText,
-    links: [
-      {
-        title: 'Tanımlar Merkezi',
-        href: '/panel/ayarlar/tanimlar',
-        icon: BookOpenText,
-        children: [
-          { title: 'Sigorta Şirketleri', href: '/panel/ayarlar/sigorta-sirketleri', icon: Building2 },
-          { title: 'Tedarikçi Tanımları', href: '/panel/ayarlar/tedarikciler', icon: Users },
-          { title: 'Müşteri Tipleri', href: '/panel/ayarlar/musteri-tipleri', icon: Users },
-          { title: 'Departmanlar', href: '/panel/ayarlar/departmanlar', icon: Building2 },
-          { title: 'İlişki Türleri', href: '/panel/ayarlar/iliski-turleri', icon: GitBranch },
-        ],
-      },
-      { title: 'İhbar Konuları', href: '/panel/ayarlar/ihbar-konulari', icon: MessageSquareText },
-      { title: 'Evrak Türleri', href: '/panel/ayarlar/evrak-turleri', icon: FileText },
-      { title: 'Hizmet Türleri', href: '/panel/ayarlar/hizmet-turleri', icon: Wrench },
-      { title: 'Mahal & Bölgeler', href: '/panel/ayarlar/mahaller', icon: MapPin },
-    ],
-  },
-  {
-    title: 'Operasyon Tanımları',
-    icon: Layers3,
-    links: [
-      { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch },
-      { title: 'Tedarikçi Branşları', href: '/panel/ayarlar/hizmet-branslari', icon: PackageCheck },
-      { title: 'İş Grupları', href: '/panel/ayarlar/is-gruplari', icon: Layers3 },
-    ],
-  },
-  {
-    title: 'Finans ve Fiyatlandırma',
-    icon: Receipt,
-    links: [
-      { title: 'Fiyat Listesi', href: '/panel/ayarlar/fiyat-listesi', icon: Receipt },
-      { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: WalletCards },
-      { title: 'Bölgesel Zamlar', href: '/panel/ayarlar/bolgesel-zamlar', icon: Landmark },
-    ],
-  },
-  {
-    title: 'Yönetim ve Denetim',
-    icon: TestTube2,
-    links: [
-      { title: 'Pilot Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
-    ],
-  },
-];
 
 function getPanelMainLinks({
   isExpert,
@@ -333,6 +262,7 @@ function getPanelMainLinks({
           { title: 'CRM', href: '/panel/crm', icon: GitBranch },
           { title: 'Finans', href: '/panel/finans', icon: Receipt },
           { title: 'Harita', href: '/panel/harita', icon: MapPin },
+          { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
         ];
 }
@@ -656,19 +586,6 @@ function Navbar({
   );
 }
 
-interface PanelSidebarProps {
-  pathname: string;
-  roleCode: string;
-  isPortalUser: boolean;
-  isExpert: boolean;
-  isInsuranceCompanyUser: boolean;
-  pendingRevisionCount: number;
-  allowedScreens: string[] | null;
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
-  hidden?: boolean;
-}
-
 function isSettingsPath(pathname: string) {
   return pathname === '/panel/ayarlar' || pathname.startsWith('/panel/ayarlar/');
 }
@@ -699,15 +616,6 @@ function PanelSidebar({
       : pathname === normalizedHref || pathname.startsWith(normalizedHref + '/');
   };
 
-  const isSettingsActive = isSettingsPath(pathname);
-  const [openSettingsGroups, setOpenSettingsGroups] = useState<string[]>(() => SETTINGS_NAV_GROUPS.map((group) => group.title));
-
-  useEffect(() => {
-    if (collapsed) {
-      setOpenSettingsGroups([]);
-    }
-  }, [collapsed]);
-
   const mainLinks = getPanelMainLinks({
     isExpert,
     isInsuranceCompanyUser,
@@ -716,7 +624,6 @@ function PanelSidebar({
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
-  const hasActiveChild = (link: NavigationLink) => Boolean(link.children?.some((child) => isActive(child.href)));
 
   const linkClass = (href: string, compact = false, forceActive?: boolean) => {
     const active = forceActive ?? isActive(href);
@@ -769,64 +676,6 @@ function PanelSidebar({
             </Link>
           ))}
         </nav>
-
-        {canSee('/panel/ayarlar') && isSettingsActive && !collapsed && (
-          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="mt-3 space-y-3">
-              {SETTINGS_NAV_GROUPS.map((group) => (
-                <section key={group.title}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenSettingsGroups((current) =>
-                        current.includes(group.title)
-                          ? current.filter((title) => title !== group.title)
-                          : [...current, group.title],
-                      );
-                    }}
-                    className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 transition hover:bg-white hover:text-slate-600 dark:hover:bg-slate-800"
-                    aria-expanded={openSettingsGroups.includes(group.title)}
-                  >
-                    <span className="inline-flex min-w-0 items-center gap-1.5">
-                      <group.icon className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{group.title}</span>
-                    </span>
-                    <span className="text-[11px]">{openSettingsGroups.includes(group.title) ? '−' : '+'}</span>
-                  </button>
-                  {openSettingsGroups.includes(group.title) && (
-                    <div className="mt-1 space-y-0.5">
-                      {group.links.map((link) => (
-                        <div key={link.href}>
-                          <Link href={link.href} className={linkClass(link.href, true)}>
-                            <span className="inline-flex min-w-0 items-center gap-1.5">
-                              {link.icon ? <link.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : null}
-                              <span className="truncate">{link.title}</span>
-                            </span>
-                            {link.children ? (
-                              <span className="text-[11px] text-slate-400">{hasActiveChild(link) || isActive(link.href) ? '−' : '+'}</span>
-                            ) : null}
-                          </Link>
-                          {link.children && (hasActiveChild(link) || isActive(link.href)) && (
-                            <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-700">
-                              {link.children.map((child) => (
-                                <Link key={child.href} href={child.href} className={linkClass(child.href, true)}>
-                                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                                    {child.icon ? <child.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : null}
-                                    <span className="truncate">{child.title}</span>
-                                  </span>
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );
@@ -838,6 +687,14 @@ interface PendingAgreement {
   title: string;
   type: string;
   version: string;
+}
+
+function normalizePendingAgreements(raw: unknown): PendingAgreement[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)) {
+    return (raw as { data: PendingAgreement[] }).data;
+  }
+  return [];
 }
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -863,6 +720,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [pendingRevisionCount, setPendingRevisionCount] = useState(0);
   const [pendingAgreements, setPendingAgreements] = useState<PendingAgreement[]>([]);
   const [agreementsChecked, setAgreementsChecked] = useState(false);
+  const [agreementModalDismissed, setAgreementModalDismissed] = useState(false);
   const [allowedScreens, setAllowedScreens] = useState<string[] | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -922,41 +780,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   useEffect(() => {
-    const clearAuth = () => {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('authPersistence');
-      localStorage.removeItem('tokenExpiry');
-      sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('refreshToken');
-      sessionStorage.removeItem('authSession');
-    };
-
-    const hasValidSessionScope = () => {
-      const persistence = localStorage.getItem('authPersistence');
-      const sessionActive = sessionStorage.getItem('authSession') === 'active';
-      return persistence === 'remember' || sessionActive;
-    };
-
-    const persistTokens = (accessToken: string, refreshToken: string) => {
-      const persistence = localStorage.getItem('authPersistence');
-      if (persistence === 'remember') {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        return;
-      }
-      sessionStorage.setItem('accessToken', accessToken);
-      sessionStorage.setItem('refreshToken', refreshToken);
-      sessionStorage.setItem('authSession', 'active');
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('authPersistence', 'session');
-    };
-
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token || !hasValidSessionScope()) {
-      clearAuth();
+      clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
       router.push('/giris');
       return;
     }
@@ -992,7 +818,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           }
         }
         if (axios.isAxiosError(error) && error.response?.status === 401) {
-          const refreshToken = localStorage.getItem('refreshToken');
+          const refreshToken = getRefreshToken();
           if (refreshToken) {
             try {
               const refreshResponse = await axios.post(`${apiBase}/auth/refresh`, {
@@ -1019,7 +845,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             } catch {}
           }
         }
-        clearAuth();
+        clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
         router.push('/giris');
       })
       .finally(() => {
@@ -1031,13 +857,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   // Onaylanmamış sözleşme kontrolü
   const loadPendingAgreements = useCallback(async () => {
-    if (!localStorage.getItem('accessToken')) {
+    if (!getAccessToken()) {
       setAgreementsChecked(true);
       return;
     }
     try {
       const data = await apiClient.get<PendingAgreement[]>('/agreements/pending');
-      setPendingAgreements(Array.isArray(data) ? data : []);
+      setPendingAgreements(normalizePendingAgreements(data));
     } catch {
       setPendingAgreements([]);
     } finally {
@@ -1074,7 +900,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      if (!localStorage.getItem('accessToken')) return;
+      if (!getAccessToken()) return;
       const data = await apiClient.get<{ count?: number }>('/notifications/unread-count');
       setUnreadCount(data?.count ?? 0);
     } catch {}
@@ -1082,7 +908,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const fetchNotifications = useCallback(async () => {
     try {
-      if (!localStorage.getItem('accessToken')) return;
+      if (!getAccessToken()) return;
       const data = await apiClient.get<AppNotification[]>('/notifications', { limit: 20 });
       setNotifications(data ?? []);
     } catch {}
@@ -1099,7 +925,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading && authChecked) {
-      if (!localStorage.getItem('accessToken')) return;
+      if (!getAccessToken()) return;
       apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'REQUESTED', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
         .catch(() => { setPendingRevisionCount(0); });
@@ -1114,7 +940,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const handleMarkRead = async (notifId: string) => {
     try {
-      if (!localStorage.getItem('accessToken')) return;
+      if (!getAccessToken()) return;
       await apiClient.patch(`/notifications/${notifId}/read`);
       setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, status: 'read' } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
@@ -1123,7 +949,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const handleMarkAllRead = async () => {
     try {
-      if (!localStorage.getItem('accessToken')) return;
+      if (!getAccessToken()) return;
       await apiClient.patch('/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, status: 'read' })));
       setUnreadCount(0);
@@ -1139,7 +965,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    clearAuth();
     sessionStorage.clear();
     router.push('/giris');
   };
@@ -1298,11 +1124,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             hidden={mustChangePassword}
           />
           <div className="min-w-0 flex-1">
-        {agreementsChecked && pendingAgreements.length > 0 && (
+        {agreementsChecked && pendingAgreements.length > 0 && !agreementModalDismissed && (
           <AgreementConsentModal
             pendingAgreements={pendingAgreements}
+            onDismiss={() => setAgreementModalDismissed(true)}
             onAllAccepted={() => {
               setPendingAgreements([]);
+              setAgreementModalDismissed(false);
               try {
                 const raw = localStorage.getItem('user');
                 if (raw) {
@@ -1316,6 +1144,30 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               }
             }}
           />
+        )}
+        {agreementsChecked && pendingAgreements.length > 0 && agreementModalDismissed && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5">
+            <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-amber-900">
+                {pendingAgreements.length} sözleşme onayınız bekleniyor. Onaylamadan veri işlemleri (CRM, müşteriler vb.) kısıtlıdır.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAgreementModalDismissed(false)}
+                  className="inline-flex h-8 items-center rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white hover:bg-amber-700"
+                >
+                  Sözleşmeleri Onayla
+                </button>
+                <Link
+                  href="/panel/profil"
+                  className="inline-flex h-8 items-center rounded-lg border border-amber-300 px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                >
+                  Profilim
+                </Link>
+              </div>
+            </div>
+          </div>
         )}
         <main className="flex-1">
           <div className="mx-auto max-w-screen-2xl px-4 py-6">

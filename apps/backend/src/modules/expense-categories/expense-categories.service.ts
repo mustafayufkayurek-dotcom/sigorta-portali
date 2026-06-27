@@ -75,14 +75,18 @@ const SEED_DATA = [
 export class ExpenseCategoriesService {
   constructor(private prisma: PrismaService) {}
 
-  async findTree() {
+  async findTree(params?: { includeInactive?: boolean }) {
+    const activeFilter = params?.includeInactive ? {} : { isActive: true };
     const parents = await this.prisma.expenseCategory.findMany({
-      where: { parentId: null, isActive: true },
+      where: { parentId: null, ...activeFilter },
       orderBy: { sortOrder: 'asc' },
       include: {
         children: {
-          where: { isActive: true },
+          where: activeFilter,
           orderBy: { sortOrder: 'asc' },
+          include: {
+            _count: { select: { costEntries: true } },
+          },
         },
         _count: { select: { costEntries: true } },
       },
@@ -135,13 +139,37 @@ export class ExpenseCategoriesService {
 
   async update(id: string, dto: UpdateExpenseCategoryDto) {
     const cat = await this.findOne(id);
+    const nextParentId = dto.parentId !== undefined ? dto.parentId : cat.parentId;
+
     if (dto.name && dto.name !== cat.name) {
       const conflict = await this.prisma.expenseCategory.findFirst({
-        where: { name: dto.name, parentId: cat.parentId, isActive: true, NOT: { id } },
+        where: { name: dto.name, parentId: nextParentId, isActive: true, NOT: { id } },
       });
       if (conflict) throw new ConflictException('Bu isimde bir kategori zaten mevcut');
     }
-    return this.prisma.expenseCategory.update({ where: { id }, data: dto });
+
+    const data: UpdateExpenseCategoryDto & { level?: number } = { ...dto };
+    if (dto.parentId !== undefined) {
+      if (dto.parentId === null) {
+        if (cat.level === 2) {
+          throw new BadRequestException('Masraf kalemi ana grupsuz bırakılamaz');
+        }
+        data.level = 1;
+      } else {
+        if (dto.parentId === id) {
+          throw new BadRequestException('Kategori kendi altına taşınamaz');
+        }
+        const parent = await this.prisma.expenseCategory.findUnique({ where: { id: dto.parentId } });
+        if (!parent) throw new NotFoundException('Ana grup bulunamadı');
+        if (parent.parentId) throw new BadRequestException('Masraf kalemi yalnızca ana gruba bağlanabilir');
+        if (cat.children?.length) {
+          throw new BadRequestException('Alt kalemi olan bir ana grup taşınamaz');
+        }
+        data.level = 2;
+      }
+    }
+
+    return this.prisma.expenseCategory.update({ where: { id }, data });
   }
 
   async remove(id: string) {

@@ -7,8 +7,11 @@ export class DocumentTypesController {
   constructor(private readonly service: DocumentTypesService) {}
 
   @Get()
-  async findAll(@Query('status') status?: string) {
-    return this.service.findAll({ status });
+  async findAll(
+    @Query('status') status?: string,
+    @Query('departmentId') departmentId?: string,
+  ) {
+    return this.service.findAll({ status, departmentId });
   }
 
   @Get(':id')

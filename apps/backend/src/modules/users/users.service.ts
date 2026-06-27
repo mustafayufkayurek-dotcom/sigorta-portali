@@ -17,6 +17,11 @@ function isInactiveUserStatus(status: string | null | undefined): boolean {
   return normalized === 'inactive' || normalized === 'passive' || normalized === 'pasif' || normalized === 'archived';
 }
 
+function isArchivedUserStatus(status: string | null | undefined): boolean {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  return normalized === 'archived' || normalized === 'arsiv' || normalized === 'arşiv';
+}
+
 function generateTemporaryPassword(length = 12): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lower = 'abcdefghijkmnopqrstuvwxyz';
@@ -154,9 +159,7 @@ export class UsersService {
       throw new BadRequestException('Geçerli bir e-posta adresi girilmelidir');
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    const existingUser = await this.findUserByMailbox(normalizedEmail);
 
     if (existingUser) {
       if (isInactiveUserStatus(existingUser.status)) {
@@ -257,7 +260,10 @@ export class UsersService {
     };
   }
 
-  private async reinviteInactiveUser(existingUser: { id: string; email: string; status: string }, data: any) {
+  private async reinviteInactiveUser(
+    existingUser: { id: string; email: string; status: string; archivedEmail?: string | null },
+    data: any,
+  ) {
     applyTitleCase(data, ['firstName', 'lastName']);
 
     const temporaryPassword = typeof data.password === 'string' && data.password.trim().length > 0
@@ -274,8 +280,20 @@ export class UsersService {
       ...rest
     } = data;
 
+    const restoreEmail = normalizeUserEmail(
+      existingUser.archivedEmail ?? existingUser.email ?? data.email,
+    );
+
+    const activeConflict = await this.findActiveUserByMailbox(restoreEmail, existingUser.id);
+    if (activeConflict) {
+      throw new BadRequestException('Bu e-posta adresi başka bir aktif kullanıcıda kayıtlı');
+    }
+
     const reactivated = await this.update(existingUser.id, {
       ...rest,
+      email: restoreEmail,
+      archivedEmail: null,
+      archivedAt: null,
       status: 'active',
       password: temporaryPassword,
       departmentMemberships,
@@ -287,15 +305,15 @@ export class UsersService {
     this.auditLogsService.log({
       entityType: 'User',
       entityId: existingUser.id,
-      action: 'USER_REINVITE',
-      oldValue: { status: existingUser.status, email: existingUser.email },
-      newValue: { status: 'active', email: existingUser.email },
+      action: isArchivedUserStatus(existingUser.status) ? 'USER_REARCHIVE_REINVITE' : 'USER_REINVITE',
+      oldValue: { status: existingUser.status, email: existingUser.email, archivedEmail: existingUser.archivedEmail ?? null },
+      newValue: { status: 'active', email: restoreEmail },
       userId: existingUser.id,
-      userEmail: existingUser.email,
+      userEmail: restoreEmail,
     });
 
     const welcomeEmail = await this.sendWelcomeInviteEmail({
-      email: existingUser.email,
+      email: restoreEmail,
       firstName: reactivated.firstName,
       lastName: reactivated.lastName,
       temporaryPassword,
@@ -364,6 +382,17 @@ export class UsersService {
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
 
     const updateData: any = { ...rest };
+    if (updateData.email !== undefined) {
+      const normalizedEmail = normalizeUserEmail(updateData.email);
+      if (!normalizedEmail) {
+        throw new BadRequestException('Geçerli bir e-posta adresi girilmelidir');
+      }
+      const conflict = await this.findActiveUserByMailbox(normalizedEmail, id);
+      if (conflict) {
+        throw new BadRequestException('Bu e-posta adresi başka bir aktif kullanıcıda kayıtlı');
+      }
+      updateData.email = normalizedEmail;
+    }
     if (password) {
       if (oldPassword) {
         const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
@@ -606,20 +635,195 @@ export class UsersService {
   }
 
   async remove(id: string) {
+    return this.archiveUser(id);
+  }
+
+  private buildArchivedEmailPlaceholder(userId: string): string {
+    return `archived+${userId.replace(/-/g, '').slice(0, 12)}@deleted.meridyen.local`;
+  }
+
+  private async findUserByMailbox(email: string) {
+    const normalizedEmail = normalizeUserEmail(email);
+    if (!normalizedEmail) return null;
+
+    return this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: { equals: normalizedEmail, mode: 'insensitive' } },
+          { archivedEmail: { equals: normalizedEmail, mode: 'insensitive' } },
+        ],
+      },
+    });
+  }
+
+  private async findActiveUserByMailbox(email: string, excludeUserId?: string) {
+    const normalizedEmail = normalizeUserEmail(email);
+    if (!normalizedEmail) return null;
+
+    return this.prisma.user.findFirst({
+      where: {
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+        status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED', 'passive', 'PASIF'] },
+        OR: [
+          { email: { equals: normalizedEmail, mode: 'insensitive' } },
+          { archivedEmail: { equals: normalizedEmail, mode: 'insensitive' } },
+        ],
+      },
+    });
+  }
+
+  async archiveUser(id: string, actorUserId?: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
     if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
-      throw new BadRequestException('Sistem yöneticisi silinemez');
+      throw new BadRequestException('Sistem yöneticisi arşivlenemez');
     }
 
-    await this.prisma.user.update({
-      where: { id },
-      data: { status: 'inactive' },
+    if (actorUserId && actorUserId === id) {
+      throw new BadRequestException('Kendi hesabınızı arşivleyemezsiniz');
+    }
+
+    if (String(user.status).toLowerCase() === 'archived') {
+      return { message: 'Kullanıcı zaten arşivde' };
+    }
+
+    const archivedAt = new Date();
+    const archivedEmail = user.archivedEmail ?? user.email;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: archivedAt },
+      });
+      await tx.user.update({
+        where: { id },
+        data: {
+          status: 'archived',
+          archivedEmail,
+          archivedAt,
+          email: this.buildArchivedEmailPlaceholder(id),
+        },
+      });
     });
-    return { message: 'Kullanıcı pasifleştirildi' };
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: id,
+      action: 'USER_ARCHIVED',
+      oldValue: { email: user.email, status: user.status },
+      newValue: { archivedEmail, status: 'archived' },
+      userId: actorUserId ?? 'system',
+    });
+
+    return { message: 'Kullanıcı arşivlendi' };
+  }
+
+  async reactivateUser(id: string, actorUserId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    const status = String(user.status ?? '').toLowerCase();
+    if (status !== 'archived' && status !== 'inactive') {
+      throw new BadRequestException('Yalnızca arşiv veya pasif kullanıcı yeniden aktifleştirilebilir');
+    }
+
+    const restoreEmail = user.archivedEmail ?? user.email;
+    const normalizedEmail = normalizeUserEmail(restoreEmail);
+
+    const duplicate = await this.findActiveUserByMailbox(normalizedEmail, id);
+    if (duplicate) {
+      throw new BadRequestException('Bu e-posta adresi başka bir aktif kullanıcıda kayıtlı');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        status: 'active',
+        email: normalizedEmail,
+        archivedEmail: null,
+        archivedAt: null,
+      },
+      include: {
+        role: true,
+        branch: true,
+      },
+    });
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: id,
+      action: 'USER_REACTIVATED',
+      oldValue: { status: user.status, archivedEmail: user.archivedEmail },
+      newValue: { email: normalizedEmail, status: 'active' },
+      userId: actorUserId ?? 'system',
+    });
+
+    const { passwordHash, ...safeUser } = updated;
+    return safeUser;
+  }
+
+  async permanentDelete(id: string, actorUserId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    if (PROTECTED_SYSTEM_EMAILS.has(user.email) || PROTECTED_SYSTEM_EMAILS.has(user.archivedEmail ?? '')) {
+      throw new BadRequestException('Sistem yöneticisi kalıcı olarak silinemez');
+    }
+
+    if (actorUserId && actorUserId === id) {
+      throw new BadRequestException('Kendi hesabınızı kalıcı olarak silemezsiniz');
+    }
+
+    const status = String(user.status ?? '').toLowerCase();
+    if (status !== 'archived') {
+      throw new BadRequestException('Kalıcı silme yalnızca arşivlenmiş kullanıcılar için kullanılabilir');
+    }
+
+    const [
+      fieldClaims,
+      officeClaims,
+      adjusterClaims,
+      responsibleClaims,
+    ] = await Promise.all([
+      this.prisma.claimFile.count({ where: { assignedFieldUserId: id } }),
+      this.prisma.claimFile.count({ where: { assignedOfficeUserId: id } }),
+      this.prisma.claimFile.count({ where: { assignedAdjusterId: id } }),
+      this.prisma.claimFile.count({ where: { currentResponsibleUserId: id } }),
+    ]);
+
+    const linkedClaims = fieldClaims + officeClaims + adjusterClaims + responsibleClaims;
+    if (linkedClaims > 0) {
+      throw new BadRequestException('Dosya ataması olan kullanıcı kalıcı olarak silinemez');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.screenPermission.deleteMany({ where: { userId: id } });
+      await tx.userServiceArea.deleteMany({ where: { userId: id } });
+      await tx.userDepartmentMembership.deleteMany({ where: { userId: id } });
+      await tx.claimResponsibilityAssignment.deleteMany({ where: { userId: id } });
+      await tx.userInsuranceCompanyScope.deleteMany({ where: { userId: id } });
+      await tx.refreshToken.deleteMany({ where: { userId: id } });
+      await tx.passwordResetToken.deleteMany({ where: { userId: id } });
+      await tx.userEmailPreferences.deleteMany({ where: { userId: id } });
+      await tx.user.delete({ where: { id } });
+    });
+
+    this.auditLogsService.log({
+      entityType: 'User',
+      entityId: id,
+      action: 'USER_PERMANENTLY_DELETED',
+      oldValue: { archivedEmail: user.archivedEmail ?? user.email },
+      userId: actorUserId ?? 'system',
+    });
+
+    return { message: 'Kullanıcı kalıcı olarak silindi' };
   }
 
   async bulkDelete(ids: string[], actorUserId?: string) {
@@ -641,19 +845,33 @@ export class UsersService {
       throw new NotFoundException('Silinecek kullanıcılardan biri bulunamadı');
     }
 
-    if (users.some((user) => user.email === 'admin@example.com')) {
-      throw new BadRequestException('Sistem yöneticisi toplu silme ile silinemez');
+    if (users.some((user) => PROTECTED_SYSTEM_EMAILS.has(user.email))) {
+      throw new BadRequestException('Sistem yöneticisi toplu arşivleme ile arşivlenemez');
     }
 
-    await this.prisma.user.updateMany({
-      where: { id: { in: uniqueIds } },
-      data: { status: 'inactive' },
+    const archivedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      for (const user of users) {
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: archivedAt },
+        });
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            status: 'archived',
+            archivedEmail: user.email,
+            archivedAt,
+            email: this.buildArchivedEmailPlaceholder(user.id),
+          },
+        });
+      }
     });
 
     this.auditLogsService.log({
       entityType: 'User',
       entityId: uniqueIds.join(','),
-      action: 'BULK_DEACTIVATE',
+      action: 'BULK_ARCHIVE',
       oldValue: users,
       userId: actorUserId ?? '',
     });
@@ -661,7 +879,7 @@ export class UsersService {
     return {
       deletedCount: uniqueIds.length,
       ids: uniqueIds,
-      message: `${uniqueIds.length} kullanıcı pasifleştirildi`,
+      message: `${uniqueIds.length} kullanıcı arşivlendi`,
     };
   }
 

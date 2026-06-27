@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/utils/auth-session';
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -41,7 +43,7 @@ function buildUrl(url: string, params?: QueryParams): string {
 }
 
 function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const token = getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -74,10 +76,17 @@ async function request<T>(url: string, init: RequestInit = {}, params?: QueryPar
   return data as T;
 }
 
-// Unwrap NestJS { success, data } wrapper if present
+// Unwrap NestJS { success, data } or legacy { data } envelopes
 function unwrap<T>(raw: unknown): T {
-  if (raw && typeof raw === 'object' && 'success' in raw && 'data' in raw) {
-    return (raw as { data: T }).data;
+  if (raw && typeof raw === 'object' && 'data' in raw) {
+    const envelope = raw as Record<string, unknown>;
+    if (envelope.success === false) return raw as T;
+    if (
+      envelope.success === true ||
+      Object.keys(envelope).every((key) => key === 'data' || key === 'meta')
+    ) {
+      return envelope.data as T;
+    }
   }
   return raw as T;
 }

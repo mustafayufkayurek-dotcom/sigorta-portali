@@ -13,5 +13,6 @@ export type AgreementInternalPersonnelRoleCode =
 
 export function isInternalPersonnelRole(roleCode?: string | null): boolean {
   if (!roleCode) return false;
-  return (AGREEMENT_INTERNAL_PERSONNEL_ROLE_CODES as readonly string[]).includes(roleCode);
+  const normalized = roleCode.trim().toLowerCase();
+  return (AGREEMENT_INTERNAL_PERSONNEL_ROLE_CODES as readonly string[]).includes(normalized);
 }

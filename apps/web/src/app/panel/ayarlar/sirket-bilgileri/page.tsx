@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { inputCls, labelCls } from '@/components/settings/SettingsUI';
 import { API, authHeader } from '@/utils/api';
+import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
+import { toTitleCaseTR } from '@/utils/text-helpers';
+import { formatPhone, validatePhone } from '@/utils/validators';
 
 interface CompanyInfo {
   name: string;
@@ -36,11 +40,12 @@ const emptyForm: CompanyInfo = {
 };
 
 export default function SirketBilgileriPage() {
+  const router = useRouter();
   const [form, setForm] = useState<CompanyInfo>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     axios.get(`${API}/system-settings/company-info`, { headers: authHeader() })
@@ -70,14 +75,79 @@ export default function SirketBilgileriPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  function clearFieldError(key: string) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function validateForm(): boolean {
+    const next: Record<string, string> = {};
+    const name = form.name.trim();
+    if (!name) next.name = 'Operasyon şirketi unvanı zorunludur.';
+    const email = form.email?.trim() ?? '';
+    if (!email) next.email = 'E-posta zorunludur.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Geçerli bir e-posta adresi girin.';
+
+    for (const key of ['phone', 'payrollEmployerPhone'] as const) {
+      const value = form[key]?.trim() ?? '';
+      if (!value) continue;
+      const result = validatePhone(value);
+      if (!result.valid) next[key] = result.error ?? 'Geçersiz telefon numarası.';
+    }
+
+    if (form.payrollEmployerEnabled && !form.payrollEmployerName?.trim()) {
+      next.payrollEmployerName = 'Bordro işvereni unvanı zorunludur.';
+    }
+
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  function applyTitleCase(field: 'name' | 'payrollEmployerName') {
+    const value = form[field]?.trim();
+    if (!value) return;
+    setForm((prev) => ({ ...prev, [field]: toTitleCaseTR(value) }));
+    clearFieldError(field);
+  }
+
+  function applyPhoneFormat(field: 'phone' | 'payrollEmployerPhone') {
+    const value = form[field]?.trim();
+    if (!value) {
+      clearFieldError(field);
+      return;
+    }
+    const result = validatePhone(value);
+    if (!result.valid) {
+      setFieldErrors((prev) => ({ ...prev, [field]: result.error ?? 'Geçersiz telefon numarası.' }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, [field]: result.formatted ?? formatPhone(value) }));
+    clearFieldError(field);
+  }
+
   async function handleSave() {
-    if (!form.name.trim()) { setError('Operasyon şirketi adı zorunludur.'); return; }
-    setSaving(true); setError(''); setSuccess('');
-    const { logoUrl: _logo, ...payload } = form;
+    if (!validateForm()) {
+      setError('Lütfen işaretli alanları düzeltin.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    const payload = {
+      ...form,
+      name: toTitleCaseTR(form.name.trim()),
+      email: form.email?.trim(),
+      payrollEmployerName: form.payrollEmployerName?.trim()
+        ? toTitleCaseTR(form.payrollEmployerName.trim())
+        : form.payrollEmployerName,
+    };
+    const { logoUrl: _logo, ...body } = payload;
     try {
-      await axios.put(`${API}/system-settings/company-info`, payload, { headers: authHeader() });
-      setSuccess('Şirket bilgileri kaydedildi. KVKK/gizlilik metinleri bir sonraki girişte güncellenmiş içerikle sunulur.');
-      setTimeout(() => setSuccess(''), 4000);
+      await axios.put(`${API}/system-settings/company-info`, body, { headers: authHeader() });
+      redirectAfterSettingsSave(router, 'sirket-bilgileri');
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       if (status === 413) {
@@ -108,9 +178,6 @@ export default function SirketBilgileriPage() {
       {error && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
-      {success && (
-        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{success}</div>
-      )}
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-800 mb-6">
         Logo ve tema ayarları için{' '}
@@ -126,7 +193,14 @@ export default function SirketBilgileriPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className={labelCls}>Şirket Unvanı <span className="text-red-500">*</span></label>
-            <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Meridyen Assistance Ltd. Şti." />
+            <input
+              className={`${inputCls}${fieldErrors.name ? ' border-red-300 focus:ring-red-400' : ''}`}
+              value={form.name}
+              onChange={(e) => { setForm({ ...form, name: e.target.value }); clearFieldError('name'); }}
+              onBlur={() => applyTitleCase('name')}
+              placeholder="Meridyen Assistance Ltd. Şti."
+            />
+            {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
           </div>
           <div>
             <label className={labelCls}>Vergi No</label>
@@ -142,11 +216,24 @@ export default function SirketBilgileriPage() {
           </div>
           <div>
             <label className={labelCls}>Telefon</label>
-            <input className={inputCls} value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <input
+              className={`${inputCls}${fieldErrors.phone ? ' border-red-300 focus:ring-red-400' : ''}`}
+              value={form.phone ?? ''}
+              onChange={(e) => { setForm({ ...form, phone: e.target.value }); clearFieldError('phone'); }}
+              onBlur={() => applyPhoneFormat('phone')}
+              placeholder="0532 123 45 67"
+            />
+            {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
           </div>
           <div>
-            <label className={labelCls}>E-posta</label>
-            <input className={inputCls} type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <label className={labelCls}>E-posta <span className="text-red-500">*</span></label>
+            <input
+              className={`${inputCls}${fieldErrors.email ? ' border-red-300 focus:ring-red-400' : ''}`}
+              type="email"
+              value={form.email ?? ''}
+              onChange={(e) => { setForm({ ...form, email: e.target.value }); clearFieldError('email'); }}
+            />
+            {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
           </div>
           <div>
             <label className={labelCls}>Web Sitesi</label>
@@ -185,8 +272,15 @@ export default function SirketBilgileriPage() {
         {form.payrollEmployerEnabled && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div className="md:col-span-2">
-              <label className={labelCls}>Bordro İşvereni Unvanı</label>
-              <input className={inputCls} value={form.payrollEmployerName ?? ''} onChange={(e) => setForm({ ...form, payrollEmployerName: e.target.value })} placeholder="Safran Birleşik Hizmetler A.Ş." />
+              <label className={labelCls}>Bordro İşvereni Unvanı <span className="text-red-500">*</span></label>
+              <input
+                className={`${inputCls}${fieldErrors.payrollEmployerName ? ' border-red-300 focus:ring-red-400' : ''}`}
+                value={form.payrollEmployerName ?? ''}
+                onChange={(e) => { setForm({ ...form, payrollEmployerName: e.target.value }); clearFieldError('payrollEmployerName'); }}
+                onBlur={() => applyTitleCase('payrollEmployerName')}
+                placeholder="Safran Birleşik Hizmetler A.Ş."
+              />
+              {fieldErrors.payrollEmployerName && <p className="mt-1 text-xs text-red-600">{fieldErrors.payrollEmployerName}</p>}
             </div>
             <div>
               <label className={labelCls}>Vergi No</label>
@@ -202,7 +296,14 @@ export default function SirketBilgileriPage() {
             </div>
             <div>
               <label className={labelCls}>Telefon</label>
-              <input className={inputCls} value={form.payrollEmployerPhone ?? ''} onChange={(e) => setForm({ ...form, payrollEmployerPhone: e.target.value })} />
+              <input
+                className={`${inputCls}${fieldErrors.payrollEmployerPhone ? ' border-red-300 focus:ring-red-400' : ''}`}
+                value={form.payrollEmployerPhone ?? ''}
+                onChange={(e) => { setForm({ ...form, payrollEmployerPhone: e.target.value }); clearFieldError('payrollEmployerPhone'); }}
+                onBlur={() => applyPhoneFormat('payrollEmployerPhone')}
+                placeholder="0532 123 45 67"
+              />
+              {fieldErrors.payrollEmployerPhone && <p className="mt-1 text-xs text-red-600">{fieldErrors.payrollEmployerPhone}</p>}
             </div>
             <div>
               <label className={labelCls}>E-posta</label>

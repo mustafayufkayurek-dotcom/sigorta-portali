@@ -1,29 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ISmsProvider } from './sms-provider.interface';
+import { SmsCredentials, smsCredentialsFromEnv } from './sms-credentials';
 
 @Injectable()
 export class NetgsmSmsProvider implements ISmsProvider {
   private readonly logger = new Logger(NetgsmSmsProvider.name);
-  private readonly apiKey: string;
-  private readonly apiSecret: string;
-  private readonly sender: string;
+  private readonly creds: SmsCredentials;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('SMS_API_KEY', '');
-    this.apiSecret = this.config.get<string>('SMS_API_SECRET', '');
-    this.sender = this.config.get<string>('SMS_SENDER', 'SIGORTA');
+  constructor(configOrCreds: ConfigService | SmsCredentials) {
+    this.creds =
+      'get' in configOrCreds ? smsCredentialsFromEnv(configOrCreds) : configOrCreds;
   }
 
   async send(to: string, message: string): Promise<void> {
     const phone = to.replace(/\D/g, '').replace(/^0/, '');
 
     const params = new URLSearchParams({
-      usercode: this.apiKey,
-      password: this.apiSecret,
+      usercode: this.creds.apiKey,
+      password: this.creds.apiSecret,
       gsmno: phone,
       message,
-      msgheader: this.sender,
+      msgheader: this.creds.sender,
       dil: 'TR',
     });
 

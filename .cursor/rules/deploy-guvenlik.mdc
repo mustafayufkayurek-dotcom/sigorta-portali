@@ -1,0 +1,33 @@
+---
+description: Canlı deploy ve regresyon önleme kuralları — sayfa kaybı ve eski UI dönüşünü engeller
+alwaysApply: true
+---
+
+# Deploy ve Regresyon Güvenliği (Meridyen)
+
+Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka** oku: `docs/project-governance/DEPLOY_GUVENLIK_PROTOKOLU.md`
+
+## Zorunlu adımlar
+
+1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v29, backend v27)
+2. Deploy öncesi: `scripts/pre-deploy-safety.sh ETİKET` (sunucuda)
+3. Hash doğrulama: `scripts/verify-critical-paths.sh --remote`
+4. Deploy sonrası: `scripts/post-deploy-smoke.sh`
+5. Sorun varsa: `scripts/rollback-production.sh` — onay almadan force push / hard reset yok
+
+## Yasaklar
+
+- `/opt/app/source/` build context — her zaman `/opt/app/apps/`
+- Kısmi rsync sonrası hash doğrulaması olmadan build
+- Eski worktree'den (d272, d278 vb.) dosya kopyalama — Mustafa onayı olmadan
+- Ayarlar menüsü için `layout.tsx` içine ikinci liste — tek kaynak `settings-nav.ts`
+- Hub'ı kaldırıp ayarları `/panel/kullanicilar`'a yönlendirme (geri alınmış karar)
+- Bilinen iyi Docker image'larını prune ile silme
+
+## Deploy kapsamı netliği
+
+Her deploy mesajında yaz: **web-only / backend-only / full** + migration var mı + rollback tag.
+
+## Commit
+
+Büyük deploy öncesi kullanıcıya `safety/pre-deploy-*` branch snapshot öner; kullanıcı onaylamadan commit etme.

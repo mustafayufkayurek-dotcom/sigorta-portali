@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 const PLACEHOLDERS = [
   { key: '{musteriAdi}', desc: 'Sigortalının adı soyadı' },
@@ -37,6 +37,7 @@ interface SmsLog {
 }
 
 export default function SmsBildirimleriPage() {
+  const router = useRouter();
   const [_template, setTemplate] = useState<SmsTemplate | null>(null);
   const [content, setContent] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -102,7 +103,7 @@ export default function SmsBildirimleriPage() {
         { content, isActive },
         { headers: authHeader() },
       );
-      setSaveSuccess(true);
+      redirectAfterSettingsSave(router, 'sms-bildirimler');
     } catch (e: any) {
       setSaveError(e.response?.data?.message ?? 'Kaydedilemedi.');
     } finally {
@@ -181,8 +182,20 @@ export default function SmsBildirimleriPage() {
   return (
     <SettingsPageLayout
       title="SMS / Mesaj Bildirimleri"
-      description="Dosya atama bildirimleri için mesaj şablonu ve SMS gönderim ayarları"
+      description="Atama bildirim şablonları, test SMS ve gönderim geçmişi"
     >
+      <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3">
+        <p className="text-sm text-slate-600">
+          SMS sağlayıcı bağlantısı (Netgsm / İleti Merkezi){' '}
+          <Link
+            href="/panel/ayarlar/entegrasyonlar?sekme=sms"
+            className="font-medium text-blue-700 hover:underline"
+          >
+            Entegrasyon Merkezi → SMS Entegrasyonu
+          </Link>{' '}
+          sekmesinden yapılandırılır.
+        </p>
+      </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Sol: Şablon + Loglar */}
         <div className="lg:col-span-2 space-y-6">
@@ -386,50 +399,16 @@ export default function SmsBildirimleriPage() {
             </div>
           </div>
 
-          {/* Provider Bilgisi */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">SMS Provider Ayarları</h3>
-            <p className="text-xs text-slate-400 mb-3">
-              Provider ayarları <code className="bg-slate-100 px-1 rounded">.env</code> dosyasından yapılır.
+          {/* Bilgi */}
+          <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">Sağlayıcı Ayarları</h3>
+            <p className="text-xs leading-relaxed text-slate-500">
+              SMS gönderimi için sağlayıcı bilgilerini{' '}
+              <Link href="/panel/ayarlar/entegrasyonlar?sekme=sms" className="font-medium text-blue-700 hover:underline">
+                Entegrasyon Merkezi
+              </Link>{' '}
+              üzerinden kaydedin. Test SMS buradan veya entegrasyon sekmesinden gönderilebilir.
             </p>
-            <div className="space-y-2 text-xs text-slate-500">
-              {[
-                ['SMS_PROVIDER', 'netgsm | iletimerkezi | console'],
-                ['SMS_API_KEY', 'API Kullanıcı Kodu'],
-                ['SMS_API_SECRET', 'API Şifresi / Anahtar'],
-                ['SMS_SENDER', 'SMS Başlığı (maks 11 kar.)'],
-              ].map(([k, v]) => (
-                <div key={k} className="flex flex-col gap-0.5">
-                  <code className="font-mono text-blue-600">{k}</code>
-                  <span className="text-slate-400">{v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* WhatsApp Bilgisi */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">WhatsApp (Opsiyonel)</h3>
-            <p className="text-xs text-slate-400 mb-3">
-              WhatsApp Business API altyapısı hazır, aktif kullanım sonraki versiyonda eklenecek.
-            </p>
-            <div className="space-y-2 text-xs text-slate-500">
-              {[
-                ['WHATSAPP_ENABLED', 'true | false'],
-                ['WHATSAPP_API_URL', 'WhatsApp API URL'],
-                ['WHATSAPP_TOKEN', 'Access Token'],
-              ].map(([k, v]) => (
-                <div key={k} className="flex flex-col gap-0.5">
-                  <code className="font-mono text-green-600">{k}</code>
-                  <span className="text-slate-400">{v}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-amber-700">
-                WhatsApp Business API için Meta onaylı iş hesabı gerekmektedir.
-              </p>
-            </div>
           </div>
         </div>
       </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
+import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
@@ -19,10 +21,6 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 const FORMAT_LABELS: Record<string, string> = {
   repair: 'Hasar Onarım',
@@ -88,22 +86,29 @@ export default function DepartmanlarPage() {
   };
 
   const handleSave = async () => {
-    if (!form.code || !form.name) { setError('Kod ve Ad zorunludur'); return; }
+    if (!form.name.trim()) { setError('Ad zorunludur'); return; }
+    const payload = {
+      ...form,
+      code: editing ? form.code : (form.code.trim() || suggestAutoCode('DEPT', form.name)),
+      name: form.name.trim(),
+    };
     const dupName = departments.find((d) =>
-      d.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || d.id !== editing.id)
+      d.name.trim().toLowerCase() === payload.name.toLowerCase() && (!editing || d.id !== editing.id)
     );
     if (dupName) { setError('Bu isimde bir departman zaten mevcut!'); return; }
-    const dupCode = departments.find((d) =>
-      d.code.trim().toUpperCase() === form.code.trim().toUpperCase() && (!editing || d.id !== editing.id)
-    );
-    if (dupCode) { setError('Bu kodda bir departman zaten mevcut!'); return; }
+    if (!editing) {
+      const dupCode = departments.find((d) =>
+        d.code.trim().toUpperCase() === payload.code.trim().toUpperCase()
+      );
+      if (dupCode) { setError('Bu kodda bir departman zaten mevcut!'); return; }
+    }
     setSaving(true);
     setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/departments/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/departments/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/departments`, form, { headers: authHeader() });
+        await axios.post(`${API}/departments`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       fetchDepartments();
@@ -138,20 +143,26 @@ export default function DepartmanlarPage() {
     <SettingsPageLayout
       title="Departman Yönetimi"
       description="Rapor Formatları ve Dosya Konularını Departman Bazlı Yönetin"
-      addButtonText="+ Yeni Departman"
+      backHref="/panel/ayarlar/tanimlar"
+      backText="← Tanımlar Merkezi"
+      addButtonText="Yeni Departman"
       onAdd={openCreate}
       headerExtra={
-        <button type="button" onClick={handleSeed} disabled={seeding}
-          className="border border-slate-200 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-50">
-
-          {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
-        </button>
+        departments.length === 0 ? (
+          <button
+            type="button"
+            onClick={handleSeed}
+            disabled={seeding}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+          >
+            {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+          </button>
+        ) : undefined
       }
     >
       <SettingsTable loading={loading} empty={departments.length === 0} emptyText="Henüz departman tanımlanmamış.">
         <SettingsTableHead>
           <SettingsTableTh>Departman</SettingsTableTh>
-          <SettingsTableTh>Kod</SettingsTableTh>
           <SettingsTableTh>Rapor Formatı</SettingsTableTh>
           <SettingsTableTh>Dosya Konuları</SettingsTableTh>
           <SettingsTableTh>Durum</SettingsTableTh>
@@ -169,9 +180,6 @@ export default function DepartmanlarPage() {
                   </div>
                   {d.isSystem && <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Sistem</span>}
                 </div>
-              </SettingsTableTd>
-              <SettingsTableTd>
-                <code className="text-xs bg-slate-100 px-2 py-0.5 rounded">{d.code}</code>
               </SettingsTableTd>
               <SettingsTableTd>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${FORMAT_COLORS[d.reportFormat] ?? 'bg-slate-100 text-slate-600'}`}>
@@ -200,19 +208,18 @@ export default function DepartmanlarPage() {
         error={error}
       >
         <div>
-          <label className={labelCls}>Kod <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+          <label className={labelCls}>Kod</label>
           <input className={`${inputCls} disabled:bg-slate-50`}
             value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s/g, '_') })}
-            placeholder="DEPARTMAN_KODU"
-            disabled={!!editing}
+            disabled
+            placeholder={editing ? 'DEPARTMAN_KODU' : 'Ad yazınca otomatik üretilir'}
           />
         </div>
         <div>
           <label className={labelCls}>Ad <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
           <input className={inputCls}
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => setForm((p) => applyNameWithAutoCode(p, e.target.value, !!editing, 'DEPT'))}
             placeholder="Departman Adı"
           />
         </div>
@@ -224,17 +231,34 @@ export default function DepartmanlarPage() {
             placeholder="Opsiyonel Açıklama"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>Rapor Formatı <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <select className={`${inputCls} bg-white`}
-              value={form.reportFormat}
-              onChange={(e) => setForm({ ...form, reportFormat: e.target.value })}
-            >
-              <option value="repair">Hasar Onarım</option>
-              <option value="emergency">Acil Yardım</option>
-            </select>
+        {editing ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Rapor Formatı</label>
+              <select className={`${inputCls} bg-white`}
+                value={form.reportFormat}
+                onChange={(e) => setForm({ ...form, reportFormat: e.target.value })}
+              >
+                <option value="repair">Hasar Onarım</option>
+                <option value="emergency">Acil Yardım</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Renk</label>
+              <div className="flex items-center gap-2">
+                <input type="color"
+                  className="w-10 h-9 border border-slate-200 rounded-lg cursor-pointer p-0.5"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+                <input className={inputCls}
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+              </div>
+            </div>
           </div>
+        ) : (
           <div>
             <label className={labelCls}>Renk</label>
             <div className="flex items-center gap-2">
@@ -248,8 +272,9 @@ export default function DepartmanlarPage() {
                 onChange={(e) => setForm({ ...form, color: e.target.value })}
               />
             </div>
+            <p className="mt-2 text-xs text-slate-500">Yeni departman varsayılan olarak Hasar Onarım formatına bağlanır. Rapor formatını düzenleme ekranından değiştirebilirsiniz.</p>
           </div>
-        </div>
+        )}
       </SettingsModal>
 
       <DeleteConfirmDialog

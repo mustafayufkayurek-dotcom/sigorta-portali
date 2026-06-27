@@ -1,16 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ISmsProvider } from './sms-provider.interface';
+import { SmsCredentials, smsCredentialsFromEnv } from './sms-credentials';
 
 @Injectable()
 export class IletimerkeziSmsProvider implements ISmsProvider {
   private readonly logger = new Logger(IletimerkeziSmsProvider.name);
-  private readonly apiKey: string;
-  private readonly sender: string;
+  private readonly creds: SmsCredentials;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('SMS_API_KEY', '');
-    this.sender = this.config.get<string>('SMS_SENDER', 'SIGORTA');
+  constructor(configOrCreds: ConfigService | SmsCredentials) {
+    this.creds =
+      'get' in configOrCreds ? smsCredentialsFromEnv(configOrCreds) : configOrCreds;
   }
 
   async send(to: string, message: string): Promise<void> {
@@ -18,8 +18,8 @@ export class IletimerkeziSmsProvider implements ISmsProvider {
     const internationalPhone = phone.startsWith('90') ? phone : `90${phone}`;
 
     const body = {
-      api_key: this.apiKey,
-      sender: this.sender,
+      api_key: this.creds.apiKey,
+      sender: this.creds.sender,
       message,
       phones: [internationalPhone],
     };

@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import AuthStorageInit from '@/components/AuthStorageInit';
 
 export const metadata: Metadata = {
   title: 'Meridyen Assistance',
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="tr">
       <head>
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthStorageInit />
+        {children}
+      </body>
     </html>
   );
 }

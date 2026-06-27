@@ -102,6 +102,8 @@ model User {
   mustChangePassword Boolean @default(false) @map("must_change_password")
   temporaryPasswordIssuedAt DateTime? @map("temporary_password_issued_at")
   status       String    @default("active")
+  archivedEmail String?  @map("archived_email")
+  archivedAt   DateTime? @map("archived_at")
   lastLoginAt  DateTime? @map("last_login_at")
   employeeCode String?   @unique @map("employee_code")
   isMobileUser Boolean   @default(false) @map("is_mobile_user")
@@ -1289,15 +1291,17 @@ model SupplierPriceHistory {
 // ─── Özellik: Tedarikçi Evrak Yönetimi ────────────────────────────────────────
 
 model DocumentType {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  isRequired  Boolean  @default(false) @map("is_required")
-  sortOrder   Int      @default(0) @map("sort_order")
-  status      String   @default("active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  code             String   @unique
+  name             String
+  description      String?
+  isRequired       Boolean  @default(false) @map("is_required")
+  sortOrder        Int      @default(0) @map("sort_order")
+  status           String   @default("active")
+  serviceTypeIds   Json     @default("[]") @map("service_type_ids")
+  departmentIds    Json     @default("[]") @map("department_ids")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   vendorDocuments VendorDocument[]
   entityDocuments EntityDocument[]

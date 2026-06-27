@@ -184,6 +184,13 @@ assert_frontend_route "GET /panel/operasyon returns 200" "/panel/operasyon"
 assert_frontend_route "GET /panel/sahiplik returns 200" "/panel/sahiplik"
 assert_frontend_route "GET /panel/finans returns 200" "/panel/finans"
 assert_frontend_route "GET /panel/ayarlar returns 200" "/panel/ayarlar"
+assert_frontend_route "GET /panel/ayarlar/tanimlar returns 200" "/panel/ayarlar/tanimlar"
+assert_frontend_route "GET /panel/ayarlar/masraf-kategorileri returns 200" "/panel/ayarlar/masraf-kategorileri"
+assert_frontend_route "GET /panel/ayarlar/is-gruplari returns 200" "/panel/ayarlar/is-gruplari"
+assert_frontend_route "GET /panel/ayarlar/dosya-konulari returns 200" "/panel/ayarlar/dosya-konulari"
+assert_frontend_route "GET /panel/ayarlar/evrak-turleri returns 200" "/panel/ayarlar/evrak-turleri"
+assert_frontend_route "GET /panel/ayarlar/mahaller returns 200" "/panel/ayarlar/mahaller"
+assert_frontend_route "GET /panel/ayarlar/hizmet-turleri returns 200" "/panel/ayarlar/hizmet-turleri"
 assert_frontend_route "GET /panel/guvenlik returns 200" "/panel/guvenlik"
 
 if [ "$FAILURES" -gt 0 ]; then

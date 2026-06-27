@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
+import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { DepartmentContextBand } from '@/components/settings/DepartmentTabSelector';
 import {
   EditButton,
   DeleteButton,
@@ -19,28 +23,101 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
-
 type ClaimLocation = {
-  id: string; code: string; name: string; description?: string;
-  sortOrder: number; status: string; parentId?: string | null;
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  sortOrder: number;
+  status: string;
+  parentId?: string | null;
   _count?: { children: number };
 };
+
 type FieldRule = { required: boolean };
 type FieldsConfig = Record<string, FieldRule>;
 
-function isFieldRequired(fields: FieldsConfig, key: string) { return fields[key]?.required ?? false; }
-function buildLabel(fields: FieldsConfig, label: string, key: string) { return isFieldRequired(fields, key) ? `${label} *` : label; }
-function buildPlaceholder(fields: FieldsConfig, key: string) { return isFieldRequired(fields, key) ? 'Zorunlu Alan' : 'Opsiyonel'; }
+function isFieldRequired(fields: FieldsConfig, key: string) {
+  return fields[key]?.required ?? false;
+}
+
+function buildLabel(fields: FieldsConfig, label: string, key: string) {
+  return isFieldRequired(fields, key) ? `${label} *` : label;
+}
+
+function buildPlaceholder(fields: FieldsConfig, key: string) {
+  return isFieldRequired(fields, key) ? 'Zorunlu Alan' : 'Opsiyonel';
+}
 
 const emptyForm = { code: '', name: '', description: '', sortOrder: 0 };
+type LocationFormData = typeof emptyForm;
+
+function LocationFormFields({
+  f,
+  setF,
+  fc,
+  isNew,
+  codePrefix,
+}: {
+  f: LocationFormData;
+  setF: Dispatch<SetStateAction<LocationFormData>>;
+  fc: FieldsConfig;
+  isNew?: boolean;
+  codePrefix: string;
+}) {
+  return (
+    <>
+      <div>
+        <label className={labelCls}>{buildLabel(fc, 'Kod', 'code')}</label>
+        <input
+          className={`${inputCls} disabled:bg-slate-50`}
+          value={f.code}
+          disabled
+          placeholder={isNew ? 'Ad yazınca otomatik üretilir' : buildPlaceholder(fc, 'code')}
+        />
+      </div>
+      <div>
+        <label className={labelCls}>{buildLabel(fc, 'Ad', 'name')}</label>
+        <input
+          className={inputCls}
+          value={f.name}
+          autoComplete="off"
+          name="mahal-ad"
+          onChange={(e) => setF((prev) => applyNameWithAutoCode(prev, e.target.value, !isNew, codePrefix))}
+          placeholder={buildPlaceholder(fc, 'name')}
+        />
+      </div>
+      <div>
+        <label className={labelCls}>{buildLabel(fc, 'Açıklama', 'description')}</label>
+        <input
+          className={inputCls}
+          value={f.description}
+          autoComplete="off"
+          onChange={(e) => setF((prev) => ({ ...prev, description: e.target.value }))}
+          placeholder={buildPlaceholder(fc, 'description')}
+        />
+      </div>
+      <div>
+        <label className={labelCls}>{buildLabel(fc, 'Sıra', 'sortOrder')}</label>
+        <input
+          type="number"
+          min={0}
+          className={inputCls}
+          value={f.sortOrder}
+          onChange={(e) => setF((prev) => ({ ...prev, sortOrder: parseInt(e.target.value, 10) || 0 }))}
+          placeholder={buildPlaceholder(fc, 'sortOrder')}
+        />
+      </div>
+    </>
+  );
+}
 
 export default function MahallerPage() {
   const [locations, setLocations] = useState<ClaimLocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<ClaimLocation | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -48,14 +125,12 @@ export default function MahallerPage() {
   const [error, setError] = useState('');
   const [fieldConfig, setFieldConfig] = useState<FieldsConfig>({});
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subLocations, setSubLocations] = useState<Record<string, ClaimLocation[]>>({});
   const [loadingSubs, setLoadingSubs] = useState<Record<string, boolean>>({});
   const [showSubModal, setShowSubModal] = useState(false);
   const [editingSub, setEditingSub] = useState<ClaimLocation | null>(null);
-  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
-  const [subForm, setSubForm] = useState({ ...emptyForm });
-  const [savingSub, setSavingSub] = useState(false);
+  const [subForm, setSubForm] = useState({ ...emptyForm, parentId: '' });
+  const [subSaving, setSubSaving] = useState(false);
   const [subError, setSubError] = useState('');
 
   const [deleteTarget, setDeleteTarget] = useState<ClaimLocation | null>(null);
@@ -66,14 +141,23 @@ export default function MahallerPage() {
     setLoading(true);
     try {
       const res = await axios.get(`${API}/claim-locations`, { headers: authHeader() });
-      setLocations(res.data.data ?? []);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+      const data: ClaimLocation[] = res.data.data ?? [];
+      setLocations(data);
+      setExpandedIds((prev) => {
+        if (prev.size > 0) return prev;
+        return new Set(data.slice(0, 2).map((l) => l.id));
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchLocations();
-    axios.get(`${API}/system-settings/location-fields`, { headers: authHeader() })
+    axios
+      .get(`${API}/system-settings/location-fields`, { headers: authHeader() })
       .then((r) => setFieldConfig(r.data.data ?? {}))
       .catch(console.error);
   }, [fetchLocations]);
@@ -83,53 +167,111 @@ export default function MahallerPage() {
     try {
       const res = await axios.get(`${API}/claim-locations/${parentId}/sub-locations`, { headers: authHeader() });
       setSubLocations((prev) => ({ ...prev, [parentId]: res.data.data ?? [] }));
-    } catch (e) { console.error(e); }
-    finally { setLoadingSubs((prev) => ({ ...prev, [parentId]: false })); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSubs((prev) => ({ ...prev, [parentId]: false }));
+    }
   }, []);
 
-  const toggleExpand = (id: string) => {
-    if (expandedId === id) { setExpandedId(null); }
-    else { setExpandedId(id); if (!subLocations[id]) fetchSubLocations(id); }
+  const ensureSubsLoaded = (parentId: string) => {
+    if (!subLocations[parentId]) fetchSubLocations(parentId);
   };
 
-  const openCreate = () => { setEditing(null); setForm({ ...emptyForm }); setError(''); setShowModal(true); };
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else {
+        next.add(id);
+        ensureSubsLoaded(id);
+      }
+      return next;
+    });
+  };
+
+  const parentLocation = (id: string) => locations.find((l) => l.id === id) ?? null;
+  const selectedParentForSubModal = subForm.parentId ? parentLocation(subForm.parentId) : null;
+
+  const filteredLocations = search.trim()
+    ? locations.filter((loc) => {
+        const q = search.toLowerCase();
+        if (loc.name.toLowerCase().includes(q) || (loc.description ?? '').toLowerCase().includes(q)) return true;
+        const subs = subLocations[loc.id] ?? [];
+        return subs.some((s) => s.name.toLowerCase().includes(q));
+      })
+    : locations;
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ ...emptyForm });
+    setError('');
+    setShowModal(true);
+  };
+
   const openEdit = (loc: ClaimLocation) => {
     setEditing(loc);
     setForm({ code: loc.code, name: loc.name, description: loc.description ?? '', sortOrder: loc.sortOrder });
-    setError(''); setShowModal(true);
+    setError('');
+    setShowModal(true);
   };
 
   const handleSave = async () => {
     const missing: string[] = [];
-    if (isFieldRequired(fieldConfig, 'code') && !form.code) missing.push('Kod');
-    if (isFieldRequired(fieldConfig, 'name') && !form.name) missing.push('Ad');
+    if (isFieldRequired(fieldConfig, 'name') && !form.name.trim()) missing.push('Ad');
     if (isFieldRequired(fieldConfig, 'description') && !form.description) missing.push('Açıklama');
-    if (missing.length > 0) { setError(`${missing.join(', ')} zorunludur`); return; }
-    if (form.name) {
-      const dupName = locations.find((l) =>
-        l.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || l.id !== editing.id)
-      );
-      if (dupName) { setError('Bu isimde bir mahal zaten mevcut!'); return; }
+    if (missing.length > 0) {
+      setError(`${missing.join(', ')} zorunludur`);
+      return;
     }
-    setSaving(true); setError('');
+    const code = editing ? form.code : form.code.trim() || suggestAutoCode('MAHAL', form.name);
+    if (form.name) {
+      const dupName = locations.find(
+        (l) => l.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || l.id !== editing.id),
+      );
+      if (dupName) {
+        setError('Bu isimde bir mahal zaten mevcut!');
+        return;
+      }
+    }
+    setSaving(true);
+    setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/claim-locations/${editing.id}`,
-          { name: form.name, description: form.description || undefined, sortOrder: form.sortOrder }, { headers: authHeader() });
+        await axios.put(
+          `${API}/claim-locations/${editing.id}`,
+          { name: form.name, description: form.description || undefined, sortOrder: form.sortOrder },
+          { headers: authHeader() },
+        );
       } else {
-        await axios.post(`${API}/claim-locations`, { ...form, description: form.description || undefined }, { headers: authHeader() });
+        await axios.post(
+          `${API}/claim-locations`,
+          { code, name: form.name.trim(), description: form.description || undefined, sortOrder: form.sortOrder },
+          { headers: authHeader() },
+        );
       }
-      setShowModal(false); fetchLocations();
-    } catch (e: any) { setError(e.response?.data?.message ?? 'Bir hata oluştu'); }
-    finally { setSaving(false); }
+      setShowModal(false);
+      fetchLocations();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message ?? 'Bir hata oluştu');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggleStatus = async (loc: ClaimLocation) => {
     try {
-      await axios.put(`${API}/claim-locations/${loc.id}`,
-        { status: loc.status === 'active' ? 'inactive' : 'active' }, { headers: authHeader() });
+      await axios.put(
+        `${API}/claim-locations/${loc.id}`,
+        { status: loc.status === 'active' ? 'inactive' : 'active' },
+        { headers: authHeader() },
+      );
       fetchLocations();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Güncellenemedi'); }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? 'Güncellenemedi');
+    }
   };
 
   const confirmDelete = async () => {
@@ -137,46 +279,88 @@ export default function MahallerPage() {
     setDeleting(true);
     try {
       await axios.delete(`${API}/claim-locations/${deleteTarget.id}`, { headers: authHeader() });
-      setDeleteTarget(null); fetchLocations();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Silinemedi'); }
-    finally { setDeleting(false); }
+      setDeleteTarget(null);
+      fetchLocations();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? 'Silinemedi');
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const openCreateSub = (parentId: string) => { setEditingSub(null); setCurrentParentId(parentId); setSubForm({ ...emptyForm }); setSubError(''); setShowSubModal(true); };
+  const openCreateSub = (parentId: string) => {
+    setEditingSub(null);
+    setSubForm({ ...emptyForm, parentId });
+    setSubError('');
+    setShowSubModal(true);
+  };
+
   const openEditSub = (sub: ClaimLocation) => {
-    setEditingSub(sub); setCurrentParentId(sub.parentId ?? null);
-    setSubForm({ code: sub.code, name: sub.name, description: sub.description ?? '', sortOrder: sub.sortOrder });
-    setSubError(''); setShowSubModal(true);
+    setEditingSub(sub);
+    setSubForm({
+      code: sub.code,
+      name: sub.name,
+      description: sub.description ?? '',
+      sortOrder: sub.sortOrder,
+      parentId: sub.parentId ?? '',
+    });
+    setSubError('');
+    setShowSubModal(true);
   };
 
   const handleSaveSub = async () => {
+    if (!subForm.parentId) {
+      setSubError('Üst mahal seçimi zorunludur');
+      return;
+    }
     const missing: string[] = [];
-    if (isFieldRequired(fieldConfig, 'code') && !subForm.code) missing.push('Kod');
-    if (isFieldRequired(fieldConfig, 'name') && !subForm.name) missing.push('Ad');
+    if (isFieldRequired(fieldConfig, 'name') && !subForm.name.trim()) missing.push('Ad');
     if (isFieldRequired(fieldConfig, 'description') && !subForm.description) missing.push('Açıklama');
-    if (missing.length > 0) { setSubError(`${missing.join(', ')} zorunludur`); return; }
-    setSavingSub(true); setSubError('');
+    if (missing.length > 0) {
+      setSubError(`${missing.join(', ')} zorunludur`);
+      return;
+    }
+    const code = editingSub ? subForm.code : subForm.code.trim() || suggestAutoCode('BOLGE', subForm.name);
+    setSubSaving(true);
+    setSubError('');
     try {
       if (editingSub) {
-        await axios.put(`${API}/claim-locations/${editingSub.id}`,
-          { name: subForm.name, description: subForm.description || undefined, sortOrder: subForm.sortOrder }, { headers: authHeader() });
+        await axios.put(
+          `${API}/claim-locations/${editingSub.id}`,
+          { name: subForm.name, description: subForm.description || undefined, sortOrder: subForm.sortOrder },
+          { headers: authHeader() },
+        );
       } else {
-        await axios.post(`${API}/claim-locations/${currentParentId}/sub-locations`,
-          { ...subForm, description: subForm.description || undefined }, { headers: authHeader() });
+        await axios.post(
+          `${API}/claim-locations/${subForm.parentId}/sub-locations`,
+          { code, name: subForm.name.trim(), description: subForm.description || undefined, sortOrder: subForm.sortOrder },
+          { headers: authHeader() },
+        );
       }
       setShowSubModal(false);
-      if (currentParentId) fetchSubLocations(currentParentId);
+      fetchSubLocations(subForm.parentId);
       fetchLocations();
-    } catch (e: any) { setSubError(e.response?.data?.message ?? 'Bir hata oluştu'); }
-    finally { setSavingSub(false); }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setSubError(err.response?.data?.message ?? 'Bir hata oluştu');
+    } finally {
+      setSubSaving(false);
+    }
   };
 
   const handleToggleSubStatus = async (sub: ClaimLocation) => {
     try {
-      await axios.put(`${API}/claim-locations/${sub.id}`,
-        { status: sub.status === 'active' ? 'inactive' : 'active' }, { headers: authHeader() });
+      await axios.put(
+        `${API}/claim-locations/${sub.id}`,
+        { status: sub.status === 'active' ? 'inactive' : 'active' },
+        { headers: authHeader() },
+      );
       if (sub.parentId) fetchSubLocations(sub.parentId);
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Güncellenemedi'); }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? 'Güncellenemedi');
+    }
   };
 
   const confirmDeleteSub = async () => {
@@ -185,149 +369,264 @@ export default function MahallerPage() {
     try {
       await axios.delete(`${API}/claim-locations/${deleteSubTarget.id}`, { headers: authHeader() });
       if (deleteSubTarget.parentId) fetchSubLocations(deleteSubTarget.parentId);
-      setDeleteSubTarget(null); fetchLocations();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Silinemedi'); }
-    finally { setDeleting(false); }
+      setDeleteSubTarget(null);
+      fetchLocations();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message ?? 'Silinemedi');
+    } finally {
+      setDeleting(false);
+    }
   };
-
-  const LocationForm = ({ f, setF, fc }: { f: typeof emptyForm; setF: (v: typeof emptyForm) => void; fc: FieldsConfig }) => (
-    <>
-      <div>
-        <label className={labelCls}>{buildLabel(fc, 'Kod', 'code')}</label>
-        <input className={`${inputCls} disabled:bg-slate-50`}
-          value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, '_') })}
-          placeholder={buildPlaceholder(fc, 'code')} disabled={!!(editing || editingSub)} />
-      </div>
-      <div>
-        <label className={labelCls}>{buildLabel(fc, 'Ad', 'name')}</label>
-        <input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={buildPlaceholder(fc, 'name')} />
-      </div>
-      <div>
-        <label className={labelCls}>{buildLabel(fc, 'Açıklama', 'description')}</label>
-        <input className={inputCls} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder={buildPlaceholder(fc, 'description')} />
-      </div>
-      <div>
-        <label className={labelCls}>{buildLabel(fc, 'Sıra', 'sortOrder')}</label>
-        <input type="number" min={0} className={inputCls} value={f.sortOrder} onChange={(e) => setF({ ...f, sortOrder: parseInt(e.target.value) || 0 })} placeholder={buildPlaceholder(fc, 'sortOrder')} />
-      </div>
-    </>
-  );
 
   return (
     <SettingsPageLayout
-      title="Mahal Yönetimi"
-      description="Hasar Raporu için Bölge ve Mahal Tanımlarını Yönetin"
-      addButtonText="+ Yeni Mahal"
-      onAdd={openCreate}
+      title="Mahal ve Bölgeler"
+      description="Hasar raporunda hangi bölgede ne iş yapılacağını tanımlayın (ör. Salon zemin, Çocuk odası tavan)."
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
+      headerExtra={
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Mahal Ekle
+        </button>
+      }
     >
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Mahal veya alt bölge ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={`${inputCls} pl-9`}
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          Hiyerarşi: <span className="font-medium text-slate-700">Mahal</span>
+          {' → '}
+          <span className="font-medium text-slate-700">Alt Bölge</span>
+        </p>
+      </div>
 
-      <SettingsTable loading={loading} empty={locations.length === 0} emptyText="Henüz mahal tanımlanmamış.">
-        <SettingsTableHead>
-          <SettingsTableTh>Kod</SettingsTableTh>
-          <SettingsTableTh>Ad</SettingsTableTh>
-          <SettingsTableTh>Açıklama</SettingsTableTh>
-          <SettingsTableTh>Sıra</SettingsTableTh>
-          <SettingsTableTh>Alt Bölgeler</SettingsTableTh>
-          <SettingsTableTh>Durum</SettingsTableTh>
-          <SettingsTableTh />
-        </SettingsTableHead>
-        <SettingsTableBody>
-          {locations.map((loc) => (
-            <>
-              <SettingsTableRow key={loc.id}>
-                <SettingsTableTd><code className="text-xs bg-slate-100 px-2 py-0.5 rounded">{loc.code}</code></SettingsTableTd>
-                <SettingsTableTd><p className="text-sm font-medium text-slate-800">{loc.name}</p></SettingsTableTd>
-                <SettingsTableTd><p className="text-sm text-slate-500">{loc.description || <span className="text-slate-300">—</span>}</p></SettingsTableTd>
-                <SettingsTableTd>{loc.sortOrder}</SettingsTableTd>
-                <SettingsTableTd>
-                  <button type="button" onClick={() => toggleExpand(loc.id)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                    <span>{loc._count?.children ?? 0} alt bölge</span>
-                    <svg className={`w-3 h-3 transition-transform ${expandedId === loc.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </SettingsTableTd>
-                <SettingsTableTd>
-                  <button type="button" onClick={() => handleToggleStatus(loc)}>
-                    <StatusBadge active={loc.status === 'active'} />
-                  </button>
-                </SettingsTableTd>
-                <SettingsTableActions>
-                  <EditButton onClick={() => openEdit(loc)} />
-                  <DeleteButton onClick={() => setDeleteTarget(loc)} />
-                </SettingsTableActions>
-              </SettingsTableRow>
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : filteredLocations.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+          <p className="text-sm font-medium text-slate-700 mb-1">
+            {search ? 'Arama sonucu bulunamadı' : 'Henüz mahal tanımlanmamış'}
+          </p>
+          {!search && (
+            <button type="button" onClick={openCreate} className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+              İlk mahali ekle
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredLocations.map((loc) => {
+            const isOpen = expandedIds.has(loc.id);
+            const subCount = loc._count?.children ?? subLocations[loc.id]?.length ?? 0;
+            const subs = subLocations[loc.id] ?? [];
+            const q = search.trim().toLowerCase();
+            const visibleSubs = q
+              ? subs.filter((s) => s.name.toLowerCase().includes(q) || (s.description ?? '').toLowerCase().includes(q))
+              : subs;
 
-              {expandedId === loc.id && (
-                <tr key={`${loc.id}-subs`}>
-                  <td colSpan={7} className="px-0 py-0">
-                    <div className="bg-blue-50/40 border-t border-blue-100 px-8 py-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{loc.name} — Alt Bölgeler</p>
-                        <button type="button" onClick={() => openCreateSub(loc.id)}
-                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
-                          + Alt Bölge Ekle
+            if (isOpen && !subLocations[loc.id] && !loadingSubs[loc.id]) {
+              ensureSubsLoaded(loc.id);
+            }
+
+            return (
+              <div key={loc.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(loc.id)}
+                    className="flex-1 flex items-center gap-3 text-left min-w-0"
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isOpen ? 'bg-blue-600' : 'bg-slate-100'}`}>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90 text-white' : 'text-slate-500'}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-900">{loc.name}</span>
+                        <span className="text-xs text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded">{loc.code}</span>
+                        {loc.status !== 'active' && (
+                          <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Pasif</span>
+                        )}
+                      </div>
+                      {loc.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{loc.description}</p>}
+                      <p className="text-xs text-slate-400 mt-0.5">{subCount} alt bölge</p>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openCreateSub(loc.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Alt Bölge Ekle
+                    </button>
+                    <button type="button" onClick={() => handleToggleStatus(loc)}>
+                      <StatusBadge active={loc.status === 'active'} />
+                    </button>
+                    <EditButton onClick={() => openEdit(loc)} />
+                    <DeleteButton onClick={() => setDeleteTarget(loc)} />
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="border-t border-slate-100">
+                    {loadingSubs[loc.id] ? (
+                      <div className="px-6 py-8 text-center text-xs text-slate-400">Yükleniyor...</div>
+                    ) : visibleSubs.length === 0 ? (
+                      <div className="px-6 py-8 text-center">
+                        <p className="text-xs text-slate-500 mb-1">
+                          <span className="font-medium text-slate-700">{loc.name}</span> mahaline henüz alt bölge eklenmemiş.
+                        </p>
+                        <button type="button" onClick={() => openCreateSub(loc.id)} className="mt-2 text-xs text-blue-600 hover:underline font-medium">
+                          İlk alt bölgeyi ekle
                         </button>
                       </div>
-                      {loadingSubs[loc.id] ? (
-                        <p className="text-xs text-slate-400 py-2">Yükleniyor...</p>
-                      ) : !subLocations[loc.id] || subLocations[loc.id].length === 0 ? (
-                        <p className="text-xs text-slate-400 py-2">Henüz Alt Bölge Eklenmemiş.</p>
-                      ) : (
-                        <table className="w-full bg-white rounded-lg border border-slate-100 overflow-hidden text-sm">
-                          <thead className="bg-slate-50 border-b border-slate-100">
-                            <tr>
-                              {['Kod', 'Ad', 'Açıklama', 'Sıra', 'Durum', ''].map((h) => (
-                                <th key={h} className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50">
-                            {subLocations[loc.id].map((sub) => (
-                              <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 py-2.5"><code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">{sub.code}</code></td>
-                                <td className="px-4 py-2.5 text-sm font-medium text-slate-800">{sub.name}</td>
-                                <td className="px-4 py-2.5 text-sm text-slate-500">{sub.description || <span className="text-slate-300">—</span>}</td>
-                                <td className="px-4 py-2.5 text-sm text-slate-500">{sub.sortOrder}</td>
-                                <td className="px-4 py-2.5">
-                                  <button type="button" onClick={() => handleToggleSubStatus(sub)}>
-                                    <StatusBadge active={sub.status === 'active'} />
-                                  </button>
-                                </td>
-                                <td className="px-4 py-2.5">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <EditButton onClick={() => openEditSub(sub)} />
-                                    <DeleteButton onClick={() => setDeleteSubTarget(sub)} />
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </>
-          ))}
-        </SettingsTableBody>
-      </SettingsTable>
+                    ) : (
+                      <SettingsTable>
+                        <SettingsTableHead>
+                          <SettingsTableTh>Alt Bölge</SettingsTableTh>
+                          <SettingsTableTh>Açıklama</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
+                          <SettingsTableTh>İşlemler</SettingsTableTh>
+                        </SettingsTableHead>
+                        <SettingsTableBody>
+                          {visibleSubs.map((sub) => (
+                            <SettingsTableRow key={sub.id}>
+                              <SettingsTableTd>
+                                <div>
+                                  <span className="text-sm font-medium text-slate-900">{sub.name}</span>
+                                  <p className="text-xs text-slate-400 mt-0.5 font-mono">{sub.code}</p>
+                                </div>
+                              </SettingsTableTd>
+                              <SettingsTableTd>
+                                <span className="text-sm text-slate-500">{sub.description || '—'}</span>
+                              </SettingsTableTd>
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd>
+                                <button type="button" onClick={() => handleToggleSubStatus(sub)}>
+                                  <StatusBadge active={sub.status === 'active'} />
+                                </button>
+                              </SettingsTableTd>
+                              <SettingsTableTd>
+                                <SettingsTableActions>
+                                  <EditButton onClick={() => openEditSub(sub)} />
+                                  <DeleteButton onClick={() => setDeleteSubTarget(sub)} />
+                                </SettingsTableActions>
+                              </SettingsTableTd>
+                            </SettingsTableRow>
+                          ))}
+                        </SettingsTableBody>
+                      </SettingsTable>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      <SettingsModal isOpen={showModal} onClose={() => setShowModal(false)}
-        title={editing ? 'Mahal Düzenle' : 'Yeni Mahal'} onSave={handleSave} saving={saving} error={error}>
-        <LocationForm f={form} setF={setForm} fc={fieldConfig} />
+      <SettingsModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Mahal Düzenle' : 'Yeni Mahal'}
+        onSave={handleSave}
+        saving={saving}
+        error={error}
+      >
+        <LocationFormFields f={form} setF={setForm} fc={fieldConfig} isNew={!editing} codePrefix="MAHAL" />
       </SettingsModal>
 
-      <SettingsModal isOpen={showSubModal} onClose={() => setShowSubModal(false)}
-        title={editingSub ? 'Alt Bölge Düzenle' : 'Yeni Alt Bölge'} onSave={handleSaveSub} saving={savingSub} error={subError}>
-        <LocationForm f={subForm} setF={setSubForm} fc={fieldConfig} />
+      <SettingsModal
+        isOpen={showSubModal}
+        onClose={() => setShowSubModal(false)}
+        title={editingSub ? 'Alt Bölge Düzenle' : 'Yeni Alt Bölge'}
+        onSave={handleSaveSub}
+        saving={subSaving}
+        error={subError}
+      >
+        <div>
+          <label className={labelCls}>Mahal *</label>
+          <select
+            className={`${inputCls} bg-white`}
+            value={subForm.parentId}
+            onChange={(e) => setSubForm((f) => ({ ...f, parentId: e.target.value }))}
+          >
+            <option value="">Mahal seçin...</option>
+            {locations.filter((l) => l.status === 'active').map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500 mt-1.5">Bu alt bölge hangi mahale bağlanacak? Örn: Salon Zemin → Salon</p>
+        </div>
+
+        {selectedParentForSubModal && (
+          <DepartmentContextBand
+            name={selectedParentForSubModal.name}
+            color="#3B82F6"
+            code={selectedParentForSubModal.code}
+            suffix="mahaline bağlanacak"
+          />
+        )}
+
+        <LocationFormFields
+          f={subForm}
+          setF={(updater) => {
+            setSubForm((prev) => {
+              const next = typeof updater === 'function' ? updater(prev) : updater;
+              return { ...next, parentId: prev.parentId };
+            });
+          }}
+          fc={fieldConfig}
+          isNew={!editingSub}
+          codePrefix={selectedParentForSubModal?.code ?? 'BOLGE'}
+        />
       </SettingsModal>
 
-      <DeleteConfirmDialog isOpen={deleteTarget !== null} onClose={() => setDeleteTarget(null)}
-        onConfirm={confirmDelete} deleting={deleting} itemName={deleteTarget?.name} />
-      <DeleteConfirmDialog isOpen={deleteSubTarget !== null} onClose={() => setDeleteSubTarget(null)}
-        onConfirm={confirmDeleteSub} deleting={deleting} itemName={deleteSubTarget?.name} />
+      <DeleteConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        deleting={deleting}
+        itemName={deleteTarget?.name}
+      />
+      <DeleteConfirmDialog
+        isOpen={deleteSubTarget !== null}
+        onClose={() => setDeleteSubTarget(null)}
+        onConfirm={confirmDeleteSub}
+        deleting={deleting}
+        itemName={deleteSubTarget?.name}
+      />
     </SettingsPageLayout>
   );
 }

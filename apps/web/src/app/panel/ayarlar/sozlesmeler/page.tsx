@@ -1,5 +1,6 @@
 'use client';
 
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { useEffect, useState } from 'react';
 import { DEFAULT_AGREEMENT_TEMPLATES } from '@sigorta/shared';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
@@ -19,10 +20,6 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }; }
 
 interface Agreement {
   id: string; title: string; type: string; version: string;

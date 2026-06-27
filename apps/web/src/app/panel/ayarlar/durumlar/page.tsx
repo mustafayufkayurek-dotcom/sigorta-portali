@@ -17,6 +17,8 @@ import {
 } from '@/components/settings/SettingsUI';
 import { DeleteConfirmDialog, SettingsModal } from '@/components/settings/SettingsModal';
 import { ApiError, apiClient } from '@/lib/api-client';
+import { applyNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 
 type ClaimStatus = {
   id: string;
@@ -147,14 +149,15 @@ export default function DurumlarPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.code.trim()) {
+    const code = editing ? form.code.trim() : (form.code.trim() || suggestAutoCode('DURUM', form.name));
+    if (!form.name.trim() || !code) {
       setError('Ad ve Kod zorunludur.');
       return;
     }
 
     const duplicate = statuses.find((status) => {
       if (editing && status.id === editing.id) return false;
-      return status.code.trim().toUpperCase() === form.code.trim().toUpperCase();
+      return status.code.trim().toUpperCase() === code.toUpperCase();
     });
 
     if (duplicate) {
@@ -166,7 +169,7 @@ export default function DurumlarPage() {
     setError('');
 
     try {
-      const payload = toPayload(form);
+      const payload = toPayload({ ...form, code });
       if (editing) {
         await apiClient.put?.<ClaimStatus>(`/claim-status/${editing.id}`, payload);
       } else {
@@ -211,8 +214,10 @@ export default function DurumlarPage() {
     <SettingsPageLayout
       title="Durumlar"
       description="Hasar ve operasyon dosyalarının ekranda hangi aşamada görüneceğini, kapanmış veya beklemede sayılıp sayılmayacağını ve takip sırasını yönetin."
-      addButtonText="+ Yeni Durum"
+      addButtonText="Yeni Durum"
       onAdd={openCreate}
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
     >
       <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
         Bu sayfa dosya akışındaki durum etiketlerini yönetir. Buradaki kayıtlar dashboard sayıları, dosya listesi filtreleri,
@@ -281,22 +286,19 @@ export default function DurumlarPage() {
             <input
               className={inputCls}
               value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => applyNameWithAutoCode(current, event.target.value, !!editing, 'DURUM'))
+              }
               placeholder="Örn: İncelemede"
             />
           </div>
           <div>
             <label className={labelCls}>Kod</label>
             <input
-              className={inputCls}
+              className={`${inputCls} disabled:bg-slate-50`}
               value={form.code}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  code: event.target.value.toUpperCase().replace(/\s+/g, '_'),
-                }))
-              }
-              placeholder="ORN: INCELEMEDE"
+              disabled
+              placeholder={editing ? 'ORN: INCELEMEDE' : 'Ad yazınca otomatik üretilir'}
             />
           </div>
           <div>

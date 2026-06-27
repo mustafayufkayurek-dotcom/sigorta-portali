@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { inputCls, labelCls } from '@/components/settings/SettingsUI';
+import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 type Security = 'SSL' | 'TLS' | 'None';
 type ActiveTab = 'smtp' | 'rules';
@@ -78,6 +77,7 @@ const SMTP_GUIDES = [
 ];
 
 export default function EPostaBildirimleriPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('smtp');
   const [mailConfig, setMailConfig] = useState<MailConfig>(defaultMailConfig);
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(defaultNotificationSettings);
@@ -152,7 +152,7 @@ export default function EPostaBildirimleriPage() {
         { ...mailConfig, port: Number(mailConfig.port) || 587 },
         { headers: authHeader() },
       );
-      setMailSuccess('SMTP ayarları başarıyla kaydedildi.');
+      redirectAfterSettingsSave(router, 'e-posta-bildirimleri-smtp');
     } catch (e: any) {
       setMailError(e.response?.data?.message ?? 'Kaydedilemedi.');
     } finally {
@@ -209,7 +209,7 @@ export default function EPostaBildirimleriPage() {
       };
       await axios.put(`${API}/system-settings/notification-settings`, payload, { headers: authHeader() });
       setNotifSettings(payload);
-      setNotifSuccess('Bildirim kuralları başarıyla kaydedildi.');
+      redirectAfterSettingsSave(router, 'e-posta-bildirimleri-kurallar');
     } catch (e: any) {
       setNotifError(e.response?.data?.message ?? 'Kaydedilemedi.');
     } finally {

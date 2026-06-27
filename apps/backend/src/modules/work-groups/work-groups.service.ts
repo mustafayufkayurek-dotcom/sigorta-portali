@@ -109,15 +109,23 @@ export class WorkGroupsService {
   async updateSubGroup(id: string, dto: UpdateWorkSubGroupDto) {
     const sub = await this.prisma.workSubGroup.findUnique({ where: { id } });
     if (!sub) throw new NotFoundException('Alt grup bulunamadı');
+
+    const nextWorkGroupId = dto.workGroupId ?? sub.workGroupId;
+    if (dto.workGroupId && dto.workGroupId !== sub.workGroupId) {
+      const wg = await this.prisma.workGroup.findUnique({ where: { id: dto.workGroupId } });
+      if (!wg) throw new NotFoundException('İş grubu bulunamadı');
+    }
+
     if (dto.name && dto.name !== sub.name) {
       const nameConflict = await this.prisma.workSubGroup.findFirst({
-        where: { name: dto.name, workGroupId: sub.workGroupId, NOT: { id } },
+        where: { name: dto.name, workGroupId: nextWorkGroupId, NOT: { id } },
       });
       if (nameConflict) throw new ConflictException('Bu isimde bir alt grup zaten mevcut');
     }
     return this.prisma.workSubGroup.update({
       where: { id },
       data: {
+        workGroupId: dto.workGroupId,
         name: dto.name,
         description: dto.description,
         unitType: dto.unitType,

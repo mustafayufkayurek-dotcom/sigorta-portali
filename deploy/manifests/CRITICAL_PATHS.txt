@@ -1,0 +1,16 @@
+# Deploy öncesi/sonrası hash doğrulaması — sayfa kaybı ve eski UI regresyonu önleme
+# Her satır: apps/ altında göreli yol
+
+apps/web/src/app/panel/layout.tsx
+apps/web/src/app/panel/kullanicilar/page.tsx
+apps/web/src/app/panel/ayarlar/page.tsx
+apps/web/src/app/panel/ayarlar/tanimlar/page.tsx
+apps/web/src/config/settings-nav.ts
+apps/web/src/components/settings/SettingsPageLayout.tsx
+apps/web/src/components/settings/DepartmentTabSelector.tsx
+apps/web/src/components/settings/SettingsLegacyRedirect.tsx
+apps/web/src/utils/settings-definition-nav.ts
+apps/web/src/utils/settings-breadcrumbs.ts
+apps/web/src/app/giris/page.tsx
+apps/web/src/constants/brand.ts
+apps/backend/src/modules/users/users.service.ts

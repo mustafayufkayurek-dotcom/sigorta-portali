@@ -2838,7 +2838,7 @@ export default function MusterilerPage() {
                                 )}
                               </div>
                               {branchList.length === 0 ? (
-                                <p className="text-xs text-slate-400 py-2">Branş bulunamadı. Ayarlar &gt; Hizmet Branşları sayfasından ekleyin.</p>
+                                <p className="text-xs text-slate-400 py-2">Hizmet türü bulunamadı. Ayarlar → Hizmet Türleri sayfasından ekleyin.</p>
                               ) : (
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {branchList.map((branch) => {
@@ -2876,7 +2876,7 @@ export default function MusterilerPage() {
                               )}
                               {form.serviceBranches.length > 0 && (
                                 <p className="text-xs text-slate-500 mt-2">
-                                  {form.serviceBranches.length} branş seçildi: {form.serviceBranches.join(', ')}
+                                  {form.serviceBranches.length} hizmet türü seçildi: {form.serviceBranches.join(', ')}
                                 </p>
                               )}
                             </>

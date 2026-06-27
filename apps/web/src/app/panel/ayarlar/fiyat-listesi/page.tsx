@@ -18,7 +18,9 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import Link from 'next/link';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { API, authHeader } from '@/utils/api';
+import { applyNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 type WorkSubGroup = {
@@ -54,7 +56,7 @@ const UNIT_LABELS: Record<string, string> = {
 };
 
 const emptyWG = { code: '', name: '', description: '', sortOrder: 0 };
-const emptySG = { code: '', name: '', description: '', unitType: 'adet', unitPrice: '', sortOrder: 0 };
+const emptySG = { code: '', name: '', description: '', unitType: 'adet', unitPrice: '', sortOrder: 0, workGroupId: '' };
 
 // ─── Sayfa ────────────────────────────────────────────────────────────────────
 export default function FiyatListesiPage() {
@@ -114,7 +116,8 @@ export default function FiyatListesiPage() {
 
   const saveWG = async () => {
     if (!wgForm.name.trim()) { setWgError('İş grubu adı zorunludur'); return; }
-    if (!wgForm.code.trim() && !editWG) { setWgError('Kod zorunludur'); return; }
+    const code = editWG ? wgForm.code : (wgForm.code.trim() || suggestAutoCode('WG', wgForm.name));
+    if (!code.trim() && !editWG) { setWgError('Kod üretilemedi'); return; }
     setWgSaving(true); setWgError('');
     try {
       const url = editWG ? `${API}/work-groups/${editWG.id}` : `${API}/work-groups`;
@@ -122,7 +125,7 @@ export default function FiyatListesiPage() {
       const res = await fetch(url, {
         method,
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...wgForm, sortOrder: Number(wgForm.sortOrder) }),
+        body: JSON.stringify({ ...wgForm, code, sortOrder: Number(wgForm.sortOrder) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? 'Hata oluştu');
@@ -145,20 +148,26 @@ export default function FiyatListesiPage() {
   };
 
   // ─── Alt Grup CRUD ─────────────────────────────────────────────────────────
-  const openAddSG = (parentId: string) => { setSgParentId(parentId); setEditSG(null); setSgForm(emptySG); setSgError(''); setSgModal(true); };
-  const openEditSG = (sg: WorkSubGroup, parentId: string) => { setSgParentId(parentId); setEditSG(sg); setSgForm({ code: sg.code, name: sg.name, description: sg.description ?? '', unitType: sg.unitType, unitPrice: sg.unitPrice != null ? String(sg.unitPrice) : '', sortOrder: sg.sortOrder }); setSgError(''); setSgModal(true); };
+  const openAddSG = (parentId: string) => { setSgParentId(parentId); setEditSG(null); setSgForm({ ...emptySG, workGroupId: parentId }); setSgError(''); setSgModal(true); };
+  const openEditSG = (sg: WorkSubGroup, parentId: string) => { setSgParentId(parentId); setEditSG(sg); setSgForm({ code: sg.code, name: sg.name, description: sg.description ?? '', unitType: sg.unitType, unitPrice: sg.unitPrice != null ? String(sg.unitPrice) : '', sortOrder: sg.sortOrder, workGroupId: parentId }); setSgError(''); setSgModal(true); };
 
   const saveSG = async () => {
     if (!sgForm.name.trim()) { setSgError('Alt grup adı zorunludur'); return; }
-    if (!sgForm.code.trim() && !editSG) { setSgError('Kod zorunludur'); return; }
+    const targetGroupId = sgForm.workGroupId || sgParentId;
+    if (!targetGroupId) { setSgError('İş grubu seçilmelidir'); return; }
+    const parentCode = groups.find((g) => g.id === targetGroupId)?.code ?? 'WSG';
+    const code = editSG ? sgForm.code : (sgForm.code.trim() || suggestAutoCode(parentCode, sgForm.name));
+    if (!code.trim() && !editSG) { setSgError('Kod üretilemedi'); return; }
     setSgSaving(true); setSgError('');
     try {
-      const url = editSG ? `${API}/work-groups/sub-groups/${editSG.id}` : `${API}/work-groups/${sgParentId}/sub-groups`;
+      const url = editSG ? `${API}/work-groups/sub-groups/${editSG.id}` : `${API}/work-groups/${targetGroupId}/sub-groups`;
       const method = editSG ? 'PUT' : 'POST';
       const payload = {
         ...sgForm,
+        code,
         sortOrder: Number(sgForm.sortOrder),
         unitPrice: sgForm.unitPrice !== '' ? Number(sgForm.unitPrice) : undefined,
+        workGroupId: targetGroupId,
       };
       const res = await fetch(url, {
         method,
@@ -208,7 +217,9 @@ export default function FiyatListesiPage() {
   return (
     <SettingsPageLayout
       title="Fiyat Listesi"
-      description="İş grubu ve alt gruba göre birim fiyat tanımlama. Bölgesel zamlar için Bölgesel Zamlar sayfasını kullanın."
+      description="İş grubu ve alt gruba göre birim fiyat tanımlama. Her alt grup bir iş grubuna bağlıdır."
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
           <Link
@@ -330,7 +341,6 @@ export default function FiyatListesiPage() {
                       <SettingsTable>
                         <SettingsTableHead>
                           <SettingsTableTh>Alt Grup Adı</SettingsTableTh>
-                          <SettingsTableTh>Kod</SettingsTableTh>
                           <SettingsTableTh>Birim</SettingsTableTh>
                           <SettingsTableTh>Birim Fiyat</SettingsTableTh>
                           <SettingsTableTh>Durum</SettingsTableTh>
@@ -344,9 +354,6 @@ export default function FiyatListesiPage() {
                                   <span className="text-sm font-medium text-slate-900">{sg.name}</span>
                                   {sg.description && <p className="text-xs text-slate-400 mt-0.5">{sg.description}</p>}
                                 </div>
-                              </SettingsTableTd>
-                              <SettingsTableTd>
-                                <span className="text-xs font-mono text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">{sg.code}</span>
                               </SettingsTableTd>
                               <SettingsTableTd>
                                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
@@ -392,13 +399,13 @@ export default function FiyatListesiPage() {
           )}
           {!editWG && (
             <div>
-              <label className={labelCls}>Kod <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-              <input className={inputCls} value={wgForm.code} onChange={(e) => setWgForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="TESISAT" />
+              <label className={labelCls}>Kod</label>
+              <input className={`${inputCls} disabled:bg-slate-50`} value={wgForm.code} disabled placeholder="Ad yazınca otomatik üretilir" />
             </div>
           )}
           <div>
             <label className={labelCls}>İş Grubu Adı <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <input className={inputCls} value={wgForm.name} onChange={(e) => setWgForm((f) => ({ ...f, name: e.target.value }))} placeholder="Tesisat" />
+            <input className={inputCls} value={wgForm.name} onChange={(e) => setWgForm((f) => applyNameWithAutoCode(f, e.target.value, !!editWG, 'WG'))} placeholder="Tesisat" />
           </div>
           <div>
             <label className={labelCls}>Açıklama</label>
@@ -423,15 +430,52 @@ export default function FiyatListesiPage() {
           {sgError && (
             <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{sgError}</div>
           )}
+          <div>
+            <label className={labelCls}>İş Grubu *</label>
+            <select
+              className={`${inputCls} bg-white`}
+              value={sgForm.workGroupId || sgParentId || ''}
+              onChange={(e) => setSgForm((f) => ({ ...f, workGroupId: e.target.value }))}
+            >
+              <option value="">İş grubu seçin...</option>
+              {groups.filter((g) => g.status !== 'inactive').map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          {(sgForm.workGroupId || sgParentId) && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">
+                  {groups.find((g) => g.id === (sgForm.workGroupId || sgParentId))?.name}
+                </span>
+                {' '}iş grubuna bağlanacak
+              </p>
+            </div>
+          )}
           {!editSG && (
             <div>
-              <label className={labelCls}>Kod <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-              <input className={inputCls} value={sgForm.code} onChange={(e) => setSgForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="MUSLUK_DEGISIMI" />
+              <label className={labelCls}>Kod</label>
+              <input className={`${inputCls} disabled:bg-slate-50`} value={sgForm.code} disabled placeholder="Ad yazınca otomatik üretilir" />
             </div>
           )}
           <div>
             <label className={labelCls}>Alt Grup Adı <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <input className={inputCls} value={sgForm.name} onChange={(e) => setSgForm((f) => ({ ...f, name: e.target.value }))} placeholder="Musluk Değişimi" />
+            <input
+              className={inputCls}
+              value={sgForm.name}
+              onChange={(e) =>
+                setSgForm((f) =>
+                  applyNameWithAutoCode(
+                    f,
+                    e.target.value,
+                    !!editSG,
+                    groups.find((g) => g.id === sgParentId)?.code ?? 'WSG',
+                  ),
+                )
+              }
+              placeholder="Musluk Değişimi"
+            />
           </div>
           <div>
             <label className={labelCls}>Açıklama</label>

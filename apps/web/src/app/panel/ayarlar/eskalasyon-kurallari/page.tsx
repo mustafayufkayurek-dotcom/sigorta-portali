@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { useToast } from '@/contexts/ToastContext';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 interface EscalationRules {
   warningDays: number;
@@ -19,6 +19,7 @@ interface EscalationRules {
 const DEFAULT_RULES: EscalationRules = { warningDays: 3, criticalDays: 7, escalationDays: 14 };
 
 export default function EskalasyonKurallarPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [rules, setRules] = useState<EscalationRules>(DEFAULT_RULES);
   const [draft, setDraft] = useState<EscalationRules>(DEFAULT_RULES);
@@ -64,7 +65,7 @@ export default function EskalasyonKurallarPage() {
       await axios.put(`${API}/task-assignments/escalation-rules`, draft, { headers: authHeader() });
       setRules(draft);
       setDirty(false);
-      showToast('success', 'Eskalasyon Kuralları Kaydedildi.');
+      redirectAfterSettingsSave(router, 'eskalasyon-kurallari');
     } catch {
       showToast('error', 'Kayıt Başarısız. Lütfen Tekrar Deneyin.');
     } finally {
@@ -126,6 +127,8 @@ export default function EskalasyonKurallarPage() {
     <SettingsPageLayout
       title="Eskalasyon Kuralları"
       description="Geciken dosyalar için otomatik uyarı ve eskalasyon eşiklerini yönetin. Cron job her gün saat 09:00'da çalışır."
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
     >
 
 

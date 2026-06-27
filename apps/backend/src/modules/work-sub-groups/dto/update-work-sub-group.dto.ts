@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsIn, MaxLength, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsIn, MaxLength, Min, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateWorkSubGroupDto {
@@ -30,4 +30,8 @@ export class UpdateWorkSubGroupDto {
   @IsOptional()
   @IsIn(['active', 'inactive'])
   status?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  workGroupId?: string;
 }

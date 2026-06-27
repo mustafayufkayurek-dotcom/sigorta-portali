@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { clearAuth, getAccessToken, isRememberMeSession } from '@/utils/auth-session';
 
 const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 const WARN_BEFORE_MS = 5 * 60 * 1000;       // warn when 5 minutes remain
@@ -9,6 +10,7 @@ const EXTEND_ON_ACTIVITY = true;
 
 export default function SessionTimeoutBar() {
   const router = useRouter();
+  const rememberMe = isRememberMeSession();
   const [remainingMs, setRemainingMs] = useState(SESSION_DURATION_MS);
   const [visible, setVisible] = useState(false);
   const [extending, setExtending] = useState(false);
@@ -23,7 +25,7 @@ export default function SessionTimeoutBar() {
     setExtending(true);
     try {
       // Try to hit a lightweight endpoint to refresh the token TTL
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      const token = getAccessToken();
       if (token) {
         const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
         const api = apiBase.endsWith('/api/v1') ? apiBase : `${apiBase}/api/v1`;
@@ -40,19 +42,19 @@ export default function SessionTimeoutBar() {
   }, []);
 
   const doLogout = useCallback(() => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearAuth({ preserveRememberedEmail: true });
     router.push('/giris?reason=timeout');
   }, [router]);
 
   useEffect(() => {
-    if (!EXTEND_ON_ACTIVITY) return;
+    if (!EXTEND_ON_ACTIVITY || rememberMe) return;
     const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
     events.forEach((ev) => window.addEventListener(ev, resetActivity, { passive: true }));
     return () => events.forEach((ev) => window.removeEventListener(ev, resetActivity));
-  }, [resetActivity]);
+  }, [resetActivity, rememberMe]);
 
   useEffect(() => {
+    if (rememberMe) return;
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - lastActivityRef.current;
       const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
@@ -68,9 +70,9 @@ export default function SessionTimeoutBar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [doLogout]);
+  }, [doLogout, rememberMe]);
 
-  if (!visible) return null;
+  if (rememberMe || !visible) return null;
 
   const pct = (remainingMs / WARN_BEFORE_MS) * 100;
   const minutes = Math.floor(remainingMs / 60000);

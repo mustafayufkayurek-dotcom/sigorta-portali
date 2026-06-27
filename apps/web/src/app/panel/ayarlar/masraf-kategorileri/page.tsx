@@ -2,16 +2,27 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader, formatSettingsApiError } from '@/utils/settings-api';
+import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
-import { EditButton, DeleteButton, StatusBadge } from '@/components/settings/SettingsUI';
-import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import {
+  EditButton,
+  DeleteButton,
+  StatusBadge,
+  SettingsTable,
+  SettingsTableHead,
+  SettingsTableTh,
+  SettingsTableBody,
+  SettingsTableRow,
+  SettingsTableTd,
+  SettingsTableActions,
+  inputCls,
+  labelCls,
+} from '@/components/settings/SettingsUI';
+import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
-
-type ExpenseCategory = {
+type ExpenseItem = {
   id: string;
   name: string;
   code: string;
@@ -19,415 +30,567 @@ type ExpenseCategory = {
   level: number;
   sortOrder: number;
   isActive: boolean;
-  children?: ExpenseCategory[];
   _count?: { costEntries: number };
 };
 
-const emptyParentForm = { code: '', name: '', sortOrder: 0 };
-const emptyChildForm = { code: '', name: '', sortOrder: 0 };
+type ExpenseGroup = {
+  id: string;
+  name: string;
+  code: string;
+  sortOrder: number;
+  isActive: boolean;
+  children?: ExpenseItem[];
+  _count?: { costEntries: number };
+};
+
+const emptyGroupForm = { code: '', name: '', sortOrder: 0 };
+const emptyItemForm = { code: '', name: '', sortOrder: 0, parentId: '' };
 
 export default function MasrafKategorileriPage() {
-  const [tree, setTree] = useState<ExpenseCategory[]>([]);
+  const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [selectedParent, setSelectedParent] = useState<ExpenseCategory | null>(null);
+  const [search, setSearch] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Parent modal
-  const [showParentModal, setShowParentModal] = useState(false);
-  const [editingParent, setEditingParent] = useState<ExpenseCategory | null>(null);
-  const [parentForm, setParentForm] = useState({ ...emptyParentForm });
+  const [groupModal, setGroupModal] = useState(false);
+  const [editGroup, setEditGroup] = useState<ExpenseGroup | null>(null);
+  const [groupForm, setGroupForm] = useState({ ...emptyGroupForm });
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupError, setGroupError] = useState('');
+  const [deleteGroup, setDeleteGroup] = useState<ExpenseGroup | null>(null);
 
-  // Child modal
-  const [showChildModal, setShowChildModal] = useState(false);
-  const [editingChild, setEditingChild] = useState<ExpenseCategory | null>(null);
-  const [childForm, setChildForm] = useState({ ...emptyChildForm });
+  const [itemModal, setItemModal] = useState(false);
+  const [editItem, setEditItem] = useState<ExpenseItem | null>(null);
+  const [itemParentId, setItemParentId] = useState<string | null>(null);
+  const [itemForm, setItemForm] = useState({ ...emptyItemForm });
+  const [itemSaving, setItemSaving] = useState(false);
+  const [itemError, setItemError] = useState('');
+  const [deleteItem, setDeleteItem] = useState<ExpenseItem | null>(null);
 
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deleteParentTarget, setDeleteParentTarget] = useState<ExpenseCategory | null>(null);
-  const [deleteChildTarget, setDeleteChildTarget] = useState<ExpenseCategory | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchTree = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/expense-categories`, { headers: authHeader() });
-      const data: ExpenseCategory[] = res.data.data ?? [];
-      setTree(data);
-      if (data.length > 0 && !selectedParent) {
-        setSelectedParent(data[0]);
-      } else if (selectedParent) {
-        const refreshed = data.find((d) => d.id === selectedParent.id);
-        if (refreshed) setSelectedParent(refreshed);
-      }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  }, [selectedParent]);
+      const res = await axios.get(`${API}/expense-categories`, {
+        headers: authHeader(),
+        params: { includeInactive: true },
+      });
+      const data: ExpenseGroup[] = res.data.data ?? [];
+      setGroups(data);
+      setExpandedGroups((prev) => {
+        if (prev.size > 0) return prev;
+        return new Set(data.slice(0, 2).map((g) => g.id));
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchTree(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [load]);
 
   const handleSeed = async () => {
     setSeeding(true);
     try {
       await axios.post(`${API}/expense-categories/seed`, {}, { headers: authHeader() });
-      await fetchTree();
-    } catch (e) { console.error(e); }
-    finally { setSeeding(false); }
+      await load();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSeeding(false);
+    }
   };
+
+  const toggleExpand = (id: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const filteredGroups = search.trim()
+    ? groups.filter((g) =>
+        g.name.toLowerCase().includes(search.toLowerCase()) ||
+        g.children?.some((c) => c.name.toLowerCase().includes(search.toLowerCase())),
+      )
+    : groups;
+
+  const parentGroup = (id: string | null) => groups.find((g) => g.id === id) ?? null;
 
   // ── Ana Grup ───────────────────────────────────────────────────────────────
 
-  const openCreateParent = () => {
-    setEditingParent(null);
-    setParentForm({ ...emptyParentForm });
-    setError('');
-    setShowParentModal(true);
+  const openAddGroup = () => {
+    setEditGroup(null);
+    setGroupForm({ ...emptyGroupForm });
+    setGroupError('');
+    setGroupModal(true);
   };
 
-  const openEditParent = (cat: ExpenseCategory) => {
-    setEditingParent(cat);
-    setParentForm({ code: cat.code, name: cat.name, sortOrder: cat.sortOrder });
-    setError('');
-    setShowParentModal(true);
+  const openEditGroup = (g: ExpenseGroup) => {
+    setEditGroup(g);
+    setGroupForm({ code: g.code, name: g.name, sortOrder: g.sortOrder });
+    setGroupError('');
+    setGroupModal(true);
   };
 
-  const handleSaveParent = async () => {
-    if (!parentForm.name || (!editingParent && !parentForm.code)) {
-      setError('Kod ve Ad zorunludur');
+  const saveGroup = async () => {
+    if (!groupForm.name.trim()) {
+      setGroupError('Ana grup adı zorunludur');
       return;
     }
-    const dupName = tree.find((t) =>
-      t.name.trim().toLowerCase() === parentForm.name.trim().toLowerCase() && (!editingParent || t.id !== editingParent.id)
+    const code = editGroup ? groupForm.code : suggestAutoCode('EXP', groupForm.name);
+    const dupName = groups.find((g) =>
+      g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase() && (!editGroup || g.id !== editGroup.id),
     );
-    if (dupName) { setError('Bu isimde bir ana grup zaten mevcut!'); return; }
-    setSaving(true);
-    setError('');
-    try {
-      if (editingParent) {
-        await axios.patch(`${API}/expense-categories/${editingParent.id}`, { name: parentForm.name, sortOrder: parentForm.sortOrder }, { headers: authHeader() });
-      } else {
-        await axios.post(`${API}/expense-categories`, { ...parentForm }, { headers: authHeader() });
-      }
-      setShowParentModal(false);
-      await fetchTree();
-    } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Bir hata oluştu');
-    } finally { setSaving(false); }
-  };
-
-  const handleDeleteParent = async (cat: ExpenseCategory) => {
-    setDeleteParentTarget(cat);
-  };
-
-  const confirmDeleteParent = async () => {
-    if (!deleteParentTarget) return;
-    setDeleting(true);
-    try {
-      await axios.delete(`${API}/expense-categories/${deleteParentTarget.id}`, { headers: authHeader() });
-      setSelectedParent(null);
-      setDeleteParentTarget(null);
-      await fetchTree();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Silinemedi'); }
-    finally { setDeleting(false); }
-  };
-
-  // ── Alt Kategori ──────────────────────────────────────────────────────────
-
-  const openCreateChild = () => {
-    if (!selectedParent) return;
-    setEditingChild(null);
-    setChildForm({ ...emptyChildForm });
-    setError('');
-    setShowChildModal(true);
-  };
-
-  const openEditChild = (cat: ExpenseCategory) => {
-    setEditingChild(cat);
-    setChildForm({ code: cat.code, name: cat.name, sortOrder: cat.sortOrder });
-    setError('');
-    setShowChildModal(true);
-  };
-
-  const handleSaveChild = async () => {
-    if (!childForm.name || (!editingChild && !childForm.code)) {
-      setError('Kod ve Ad zorunludur');
+    if (dupName) {
+      setGroupError('Bu isimde bir ana grup zaten mevcut');
       return;
     }
-    if (!selectedParent) return;
-    const dupName = selectedChildren.find((c) =>
-      c.name.trim().toLowerCase() === childForm.name.trim().toLowerCase() && (!editingChild || c.id !== editingChild.id)
-    );
-    if (dupName) { setError('Bu isimde bir alt kategori zaten mevcut!'); return; }
-    setSaving(true);
-    setError('');
+    setGroupSaving(true);
+    setGroupError('');
     try {
-      if (editingChild) {
-        await axios.patch(`${API}/expense-categories/${editingChild.id}`, { name: childForm.name, sortOrder: childForm.sortOrder }, { headers: authHeader() });
+      if (editGroup) {
+        await axios.patch(`${API}/expense-categories/${editGroup.id}`, {
+          name: groupForm.name.trim(),
+          sortOrder: groupForm.sortOrder,
+        }, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/expense-categories`, { ...childForm, parentId: selectedParent.id }, { headers: authHeader() });
+        await axios.post(`${API}/expense-categories`, {
+          code,
+          name: groupForm.name.trim(),
+          sortOrder: groupForm.sortOrder,
+        }, { headers: authHeader() });
       }
-      setShowChildModal(false);
-      await fetchTree();
-    } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Bir hata oluştu');
-    } finally { setSaving(false); }
+      setGroupModal(false);
+      await load();
+    } catch (e: unknown) {
+      setGroupError(formatSettingsApiError(e));
+    } finally {
+      setGroupSaving(false);
+    }
   };
 
-  const handleDeleteChild = async (cat: ExpenseCategory) => {
-    setDeleteChildTarget(cat);
-  };
-
-  const confirmDeleteChild = async () => {
-    if (!deleteChildTarget) return;
+  const confirmDeleteGroup = async () => {
+    if (!deleteGroup) return;
     setDeleting(true);
     try {
-      await axios.delete(`${API}/expense-categories/${deleteChildTarget.id}`, { headers: authHeader() });
-      setDeleteChildTarget(null);
-      await fetchTree();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Silinemedi'); }
-    finally { setDeleting(false); }
+      await axios.delete(`${API}/expense-categories/${deleteGroup.id}`, { headers: authHeader() });
+      setDeleteGroup(null);
+      await load();
+    } catch (e: unknown) {
+      alert(formatSettingsApiError(e, 'Silinemedi'));
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const selectedChildren = selectedParent?.children ?? [];
+  const toggleGroupStatus = async (g: ExpenseGroup) => {
+    try {
+      await axios.patch(`${API}/expense-categories/${g.id}`, { isActive: !g.isActive }, { headers: authHeader() });
+      await load();
+    } catch (e: unknown) {
+      alert(formatSettingsApiError(e, 'Durum değiştirilemedi'));
+    }
+  };
+
+  // ── Masraf Kalemi ──────────────────────────────────────────────────────────
+
+  const openAddItem = (parentId: string) => {
+    setEditItem(null);
+    setItemParentId(parentId);
+    setItemForm({ ...emptyItemForm, parentId });
+    setItemError('');
+    setItemModal(true);
+    setExpandedGroups((prev) => new Set(prev).add(parentId));
+  };
+
+  const openEditItem = (item: ExpenseItem, parentId: string) => {
+    setEditItem(item);
+    setItemParentId(parentId);
+    setItemForm({ code: item.code, name: item.name, sortOrder: item.sortOrder, parentId });
+    setItemError('');
+    setItemModal(true);
+  };
+
+  const saveItem = async () => {
+    if (!itemForm.name.trim()) {
+      setItemError('Masraf kalemi adı zorunludur');
+      return;
+    }
+    if (!itemForm.parentId) {
+      setItemError('Bağlanacağı ana grup seçilmelidir');
+      return;
+    }
+    const parent = parentGroup(itemForm.parentId);
+    const code = editItem ? itemForm.code : suggestAutoCode(parent?.code ?? 'EXP', itemForm.name);
+    const siblings = parent?.children ?? [];
+    const dupName = siblings.find((c) =>
+      c.name.trim().toLowerCase() === itemForm.name.trim().toLowerCase() && (!editItem || c.id !== editItem.id),
+    );
+    if (dupName) {
+      setItemError('Seçili ana grupta aynı isimde bir kalem zaten mevcut');
+      return;
+    }
+    setItemSaving(true);
+    setItemError('');
+    try {
+      if (editItem) {
+        await axios.patch(`${API}/expense-categories/${editItem.id}`, {
+          name: itemForm.name.trim(),
+          sortOrder: itemForm.sortOrder,
+          parentId: itemForm.parentId,
+        }, { headers: authHeader() });
+      } else {
+        await axios.post(`${API}/expense-categories`, {
+          code,
+          name: itemForm.name.trim(),
+          sortOrder: itemForm.sortOrder,
+          parentId: itemForm.parentId,
+        }, { headers: authHeader() });
+      }
+      setItemModal(false);
+      await load();
+    } catch (e: unknown) {
+      setItemError(formatSettingsApiError(e));
+    } finally {
+      setItemSaving(false);
+    }
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!deleteItem) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`${API}/expense-categories/${deleteItem.id}`, { headers: authHeader() });
+      setDeleteItem(null);
+      await load();
+    } catch (e: unknown) {
+      alert(formatSettingsApiError(e, 'Silinemedi'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleItemStatus = async (item: ExpenseItem) => {
+    try {
+      await axios.patch(`${API}/expense-categories/${item.id}`, { isActive: !item.isActive }, { headers: authHeader() });
+      await load();
+    } catch (e: unknown) {
+      alert(formatSettingsApiError(e, 'Durum değiştirilemedi'));
+    }
+  };
+
+  const selectedParentForModal = parentGroup(itemForm.parentId || itemParentId);
 
   return (
     <SettingsPageLayout
       title="Masraf Kategorileri"
-      description="Gider Girişlerinde Kullanılan Hiyerarşik Kategori Ağacını Yönetin"
-      addButtonText="+ Yeni Ana Grup"
-      onAdd={openCreateParent}
+      description="Ana gruplar ve masraf kalemlerini hiyerarşik olarak yönetin. Her kalem mutlaka bir ana gruba bağlanır."
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
       headerExtra={
-        tree.length === 0 ? (
-          <button type="button"
-            onClick={handleSeed}
-            disabled={seeding}
-            className="border border-slate-200 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+        <div className="flex items-center gap-2">
+          {groups.length === 0 && (
+            <button
+              type="button"
+              onClick={handleSeed}
+              disabled={seeding}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={openAddGroup}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
           >
-
-            {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Ana Grup Ekle
           </button>
-        ) : undefined
+        </div>
       }
     >
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Ana grup veya masraf kalemi ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={`${inputCls} pl-9`}
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          Hiyerarşi: <span className="font-medium text-slate-700">Ana Grup</span>
+          {' → '}
+          <span className="font-medium text-slate-700">Masraf Kalemi</span>
+        </p>
+      </div>
 
       {loading ? (
-        <div className="text-center text-slate-400 py-12">Yükleniyor...</div>
-      ) : tree.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-200">
-          <p className="text-slate-400 mb-3">Henüz masraf kategorisi tanımlanmamış.</p>
-          <button type="button" onClick={handleSeed} disabled={seeding} className="text-sm text-blue-600 hover:underline disabled:opacity-50">
-            Varsayılan Kategorileri Yükle
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : filteredGroups.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-slate-700 mb-1">Henüz masraf kategorisi yok</p>
+          <p className="text-xs text-slate-400 mb-4">Ana grup ekleyerek başlayın veya varsayılan seti yükleyin.</p>
+          <button type="button" onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+            {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-5">
-          {/* Sol: Ana Gruplar */}
-          <div className="col-span-1">
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-50 bg-slate-50">
-                <p className="text-xs font-semibold text-slate-500 uppercase">Ana Gruplar</p>
-              </div>
-              <div className="divide-y divide-slate-50">
-                {tree.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${selectedParent?.id === cat.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                    onClick={() => setSelectedParent(cat)}
+        <div className="space-y-3">
+          {filteredGroups.map((group) => {
+            const isOpen = expandedGroups.has(group.id);
+            const itemCount = group.children?.length ?? 0;
+            return (
+              <div key={group.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(group.id)}
+                    className="flex-1 flex items-center gap-3 text-left min-w-0"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0 bg-orange-400" />
-                      <span className={`text-sm truncate ${selectedParent?.id === cat.id ? 'font-medium text-blue-700' : 'text-slate-700'}`}>{cat.name}</span>
-                      <span className="text-xs text-slate-400 flex-shrink-0">{cat.children?.length ?? 0}</span>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isOpen ? 'bg-blue-600' : 'bg-slate-100'}`}>
+                      <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90 text-white' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                    <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <EditButton onClick={() => openEditParent(cat)} />
-                      <DeleteButton onClick={() => handleDeleteParent(cat)} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-900">{group.name}</span>
+                        <span className="text-xs text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded">{group.code}</span>
+                        {!group.isActive && (
+                          <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Pasif</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">Ana grup · {itemCount} masraf kalemi</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Sağ: Alt Kategoriler */}
-          <div className="col-span-3">
-            {!selectedParent ? (
-              <div className="bg-white rounded-xl border border-slate-100 p-12 text-center text-slate-400">
-                Sol Taraftan Bir Ana Grup Seçin
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-                    <p className="font-medium text-slate-800">{selectedParent.name}</p>
-                    <code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">{selectedParent.code}</code>
-                    <span className="text-sm text-slate-400">— Alt Kategoriler</span>
-                  </div>
-                  <button type="button" onClick={openCreateChild} className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded-lg hover:bg-orange-700">
-                    + Alt Kategori Ekle
+                    <span className="ml-auto text-xs text-slate-400 shrink-0 hidden sm:inline">
+                      {group._count?.costEntries ?? 0} kayıt
+                    </span>
                   </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openAddItem(group.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Kalem Ekle
+                    </button>
+                    <button type="button" onClick={() => toggleGroupStatus(group)}>
+                      <StatusBadge active={group.isActive} />
+                    </button>
+                    <EditButton onClick={() => openEditGroup(group)} />
+                    <DeleteButton onClick={() => setDeleteGroup(group)} />
+                  </div>
                 </div>
 
-                {selectedChildren.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400">
-                    <p className="mb-2">Bu ana grup için henüz alt kategori tanımlanmamış.</p>
-                    <button type="button" onClick={openCreateChild} className="text-sm text-orange-600 hover:underline">
-                      İlk Alt Kategoriyi Ekle
-                    </button>
+                {isOpen && (
+                  <div className="border-t border-slate-100">
+                    {!group.children || group.children.length === 0 ? (
+                      <div className="px-6 py-8 text-center">
+                        <p className="text-xs text-slate-500 mb-1">
+                          <span className="font-medium text-slate-700">{group.name}</span> grubuna henüz masraf kalemi eklenmemiş.
+                        </p>
+                        <button type="button" onClick={() => openAddItem(group.id)} className="mt-2 text-xs text-blue-600 hover:underline font-medium">
+                          İlk masraf kalemini ekle
+                        </button>
+                      </div>
+                    ) : (
+                      <SettingsTable>
+                        <SettingsTableHead>
+                          <SettingsTableTh>Masraf Kalemi</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Kayıt</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
+                          <SettingsTableTh>İşlemler</SettingsTableTh>
+                        </SettingsTableHead>
+                        <SettingsTableBody>
+                          {group.children.map((item) => (
+                            <SettingsTableRow key={item.id}>
+                              <SettingsTableTd>
+                                <div>
+                                  <span className="text-sm font-medium text-slate-900">{item.name}</span>
+                                  <p className="text-xs text-slate-400 mt-0.5 font-mono">{item.code}</p>
+                                </div>
+                              </SettingsTableTd>
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
+                              <SettingsTableTd>
+                                <button type="button" onClick={() => toggleItemStatus(item)}>
+                                  <StatusBadge active={item.isActive} />
+                                </button>
+                              </SettingsTableTd>
+                              <SettingsTableTd>
+                                <SettingsTableActions>
+                                  <EditButton onClick={() => openEditItem(item, group.id)} />
+                                  <DeleteButton onClick={() => setDeleteItem(item)} />
+                                </SettingsTableActions>
+                              </SettingsTableTd>
+                            </SettingsTableRow>
+                          ))}
+                        </SettingsTableBody>
+                      </SettingsTable>
+                    )}
                   </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-100">
-                      <tr>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Kategori Adı</th>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Kod</th>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Sıra</th>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Durum</th>
-                        <th className="px-5 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {selectedChildren.map((child) => (
-                        <tr key={child.id} className="hover:bg-slate-50">
-                          <td className="px-5 py-3">
-                            <span className="text-sm font-medium text-slate-800">{child.name}</span>
-                          </td>
-                          <td className="px-5 py-3">
-                            <code className="text-xs bg-slate-100 px-2 py-0.5 rounded">{child.code}</code>
-                          </td>
-                          <td className="px-5 py-3 text-sm text-slate-500">{child.sortOrder}</td>
-                          <td className="px-5 py-3">
-                            <StatusBadge active={child.isActive} />
-                          </td>
-                          <td className="px-5 py-3">
-                            <div className="flex justify-end gap-1">
-                              <EditButton onClick={() => openEditChild(child)} />
-                              <DeleteButton onClick={() => handleDeleteChild(child)} />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 )}
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Ana Grup Modal */}
-      {showParentModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-base font-semibold text-slate-800 mb-5">
-              {editingParent ? 'Ana Grup Düzenle' : 'Yeni Ana Grup'}
-            </h3>
-            <div className="space-y-4">
-              {!editingParent && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Kod <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-                  <input
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                    value={parentForm.code}
-                    onChange={(e) => setParentForm({ ...parentForm, code: e.target.value.toUpperCase().replace(/\s/g, '_') })}
-                    placeholder="KATEGORI_KODU"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Ad <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-                <input
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                  value={parentForm.name}
-                  onChange={(e) => setParentForm({ ...parentForm, name: e.target.value })}
-                  placeholder="Kategori Adı"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Sıra</label>
-                <input
-                  type="number"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                  value={parentForm.sortOrder}
-                  onChange={(e) => setParentForm({ ...parentForm, sortOrder: Number(e.target.value) })}
-                />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-            </div>
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setShowParentModal(false)} className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50">İptal</button>
-              <button type="button" onClick={handleSaveParent} disabled={saving} className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-            </div>
-          </div>
+      <SettingsModal
+        isOpen={groupModal}
+        onClose={() => setGroupModal(false)}
+        title={editGroup ? 'Ana Grup Düzenle' : 'Yeni Ana Grup'}
+        onSave={saveGroup}
+        saving={groupSaving}
+        error={groupError}
+      >
+        <div>
+          <label className={labelCls}>Ana Grup Adı *</label>
+          <input
+            className={inputCls}
+            value={groupForm.name}
+            onChange={(e) => setGroupForm((f) => applyNameWithAutoCode(f, e.target.value, !!editGroup, 'EXP'))}
+            placeholder="Örn: Tedarikçi Hakediş, Malzeme Gideri"
+          />
         </div>
-      )}
+        {editGroup && (
+          <div>
+            <label className={labelCls}>Kod</label>
+            <input className={`${inputCls} disabled:bg-slate-50`} value={groupForm.code} disabled />
+          </div>
+        )}
+        <div>
+          <label className={labelCls}>Sıra No</label>
+          <input
+            type="number"
+            className={inputCls}
+            value={groupForm.sortOrder}
+            onChange={(e) => setGroupForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
+            min={0}
+          />
+        </div>
+      </SettingsModal>
 
-      {/* Alt Kategori Modal */}
-      {showChildModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-base font-semibold text-slate-800 mb-5">
-              {editingChild ? 'Alt Kategori Düzenle' : `Alt Kategori Ekle — ${selectedParent?.name}`}
-            </h3>
-            <div className="space-y-4">
-              {!editingChild && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Kod <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-                  <input
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                    value={childForm.code}
-                    onChange={(e) => setChildForm({ ...childForm, code: e.target.value.toUpperCase().replace(/\s/g, '_') })}
-                    placeholder="ALT_KATEGORI_KODU"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Ad <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-                <input
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                  value={childForm.name}
-                  onChange={(e) => setChildForm({ ...childForm, name: e.target.value })}
-                  placeholder="Alt Kategori Adı"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Sıra</label>
-                <input
-                  type="number"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
-                  value={childForm.sortOrder}
-                  onChange={(e) => setChildForm({ ...childForm, sortOrder: Number(e.target.value) })}
-                />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-            </div>
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setShowChildModal(false)} className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50">İptal</button>
-              <button type="button" onClick={handleSaveChild} disabled={saving} className="flex-1 bg-orange-600 text-white py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-            </div>
-          </div>
+      <SettingsModal
+        isOpen={itemModal}
+        onClose={() => setItemModal(false)}
+        title={editItem ? 'Masraf Kalemi Düzenle' : 'Yeni Masraf Kalemi'}
+        onSave={saveItem}
+        saving={itemSaving}
+        error={itemError}
+      >
+        <div>
+          <label className={labelCls}>Ana Grup *</label>
+          <select
+            className={`${inputCls} bg-white`}
+            value={itemForm.parentId}
+            onChange={(e) => setItemForm((f) => ({ ...f, parentId: e.target.value }))}
+          >
+            <option value="">Ana grup seçin...</option>
+            {groups.filter((g) => g.isActive).map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500 mt-1.5">
+            Bu kalem hangi ana gruba bağlanacak? Örn: Yedek Parça → Malzeme Gideri
+          </p>
         </div>
-      )}
+
+        {selectedParentForModal && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+            <p className="text-xs text-blue-800">
+              <span className="font-semibold">{selectedParentForModal.name}</span>
+              {' '}
+              ana grubuna bağlanacak
+            </p>
+            <p className="text-[11px] text-blue-600/80 mt-0.5 font-mono">{selectedParentForModal.code}</p>
+          </div>
+        )}
+
+        <div>
+          <label className={labelCls}>Masraf Kalemi Adı *</label>
+          <input
+            className={inputCls}
+            value={itemForm.name}
+            onChange={(e) =>
+              setItemForm((f) =>
+                applyNameWithAutoCode(
+                  f,
+                  e.target.value,
+                  !!editItem,
+                  selectedParentForModal?.code ?? 'EXP',
+                ),
+              )
+            }
+            placeholder="Örn: Yedek Parça, Yakıt, Aidat"
+          />
+        </div>
+        {editItem && (
+          <div>
+            <label className={labelCls}>Kod</label>
+            <input className={`${inputCls} disabled:bg-slate-50`} value={itemForm.code} disabled />
+          </div>
+        )}
+        <div>
+          <label className={labelCls}>Sıra No</label>
+          <input
+            type="number"
+            className={inputCls}
+            value={itemForm.sortOrder}
+            onChange={(e) => setItemForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
+            min={0}
+          />
+        </div>
+      </SettingsModal>
 
       <DeleteConfirmDialog
-        isOpen={deleteParentTarget !== null}
-        onClose={() => setDeleteParentTarget(null)}
-        onConfirm={confirmDeleteParent}
+        isOpen={deleteGroup !== null}
+        onClose={() => setDeleteGroup(null)}
+        onConfirm={confirmDeleteGroup}
         deleting={deleting}
-        itemName={deleteParentTarget?.name}
+        itemName={deleteGroup?.name}
+        description={
+          deleteGroup && (deleteGroup.children?.length ?? 0) > 0
+            ? 'Bu ana grubun altında masraf kalemleri var. Önce kalemleri silin veya taşıyın.'
+            : undefined
+        }
       />
       <DeleteConfirmDialog
-        isOpen={deleteChildTarget !== null}
-        onClose={() => setDeleteChildTarget(null)}
-        onConfirm={confirmDeleteChild}
+        isOpen={deleteItem !== null}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={confirmDeleteItem}
         deleting={deleting}
-        itemName={deleteChildTarget?.name}
+        itemName={deleteItem?.name}
+        description={
+          deleteItem && (deleteItem._count?.costEntries ?? 0) > 0
+            ? `Bu kaleme bağlı ${deleteItem._count?.costEntries} kayıt var. Kalem pasife alınacaktır.`
+            : undefined
+        }
       />
     </SettingsPageLayout>
   );

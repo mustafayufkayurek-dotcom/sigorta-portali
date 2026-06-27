@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { API, authHeader } from '@/utils/api';
+import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 
 const FORMAT_OPTIONS: { value: string; label: string }[] = [
   { value: 'repair_single', label: 'Hasar Onarım — Tek Hasarlı' },
@@ -127,6 +129,7 @@ function FieldsToggleSection({
 }
 
 export default function AlanZorunluluklariPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>('generalRequirements');
 
   // Departman sekmesi state
@@ -260,8 +263,7 @@ export default function AlanZorunluluklariPage() {
         { configs: configs.map((c) => ({ ...c, reportFormat: selectedFormat })) },
         { headers: authHeader() },
       );
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      redirectAfterSettingsSave(router, 'alan-zorunluluklari');
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
@@ -287,8 +289,7 @@ export default function AlanZorunluluklariPage() {
     setLocationSaved(false);
     try {
       await axios.put(`${API}/system-settings/location-fields`, { fields: locationFields }, { headers: authHeader() });
-      setLocationSaved(true);
-      setTimeout(() => setLocationSaved(false), 2000);
+      redirectAfterSettingsSave(router, 'alan-zorunluluklari');
     } catch (e) { console.error(e); }
     finally { setLocationSaving(false); }
   };
@@ -298,8 +299,7 @@ export default function AlanZorunluluklariPage() {
     setWorkGroupSaved(false);
     try {
       await axios.put(`${API}/system-settings/work-group-fields`, { fields: workGroupFields }, { headers: authHeader() });
-      setWorkGroupSaved(true);
-      setTimeout(() => setWorkGroupSaved(false), 2000);
+      redirectAfterSettingsSave(router, 'alan-zorunluluklari');
     } catch (e) { console.error(e); }
     finally { setWorkGroupSaving(false); }
   };
@@ -309,8 +309,7 @@ export default function AlanZorunluluklariPage() {
     setWorkSubGroupSaved(false);
     try {
       await axios.put(`${API}/system-settings/work-sub-group-fields`, { fields: workSubGroupFields }, { headers: authHeader() });
-      setWorkSubGroupSaved(true);
-      setTimeout(() => setWorkSubGroupSaved(false), 2000);
+      redirectAfterSettingsSave(router, 'alan-zorunluluklari');
     } catch (e) { console.error(e); }
     finally { setWorkSubGroupSaving(false); }
   };
@@ -320,8 +319,7 @@ export default function AlanZorunluluklariPage() {
     setFrSaved(false);
     try {
       await axios.patch(`${API}/system-settings/field-requirements`, fieldRequirements, { headers: authHeader() });
-      setFrSaved(true);
-      setTimeout(() => setFrSaved(false), 2000);
+      redirectAfterSettingsSave(router, 'alan-zorunluluklari');
     } catch (e) { console.error(e); }
     finally { setFrSaving(false); }
   };
@@ -329,8 +327,11 @@ export default function AlanZorunluluklariPage() {
   return (
     <SettingsPageLayout
       title="Alan Zorunlulukları"
-      description="Tanımlama formlarındaki alanların zorunluluk durumlarını yönetin"
+      description="Tanımlama formlarındaki alanların zorunluluk ve görünürlük durumlarını sekme sekme yönetin."
     >
+      <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
+        Her sekme ilgili tanım formunu etkiler. Değişiklikler kaydedildiğinde Ayarlar hub&apos;ında onay mesajı görünür.
+      </div>
 
       {/* Sekmeler */}
       <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">

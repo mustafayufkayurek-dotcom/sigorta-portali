@@ -25,9 +25,10 @@ interface PendingAgreement {
 interface Props {
   pendingAgreements: PendingAgreement[];
   onAllAccepted: () => void;
+  onDismiss?: () => void;
 }
 
-export default function AgreementConsentModal({ pendingAgreements, onAllAccepted }: Props) {
+export default function AgreementConsentModal({ pendingAgreements, onAllAccepted, onDismiss }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [content, setContent] = useState<string>('');
   const [loadingContent, setLoadingContent] = useState(false);
@@ -83,13 +84,15 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
   };
 
   const current = pendingAgreements[currentIndex];
+  const expectedFullName = getLoggedInFullName();
 
   useEffect(() => {
     if (!current) return;
     setLoadingContent(true);
     setScrolledToBottom(false);
     setChecked(false);
-    setSignature('');
+    setSignature(expectedFullName ? toTitleCaseTR(expectedFullName) : '');
+    setSignatureWarning('');
     setScrolledAt(null);
     setCheckboxConfirmedAt(null);
     setError('');
@@ -99,7 +102,16 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
       .then((json) => setContent(json?.data?.content ?? ''))
       .catch(() => setContent('<p>Sözleşme içeriği yüklenemedi.</p>'))
       .finally(() => setLoadingContent(false));
-  }, [currentIndex, current?.id]);
+  }, [currentIndex, current?.id, expectedFullName]);
+
+  useEffect(() => {
+    if (!onDismiss || saving) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onDismiss?.();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onDismiss, saving]);
 
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
@@ -154,8 +166,21 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3 mb-1">
+        <div className="relative px-6 py-5 border-b border-gray-100 shrink-0">
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              disabled={saving}
+              aria-label="Sözleşme penceresini kapat"
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+          <div className="flex items-center gap-3 mb-1 pr-8">
             <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -172,7 +197,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
             </div>
           </div>
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
-            Sisteme devam edebilmek için aşağıdaki belgeyi okuyup onaylamanız zorunludur.
+            Sisteme devam edebilmek için aşağıdaki belgeyi okuyup onaylamanız zorunludur. Şimdilik kapatırsanız paneli kullanabilirsiniz; veri işlemleri onay sonrası açılır.
           </p>
         </div>
 
@@ -207,6 +232,12 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
               Ad Soyad (Dijital İmza) <span className="text-red-500">*</span>
             </label>
+            {expectedFullName && (
+              <p className="mb-2 text-xs text-slate-500">
+                Hesabınızdaki ad soyad ile birebir aynı yazın:{' '}
+                <span className="font-semibold text-slate-700">{toTitleCaseTR(expectedFullName)}</span>
+              </p>
+            )}
             <input
               type="text"
               value={signature}
@@ -288,6 +319,17 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
               'Kabul Et ve Sisteme Gir'
             )}
           </button>
+
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              disabled={saving}
+              className="w-full py-2.5 px-4 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Şimdi Değil
+            </button>
+          )}
         </div>
       </div>
     </div>

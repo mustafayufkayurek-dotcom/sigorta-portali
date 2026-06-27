@@ -1,22 +1,38 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateDocumentTypeDto, UpdateDocumentTypeDto } from './dto/document-types.dto';
+
+function parseIdList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
+}
+
+function matchesDepartment(documentType: { departmentIds: unknown }, departmentId?: string): boolean {
+  const ids = parseIdList(documentType.departmentIds);
+  if (!departmentId) return true;
+  if (ids.length === 0) return true;
+  return ids.includes(departmentId);
+}
 
 @Injectable()
 export class DocumentTypesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(params?: { status?: string }) {
+  async findAll(params?: { status?: string; departmentId?: string }) {
     const where: any = {};
     if (params?.status) where.status = params.status;
 
-    const data = await this.prisma.documentType.findMany({
+    const rows = await this.prisma.documentType.findMany({
       where,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: { select: { vendorDocuments: true } },
       },
     });
+
+    const data = params?.departmentId
+      ? rows.filter((row) => matchesDepartment(row, params.departmentId))
+      : rows;
 
     return { data };
   }
@@ -37,6 +53,11 @@ export class DocumentTypesService {
   }
 
   async create(dto: CreateDocumentTypeDto) {
+    const departmentIds = parseIdList(dto.departmentIds);
+    if (departmentIds.length === 0) {
+      throw new BadRequestException('En az bir departman seçilmelidir');
+    }
+
     const existing = await this.prisma.documentType.findUnique({
       where: { code: dto.code },
     });
@@ -49,7 +70,11 @@ export class DocumentTypesService {
       where: { name: dto.name },
     });
     if (nameConflict) {
-      throw new ConflictException('Bu isimde bir evrak türü zaten mevcut');
+      const conflictDepartments = parseIdList(nameConflict.departmentIds);
+      const overlaps = departmentIds.some((id) => conflictDepartments.includes(id));
+      if (overlaps || conflictDepartments.length === 0) {
+        throw new ConflictException('Bu departmanda aynı isimde bir evrak türü zaten mevcut');
+      }
     }
 
     return this.prisma.documentType.create({
@@ -59,12 +84,14 @@ export class DocumentTypesService {
         description: dto.description,
         isRequired: dto.isRequired ?? false,
         sortOrder: dto.sortOrder ?? 0,
+        departmentIds,
+        serviceTypeIds: dto.serviceTypeIds ?? [],
       },
     });
   }
 
   async update(id: string, dto: UpdateDocumentTypeDto) {
-    await this.findOne(id);
+    const current = await this.findOne(id);
 
     if (dto.code) {
       const existing = await this.prisma.documentType.findFirst({
@@ -76,17 +103,33 @@ export class DocumentTypesService {
     }
 
     if (dto.name) {
+      const nextDepartments = dto.departmentIds !== undefined
+        ? parseIdList(dto.departmentIds)
+        : parseIdList(current.departmentIds);
       const nameConflict = await this.prisma.documentType.findFirst({
         where: { name: dto.name, NOT: { id } },
       });
       if (nameConflict) {
-        throw new ConflictException('Bu isimde başka bir evrak türü zaten mevcut');
+        const conflictDepartments = parseIdList(nameConflict.departmentIds);
+        const overlaps = nextDepartments.some((deptId) => conflictDepartments.includes(deptId));
+        if (overlaps || conflictDepartments.length === 0) {
+          throw new ConflictException('Bu departmanda aynı isimde başka bir evrak türü zaten mevcut');
+        }
       }
+    }
+
+    const data: UpdateDocumentTypeDto = { ...dto };
+    if (dto.departmentIds !== undefined) {
+      const departmentIds = parseIdList(dto.departmentIds);
+      if (departmentIds.length === 0) {
+        throw new BadRequestException('En az bir departman seçilmelidir');
+      }
+      data.departmentIds = departmentIds;
     }
 
     return this.prisma.documentType.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 

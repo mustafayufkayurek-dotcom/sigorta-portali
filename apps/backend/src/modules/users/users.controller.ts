@@ -57,9 +57,29 @@ export class UsersController {
 
   @Delete(':id')
   @RequirePermissions('user.delete')
-  @ApiOperation({ summary: 'Kullanıcı sil' })
-  async remove(@Param('id') id: string) {
-    const data = await this.usersService.remove(id);
+  @ApiOperation({ summary: 'Kullanıcı arşivle' })
+  async remove(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    const data = await this.usersService.archiveUser(id, currentUser?.id);
+    return { success: true, data };
+  }
+
+  @Post(':id/reactivate')
+  @RequirePermissions('user.update')
+  @ApiOperation({ summary: 'Arşivlenmiş kullanıcıyı yeniden aktifleştir' })
+  async reactivate(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    const data = await this.usersService.reactivateUser(id, currentUser?.id);
+    return { success: true, data };
+  }
+
+  @Delete(':id/permanent')
+  @RequirePermissions('user.delete')
+  @ApiOperation({ summary: 'Arşivlenmiş kullanıcıyı kalıcı sil' })
+  async permanentDelete(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    const roleCode = String(currentUser?.role?.code ?? currentUser?.roleCode ?? '').toUpperCase();
+    if (roleCode !== 'ADMIN') {
+      throw new BadRequestException('Kalıcı silme yalnızca admin kullanıcılar tarafından yapılabilir');
+    }
+    const data = await this.usersService.permanentDelete(id, currentUser?.id);
     return { success: true, data };
   }
 

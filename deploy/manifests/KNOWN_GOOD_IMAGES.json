@@ -1,0 +1,29 @@
+{
+  "updatedAt": "2026-06-28",
+  "label": "ayarlar-kapandi-v29",
+  "description": "Mustafa onaylı ayarlar taraması sonrası bilinen iyi sürüm. Rollback için varsayılan hedef.",
+  "composeProject": "sigorta-hasar-sistemi",
+  "remoteHost": "94.138.216.18",
+  "remoteAppDir": "/opt/app",
+  "images": {
+    "backend": "app-backend:dalga2-agreement-hr-01-v27-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v29-amd64"
+  },
+  "rollbackImages": {
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v28-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v26-amd64"
+  },
+  "mustPassSmokeRoutes": [
+    "/giris",
+    "/panel",
+    "/panel/kullanicilar",
+    "/panel/ayarlar",
+    "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/masraf-kategorileri",
+    "/panel/ayarlar/is-gruplari",
+    "/panel/ayarlar/dosya-konulari",
+    "/panel/ayarlar/evrak-turleri",
+    "/panel/ayarlar/mahaller",
+    "/panel/ayarlar/hizmet-turleri"
+  ]
+}

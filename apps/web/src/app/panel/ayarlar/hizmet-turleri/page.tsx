@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
   DeleteButton,
+  StatusBadge,
   SettingsTable,
   SettingsTableHead,
   SettingsTableTh,
@@ -14,205 +17,260 @@ import {
   SettingsTableTd,
   SettingsTableActions,
   inputCls,
+  labelCls,
 } from '@/components/settings/SettingsUI';
-import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { DepartmentTabSelector, DepartmentDefinitionToolbar } from '@/components/settings/DepartmentTabSelector';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+type HizmetTuru = { id: string; name: string; type: string; isActive: boolean; sortOrder: number };
+
+const HIZMET_TABS = [
+  { id: 'hasar', name: 'Hasar Hizmet Türleri', color: '#3B82F6' },
+  { id: 'acil_yardim', name: 'Acil Yardım Hizmet Türleri', color: '#EF4444' },
+] as const;
+
+const emptyForm = () => ({ name: '', type: 'hasar' as 'hasar' | 'acil_yardim', sortOrder: 0 });
 
 export default function HizmetTurleriPage() {
-  const [types, setTypes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'hasar' | 'acil_yardim'>('hasar');
+  const [search, setSearch] = useState('');
+  const [items, setItems] = useState<HizmetTuru[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<HizmetTuru | null>(null);
+  const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<HizmetTuru | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [seedError, setSeedError] = useState('');
 
-  const [newValue, setNewValue] = useState('');
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-
-  // Delete confirm state
-  const [deleteIdx, setDeleteIdx] = useState<number | null>(null);
-
-  const fetchTypes = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/system-settings/service-types`, { headers: authHeader() });
-      setTypes(res.data.data ?? []);
-    } catch (e) { console.error(e); }
+      const r = await axios.get(`${API}/service-branches/admin`, { headers: authHeader() });
+      setItems(r.data.data ?? []);
+    } catch { /* mevcut liste kalsın */ }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchTypes(); }, [fetchTypes]);
+  useEffect(() => { load(); }, [load]);
 
-  const save = async (updated: string[]) => {
-    setSaving(true);
-    setError('');
-    setSuccess('');
+  const handleSeed = async () => {
+    setSeeding(true);
+    setSeedError('');
     try {
-      await axios.put(`${API}/system-settings/service-types`, { values: updated }, { headers: authHeader() });
-      setTypes(updated);
-      setSuccess('Kaydedildi');
-      setTimeout(() => setSuccess(''), 2000);
+      const res = await axios.post(`${API}/service-branches/seed`, {}, { headers: authHeader() });
+      await load();
+      if (res.data?.data?.message?.includes?.('Zaten seed')) {
+        setSeedError('Varsayılan hizmet türleri zaten yüklü.');
+      }
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) ? (e.response?.data as { message?: string })?.message : null;
+      setSeedError(msg ?? 'Varsayılanlar yüklenemedi. Oturum ve yetkinizi kontrol edin.');
+    } finally { setSeeding(false); }
+  };
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ ...emptyForm(), type: activeTab });
+    setError('');
+    setShowModal(true);
+  };
+
+  const openEdit = (item: HizmetTuru) => {
+    setEditing(item);
+    setForm({ name: item.name, type: item.type as 'hasar' | 'acil_yardim', sortOrder: item.sortOrder });
+    setError('');
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setError('Hizmet türü adı zorunludur'); return; }
+    const duplicate = items.find((b) =>
+      b.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+      b.type === form.type &&
+      (!editing || b.id !== editing.id),
+    );
+    if (duplicate) { setError('Bu isimde bir hizmet türü zaten mevcut!'); return; }
+    setSaving(true);
+    try {
+      if (editing) {
+        await axios.patch(`${API}/service-branches/${editing.id}`, form, { headers: authHeader() });
+      } else {
+        await axios.post(`${API}/service-branches`, form, { headers: authHeader() });
+      }
+      setShowModal(false);
+      await load();
     } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Kaydedilemedi');
-    } finally {
-      setSaving(false);
-    }
+      setError(e?.response?.data?.message ?? 'Bir hata oluştu');
+    } finally { setSaving(false); }
   };
 
-  const handleAdd = async () => {
-    const val = newValue.trim();
-    if (!val) { setError('Boş değer eklenemez'); return; }
-    if (types.includes(val)) { setError('Bu tür zaten mevcut'); return; }
-    setNewValue('');
-    setError('');
-    await save([...types, val]);
+  const handleToggle = async (item: HizmetTuru) => {
+    try {
+      await axios.patch(`${API}/service-branches/${item.id}`, { isActive: !item.isActive }, { headers: authHeader() });
+      await load();
+    } catch { /* sessizce geç */ }
   };
 
-  const handleDelete = async (idx: number) => {
-    await save(types.filter((_, i) => i !== idx));
-    setDeleteIdx(null);
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`${API}/service-branches/${deleteTarget.id}`, { headers: authHeader() });
+      setDeleteTarget(null);
+      await load();
+    } catch { /* sessizce geç */ }
+    finally { setDeleting(false); }
   };
 
-  const handleEditStart = (idx: number) => {
-    setEditingIdx(idx);
-    setEditValue(types[idx]);
-    setError('');
-  };
+  const filtered = items
+    .filter((b) => b.type === activeTab)
+    .filter((b) => !search.trim() || b.name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleEditSave = async (idx: number) => {
-    const val = editValue.trim();
-    if (!val) { setError('Boş değer girilemez'); return; }
-    if (types.some((t, i) => i !== idx && t === val)) { setError('Bu tür zaten mevcut'); return; }
-    const updated = types.map((t, i) => (i === idx ? val : t));
-    setEditingIdx(null);
-    setEditValue('');
-    await save(updated);
-  };
-
-  const handleMoveUp = async (idx: number) => {
-    if (idx === 0) return;
-    const updated = [...types];
-    [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-    await save(updated);
-  };
-
-  const handleMoveDown = async (idx: number) => {
-    if (idx === types.length - 1) return;
-    const updated = [...types];
-    [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
-    await save(updated);
+  const tabCounts = {
+    hasar: items.filter((b) => b.type === 'hasar').length,
+    acil_yardim: items.filter((b) => b.type === 'acil_yardim').length,
   };
 
   return (
     <SettingsPageLayout
       title="Hizmet Türleri"
-      description="Özel Müşteri eklerken sunulacak hizmet türü seçeneklerini yönetin"
-    >
-
-      {/* Yeni Ekle */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Yeni Hizmet Türü Ekle</p>
-        <div className="flex gap-2">
-          <input
-            className={inputCls}
-            placeholder="Örn: Tadilat, Onarım, Restorasyon..."
-            value={newValue}
-            onChange={(e) => { setNewValue(e.target.value); setError(''); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
-          />
+      description="Hasar ve acil yardım hizmet türlerini yönetin (Konut Yangın, Dahili Su, Acil Su vb.)"
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
+      headerExtra={
+        <div className="flex items-center gap-2">
+          {items.length === 0 && (
+            <button
+              type="button"
+              onClick={handleSeed}
+              disabled={seeding}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+            >
+              {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+            </button>
+          )}
           <button
             type="button"
-            onClick={handleAdd}
-            disabled={saving || !newValue.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            onClick={openAdd}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
           >
-            + Ekle
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Hizmet Türü Ekle
           </button>
         </div>
-        {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-2">{error}</p>}
-        {success && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2 mt-2">{success}</p>}
+      }
+    >
+      {seedError && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          {seedError}
+        </div>
+      )}
+
+      <div className="mb-4">
+        <DepartmentTabSelector
+          departments={HIZMET_TABS.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+          selectedId={activeTab}
+          onSelect={(t) => setActiveTab(t.id as 'hasar' | 'acil_yardim')}
+          counts={tabCounts}
+          emptyHref="/panel/ayarlar/hizmet-turleri"
+        />
       </div>
 
-      {/* Liste */}
-      <SettingsTable loading={loading} empty={types.length === 0} emptyText="Henüz hizmet türü tanımlanmamış.">
+      <DepartmentDefinitionToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Hizmet türü ara..."
+        hierarchyChild={activeTab === 'hasar' ? 'Hasar hizmet türü' : 'Acil yardım hizmet türü'}
+      />
+
+      <SettingsTable loading={loading} empty={filtered.length === 0} emptyText={`Henüz ${activeTab === 'hasar' ? 'hasar hizmet türü' : 'acil yardım hizmet türü'} yok`}>
         <SettingsTableHead>
-          <SettingsTableTh className="w-10 text-center">Sıra</SettingsTableTh>
+          <SettingsTableTh className="w-16 text-center">Sıra</SettingsTableTh>
           <SettingsTableTh>Hizmet Türü</SettingsTableTh>
-          <SettingsTableTh className="w-28 text-center">Sırala</SettingsTableTh>
-          <SettingsTableTh className="w-28" />
+          <SettingsTableTh className="text-center">Durum</SettingsTableTh>
+          <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {types.map((type, idx) => (
-            <SettingsTableRow key={idx}>
-              <SettingsTableTd className="text-center text-xs text-slate-400 font-mono">{idx + 1}</SettingsTableTd>
+          {filtered.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr')).map((b, idx) => (
+            <SettingsTableRow key={b.id}>
+              <SettingsTableTd className="text-center">{idx + 1}</SettingsTableTd>
               <SettingsTableTd>
-                {editingIdx === idx ? (
-                  <div className="flex gap-2 items-center">
-                    <input
-                      className="flex-1 border border-blue-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                      value={editValue}
-                      autoFocus
-                      onChange={(e) => { setEditValue(e.target.value); setError(''); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); handleEditSave(idx); }
-                        if (e.key === 'Escape') { setEditingIdx(null); setEditValue(''); }
-                      }}
-                    />
-                    <button type="button" onClick={() => handleEditSave(idx)} disabled={saving}
-                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                      Kaydet
-                    </button>
-                    <button type="button" onClick={() => { setEditingIdx(null); setEditValue(''); }}
-                      className="text-xs border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg hover:bg-slate-50">
-                      İptal
-                    </button>
-                  </div>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                    <span className="font-medium text-slate-800">{type}</span>
-                  </span>
-                )}
-              </SettingsTableTd>
-              <SettingsTableTd className="text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <button type="button" onClick={() => handleMoveUp(idx)} disabled={idx === 0 || saving}
-                    className="text-slate-400 hover:text-slate-700 disabled:opacity-20 transition-colors p-1 rounded hover:bg-slate-100" title="Yukarı Taşı">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button type="button" onClick={() => handleMoveDown(idx)} disabled={idx === types.length - 1 || saving}
-                    className="text-slate-400 hover:text-slate-700 disabled:opacity-20 transition-colors p-1 rounded hover:bg-slate-100" title="Aşağı Taşı">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: activeTab === 'hasar' ? '#3B82F6' : '#EF4444' }}
+                  />
+                  <span className={`font-medium ${b.isActive ? 'text-slate-800' : 'text-slate-400 line-through'}`}>{b.name}</span>
                 </div>
               </SettingsTableTd>
+              <SettingsTableTd className="text-center">
+                <button type="button" onClick={() => handleToggle(b)}>
+                  <StatusBadge active={b.isActive} />
+                </button>
+              </SettingsTableTd>
               <SettingsTableActions>
-                {editingIdx !== idx && (
-                  <>
-                    <EditButton onClick={() => handleEditStart(idx)} />
-                    <DeleteButton onClick={() => setDeleteIdx(idx)} />
-                  </>
-                )}
+                <EditButton onClick={() => openEdit(b)} />
+                <DeleteButton onClick={() => setDeleteTarget(b)} />
               </SettingsTableActions>
             </SettingsTableRow>
           ))}
         </SettingsTableBody>
       </SettingsTable>
 
+      <SettingsModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? 'Hizmet Türünü Düzenle' : 'Yeni Hizmet Türü'}
+        onSave={handleSave}
+        saving={saving}
+        error={error}
+      >
+        <div>
+          <label className={labelCls}>Hizmet Türü Adı *</label>
+          <input className={inputCls}
+            placeholder="Örn: Konut Yangın"
+            value={form.name}
+            onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setError(''); }}
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className={labelCls}>İş Kolu</label>
+          <div className="flex gap-2">
+            {(['hasar', 'acil_yardim'] as const).map((type) => (
+              <button key={type} type="button"
+                onClick={() => setForm((p) => ({ ...p, type }))}
+                className={`flex-1 py-2 px-3 rounded-xl text-sm border transition-all font-medium ${
+                  form.type === type
+                    ? type === 'hasar' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-orange-400 bg-orange-50 text-orange-700'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}>
+                {type === 'hasar' ? 'Hasar' : 'Acil Yardım'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Sıra Numarası</label>
+          <input type="number" min={0} className={inputCls}
+            value={form.sortOrder}
+            onChange={(e) => setForm((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
+          />
+        </div>
+      </SettingsModal>
+
       <DeleteConfirmDialog
-        isOpen={deleteIdx !== null}
-        onClose={() => setDeleteIdx(null)}
-        onConfirm={() => deleteIdx !== null && handleDelete(deleteIdx)}
-        deleting={saving}
-        itemName={deleteIdx !== null ? types[deleteIdx] : undefined}
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        deleting={deleting}
+        itemName={deleteTarget?.name}
       />
     </SettingsPageLayout>
   );

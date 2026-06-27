@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
 import { ExpenseCategoriesService } from './expense-categories.service';
 import {
@@ -18,8 +19,10 @@ export class ExpenseCategoriesController {
   constructor(private readonly service: ExpenseCategoriesService) {}
 
   @Get('expense-categories')
-  async findTree() {
-    const data = await this.service.findTree();
+  async findTree(@Query('includeInactive') includeInactive?: string) {
+    const data = await this.service.findTree({
+      includeInactive: includeInactive === 'true' || includeInactive === '1',
+    });
     return { data };
   }
 

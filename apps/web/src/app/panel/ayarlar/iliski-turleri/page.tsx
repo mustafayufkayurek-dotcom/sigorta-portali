@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
@@ -18,11 +19,8 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://app.meridyen-tr.com/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 type UsageArea = 'musteri' | 'eksper' | 'tedarikci' | 'dosya';
 
@@ -146,8 +144,10 @@ export default function IliskiTurleriPage() {
     <SettingsPageLayout
       title="İlişki Türleri"
       description="İlgili kişi eklerken kullanılacak görev / ünvan seçeneklerini ve kullanım alanlarını yönetin"
-      addButtonText="+ Yeni İlişki Türü"
+      addButtonText="Yeni İlişki Türü"
       onAdd={openCreate}
+      backHref={TANIMLAR_BACK_HREF}
+      backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         types.length >
  0 ? (
