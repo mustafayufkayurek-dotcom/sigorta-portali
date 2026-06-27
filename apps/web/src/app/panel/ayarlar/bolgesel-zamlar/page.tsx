@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import {
   SettingsTable,
@@ -385,7 +386,7 @@ export default function BolgeselZamlarPage() {
           </div>
           <div>
             <label className={labelCls}>Geçerlilik Tarihi <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <input type="date" className={inputCls} value={zamForm.effectiveDate} onChange={(e) => setZamForm((f) => ({ ...f, effectiveDate: e.target.value }))} />
+            <TrDateInput className={inputCls} value={zamForm.effectiveDate} onChange={(effectiveDate) => setZamForm((f) => ({ ...f, effectiveDate }))} />
           </div>
           <div>
             <label className={labelCls}>Not</label>
@@ -450,7 +451,7 @@ export default function BolgeselZamlarPage() {
           </div>
           <div>
             <label className={labelCls}>Geçerlilik Tarihi <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <input type="date" className={inputCls} value={bulkForm.effectiveDate} onChange={(e) => setBulkForm((f) => ({ ...f, effectiveDate: e.target.value }))} />
+            <TrDateInput className={inputCls} value={bulkForm.effectiveDate} onChange={(effectiveDate) => setBulkForm((f) => ({ ...f, effectiveDate }))} />
           </div>
           <div>
             <label className={labelCls}>Not</label>

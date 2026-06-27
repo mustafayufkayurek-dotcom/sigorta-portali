@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { UserSummary, WORK_ITEM_SOURCES, WORK_ITEM_STATUSES, TEST_NOTE_PRIORITIES, WorkItem } from '../_lib/api';
+import { TrDateInput } from '@/components/ui/TrDateInput';
+import { normalizeTrDateValue } from '@/utils/tr-date-input';
 
 type Props = {
   initial?: WorkItem | null;
@@ -11,6 +14,9 @@ type Props = {
 };
 
 export function WorkItemForm({ initial, users, onCancel, onSubmit, saving }: Props) {
+  const [hedefTarih, setHedefTarih] = useState(initial?.hedefTarih?.slice(0, 10) ?? '');
+  const [hatirlatmaTarih, setHatirlatmaTarih] = useState(initial?.hatirlatmaTarih?.slice(0, 10) ?? '');
+
   const submit = async (formData: FormData) => {
     const sorumluId = String(formData.get('sorumluId') ?? '');
     await onSubmit({
@@ -18,8 +24,8 @@ export function WorkItemForm({ initial, users, onCancel, onSubmit, saving }: Pro
       kaynak: String(formData.get('kaynak') ?? 'TEKNIK'),
       oncelik: String(formData.get('oncelik') ?? 'P2'),
       sorumluId: sorumluId || null,
-      hedefTarih: String(formData.get('hedefTarih') ?? '') || null,
-      hatirlatmaTarih: String(formData.get('hatirlatmaTarih') ?? '') || null,
+      hedefTarih: normalizeTrDateValue(hedefTarih) || null,
+      hatirlatmaTarih: normalizeTrDateValue(hatirlatmaTarih) || null,
       durum: String(formData.get('durum') ?? 'ACIK'),
       kullaniciYorumu: String(formData.get('kullaniciYorumu') ?? '') || null,
       kanit: String(formData.get('kanit') ?? '') || null,
@@ -73,11 +79,11 @@ export function WorkItemForm({ initial, users, onCancel, onSubmit, saving }: Pro
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Hedef Tarih</label>
-          <input type="date" name="hedefTarih" defaultValue={initial?.hedefTarih?.slice(0, 10) ?? ''} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+          <TrDateInput value={hedefTarih} onChange={setHedefTarih} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500">Hatırlatma Tarihi</label>
-          <input type="date" name="hatirlatmaTarih" defaultValue={initial?.hatirlatmaTarih?.slice(0, 10) ?? ''} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+          <TrDateInput value={hatirlatmaTarih} onChange={setHatirlatmaTarih} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
         </div>
       </div>
       <div>

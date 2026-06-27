@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _base.endsWith('/api/v1') ? _base : _base + '/api/v1';
@@ -69,8 +70,8 @@ export default function AuditLogsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input className="border rounded px-2 py-1" placeholder="entityType" value={entityType} onChange={(e) => setEntityType(e.target.value)} />
         <input className="border rounded px-2 py-1" placeholder="userId" value={userId} onChange={(e) => setUserId(e.target.value)} />
-        <input className="border rounded px-2 py-1" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <input className="border rounded px-2 py-1" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <TrDateInput className="border rounded px-2 py-1" value={from} onChange={setFrom} />
+        <TrDateInput className="border rounded px-2 py-1" value={to} onChange={setTo} />
       </div>
 
       <div className="overflow-auto border rounded">

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { createCase, EmergencyUrgency } from '@/utils/emergencyApi';
 import { CustomerSelectModal } from '@/components/CustomerSelectModal';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
@@ -419,11 +420,10 @@ export default function YeniAcilDosyaPage() {
                 <label className="text-xs text-slate-500 block mb-1.5">
                   Dosya Tarihi <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
                 </label>
-                <input
-                  type="date"
+                <TrDateInput
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-300 ${errors.fileDate ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                   value={fileDate}
-                  onChange={(e) => setFileDate(e.target.value)}
+                  onChange={setFileDate}
                 />
                 {errors.fileDate && <p className="text-xs text-red-500 mt-0.5">{errors.fileDate}</p>}
               </div>

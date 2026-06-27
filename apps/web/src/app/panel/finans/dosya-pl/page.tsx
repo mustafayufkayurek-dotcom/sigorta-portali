@@ -50,7 +50,7 @@ export default function DosyaPLPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">Portföy P&L Analizi</h2>
+        <h2 className="text-xl font-bold text-slate-900">Portföy Kârlılık Analizi</h2>
         <div className="flex gap-2">
           <select
             value={year}

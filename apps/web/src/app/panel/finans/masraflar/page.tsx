@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { TrDateInput } from '@/components/ui/TrDateInput';
+import { TrAmountInput } from '@/components/ui/TrAmountInput';
+import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
+import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 const _base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
@@ -81,6 +85,16 @@ interface Expense {
 
 const EMPTY_FORM = { fileCaseId: '', expensePlan: PLAN_BUTCE, description: '', amount: '', date: new Date().toISOString().slice(0, 10) };
 
+const getFileDescription = (file: Record<string, unknown>) => {
+  const customer = (file['customer'] ?? {}) as Record<string, unknown>;
+  const customerName =
+    file['insuredName'] ??
+    customer['fullName'] ??
+    customer['companyName'] ??
+    [customer['firstName'], customer['lastName']].filter(Boolean).join(' ');
+  return String(customerName || file['description'] || file['claimNo'] || '');
+};
+
 // ── Bileşen ───────────────────────────────────────────────────────────────────
 export default function MasraflarPage() {
   const router = useRouter();
@@ -107,7 +121,7 @@ export default function MasraflarPage() {
   // ── Dosyaları yükle ────────────────────────────────────────────────────────
   const loadFiles = useCallback(async (search = '') => {
     try {
-      const res = await axios.get(`${API}/file-cases`, {
+      const res = await axios.get(`${API}/claim-files`, {
         headers: authHeader(),
         params: { search, limit: 40 },
       });
@@ -115,7 +129,7 @@ export default function MasraflarPage() {
       setFiles(rows.map((f) => ({
         id:          String(f['id']),
         fileNo:      String(f['fileNo'] ?? f['claimNo'] ?? ''),
-        description: String(f['description'] ?? f['insuredName'] ?? ''),
+        description: getFileDescription(f),
       })));
     } catch {
       setFiles([]);
@@ -131,8 +145,10 @@ export default function MasraflarPage() {
       const params: Record<string, string> = {};
       if (fPlan)     params['expensePlan'] = fPlan;
       if (fFile)     params['fileCaseId']  = fFile;
-      if (fDateFrom) params['dateFrom']    = fDateFrom;
-      if (fDateTo)   params['dateTo']      = fDateTo;
+      const dateFrom = normalizeTrDateValue(fDateFrom);
+      const dateTo   = normalizeTrDateValue(fDateTo);
+      if (dateFrom) params['dateFrom'] = dateFrom;
+      if (dateTo)   params['dateTo']   = dateTo;
 
       const res = await axios.get(`${API}/expenses`, { headers: authHeader(), params });
       const rows = (res.data?.data ?? res.data ?? []) as Record<string, unknown>[];
@@ -156,28 +172,51 @@ export default function MasraflarPage() {
   useEffect(() => { load(); }, [load]);
 
   // ── Kaydet ─────────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+  type SaveMode = 'close' | 'new';
+
+  const handleSave = async (mode: SaveMode = 'close') => {
     setFormError('');
     if (!form.fileCaseId)  return setFormError('Hasar dosyası seçimi zorunludur.');
     if (!form.expensePlan) return setFormError('Kategori seçimi zorunludur.');
-    if (!form.amount)      return setFormError('Tutar zorunludur.');
-    if (!form.date)        return setFormError('Tarih zorunludur.');
+    const amountNum = parseTrAmountInput(form.amount);
+    if (amountNum == null || amountNum <= 0) return setFormError('Geçerli bir tutar giriniz.');
+    const dateIso = normalizeTrDateValue(form.date);
+    if (!isCompleteTrDateValue(dateIso)) return setFormError('Geçerli bir tarih giriniz (GG.AA.YYYY).');
 
     setSaving(true);
     try {
       const payload = {
         fileCaseId:  form.fileCaseId,
         expensePlan: form.expensePlan,
+        expenseGroup: 'OPERASYON_GIDERLERI',
+        expenseSubgroup: form.expensePlan === PLAN_BUTCE ? 'Dosya Bütçesi' : 'Ek İşler',
+        operationSubject: 'HASAR_ONARIM',
         description: form.description || undefined,
-        amount:      parseFloat(form.amount),
-        date:        form.date,
+        amount:      amountNum,
+        date:        dateIso,
       };
       if (editId) {
         await axios.put(`${API}/expenses/${editId}`, payload, { headers: authHeader() });
       } else {
         await axios.post(`${API}/expenses`, payload, { headers: authHeader() });
       }
-      setShowForm(false); setEditId(null); setForm({ ...EMPTY_FORM }); setFormError('');
+
+      if (!editId && mode === 'new') {
+        setForm({
+          ...EMPTY_FORM,
+          fileCaseId:  form.fileCaseId,
+          expensePlan: form.expensePlan,
+          date:        new Date().toISOString().slice(0, 10),
+        });
+        setEditId(null);
+        setFormError('');
+        setShowForm(true);
+      } else {
+        setShowForm(false);
+        setEditId(null);
+        setForm({ ...EMPTY_FORM });
+        setFormError('');
+      }
       load();
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 401) { router.push('/giris'); return; }
@@ -190,7 +229,13 @@ export default function MasraflarPage() {
 
   const handleEdit = (e: Expense) => {
     setEditId(e.id);
-    setForm({ fileCaseId: e.fileCaseId, expensePlan: e.expensePlan, description: e.description, amount: String(e.amount), date: e.date?.slice(0, 10) ?? '' });
+    setForm({
+      fileCaseId: e.fileCaseId,
+      expensePlan: e.expensePlan,
+      description: e.description,
+      amount: numberToTrAmountInput(e.amount),
+      date: e.date?.slice(0, 10) ?? '',
+    });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -336,12 +381,12 @@ export default function MasraflarPage() {
             {/* Hasar Dosyası — arama + select */}
             <div className="md:col-span-2">
               <label className={labelCls}>
-                Hasar Dosyası <span className="text-red-500">*</span>
+                İlgili Dosya / Sigortalı <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
                 <input
                   className={inputCls}
-                  placeholder="Dosya no ile ara..."
+                  placeholder="Dosya no, hasar no veya sigortalı adı ile ara..."
                   value={fileSearch}
                   onChange={(e) => setFileSearch(e.target.value)}
                 />
@@ -350,7 +395,7 @@ export default function MasraflarPage() {
                   value={form.fileCaseId}
                   onChange={(e) => setForm({ ...form, fileCaseId: e.target.value })}
                 >
-                  <option value="">Dosya seçiniz...</option>
+                  <option value="">Dosya veya sigortalı seçiniz...</option>
                   {files.map((f) => (
                     <option key={f.id} value={f.id}>
                       {f.fileNo}{f.description ? ` — ${f.description}` : ''}
@@ -404,28 +449,21 @@ export default function MasraflarPage() {
             {/* Tutar */}
             <div>
               <label className={labelCls}>Tutar (₺) <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm pointer-events-none">₺</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className={`${inputCls} pl-7`}
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                />
-              </div>
+              <TrAmountInput
+                className={inputCls}
+                placeholder="0"
+                value={form.amount}
+                onChange={(amount) => setForm({ ...form, amount })}
+              />
             </div>
 
             {/* Tarih */}
             <div>
               <label className={labelCls}>Tarih <span className="text-red-500">*</span></label>
-              <input
-                type="date"
+              <TrDateInput
                 className={inputCls}
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                onChange={(date) => setForm({ ...form, date })}
               />
             </div>
           </div>
@@ -438,14 +476,35 @@ export default function MasraflarPage() {
             >
               İptal
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="text-sm bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
-            >
-              {saving ? 'Kaydediliyor...' : editId ? 'Güncelle' : 'Kaydet'}
-            </button>
+            {editId ? (
+              <button
+                type="button"
+                onClick={() => handleSave('close')}
+                disabled={saving}
+                className="text-sm bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                {saving ? 'Kaydediliyor...' : 'Güncelle'}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleSave('close')}
+                  disabled={saving}
+                  className="text-sm text-slate-600 dark:text-slate-300 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                  Kaydet ve Kapat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSave('new')}
+                  disabled={saving}
+                  className="text-sm bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                >
+                  {saving ? 'Kaydediliyor...' : 'Kaydet ve Yeni'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -477,16 +536,28 @@ export default function MasraflarPage() {
           className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
         >
           <option value="">Tüm Dosyalar</option>
-          {files.map((f) => <option key={f.id} value={f.id}>{f.fileNo}</option>)}
+          {files.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.fileNo}{f.description ? ` — ${f.description}` : ''}
+            </option>
+          ))}
         </select>
 
         {/* Tarih aralığı */}
         <div className="flex items-center gap-2">
-          <input type="date" value={fDateFrom} onChange={(e) => setFDateFrom(e.target.value)}
-            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200" />
+          <TrDateInput
+            value={fDateFrom}
+            onChange={setFDateFrom}
+            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 w-[7.5rem]"
+            aria-label="Başlangıç tarihi"
+          />
           <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
-          <input type="date" value={fDateTo} onChange={(e) => setFDateTo(e.target.value)}
-            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200" />
+          <TrDateInput
+            value={fDateTo}
+            onChange={setFDateTo}
+            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 w-[7.5rem]"
+            aria-label="Bitiş tarihi"
+          />
           {(fDateFrom || fDateTo) && (
             <button type="button" onClick={() => { setFDateFrom(''); setFDateTo(''); }}
               className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300">Temizle</button>

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { CustomerSelectModal } from '@/components/CustomerSelectModal';
+import { TrDateInput } from '@/components/ui/TrDateInput';
+import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
@@ -82,10 +84,6 @@ function TRPhoneInput({ value, onChange, onBlur, className = '', placeholder = '
   );
 }
 // ────────────────────────────────────────────────────────────────────────────
-
-function openNativeDatePicker(input: HTMLInputElement & { showPicker?: () => void }) {
-  input.showPicker?.();
-}
 
 type InsuranceCompany = { id: string; name: string };
 type Province = { id: string; plateCode: number; name: string };
@@ -314,8 +312,8 @@ export default function YeniHasarDosyasiPage() {
     if (fileNoError) errs.fileNo = fileNoError;
     if (!insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
     if (!lossType) errs.lossType = 'Hasar konusu zorunludur.';
-    if (!incidentDate) errs.incidentDate = 'Hasar tarihi zorunludur.';
-    if (!notificationDate) errs.notificationDate = 'Bildirim tarihi zorunludur.';
+    if (!isCompleteTrDateValue(incidentDate)) errs.incidentDate = 'Hasar tarihi zorunludur (GG.AA.YYYY).';
+    if (!isCompleteTrDateValue(notificationDate)) errs.notificationDate = 'Bildirim tarihi zorunludur (GG.AA.YYYY).';
     if (!selectedCustomer && !showNewCustomerForm) errs.customer = 'Müşteri seçiniz.';
     if (showNewCustomerForm) {
       if (newCustomerType === 'individual' && (!newCustomerFirstName.trim() || !newCustomerLastName.trim())) {
@@ -374,8 +372,8 @@ export default function YeniHasarDosyasiPage() {
         claimNo: fileNo.trim() || 'N/A',
         productBranch: 'diger',
         lossType,
-        incidentDate: new Date(incidentDate).toISOString(),
-        notificationDate: new Date(notificationDate).toISOString(),
+        incidentDate: new Date(normalizeTrDateValue(incidentDate)).toISOString(),
+        notificationDate: new Date(normalizeTrDateValue(notificationDate)).toISOString(),
         priority,
         description: description || undefined,
         customerId: customerId || undefined,
@@ -465,26 +463,20 @@ export default function YeniHasarDosyasiPage() {
 
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">Hasar Tarihi <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-              <input
-                type="date"
+              <TrDateInput
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.incidentDate ? 'border-red-400' : 'border-slate-200'}`}
                 value={incidentDate}
-                onChange={(e) => setIncidentDate(e.target.value)}
-                onClick={(e) => openNativeDatePicker(e.currentTarget)}
-                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
+                onChange={setIncidentDate}
               />
               {errors.incidentDate && <p className="text-xs text-red-500 mt-0.5">{errors.incidentDate}</p>}
             </div>
 
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">İhbar Tarihi <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-              <input
-                type="date"
+              <TrDateInput
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.notificationDate ? 'border-red-400' : 'border-slate-200'}`}
                 value={notificationDate}
-                onChange={(e) => setNotificationDate(e.target.value)}
-                onClick={(e) => openNativeDatePicker(e.currentTarget)}
-                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
+                onChange={setNotificationDate}
               />
               {errors.notificationDate && <p className="text-xs text-red-500 mt-0.5">{errors.notificationDate}</p>}
             </div>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toWhatsAppLink } from '@/utils/date-helpers';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -1159,15 +1160,17 @@ function CreateStatementModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Dönem Başlangıç</label>
-                  <input
-                    type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)}
+                  <TrDateInput
+                    value={periodStart}
+                    onChange={setPeriodStart}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Dönem Bitiş</label>
-                  <input
-                    type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)}
+                  <TrDateInput
+                    value={periodEnd}
+                    onChange={setPeriodEnd}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>

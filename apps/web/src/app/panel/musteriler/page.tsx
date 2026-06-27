@@ -15,6 +15,7 @@ import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/
 import { useRouter, useSearchParams } from 'next/navigation';
 import { relativeTime, activityColor } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -2709,7 +2710,7 @@ export default function MusterilerPage() {
                       </select>
                     </FormField>
                     <FormField label="Takip Tarihi">
-                      <input type="date" className={inp} value={form.followUpDate} onChange={(e) => setForm((p) => ({ ...p, followUpDate: e.target.value }))} />
+                      <TrDateInput className={inp} value={form.followUpDate} onChange={(followUpDate) => setForm((p) => ({ ...p, followUpDate }))} />
                     </FormField>
                   </div>
                   <FormField label="Memnuniyet Notu (1-5)">

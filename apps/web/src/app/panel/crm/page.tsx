@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   AlertCircle,
   ArrowRight,
@@ -503,35 +504,13 @@ function DateField({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const openPicker = () => {
-    const input = inputRef.current;
-    if (!input) return;
-    input.focus();
-    try {
-      if (typeof input.showPicker === 'function') {
-        input.showPicker();
-      }
-    } catch {
-      // Browser may block showPicker outside a direct user gesture; focused field remains usable.
-    }
-  };
-
   return (
-    <label
-      className="grid cursor-pointer gap-1 text-xs font-semibold text-slate-500"
-      onClick={openPicker}
-    >
+    <label className="grid gap-1 text-xs font-semibold text-slate-500">
       <span>{label}</span>
-      <input
-        ref={inputRef}
-        type="date"
+      <TrDateInput
         value={value}
-        onClick={openPicker}
-        onFocus={openPicker}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 cursor-pointer rounded-md border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400"
+        onChange={onChange}
+        className="h-10 rounded-md border border-slate-200 px-3 text-sm font-normal text-slate-700 outline-none focus:border-blue-400"
       />
     </label>
   );

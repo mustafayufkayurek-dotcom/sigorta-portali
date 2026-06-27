@@ -11,6 +11,7 @@ import {
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
 const STATUS_LABELS: Record<EmergencyStatus, string> = {
@@ -657,10 +658,9 @@ export default function VakaDetayPage() {
                   placeholder="Tutar (₺)"
                   className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
                 />
-                <input
-                  type="date"
+                <TrDateInput
                   value={gelirForm.entryDate}
-                  onChange={(e) => setGelirForm((f) => ({ ...f, entryDate: e.target.value }))}
+                  onChange={(entryDate) => setGelirForm((f) => ({ ...f, entryDate }))}
                   className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
                 />
               </div>
@@ -715,10 +715,9 @@ export default function VakaDetayPage() {
                             placeholder="Tutar (₺)"
                             className={`flex-1 min-w-0 px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!editForm.amount || Number(editForm.amount) <= 0) && editError ? 'border-red-400' : 'border-slate-200'}`}
                           />
-                          <input
-                            type="date"
+                          <TrDateInput
                             value={editForm.entryDate}
-                            onChange={(e) => setEditForm((f) => ({ ...f, entryDate: e.target.value }))}
+                            onChange={(entryDate) => setEditForm((f) => ({ ...f, entryDate }))}
                             className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -813,10 +812,9 @@ export default function VakaDetayPage() {
                   placeholder="Tutar (₺)"
                   className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
                 />
-                <input
-                  type="date"
+                <TrDateInput
                   value={giderForm.entryDate}
-                  onChange={(e) => setGiderForm((f) => ({ ...f, entryDate: e.target.value }))}
+                  onChange={(entryDate) => setGiderForm((f) => ({ ...f, entryDate }))}
                   className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
                 />
               </div>
@@ -874,10 +872,9 @@ export default function VakaDetayPage() {
                             placeholder="Tutar (₺)"
                             className={`flex-1 min-w-0 px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!editForm.amount || Number(editForm.amount) <= 0) && editError ? 'border-red-400' : 'border-slate-200'}`}
                           />
-                          <input
-                            type="date"
+                          <TrDateInput
                             value={editForm.entryDate}
-                            onChange={(e) => setEditForm((f) => ({ ...f, entryDate: e.target.value }))}
+                            onChange={(entryDate) => setEditForm((f) => ({ ...f, entryDate }))}
                             className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>

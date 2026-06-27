@@ -11,8 +11,8 @@ MODE="${1:-default}"
 TS="$(date +%Y%m%d_%H%M%S)"
 
 DEFAULT_BACKEND="app-backend:dalga2-agreement-hr-01-v27-amd64"
-DEFAULT_WEB="sigorta-web:dalga2-agreement-hr-01-v29-amd64"
-PREV_WEB="sigorta-web:dalga2-agreement-hr-01-v28-amd64"
+DEFAULT_WEB="sigorta-web:dalga2-agreement-hr-01-v31-amd64"
+PREV_WEB="sigorta-web:dalga2-agreement-hr-01-v30-amd64"
 
 case "$MODE" in
   default)

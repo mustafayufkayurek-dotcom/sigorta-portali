@@ -32,8 +32,8 @@ log "=== 4/6 Bilinen iyi image'ların silinmesini engelle ==="
 KEEP_IMAGES=(
   "app-backend:dalga2-agreement-hr-01-v27-amd64"
   "app-backend:dalga2-agreement-hr-01-v26-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v29-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v28-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v31-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v30-amd64"
   "app-backend:dalga2-agreement-hr-01-v1-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v1-amd64"
 )
@@ -48,7 +48,8 @@ PG_USER="${POSTGRES_USER:-meridyen}"
 PG_DB="${POSTGRES_DB:-meridyen_db}"
 if docker ps --format '{{.Names}}' | grep -q '^sigorta-postgres$'; then
   PRE_BACKUP="$BACKUP_DIR/pre_${DEPLOY_TAG}_${TS}.sql.gz"
-  docker exec sigorta-postgres pg_dump -U "$PG_USER" "$PG_DB" | gzip > "$PRE_BACKUP"
+  docker exec -e PGPASSWORD="${POSTGRES_PASSWORD:-}" sigorta-postgres \
+    pg_dump -U "$PG_USER" "$PG_DB" | gzip > "$PRE_BACKUP"
   if [ -s "$PRE_BACKUP" ]; then
     log "DB yedeği: $PRE_BACKUP ($(du -sh "$PRE_BACKUP" | cut -f1))"
   else

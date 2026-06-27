@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
@@ -192,17 +193,17 @@ export default function ErisimLoglariPage() {
             <option value="true">Sadece Anomaliler</option>
             <option value="false">Normal Erişimler</option>
           </select>
-          <input
-            type="date"
+          <TrDateInput
             value={filterFrom}
-            onChange={(e) => setFilterFrom(e.target.value)}
+            onChange={setFilterFrom}
             className="rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Başlangıç tarihi"
           />
-          <input
-            type="date"
+          <TrDateInput
             value={filterTo}
-            onChange={(e) => setFilterTo(e.target.value)}
+            onChange={setFilterTo}
             className="rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Bitiş tarihi"
           />
           <div className="flex gap-2">
             <button type="button"

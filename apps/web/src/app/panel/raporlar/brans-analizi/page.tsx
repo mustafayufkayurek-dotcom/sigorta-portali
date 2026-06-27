@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -205,19 +206,17 @@ export default function BransAnaliziPage() {
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Başlangıç</label>
-            <input
-              type="date"
+            <TrDateInput
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={setDateFrom}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <div>
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Bitiş</label>
-            <input
-              type="date"
+            <TrDateInput
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={setDateTo}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>

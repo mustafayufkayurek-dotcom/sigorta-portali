@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * MERIDYEN PRODUCT GUARDRAIL
+ * Bu ekran teknik CRUD ekranı olarak genişletilemez.
+ * İlgili ürün kararı:
+ * docs/product/MERIDYEN_URUN_KARARI_ANAYASASI.md
+ * docs/product/UI_GUARDRAIL_CHECKLIST.md
+ */
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';

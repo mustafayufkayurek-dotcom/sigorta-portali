@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
@@ -323,11 +324,11 @@ export default function ClaimFilesPage() {
           </label>
           <label className="block">
             <span className="mb-1 block text-[11px] font-semibold text-slate-500">Başlangıç</span>
-            <input type="date" className="input-base-sm w-full" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
+            <TrDateInput className="input-base-sm w-full" value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
           </label>
           <label className="block">
             <span className="mb-1 block text-[11px] font-semibold text-slate-500">Bitiş</span>
-            <input type="date" className="input-base-sm w-full" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
+            <TrDateInput className="input-base-sm w-full" value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
           </label>
           {hasFilters && (
             <button type="button" onClick={clearFilters} className="self-end text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap">

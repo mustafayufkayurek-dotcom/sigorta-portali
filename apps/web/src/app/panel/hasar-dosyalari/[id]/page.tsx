@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import ProcessTimeline from '@/components/timeline/ProcessTimeline';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
@@ -960,12 +961,12 @@ function CreateContractModal({ claimId, onClose, onCreated }: {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Başlangıç Tarihi</label>
-                <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                <TrDateInput value={form.startDate} onChange={(startDate) => setForm({ ...form, startDate })}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Teslim Tarihi</label>
-                <input type="date" value={form.deliveryDate} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })}
+                <TrDateInput value={form.deliveryDate} onChange={(deliveryDate) => setForm({ ...form, deliveryDate })}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               </div>
             </div>
@@ -1518,7 +1519,7 @@ function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string 
                 <input placeholder="Tutar (₺)" type="number" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.amount} onChange={(e) => setCostForm((p) => ({ ...p, amount: e.target.value }))} />
                 <input placeholder="KDV %" type="number" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.vatRate} onChange={(e) => setCostForm((p) => ({ ...p, vatRate: e.target.value }))} />
                 <input placeholder="Fatura No" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.invoiceNo} onChange={(e) => setCostForm((p) => ({ ...p, invoiceNo: e.target.value }))} />
-                <input type="date" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.entryDate} onChange={(e) => setCostForm((p) => ({ ...p, entryDate: e.target.value }))} />
+                <TrDateInput className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full" value={costForm.entryDate} onChange={(entryDate) => setCostForm((p) => ({ ...p, entryDate }))} />
               </div>
               {costManualVendor ? (
                 <div>
@@ -2052,11 +2053,11 @@ function FaturalarTab({ claimId }: { claimId: string }) {
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Fatura Tarihi</label>
-              <input type="date" value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              <TrDateInput value={form.invoiceDate} onChange={(invoiceDate) => setForm({ ...form, invoiceDate })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Vade Tarihi</label>
-              <input type="date" value={form.dueDate ?? ''} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              <TrDateInput value={form.dueDate ?? ''} onChange={(dueDate) => setForm({ ...form, dueDate })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Karşı Taraf Tipi</label>
@@ -2192,7 +2193,7 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Ödeme Tarihi</label>
-              <input type="date" value={form.paymentDate} onChange={(e) => setForm({ ...form, paymentDate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              <TrDateInput value={form.paymentDate} onChange={(paymentDate) => setForm({ ...form, paymentDate })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Tutar (TRY)</label>
@@ -2729,7 +2730,7 @@ function GelirlerTab({ claimId }: { claimId: string }) {
             </div>
             <div>
               <label className="block text-xs text-slate-600 mb-1">Tarih</label>
-              <input type="date" value={form.entryDate} onChange={e => setForm({...form, entryDate: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
+              <TrDateInput value={form.entryDate} onChange={(entryDate) => setForm({...form, entryDate})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
             </div>
             <div>
               <label className="block text-xs text-slate-600 mb-1">Açıklama</label>
@@ -2849,7 +2850,7 @@ function EkstraIslerTab({ claimId }: { claimId: string }) {
             </div>
             <div>
               <label className="block text-xs text-slate-600 mb-1">Anlaşma Tarihi</label>
-              <input type="date" value={form.agreedAt} onChange={e => setForm({...form, agreedAt: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
+              <TrDateInput value={form.agreedAt} onChange={(agreedAt) => setForm({...form, agreedAt})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
             </div>
             <div>
               <label className="block text-xs text-slate-600 mb-1">Notlar</label>

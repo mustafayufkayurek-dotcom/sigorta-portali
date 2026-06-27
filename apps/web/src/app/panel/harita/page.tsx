@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -281,18 +282,16 @@ export default function HaritaPage() {
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: '#6B7280' }}>Başlangıç:</span>
-          <input
-            type="date"
+          <TrDateInput
             value={rotaBaslangic}
-            onChange={(e) => setRotaBaslangic(e.target.value)}
-            style={{ border: '1px solid #D1D5DB', borderRadius: 6, padding: '5px 8px', fontSize: 13 }}
+            onChange={setRotaBaslangic}
+            className="border border-slate-300 rounded-md px-2 py-1 text-[13px] w-[7.5rem]"
           />
           <span style={{ fontSize: 13, color: '#6B7280' }}>Bitiş:</span>
-          <input
-            type="date"
+          <TrDateInput
             value={rotaBitis}
-            onChange={(e) => setRotaBitis(e.target.value)}
-            style={{ border: '1px solid #D1D5DB', borderRadius: 6, padding: '5px 8px', fontSize: 13 }}
+            onChange={setRotaBitis}
+            className="border border-slate-300 rounded-md px-2 py-1 text-[13px] w-[7.5rem]"
           />
         </div>
 

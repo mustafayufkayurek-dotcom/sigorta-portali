@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/contexts/ToastContext';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -587,11 +588,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           {/* Hasar Tarihi */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Hasar Tarihi</label>
-            <input
-              type="date"
-              className={`input-base-sm ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+            <TrDateInput
+              className={`input-base-sm w-full ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.hasarTarihi}
-              onChange={(e) => set('hasarTarihi', e.target.value)}
+              onChange={(hasarTarihi) => set('hasarTarihi', hasarTarihi)}
             />
             {errors.hasarTarihi && <p className="text-xs text-red-500 mt-1">{errors.hasarTarihi}</p>}
           </div>

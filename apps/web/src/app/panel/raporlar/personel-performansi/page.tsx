@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -106,11 +107,11 @@ export default function PersonelPerformansPage() {
       <div className="flex flex-wrap gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-500">Başlangıç Tarihi</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm" />
+          <TrDateInput value={dateFrom} onChange={setDateFrom} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-slate-500">Bitiş Tarihi</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm" />
+          <TrDateInput value={dateTo} onChange={setDateTo} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex items-end">
           <button type="button" onClick={load} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
