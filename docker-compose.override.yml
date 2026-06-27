@@ -1,8 +1,0 @@
-version: '3.8'
-
-services:
-  backend:
-    image: app-backend:p0-fix-v3
-
-  web:
-    image: sigorta-web:testnotu-v4

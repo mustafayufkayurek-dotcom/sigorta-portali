@@ -147,7 +147,7 @@ const emptyContact = (): ContactPerson => ({ firstName: '', lastName: '', role: 
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
   customerType: 'individual' as 'individual' | 'corporate',
-  subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi',
+  subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi',
   firstName: '', lastName: '', companyName: '',
   taxNumber: '', taxOffice: '', identityNo: '', birthDate: '',
   contactFirstName: '', contactLastName: '',
@@ -614,63 +614,6 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
             </div>
           </div>
 
-          {/* Finans Bilgileri */}
-          {customer && (() => {
-            const invoices = mockInvoices(customer.id);
-            const totalAmt = invoices.reduce((s, i) => s + i.amount, 0);
-            const paidAmt  = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
-            const overdueAmt = invoices.filter((i) => i.status === 'overdue').reduce((s, i) => s + i.amount, 0);
-            const perf = mockPaymentPerf(customer.id);
-            const perfBadge = PAYMENT_PERF_BADGE[perf];
-            return (
-              <div className="px-5 pt-4 pb-4 border-t border-slate-50">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-base">💰</span>
-                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Finans</p>
-                  <span className={`ml-auto inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${perfBadge.cls}`}>
-                    {perfBadge.label}
-                  </span>
-                </div>
-                {/* Alacak yaşlandırma */}
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
-                  {[
-                    { label: '0–30 gün', amt: invoices.filter((i) => i.status === 'pending').reduce((s, i) => s + i.amount, 0), cls: 'bg-yellow-50 border-yellow-100 text-yellow-700' },
-                    { label: '31–60 gün', amt: Math.round(overdueAmt * 0.4), cls: 'bg-orange-50 border-orange-100 text-orange-700' },
-                    { label: '60+ gün',  amt: Math.round(overdueAmt * 0.6), cls: 'bg-red-50 border-red-100 text-red-700' },
-                  ].map((item) => (
-                    <div key={item.label} className={`rounded-lg border px-2 py-1.5 ${item.cls}`}>
-                      <p className="text-[10px] font-medium opacity-70">{item.label}</p>
-                      <p className="text-xs font-bold tabular-nums">{fmtTL(item.amt)}</p>
-                    </div>
-                  ))}
-                </div>
-                {/* Son faturalar */}
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Son Faturalar</p>
-                <div className="space-y-1.5">
-                  {invoices.map((inv) => {
-                    const st = INVOICE_STATUS[inv.status];
-                    return (
-                      <div key={inv.id} className="flex items-center justify-between gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-slate-700 truncate">{inv.id}</p>
-                          <p className="text-[10px] text-slate-400">{new Date(inv.date).toLocaleDateString('tr-TR')}{inv.fileNumber ? ` · ${inv.fileNumber}` : ''}</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs font-semibold text-slate-700 tabular-nums">{fmtTL(inv.amount)}</span>
-                          <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Özet */}
-                <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs text-slate-500">
-                  <span>Toplam: <strong className="text-slate-700">{fmtTL(totalAmt)}</strong></span>
-                  <span>Tahsil: <strong className="text-green-600">{fmtTL(paidAmt)}</strong></span>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 
@@ -696,55 +639,14 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   );
 }
 
-// ── Finans Mock Data ──────────────────────────────────────────────────────────
-type PaymentPerf = 'regular' | 'sometimes_late' | 'chronic_late';
-
-const PAYMENT_PERF_BADGE: Record<PaymentPerf, { label: string; cls: string }> = {
-  regular:       { label: 'Düzenli Öder',    cls: 'bg-green-50 text-green-700 border-green-200' },
-  sometimes_late:{ label: 'Bazen Gecikir',   cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  chronic_late:  { label: 'Kronik Gecikme',  cls: 'bg-red-50 text-red-700 border-red-200' },
-};
-
-function mockPaymentPerf(id: string): PaymentPerf {
-  const n = id.charCodeAt(0) % 10;
-  if (n < 6) return 'regular';
-  if (n < 9) return 'sometimes_late';
-  return 'chronic_late';
-}
-
-interface MockInvoice {
-  id: string; date: string; amount: number;
-  status: 'paid' | 'pending' | 'overdue'; fileNumber?: string;
-}
-
-const INVOICE_STATUS: Record<string, { label: string; cls: string }> = {
-  paid:    { label: 'Ödendi',    cls: 'bg-green-50 text-green-700 border-green-200' },
-  pending: { label: 'Bekliyor', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  overdue: { label: 'Gecikmiş', cls: 'bg-red-50 text-red-700 border-red-200' },
-};
-
-function mockInvoices(id: string): MockInvoice[] {
-  const seed = id.charCodeAt(0);
-  return [
-    { id: 'INV-001', date: '2025-03-15', amount: 4_800, status: 'paid',    fileNumber: `HAS-${seed % 900 + 100}` },
-    { id: 'INV-002', date: '2025-04-01', amount: 2_350, status: 'paid',    fileNumber: `HAS-${seed % 900 + 101}` },
-    { id: 'INV-003', date: '2025-04-22', amount: 6_120, status: 'pending', fileNumber: `HAS-${seed % 900 + 102}` },
-    { id: 'INV-004', date: '2025-03-05', amount: 3_200, status: 'overdue', fileNumber: `HAS-${seed % 900 + 103}` },
-  ];
-}
-
-function fmtTL(amount: number) {
-  return amount.toLocaleString('tr-TR') + ' TL';
-}
-
 // ── Resizable Columns ─────────────────────────────────────────────────────────
-const COL_KEYS = ['check', 'name', 'phone', 'type', 'service', 'files', 'activity', 'payment', 'status', 'action'] as const;
+const COL_KEYS = ['check', 'name', 'phone', 'type', 'service', 'files', 'activity', 'status', 'action'] as const;
 type ColKey = typeof COL_KEYS[number];
 const COL_MIN_W: Record<ColKey, number> = {
-  check: 36, name: 160, phone: 110, type: 90, service: 70, files: 56, activity: 90, payment: 110, status: 76, action: 68,
+  check: 36, name: 160, phone: 110, type: 90, service: 70, files: 56, activity: 90, status: 76, action: 68,
 };
 const COL_DEFAULT_W: Record<ColKey, number> = {
-  check: 36, name: 220, phone: 140, type: 120, service: 90, files: 72, activity: 110, payment: 130, status: 90, action: 78,
+  check: 36, name: 220, phone: 140, type: 120, service: 90, files: 72, activity: 110, status: 90, action: 78,
 };
 const LS_COL_KEY = 'musteriler_col_widths_v2';
 
@@ -800,13 +702,10 @@ export default function MusterilerPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [subTypeFilter, setSubTypeFilter] = useState('');
   const [cityFilter, setCityFilter] = useState('');
-  const [overdueFilter, setOverdueFilter] = useState(false);
-  const [overdueCount, setOverdueCount] = useState(0);
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') ?? '');
   const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
-  const [paymentFilter, setPaymentFilter] = useState<'' | PaymentPerf>('');
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     const t = searchParams.get('tags');
     return t ? t.split(',').filter(Boolean) : [];
@@ -1135,7 +1034,6 @@ export default function MusterilerPage() {
       if (cityFilter) params.set('city', cityFilter);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
-      if (overdueFilter) params.set('followUpOverdue', 'true');
       selectedTags.forEach((tag) => params.append('tags', tag));
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       const rows: any[] = r.data.data || [];
@@ -1147,14 +1045,7 @@ export default function MusterilerPage() {
         setAllTags((prev) => Array.from(new Set([...prev, ...tagSet])).sort());
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, overdueFilter, page]); // eslint-disable-line
-
-  const loadOverdueCount = async () => {
-    try {
-      const r = await axios.get(`${API}/customers/overdue-count`, { headers: authHeader() });
-      setOverdueCount(r.data.data?.count ?? 0);
-    } catch { /* sessizce geç */ }
-  };
+  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
 
   // Debounce searchInput → search
   useEffect(() => {
@@ -1172,11 +1063,10 @@ export default function MusterilerPage() {
     if (statusFilter) p.set('status', statusFilter);
     if (sourceFilter) p.set('source', sourceFilter);
     if (selectedTags.length) p.set('tags', selectedTags.join(','));
-    if (overdueFilter) p.set('overdue', 'true');
     if (page > 1) p.set('page', String(page));
     const qs = p.toString();
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
-  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, overdueFilter, page]); // eslint-disable-line
+  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
 
   // Tag dropdown outside click
   useEffect(() => {
@@ -1201,7 +1091,6 @@ export default function MusterilerPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadOverdueCount(); }, []); // eslint-disable-line
 
   const loadCustomerSources = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sources`, { headers: authHeader() })
@@ -1214,6 +1103,7 @@ export default function MusterilerPage() {
       .then((r) => setCustomerSubTypes(r.data.data ?? []))
       .catch(() => setCustomerSubTypes([
         { value: 'sigorta_sirketi',  label: 'Sigorta Şirketi', forType: 'corporate',  color: 'blue'   },
+        { value: 'asistan_firmasi',  label: 'Asistan Firması', forType: 'corporate',  color: 'orange' },
         { value: 'eksper',           label: 'Eksper',          forType: 'individual', color: 'purple' },
         { value: 'eksper_firmasi',   label: 'Eksper Firması',  forType: 'corporate',  color: 'purple' },
         { value: 'insured',          label: 'Sigortalı',       forType: 'both',       color: 'orange' },
@@ -1456,7 +1346,11 @@ export default function MusterilerPage() {
         notes: form.notes || null, source: form.source || null,
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
         followUpDate: form.followUpDate || null, tags: form.tags,
-        serviceType: form.subType === 'private_customer' ? null : (form.serviceType || null),
+        serviceType: form.subType === 'private_customer'
+          ? null
+          : form.subType === 'asistan_firmasi'
+            ? 'acil_yardim'
+            : (form.serviceType || null),
         privateServiceType: form.subType === 'private_customer' ? (form.privateServiceType || null) : null,
         serviceBranches: form.serviceBranches,
         contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map((c) => ({ ...c, role: c.role === '__other__' ? '' : c.role })),
@@ -1503,19 +1397,17 @@ export default function MusterilerPage() {
   const individualCount = customers.filter((c) => c.customerType === 'individual').length;
   const corporateCount = customers.filter((c) => c.customerType === 'corporate').length;
 
-  const hasActiveFilters = !!(search || typeFilter || subTypeFilter || cityFilter || statusFilter || sourceFilter || selectedTags.length || overdueFilter || paymentFilter);
+  const hasActiveFilters = !!(search || typeFilter || subTypeFilter || cityFilter || statusFilter || sourceFilter || selectedTags.length);
 
   // Finans istatistikleri henüz API'den gelmiyor; widget kaldırıldı
 
-  const displayedCustomers = paymentFilter
-    ? customers.filter((c) => mockPaymentPerf(c.id) === paymentFilter)
-    : customers;
+  const displayedCustomers = customers;
 
   const clearAllFilters = () => {
     setSearchInput(''); setSearch('');
     setTypeFilter(''); setSubTypeFilter(''); setCityFilter('');
     setStatusFilter(''); setSourceFilter(''); setSelectedTags([]);
-    setOverdueFilter(false); setPaymentFilter(''); setPage(1);
+    setPage(1);
   };
 
   const toggleTag = (tag: string) => {
@@ -1556,36 +1448,6 @@ export default function MusterilerPage() {
           Yeni Müşteri
         </button>
       </div>
-
-      {/* ── Overdue Banner ── */}
-      {overdueCount > 0 && (
-        <button
-          type="button"
-          onClick={() => { setOverdueFilter((prev) => !prev); setPage(1); }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-            overdueFilter
-              ? 'bg-amber-100 border-amber-300 text-amber-900'
-              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 hover:border-amber-300'
-          }`}
-        >
-          <span className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-700 text-base">⚠️</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">
-              {overdueCount} müşterinin takip tarihi geçti
-            </p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              {overdueFilter ? 'Tüm Müşterilere Dönmek İçin Tekrar Tıklayın' : 'Tıklayarak Sadece Takip Tarihi Geçmiş Müşterileri Görüntüleyin'}
-            </p>
-          </div>
-          {overdueFilter ? (
-            <span className="flex-shrink-0 text-xs bg-amber-300 text-amber-900 px-2.5 py-1 rounded-full font-medium">Filtre Aktif ✕</span>
-          ) : (
-            <svg className="flex-shrink-0 w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          )}
-        </button>
-      )}
 
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-2.5 overflow-x-auto">
         <div className="flex items-center gap-1 min-w-max">
@@ -1704,16 +1566,6 @@ export default function MusterilerPage() {
               {customerSources.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           )}
-          <select
-            className={`input-base-sm w-full ${paymentFilter ? 'border-blue-400 text-blue-700 bg-blue-50' : ''}`}
-            value={paymentFilter}
-            onChange={(e) => { setPaymentFilter(e.target.value as '' | PaymentPerf); setPage(1); }}
-          >
-            <option value="">Ödeme Durumu</option>
-            <option value="regular">Düzenli Öder</option>
-            <option value="sometimes_late">Bazen Gecikir</option>
-            <option value="chronic_late">Kronik Gecikme</option>
-          </select>
           {allTags.length > 0 && (
             <div className="relative" ref={tagDropdownRef}>
               <button
@@ -1751,17 +1603,6 @@ export default function MusterilerPage() {
               )}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => { setOverdueFilter((p) => !p); setPage(1); }}
-            className={`flex items-center justify-center gap-1.5 input-base-sm px-3 w-full ${overdueFilter ? 'bg-amber-100 border-amber-400 text-amber-800' : ''}`}
-          >
-            <span className="text-[11px]">⚠️</span>
-            <span className="text-xs truncate">Takibi Geçmiş</span>
-            {overdueCount > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${overdueFilter ? 'bg-amber-400 text-amber-900' : 'bg-amber-100 text-amber-700'}`}>{overdueCount}</span>
-            )}
-          </button>
         </div>
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
@@ -1772,8 +1613,6 @@ export default function MusterilerPage() {
             {cityFilter && <FilterChip label={`Bölge: ${cityFilter}`} onRemove={() => { setCityFilter(''); setPage(1); }} />}
             {statusFilter && <FilterChip label={`Durum: ${statusLabel[statusFilter] ?? statusFilter}`} onRemove={() => { setStatusFilter(''); setPage(1); }} />}
             {sourceFilter && <FilterChip label={`Kaynak: ${sourceFilter}`} onRemove={() => { setSourceFilter(''); setPage(1); }} />}
-            {paymentFilter && <FilterChip label={`Ödeme: ${PAYMENT_PERF_BADGE[paymentFilter]?.label ?? paymentFilter}`} onRemove={() => { setPaymentFilter(''); setPage(1); }} />}
-            {overdueFilter && <FilterChip label="Takibi Geçmiş" onRemove={() => { setOverdueFilter(false); setPage(1); }} />}
             {selectedTags.map((tag) => (
               <FilterChip key={tag} label={`Etiket: ${tag}`} onRemove={() => toggleTag(tag)} />
             ))}
@@ -1983,9 +1822,6 @@ export default function MusterilerPage() {
                   <th className="table-th relative" style={{ width: widths.activity }}>
                     Aktivite<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('activity', e)} />
                   </th>
-                  <th className="table-th relative" style={{ width: widths.payment }}>
-                    Ödeme<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('payment', e)} />
-                  </th>
                   <th className="table-th text-center relative" style={{ width: widths.status }}>
                     Durum<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('status', e)} />
                   </th>
@@ -2096,18 +1932,6 @@ export default function MusterilerPage() {
                             {relativeTime(c.lastActivityDate)}
                           </span>
                         )}
-                      </td>
-                      {/* Ödeme Performansı */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.payment }}>
-                        {(() => {
-                          const perf = mockPaymentPerf(c.id);
-                          const badge = PAYMENT_PERF_BADGE[perf];
-                          return (
-                            <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${badge.cls}`}>
-                              {badge.label}
-                            </span>
-                          );
-                        })()}
                       </td>
                       {/* Durum */}
                       <td className="table-td text-center overflow-hidden" style={{ width: widths.status }}>
@@ -2243,7 +2067,7 @@ export default function MusterilerPage() {
                                                      'bg-slate-600 text-white border-slate-600';
                             return (
                               <button key={t.value} type="button"
-                                onClick={() => { setForm((p) => ({ ...p, subType: p.subType === t.value as any ? '' : t.value as any, serviceType: '', serviceBranches: [] })); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
+                                onClick={() => { setForm((p) => { const nextSubType = p.subType === t.value as any ? '' : t.value as any; return { ...p, subType: nextSubType, serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '', serviceBranches: [] }; }); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
                                 className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all ${form.subType === t.value ? activeClass : fieldErrors.subType ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
                                 {t.label}
                               </button>
@@ -2384,7 +2208,7 @@ export default function MusterilerPage() {
                                                        'bg-slate-600 text-white border-slate-600';
                               return (
                                 <button key={t.value} type="button"
-                                  onClick={() => { setForm((p) => ({ ...p, subType: p.subType === t.value as any ? '' : t.value as any, serviceType: '', serviceBranches: [] })); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
+                                  onClick={() => { setForm((p) => { const nextSubType = p.subType === t.value as any ? '' : t.value as any; return { ...p, subType: nextSubType, serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '', serviceBranches: [] }; }); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
                                   className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all ${form.subType === t.value ? activeClass : fieldErrors.subType ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
                                   {t.label}
                                 </button>
@@ -2941,12 +2765,12 @@ export default function MusterilerPage() {
                     </FormField>
                   </div>
                   )}
-                  {(form.subType === 'eksper' || form.subType === 'eksper_firmasi' || form.subType === 'sigorta_sirketi') && (
+                  {(form.subType === 'eksper' || form.subType === 'eksper_firmasi' || form.subType === 'sigorta_sirketi' || form.subType === 'asistan_firmasi') && (
                   <div className="mt-5">
                     <SectionDivider emoji="🛠" title="Hizmet Türü & Branşlar" />
 
-                    {/* Sigorta Şirketi için Hizmet Türü gizli, Eksper için görünür */}
-                    {form.subType !== 'sigorta_sirketi' && (
+                    {/* Sigorta Şirketi ve Asistan Firması için Hizmet Türü gizli */}
+                    {form.subType !== 'sigorta_sirketi' && form.subType !== 'asistan_firmasi' && (
                     <FormField label="Hizmet Türü">
                       <div className="flex gap-2">
                         {(['hasar', 'acil_yardim'] as const).map((type) => (
@@ -2969,7 +2793,7 @@ export default function MusterilerPage() {
                     </FormField>
                     )}
 
-                    {(form.serviceType || form.subType === 'sigorta_sirketi') && (
+                    {(form.serviceType || form.subType === 'sigorta_sirketi' || form.subType === 'asistan_firmasi') && (
                       <div className="mt-3">
                         {branchesLoading ? (
                           <p className="text-xs text-slate-400 py-2 flex items-center gap-1.5">
@@ -2978,7 +2802,11 @@ export default function MusterilerPage() {
                           </p>
                         ) : (
                           (() => {
-                          const branchKey = form.subType === 'sigorta_sirketi' ? 'hasar' : (form.serviceType as 'hasar' | 'acil_yardim');
+                          const branchKey = form.subType === 'sigorta_sirketi'
+                            ? 'hasar'
+                            : form.subType === 'asistan_firmasi'
+                              ? 'acil_yardim'
+                              : (form.serviceType as 'hasar' | 'acil_yardim');
                           const branchList = serviceBranchMap[branchKey] ?? [];
                           const allSelected = branchList.length > 0 && branchList.every((b) => form.serviceBranches.includes(b));
                           return (

@@ -1,0 +1,7 @@
+# Inbox — Agent Okur
+
+Mustafa bu klasöre dosya koymaz (isteğe bağlı).
+
+ChatGPT veya başka kaynaktan indirilen `.md` dosyaları buraya bırakılırsa agent okur ve işler.
+
+Normal akış: agent Codex kanıtlarından doğrudan derler.

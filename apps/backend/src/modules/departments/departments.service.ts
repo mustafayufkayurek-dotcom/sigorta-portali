@@ -201,9 +201,9 @@ export class DepartmentsService {
   async seedSystemData() {
     // Create Hasar Onarım department
     const hasarOnarim = await this.prisma.department.upsert({
-      where: { code: 'HASAR_ONARIM' },
+      where: { code: 'hasar-onarim' },
       create: {
-        code: 'HASAR_ONARIM',
+        code: 'hasar-onarim',
         name: 'Hasar Onarım',
         description: 'Hasar onarım dosyaları ve raporları',
         color: '#3B82F6',
@@ -216,9 +216,9 @@ export class DepartmentsService {
 
     // Create Acil Yardım department
     const acilYardim = await this.prisma.department.upsert({
-      where: { code: 'ACIL_YARDIM' },
+      where: { code: 'acil-yardim' },
       create: {
-        code: 'ACIL_YARDIM',
+        code: 'acil-yardim',
         name: 'Acil Yardım',
         description: 'Acil müdahale ve yardım hizmetleri',
         color: '#EF4444',

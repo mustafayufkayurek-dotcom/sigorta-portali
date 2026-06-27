@@ -1,0 +1,7 @@
+# Canlı sunucuda docker-compose.override.yml olarak kopyalayın.
+# Image tag'lerini deploy edilen sürüme göre güncelleyin.
+services:
+  backend:
+    image: app-backend:TAG-BURAYA
+  web:
+    image: sigorta-web:TAG-BURAYA

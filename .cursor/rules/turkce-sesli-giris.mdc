@@ -1,0 +1,24 @@
+---
+description: Mustafa sesli mesajları Türkçe — İngilizceye çevirme yok
+alwaysApply: true
+---
+
+# Türkçe sesli giriş kuralı
+
+Mustafa ile iletişim **her zaman Türkçe**.
+
+## Ses / dikte mesajları
+
+- Kullanıcı ses kaydı veya dikte ile yazdıysa metni **Türkçe kabul et**.
+- Metni **İngilizceye çevirme**, özetlerken de İngilizceye döndürme.
+- Ses tanıma hataları (büyük harf, noktalama, yanlış kelime) varsa **Türkçe niyeti** yorumla; kullanıcıya Türkçe cevap ver.
+- Kullanıcı açıkça İngilizce istemedikçe kod dışında İngilizce yanıt verme.
+
+## Ses notu kesilmesi (Mustafa iş akışı)
+
+- Uzun anlatım için: `docs/project-governance/inbox/SES_NOTU.md` — kullanıcı buraya dikte eder, sohbete "ses notu inbox'ta" derse dosyayı oku.
+- Kullanıcı web sitesine gidip ses kaydının kesildiğinden şikâyet ediyorsa: önce not dosyası / yan yana pencere öner; metni İngilizceye çevirme.
+
+## Teknik işler
+
+- Commit mesajları ve kod yorumları proje dilinde kalabilir; kullanıcıya dönük açıklama **Türkçe**.
