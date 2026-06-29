@@ -674,7 +674,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
   { id: 'phone', label: 'Telefon', defaultWidth: 160, minWidth: 130 },
-  { id: 'type', label: 'Tip', defaultWidth: 120, minWidth: 90 },
+  { id: 'type', label: 'Tip', defaultWidth: 108, minWidth: 100 },
   { id: 'service', label: 'Hizmet', defaultWidth: 90, minWidth: 70 },
   { id: 'files', label: 'Dosya', defaultWidth: 72, minWidth: 56 },
   { id: 'activity', label: 'Aktivite', defaultWidth: 110, minWidth: 90 },
@@ -1786,7 +1786,7 @@ export default function MusterilerPage() {
                   </th>
                   <PanelTableTh colId="name" className="table-th">Ad Soyad</PanelTableTh>
                   <PanelTableTh colId="phone" className="table-th">Telefon</PanelTableTh>
-                  <PanelTableTh colId="type" className="table-th">Tip</PanelTableTh>
+                  <PanelTableTh colId="type" className="table-th text-center">Tip</PanelTableTh>
                   <PanelTableTh colId="service" className="table-th">Hizmet</PanelTableTh>
                   <PanelTableTh colId="files" className="table-th text-right">Dosya</PanelTableTh>
                   <PanelTableTh colId="activity" className="table-th">Aktivite</PanelTableTh>
@@ -1844,13 +1844,13 @@ export default function MusterilerPage() {
                         )}
                       </PanelTableTd>
                       {/* Tip */}
-                      <PanelTableTd colId="type" className="table-td">
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                      <PanelTableTd colId="type" className="table-td text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
                             {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
                           </span>
                           {subTypeLabel && (
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] w-fit ${
+                            <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] whitespace-nowrap ${
                               subTypeDef?.color === 'orange' ? 'bg-orange-50 text-orange-700' :
                               subTypeDef?.color === 'green'  ? 'bg-green-50 text-green-700' :
                               subTypeDef?.color === 'purple' ? 'bg-purple-50 text-purple-700' :

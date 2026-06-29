@@ -752,13 +752,13 @@ function VendorRowActionsMenu({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Tedarikçi', defaultWidth: 200, minWidth: 140 },
-  { id: 'type', label: 'Tür / Tip', defaultWidth: 120, minWidth: 96 },
+  { id: 'type', label: 'Tür / Tip', defaultWidth: 108, minWidth: 100 },
   { id: 'contact', label: 'İletişim', defaultWidth: 180, minWidth: 120 },
   { id: 'location', label: 'Konum', defaultWidth: 140, minWidth: 100 },
-  { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 90, minWidth: 72 },
-  { id: 'lastJob', label: 'Son İş', defaultWidth: 100, minWidth: 80 },
-  { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 120, minWidth: 96 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+  { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 96, minWidth: 88 },
+  { id: 'lastJob', label: 'Son İş', defaultWidth: 96, minWidth: 88 },
+  { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 128, minWidth: 112 },
+  { id: 'status', label: 'Durum', defaultWidth: 96, minWidth: 88 },
 ];
 
 export default function VendorsPage() {
@@ -2047,12 +2047,12 @@ export default function VendorsPage() {
                     />
                   </th>
                   <PanelTableTh colId="name" className="table-th">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="type" className="table-th">Tür / Tip</PanelTableTh>
+                  <PanelTableTh colId="type" className="table-th text-center">Tür / Tip</PanelTableTh>
                   <PanelTableTh colId="contact" className="table-th">İletişim</PanelTableTh>
                   <PanelTableTh colId="location" className="table-th">Konum</PanelTableTh>
-                  <PanelTableTh colId="jobCount" className="table-th">İş Sayısı</PanelTableTh>
-                  <PanelTableTh colId="lastJob" className="table-th">Son İş</PanelTableTh>
-                  <PanelTableTh colId="contractEnd" className="table-th">Sözleşme Bitiş</PanelTableTh>
+                  <PanelTableTh colId="jobCount" className="table-th text-center">İş Sayısı</PanelTableTh>
+                  <PanelTableTh colId="lastJob" className="table-th text-center">Son İş</PanelTableTh>
+                  <PanelTableTh colId="contractEnd" className="table-th text-center">Sözleşme Bitiş</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
                   <th className="table-th w-32" />
                 </tr>
@@ -2085,8 +2085,8 @@ export default function VendorsPage() {
                       </div>
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="type" className="table-td">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                  <PanelTableTd colId="type" className="table-td text-center">
+                    <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
                       {v.entityType === 'individual' ? Icon.user : Icon.building}
                       {v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}
                     </span>
@@ -2107,7 +2107,7 @@ export default function VendorsPage() {
                       <p className="text-xs text-slate-600 flex items-center gap-1">{Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}</p>
                     ) : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="jobCount" className="table-td">
+                  <PanelTableTd colId="jobCount" className="table-td text-center">
                     {(v._count?.costEntries ?? 0) > 0 ? (
                       <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                         {v._count.costEntries}
@@ -2116,26 +2116,26 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="lastJob" className="table-td">
+                  <PanelTableTd colId="lastJob" className="table-td text-center">
                     {v.lastJobDate ? (
-                      <span className="text-xs text-slate-500" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
+                      <span className="text-xs text-slate-500 whitespace-nowrap" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
                         {relativeTime(v.lastJobDate)}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="contractEnd" className="table-td">
+                  <PanelTableTd colId="contractEnd" className="table-td text-center">
                     {v.contractEndDate ? (() => {
                       const days = contractDaysLeft(v.contractEndDate);
                       const display = isoToDisplayContract(v.contractEndDate);
                       if (days !== null && days < 0) {
-                        return <span className="text-xs font-medium text-red-600 bg-red-50 rounded-full px-2 py-0.5 border border-red-200">{display}</span>;
+                        return <span className="inline-flex text-xs font-medium text-red-600 bg-red-50 rounded-full px-2 py-0.5 border border-red-200 whitespace-nowrap">{display}</span>;
                       }
                       if (days !== null && days <= 30) {
-                        return <span className="text-xs font-medium text-orange-600 bg-orange-50 rounded-full px-2 py-0.5 border border-orange-200">{display}</span>;
+                        return <span className="inline-flex text-xs font-medium text-orange-600 bg-orange-50 rounded-full px-2 py-0.5 border border-orange-200 whitespace-nowrap">{display}</span>;
                       }
-                      return <span className="text-xs text-slate-600">{display}</span>;
+                      return <span className="text-xs text-slate-600 whitespace-nowrap">{display}</span>;
                     })() : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
                   <PanelTableTd colId="status" className="table-td text-center">
