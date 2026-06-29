@@ -6,6 +6,29 @@ import {
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const ADJUSTER_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'rank', label: '#', defaultWidth: 48, minWidth: 40 },
+  { id: 'name', label: 'Eksper', defaultWidth: 160, minWidth: 120 },
+  { id: 'company', label: 'Şirket', defaultWidth: 120, minWidth: 96 },
+  { id: 'city', label: 'Şehir', defaultWidth: 100, minWidth: 80 },
+  { id: 'total', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'completed', label: 'Tamamlanan', defaultWidth: 96, minWidth: 72 },
+  { id: 'pending', label: 'Bekleyen', defaultWidth: 88, minWidth: 64 },
+  { id: 'avgReportDays', label: 'Ort. Süre (gün)', defaultWidth: 108, minWidth: 88 },
+  { id: 'revisionRate', label: 'Revizyon %', defaultWidth: 96, minWidth: 72 },
+  { id: 'completionRate', label: 'Tamamlama %', defaultWidth: 108, minWidth: 88 },
+  { id: 'performanceScore', label: 'Puan', defaultWidth: 72, minWidth: 56 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -17,6 +40,8 @@ export default function EksperPerformansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  const adjusterTableColumns = usePanelTableColumns('table-cols:rapor-eksper-1', ADJUSTER_TABLE_COLUMNS);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -131,50 +156,55 @@ export default function EksperPerformansPage() {
           </div>
 
           {/* Detail table */}
+          <TableColumnsProvider value={adjusterTableColumns}>
           <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+              <PanelTableColumnPicker tableColumns={adjusterTableColumns} />
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(adjusterTableColumns)}>
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
-                    <th className="px-4 py-3 text-center">#</th>
-                    <th className="px-4 py-3 text-left">Eksper</th>
-                    <th className="px-4 py-3 text-left">Şirket</th>
-                    <th className="px-4 py-3 text-left">Şehir</th>
-                    <th className="px-4 py-3 text-right">Toplam</th>
-                    <th className="px-4 py-3 text-right">Tamamlanan</th>
-                    <th className="px-4 py-3 text-right">Bekleyen</th>
-                    <th className="px-4 py-3 text-right">Ort. Süre (gün)</th>
-                    <th className="px-4 py-3 text-right">Revizyon %</th>
-                    <th className="px-4 py-3 text-right">Tamamlama %</th>
-                    <th className="px-4 py-3 text-right">Puan</th>
+                    <PanelTableTh colId="rank" className="px-4 py-3 text-center">#</PanelTableTh>
+                    <PanelTableTh colId="name" className="px-4 py-3 text-left">Eksper</PanelTableTh>
+                    <PanelTableTh colId="company" className="px-4 py-3 text-left">Şirket</PanelTableTh>
+                    <PanelTableTh colId="city" className="px-4 py-3 text-left">Şehir</PanelTableTh>
+                    <PanelTableTh colId="total" className="px-4 py-3 text-right">Toplam</PanelTableTh>
+                    <PanelTableTh colId="completed" className="px-4 py-3 text-right">Tamamlanan</PanelTableTh>
+                    <PanelTableTh colId="pending" className="px-4 py-3 text-right">Bekleyen</PanelTableTh>
+                    <PanelTableTh colId="avgReportDays" className="px-4 py-3 text-right">Ort. Süre (gün)</PanelTableTh>
+                    <PanelTableTh colId="revisionRate" className="px-4 py-3 text-right">Revizyon %</PanelTableTh>
+                    <PanelTableTh colId="completionRate" className="px-4 py-3 text-right">Tamamlama %</PanelTableTh>
+                    <PanelTableTh colId="performanceScore" className="px-4 py-3 text-right">Puan</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {adjusters.map((a: any) => (
                     <tr key={a.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-center text-slate-400 text-xs">{a.rank}</td>
-                      <td className="px-4 py-3 font-medium text-slate-800">
+                      <PanelTableTd colId="rank" className="px-4 py-3 text-center text-slate-400 text-xs">{a.rank}</PanelTableTd>
+                      <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800">
                         <a href={`/panel/eksperler/${a.id}`} className="hover:text-blue-600 hover:underline">{a.name}</a>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">{a.company ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">{a.city ?? '—'}</td>
-                      <td className="px-4 py-3 text-right">{a.total}</td>
-                      <td className="px-4 py-3 text-right text-green-600">{a.completed}</td>
-                      <td className="px-4 py-3 text-right text-amber-600">{a.pending + a.accepted}</td>
-                      <td className="px-4 py-3 text-right">{a.avgReportDays}</td>
-                      <td className={`px-4 py-3 text-right ${a.revisionRate > 20 ? 'text-red-600 font-medium' : 'text-slate-700'}`}>%{a.revisionRate}</td>
-                      <td className={`px-4 py-3 text-right ${a.completionRate >= 80 ? 'text-green-600' : a.completionRate >= 50 ? 'text-amber-600' : 'text-red-600'} font-medium`}>%{a.completionRate}</td>
-                      <td className="px-4 py-3 text-right">
+                      </PanelTableTd>
+                      <PanelTableTd colId="company" className="px-4 py-3 text-slate-500 text-xs">{a.company ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="city" className="px-4 py-3 text-slate-500 text-xs">{a.city ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="total" className="px-4 py-3 text-right">{a.total}</PanelTableTd>
+                      <PanelTableTd colId="completed" className="px-4 py-3 text-right text-green-600">{a.completed}</PanelTableTd>
+                      <PanelTableTd colId="pending" className="px-4 py-3 text-right text-amber-600">{a.pending + a.accepted}</PanelTableTd>
+                      <PanelTableTd colId="avgReportDays" className="px-4 py-3 text-right">{a.avgReportDays}</PanelTableTd>
+                      <PanelTableTd colId="revisionRate" className={`px-4 py-3 text-right ${a.revisionRate > 20 ? 'text-red-600 font-medium' : 'text-slate-700'}`}>%{a.revisionRate}</PanelTableTd>
+                      <PanelTableTd colId="completionRate" className={`px-4 py-3 text-right ${a.completionRate >= 80 ? 'text-green-600' : a.completionRate >= 50 ? 'text-amber-600' : 'text-red-600'} font-medium`}>%{a.completionRate}</PanelTableTd>
+                      <PanelTableTd colId="performanceScore" className="px-4 py-3 text-right">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${a.performanceScore >= 70 ? 'bg-green-100 text-green-700' : a.performanceScore >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                           {a.performanceScore}
                         </span>
-                      </td>
+                      </PanelTableTd>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
+          </TableColumnsProvider>
         </div>
       )}
     </div>

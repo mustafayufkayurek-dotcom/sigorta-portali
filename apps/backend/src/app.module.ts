@@ -38,6 +38,7 @@ import { VendorDocumentsModule } from './modules/vendor-documents/vendor-documen
 import { ExternalApprovalsModule } from './modules/external-approvals/external-approvals.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { CollectionLinksModule } from './modules/collection-links/collection-links.module';
 import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module';
 import { LogoIntegrationModule } from './modules/logo-integration/logo-integration.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
@@ -164,6 +165,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     ExternalApprovalsModule,
     InvoicesModule,
     PaymentsModule,
+    CollectionLinksModule,
     BankAccountsModule,
     LogoIntegrationModule,
     ExpenseCategoriesModule,

@@ -36,6 +36,8 @@ KEEP_IMAGES=(
   "sigorta-web:dalga2-agreement-hr-01-v77-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v78-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v79-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v80-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v81-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v31-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v32-amd64"
   "app-backend:dalga2-agreement-hr-01-v1-amd64"

@@ -70,8 +70,11 @@ export class ClaimFilesController {
   @Patch(':id')
   @RequirePermissions('claim_file.update')
   @ApiOperation({ summary: 'Hasar dosyası güncelle' })
-  async update(@Param('id') id: string, @Body() updateDto: any) {
-    const data = await this.claimFilesService.update(id, updateDto);
+  async update(@Param('id') id: string, @Body() updateDto: any, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.update(id, updateDto, {
+      id: user?.userId ?? user?.id,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data };
   }
 

@@ -4,6 +4,46 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const OVERDUE_INVOICES_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
+  { id: 'amount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
+  { id: 'daysOverdue', label: 'Gecikme (gün)', defaultWidth: 100, minWidth: 80 },
+];
+
+const MONTHLY_TREND_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'month', label: 'Ay', defaultWidth: 80, minWidth: 64 },
+  { id: 'revenue', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'cost', label: 'Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'profit', label: 'Kâr / Zarar', defaultWidth: 108, minWidth: 88 },
+  { id: 'margin', label: 'Marj', defaultWidth: 80, minWidth: 64 },
+];
+
+const INSURANCE_COLLECTIONS_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Sigorta Şirketi', defaultWidth: 160, minWidth: 120 },
+  { id: 'count', label: 'Dosya Sayısı', defaultWidth: 96, minWidth: 72 },
+  { id: 'revenue', label: 'Toplam Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'collected', label: 'Tahsilat', defaultWidth: 108, minWidth: 88 },
+  { id: 'collectionRate', label: 'Tahsilat Oranı', defaultWidth: 108, minWidth: 88 },
+];
+
+const PROFITABILITY_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
+  { id: 'actualRevenue', label: 'Fiili Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'actualCost', label: 'Fiili Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'grossProfit', label: 'Brüt Kâr', defaultWidth: 108, minWidth: 88 },
+  { id: 'grossMarginPct', label: 'Marj', defaultWidth: 80, minWidth: 64 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -51,6 +91,11 @@ export default function FinansalRaporPage() {
 
   const [monthlyTrend, setMonthlyTrend] = useState(MOCK_MONTHLY_TREND);
   const [categorySpending, setCategorySpending] = useState(MOCK_CATEGORY_SPENDING);
+
+  const overdueTableColumns = usePanelTableColumns('table-cols:rapor-finansal-1', OVERDUE_INVOICES_TABLE_COLUMNS);
+  const trendTableColumns = usePanelTableColumns('table-cols:rapor-finansal-2', MONTHLY_TREND_TABLE_COLUMNS);
+  const collectionsTableColumns = usePanelTableColumns('table-cols:rapor-finansal-3', INSURANCE_COLLECTIONS_TABLE_COLUMNS);
+  const profitabilityTableColumns = usePanelTableColumns('table-cols:rapor-finansal-4', PROFITABILITY_TABLE_COLUMNS);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -196,35 +241,40 @@ export default function FinansalRaporPage() {
               ))}
             </div>
           </div>
+          <TableColumnsProvider value={overdueTableColumns}>
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700">
+            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Vadesi Geçmiş Faturalar</h3>
+              <PanelTableColumnPicker tableColumns={overdueTableColumns} />
             </div>
             {(data?.overdueInvoices?.length ?? 0) === 0 ? (
               <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Vadesi geçmiş fatura yok</p>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <th className="px-4 py-2 text-left">Fatura No</th>
-                    <th className="px-4 py-2 text-left">Dosya No</th>
-                    <th className="px-4 py-2 text-right">Tutar</th>
-                    <th className="px-4 py-2 text-right">Gecikme (gün)</th>
+                    <PanelTableTh colId="invoiceNo" className="px-4 py-2 text-left">Fatura No</PanelTableTh>
+                    <PanelTableTh colId="fileNo" className="px-4 py-2 text-left">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="amount" className="px-4 py-2 text-right">Tutar</PanelTableTh>
+                    <PanelTableTh colId="daysOverdue" className="px-4 py-2 text-right">Gecikme (gün)</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {(data.overdueInvoices ?? []).map((inv: any) => (
                     <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <td className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</td>
-                      <td className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</td>
-                      <td className="px-4 py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</td>
-                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 font-bold">{inv.daysOverdue}</td>
+                      <PanelTableTd colId="invoiceNo" className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</PanelTableTd>
+                      <PanelTableTd colId="fileNo" className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</PanelTableTd>
+                      <PanelTableTd colId="amount" className="px-4 py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>
+                      <PanelTableTd colId="daysOverdue" className="px-4 py-2 text-right text-red-600 dark:text-red-400 font-bold">{inv.daysOverdue}</PanelTableTd>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
+          </TableColumnsProvider>
         </div>
       )}
 
@@ -232,15 +282,19 @@ export default function FinansalRaporPage() {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <h3 className="mb-5 text-sm font-semibold text-slate-700 dark:text-slate-200">12 Aylık Gelir – Gider – Kâr Trendi</h3>
           {/* Monthly table */}
+          <TableColumnsProvider value={trendTableColumns}>
           <div className="overflow-x-auto mb-6">
-            <table className="w-full text-sm">
+            <div className="flex justify-end mb-2">
+              <PanelTableColumnPicker tableColumns={trendTableColumns} />
+            </div>
+            <table className="w-full text-sm" style={panelTableLayoutStyle(trendTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <th className="px-3 py-2 text-left">Ay</th>
-                  <th className="px-3 py-2 text-right">Gelir</th>
-                  <th className="px-3 py-2 text-right">Gider</th>
-                  <th className="px-3 py-2 text-right">Kâr / Zarar</th>
-                  <th className="px-3 py-2 text-right">Marj</th>
+                  <PanelTableTh colId="month" className="px-3 py-2 text-left">Ay</PanelTableTh>
+                  <PanelTableTh colId="revenue" className="px-3 py-2 text-right">Gelir</PanelTableTh>
+                  <PanelTableTh colId="cost" className="px-3 py-2 text-right">Gider</PanelTableTh>
+                  <PanelTableTh colId="profit" className="px-3 py-2 text-right">Kâr / Zarar</PanelTableTh>
+                  <PanelTableTh colId="margin" className="px-3 py-2 text-right">Marj</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -249,19 +303,20 @@ export default function FinansalRaporPage() {
                   const marj = d.revenue > 0 ? ((profitVal / d.revenue) * 100).toFixed(1) : '0.0';
                   return (
                     <tr key={d.month} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{d.month}</td>
-                      <td className="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{fmtCurrency(d.revenue)}</td>
-                      <td className="px-3 py-2 text-right text-red-600 dark:text-red-400">{fmtCurrency(d.cost)}</td>
-                      <td className={`px-3 py-2 text-right font-bold ${profitVal >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                      <PanelTableTd colId="month" className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{d.month}</PanelTableTd>
+                      <PanelTableTd colId="revenue" className="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{fmtCurrency(d.revenue)}</PanelTableTd>
+                      <PanelTableTd colId="cost" className="px-3 py-2 text-right text-red-600 dark:text-red-400">{fmtCurrency(d.cost)}</PanelTableTd>
+                      <PanelTableTd colId="profit" className={`px-3 py-2 text-right font-bold ${profitVal >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                         {profitVal >= 0 ? '+' : ''}{fmtCurrency(profitVal)}
-                      </td>
-                      <td className={`px-3 py-2 text-right ${Number(marj) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>%{marj}</td>
+                      </PanelTableTd>
+                      <PanelTableTd colId="margin" className={`px-3 py-2 text-right ${Number(marj) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>%{marj}</PanelTableTd>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </TableColumnsProvider>
           {/* CSS bar trend chart */}
           <div className="flex items-end gap-2 h-44">
               {monthlyTrend.map((d) => {
@@ -316,71 +371,89 @@ export default function FinansalRaporPage() {
       )}
 
       {tab === 'tahsilat' && (
+        <TableColumnsProvider value={collectionsTableColumns}>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
           {(data?.insuranceCollections?.length ?? 0) === 0 ? (
             <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">Henüz veri bulunmamaktadır.</p>
           ) : (
-            <table className="w-full text-sm">
+            <>
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelTableColumnPicker tableColumns={collectionsTableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(collectionsTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <th className="px-4 py-3 text-left">Sigorta Şirketi</th>
-                  <th className="px-4 py-3 text-right">Dosya Sayısı</th>
-                  <th className="px-4 py-3 text-right">Toplam Gelir</th>
-                  <th className="px-4 py-3 text-right">Tahsilat</th>
-                  <th className="px-4 py-3 text-right">Tahsilat Oranı</th>
+                  <PanelTableTh colId="name" className="px-4 py-3 text-left">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="count" className="px-4 py-3 text-right">Dosya Sayısı</PanelTableTh>
+                  <PanelTableTh colId="revenue" className="px-4 py-3 text-right">Toplam Gelir</PanelTableTh>
+                  <PanelTableTh colId="collected" className="px-4 py-3 text-right">Tahsilat</PanelTableTh>
+                  <PanelTableTh colId="collectionRate" className="px-4 py-3 text-right">Tahsilat Oranı</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {(data.insuranceCollections ?? []).map((ins: any) => (
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</td>
-                    <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(ins.revenue)}</td>
-                    <td className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(ins.collected)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</PanelTableTd>
+                    <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</PanelTableTd>
+                    <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(ins.revenue)}</PanelTableTd>
+                    <PanelTableTd colId="collected" className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(ins.collected)}</PanelTableTd>
+                    <PanelTableTd colId="collectionRate" className="px-4 py-3 text-right">
                       <span className={`font-bold ${ins.collectionRate >= 80 ? 'text-green-600 dark:text-green-400' : ins.collectionRate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                         %{ins.collectionRate.toFixed(1)}
                       </span>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
+            </>
           )}
         </div>
+        </TableColumnsProvider>
       )}
 
       {tab === 'karlilik' && (
+        <TableColumnsProvider value={profitabilityTableColumns}>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
           {(data?.topProfitableFiles?.length ?? 0) === 0 ? (
             <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">Kârlılık verisi yükleniyor...</p>
           ) : (
-            <table className="w-full text-sm">
+            <>
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelTableColumnPicker tableColumns={profitabilityTableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(profitabilityTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <th className="px-4 py-3 text-left">Dosya No</th>
-                  <th className="px-4 py-3 text-right">Fiili Gelir</th>
-                  <th className="px-4 py-3 text-right">Fiili Gider</th>
-                  <th className="px-4 py-3 text-right">Brüt Kâr</th>
-                  <th className="px-4 py-3 text-right">Marj</th>
+                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-left">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="actualRevenue" className="px-4 py-3 text-right">Fiili Gelir</PanelTableTh>
+                  <PanelTableTh colId="actualCost" className="px-4 py-3 text-right">Fiili Gider</PanelTableTh>
+                  <PanelTableTh colId="grossProfit" className="px-4 py-3 text-right">Brüt Kâr</PanelTableTh>
+                  <PanelTableTh colId="grossMarginPct" className="px-4 py-3 text-right">Marj</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {(data.topProfitableFiles ?? []).map((f: any) => (
                   <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-4 py-2 font-mono text-xs text-blue-600 dark:text-blue-400">
+                    <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-blue-600 dark:text-blue-400">
                       <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>
-                    </td>
-                    <td className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualRevenue)}</td>
-                    <td className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualCost)}</td>
-                    <td className={`px-4 py-2 text-right font-bold ${f.grossProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{fmtCurrency(f.grossProfit)}</td>
-                    <td className={`px-4 py-2 text-right ${f.grossMarginPct >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>%{(f.grossMarginPct ?? 0).toFixed(1)}</td>
+                    </PanelTableTd>
+                    <PanelTableTd colId="actualRevenue" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualRevenue)}</PanelTableTd>
+                    <PanelTableTd colId="actualCost" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualCost)}</PanelTableTd>
+                    <PanelTableTd colId="grossProfit" className={`px-4 py-2 text-right font-bold ${f.grossProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{fmtCurrency(f.grossProfit)}</PanelTableTd>
+                    <PanelTableTd colId="grossMarginPct" className={`px-4 py-2 text-right ${f.grossMarginPct >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>%{(f.grossMarginPct ?? 0).toFixed(1)}</PanelTableTd>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
+            </>
           )}
         </div>
+        </TableColumnsProvider>
       )}
     </div>
   );

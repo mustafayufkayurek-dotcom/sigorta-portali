@@ -91,7 +91,7 @@ export class BudgetService {
     if (version.status !== 'submitted') {
       throw new BadRequestException('Sadece sunulmuş versiyonlar değerlendirilebilir');
     }
-    return this.prisma.budgetVersion.update({
+    const updated = await this.prisma.budgetVersion.update({
       where: { id: versionId },
       data: {
         status: dto.status,
@@ -99,6 +99,21 @@ export class BudgetService {
         approvedAt: dto.status === 'approved' ? new Date() : undefined,
       },
     });
+
+    if (dto.status === 'approved') {
+      const withItems = await this.prisma.budgetVersion.findUnique({
+        where: { id: versionId },
+        select: { totalAmount: true, claimFileId: true },
+      });
+      if (withItems) {
+        await this.prisma.claimFile.update({
+          where: { id: withItems.claimFileId },
+          data: { approvedBudgetAmount: withItems.totalAmount },
+        });
+      }
+    }
+
+    return updated;
   }
 
   async compareVersions(id1: string, id2: string) {

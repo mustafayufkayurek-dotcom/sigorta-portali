@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
@@ -20,6 +29,32 @@ const BRANCH_COLORS = [
   '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
   '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
   '#14b8a6', '#a855f7',
+];
+
+const BRANCH_DETAIL_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'branch', label: 'Branş', defaultWidth: 160, minWidth: 120 },
+  { id: 'total', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'open', label: 'Açık', defaultWidth: 80, minWidth: 64 },
+  { id: 'closed', label: 'Kapanan', defaultWidth: 88, minWidth: 64 },
+  { id: 'avgCloseDays', label: 'Ort. Kapanma', defaultWidth: 108, minWidth: 88 },
+  { id: 'lastFileDate', label: 'Son Dosya', defaultWidth: 108, minWidth: 88 },
+];
+
+const CUSTOMER_PERF_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'customer', label: 'Müşteri', defaultWidth: 180, minWidth: 140 },
+  { id: 'service', label: 'Hizmet', defaultWidth: 100, minWidth: 80 },
+  { id: 'files', label: 'Dosya', defaultWidth: 96, minWidth: 72 },
+  { id: 'branchDist', label: 'Branş Dağılımı', defaultWidth: 120, minWidth: 96 },
+  { id: 'trend', label: 'Trend', defaultWidth: 72, minWidth: 56 },
+  { id: 'avgClose', label: 'Ort. Kapanma', defaultWidth: 108, minWidth: 88 },
+  { id: 'action', label: 'İşlem', defaultWidth: 72, minWidth: 56 },
+];
+
+const GROWTH_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'branch', label: 'Branş', defaultWidth: 160, minWidth: 120 },
+  { id: 'total', label: 'Toplam Dosya', defaultWidth: 108, minWidth: 88 },
+  { id: 'avgCloseDays', label: 'Ort. Kapanma', defaultWidth: 108, minWidth: 88 },
+  { id: 'lastFileDate', label: 'Son Dosya', defaultWidth: 108, minWidth: 88 },
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -127,6 +162,10 @@ export default function BransAnaliziPage() {
 
   type AnalysisTab = 'genel' | 'musteriler' | 'trend' | 'uyarilar';
   const [activeTab, setActiveTab] = useState<AnalysisTab>('genel');
+
+  const branchDetailTableColumns = usePanelTableColumns('table-cols:rapor-brans-1', BRANCH_DETAIL_TABLE_COLUMNS);
+  const customerPerfTableColumns = usePanelTableColumns('table-cols:rapor-brans-2', CUSTOMER_PERF_TABLE_COLUMNS);
+  const growthTableColumns = usePanelTableColumns('table-cols:rapor-brans-3', GROWTH_TABLE_COLUMNS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -385,42 +424,45 @@ export default function BransAnaliziPage() {
               </div>
 
               {/* Detay Tablosu */}
+              <TableColumnsProvider value={branchDetailTableColumns}>
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-50">
+                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between gap-2">
                   <h4 className="text-sm font-semibold text-slate-800">Branş Detay Tablosu</h4>
+                  <PanelTableColumnPicker tableColumns={branchDetailTableColumns} />
                 </div>
                 <div className="p-5 overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" style={panelTableLayoutStyle(branchDetailTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <th className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</th>
-                        <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam</th>
-                        <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Açık</th>
-                        <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kapanan</th>
-                        <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</th>
-                        <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</th>
+                        <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</PanelTableTh>
+                        <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam</PanelTableTh>
+                        <PanelTableTh colId="open" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Açık</PanelTableTh>
+                        <PanelTableTh colId="closed" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kapanan</PanelTableTh>
+                        <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</PanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {distData.rows.map((row, i) => (
                         <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 pr-4">
+                          <PanelTableTd colId="branch" className="py-3 pr-4">
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
                               <span className="font-medium text-slate-800">{row.branch}</span>
                             </div>
-                          </td>
-                          <td className="py-3 text-right font-semibold text-blue-600">{row.total}</td>
-                          <td className="py-3 text-right text-amber-600 font-medium">{row.open}</td>
-                          <td className="py-3 text-right text-green-600 font-medium">{row.closed}</td>
-                          <td className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</td>
-                          <td className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</td>
+                          </PanelTableTd>
+                          <PanelTableTd colId="total" className="py-3 text-right font-semibold text-blue-600">{row.total}</PanelTableTd>
+                          <PanelTableTd colId="open" className="py-3 text-right text-amber-600 font-medium">{row.open}</PanelTableTd>
+                          <PanelTableTd colId="closed" className="py-3 text-right text-green-600 font-medium">{row.closed}</PanelTableTd>
+                          <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
+                          <PanelTableTd colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
+              </TableColumnsProvider>
             </div>
           )}
 
@@ -452,30 +494,32 @@ export default function BransAnaliziPage() {
                 </div>
               </div>
 
+              <TableColumnsProvider value={customerPerfTableColumns}>
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between gap-2">
                   <div>
                     <h4 className="text-sm font-semibold text-slate-800">Müşteri Performans Tablosu</h4>
                     <p className="text-xs text-slate-400 mt-0.5">{sortedCustomers.length} müşteri</p>
                   </div>
+                  <PanelTableColumnPicker tableColumns={customerPerfTableColumns} />
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" style={panelTableLayoutStyle(customerPerfTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Müşteri</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hizmet</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş Dağılımı</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trend</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</th>
-                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">İşlem</th>
+                        <PanelTableTh colId="customer" className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Müşteri</PanelTableTh>
+                        <PanelTableTh colId="service" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hizmet</PanelTableTh>
+                        <PanelTableTh colId="files" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya</PanelTableTh>
+                        <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş Dağılımı</PanelTableTh>
+                        <PanelTableTh colId="trend" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trend</PanelTableTh>
+                        <PanelTableTh colId="avgClose" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="action" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">İşlem</PanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {sortedCustomers.map((c) => (
                         <tr key={c.customerId} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-3">
+                          <PanelTableTd colId="customer" className="px-5 py-3">
                             <div className="flex items-center gap-2">
                               <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.entityType === 'corporate' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                                 {c.customerName.charAt(0).toUpperCase()}
@@ -485,8 +529,8 @@ export default function BransAnaliziPage() {
                                 <p className="text-xs text-slate-400">{c.entityType === 'corporate' ? 'Kurumsal' : 'Bireysel'}</p>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </PanelTableTd>
+                          <PanelTableTd colId="service" className="px-4 py-3">
                             {c.serviceType ? (
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                 c.serviceType === 'HASAR'
@@ -496,8 +540,8 @@ export default function BransAnaliziPage() {
                                 {c.serviceType === 'HASAR' ? 'Hasar' : 'Acil Yardım'}
                               </span>
                             ) : <span className="text-slate-300 text-xs">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-right">
+                          </PanelTableTd>
+                          <PanelTableTd colId="files" className="px-4 py-3 text-right">
                             <div>
                               <span className="font-semibold text-slate-800">{c.totalFiles}</span>
                               <div className="flex justify-end gap-2 text-xs mt-0.5">
@@ -505,19 +549,19 @@ export default function BransAnaliziPage() {
                                 <span className="text-green-600">{c.closedFiles} kapalı</span>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </PanelTableTd>
+                          <PanelTableTd colId="branchDist" className="px-4 py-3">
                             <div className="flex justify-center">
                               <MiniBar dist={c.branchDistribution} />
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
+                          </PanelTableTd>
+                          <PanelTableTd colId="trend" className="px-4 py-3 text-center">
                             <TrendBadge trend={c.trend} />
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600">
+                          </PanelTableTd>
+                          <PanelTableTd colId="avgClose" className="px-4 py-3 text-right text-slate-600">
                             {c.avgCloseDays != null ? `${c.avgCloseDays} gün` : '—'}
-                          </td>
-                          <td className="px-5 py-3 text-center">
+                          </PanelTableTd>
+                          <PanelTableTd colId="action" className="px-5 py-3 text-center">
                             <button
                               type="button"
                               onClick={() => router.push(`/panel/musteriler/${c.customerId}?tab=analiz`)}
@@ -525,12 +569,12 @@ export default function BransAnaliziPage() {
                             >
                               Detay
                             </button>
-                          </td>
+                          </PanelTableTd>
                         </tr>
                       ))}
                       {sortedCustomers.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-5 py-10 text-center text-slate-400 text-sm">
+                          <td colSpan={customerPerfTableColumns.prefs.visibleIds.length || 1} className="px-5 py-10 text-center text-slate-400 text-sm">
                             Veri Bulunamadı
                           </td>
                         </tr>
@@ -539,6 +583,7 @@ export default function BransAnaliziPage() {
                   </table>
                 </div>
               </div>
+              </TableColumnsProvider>
             </div>
           )}
 
@@ -569,39 +614,44 @@ export default function BransAnaliziPage() {
 
               {/* Büyüme Oranları */}
               {distData && (
+                <TableColumnsProvider value={growthTableColumns}>
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-50">
-                    <h4 className="text-sm font-semibold text-slate-800">Branş Büyüme / Küçülme Oranları</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Son dönem performansı</p>
+                  <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-800">Branş Büyüme / Küçülme Oranları</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Son dönem performansı</p>
+                    </div>
+                    <PanelTableColumnPicker tableColumns={growthTableColumns} />
                   </div>
                   <div className="p-5 overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm" style={panelTableLayoutStyle(growthTableColumns)}>
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <th className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</th>
-                          <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam Dosya</th>
-                          <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</th>
-                          <th className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</th>
+                          <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</PanelTableTh>
+                          <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam Dosya</PanelTableTh>
+                          <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
+                          <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</PanelTableTh>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {distData.rows.map((row, i) => (
                           <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-3 pr-4">
+                            <PanelTableTd colId="branch" className="py-3 pr-4">
                               <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
                                 <span className="font-medium text-slate-800">{row.branch}</span>
                               </div>
-                            </td>
-                            <td className="py-3 text-right font-semibold text-blue-600">{row.total}</td>
-                            <td className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</td>
-                            <td className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</td>
+                            </PanelTableTd>
+                            <PanelTableTd colId="total" className="py-3 text-right font-semibold text-blue-600">{row.total}</PanelTableTd>
+                            <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
+                            <PanelTableTd colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
+                </TableColumnsProvider>
               )}
             </div>
           )}

@@ -69,6 +69,14 @@ export class VendorsController {
     return { success: true, data };
   }
 
+  @Get('summary')
+  @RequirePermissions('vendor.view')
+  @ApiOperation({ summary: 'Tedarikçi liste özeti (KPI)' })
+  async summary() {
+    const data = await this.vendorsService.getSummary();
+    return { success: true, data };
+  }
+
   @Get()
   @RequirePermissions('vendor.view')
   @ApiOperation({ summary: 'Tedarikçi listesi' })

@@ -83,8 +83,8 @@ export class InvoicesController {
   @Get('claim-files/:id/financial-summary')
   @RequirePermissions('invoice.view')
   @ApiOperation({ summary: 'Dosya finansal özeti' })
-  async getFinancialSummary(@Param('id') claimFileId: string) {
-    const data = await this.service.getFinancialSummary(claimFileId);
+  async getFinancialSummary(@Param('id') claimFileId: string, @CurrentUser() user: any) {
+    const data = await this.service.getFinancialSummary(claimFileId, user);
     return { success: true, data };
   }
 }

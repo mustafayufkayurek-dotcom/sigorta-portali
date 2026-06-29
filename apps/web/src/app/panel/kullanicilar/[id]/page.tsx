@@ -168,7 +168,7 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
             onChange={(e) => handleSelectProvince(e.target.value)}
           >
             <option value="">İl Seçin...</option>
-            {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
+            {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {selectedProvince && (
             <button type="button" onClick={addWholeProvince} className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-100">

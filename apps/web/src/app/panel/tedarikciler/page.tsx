@@ -1,16 +1,53 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
-import { PhoneInput } from '@/components/PhoneInput';
+import { ContactPhoneField } from '@/components/ContactPhoneField';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
+import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
-import { relativeTime, toWhatsAppLink } from '@/utils/date-helpers';
+import { relativeTime } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { validateIBAN } from '@/utils/validators';
+import {
+  VENDOR_CATEGORIES,
+  VENDOR_DOC_OTHER_SELECT,
+  HIZMET_KOLU_OTHER_KEY,
+  isVendorTypeOther,
+  isOtherDocumentTypeName,
+  vendorCategoryShowsHasarKollari,
+  vendorCategoryShowsAcilKollari,
+  vendorTypeActivityPlaceholder,
+  resolveVendorTypeHizmetMode,
+  vendorTypeActivityLabel,
+  vendorTypeQuickPicks,
+  vendorTypeShowsWorkGroupGrid,
+  vendorTypeSectionHint,
+  vendorTypeModeBadge,
+  formatVendorTypeLabel,
+  formatVendorAddress,
+  VENDOR_RELATION_SECTION_TITLE,
+  VENDOR_RELATION_SECTION_HINT,
+  VENDOR_FORM_SECTIONS,
+  type VendorCategory,
+  type VendorDocumentTypeRow,
+  type VendorTypeHizmetMode,
+} from '@/utils/vendor-form-helpers';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -124,10 +161,59 @@ type Province = { id: string; plateCode: number; name: string };
 type District = { id: string; name: string; provinceId: string };
 type WorkGroup = { id: string; code: string; name: string; sortOrder: number };
 type ServiceArea = { provinceId: string; districtId?: string | null };
-type ContactPerson = { id?: string; firstName: string; lastName: string; title: string; phone: string; email: string; birthDate: string };
+type ContactPerson = {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+  phone: string;
+  phoneType: 'gsm' | 'landline';
+  extensionNo: string;
+  email: string;
+  birthDate: string;
+};
 type ContactInfoItem = { id?: string; type: string; value: string; label: string };
 
-const emptyContact = (): ContactPerson => ({ firstName: '', lastName: '', title: '', phone: '', email: '', birthDate: '' });
+const emptyContact = (): ContactPerson => ({
+  firstName: '', lastName: '', title: '', phone: '', phoneType: 'gsm', extensionNo: '', email: '', birthDate: '',
+});
+
+function mapVendorContactFromApi(c: Record<string, unknown>): ContactPerson {
+  const fullName = String(c.fullName ?? '').trim();
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  return {
+    id: c.id as string | undefined,
+    firstName: String(c.firstName ?? parts[0] ?? ''),
+    lastName: String(c.lastName ?? parts.slice(1).join(' ') ?? ''),
+    title: String(c.title ?? ''),
+    phone: String(c.phone ?? ''),
+    phoneType: c.phoneType === 'landline' ? 'landline' : 'gsm',
+    extensionNo: String(c.phoneExtension ?? ''),
+    email: String(c.email ?? ''),
+    birthDate: c.birthDate ? String(c.birthDate).split('T')[0] : '',
+  };
+}
+
+function contactDisplayLabel(c: ContactPerson, idx: number, kind: 'corporate' | 'individual'): string {
+  const name = `${c.firstName} ${c.lastName}`.trim();
+  if (name) return name;
+  return kind === 'individual' ? `İlgili Kişi #${idx + 1}` : `Yetkili #${idx + 1}`;
+}
+
+function mapContactToPayload(c: ContactPerson) {
+  return {
+    id: c.id,
+    fullName: `${c.firstName} ${c.lastName}`.trim(),
+    firstName: c.firstName,
+    lastName: c.lastName,
+    title: c.title === '__other__' ? '' : c.title,
+    phone: c.phone || null,
+    phoneType: c.phoneType,
+    phoneExtension: c.extensionNo || null,
+    email: c.email || null,
+    birthDate: c.birthDate || null,
+  };
+}
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 // ── Sözleşme Tarihi mask helpers ─────────────────────────────────────────────
 function maskContractDate(input: string): string {
@@ -160,19 +246,127 @@ const emptyForm = () => ({
   cityCode: '', city: '', district: '', neighborhood: '', streetName: '', buildingNo: '', doorNo: '', address: '',
   iban: '', bankName: '', referral: '', tags: [] as string[], notes: '',
   contractStartDate: '', contractEndDate: '', contractNotes: '',
+  category: 'hasar' as VendorCategory,
 });
 
-// ── Evrak Türleri ──────────────────────────────────────────────────────────────
-const EVRAK_TURLERI_MODAL = [
-  'Vergi Levhası', 'İmza Sirküleri', 'Ticaret Sicil Gazetesi', 'Faaliyet Belgesi',
-  'Sözleşme', 'Sigorta Poliçesi', 'İş Güvenliği Belgesi', 'Referans Mektubu', 'Diğer',
-];
-
-type PendingDoc = { id: string; file: File; type: string; customType: string };
+type PendingDoc = {
+  id: string;
+  file: File;
+  documentTypeId: string;
+  documentTypeName: string;
+  customLabel?: string;
+};
 function fmtDocSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function HizmetKoluGrid({
+  title,
+  items,
+  selectedKeys,
+  onToggle,
+  onSelectAll,
+  loading,
+  emptyMessage,
+  accent,
+  customOther = '',
+  onCustomOtherChange,
+}: {
+  title: string;
+  items: { key: string; label: string }[];
+  selectedKeys: string[];
+  onToggle: (key: string) => void;
+  onSelectAll: (selectAll: boolean) => void;
+  loading?: boolean;
+  emptyMessage: string;
+  accent: 'blue' | 'orange';
+  customOther?: string;
+  onCustomOtherChange?: (value: string) => void;
+}) {
+  const gridItems = onCustomOtherChange
+    ? [
+        ...items.filter((i) => i.key !== HIZMET_KOLU_OTHER_KEY && i.label.trim().toLowerCase() !== 'diğer' && i.label.trim().toLowerCase() !== 'diger'),
+        { key: HIZMET_KOLU_OTHER_KEY, label: 'Diğer' },
+      ]
+    : items;
+  const allSelected = items.length > 0 && items.every((i) => selectedKeys.includes(i.key));
+  const otherSelected = selectedKeys.includes(HIZMET_KOLU_OTHER_KEY);
+  const activeBtn = accent === 'blue'
+    ? 'border-blue-500 bg-blue-50 text-blue-700'
+    : 'border-orange-400 bg-orange-50 text-orange-700';
+  const idleBtn = 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50';
+
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-slate-700">{title}</p>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onSelectAll(!allSelected)}
+            className={`text-xs px-2.5 py-1 rounded-lg border transition-all font-medium ${
+              allSelected ? 'border-slate-300 text-slate-500 hover:bg-slate-50' : activeBtn
+            }`}
+          >
+            {allSelected ? 'Tümünü Kaldır' : 'Tümünü Seç'}
+          </button>
+        )}
+      </div>
+      {loading ? (
+        <p className="text-xs text-slate-400 py-2">Hizmet kolları yükleniyor...</p>
+      ) : gridItems.length === 0 ? (
+        <p className="text-xs text-amber-700 py-1">{emptyMessage}</p>
+      ) : (
+        <>
+          {items.length === 0 && onCustomOtherChange && (
+            <p className="text-xs text-amber-700 mb-2">{emptyMessage}</p>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {gridItems.map((item) => {
+              const selected = selectedKeys.includes(item.key);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => onToggle(item.key)}
+                  className={`text-left text-xs px-3 py-2 rounded-lg border transition-all font-medium ${
+                    selected ? activeBtn : idleBtn
+                  }`}
+                >
+                  {item.label === 'Diğer' ? item.label : toTitleCaseTR(item.label)}
+                </button>
+              );
+            })}
+          </div>
+          {onCustomOtherChange && otherSelected && (
+            <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">
+                Diğer hizmet kolu açıklaması <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                className={`${inp} text-xs`}
+                placeholder="Hizmet kolunu yazın..."
+                value={customOther}
+                onChange={(e) => onCustomOtherChange(e.target.value)}
+                onBlur={(e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) onCustomOtherChange(v);
+                }}
+              />
+            </div>
+          )}
+          {(selectedKeys.filter((k) => k !== HIZMET_KOLU_OTHER_KEY).length > 0 || (otherSelected && customOther.trim())) && (
+            <p className="text-[11px] text-slate-500 mt-2">
+              {selectedKeys.filter((k) => k !== HIZMET_KOLU_OTHER_KEY).length + (otherSelected && customOther.trim() ? 1 : 0)} hizmet kolu seçildi
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
@@ -236,17 +430,28 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
   const router = useRouter();
   const [vendor, setVendor] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open || !vendorId) return;
+  const loadDetail = useCallback(() => {
+    if (!vendorId) return;
     setVendor(null);
+    setDetailError(null);
     setLoadingDetail(true);
     axios
       .get(`${API}/vendors/${vendorId}`, { headers: authHeader() })
       .then((r) => setVendor(r.data.data ?? r.data))
-      .catch(() => setVendor(null))
+      .catch((e) => {
+        console.error(e);
+        setVendor(null);
+        setDetailError('Tedarikçi detayı yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');
+      })
       .finally(() => setLoadingDetail(false));
-  }, [vendorId, open]);
+  }, [vendorId]);
+
+  useEffect(() => {
+    if (!open || !vendorId) return;
+    loadDetail();
+  }, [open, vendorId, loadDetail]);
 
   const displayName = vendor?.name ?? '—';
 
@@ -266,6 +471,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
   // Collect service area province names from full vendor detail
   const serviceAreas: any[] = vendor?.serviceAreas ?? [];
   const workGroups: any[] = vendor?.vendorWorkGroups ?? [];
+  const acilBranches: string[] = Array.isArray(vendor?.serviceBranches) ? vendor.serviceBranches : [];
 
   return (
     <SlidePanel open={open} onClose={onClose} width={400}>
@@ -290,7 +496,16 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
       {loadingDetail ? (
         <div className="space-y-3 animate-pulse p-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-12 rounded-lg bg-slate-200 dark:bg-slate-700"/>)}</div>
       ) : !vendor ? (
-        <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Veri alınamadı</div>
+        <div className="flex flex-col items-center justify-center h-40 px-6 text-center gap-3">
+          <p className="text-sm text-slate-500">{detailError ?? 'Veri alınamadı'}</p>
+          <button
+            type="button"
+            onClick={loadDetail}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
       ) : (
         <div className="pb-24">
           {/* Kimlik */}
@@ -312,29 +527,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             </div>
             <div className="space-y-2.5">
               {vendor.phone && (
-                <div className="flex items-center gap-2">
-                  <a href={`tel:${vendor.phone}`} className="flex items-center gap-2.5 text-sm text-indigo-600 hover:text-indigo-700 transition-colors group flex-1">
-                    <span className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-100 transition-colors flex-shrink-0">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                    </span>
-                    {vendor.phone}
-                  </a>
-                  {toWhatsAppLink(vendor.phone) && (
-                  <a
-                    href={toWhatsAppLink(vendor.phone)!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-7 h-7 bg-green-50 hover:bg-green-100 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
-                    title="WhatsApp"
-                  >
-                    <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                    </svg>
-                  </a>
-                  )}
-                </div>
+                <PhoneContactActions phone={vendor.phone} variant="panel" accent="indigo" />
               )}
               {vendor.email && (
                 <div className="flex items-center gap-2.5 text-sm text-slate-600">
@@ -349,17 +542,22 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             </div>
           </div>
 
-          {/* Faaliyet Alanları (İş Grupları) */}
-          {workGroups.length > 0 && (
+          {/* Hizmet Kolları */}
+          {(workGroups.length > 0 || acilBranches.length > 0) && (
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Faaliyet Alanları</p>
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tedarikçi Hizmet Kolları</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {workGroups.map((vwg: any) => (
-                  <span key={vwg.workGroupId ?? vwg.id} className="inline-flex items-center text-xs bg-indigo-50 text-indigo-700 rounded-full px-2.5 py-1 border border-indigo-100">
+                  <span key={vwg.workGroupId ?? vwg.id} className="inline-flex items-center text-xs bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 border border-blue-100">
                     {vwg.workGroup?.name ?? vwg.name ?? vwg.workGroupId}
+                  </span>
+                ))}
+                {acilBranches.map((name) => (
+                  <span key={name} className="inline-flex items-center text-xs bg-orange-50 text-orange-700 rounded-full px-2.5 py-1 border border-orange-100">
+                    {name}
                   </span>
                 ))}
               </div>
@@ -462,14 +660,116 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
   );
 }
 
+// ── Satır işlemleri: Detay birincil; düzenle/sil ikincil menüde ───────────────
+function VendorRowActionsMenu({
+  isOpen,
+  onToggle,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updateMenuPos = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const menuW = 144;
+    const menuH = 82;
+    const gap = 4;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < menuH + gap;
+    setMenuPos({
+      top: openUp ? rect.top - menuH - gap : rect.bottom + gap,
+      left: Math.min(window.innerWidth - menuW - 8, Math.max(8, rect.right - menuW)),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    window.addEventListener('scroll', updateMenuPos, true);
+    window.addEventListener('resize', updateMenuPos);
+    return () => {
+      window.removeEventListener('scroll', updateMenuPos, true);
+      window.removeEventListener('resize', updateMenuPos);
+    };
+  }, [isOpen, updateMenuPos]);
+
+  return (
+    <>
+      <div className="relative flex-shrink-0">
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-label="Diğer işlemler"
+          aria-expanded={isOpen}
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-lg leading-none"
+        >
+          ···
+        </button>
+      </div>
+      {isOpen && menuPos && typeof document !== 'undefined' && createPortal(
+        <>
+          <button type="button" className="fixed inset-0 z-[60] cursor-default" aria-label="Menüyü kapat" onClick={onClose} />
+          <div
+            className="fixed z-[61] min-w-[9rem] bg-white border border-slate-200 rounded-xl shadow-lg py-1"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClose(); onEdit(); }}
+              className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Düzenle
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClose(); onDelete(); }}
+              className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 border-t border-slate-100 transition-colors"
+            >
+              Sil…
+            </button>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Tedarikçi', defaultWidth: 200, minWidth: 140 },
+  { id: 'type', label: 'Tür / Tip', defaultWidth: 120, minWidth: 96 },
+  { id: 'contact', label: 'İletişim', defaultWidth: 180, minWidth: 120 },
+  { id: 'location', label: 'Konum', defaultWidth: 140, minWidth: 100 },
+  { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 90, minWidth: 72 },
+  { id: 'lastJob', label: 'Son İş', defaultWidth: 100, minWidth: 80 },
+  { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 120, minWidth: 96 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
+
 export default function VendorsPage() {
+  const tableColumns = usePanelTableColumns('table-cols:tedarikciler', TABLE_COLUMNS);
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ total: 0, activeCount: 0, corporateCount: 0 });
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -497,8 +797,7 @@ export default function VendorsPage() {
   const [nviLoading, setNviLoading] = useState(false);
   const [nviResult, setNviResult] = useState<boolean | null>(null);
 
-  const [phoneWarn, setPhoneWarn] = useState<string | null>(null);
-  const [emailWarn, setEmailWarn] = useState<string | null>(null);
+  const [ibanError, setIbanError] = useState<string | null>(null);
   const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string }>({});
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
@@ -518,9 +817,6 @@ export default function VendorsPage() {
 
   const [workGroups, setWorkGroups] = useState<WorkGroup[]>([]);
   const [selectedWorkGroupIds, setSelectedWorkGroupIds] = useState<string[]>([]);
-  const [wgOpen, setWgOpen] = useState(false);
-  const [wgSearch, setWgSearch] = useState('');
-  const wgRef = useRef<HTMLDivElement>(null);
 
   const [contacts, setContacts] = useState<ContactPerson[]>([emptyContact()]);
   const [contactInfos, setContactInfos] = useState<ContactInfoItem[]>([emptyContactInfo()]);
@@ -529,10 +825,33 @@ export default function VendorsPage() {
   const [numericErrors, setNumericErrors] = useState<{ taxNumber?: string; identityNo?: string }>({});
   const [contactsOpen, setContactsOpen] = useState(false);
 
+  // ── Split button kaydet modu ─────────────────────────────────────────────
+  type SaveMode = 'close' | 'new' | 'detail';
+  const [saveMode, setSaveMode] = useState<SaveMode>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('vendorSaveMode');
+      if (stored === 'new' || stored === 'detail' || stored === 'close') return stored;
+    }
+    return 'close';
+  });
+  const [saveModeDropdownOpen, setSaveModeDropdownOpen] = useState(false);
+  const saveModeDropdownRef = useRef<HTMLDivElement>(null);
+
   // ── Bekleyen evraklar (yeni kayıt formunda geçici) ────────────────────────
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
-  const [docSelectedType, setDocSelectedType] = useState('');
+  const [docSelectedTypeId, setDocSelectedTypeId] = useState('');
   const [docCustomType, setDocCustomType] = useState('');
+  const [typeCustom, setTypeCustom] = useState('');
+  const [documentTypes, setDocumentTypes] = useState<VendorDocumentTypeRow[]>([]);
+  const [acilServiceBranches, setAcilServiceBranches] = useState<string[]>([]);
+  const [serviceBranches, setServiceBranches] = useState<string[]>([]);
+  const [customHasarKol, setCustomHasarKol] = useState('');
+  const [customAcilKol, setCustomAcilKol] = useState('');
+  const [typeActivityPicks, setTypeActivityPicks] = useState<string[]>([]);
+  const [typeActivityCustom, setTypeActivityCustom] = useState('');
+  const [typeActivityOtherOpen, setTypeActivityOtherOpen] = useState(false);
+  const [hizmetKollariOpen, setHizmetKollariOpen] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
   const docFileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Konum state ───────────────────────────────────────────────────────────
@@ -571,6 +890,10 @@ export default function VendorsPage() {
   // ── Drawer state ─────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerVendorId, setDrawerVendorId] = useState<string | null>(null);
+  const [rowMenuId, setRowMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // ── Sözleşme uyarı state ──────────────────────────────────────────────────
   const [contractAlert, setContractAlert] = useState<{ expiring: any[]; expired: any[]; expiringCount: number; expiredCount: number } | null>(null);
@@ -611,7 +934,7 @@ export default function VendorsPage() {
       onConfirm: async () => {
         await axios.patch(`${API}/vendors/bulk-status`, { ids: selectedArray, status }, { headers: authHeader() });
         showToast('success', `${selectedArray.length} tedarikçi güncellendi`);
-        clearSelection(); load();
+        clearSelection(); load(); loadSummary();
       },
     });
   };
@@ -670,13 +993,126 @@ export default function VendorsPage() {
   const resetForm = () => {
     setForm(emptyForm()); setServiceAreas([]); setSelectedWorkGroupIds([]);
     setSelectedProvince(null); setServiceDistricts([]);
-    setWgOpen(false); setWgSearch(''); setGibError(null); setNviResult(null);
-    setPhoneWarn(null); setEmailWarn(null);
+    setGibError(null); setNviResult(null);
     setDuplicateConflicts({}); setShowDuplicateModal(false);
     setContacts([emptyContact()]); setContactInfos([emptyContactInfo()]);
     setTagInput(''); setActiveSection(0); setNumericErrors({}); setFieldErrors({}); setContactsOpen(false);
     setLocationCoords(null); setShowLocationPicker(false); setGeocodeMsg(null);
-    setPendingDocs([]); setDocSelectedType(''); setDocCustomType('');
+    setPendingDocs([]); setDocSelectedTypeId(''); setDocCustomType(''); setTypeCustom(''); setServiceBranches([]); setCustomHasarKol(''); setCustomAcilKol(''); setTypeActivityPicks([]); setTypeActivityCustom(''); setTypeActivityOtherOpen(false); setHizmetKollariOpen(false); setIbanError(null);
+  };
+
+  const handleCategoryChange = (value: VendorCategory) => {
+    setForm((p) => ({ ...p, category: value }));
+    setDocSelectedTypeId('');
+    setDocCustomType('');
+    if (value === 'hasar') {
+      setServiceBranches((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
+      setCustomAcilKol('');
+    }
+    if (value === 'acil') {
+      setSelectedWorkGroupIds((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
+      setCustomHasarKol('');
+    }
+  };
+
+  const toggleHasarWorkGroup = (id: string) => {
+    if (id === HIZMET_KOLU_OTHER_KEY) {
+      if (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY)) {
+        setSelectedWorkGroupIds((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
+        setCustomHasarKol('');
+      } else {
+        setSelectedWorkGroupIds((p) => [...p, HIZMET_KOLU_OTHER_KEY]);
+      }
+      return;
+    }
+    setSelectedWorkGroupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  };
+
+  const toggleTypeActivityPick = (pick: string) => {
+    setTypeActivityPicks((prev) => (prev.includes(pick) ? prev.filter((x) => x !== pick) : [...prev, pick]));
+  };
+
+  const applyServiceBranchFields = (
+    branches: string[],
+    acilPresets: string[],
+    wgNames: string[],
+    category: VendorCategory,
+    hizmetMode: VendorTypeHizmetMode | null = null,
+  ) => {
+    const acilSet = new Set(acilPresets);
+    const wgSet = new Set(wgNames);
+    let orphan = branches.filter((s) => !acilSet.has(s) && !wgSet.has(s));
+    const presetAcil = branches.filter((s) => acilSet.has(s));
+    setServiceBranches(presetAcil);
+    setCustomAcilKol('');
+    setCustomHasarKol('');
+    setTypeActivityPicks([]);
+    setTypeActivityCustom('');
+    setTypeActivityOtherOpen(false);
+
+    const showsGrid = !!hizmetMode && vendorTypeShowsWorkGroupGrid(hizmetMode);
+
+    if (showsGrid && vendorCategoryShowsAcilKollari(category) && orphan.length > 0) {
+      setCustomAcilKol(orphan[0] ?? '');
+      setServiceBranches([...presetAcil, HIZMET_KOLU_OTHER_KEY]);
+      orphan = orphan.slice(1);
+    }
+    if (showsGrid && vendorCategoryShowsHasarKollari(category) && orphan.length > 0) {
+      setCustomHasarKol(orphan[0] ?? '');
+      setSelectedWorkGroupIds((prev) => [...prev.filter((id) => id !== HIZMET_KOLU_OTHER_KEY), HIZMET_KOLU_OTHER_KEY]);
+      orphan = orphan.slice(1);
+    }
+
+    if (hizmetMode && !vendorTypeShowsWorkGroupGrid(hizmetMode) && orphan.length > 0) {
+      const quickPicks = vendorTypeQuickPicks(hizmetMode);
+      const matched: string[] = [];
+      const customParts: string[] = [];
+      for (const s of orphan) {
+        const canonical = quickPicks.find((p) => p.toLocaleLowerCase('tr') === s.toLocaleLowerCase('tr'));
+        if (canonical) matched.push(canonical);
+        else customParts.push(s);
+      }
+      setTypeActivityPicks(matched);
+      if (customParts.length) {
+        setTypeActivityCustom(customParts.join(', '));
+        setTypeActivityOtherOpen(true);
+      }
+    } else if (hizmetMode === 'taseron_grid' && orphan.length > 0) {
+      setTypeActivityCustom(orphan.join(', '));
+    }
+  };
+
+  const buildServiceBranchesPayload = () => {
+    const merged = [...serviceBranches.filter((s) => acilServiceBranches.includes(s))];
+    if (vendorCategoryShowsAcilKollari(form.category) && serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && customAcilKol.trim()) {
+      merged.push(toTitleCaseTR(customAcilKol.trim()));
+    }
+    if (vendorCategoryShowsHasarKollari(form.category) && selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && customHasarKol.trim()) {
+      const hasarCustom = toTitleCaseTR(customHasarKol.trim());
+      if (!merged.includes(hasarCustom)) merged.push(hasarCustom);
+    }
+    for (const pick of typeActivityPicks) {
+      const note = toTitleCaseTR(pick.trim());
+      if (note && !merged.includes(note)) merged.push(note);
+    }
+    if (typeActivityCustom.trim()) {
+      const note = toTitleCaseTR(typeActivityCustom.trim());
+      if (note && !merged.includes(note)) merged.push(note);
+    }
+    return [...new Set(merged)];
+  };
+
+  const toggleAcilServiceBranch = (name: string) => {
+    if (name === HIZMET_KOLU_OTHER_KEY) {
+      if (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY)) {
+        setServiceBranches((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
+        setCustomAcilKol('');
+      } else {
+        setServiceBranches((p) => [...p, HIZMET_KOLU_OTHER_KEY]);
+      }
+      return;
+    }
+    setServiceBranches((p) => (p.includes(name) ? p.filter((x) => x !== name) : [...p, name]));
   };
 
   const onlyDigits = /^[0-9]*$/;
@@ -693,8 +1129,12 @@ export default function VendorsPage() {
   const loadVendorTypes = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/system-settings/vendor-types`, { headers: authHeader() });
-      setVendorTypes(r.data.data || []);
-    } catch { setVendorTypes(['Taşeron', 'Malzeme Tedarikçisi', 'Lojistik', 'Ekipman', 'Diğer']); }
+      const list: string[] = r.data.data || [];
+      const withOther = list.some((t) => isVendorTypeOther(t)) ? list : [...list, 'Diğer'];
+      setVendorTypes(withOther);
+    } catch {
+      setVendorTypes(['Taşeron', 'Malzeme Tedarikçisi', 'Lojistik', 'Ekipman', 'Diğer']);
+    }
   }, []);
 
   const loadProvinces = useCallback(async () => {
@@ -711,6 +1151,18 @@ export default function VendorsPage() {
     } catch (e) { console.error(e); }
   }, []);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/vendors/summary`, { headers: authHeader() });
+      const d = r.data.data ?? {};
+      setSummary({
+        total: d.total ?? 0,
+        activeCount: d.activeCount ?? 0,
+        corporateCount: d.corporateCount ?? 0,
+      });
+    } catch (e) { console.error(e); }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -724,7 +1176,10 @@ export default function VendorsPage() {
       const r = await axios.get(`${API}/vendors?${params}`, { headers: authHeader() });
       setVendors(r.data.data || []);
       setTotal(r.data.meta?.total ?? 0);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+      showToast('error', 'Tedarikçi listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
+    } finally { setLoading(false); }
   }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
 
   // Debounce searchInput → search
@@ -747,8 +1202,29 @@ export default function VendorsPage() {
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
   }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
 
+  const loadDocumentTypes = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/document-types`, { params: { status: 'active' }, headers: authHeader() });
+      setDocumentTypes(r.data.data ?? []);
+    } catch {
+      setDocumentTypes([]);
+    }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadProvinces(); loadWorkGroups(); loadVendorTypes(); }, [loadProvinces, loadWorkGroups, loadVendorTypes]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadProvinces(); loadWorkGroups(); loadVendorTypes(); loadDocumentTypes(); }, [loadProvinces, loadWorkGroups, loadVendorTypes, loadDocumentTypes]);
+
+  useEffect(() => {
+    setBranchesLoading(true);
+    axios.get(`${API}/service-branches?type=acil_yardim&scope=vendor`, { headers: authHeader() })
+      .then((r) => {
+        const names = (r.data.data ?? []).map((b: { name: string }) => b.name as string);
+        setAcilServiceBranches(names);
+      })
+      .catch(() => setAcilServiceBranches([]))
+      .finally(() => setBranchesLoading(false));
+  }, []);
 
   useEffect(() => {
     axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() })
@@ -773,8 +1249,10 @@ export default function VendorsPage() {
   }, []);
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (wgRef.current && !wgRef.current.contains(e.target as Node)) { setWgOpen(false); setWgSearch(''); }
       if (wgFilterRef.current && !wgFilterRef.current.contains(e.target as Node)) setWgFilterOpen(false);
+      if (saveModeDropdownRef.current && !saveModeDropdownRef.current.contains(e.target as Node)) {
+        setSaveModeDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -818,11 +1296,9 @@ export default function VendorsPage() {
       const d = r.data.data;
       if (d.exists) {
         const msg = `Bu telefon numarası zaten [${d.existingRecord.name}] kaydında mevcut`;
-        setPhoneWarn(msg);
         setDuplicateConflicts((p) => ({ ...p, phone: msg }));
         showToast('warning', msg);
       } else {
-        setPhoneWarn(null);
         setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; });
       }
     } catch { /* sessizce geç */ }
@@ -838,11 +1314,9 @@ export default function VendorsPage() {
       const d = r.data.data;
       if (d.exists) {
         const msg = `Bu e-posta adresi zaten [${d.existingRecord.name}] kaydında mevcut`;
-        setEmailWarn(msg);
         setDuplicateConflicts((p) => ({ ...p, email: msg }));
         showToast('warning', msg);
       } else {
-        setEmailWarn(null);
         setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
       }
     } catch { /* sessizce geç */ }
@@ -866,8 +1340,6 @@ export default function VendorsPage() {
     setServiceAreas((p) => [...p.filter((sa) => sa.provinceId !== prov.id), { provinceId: prov.id, districtId: null }]);
   };
 
-  const toggleWg = (id: string) => setSelectedWorkGroupIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
-
   const handleAddVendorType = async () => {
     const t = newTypeName.trim();
     if (!t || vendorTypes.includes(t)) return;
@@ -876,17 +1348,25 @@ export default function VendorsPage() {
       const updated = [...vendorTypes, t];
       await axios.put(`${API}/system-settings/vendor-types`, { types: updated }, { headers: authHeader() });
       setVendorTypes(updated); setNewTypeName(''); setShowAddType(false);
-    } catch (e) { console.error(e); } finally { setSavingType(false); }
+      showToast('success', `"${t}" türü eklendi`);
+    } catch (e: any) { showToast('error', e?.response?.data?.message ?? 'Tür eklenemedi'); } finally { setSavingType(false); }
   };
 
   const openCreate = () => { setEditVendor(null); resetForm(); setShowModal(true); };
   const openEdit = async (v: any) => {
     setEditVendor(v);
-    // Find cityCode from city name for static data
     const matchedProv = STATIC_PROVINCES.find((p) => p.name === v.city);
+    const rawType = v.type ?? '';
+    const typeIsPreset = !rawType || vendorTypes.includes(rawType);
+    setTypeCustom(typeIsPreset ? '' : rawType);
+    const loadEffectiveType = typeIsPreset ? rawType : rawType;
+    const loadHizmetMode = loadEffectiveType ? resolveVendorTypeHizmetMode(loadEffectiveType) : null;
+    const loadCategory = (['hasar', 'acil', 'her_ikisi'].includes(v.category) ? v.category : 'hasar') as VendorCategory;
     setForm({
       entityType: (v.entityType as 'corporate' | 'individual') || 'corporate',
-      name: v.name, type: v.type ?? '', taxNumber: v.taxNumber ?? '',
+      name: v.name,
+      type: typeIsPreset ? rawType : 'Diğer',
+      taxNumber: v.taxNumber ?? '',
       taxOffice: v.taxOffice ?? '', tradeRegistryNo: v.tradeRegistryNo ?? '',
       identityNo: v.identityNo ?? '', firstName: v.firstName ?? '', lastName: v.lastName ?? '', birthDate: '',
       cityCode: matchedProv?.code ?? '', city: v.city ?? '', district: v.district ?? '',
@@ -897,7 +1377,15 @@ export default function VendorsPage() {
       contractStartDate: v.contractStartDate ? v.contractStartDate.split('T')[0] : '',
       contractEndDate: v.contractEndDate ? v.contractEndDate.split('T')[0] : '',
       contractNotes: v.contractNotes ?? '',
+      category: loadCategory,
     });
+    applyServiceBranchFields(
+      Array.isArray(v.serviceBranches) ? v.serviceBranches : [],
+      acilServiceBranches,
+      workGroups.map((wg) => wg.name),
+      loadCategory,
+      loadHizmetMode,
+    );
     setGibError(null); setNviResult(null);
     // Konum koordinatlarını yükle
     if (v.latitude != null && v.longitude != null) {
@@ -910,13 +1398,24 @@ export default function VendorsPage() {
       const full = r.data.data;
       setServiceAreas((full.serviceAreas || []).map((sa: any) => ({ provinceId: sa.provinceId, districtId: sa.districtId ?? null })));
       setSelectedWorkGroupIds((full.vendorWorkGroups || []).map((vwg: any) => vwg.workGroupId));
-      setContacts(full.contacts?.length ? full.contacts.map((c: any) => ({ id: c.id, firstName: c.firstName ?? '', lastName: c.lastName ?? '', title: c.title ?? '', phone: c.phone ?? '', email: c.email ?? '', birthDate: c.birthDate ? c.birthDate.split('T')[0] : '' })) : [emptyContact()]);
+      applyServiceBranchFields(
+        Array.isArray(full.serviceBranches) ? full.serviceBranches : [],
+        acilServiceBranches,
+        (full.vendorWorkGroups || []).map((vwg: { workGroup?: { name?: string } }) => vwg.workGroup?.name ?? '').filter(Boolean),
+        (['hasar', 'acil', 'her_ikisi'].includes(full.category) ? full.category : 'hasar') as VendorCategory,
+        full.type ? resolveVendorTypeHizmetMode(full.type) : null,
+      );
+      setContacts(full.contacts?.length ? full.contacts.map((c: Record<string, unknown>) => mapVendorContactFromApi(c)) : [emptyContact()]);
       setContactInfos(full.contactInfos?.length ? full.contactInfos.map((ci: any) => ({ id: ci.id, type: ci.type ?? 'phone', value: ci.value ?? '', label: ci.label ?? 'general' })) : [emptyContactInfo()]);
     } catch { setContacts([emptyContact()]); setContactInfos([emptyContactInfo()]); }
+    setHizmetKollariOpen(
+      (v.vendorWorkGroups?.length ?? 0) > 0
+      || (Array.isArray(v.serviceBranches) && v.serviceBranches.length > 0),
+    );
     setSelectedProvince(null); setServiceDistricts([]); setActiveSection(0); setShowModal(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrideSaveMode?: SaveMode) => {
     // Validasyon
     const errors: Record<string, string> = {};
     const missingLabels: string[] = [];
@@ -945,22 +1444,53 @@ export default function VendorsPage() {
       return;
     }
 
+    if (isVendorTypeOther(form.type) && !typeCustom.trim()) {
+      showToast('warning', 'Tedarikçi türü "Diğer" seçildiğinde lütfen tür açıklamasını girin.');
+      setActiveSection(0);
+      return;
+    }
+
+    const saveEffectiveType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
+    const saveHizmetMode = form.type ? resolveVendorTypeHizmetMode(saveEffectiveType) : null;
+    if (saveHizmetMode && !vendorTypeShowsWorkGroupGrid(saveHizmetMode) && typeActivityPicks.length === 0 && !typeActivityCustom.trim()) {
+      showToast('warning', `${vendorTypeActivityLabel(saveHizmetMode, saveEffectiveType)} alanını doldurun.`);
+      setActiveSection(0);
+      setHizmetKollariOpen(true);
+      return;
+    }
+
+    if (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && !customHasarKol.trim()) {
+      showToast('warning', 'Hasar hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+      setActiveSection(0);
+      return;
+    }
+    if (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && !customAcilKol.trim()) {
+      showToast('warning', 'Acil hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+      setActiveSection(0);
+      return;
+    }
+
     // Çakışma varsa onay modalı göster
     if (Object.keys(duplicateConflicts).length > 0) {
       setShowDuplicateModal(true);
       return;
     }
 
-    await doSave();
+    await doSave(overrideSaveMode ?? saveMode);
   };
 
-  const doSave = async () => {
+  const doSave = async (effectiveSaveMode: SaveMode = saveMode) => {
     setShowDuplicateModal(false);
     setFieldErrors({});
     setSaving(true);
+    const wasEdit = !!editVendor;
     try {
       const payload: any = {
-        entityType: form.entityType, name: form.name, type: form.type || undefined,
+        entityType: form.entityType, name: form.name,
+        type: isVendorTypeOther(form.type)
+          ? toTitleCaseTR(typeCustom.trim())
+          : (form.type ? toTitleCaseTR(form.type) : undefined),
+        category: form.category,
         address: form.address || null, city: form.city || null, district: form.district || null,
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
@@ -970,8 +1500,9 @@ export default function VendorsPage() {
         contractStartDate: form.contractStartDate ? new Date(form.contractStartDate).toISOString() : null,
         contractEndDate: form.contractEndDate ? new Date(form.contractEndDate).toISOString() : null,
         contractNotes: form.contractNotes || null,
-        serviceAreas, workGroupIds: selectedWorkGroupIds,
-        contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map((c) => ({ ...c, title: c.title === '__other__' ? '' : c.title })),
+        serviceAreas, workGroupIds: selectedWorkGroupIds.filter((id) => id !== HIZMET_KOLU_OTHER_KEY),
+        serviceBranches: buildServiceBranchesPayload(),
+        contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map(mapContactToPayload),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.entityType === 'corporate') {
@@ -984,16 +1515,17 @@ export default function VendorsPage() {
         payload.name = `${form.firstName} ${form.lastName}`.trim() || form.name;
         payload.identityNo = form.identityNo || null;
       }
+      let savedVendorId: string | undefined = editVendor?.id;
       if (editVendor) {
         await axios.patch(`${API}/vendors/${editVendor.id}`, payload, { headers: authHeader() });
         // Upload pending docs for existing vendor
         if (pendingDocs.length > 0) {
           await Promise.allSettled(pendingDocs.map(async (pd) => {
-            const effectiveType = pd.type === 'Diğer' ? pd.customType.trim() : pd.type;
-            if (!effectiveType) return;
+            if (!pd.documentTypeId) return;
             const fd = new FormData();
             fd.append('file', pd.file);
-            fd.append('documentTypeName', effectiveType);
+            fd.append('documentTypeId', pd.documentTypeId);
+            if (pd.customLabel) fd.append('customLabel', pd.customLabel);
             await axios.post(`${API}/vendors/${editVendor.id}/documents`, fd, {
               headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
             });
@@ -1001,41 +1533,107 @@ export default function VendorsPage() {
         }
       } else {
         const res = await axios.post(`${API}/vendors`, payload, { headers: authHeader() });
-        const newVendorId = res.data.data?.id;
+        savedVendorId = res.data.data?.id;
         // Upload pending docs for newly created vendor
-        if (newVendorId && pendingDocs.length > 0) {
+        if (savedVendorId && pendingDocs.length > 0) {
           await Promise.allSettled(pendingDocs.map(async (pd) => {
-            const effectiveType = pd.type === 'Diğer' ? pd.customType.trim() : pd.type;
-            if (!effectiveType) return;
+            if (!pd.documentTypeId) return;
             const fd = new FormData();
             fd.append('file', pd.file);
-            fd.append('documentTypeName', effectiveType);
-            await axios.post(`${API}/vendors/${newVendorId}/documents`, fd, {
+            fd.append('documentTypeId', pd.documentTypeId);
+            if (pd.customLabel) fd.append('customLabel', pd.customLabel);
+            await axios.post(`${API}/vendors/${savedVendorId}/documents`, fd, {
               headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
             });
           }));
         }
       }
-      setShowModal(false); resetForm(); load();
-      showToast('success', editVendor ? 'Tedarikçi başarıyla güncellendi' : 'Tedarikçi başarıyla eklendi');
+
+      load();
+      loadSummary();
+
+      const successMsg = wasEdit ? 'Tedarikçi başarıyla güncellendi' : 'Tedarikçi başarıyla eklendi';
+      if (effectiveSaveMode === 'close') {
+        setShowModal(false);
+        setEditVendor(null);
+        resetForm();
+        showToast('success', successMsg);
+      } else if (effectiveSaveMode === 'new') {
+        setEditVendor(null);
+        resetForm();
+        setShowModal(true);
+        showToast('success', wasEdit ? 'Güncellendi — yeni tedarikçi formuna geçildi' : 'Eklendi — yeni tedarikçi formu açıldı');
+      } else if (effectiveSaveMode === 'detail' && savedVendorId) {
+        setShowModal(false);
+        setEditVendor(null);
+        resetForm();
+        showToast('success', `${successMsg} — detay sayfasına yönlendiriliyor`);
+        router.push(`/panel/tedarikciler/${savedVendorId}`);
+      } else {
+        setShowModal(false);
+        setEditVendor(null);
+        resetForm();
+        showToast('success', successMsg);
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen bir hata oluştu';
       showToast('error', `İşlem başarısız: ${msg}`);
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`"${name}" tedarikçisini silmek istediğinize emin misiniz?`)) return;
-    try { await axios.delete(`${API}/vendors/${id}`, { headers: authHeader() }); load(); } catch (e) { console.error(e); }
+  const requestDelete = (id: string, name: string) => {
+    setRowMenuId(null);
+    setDeleteError(null);
+    setDeleteTarget({ id, name });
+  };
+
+  const runDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await axios.delete(`${API}/vendors/${deleteTarget.id}`, { headers: authHeader() });
+      showToast('success', 'Tedarikçi silindi');
+      setDeleteTarget(null);
+      load();
+      loadSummary();
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? 'Silme işlemi başarısız';
+      setDeleteError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleToggleStatus = async (v: any) => {
-    try { await axios.patch(`${API}/vendors/${v.id}`, { status: v.status === 'active' ? 'passive' : 'active' }, { headers: authHeader() }); load(); } catch (e) { console.error(e); }
+    try { await axios.patch(`${API}/vendors/${v.id}`, { status: v.status === 'active' ? 'passive' : 'active' }, { headers: authHeader() }); load(); loadSummary(); } catch (e) { console.error(e); }
   };
 
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
-  const upCI = (i: number, f: keyof ContactInfoItem, v: string) => setContactInfos((p) => p.map((ci, j) => j === i ? { ...ci, [f]: v } : ci));
+  const upContact = (i: number, patch: Partial<ContactPerson>) => setContacts((p) => p.map((c, j) => j === i ? { ...c, ...patch } : c));
   const addTag = () => { const t = tagInput.trim(); if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] })); setTagInput(''); };
+
+  const handleIbanChange = (raw: string) => {
+    setForm((p) => ({ ...p, iban: raw }));
+    const compact = raw.replace(/\s/g, '').toUpperCase();
+    if (compact.length === 0) {
+      setIbanError(null);
+      return;
+    }
+    if (compact.length === 26) {
+      const result = validateIBAN(compact);
+      if (result.valid) {
+        setIbanError(null);
+        if (result.bankName) {
+          setForm((p) => ({ ...p, iban: raw, bankName: result.bankName ?? p.bankName }));
+        }
+      } else {
+        setIbanError(result.error ?? 'Geçersiz IBAN');
+      }
+    } else {
+      setIbanError(null);
+    }
+  };
 
   const selectedWgNames = workGroups.filter((wg) => selectedWorkGroupIds.includes(wg.id));
   const selectedWgFilterNames = workGroups.filter((wg) => selectedWorkGroupIds_filter.includes(wg.id));
@@ -1059,12 +1657,29 @@ export default function VendorsPage() {
   const statusLabel: Record<string, string> = { active: 'Aktif', passive: 'Pasif' };
 
   // Modal sections
-  const MODAL_SECTIONS = ['Temel Bilgiler', 'Yetkili Kişiler', 'İletişim', 'Konum & Hizmet', 'CRM & Banka', 'Evraklar'];
+  const MODAL_SECTIONS = [...VENDOR_FORM_SECTIONS];
 
-  const activeVendors = vendors.filter((v) => v.status === 'active').length;
-  const corporateCount = vendors.filter((v) => v.entityType === 'corporate').length;
+  const otherDocumentTypeId = documentTypes.find((dt) => isOtherDocumentTypeName(dt.name))?.id ?? null;
+  const vendorAddressLabel = formatVendorAddress(form);
+  const docOtherSelected = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
+    || isOtherDocumentTypeName(documentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
+
+  const effectiveVendorType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
+  const hizmetMode = form.type ? resolveVendorTypeHizmetMode(effectiveVendorType) : null;
+  const showHasarGrid = !!hizmetMode && vendorTypeShowsWorkGroupGrid(hizmetMode) && vendorCategoryShowsHasarKollari(form.category);
+  const showAcilGrid = !!hizmetMode && vendorTypeShowsWorkGroupGrid(hizmetMode) && vendorCategoryShowsAcilKollari(form.category);
+
+  const selectedHizmetKolCount =
+    selectedWorkGroupIds.filter((id) => id !== HIZMET_KOLU_OTHER_KEY).length
+    + serviceBranches.filter((s) => s !== HIZMET_KOLU_OTHER_KEY).length
+    + (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && customHasarKol.trim() ? 1 : 0)
+    + (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && customAcilKol.trim() ? 1 : 0)
+    + (hizmetMode && !vendorTypeShowsWorkGroupGrid(hizmetMode)
+      ? typeActivityPicks.length + (typeActivityCustom.trim() ? 1 : 0)
+      : (hizmetMode === 'taseron_grid' && typeActivityCustom.trim() ? 1 : 0));
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
@@ -1141,100 +1756,101 @@ export default function VendorsPage() {
       )}
 
       {/* ── Stats ── */}
-      <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl border border-slate-200/70 shadow-card px-5 py-3">
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
-            </svg>
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-2.5 overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-max">
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Toplam</p>
+              <p className="text-base font-bold text-slate-800 leading-tight tabular-nums">{summary.total}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide leading-none">Toplam</p>
-            <p className="text-lg font-bold text-slate-800 leading-tight tabular-nums">{vendors.length}</p>
+          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Aktif</p>
+              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{summary.activeCount}</p>
+            </div>
           </div>
-        </div>
-        <div className="w-px h-8 bg-slate-100" />
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide leading-none">Aktif</p>
-            <p className="text-lg font-bold text-emerald-700 leading-tight tabular-nums">{activeVendors}</p>
-          </div>
-        </div>
-        <div className="w-px h-8 bg-slate-100" />
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide leading-none">Kurumsal</p>
-            <p className="text-lg font-bold text-indigo-700 leading-tight tabular-nums">{corporateCount}</p>
+          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Kurumsal</p>
+              <p className="text-base font-bold text-indigo-700 leading-tight tabular-nums">{summary.corporateCount}</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Filters ── */}
-      <div className="filter-bar">
-        {/* Arama — üst satır, tam genişlik */}
-        <div className="relative mb-2.5">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">{Icon.search}</span>
-          <input
-            placeholder="İsim, Telefon, Vergi No Ara..."
-            className="input-base-sm pl-9 pr-8 w-full"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          {searchInput && (
-            <button type="button" onClick={() => setSearchInput('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-        {/* Filtreler — alt satır, grid ile yan yana */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 items-center">
-          {/* Tip */}
-          <select className="input-base-sm w-full" value={entityTypeFilter} onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}>
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-2.5 mb-5">
+        <div className="panel-filter-bar">
+          <div className="panel-filter-search-wrap">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="Ad, telefon veya vergi no"
+              className="panel-search-input"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {searchInput && (
+              <button type="button" onClick={() => setSearchInput('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <select className="panel-filter-control" value={entityTypeFilter} onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}>
             <option value="">Tüm Tipler</option>
             <option value="individual">Bireysel</option>
             <option value="corporate">Kurumsal</option>
           </select>
 
-          {/* Durum */}
-          <select className="input-base-sm w-full" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+          <select className="panel-filter-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="">Tüm Durumlar</option>
             <option value="active">Aktif</option>
             <option value="passive">Pasif</option>
           </select>
 
-          {/* Tür (vendor type) */}
           {vendorTypes.length > 0 && (
-            <select className="input-base-sm w-full" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}>
+            <select className="panel-filter-control" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}>
               <option value="">Tüm Türler</option>
               {vendorTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           )}
 
-          {/* Faaliyet Alanı (work groups) - multi-select */}
           {workGroups.length > 0 && (
-            <div className="relative" ref={wgFilterRef}>
+            <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]" ref={wgFilterRef}>
               <button
                 type="button"
                 onClick={() => setWgFilterOpen((o) => !o)}
-                className={`flex items-center gap-1.5 input-base-sm w-full ${
+                className={`flex items-center gap-1.5 panel-filter-control w-full ${
                   selectedWorkGroupIds_filter.length ? 'border-blue-400 bg-blue-50 text-blue-700' : ''
                 }`}
               >
                 {Icon.briefcase}
-                <span className="truncate">Faaliyet{selectedWorkGroupIds_filter.length > 0 && ` (${selectedWorkGroupIds_filter.length})`}</span>
+                <span className="truncate min-w-0">Faaliyet{selectedWorkGroupIds_filter.length > 0 && ` (${selectedWorkGroupIds_filter.length})`}</span>
                 <svg className={`w-3.5 h-3.5 transition-transform ml-auto flex-shrink-0 ${wgFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -1260,13 +1876,16 @@ export default function VendorsPage() {
             </div>
           )}
 
-          {/* Hizmet Bölgesi */}
-          <select className="input-base-sm w-full" value={serviceRegionFilter} onChange={(e) => { setServiceRegionFilter(e.target.value); setPage(1); }}>
+          <select className="panel-filter-control" value={serviceRegionFilter} onChange={(e) => { setServiceRegionFilter(e.target.value); setPage(1); }}>
             <option value="">Tüm Bölgeler</option>
             {STATIC_PROVINCES.map((p) => (
               <option key={p.code} value={p.name}>{p.name}</option>
             ))}
           </select>
+
+          <div className="flex-shrink-0 sm:ml-auto">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
         </div>
 
         {/* Aktif filtre chip'leri */}
@@ -1350,6 +1969,21 @@ export default function VendorsPage() {
         </div>
       )}
 
+      <DeleteConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => { if (!deleteLoading) { setDeleteTarget(null); setDeleteError(null); } }}
+        onConfirm={runDeleteConfirm}
+        deleting={deleteLoading}
+        itemName={deleteTarget?.name}
+        title="Tedarikçiyi Sil"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" tedarikçisi kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?`
+            : undefined
+        }
+        error={deleteError ?? undefined}
+      />
+
       {/* ── Table ── */}
       {loading ? (
         <div className="table-container">
@@ -1400,7 +2034,7 @@ export default function VendorsPage() {
       ) : (
         <div className="table-container">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
                   <th className="table-th w-10">
@@ -1412,14 +2046,14 @@ export default function VendorsPage() {
                       className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
                     />
                   </th>
-                  <th className="table-th">Tedarikçi</th>
-                  <th className="table-th">Tür / Tip</th>
-                  <th className="table-th">İletişim</th>
-                  <th className="table-th">Konum</th>
-                  <th className="table-th">İş Sayısı</th>
-                  <th className="table-th">Son İş</th>
-                  <th className="table-th">Sözleşme Bitiş</th>
-                  <th className="table-th text-center">Durum</th>
+                  <PanelTableTh colId="name" className="table-th">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="type" className="table-th">Tür / Tip</PanelTableTh>
+                  <PanelTableTh colId="contact" className="table-th">İletişim</PanelTableTh>
+                  <PanelTableTh colId="location" className="table-th">Konum</PanelTableTh>
+                  <PanelTableTh colId="jobCount" className="table-th">İş Sayısı</PanelTableTh>
+                  <PanelTableTh colId="lastJob" className="table-th">Son İş</PanelTableTh>
+                  <PanelTableTh colId="contractEnd" className="table-th">Sözleşme Bitiş</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
                   <th className="table-th w-32" />
                 </tr>
               </thead>
@@ -1440,58 +2074,40 @@ export default function VendorsPage() {
                       className="w-4 h-4 rounded border-slate-300 accent-indigo-600 cursor-pointer"
                     />
                   </td>
-                  <td className="table-td">
+                  <PanelTableTd colId="name" className="table-td">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${v.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}>
                         {v.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <Link href={`/panel/tedarikciler/${v.id}`} className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">{v.name}</Link>
-                        {v.type && <p className="text-xs text-slate-400 mt-0.5">{v.type}</p>}
+                        {v.type && <p className="text-xs text-slate-400 mt-0.5">{formatVendorTypeLabel(v.type)}</p>}
                       </div>
                     </div>
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="type" className="table-td">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
                       {v.entityType === 'individual' ? Icon.user : Icon.building}
                       {v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}
                     </span>
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="contact" className="table-td">
                     <div className="space-y-1">
                       {v.email && (
                         <p className="text-xs text-slate-600 flex items-center gap-1.5">{Icon.mail}{v.email}</p>
                       )}
                       {v.phone && (
-                        <div className="flex items-center gap-1.5">
-                          <a href={`tel:${v.phone}`} className="text-xs text-blue-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors">
-                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                            {v.phone}
-                          </a>
-                          {toWhatsAppLink(v.phone) && (
-                            <a
-                              href={toWhatsAppLink(v.phone)!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="WhatsApp"
-                              className="text-green-500 hover:text-green-600 transition-colors flex-shrink-0"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
+                        <PhoneContactActions phone={v.phone} variant="inline" accent="indigo" size="sm" />
                       )}
                       {!v.email && !v.phone && <span className="text-xs text-slate-300">—</span>}
                     </div>
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="location" className="table-td">
                     {v.city ? (
                       <p className="text-xs text-slate-600 flex items-center gap-1">{Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}</p>
                     ) : <span className="text-xs text-slate-300">—</span>}
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="jobCount" className="table-td">
                     {(v._count?.costEntries ?? 0) > 0 ? (
                       <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                         {v._count.costEntries}
@@ -1499,8 +2115,8 @@ export default function VendorsPage() {
                     ) : (
                       <span className="text-xs text-slate-300">—</span>
                     )}
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="lastJob" className="table-td">
                     {v.lastJobDate ? (
                       <span className="text-xs text-slate-500" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
                         {relativeTime(v.lastJobDate)}
@@ -1508,8 +2124,8 @@ export default function VendorsPage() {
                     ) : (
                       <span className="text-xs text-slate-300">—</span>
                     )}
-                  </td>
-                  <td className="table-td">
+                  </PanelTableTd>
+                  <PanelTableTd colId="contractEnd" className="table-td">
                     {v.contractEndDate ? (() => {
                       const days = contractDaysLeft(v.contractEndDate);
                       const display = isoToDisplayContract(v.contractEndDate);
@@ -1521,28 +2137,29 @@ export default function VendorsPage() {
                       }
                       return <span className="text-xs text-slate-600">{display}</span>;
                     })() : <span className="text-xs text-slate-300">—</span>}
-                  </td>
-                  <td className="table-td text-center">
+                  </PanelTableTd>
+                  <PanelTableTd colId="status" className="table-td text-center">
                     <button type="button" onClick={() => handleToggleStatus(v)}
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${v.status === 'active' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${v.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
                       {v.status === 'active' ? 'Aktif' : 'Pasif'}
                     </button>
-                  </td>
+                  </PanelTableTd>
                   <td className="table-td">
-                    <div className="flex gap-1.5 justify-end">
-                      <Link href={`/panel/tedarikciler/${v.id}`}
-                        className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg transition-colors">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Link
+                        href={`/panel/tedarikciler/${v.id}`}
+                        className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                      >
                         Detay
                       </Link>
-                      <button type="button" onClick={() => openEdit(v)}
-                        className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-lg transition-colors">
-                        Düzenle
-                      </button>
-                      <button type="button" onClick={() => handleDelete(v.id, v.name)}
-                        className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-lg transition-colors">
-                        Sil
-                      </button>
+                      <VendorRowActionsMenu
+                        isOpen={rowMenuId === v.id}
+                        onToggle={() => setRowMenuId((cur) => (cur === v.id ? null : v.id))}
+                        onClose={() => setRowMenuId(null)}
+                        onEdit={() => openEdit(v)}
+                        onDelete={() => requestDelete(v.id, v.name)}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -1575,12 +2192,11 @@ export default function VendorsPage() {
         }}
       />
 
-      {/* ── Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 py-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700">
+      {/* ── Tedarikçi Formu (Sağ Drawer) ── */}
+      <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
+        <div className="flex flex-col h-full min-h-0">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0">
               <div>
                 <h3 className="text-base font-semibold text-white">{editVendor ? 'Tedarikçi Düzenle' : 'Yeni Tedarikçi'}</h3>
                 <p className="text-indigo-200 text-xs mt-0.5">{editVendor ? editVendor.name : 'Tüm Bilgileri Eksiksiz Doldurun'}</p>
@@ -1622,7 +2238,7 @@ export default function VendorsPage() {
               ))}
             </div>
 
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto p-6">
               {/* ── Section 0: Temel Bilgiler ── */}
               {activeSection === 0 && (
                 <div>
@@ -1648,10 +2264,47 @@ export default function VendorsPage() {
                   <SectionDivider icon={Icon.briefcase} title="Tedarikçi Türü" />
                   <div className="flex gap-2 mb-3">
                     <div className="flex-1">
-                      <select className={inp} value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
+                      <select
+                        className={inp}
+                        value={form.type}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          const prevEffective = isVendorTypeOther(form.type)
+                            ? typeCustom.trim() || form.type
+                            : form.type;
+                          const nextEffective = isVendorTypeOther(next) ? typeCustom.trim() || next : next;
+                          const prevMode = prevEffective ? resolveVendorTypeHizmetMode(prevEffective) : null;
+                          const nextMode = nextEffective ? resolveVendorTypeHizmetMode(nextEffective) : null;
+                          setForm((p) => ({ ...p, type: next }));
+                          if (!isVendorTypeOther(next)) setTypeCustom('');
+                          if (nextMode !== prevMode) {
+                            setSelectedWorkGroupIds([]);
+                            setCustomHasarKol('');
+                            setServiceBranches([]);
+                            setCustomAcilKol('');
+                            setTypeActivityPicks([]);
+                            setTypeActivityCustom('');
+                            setTypeActivityOtherOpen(false);
+                          }
+                          if (next) setHizmetKollariOpen(true);
+                        }}
+                      >
                         <option value="">Tür Seçin...</option>
                         {vendorTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
+                      {isVendorTypeOther(form.type) && (
+                        <div className="mt-2">
+                          <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                            Tür açıklaması <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            className={inp}
+                            placeholder="Tür açıklamasını yazın..."
+                            value={typeCustom}
+                            onChange={(e) => setTypeCustom(e.target.value)}
+                          />
+                        </div>
+                      )}
                     </div>
                     <button type="button" onClick={() => setShowAddType(!showAddType)}
                       className="flex items-center gap-1 text-xs bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-100 whitespace-nowrap">
@@ -1669,6 +2322,158 @@ export default function VendorsPage() {
                     </div>
                   )}
 
+                  {form.type && hizmetMode && (
+                  <div className="mb-6 rounded-xl border border-slate-200 bg-white overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setHizmetKollariOpen((o) => !o)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50/80 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                        <span className="text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
+                        <span className="text-sm font-semibold text-slate-800">Tedarikçi Hizmet Kolları</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          {vendorTypeModeBadge(hizmetMode)}
+                        </span>
+                        {selectedHizmetKolCount > 0 && (
+                          <span className="text-[11px] font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                            {selectedHizmetKolCount} seçili
+                          </span>
+                        )}
+                      </div>
+                      <svg
+                        className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${hizmetKollariOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {hizmetKollariOpen && (
+                      <div key={hizmetMode} className="px-4 pb-4 border-t border-slate-100">
+                            <p className="text-xs text-slate-500 mt-3 mb-3">
+                              {vendorTypeSectionHint(hizmetMode, effectiveVendorType)}
+                            </p>
+
+                            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2.5">
+                              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                                {vendorTypeActivityLabel(hizmetMode, effectiveVendorType)}
+                                {hizmetMode !== 'taseron_grid' && <span className="text-red-400"> *</span>}
+                                {hizmetMode === 'taseron_grid' && (
+                                  <span className="text-slate-400 font-normal"> (isteğe bağlı)</span>
+                                )}
+                              </label>
+
+                              {vendorTypeQuickPicks(hizmetMode).length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-2">
+                                  {vendorTypeQuickPicks(hizmetMode).map((pick) => (
+                                    <button
+                                      key={pick}
+                                      type="button"
+                                      onClick={() => toggleTypeActivityPick(pick)}
+                                      className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                                        typeActivityPicks.includes(pick)
+                                          ? 'border-indigo-400 bg-white text-indigo-700 font-medium'
+                                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                      }`}
+                                    >
+                                      {pick}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => setTypeActivityOtherOpen((o) => !o)}
+                                    className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                                      typeActivityOtherOpen
+                                        ? 'border-indigo-400 bg-white text-indigo-700 font-medium'
+                                        : 'border-dashed border-slate-200 text-slate-500 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    Diğer
+                                  </button>
+                                </div>
+                              )}
+
+                              {(hizmetMode === 'taseron_grid' || typeActivityOtherOpen || vendorTypeQuickPicks(hizmetMode).length === 0) && (
+                                <input
+                                  type="text"
+                                  className={`${inp} text-xs`}
+                                  placeholder={vendorTypeActivityPlaceholder(effectiveVendorType)}
+                                  value={typeActivityCustom}
+                                  onChange={(e) => setTypeActivityCustom(e.target.value)}
+                                  onBlur={(e) => {
+                                    const v = toTitleCaseTR(e.target.value.trim());
+                                    if (v) setTypeActivityCustom(v);
+                                  }}
+                                />
+                              )}
+
+                              {typeActivityPicks.length > 0 && (
+                                <p className="text-[11px] text-indigo-600 mt-2">
+                                  {typeActivityPicks.length} grup seçildi
+                                </p>
+                              )}
+                            </div>
+
+                            {showHasarGrid && (
+                              <HizmetKoluGrid
+                                title="Hasar Onarım — Tedarikçi Hizmet Kolları"
+                                items={workGroups.map((wg) => ({ key: wg.id, label: wg.name }))}
+                                selectedKeys={selectedWorkGroupIds}
+                                onToggle={toggleHasarWorkGroup}
+                                onSelectAll={(all) => setSelectedWorkGroupIds(all ? workGroups.map((wg) => wg.id) : [])}
+                                emptyMessage="Hasar hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Hasar sekmesinden tanımlayın."
+                                accent="blue"
+                                customOther={customHasarKol}
+                                onCustomOtherChange={setCustomHasarKol}
+                              />
+                            )}
+                            {showAcilGrid && (
+                              <HizmetKoluGrid
+                                title="Acil Yardım — Tedarikçi Hizmet Kolları"
+                                items={acilServiceBranches.map((name) => ({ key: name, label: name }))}
+                                selectedKeys={serviceBranches}
+                                onToggle={toggleAcilServiceBranch}
+                                onSelectAll={(all) => setServiceBranches(all ? [...acilServiceBranches] : [])}
+                                loading={branchesLoading}
+                                emptyMessage="Acil hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Acil sekmesinden ekleyin."
+                                accent="orange"
+                                customOther={customAcilKol}
+                                onCustomOtherChange={setCustomAcilKol}
+                              />
+                            )}
+
+                            {!vendorTypeShowsWorkGroupGrid(hizmetMode) && (
+                              <p className="text-[11px] text-slate-400 mt-1">
+                                Bu tür için usta/iş kolu listesi gösterilmez.
+                              </p>
+                            )}
+                      </div>
+                    )}
+                  </div>
+                  )}
+
+                  <SectionDivider icon={Icon.briefcase} title="Hizmet Kategorisi" />
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                    {VENDOR_CATEGORIES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleCategoryChange(value)}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-medium border-2 transition-all text-center ${
+                          form.category === value
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Kurumsal */}
                   {form.entityType === 'corporate' && (
                     <>
@@ -1679,13 +2484,14 @@ export default function VendorsPage() {
                             <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, name: v })); }} />
                           </FormField>
                         </div>
+                        <div className="col-span-2">
                         <FormField label="Vergi No">
                           <div className="flex gap-2">
-                            <input className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                            <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                               placeholder="10 Haneli VKN" maxLength={10} value={form.taxNumber}
                               onChange={(e) => handleNumericChange('taxNumber', e.target.value)} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
-                              className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
+                              className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap h-[38px]">
                               {gibLoading
                                 ? <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                 : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -1696,6 +2502,7 @@ export default function VendorsPage() {
                           {numericErrors.taxNumber && <p className="text-xs text-red-500 mt-1.5">⚠ {numericErrors.taxNumber}</p>}
                           {!numericErrors.taxNumber && gibError && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {gibError}</p>}
                         </FormField>
+                        </div>
                         <FormField label="Vergi Dairesi">
                           <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} />
                         </FormField>
@@ -1793,7 +2600,7 @@ export default function VendorsPage() {
                             {contacts.map((c, idx) => (
                               <div key={idx} className="relative bg-slate-50 rounded-xl border border-slate-100 p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                  <span className="text-xs font-semibold text-slate-500">İlgili Kişi #{idx + 1}</span>
+                                  <span className="text-xs font-semibold text-slate-500">{contactDisplayLabel(c, idx, 'individual')}</span>
                                   {contacts.length > 1 && (
                                     <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))}
                                       className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
@@ -1856,11 +2663,27 @@ export default function VendorsPage() {
                                       />
                                     )}
                                   </FormField>
+                                  <div className="col-span-2">
                                   <FormField label="Telefon">
-                                    <PhoneInput value={c.phone} onChange={(v) => upC(idx, 'phone', v)} />
+                                    <ContactPhoneField
+                                      phone={c.phone}
+                                      phoneType={c.phoneType}
+                                      extensionNo={c.extensionNo}
+                                      onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                      onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                      onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                      onPhoneBlur={idx === 0 ? (v) => {
+                                        const digits = v.replace(/\D/g, '');
+                                        if (digits.length >= 10) handlePhoneDuplicateCheck(digits);
+                                      } : undefined}
+                                    />
                                   </FormField>
+                                  </div>
                                   <FormField label="E-posta">
-                                    <input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} />
+                                    <input type="email" className={inp} placeholder="ornek@mail.com" value={c.email}
+                                      onChange={(e) => upC(idx, 'email', e.target.value)}
+                                      onBlur={() => { if (idx === 0 && c.email.trim()) handleEmailDuplicateCheck(c.email.trim()); }}
+                                    />
                                   </FormField>
                                   <FormField label="Doğum Tarihi">
                                     <input type="text" inputMode="numeric" className={inp} placeholder="GG.AA.YYYY" maxLength={10}
@@ -1889,7 +2712,7 @@ export default function VendorsPage() {
                         {contacts.map((c, idx) => (
                           <div key={idx} className="relative bg-slate-50 rounded-xl border border-slate-100 p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-semibold text-slate-500">Yetkili #{idx + 1}</span>
+                              <span className="text-xs font-semibold text-slate-500">{contactDisplayLabel(c, idx, 'corporate')}</span>
                               {contacts.length > 1 && (
                                 <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))}
                                   className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
@@ -1907,7 +2730,8 @@ export default function VendorsPage() {
                                   className={inp}
                                   value={c.title === '' ? '' : (relationshipTypes.includes(c.title) ? c.title : '__other__')}
                                   onChange={(e) => {
-                                    if (e.target.value === '__other__') upC(idx, 'title', '__other__');
+                                    if (e.target.value === '__add_new__') { setAddingNewRelType(true); setNewRelTypeValue(''); }
+                                    else if (e.target.value === '__other__') upC(idx, 'title', '__other__');
                                     else upC(idx, 'title', e.target.value);
                                   }}
                                 >
@@ -1916,8 +2740,33 @@ export default function VendorsPage() {
                                     <option key={rt} value={rt}>{rt}</option>
                                   ))}
                                   <option value="__other__">Diğer</option>
+                                  <option value="__add_new__">+ Yeni Tür Ekle</option>
                                 </select>
-                                {(c.title === '__other__' || (!relationshipTypes.includes(c.title) && c.title !== '')) && (
+                                {addingNewRelType && (
+                                  <div className="flex gap-1.5 mt-1.5">
+                                    <input
+                                      autoFocus
+                                      className={`${inp} flex-1`}
+                                      placeholder="Yeni tür adı..."
+                                      value={newRelTypeValue}
+                                      onChange={(e) => setNewRelTypeValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') { e.preventDefault(); handleAddNewRelType((label) => upC(idx, 'title', label)); }
+                                        if (e.key === 'Escape') { setAddingNewRelType(false); setNewRelTypeValue(''); }
+                                      }}
+                                    />
+                                    <button type="button" disabled={savingRelType || !newRelTypeValue.trim()}
+                                      onClick={() => handleAddNewRelType((label) => upC(idx, 'title', label))}
+                                      className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                                      {savingRelType ? '...' : 'Ekle'}
+                                    </button>
+                                    <button type="button" onClick={() => { setAddingNewRelType(false); setNewRelTypeValue(''); }}
+                                      className="px-2 py-1.5 border border-slate-200 text-slate-500 text-xs rounded-lg hover:bg-slate-50 flex-shrink-0">
+                                      İptal
+                                    </button>
+                                  </div>
+                                )}
+                                {!addingNewRelType && (c.title === '__other__' || (!relationshipTypes.includes(c.title) && c.title !== '')) && (
                                   <input
                                     className={`${inp} mt-1.5`}
                                     placeholder="Görevi / Ünvanı girin..."
@@ -1926,11 +2775,27 @@ export default function VendorsPage() {
                                   />
                                 )}
                               </FormField>
+                              <div className="col-span-2">
                               <FormField label="Telefon">
-                                <PhoneInput value={c.phone} onChange={(v) => upC(idx, 'phone', v)} />
+                                <ContactPhoneField
+                                  phone={c.phone}
+                                  phoneType={c.phoneType}
+                                  extensionNo={c.extensionNo}
+                                  onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                  onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                  onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                  onPhoneBlur={idx === 0 ? (v) => {
+                                    const digits = v.replace(/\D/g, '');
+                                    if (digits.length >= 10) handlePhoneDuplicateCheck(digits);
+                                  } : undefined}
+                                />
                               </FormField>
+                              </div>
                               <FormField label="E-posta">
-                                <input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} />
+                                <input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email}
+                                  onChange={(e) => upC(idx, 'email', e.target.value)}
+                                  onBlur={() => { if (idx === 0 && c.email.trim()) handleEmailDuplicateCheck(c.email.trim()); }}
+                                />
                               </FormField>
                               <FormField label="Doğum Tarihi">
                                 <input type="text" inputMode="numeric" className={inp} placeholder="GG.AA.YYYY" maxLength={10}
@@ -1954,66 +2819,10 @@ export default function VendorsPage() {
                 </div>
               )}
 
-              {/* ── Section 2: İletişim ── */}
+              {/* ── Section 2: Adres & Hizmet ── */}
               {activeSection === 2 && (
                 <div>
-                  <SectionDivider icon={Icon.phone} title="Çoklu İletişim Kanalları" />
-                  <div className="space-y-2.5 mb-4">
-                    {contactInfos.map((ci, idx) => (
-                      <div key={idx} className="flex flex-col gap-1">
-                        <div className="flex gap-2 items-center bg-slate-50 rounded-xl p-3 border border-slate-100">
-                          <select className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors w-32 flex-shrink-0"
-                            value={ci.type} onChange={(e) => upCI(idx, 'type', e.target.value)}>
-                            <option value="phone">📞 Telefon</option>
-                            <option value="email">✉ E-posta</option>
-                            <option value="fax">🖷 Faks</option>
-                            <option value="whatsapp">💬 WhatsApp</option>
-                          </select>
-                          {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
-                            <PhoneInput
-                              className="flex-1"
-                              value={ci.value}
-                              onChange={(v) => { upCI(idx, 'value', v); setPhoneWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; }); }}
-                              onBlur={(v) => handlePhoneDuplicateCheck(v)}
-                            />
-                          ) : (
-                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors"
-                              placeholder={ci.type === 'email' ? 'ornek@sirket.com' : 'Faks Numarası'}
-                              value={ci.value}
-                              onChange={(e) => { upCI(idx, 'value', e.target.value); if (ci.type === 'email') { setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); } }}
-                              onBlur={() => { if (ci.type === 'email') handleEmailDuplicateCheck(ci.value); }}
-                            />
-                          )}
-                          <select className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors w-28 flex-shrink-0"
-                            value={ci.label} onChange={(e) => upCI(idx, 'label', e.target.value)}>
-                            <option value="general">Genel</option>
-                            <option value="work">İş</option>
-                            <option value="personal">Kişisel</option>
-                          </select>
-                          {contactInfos.length > 1 && (
-                            <button type="button" onClick={() => setContactInfos((p) => p.filter((_, i) => i !== idx))}
-                              className="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0">{Icon.x}</button>
-                          )}
-                        </div>
-                        {(ci.type === 'phone' || ci.type === 'whatsapp') && phoneWarn && idx === 0 && (
-                          <p className="text-xs text-amber-600 px-1 flex items-center gap-1">⚠ {phoneWarn}</p>
-                        )}
-                        {ci.type === 'email' && emailWarn && (
-                          <p className="text-xs text-amber-600 px-1 flex items-center gap-1">⚠ {emailWarn}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" onClick={() => setContactInfos((p) => [...p, emptyContactInfo()])}
-                    className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium py-2 px-3 rounded-lg hover:bg-indigo-50 transition-colors">
-                    {Icon.plus} İletişim Kanalı Ekle
-                  </button>
-                </div>
-              )}
-
-              {/* ── Section 3: Konum & Hizmet ── */}
-              {activeSection === 3 && (
-                <div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
                   <SectionDivider icon={Icon.mapPin} title="Adres Bilgileri" />
                   <div className="grid grid-cols-2 gap-4 mb-2">
                     <FormField label="İl">
@@ -2024,7 +2833,7 @@ export default function VendorsPage() {
                         }}>
                         <option value="">İl seçin...</option>
                         {STATIC_PROVINCES.map((p) => (
-                          <option key={p.code} value={p.code}>{p.plateCode} - {p.name}</option>
+                          <option key={p.code} value={p.code}>{p.name}</option>
                         ))}
                       </select>
                     </FormField>
@@ -2068,14 +2877,14 @@ export default function VendorsPage() {
                           onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
                       </FormField>
                     </div>
-                    {/* Geocoding buttons */}
-                    {(form.city || form.district || form.neighborhood || form.streetName) && (
-                      <div className="col-span-2 flex flex-wrap gap-2">
+                    {/* Konum araçları */}
+                    <div className="col-span-2 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          disabled={geocoding}
+                          disabled={geocoding || !vendorAddressLabel}
                           onClick={() => handleGeocodeAddress(form.city, form.district, form.neighborhood, form.streetName, form.buildingNo)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                          title={!vendorAddressLabel ? 'Önce adres bilgisi girin' : undefined}
                         >
                           {geocoding ? (
                             <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
@@ -2101,6 +2910,13 @@ export default function VendorsPage() {
                           {locationCoords ? 'Konum Seçildi' : 'Haritadan Konum Seç'}
                         </button>
                       </div>
+                    {!vendorAddressLabel && (
+                      <p className="col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun.</p>
+                    )}
+                    {vendorAddressLabel && (
+                      <div className="col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
+                        <span className="font-medium text-slate-500">Adres özeti: </span>{vendorAddressLabel}
+                      </div>
                     )}
                     {geocodeMsg && (
                       <div className={`col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
@@ -2112,6 +2928,7 @@ export default function VendorsPage() {
                         <LocationPreview
                           lat={locationCoords.lat}
                           lng={locationCoords.lng}
+                          addressLabel={vendorAddressLabel || undefined}
                           onEdit={() => setShowLocationPicker(true)}
                           onClear={() => { setLocationCoords(null); setGeocodeMsg(null); }}
                           accentColor="indigo"
@@ -2127,67 +2944,21 @@ export default function VendorsPage() {
                     onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
                     onClose={() => setShowLocationPicker(false)}
                   />
+                  </div>
 
-                  <SectionDivider icon={Icon.briefcase} title="Faaliyet Alanları (İş Grupları)" />
-                  <div ref={wgRef} className="relative mb-4">
-                    <div className={`w-full border rounded-lg transition-all ${wgOpen ? 'border-indigo-400 ring-2 ring-indigo-500/30' : 'border-slate-200'}`}>
-                      <div className="flex items-center px-3 py-2 gap-2">
-                        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                          type="text"
-                          className="flex-1 text-sm focus:outline-none bg-transparent placeholder-slate-400"
-                          placeholder="Faaliyet alanı ara veya seç..."
-                          value={wgSearch}
-                          onChange={(e) => { setWgSearch(e.target.value); setWgOpen(true); }}
-                          onFocus={() => setWgOpen(true)}
-                        />
-                        {selectedWgNames.length > 0 && (
-                          <span className="text-xs bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 font-medium flex-shrink-0">
-                            {selectedWgNames.length} seçili
-                          </span>
-                        )}
-                        <button type="button" onClick={() => setWgOpen((o) => !o)} className="text-slate-400 hover:text-slate-600">
-                          <span className={`block transition-transform ${wgOpen ? 'rotate-180' : ''}`}>{Icon.chevronDown}</span>
-                        </button>
+                  {(selectedWgNames.length > 0 || serviceBranches.length > 0) && (
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 mb-4">
+                      <p className="text-xs font-medium text-slate-600 mb-2">Seçili hizmet kolları (Temel Bilgiler)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedWgNames.map((wg) => (
+                          <span key={wg.id} className="text-xs bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 border border-blue-100">{wg.name}</span>
+                        ))}
+                        {serviceBranches.map((b) => (
+                          <span key={b} className="text-xs bg-orange-50 text-orange-700 rounded-full px-2.5 py-1 border border-orange-100">{b}</span>
+                        ))}
                       </div>
                     </div>
-                    {wgOpen && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 z-30 max-h-52 overflow-y-auto py-1">
-                        {workGroups.filter((wg) => wgSearch ? wg.name.toLowerCase().includes(wgSearch.toLowerCase()) : true).length === 0 ? (
-                          <p className="text-xs text-slate-400 px-4 py-3">
-                            {wgSearch ? `"${wgSearch}" için sonuç bulunamadı.` : 'İş Grubu Bulunamadı.'}
-                          </p>
-                        ) : workGroups
-                            .filter((wg) => wgSearch ? wg.name.toLowerCase().includes(wgSearch.toLowerCase()) : true)
-                            .map((wg) => (
-                          <label key={wg.id} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors">
-                            <input type="checkbox" checked={selectedWorkGroupIds.includes(wg.id)} onChange={() => { toggleWg(wg.id); setWgSearch(''); }} className="rounded accent-indigo-600" />
-                            <span>
-                              {wgSearch ? (
-                                wg.name.split(new RegExp(`(${wgSearch})`, 'gi')).map((part, i) =>
-                                  part.toLowerCase() === wgSearch.toLowerCase()
-                                    ? <mark key={i} className="bg-indigo-100 text-indigo-800 rounded px-0.5">{part}</mark>
-                                    : part
-                                )
-                              ) : wg.name}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    {selectedWgNames.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {selectedWgNames.map((wg) => (
-                          <span key={wg.id} className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 rounded-full px-2.5 py-1 border border-indigo-100">
-                            {wg.name}
-                            <button type="button" onClick={() => toggleWg(wg.id)} className="text-indigo-300 hover:text-red-500">{Icon.x}</button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   <SectionDivider icon={Icon.mapPin} title="Hizmet Bölgeleri" />
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
@@ -2200,7 +2971,7 @@ export default function VendorsPage() {
                           else { setSelectedProvince(null); setServiceDistricts([]); }
                         }}>
                         <option value="">İl seçin...</option>
-                        {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
+                        {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                       {selectedProvince && (
                         <button type="button" onClick={() => addWholeProvince(selectedProvince)}
@@ -2244,10 +3015,14 @@ export default function VendorsPage() {
                 </div>
               )}
 
-              {/* ── Section 4: CRM & Banka ── */}
-              {activeSection === 4 && (
-                <div>
-                  <SectionDivider icon={Icon.tag} title="CRM Bilgileri" />
+              {/* ── Section 3: İlişki Özeti & Finans ── */}
+              {activeSection === 3 && (
+                <div className="space-y-6">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <SectionDivider icon={Icon.tag} title={VENDOR_RELATION_SECTION_TITLE} />
+                  <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed">
+                    {VENDOR_RELATION_SECTION_HINT}
+                  </p>
                   <div className="grid grid-cols-2 gap-4 mb-2">
                     <FormField label="Referans">
                       <input className={inp} placeholder="Bu Tedarikçiyi Kim Önerdi?" value={form.referral}
@@ -2274,31 +3049,42 @@ export default function VendorsPage() {
                       ))}
                     </div>
                   )}
-
-                  <SectionDivider icon={Icon.bank} title="Banka Bilgileri" />
-                  <div className="grid grid-cols-2 gap-4 mb-2">
-                    <FormField label="IBAN">
-                      <input className={inp} placeholder="TR00 0000 0000 0000 0000 0000 00" value={form.iban} onChange={(e) => setForm((p) => ({ ...p, iban: e.target.value }))} />
-                    </FormField>
-                    <FormField label="Banka Adı">
-                      <input className={inp} placeholder="Opsiyonel" value={form.bankName} onChange={(e) => setForm((p) => ({ ...p, bankName: e.target.value }))} />
-                    </FormField>
+                  <FormField label="Kayıt Notu">
+                    <textarea rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      placeholder="İlk kayıt sırasında kısa not (detaylı görüşme geçmişi CRM modülünde tutulur)..."
+                      value={form.notes}
+                      onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+                  </FormField>
                   </div>
 
-                  <div className="mt-5">
-                    <FormField label="Notlar">
-                      <textarea rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        placeholder="Tedarikçi Hakkında Ek Notlar..." value={form.notes}
-                        onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
+                  <SectionDivider icon={Icon.bank} title="Finans & Banka" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="IBAN" error={ibanError ?? undefined}>
+                      <input
+                        className={ibanError ? inpError : inp}
+                        placeholder="TR00 0000 0000 0000 0000 0000 00"
+                        value={form.iban}
+                        onChange={(e) => handleIbanChange(e.target.value)}
+                      />
+                      {form.bankName && !ibanError && (
+                        <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">✓ {form.bankName}</p>
+                      )}
                     </FormField>
+                    <FormField label="Banka Adı">
+                      <input className={inp} placeholder="IBAN ile otomatik dolar" value={form.bankName}
+                        onChange={(e) => setForm((p) => ({ ...p, bankName: e.target.value }))} />
+                    </FormField>
+                  </div>
                   </div>
                 </div>
               )}
 
-              {/* ── Section 5: Evraklar ── */}
-              {activeSection === 5 && (
+              {/* ── Section 4: Evraklar ── */}
+              {activeSection === 4 && (
                 <div>
-                  {/* Sözleşme Bilgileri */}
+                  {/* Sözleşme — kategoriye göre */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
                   <SectionDivider icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2357,6 +3143,7 @@ export default function VendorsPage() {
                       />
                     </FormField>
                   </div>
+                  </div>
 
                   {/* Evrak Yükleme */}
                   <SectionDivider icon={
@@ -2369,19 +3156,37 @@ export default function VendorsPage() {
                       <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
                       <select
                         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        value={docSelectedType}
-                        onChange={(e) => { setDocSelectedType(e.target.value); setDocCustomType(''); }}
+                        value={docSelectedTypeId}
+                        onChange={(e) => {
+                          setDocSelectedTypeId(e.target.value);
+                          setDocCustomType('');
+                        }}
                       >
                         <option value="">Seçin...</option>
-                        {EVRAK_TURLERI_MODAL.map((t) => <option key={t} value={t}>{t}</option>)}
+                        {documentTypes.map((dt) => (
+                          <option key={dt.id} value={dt.id}>
+                            {dt.name}
+                          </option>
+                        ))}
+                        {!documentTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
+                          <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+                        )}
                       </select>
-                      {docSelectedType === 'Diğer' && (
+                      {docOtherSelected && (
                         <input
                           className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                           placeholder="Evrak türünü yazın..."
                           value={docCustomType}
                           onChange={(e) => setDocCustomType(e.target.value)}
                         />
+                      )}
+                      {documentTypes.length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1.5">
+                          Henüz evrak türü tanımlı değil.{' '}
+                          <Link href="/panel/ayarlar/evrak-turleri" className="underline font-medium">
+                            Ayarlar → Evrak Türleri
+                          </Link>
+                        </p>
                       )}
                     </div>
                     <div>
@@ -2392,17 +3197,26 @@ export default function VendorsPage() {
                         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (!file) return;
-                          const effectiveType = docSelectedType === 'Diğer' ? docCustomType.trim() : docSelectedType;
-                          if (!effectiveType) return;
-                          const pd: PendingDoc = {
+                          if (!file || !docSelectedTypeId) return;
+                          const isManualOther = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
+                            || isOtherDocumentTypeName(documentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
+                          const customLabel = isManualOther ? docCustomType.trim() : '';
+                          if (isManualOther && !customLabel) return;
+                          const typeId = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
+                            ? otherDocumentTypeId
+                            : docSelectedTypeId;
+                          if (!typeId) return;
+                          const dt = documentTypes.find((d) => d.id === typeId);
+                          if (!dt) return;
+                          const displayName = isManualOther ? customLabel : dt.name;
+                          setPendingDocs((p) => [...p, {
                             id: `${Date.now()}-${Math.random()}`,
                             file,
-                            type: docSelectedType,
-                            customType: docCustomType,
-                          };
-                          setPendingDocs((p) => [...p, pd]);
-                          setDocSelectedType('');
+                            documentTypeId: typeId,
+                            documentTypeName: displayName,
+                            customLabel: isManualOther ? customLabel : undefined,
+                          }]);
+                          setDocSelectedTypeId('');
                           setDocCustomType('');
                           if (e.target) e.target.value = '';
                         }}
@@ -2410,10 +3224,17 @@ export default function VendorsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const effectiveType = docSelectedType === 'Diğer' ? docCustomType.trim() : docSelectedType;
-                          if (effectiveType) docFileInputRef.current?.click();
+                          if (!docSelectedTypeId) return;
+                          if (docOtherSelected) {
+                            if (docCustomType.trim() && otherDocumentTypeId) docFileInputRef.current?.click();
+                            return;
+                          }
+                          docFileInputRef.current?.click();
                         }}
-                        disabled={!docSelectedType || (docSelectedType === 'Diğer' && !docCustomType.trim())}
+                        disabled={
+                          !docSelectedTypeId
+                          || (docOtherSelected && (!docCustomType.trim() || !otherDocumentTypeId))
+                        }
                         className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium"
                       >
                         📎 Dosya Seç
@@ -2425,7 +3246,6 @@ export default function VendorsPage() {
                   {pendingDocs.length > 0 && (
                     <div className="space-y-2">
                       {pendingDocs.map((pd) => {
-                        const effectiveType = pd.type === 'Diğer' ? pd.customType.trim() : pd.type;
                         const ext = pd.file.name.split('.').pop()?.toLowerCase() ?? '';
                         return (
                           <div key={pd.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
@@ -2436,7 +3256,7 @@ export default function VendorsPage() {
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-slate-800 truncate">{pd.file.name}</p>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                  <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs mr-1">{effectiveType}</span>
+                                  <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs mr-1">{pd.documentTypeName}</span>
                                   {fmtDocSize(pd.file.size)}
                                 </p>
                               </div>
@@ -2460,15 +3280,15 @@ export default function VendorsPage() {
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+            {/* Panel Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
               <div className="flex gap-1.5">
                 {MODAL_SECTIONS.map((_, i) => (
                   <button key={i} type="button" onClick={() => setActiveSection(i)}
                     className={`w-2 h-2 rounded-full transition-all ${activeSection === i ? 'bg-indigo-600 w-4' : 'bg-slate-300 hover:bg-slate-400'}`} />
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 {activeSection > 0 && (
                   <button type="button" onClick={() => setActiveSection((s) => s - 1)}
                     className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
@@ -2482,10 +3302,62 @@ export default function VendorsPage() {
                     Sonraki →
                   </button>
                 ) : (
-                  <button type="button" onClick={handleSave} disabled={saving}
-                    className="px-6 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">
-                    {saving ? 'Kaydediliyor...' : editVendor ? 'Güncelle' : 'Tedarikçi Ekle'}
-                  </button>
+                  <div ref={saveModeDropdownRef} className="relative flex items-stretch">
+                    <button
+                      type="button"
+                      onClick={() => handleSave()}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-5 py-2 text-sm bg-indigo-600 text-white rounded-l-xl hover:bg-indigo-700 disabled:opacity-50 font-medium border-r border-indigo-500 transition-colors"
+                    >
+                      {saving && (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                      {saving ? 'Kaydediliyor...' : saveMode === 'close' ? 'Kaydet ve Kapat' : saveMode === 'new' ? 'Kaydet ve Yeni Ekle' : 'Kaydet ve Detaya Git'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => setSaveModeDropdownOpen((o) => !o)}
+                      className="flex items-center justify-center px-2.5 bg-indigo-600 text-white rounded-r-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      aria-label="Kaydetme seçenekleri"
+                    >
+                      <svg className={`w-3.5 h-3.5 transition-transform duration-150 ${saveModeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {saveModeDropdownOpen && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[220px] z-50">
+                        {([
+                          { mode: 'close' as const, label: 'Kaydet ve Kapat', desc: 'Listeye geri dön', icon: '✓' },
+                          { mode: 'new' as const, label: 'Kaydet ve Yeni Ekle', desc: 'Formu sıfırla, devam et', icon: '+' },
+                          { mode: 'detail' as const, label: 'Kaydet ve Detaya Git', desc: 'Tedarikçi detay sayfası', icon: '→' },
+                        ] as const).map(({ mode, label, desc, icon }) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => {
+                              setSaveMode(mode);
+                              localStorage.setItem('vendorSaveMode', mode);
+                              setSaveModeDropdownOpen(false);
+                              handleSave(mode);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-indigo-50 transition-colors ${saveMode === mode ? 'bg-indigo-50' : ''}`}
+                          >
+                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${saveMode === mode ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                              {saveMode === mode ? '✓' : icon}
+                            </span>
+                            <div>
+                              <p className={`text-xs font-medium ${saveMode === mode ? 'text-indigo-700' : 'text-slate-700'}`}>{label}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <button type="button" onClick={() => setShowModal(false)}
                   className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
@@ -2493,9 +3365,8 @@ export default function VendorsPage() {
                 </button>
               </div>
             </div>
-          </div>
         </div>
-      )}
+      </SlidePanel>
 
       {/* ── Duplicate Onay Modalı ── */}
       {showDuplicateModal && (
@@ -2517,7 +3388,7 @@ export default function VendorsPage() {
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
                 İptal
               </button>
-              <button type="button" onClick={() => doSave()}
+              <button type="button" onClick={() => doSave(saveMode)}
                 className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
                 Yine de Kaydet
               </button>
@@ -2526,5 +3397,6 @@ export default function VendorsPage() {
         </div>
       )}
     </div>
+    </TableColumnsProvider>
   );
 }

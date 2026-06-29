@@ -7,6 +7,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import { applyFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 
 /** Maliyet alanları - FIELD_STAFF kullanıcılarından gizlenir */
 const CLAIM_FILE_COST_FIELDS = [
@@ -70,14 +71,22 @@ export class CostMaskingInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       map((response) => {
-        if (!user || !isFieldStaff(user?.roleCode)) {
-          return response;
+        if (!user) return response;
+
+        let payload = response;
+        if (payload && typeof payload === 'object' && 'data' in payload) {
+          let data = payload.data;
+          if (isFieldStaff(user?.roleCode)) {
+            data = stripCostFields(data);
+          }
+          data = applyFinancialVisibility(data, user);
+          return { ...payload, data };
         }
-        // Sadece data alanını filtrele; meta ve success'e dokunma
-        if (response && typeof response === 'object' && 'data' in response) {
-          return { ...response, data: stripCostFields(response.data) };
+
+        if (isFieldStaff(user?.roleCode)) {
+          payload = stripCostFields(payload);
         }
-        return stripCostFields(response);
+        return applyFinancialVisibility(payload, user);
       }),
     );
   }

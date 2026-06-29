@@ -10,26 +10,164 @@ import ProcessTimeline from '@/components/timeline/ProcessTimeline';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import SpeechToText from '@/components/SpeechToText';
+import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
 function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+function normalizeRoleCode(roleCode?: string | null): string | null {
+  if (!roleCode) return null;
+  return String(roleCode).trim().toLowerCase().replace(/\s+/g, '_');
+}
+
 function getCurrentUserRole(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem('currentUser');
-    if (raw) {
+    for (const key of ['user', 'currentUser']) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
       const u = JSON.parse(raw);
-      return u?.roleCode ?? u?.role?.code ?? null;
+      const roleCode = normalizeRoleCode(u?.role?.code ?? u?.roleCode);
+      if (roleCode) return roleCode;
     }
-    // JWT payload fallback
-    const token = getToken();
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload?.roleCode ?? null;
+    return null;
   } catch { return null; }
 }
+
+type FinVisRoleKey = 'manager' | 'finance' | 'office_staff' | 'field_staff';
+type FinVisUserOverride = 'allow' | 'deny';
+type FinVisRoleMode = 'all' | 'none' | 'custom';
+type FinVisConfig = {
+  roles: Record<FinVisRoleKey, boolean>;
+  userOverrides: Record<string, FinVisUserOverride>;
+  roleModes?: Partial<Record<FinVisRoleKey, FinVisRoleMode>>;
+};
+
+const FIN_VIS_SELECT_CLASS = 'text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white min-w-0 max-w-full flex-1';
+
+function getAssigneeDropdownValue(
+  roleKey: 'office_staff' | 'field_staff',
+  config: FinVisConfig,
+  assignees: { id: string }[],
+): string {
+  if (assignees.length === 0) return 'all';
+  const mode = inferAssigneeRoleMode(roleKey, config, assignees);
+  if (mode === 'all') return 'all';
+  if (mode === 'none') return 'none';
+
+  const allowed = assignees.filter((a) => config.userOverrides[a.id] === 'allow');
+  const denied = assignees.filter((a) => config.userOverrides[a.id] === 'deny');
+
+  if (allowed.length === 1 && denied.length === 0) {
+    return `allow:${allowed[0].id}`;
+  }
+  if (denied.length === 1 && allowed.length === 0) {
+    return assignees.length === 1 ? 'none' : `deny:${denied[0].id}`;
+  }
+  return 'none';
+}
+
+function applyAssigneeDropdownChange(
+  roleKey: 'office_staff' | 'field_staff',
+  value: string,
+  assignees: { id: string }[],
+  config: FinVisConfig,
+): FinVisConfig {
+  const roleModes = { ...(config.roleModes ?? {}) };
+  let userOverrides = clearAssigneeOverrides({ ...config.userOverrides }, assignees);
+  const roles = { ...config.roles };
+
+  if (value === 'all') {
+    roles[roleKey] = true;
+    roleModes[roleKey] = 'all';
+    userOverrides = clearAssigneeOverrides(userOverrides, assignees);
+  } else if (value === 'none') {
+    roles[roleKey] = false;
+    roleModes[roleKey] = 'none';
+    userOverrides = clearAssigneeOverrides(userOverrides, assignees);
+  } else if (value.startsWith('deny:')) {
+    const id = value.slice(5);
+    if (assignees.length === 1) {
+      roles[roleKey] = false;
+      roleModes[roleKey] = 'none';
+      userOverrides = clearAssigneeOverrides(userOverrides, assignees);
+    } else {
+      roles[roleKey] = true;
+      roleModes[roleKey] = 'custom';
+      userOverrides[id] = 'deny';
+    }
+  } else if (value.startsWith('allow:')) {
+    const id = value.slice(6);
+    roles[roleKey] = false;
+    roleModes[roleKey] = 'custom';
+    userOverrides[id] = 'allow';
+  }
+
+  return { roles, roleModes, userOverrides };
+}
+
+const DEFAULT_FIN_VIS_CONFIG: FinVisConfig = {
+  roles: { manager: true, finance: true, office_staff: true, field_staff: false },
+  userOverrides: {},
+};
+
+function resolveFinVisConfig(claim: any): FinVisConfig {
+  if (claim?.financialVisibilityConfig?.roles) {
+    const c = claim.financialVisibilityConfig;
+    return {
+      roles: { ...DEFAULT_FIN_VIS_CONFIG.roles, ...c.roles },
+      userOverrides: { ...(c.userOverrides ?? {}) },
+      roleModes: c.roleModes ? { ...c.roleModes } : undefined,
+    };
+  }
+  if (claim?.hideFinancialFromAssignees) {
+    return {
+      roles: { manager: true, finance: true, office_staff: false, field_staff: false },
+      userOverrides: {},
+      roleModes: { office_staff: 'none', field_staff: 'none' },
+    };
+  }
+  return { ...DEFAULT_FIN_VIS_CONFIG, userOverrides: {} };
+}
+
+function collectOfficeAssignees(claim: any): { id: string; name: string; label: string }[] {
+  const rows: { id: string; name: string; label: string }[] = [];
+  const push = (user: any, label: string) => {
+    if (!user?.id) return;
+    if (rows.some((r) => r.id === user.id)) return;
+    rows.push({
+      id: user.id,
+      name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || '—',
+      label,
+    });
+  };
+  push(claim.assignedOfficeUser, 'Dosya sorumlusu');
+  push(claim.currentResponsibleUser, 'Güncel sorumlu');
+  return rows;
+}
+
+function inferAssigneeRoleMode(
+  roleKey: 'office_staff' | 'field_staff',
+  config: FinVisConfig,
+  assignees: { id: string }[],
+): FinVisRoleMode {
+  if (config.roleModes?.[roleKey]) return config.roleModes[roleKey]!;
+  if (config.roles[roleKey]) return 'all';
+  if (assignees.length === 0) return config.roles[roleKey] ? 'all' : 'none';
+  if (assignees.some((a) => config.userOverrides[a.id])) return 'custom';
+  return 'none';
+}
+
+function clearAssigneeOverrides(
+  userOverrides: Record<string, FinVisUserOverride>,
+  assignees: { id: string }[],
+): Record<string, FinVisUserOverride> {
+  const next = { ...userOverrides };
+  for (const a of assignees) delete next[a.id];
+  return next;
+}
+
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
@@ -126,11 +264,23 @@ function TedarikciKarOzetiCard({ claimId }: { claimId: string }) {
 }
 
 // ─── Tab: Genel ────────────────────────────────────────────────────────────────
-function GenelTab({ claim, isFieldStaff, userRoleCode }: { claim: any; isFieldStaff: boolean; userRoleCode: string | null }) {
+function GenelTab({ claim, isFieldStaff, userRoleCode, onClaimUpdated }: { claim: any; isFieldStaff: boolean; userRoleCode: string | null; onClaimUpdated?: (patch: Partial<any>) => void }) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [suggLoading, setSuggLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [currentOfficeUser, setCurrentOfficeUser] = useState(claim.assignedOfficeUser);
+  const [finVisConfig, setFinVisConfig] = useState<FinVisConfig>(() => resolveFinVisConfig(claim));
+  const [savingFinVis, setSavingFinVis] = useState(false);
+  const canViewFinancials = claim.canViewFinancials !== false;
+  const canManageFinVisibility = claim.canManageFinancialVisibility === true
+    || userRoleCode === 'admin'
+    || userRoleCode === 'manager'
+    || userRoleCode === 'ops_manager';
+  const officeAssignees = collectOfficeAssignees(claim);
+
+  useEffect(() => {
+    setFinVisConfig(resolveFinVisConfig(claim));
+  }, [claim.id, claim.financialVisibilityConfig, claim.hideFinancialFromAssignees]);
 
   useEffect(() => {
     if (!claim?.id) return;
@@ -153,6 +303,49 @@ function GenelTab({ claim, isFieldStaff, userRoleCode }: { claim: any; isFieldSt
       setAssigning(null);
     }
   };
+
+  const saveFinVisConfig = async (next: FinVisConfig) => {
+    setSavingFinVis(true);
+    setFinVisConfig(next);
+    try {
+      const payload = {
+        financialVisibilityConfig: {
+          roles: next.roles,
+          roleModes: next.roleModes,
+          userOverrides: Object.fromEntries(
+            Object.entries(next.userOverrides).filter(([, v]) => v === 'allow' || v === 'deny'),
+          ),
+        },
+      };
+      await axios.patch(`${API}/claim-files/${claim.id}`, payload, { headers: authHeader() });
+      onClaimUpdated?.({
+        financialVisibilityConfig: payload.financialVisibilityConfig,
+        hideFinancialFromAssignees: false,
+      });
+    } catch (e: any) {
+      setFinVisConfig(resolveFinVisConfig(claim));
+      alert(e?.response?.data?.message ?? 'Ayar kaydedilemedi');
+    } finally {
+      setSavingFinVis(false);
+    }
+  };
+
+  const handleFinVisRoleSelect = (key: 'manager' | 'finance', canView: boolean) => {
+    void saveFinVisConfig({
+      ...finVisConfig,
+      roles: { ...finVisConfig.roles, [key]: canView },
+    });
+  };
+
+  const handleAssigneeDropdown = (
+    roleKey: 'office_staff' | 'field_staff',
+    value: string,
+    assignees: { id: string }[],
+  ) => {
+    void saveFinVisConfig(applyAssigneeDropdownChange(roleKey, value, assignees, finVisConfig));
+  };
+
+  const officeDropdownValue = getAssigneeDropdownValue('office_staff', finVisConfig, officeAssignees);
 
   const fields = [
     { label: 'Dosya No', value: claim.fileNo },
@@ -220,6 +413,68 @@ function GenelTab({ claim, isFieldStaff, userRoleCode }: { claim: any; isFieldSt
         </div>
       </SectionCard>
 
+      {canManageFinVisibility && (
+        <SectionCard title="Finansal Özet Erişimi">
+          <p className="text-xs text-slate-500 mb-3">
+            Bu dosyada finansal özet erişimini yönetin. Yönetici hesapları her zaman erişebilir.
+          </p>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 shrink-0">Finans / Muhasebe</span>
+              <select
+                className={FIN_VIS_SELECT_CLASS}
+                value={finVisConfig.roles.finance ? 'yes' : 'no'}
+                disabled={savingFinVis}
+                onChange={(e) => handleFinVisRoleSelect('finance', e.target.value === 'yes')}
+              >
+                <option value="yes">Görüntüleyebilir</option>
+                <option value="no">Görüntüleyemez</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 shrink-0">Yönetici / Müdür</span>
+              <select
+                className={FIN_VIS_SELECT_CLASS}
+                value={finVisConfig.roles.manager ? 'yes' : 'no'}
+                disabled={savingFinVis}
+                onChange={(e) => handleFinVisRoleSelect('manager', e.target.value === 'yes')}
+              >
+                <option value="yes">Görüntüleyebilir</option>
+                <option value="no">Görüntüleyemez</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 shrink-0">Dosya sorumlusu</span>
+              {officeAssignees.length === 0 ? (
+                <span className="text-xs text-slate-400">Sorumlu atanmamış</span>
+              ) : (
+                <select
+                  className={FIN_VIS_SELECT_CLASS}
+                  value={officeDropdownValue}
+                  disabled={savingFinVis}
+                  onChange={(e) => handleAssigneeDropdown('office_staff', e.target.value, officeAssignees)}
+                >
+                  <option value="all">Tüm sorumlular — erişim açık</option>
+                  <option value="none">Tüm sorumlular — erişim kapalı</option>
+                  <option disabled>──────────</option>
+                  {officeAssignees.map((p) => (
+                    <option key={`allow-${p.id}`} value={`allow:${p.id}`}>
+                      {p.name} — erişim açık
+                    </option>
+                  ))}
+                  {officeAssignees.map((p) => (
+                    <option key={`deny-${p.id}`} value={`deny:${p.id}`}>
+                      {p.name} — erişim kapalı
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+          {savingFinVis && <p className="text-xs text-slate-400 mt-2">Ayar kaydediliyor…</p>}
+        </SectionCard>
+      )}
+
       {claim.customer && (
         <SectionCard title="Müşteri">
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -230,7 +485,7 @@ function GenelTab({ claim, isFieldStaff, userRoleCode }: { claim: any; isFieldSt
         </SectionCard>
       )}
 
-      {!isFieldStaff && (
+      {!isFieldStaff && canViewFinancials && (
       <SectionCard title="Finansal Özet">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
           {[
@@ -247,8 +502,16 @@ function GenelTab({ claim, isFieldStaff, userRoleCode }: { claim: any; isFieldSt
       </SectionCard>
       )}
 
-      {!isFieldStaff && (userRoleCode === 'admin' || userRoleCode === 'office_staff') && (
+      {!isFieldStaff && canViewFinancials && (userRoleCode === 'admin' || userRoleCode === 'office_staff') && (
         <TedarikciKarOzetiCard claimId={claim.id} />
+      )}
+
+      {!isFieldStaff && !canViewFinancials && (
+        <SectionCard title="Finansal Özet">
+          <p className="text-sm text-slate-500">
+            Bu dosyada finansal özet, erişim kısıtı nedeniyle görüntülenemiyor.
+          </p>
+        </SectionCard>
       )}
 
       {claim.statusHistory?.length > 0 && (
@@ -2142,9 +2405,21 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = { eft: 'EFT', havale: 'Hava
 function TahsilatlarTab({ claimId }: { claimId: string }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<any>({ paymentType: 'incoming', method: 'eft', payerType: 'insurance_company', amount: 0, currency: 'TRY', paymentDate: new Date().toISOString().substring(0, 10) });
+  const [form, setForm] = useState<any>({
+    paymentType: 'incoming',
+    method: 'eft',
+    payerType: 'insurance_company',
+    payerId: '',
+    amount: 0,
+    currency: 'TRY',
+    paymentDate: new Date().toISOString().substring(0, 10),
+    status: 'completed',
+  });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploadingReceiptId, setUploadingReceiptId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -2152,29 +2427,83 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
     Promise.all([
       axios.get(`${API}/claim-files/${claimId}/payments`, { headers: authHeader() }),
       axios.get(`${API}/claim-files/${claimId}/invoices`, { headers: authHeader() }),
-    ]).then(([pr, ir]) => {
+      axios.get(`${API}/vendors?limit=200&status=active`, { headers: authHeader() }),
+    ]).then(([pr, ir, vr]) => {
       setPayments(pr.data.data ?? []);
       setInvoices(ir.data.data ?? []);
+      setVendors(vr.data.data?.vendors ?? vr.data.data ?? []);
     }).catch(console.error).finally(() => setLoading(false));
   }, [claimId]);
 
   useEffect(() => { load(); }, [load]);
 
+  const uploadReceiptForPayment = async (paymentId: string, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    await axios.post(`${API}/payments/${paymentId}/receipt`, fd, {
+      headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+    });
+  };
+
   const handleSave = async () => {
+    if (form.paymentType === 'outgoing' && form.payerType === 'vendor' && !form.payerId) {
+      alert('Tedarikçi ödemesi için tedarikçi seçiniz');
+      return;
+    }
     setSaving(true);
     try {
-      await axios.post(`${API}/payments`, { ...form, claimFileId: claimId }, { headers: authHeader() });
+      const payload = { ...form, claimFileId: claimId };
+      if (payload.payerType !== 'vendor') delete payload.payerId;
+      const res = await axios.post(`${API}/payments`, payload, { headers: authHeader() });
+      const paymentId = res.data?.data?.id;
+      if (paymentId && receiptFile && form.paymentType === 'outgoing' && form.payerType === 'vendor') {
+        await uploadReceiptForPayment(paymentId, receiptFile);
+      }
       setShowForm(false);
-      setForm({ paymentType: 'incoming', method: 'eft', payerType: 'insurance_company', amount: 0, currency: 'TRY', paymentDate: new Date().toISOString().substring(0, 10) });
+      setReceiptFile(null);
+      setForm({
+        paymentType: 'incoming',
+        method: 'eft',
+        payerType: 'insurance_company',
+        payerId: '',
+        amount: 0,
+        currency: 'TRY',
+        paymentDate: new Date().toISOString().substring(0, 10),
+        status: 'completed',
+      });
       load();
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Hata oluştu'); }
     finally { setSaving(false); }
+  };
+
+  const handleReceiptUploadExisting = async (paymentId: string, file: File) => {
+    setUploadingReceiptId(paymentId);
+    try {
+      await uploadReceiptForPayment(paymentId, file);
+      load();
+    } catch (e: any) {
+      alert(e?.response?.data?.message ?? 'Dekont yüklenemedi');
+    } finally {
+      setUploadingReceiptId(null);
+    }
+  };
+
+  const openReceipt = async (paymentId: string) => {
+    try {
+      const res = await axios.get(`${API}/payments/${paymentId}/receipt/download`, { headers: authHeader() });
+      const url = res.data?.data?.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      alert('Dekont açılamadı');
+    }
   };
 
   if (loading) return <div className="py-12 text-center text-slate-400">Yükleniyor...</div>;
 
   return (
     <div className="space-y-4">
+      <OnlineCollectionLinksPanel claimFileId={claimId} />
+
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-slate-800">Tahsilatlar & Ödemeler</h3>
         <button type="button" onClick={() => setShowForm(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Ödeme</button>
@@ -2211,12 +2540,23 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Karşı Taraf Tipi</label>
-              <select value={form.payerType} onChange={(e) => setForm({ ...form, payerType: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <select value={form.payerType} onChange={(e) => setForm({ ...form, payerType: e.target.value, payerId: '' })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
                 <option value="insurance_company">Sigorta Şirketi</option>
                 <option value="vendor">Tedarikçi</option>
                 <option value="customer">Müşteri</option>
               </select>
             </div>
+            {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Tedarikçi *</label>
+                <select value={form.payerId ?? ''} onChange={(e) => setForm({ ...form, payerId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  <option value="">— Tedarikçi Seçin —</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Bağlı Fatura (opsiyonel)</label>
               <select value={form.invoiceId ?? ''} onChange={(e) => setForm({ ...form, invoiceId: e.target.value || undefined })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
@@ -2234,6 +2574,18 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
               <label className="text-xs text-slate-500 mb-1 block">Not</label>
               <input type="text" value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({ ...form, note: v }); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
             </div>
+            {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
+              <div className="col-span-2">
+                <label className="text-xs text-slate-500 mb-1 block">Ödeme Dekontu</label>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium"
+                />
+                <p className="text-xs text-slate-400 mt-1">Dekont yüklendiğinde tedarikçinin Ödemeler / Ekstre sayfasına otomatik yansır.</p>
+              </div>
+            )}
           </div>
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
@@ -2255,6 +2607,7 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
                 <th className="text-left px-4 py-3">Bağlı Fatura</th>
                 <th className="text-right px-4 py-3">Tutar</th>
                 <th className="text-left px-4 py-3">Ref No</th>
+                <th className="text-left px-4 py-3">Dekont</th>
                 <th className="text-left px-4 py-3">Not</th>
               </tr>
             </thead>
@@ -2267,6 +2620,30 @@ function TahsilatlarTab({ claimId }: { claimId: string }) {
                   <td className="px-4 py-3 text-xs font-mono text-slate-500">{p.invoice?.invoiceNo ?? '—'}</td>
                   <td className="px-4 py-3 text-right font-medium text-slate-800">{fmtCurrency(p.amount)}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{p.referenceNo ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {p.paymentType === 'outgoing' && p.payerType === 'vendor' ? (
+                      p.receiptStorageKey ? (
+                        <button type="button" onClick={() => openReceipt(p.id)} className="text-indigo-600 hover:underline">
+                          {p.receiptFileName ?? 'Dekont'}
+                        </button>
+                      ) : (
+                        <label className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            className="hidden"
+                            disabled={uploadingReceiptId === p.id}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleReceiptUploadExisting(p.id, f);
+                              e.target.value = '';
+                            }}
+                          />
+                          {uploadingReceiptId === p.id ? 'Yükleniyor...' : '+ Dekont yükle'}
+                        </label>
+                      )
+                    ) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{p.note ?? '—'}</td>
                 </tr>
               ))}
@@ -2557,15 +2934,24 @@ function RandevularTab({ claimId, claim }: { claimId: string; claim: any }) {
 function FinansalOzetTab({ claimId }: { claimId: string }) {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [restricted, setRestricted] = useState(false);
 
   useEffect(() => {
     axios.get(`${API}/claim-files/${claimId}/financial-summary`, { headers: authHeader() })
       .then((r) => setSummary(r.data.data))
-      .catch(console.error)
+      .catch((err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 403) setRestricted(true);
+      })
       .finally(() => setLoading(false));
   }, [claimId]);
 
   if (loading) return <div className="py-12 text-center text-slate-400">Yükleniyor...</div>;
+
+  if (restricted) return (
+    <div className="bg-white rounded-xl border border-amber-100 py-12 text-center text-sm text-amber-800 px-6">
+      Bu dosyada finansal özet görüntüleme yetkiniz yok. Yönetici kısıtlaması aktif olabilir.
+    </div>
+  );
 
   if (!summary) return (
     <div className="bg-white rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">
@@ -3560,6 +3946,7 @@ export default function ClaimFileDetailPage() {
   }, []);
 
   const isFieldStaff = userRoleCode === 'field_staff';
+  const canViewFinancials = claim?.canViewFinancials !== false;
 
   useEffect(() => {
     if (!id) return;
@@ -3616,7 +4003,11 @@ export default function ClaimFileDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit mb-6 flex-wrap">
-        {GROUP_TABS.filter((tab) => !(isFieldStaff && tab.id === 'finans')).map((tab) => (
+        {GROUP_TABS.filter((tab) => {
+          if (isFieldStaff && tab.id === 'finans') return false;
+          if (tab.id === 'finans' && !canViewFinancials) return false;
+          return true;
+        }).map((tab) => (
           <button type="button" key={tab.id} onClick={() => setActiveGroup(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeGroup === tab.id ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
             <span>{tab.icon}</span>
             {tab.label}
@@ -3625,7 +4016,14 @@ export default function ClaimFileDetailPage() {
       </div>
 
       {/* Tab Content */}
-      {activeGroup === 'genel-bilgiler' && <GenelTab claim={claim} isFieldStaff={isFieldStaff} userRoleCode={userRoleCode} />}
+      {activeGroup === 'genel-bilgiler' && (
+        <GenelTab
+          claim={claim}
+          isFieldStaff={isFieldStaff}
+          userRoleCode={userRoleCode}
+          onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
+        />
+      )}
       {activeGroup === 'raporlar' && (
         <div className="space-y-6">
           <OnarimRaporuTab claimId={id!} />
@@ -3662,7 +4060,7 @@ export default function ClaimFileDetailPage() {
           </div>
         </div>
       )}
-      {activeGroup === 'finans' && !isFieldStaff && (
+      {activeGroup === 'finans' && !isFieldStaff && canViewFinancials && (
         <div className="space-y-6">
           <PLOzetTab claimId={id!} />
           <GelirlerTab claimId={id!} />
@@ -3739,7 +4137,7 @@ function IsAkisiTab({ claimId, claim, userRoleCode }: { claimId: string; claim: 
   const [apptError, setApptError] = useState('');
   const [apptSuccess, setApptSuccess] = useState('');
 
-  const isAdminOrOffice = userRoleCode === 'ADMIN' || userRoleCode === 'OFFICE_STAFF' || userRoleCode === 'admin' || userRoleCode === 'office_staff';
+  const isAdminOrOffice = userRoleCode === 'admin' || userRoleCode === 'office_staff';
 
   const loadLog = useCallback(() => {
     setLogLoading(true);

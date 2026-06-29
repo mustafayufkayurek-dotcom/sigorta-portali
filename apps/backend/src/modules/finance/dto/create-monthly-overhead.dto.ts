@@ -25,16 +25,28 @@ export class CreateMonthlyOverheadEntryDto {
   @IsNotEmpty()
   expenseCategoryId!: string;
 
+  /** KDV hariç tutar (dağıtıma esas) */
   @IsNumber()
   @IsPositive()
   amount!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  vatRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  grossAmount?: number;
 
   @IsOptional()
   @IsString()
   description?: string;
 
   @IsOptional()
-  @IsIn(['manual', 'logo_erp'])
+  @IsIn(['manual', 'logo_erp', 'expense_pool'])
   source?: string;
 
   @IsOptional()
@@ -54,4 +66,19 @@ export class AllocateOverheadDto {
 
   @IsIn(['equal', 'proportional_revenue', 'hybrid'])
   allocationMethod!: 'equal' | 'proportional_revenue' | 'hybrid';
+}
+
+export class OverheadPeriodDto {
+  @IsInt()
+  @Min(2020)
+  year!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month!: number;
+
+  @IsOptional()
+  @IsIn(['equal', 'proportional_revenue', 'hybrid'])
+  allocationMethod?: 'equal' | 'proportional_revenue' | 'hybrid';
 }

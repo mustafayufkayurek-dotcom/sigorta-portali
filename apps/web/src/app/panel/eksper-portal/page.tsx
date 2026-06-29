@@ -556,7 +556,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                   <option value="">İl seçiniz...</option>
                   {provinces.length > 0
                     ? provinces.map((province) => (
-                      <option key={province.id} value={province.id}>{province.plateCode} - {province.name}</option>
+                      <option key={province.id} value={province.id}>{province.name}</option>
                     ))
                     : TR_ILLER.map((il) => <option key={il} value={il}>{il}</option>)}
                 </select>

@@ -1,0 +1,55 @@
+---
+description: Türkçe arayüz yazım kültürü — Title Case, CSS uppercase yasağı
+globs: apps/web/**/*.tsx
+alwaysApply: true
+---
+
+# Türkçe yazım kültürü (UI)
+
+Meridyen panelinde kullanıcıya görünen metinler **Türkçe Title Case** (baş harfler büyük, diğer harfler küçük) kullanır.
+
+## Doğru biçim
+
+- `Dosya Bütçesi`, `Masraf Grubu`, `Operasyon Giderleri`, `Test masraf açıklama`
+- Cümle içi etiketler: `Dosya no`, `Bütçe tipi` (her kelimenin ilk harfi büyük)
+
+## Yanlış biçim
+
+- Tümü büyük harf: `DOSYA BÜTÇESİ`, `OPERASYON GİDERLERİ`
+- CSS ile zorlanmış uppercase: `className="uppercase"` (metin zaten Title Case olsa bile bozar)
+
+## Uygulama kuralları
+
+1. **Etiket, başlık, tablo sütun başlığı, buton, badge:** Title Case metin yaz; `uppercase` / `text-transform: uppercase` kullanma.
+2. **Serbest metin (açıklama, not, ad):** Kayıt öncesi ve `onBlur` sırasında `toTitleCaseTR()` (`@/utils/text-helpers`) uygula.
+3. **Kod / enum / API alanları:** Yalnızca `sanitizeCode`, `generateCodeFromName` gibi kod üreten yardımcılar ALL CAPS kullanabilir; UI’da gösterirken Title Case’e çevir.
+4. **Yeni modül veya özellik:** Form, tablo, modal, boş durum metinleri eklendiğinde bu kuralı kontrol et.
+
+## Terimler (Meridyen dili)
+
+Kullanıcıya görünen metinlerde **vaka** kullanma; şirket dili **dosya**dır.
+
+| Kullanma | Kullan |
+|----------|--------|
+| Vakaya git | Dosyaya git |
+| Vaka no | Dosya no |
+| Vaka bulunamadı | Dosya bulunamadı |
+| Vaka sayfası | Dosya sayfası / acil yardım dosyası |
+
+Teknik kod adları (`EmergencyCase`, değişken isimleri) değişmek zorunda değil; yalnızca UI metinleri.
+
+## Örnek
+
+```tsx
+// ❌ BAD
+<th className="uppercase">Masraf Grubu</th>
+<span>{row.description}</span>
+
+// ✅ GOOD
+<th className="text-xs font-medium text-slate-500">Masraf Grubu</th>
+<span>{toTitleCaseTR(row.description)}</span>
+<input onBlur={(e) => {
+  const v = toTitleCaseTR(e.target.value.trim());
+  if (v) setForm((p) => ({ ...p, description: v }));
+}} />
+```

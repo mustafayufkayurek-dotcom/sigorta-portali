@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as ExcelJS from 'exceljs';
@@ -6,6 +6,24 @@ import * as ExcelJS from 'exceljs';
 @Injectable()
 export class VendorsService {
   constructor(private prisma: PrismaService) {}
+
+  private mapVendorContactInput(c: any, vendorId: string) {
+    const fullName =
+      (c.fullName && String(c.fullName).trim()) ||
+      `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() ||
+      '—';
+    return {
+      vendorId,
+      fullName,
+      title: c.title ?? null,
+      phone: c.phone ?? null,
+      phoneType: c.phoneType === 'landline' ? 'landline' : 'gsm',
+      phoneExtension: c.phoneExtension ?? c.extensionNo ?? null,
+      email: c.email ?? null,
+      birthDate: c.birthDate ? new Date(c.birthDate) : null,
+      isPrimary: c.isPrimary ?? false,
+    };
+  }
 
   async contractExpiring(days: number) {
     const now = new Date();
@@ -90,6 +108,15 @@ export class VendorsService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  async getSummary() {
+    const [total, activeCount, corporateCount] = await Promise.all([
+      this.prisma.vendor.count(),
+      this.prisma.vendor.count({ where: { status: 'active' } }),
+      this.prisma.vendor.count({ where: { entityType: 'corporate' } }),
+    ]);
+    return { total, activeCount, corporateCount };
+  }
+
   async findOne(id: string) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { id },
@@ -142,15 +169,7 @@ export class VendorsService {
 
     if (contacts?.length) {
       await this.prisma.vendorContact.createMany({
-        data: contacts.map((c: any) => ({
-          vendorId: vendor.id,
-          fullName: c.fullName,
-          title: c.title ?? null,
-          phone: c.phone ?? null,
-          email: c.email ?? null,
-          birthDate: c.birthDate ? new Date(c.birthDate) : null,
-          isPrimary: c.isPrimary ?? false,
-        })),
+        data: contacts.map((c: any) => this.mapVendorContactInput(c, vendor.id)),
       });
     }
 
@@ -205,15 +224,7 @@ export class VendorsService {
       await this.prisma.vendorContact.deleteMany({ where: { vendorId: id } });
       if (contacts.length) {
         await this.prisma.vendorContact.createMany({
-          data: contacts.map((c: any) => ({
-            vendorId: id,
-            fullName: c.fullName,
-            title: c.title ?? null,
-            phone: c.phone ?? null,
-            email: c.email ?? null,
-            birthDate: c.birthDate ? new Date(c.birthDate) : null,
-            isPrimary: c.isPrimary ?? false,
-          })),
+          data: contacts.map((c: any) => this.mapVendorContactInput(c, id)),
         });
       }
     }
@@ -239,7 +250,47 @@ export class VendorsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.vendor.delete({ where: { id } });
+
+    const [
+      costCount,
+      assignedFiles,
+      statementCount,
+      contractCount,
+      paymentCount,
+      emergencyCaseCount,
+    ] = await Promise.all([
+      this.prisma.costEntry.count({ where: { vendorId: id } }),
+      this.prisma.claimFile.count({ where: { assignedSupplierId: id } }),
+      this.prisma.vendorPaymentStatement.count({ where: { vendorId: id } }),
+      this.prisma.vendorContract.count({ where: { vendorId: id } }),
+      this.prisma.payment.count({ where: { payerId: id, payerType: 'vendor' } }),
+      this.prisma.emergencyCase.count({ where: { assignedVendorId: id } }),
+    ]);
+
+    const blockers: string[] = [];
+    if (costCount > 0) blockers.push(`${costCount} maliyet kaydı`);
+    if (assignedFiles > 0) blockers.push(`${assignedFiles} atanmış hasar dosyası`);
+    if (statementCount > 0) blockers.push(`${statementCount} ekstre`);
+    if (contractCount > 0) blockers.push(`${contractCount} sözleşme`);
+    if (paymentCount > 0) blockers.push(`${paymentCount} ödeme kaydı`);
+    if (emergencyCaseCount > 0) blockers.push(`${emergencyCaseCount} acil vaka`);
+
+    if (blockers.length > 0) {
+      throw new BadRequestException(
+        `Bu tedarikçi silinemez. İlişkili kayıtlar: ${blockers.join(', ')}. Önce kayıtları temizleyin veya tedarikçiyi pasife alın.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.appointment.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
+      await tx.budgetItem.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
+      await tx.repairItemAnomalyFlag.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
+      await tx.claimFile.updateMany({ where: { assignedSupplierId: id }, data: { assignedSupplierId: null } });
+      await tx.vendorDisputeAlert.deleteMany({ where: { vendorId: id } });
+      await tx.vendorStatementDispute.deleteMany({ where: { vendorId: id } });
+      await tx.vendor.delete({ where: { id } });
+    });
+
     return { message: 'Tedarikçi silindi' };
   }
 

@@ -3,6 +3,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useToast } from '@/contexts/ToastContext';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -325,8 +334,35 @@ const LEVEL_CONFIG: Record<EscalationLevel, { label: string; rowCls: string; bad
 
 type Tab = 'workload' | 'approvals' | 'rules' | 'assign' | 'overdue';
 
+const APPROVALS_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
+  { id: 'staff', label: 'Personel', defaultWidth: 160, minWidth: 120 },
+  { id: 'jobType', label: 'İş Tipi', defaultWidth: 120, minWidth: 96 },
+  { id: 'waiting', label: 'Bekleme', defaultWidth: 100, minWidth: 80 },
+  { id: 'timeout', label: 'Timeout', defaultWidth: 100, minWidth: 80 },
+];
+
+const RULES_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'jobGroup', label: 'İş Grubu', defaultWidth: 160, minWidth: 120 },
+  { id: 'region', label: 'Bölge', defaultWidth: 140, minWidth: 100 },
+  { id: 'staff', label: 'Personel', defaultWidth: 160, minWidth: 120 },
+  { id: 'priority', label: 'Öncelik', defaultWidth: 90, minWidth: 72 },
+  { id: 'status', label: 'Durum', defaultWidth: 90, minWidth: 72 },
+];
+
+const OVERDUE_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
+  { id: 'staff', label: 'Personel', defaultWidth: 160, minWidth: 120 },
+  { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
+  { id: 'days', label: 'Gün Sayısı', defaultWidth: 100, minWidth: 80 },
+  { id: 'lastAction', label: 'Son İşlem Tarihi', defaultWidth: 160, minWidth: 120 },
+];
+
 export default function PersonelYonetimiPage() {
   const { showToast } = useToast();
+  const approvalsTableColumns = usePanelTableColumns('table-cols:personel-onaylar', APPROVALS_TABLE_COLUMNS);
+  const rulesTableColumns = usePanelTableColumns('table-cols:personel-kurallar', RULES_TABLE_COLUMNS);
+  const overdueTableColumns = usePanelTableColumns('table-cols:personel-geciken', OVERDUE_TABLE_COLUMNS);
 
   const [activeTab, setActiveTab] = useState<Tab>('workload');
   const [workload, setWorkload] = useState<StaffWorkload[]>([]);
@@ -891,15 +927,19 @@ export default function PersonelYonetimiPage() {
                 <p className="text-sm text-slate-400 mt-1">Tüm Atamalar Onaylanmış Durumda</p>
               </div>
             ) : (
+              <TableColumnsProvider value={approvalsTableColumns}>
               <div className="overflow-hidden rounded-xl border border-slate-100">
-                <table className="w-full text-sm">
+                <div className="flex justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/50">
+                  <PanelTableColumnPicker tableColumns={approvalsTableColumns} />
+                </div>
+                <table className="w-full text-sm" style={panelTableLayoutStyle(approvalsTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya No</th>
-                      <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</th>
-                      <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Tipi</th>
-                      <th className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bekleme</th>
-                      <th className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timeout</th>
+                      <PanelTableTh colId="fileNo" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya No</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="jobType" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Tipi</PanelTableTh>
+                      <PanelTableTh colId="waiting" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bekleme</PanelTableTh>
+                      <PanelTableTh colId="timeout" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timeout</PanelTableTh>
                       <th className="px-4 py-3.5 w-32" />
                     </tr>
                   </thead>
@@ -908,23 +948,23 @@ export default function PersonelYonetimiPage() {
                       const isLoading = actionLoading && approvalAction?.id === a.id;
                       return (
                         <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-3.5">
+                          <PanelTableTd colId="fileNo" className="px-5 py-3.5">
                             <span className="font-semibold text-slate-800">{a.fileNumber ?? a.claimFileId?.slice(0, 8) ?? '—'}</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-700">
+                          </PanelTableTd>
+                          <PanelTableTd colId="staff" className="px-4 py-3.5 text-slate-700">
                             {a.assignedUser ? `${a.assignedUser.firstName} ${a.assignedUser.lastName}` : '—'}
-                          </td>
-                          <td className="px-4 py-3.5">
+                          </PanelTableTd>
+                          <PanelTableTd colId="jobType" className="px-4 py-3.5">
                             <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
                               {a.jobType ?? a.workType ?? 'Genel'}
                             </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-center text-xs text-slate-500">
+                          </PanelTableTd>
+                          <PanelTableTd colId="waiting" className="px-4 py-3.5 text-center text-xs text-slate-500">
                             {waitingHours(a.createdAt)}
-                          </td>
-                          <td className="px-4 py-3.5 text-center">
+                          </PanelTableTd>
+                          <PanelTableTd colId="timeout" className="px-4 py-3.5 text-center">
                             <TimeoutCountdown timeoutAt={a.timeoutAt} />
-                          </td>
+                          </PanelTableTd>
                           <td className="px-4 py-3.5 text-right">
                             <div className="flex items-center gap-1.5 justify-end">
                               <button
@@ -965,6 +1005,7 @@ export default function PersonelYonetimiPage() {
                   </tbody>
                 </table>
               </div>
+              </TableColumnsProvider>
             )}
           </div>
         )}
@@ -972,9 +1013,11 @@ export default function PersonelYonetimiPage() {
         {/* ── TAB: Atama Kuralları ─────────────────────────────────────────── */}
         {activeTab === 'rules' && (
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-2">
               <p className="text-sm text-slate-500">{rules.length} Kural Tanımlı</p>
-              <button
+              <div className="flex items-center gap-2">
+                <PanelTableColumnPicker tableColumns={rulesTableColumns} />
+                <button
                 type="button"
                 onClick={() => setShowAddRule(true)}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
@@ -984,6 +1027,7 @@ export default function PersonelYonetimiPage() {
                 </svg>
                 Yeni Kural
               </button>
+              </div>
             </div>
 
             {rulesLoading ? (
@@ -997,36 +1041,37 @@ export default function PersonelYonetimiPage() {
                 <p className="text-sm text-slate-400 mt-1">Yeni Kural Ekleyerek Otomasyonu Başlatın</p>
               </div>
             ) : (
+              <TableColumnsProvider value={rulesTableColumns}>
               <div className="overflow-hidden rounded-xl border border-slate-100">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Grubu</th>
-                      <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bölge</th>
-                      <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</th>
-                      <th className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Öncelik</th>
-                      <th className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Durum</th>
+                      <PanelTableTh colId="jobGroup" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Grubu</PanelTableTh>
+                      <PanelTableTh colId="region" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bölge</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="priority" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Öncelik</PanelTableTh>
+                      <PanelTableTh colId="status" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Durum</PanelTableTh>
                       <th className="px-4 py-3.5 w-24" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {rules.map((rule) => (
                       <tr key={rule.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3.5">
+                        <PanelTableTd colId="jobGroup" className="px-5 py-3.5">
                           <span className="font-medium text-slate-800">{rule.jobGroup?.name ?? '—'}</span>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-500 text-xs">
+                        </PanelTableTd>
+                        <PanelTableTd colId="region" className="px-4 py-3.5 text-slate-500 text-xs">
                           {rule.region || <span className="text-slate-300">Tüm Bölgeler</span>}
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-700">
+                        </PanelTableTd>
+                        <PanelTableTd colId="staff" className="px-4 py-3.5 text-slate-700">
                           {rule.assignedUser ? `${rule.assignedUser.firstName} ${rule.assignedUser.lastName}` : '—'}
-                        </td>
-                        <td className="px-4 py-3.5 text-center">
+                        </PanelTableTd>
+                        <PanelTableTd colId="priority" className="px-4 py-3.5 text-center">
                           <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
                             #{rule.priority ?? 1}
                           </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-center">
+                        </PanelTableTd>
+                        <PanelTableTd colId="status" className="px-4 py-3.5 text-center">
                           <button
                             type="button"
                             onClick={() => handleToggleRule(rule.id, rule.isActive)}
@@ -1034,7 +1079,7 @@ export default function PersonelYonetimiPage() {
                           >
                             <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${rule.isActive ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
                           </button>
-                        </td>
+                        </PanelTableTd>
                         <td className="px-4 py-3.5 text-right">
                           <button
                             type="button"
@@ -1051,6 +1096,7 @@ export default function PersonelYonetimiPage() {
                   </tbody>
                 </table>
               </div>
+              </TableColumnsProvider>
             )}
           </div>
         )}
@@ -1211,6 +1257,7 @@ export default function PersonelYonetimiPage() {
                       Filtreyi Temizle
                     </button>
                   )}
+                  <PanelTableColumnPicker tableColumns={overdueTableColumns} />
                   <button type="button" onClick={loadOverdue} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1230,16 +1277,17 @@ export default function PersonelYonetimiPage() {
                   <p className="text-sm text-slate-400">{filterLevel === 'all' ? 'Geciken Dosya Yok.' : 'Bu Seviyede Geciken Dosya Yok.'}</p>
                 </div>
               ) : (
+                <TableColumnsProvider value={overdueTableColumns}>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                     <thead>
                       <tr className="text-left bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                         <th className="px-4 py-3 w-8">&nbsp;</th>
-                        <th className="px-4 py-3">Dosya No</th>
-                        <th className="px-4 py-3">Personel</th>
-                        <th className="px-4 py-3">Durum</th>
-                        <th className="px-4 py-3">Gün Sayısı</th>
-                        <th className="px-4 py-3">Son İşlem Tarihi</th>
+                        <PanelTableTh colId="fileNo" className="px-4 py-3">Dosya No</PanelTableTh>
+                        <PanelTableTh colId="staff" className="px-4 py-3">Personel</PanelTableTh>
+                        <PanelTableTh colId="status" className="px-4 py-3">Durum</PanelTableTh>
+                        <PanelTableTh colId="days" className="px-4 py-3">Gün Sayısı</PanelTableTh>
+                        <PanelTableTh colId="lastAction" className="px-4 py-3">Son İşlem Tarihi</PanelTableTh>
                         <th className="px-4 py-3 text-right">İşlem</th>
                       </tr>
                     </thead>
@@ -1251,23 +1299,23 @@ export default function PersonelYonetimiPage() {
                             <td className="px-4 py-3">
                               <span className={`inline-block w-2.5 h-2.5 rounded-full ${cfg.dotCls}`} />
                             </td>
-                            <td className="px-4 py-3 font-mono font-medium">
+                            <PanelTableTd colId="fileNo" className="px-4 py-3 font-mono font-medium">
                               {a.claimFile?.fileNo ?? '-'}
-                            </td>
-                            <td className="px-4 py-3">
+                            </PanelTableTd>
+                            <PanelTableTd colId="staff" className="px-4 py-3">
                               {a.assignedTo ? `${a.assignedTo.firstName} ${a.assignedTo.lastName}` : '-'}
-                            </td>
-                            <td className="px-4 py-3">
+                            </PanelTableTd>
+                            <PanelTableTd colId="status" className="px-4 py-3">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.badgeCls}`}>
                                 {cfg.label}
                               </span>
-                            </td>
-                            <td className="px-4 py-3 font-bold tabular-nums">
+                            </PanelTableTd>
+                            <PanelTableTd colId="days" className="px-4 py-3 font-bold tabular-nums">
                               {a.daysSinceUpdate} gün
-                            </td>
-                            <td className="px-4 py-3 tabular-nums text-xs">
+                            </PanelTableTd>
+                            <PanelTableTd colId="lastAction" className="px-4 py-3 tabular-nums text-xs">
                               {new Date(a.updatedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </td>
+                            </PanelTableTd>
                             <td className="px-4 py-3 text-right">
                               {a.claimFile?.id && (
                                 <a
@@ -1284,6 +1332,7 @@ export default function PersonelYonetimiPage() {
                     </tbody>
                   </table>
                 </div>
+                </TableColumnsProvider>
               )}
             </div>
           </div>

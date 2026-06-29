@@ -20,7 +20,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'department', label: 'Departman', defaultWidth: 220, minWidth: 140 },
+  { id: 'reportFormat', label: 'Rapor Formatı', defaultWidth: 140, minWidth: 100 },
+  { id: 'fileSubjects', label: 'Dosya Konuları', defaultWidth: 140, minWidth: 100 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 const FORMAT_LABELS: Record<string, string> = {
   repair: 'Hasar Onarım',
@@ -140,6 +148,8 @@ export default function DepartmanlarPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Departman Yönetimi"
       description="Rapor Formatları ve Dosya Konularını Departman Bazlı Yönetin"
@@ -148,30 +158,33 @@ export default function DepartmanlarPage() {
       addButtonText="Yeni Departman"
       onAdd={openCreate}
       headerExtra={
-        departments.length === 0 ? (
-          <button
-            type="button"
-            onClick={handleSeed}
-            disabled={seeding}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
-          >
-            {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
-          </button>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
+          {departments.length === 0 ? (
+            <button
+              type="button"
+              onClick={handleSeed}
+              disabled={seeding}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+            >
+              {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+            </button>
+          ) : null}
+        </div>
       }
     >
       <SettingsTable loading={loading} empty={departments.length === 0} emptyText="Henüz departman tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh>Departman</SettingsTableTh>
-          <SettingsTableTh>Rapor Formatı</SettingsTableTh>
-          <SettingsTableTh>Dosya Konuları</SettingsTableTh>
-          <SettingsTableTh>Durum</SettingsTableTh>
+          <SettingsTableTh colId="department">Departman</SettingsTableTh>
+          <SettingsTableTh colId="reportFormat">Rapor Formatı</SettingsTableTh>
+          <SettingsTableTh colId="fileSubjects">Dosya Konuları</SettingsTableTh>
+          <SettingsTableTh colId="status">Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {departments.map((d) => (
             <SettingsTableRow key={d.id}>
-              <SettingsTableTd>
+              <SettingsTableTd colId="department">
                 <div className="flex items-center gap-3">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
                   <div>
@@ -181,13 +194,13 @@ export default function DepartmanlarPage() {
                   {d.isSystem && <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Sistem</span>}
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="reportFormat">
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${FORMAT_COLORS[d.reportFormat] ?? 'bg-slate-100 text-slate-600'}`}>
                   {FORMAT_LABELS[d.reportFormat] ?? d.reportFormat}
                 </span>
               </SettingsTableTd>
-              <SettingsTableTd>{d._count?.fileSubjects ?? 0} konu</SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="fileSubjects">{d._count?.fileSubjects ?? 0} konu</SettingsTableTd>
+              <SettingsTableTd colId="status">
                 <StatusBadge active={d.status === 'active'} />
               </SettingsTableTd>
               <SettingsTableActions>
@@ -286,5 +299,7 @@ export default function DepartmanlarPage() {
         error={deleteError}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

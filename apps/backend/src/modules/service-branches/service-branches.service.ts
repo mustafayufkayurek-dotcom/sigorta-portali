@@ -1,7 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import {
+  MERIDYEN_SCOPE,
+  VENDOR_SCOPE,
+  meridyenScopeFilter,
+  normalizeServiceBranchScope,
+  resolveCreateScope,
+} from './service-branch-scope';
 
-const HASAR_BRANCHES = [
+/** Meridyen operasyon branşları — dosya / müşteri / sigorta / saha operasyonu */
+const MERIDYEN_HASAR_BRANCHES = [
   'Dahili Su',
   'Yangın',
   'Hırsızlık',
@@ -16,83 +24,151 @@ const HASAR_BRANCHES = [
   'Makine Kırılması',
 ];
 
-const ACIL_YARDIM_BRANCHES = [
+const MERIDYEN_ACIL_BRANCHES = [
+  'Su Baskını',
+  'Çatı Hasarı',
+  'Cam Kırığı',
+  'Kapı/Kilit Arızası',
+  'Elektrik Arızası',
+  'Doğalgaz Arızası',
+  'Yangın Hasarı',
+  'Hırsızlık/Güvenlik',
+  'Boru Patlaması',
+  'Asansör Arızası',
+];
+
+/** Tedarikçi tanımlama kartı — acil yardım uzmanlık alanları */
+const VENDOR_ACIL_BRANCHES = [
+  'Su Tesisatçısı',
+  'Elektrikçi',
   'Konut Çilingir',
   'Araç Çilingir',
-  'Tesisat',
-  'Elektrik',
-  'Cam',
-  'Çatı',
-  'Su Kesimi',
-  'Beyaz Eşya Arıza',
-  'Kombi/Klima',
+  'Cam Tamiri',
+  'Çatı Onarım',
+  'Beyaz Eşya Servisi',
+  'Kombi / Klima Servisi',
   'Haşere İlaçlama',
+  'Doğalgaz Tesisatçısı',
 ];
 
 @Injectable()
 export class ServiceBranchesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(type?: string) {
-    const where: any = { isActive: true };
+  private buildWhere(type?: string, scope?: string) {
+    const where: { isActive?: boolean; type?: string; scope?: string | { in: string[] } } = {};
     if (type) where.type = type;
+    const normalized = normalizeServiceBranchScope(scope);
+    if (normalized === MERIDYEN_SCOPE) {
+      where.scope = meridyenScopeFilter().scope;
+    } else if (normalized) {
+      where.scope = normalized;
+    }
+    return where;
+  }
+
+  async findAll(type?: string, scope?: string) {
     return this.prisma.serviceBranch.findMany({
-      where,
+      where: { ...this.buildWhere(type, scope), isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async findAllAdmin(type?: string) {
-    const where: any = {};
-    if (type) where.type = type;
+  async findAllAdmin(type?: string, scope?: string) {
     return this.prisma.serviceBranch.findMany({
-      where,
-      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+      where: this.buildWhere(type, scope),
+      orderBy: [{ scope: 'asc' }, { type: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async create(data: { name: string; type: string; sortOrder?: number }) {
+  async create(data: { name: string; type: string; scope?: string; sortOrder?: number }) {
+    const scope = resolveCreateScope(data.scope);
     const existing = await this.prisma.serviceBranch.findFirst({
-      where: { name: data.name, type: data.type },
+      where: { name: data.name, type: data.type, scope },
     });
-    if (existing) throw new ConflictException('Bu isimde bir branş zaten mevcut');
+    if (existing) throw new ConflictException('Bu kapsamda aynı isimde bir kayıt zaten mevcut');
     return this.prisma.serviceBranch.create({
       data: {
         name: data.name,
         type: data.type,
+        scope,
         sortOrder: data.sortOrder ?? 0,
       },
     });
   }
 
-  async update(id: string, data: { name?: string; type?: string; isActive?: boolean; sortOrder?: number }) {
+  async update(
+    id: string,
+    data: { name?: string; type?: string; scope?: string; isActive?: boolean; sortOrder?: number },
+  ) {
     const existing = await this.prisma.serviceBranch.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Branş bulunamadı');
+    if (!existing) throw new NotFoundException('Kayıt bulunamadı');
+    const nextScope = data.scope ? resolveCreateScope(data.scope) : existing.scope;
+    const nextType = data.type ?? existing.type;
     if (data.name && data.name !== existing.name) {
       const conflict = await this.prisma.serviceBranch.findFirst({
-        where: { name: data.name, type: data.type ?? existing.type, NOT: { id } },
+        where: { name: data.name, type: nextType, scope: nextScope, NOT: { id } },
       });
-      if (conflict) throw new ConflictException('Bu isimde bir branş zaten mevcut');
+      if (conflict) throw new ConflictException('Bu kapsamda aynı isimde bir kayıt zaten mevcut');
     }
-    return this.prisma.serviceBranch.update({ where: { id }, data });
+    return this.prisma.serviceBranch.update({
+      where: { id },
+      data: {
+        ...data,
+        scope: data.scope ? nextScope : undefined,
+      },
+    });
   }
 
   async remove(id: string) {
     const existing = await this.prisma.serviceBranch.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Branş bulunamadı');
+    if (!existing) throw new NotFoundException('Kayıt bulunamadı');
     await this.prisma.serviceBranch.delete({ where: { id } });
-    return { message: 'Branş silindi' };
+    return { message: 'Kayıt silindi' };
   }
 
+  /** Meridyen hizmet branşları — varsayılan seed */
   async seed() {
-    const existing = await this.prisma.serviceBranch.count();
-    if (existing > 0) return { message: 'Zaten seed edilmiş', count: existing };
+    const existing = await this.prisma.serviceBranch.count({
+      where: meridyenScopeFilter(),
+    });
+    if (existing > 0) return { message: 'Meridyen hizmet branşları zaten seed edilmiş', count: existing };
 
-    const hasarData = HASAR_BRANCHES.map((name, i) => ({ name, type: 'hasar', sortOrder: i }));
-    const acilData = ACIL_YARDIM_BRANCHES.map((name, i) => ({ name, type: 'acil_yardim', sortOrder: i }));
+    const hasarData = MERIDYEN_HASAR_BRANCHES.map((name, i) => ({
+      name,
+      type: 'hasar',
+      scope: MERIDYEN_SCOPE,
+      sortOrder: i,
+    }));
+    const acilData = MERIDYEN_ACIL_BRANCHES.map((name, i) => ({
+      name,
+      type: 'acil_yardim',
+      scope: MERIDYEN_SCOPE,
+      sortOrder: i,
+    }));
 
     await this.prisma.serviceBranch.createMany({ data: [...hasarData, ...acilData] });
-    const count = await this.prisma.serviceBranch.count();
-    return { message: 'Seed tamamlandı', count };
+    const count = await this.prisma.serviceBranch.count({ where: meridyenScopeFilter() });
+    return { message: 'Meridyen hizmet branşları seed tamamlandı', count };
+  }
+
+  /** Tedarikçi acil hizmet kolları */
+  async seedVendorAcil() {
+    const existing = await this.prisma.serviceBranch.count({
+      where: { scope: VENDOR_SCOPE, type: 'acil_yardim' },
+    });
+    if (existing > 0) return { message: 'Tedarikçi acil hizmet kolları zaten seed edilmiş', count: existing };
+
+    const rows = VENDOR_ACIL_BRANCHES.map((name, i) => ({
+      name,
+      type: 'acil_yardim',
+      scope: VENDOR_SCOPE,
+      sortOrder: i,
+    }));
+    await this.prisma.serviceBranch.createMany({ data: rows });
+    const count = await this.prisma.serviceBranch.count({
+      where: { scope: VENDOR_SCOPE, type: 'acil_yardim' },
+    });
+    return { message: 'Tedarikçi acil hizmet kolları seed tamamlandı', count };
   }
 }

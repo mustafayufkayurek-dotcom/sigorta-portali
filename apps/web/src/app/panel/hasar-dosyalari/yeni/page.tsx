@@ -752,7 +752,7 @@ export default function YeniHasarDosyasiPage() {
               <label className="text-xs text-slate-500 block mb-1.5">İl</label>
               <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={provinceId} onChange={(e) => { setProvinceId(e.target.value); loadDistricts(e.target.value); }}>
                 <option value="">Seçiniz...</option>
-                {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
+                {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>

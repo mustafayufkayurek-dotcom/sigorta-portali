@@ -29,13 +29,13 @@ export function FinanceBottleneckWidget({ onNavigate, staggerIndex = 0 }: Financ
       ) : !pendingPayments.length && !data?.overdueInvoices ? (
         <WidgetEmpty
           icon={TrendingUp}
-          message="Fatura kaydı bulunmuyor."
+          message="Bekleyen tahsilat veya geciken fatura görünmüyor."
         />
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-              <p className="text-xs text-slate-500">Toplam Bekleyen</p>
+              <p className="text-xs text-slate-500">Toplam Bekleyen Tahsilat</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {formatCurrency(data?.totalPendingAmount || 0)}
               </p>

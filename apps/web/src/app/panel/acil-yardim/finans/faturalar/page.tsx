@@ -152,7 +152,7 @@ export default function FaturalarPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-slate-400 font-semibold">
-                        <th className="text-left pb-2">Vaka No</th>
+                        <th className="text-left pb-2">Dosya No</th>
                         <th className="text-left pb-2">Açıklama</th>
                         <th className="text-right pb-2">Tutar</th>
                       </tr>

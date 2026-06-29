@@ -728,9 +728,10 @@ async function main() {
     // Sabit / Genel Giderler (MonthlyOverheadEntry için)
     { id: 'cat-office-rent',       name: 'Ofis Kirası',                    code: 'OFFICE_RENT',      level: 1, sortOrder: 10 },
     { id: 'cat-payroll',           name: 'Personel Maaşları',              code: 'PAYROLL',          level: 1, sortOrder: 11 },
-    { id: 'cat-software',          name: 'Yazılım Lisansları',             code: 'SOFTWARE',         level: 1, sortOrder: 12 },
-    { id: 'cat-insurance-premium', name: 'Sigorta Primleri',               code: 'INSURANCE_PREMIUM',level: 1, sortOrder: 13 },
-    { id: 'cat-accounting-legal',  name: 'Muhasebe / Hukuk Giderleri',    code: 'ACCOUNTING_LEGAL', level: 1, sortOrder: 14 },
+    { id: 'cat-vehicle-rent',      name: 'Araç Kiralama',                  code: 'VEHICLE_RENT',     level: 1, sortOrder: 12 },
+    { id: 'cat-software',          name: 'Yazılım Lisansları',             code: 'SOFTWARE',         level: 1, sortOrder: 13 },
+    { id: 'cat-insurance-premium', name: 'Sigorta Primleri',               code: 'INSURANCE_PREMIUM',level: 1, sortOrder: 14 },
+    { id: 'cat-accounting-legal',  name: 'Muhasebe / Hukuk Giderleri',    code: 'ACCOUNTING_LEGAL', level: 1, sortOrder: 15 },
   ];
 
   for (const cat of expenseCategories) {

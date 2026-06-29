@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { SmsService } from '@/modules/notifications/sms/sms.service';
 import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/sms/message-template.service';
@@ -165,6 +166,7 @@ export class ClaimFilesService {
         assignedBranch: true,
         assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+        currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         statusHistory: {
           include: {
@@ -197,7 +199,16 @@ export class ClaimFilesService {
       }
     }
 
-    return claimFile;
+    return {
+      ...claimFile,
+      financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
+      canViewFinancials: requestingUser
+        ? canViewFileFinancials(requestingUser, claimFile)
+        : true,
+      canManageFinancialVisibility: requestingUser
+        ? canManageFinancialVisibility(requestingUser.roleCode)
+        : false,
+    };
   }
 
   async create(data: any) {
@@ -339,8 +350,22 @@ export class ClaimFilesService {
     }
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: any, requestingUser?: { id: string; roleCode?: string | null }) {
     await this.findOne(id);
+
+    if (data.financialVisibilityConfig !== undefined) {
+      if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
+        throw new ForbiddenException('Finansal görünürlük ayarını yalnızca yönetici değiştirebilir');
+      }
+      data.financialVisibilityConfig = normalizeFinancialVisibilityConfig(data.financialVisibilityConfig);
+      data.hideFinancialFromAssignees = false;
+    }
+
+    if (data.hideFinancialFromAssignees !== undefined && data.hideFinancialFromAssignees !== false) {
+      if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
+        throw new ForbiddenException('Finansal görünürlük ayarını yalnızca yönetici değiştirebilir');
+      }
+    }
 
     // fileNo değiştirilmeye çalışılıyorsa çakışma kontrolü
     if (data.fileNo?.trim()) {

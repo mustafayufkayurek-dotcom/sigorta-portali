@@ -21,6 +21,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'subGroup', label: 'Masraf Alt Grubu', defaultWidth: 200, minWidth: 140 },
+  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
+  { id: 'count', label: 'Kayıt', defaultWidth: 80, minWidth: 64 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 type ExpenseItem = {
   id: string;
@@ -122,7 +131,7 @@ export default function MasrafKategorileriPage() {
 
   const parentGroup = (id: string | null) => groups.find((g) => g.id === id) ?? null;
 
-  // ── Ana Grup ───────────────────────────────────────────────────────────────
+  // ── Masraf Grubu ───────────────────────────────────────────────────────────────
 
   const openAddGroup = () => {
     setEditGroup(null);
@@ -140,7 +149,7 @@ export default function MasrafKategorileriPage() {
 
   const saveGroup = async () => {
     if (!groupForm.name.trim()) {
-      setGroupError('Ana grup adı zorunludur');
+      setGroupError('Masraf grubu adı zorunludur');
       return;
     }
     const code = editGroup ? groupForm.code : suggestAutoCode('EXP', groupForm.name);
@@ -148,7 +157,7 @@ export default function MasrafKategorileriPage() {
       g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase() && (!editGroup || g.id !== editGroup.id),
     );
     if (dupName) {
-      setGroupError('Bu isimde bir ana grup zaten mevcut');
+      setGroupError('Bu isimde bir masraf grubu zaten mevcut');
       return;
     }
     setGroupSaving(true);
@@ -198,7 +207,7 @@ export default function MasrafKategorileriPage() {
     }
   };
 
-  // ── Masraf Kalemi ──────────────────────────────────────────────────────────
+  // ── Masraf Alt Grubu ──────────────────────────────────────────────────────────
 
   const openAddItem = (parentId: string) => {
     setEditItem(null);
@@ -219,11 +228,11 @@ export default function MasrafKategorileriPage() {
 
   const saveItem = async () => {
     if (!itemForm.name.trim()) {
-      setItemError('Masraf kalemi adı zorunludur');
+      setItemError('Masraf alt grubu adı zorunludur');
       return;
     }
     if (!itemForm.parentId) {
-      setItemError('Bağlanacağı ana grup seçilmelidir');
+      setItemError('Bağlanacağı masraf grubu seçilmelidir');
       return;
     }
     const parent = parentGroup(itemForm.parentId);
@@ -233,7 +242,7 @@ export default function MasrafKategorileriPage() {
       c.name.trim().toLowerCase() === itemForm.name.trim().toLowerCase() && (!editItem || c.id !== editItem.id),
     );
     if (dupName) {
-      setItemError('Seçili ana grupta aynı isimde bir kalem zaten mevcut');
+      setItemError('Seçili masraf grubunda aynı isimde bir alt grup zaten mevcut');
       return;
     }
     setItemSaving(true);
@@ -288,13 +297,16 @@ export default function MasrafKategorileriPage() {
   const selectedParentForModal = parentGroup(itemForm.parentId || itemParentId);
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Masraf Kategorileri"
-      description="Ana gruplar ve masraf kalemlerini hiyerarşik olarak yönetin. Her kalem mutlaka bir ana gruba bağlanır."
+      description="Masraf grupları ve alt grupları hiyerarşik olarak yönetin. Her alt grup mutlaka bir masraf grubuna bağlanır."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
           {groups.length === 0 && (
             <button
               type="button"
@@ -313,7 +325,7 @@ export default function MasrafKategorileriPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Ana Grup Ekle
+            Masraf Grubu Ekle
           </button>
         </div>
       }
@@ -325,16 +337,16 @@ export default function MasrafKategorileriPage() {
           </svg>
           <input
             type="text"
-            placeholder="Ana grup veya masraf kalemi ara..."
+            placeholder="Masraf grubu veya alt grup ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={`${inputCls} pl-9`}
           />
         </div>
         <p className="text-xs text-slate-500">
-          Hiyerarşi: <span className="font-medium text-slate-700">Ana Grup</span>
+          Hiyerarşi: <span className="font-medium text-slate-700">Masraf Grubu</span>
           {' → '}
-          <span className="font-medium text-slate-700">Masraf Kalemi</span>
+          <span className="font-medium text-slate-700">Masraf Alt Grubu</span>
         </p>
       </div>
 
@@ -350,7 +362,7 @@ export default function MasrafKategorileriPage() {
             </svg>
           </div>
           <p className="text-sm font-medium text-slate-700 mb-1">Henüz masraf kategorisi yok</p>
-          <p className="text-xs text-slate-400 mb-4">Ana grup ekleyerek başlayın veya varsayılan seti yükleyin.</p>
+          <p className="text-xs text-slate-400 mb-4">Masraf grubu ekleyerek başlayın veya varsayılan seti yükleyin.</p>
           <button type="button" onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
             {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
           </button>
@@ -381,7 +393,7 @@ export default function MasrafKategorileriPage() {
                           <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Pasif</span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">Ana grup · {itemCount} masraf kalemi</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Masraf grubu · {itemCount} alt grup</p>
                     </div>
                     <span className="ml-auto text-xs text-slate-400 shrink-0 hidden sm:inline">
                       {group._count?.costEntries ?? 0} kayıt
@@ -396,7 +408,7 @@ export default function MasrafKategorileriPage() {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      Kalem Ekle
+                      Alt Grup Ekle
                     </button>
                     <button type="button" onClick={() => toggleGroupStatus(group)}>
                       <StatusBadge active={group.isActive} />
@@ -411,33 +423,33 @@ export default function MasrafKategorileriPage() {
                     {!group.children || group.children.length === 0 ? (
                       <div className="px-6 py-8 text-center">
                         <p className="text-xs text-slate-500 mb-1">
-                          <span className="font-medium text-slate-700">{group.name}</span> grubuna henüz masraf kalemi eklenmemiş.
+                          <span className="font-medium text-slate-700">{group.name}</span> grubuna henüz masraf alt grubu eklenmemiş.
                         </p>
                         <button type="button" onClick={() => openAddItem(group.id)} className="mt-2 text-xs text-blue-600 hover:underline font-medium">
-                          İlk masraf kalemini ekle
+                          İlk masraf alt grubuni ekle
                         </button>
                       </div>
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh>Masraf Kalemi</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Kayıt</SettingsTableTh>
-                          <SettingsTableTh>Durum</SettingsTableTh>
+                          <SettingsTableTh colId="subGroup">Masraf Alt Grubu</SettingsTableTh>
+                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh colId="count" className="text-center">Kayıt</SettingsTableTh>
+                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {group.children.map((item) => (
                             <SettingsTableRow key={item.id}>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="subGroup">
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{item.name}</span>
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{item.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd colId="count" className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
+                              <SettingsTableTd colId="status">
                                 <button type="button" onClick={() => toggleItemStatus(item)}>
                                   <StatusBadge active={item.isActive} />
                                 </button>
@@ -464,13 +476,13 @@ export default function MasrafKategorileriPage() {
       <SettingsModal
         isOpen={groupModal}
         onClose={() => setGroupModal(false)}
-        title={editGroup ? 'Ana Grup Düzenle' : 'Yeni Ana Grup'}
+        title={editGroup ? 'Masraf Grubu Düzenle' : 'Yeni Masraf Grubu'}
         onSave={saveGroup}
         saving={groupSaving}
         error={groupError}
       >
         <div>
-          <label className={labelCls}>Ana Grup Adı *</label>
+          <label className={labelCls}>Masraf Grubu Adı *</label>
           <input
             className={inputCls}
             value={groupForm.name}
@@ -499,25 +511,25 @@ export default function MasrafKategorileriPage() {
       <SettingsModal
         isOpen={itemModal}
         onClose={() => setItemModal(false)}
-        title={editItem ? 'Masraf Kalemi Düzenle' : 'Yeni Masraf Kalemi'}
+        title={editItem ? 'Masraf Alt Grubu Düzenle' : 'Yeni Masraf Alt Grubu'}
         onSave={saveItem}
         saving={itemSaving}
         error={itemError}
       >
         <div>
-          <label className={labelCls}>Ana Grup *</label>
+          <label className={labelCls}>Masraf Grubu *</label>
           <select
             className={`${inputCls} bg-white`}
             value={itemForm.parentId}
             onChange={(e) => setItemForm((f) => ({ ...f, parentId: e.target.value }))}
           >
-            <option value="">Ana grup seçin...</option>
+            <option value="">Masraf grubu seçin...</option>
             {groups.filter((g) => g.isActive).map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
           <p className="text-xs text-slate-500 mt-1.5">
-            Bu kalem hangi ana gruba bağlanacak? Örn: Yedek Parça → Malzeme Gideri
+            Bu alt grup hangi masraf grubuna bağlanacak? Örn: Yakıt → Operasyon Giderleri
           </p>
         </div>
 
@@ -526,14 +538,14 @@ export default function MasrafKategorileriPage() {
             <p className="text-xs text-blue-800">
               <span className="font-semibold">{selectedParentForModal.name}</span>
               {' '}
-              ana grubuna bağlanacak
+              masraf grubuna bağlanacak
             </p>
             <p className="text-[11px] text-blue-600/80 mt-0.5 font-mono">{selectedParentForModal.code}</p>
           </div>
         )}
 
         <div>
-          <label className={labelCls}>Masraf Kalemi Adı *</label>
+          <label className={labelCls}>Masraf Alt Grubu Adı *</label>
           <input
             className={inputCls}
             value={itemForm.name}
@@ -576,7 +588,7 @@ export default function MasrafKategorileriPage() {
         itemName={deleteGroup?.name}
         description={
           deleteGroup && (deleteGroup.children?.length ?? 0) > 0
-            ? 'Bu ana grubun altında masraf kalemleri var. Önce kalemleri silin veya taşıyın.'
+            ? 'Bu masraf grubunun altında alt gruplar var. Önce alt grupları silin veya taşıyın.'
             : undefined
         }
       />
@@ -588,10 +600,12 @@ export default function MasrafKategorileriPage() {
         itemName={deleteItem?.name}
         description={
           deleteItem && (deleteItem._count?.costEntries ?? 0) > 0
-            ? `Bu kaleme bağlı ${deleteItem._count?.costEntries} kayıt var. Kalem pasife alınacaktır.`
+            ? `Bu alt gruba bağlı ${deleteItem._count?.costEntries} kayıt var. Alt grup pasife alınacaktır.`
             : undefined
         }
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

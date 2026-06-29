@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
@@ -48,7 +49,8 @@ export default function DosyaPLPage() {
   const isProfit = !portfolioPL || portfolioPL.netProfit >= 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen bg-white dark:bg-slate-900 p-6">
+      <FinansSubpageBreadcrumb current="Dosya P&L" />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">Portföy Kârlılık Analizi</h2>
         <div className="flex gap-2">

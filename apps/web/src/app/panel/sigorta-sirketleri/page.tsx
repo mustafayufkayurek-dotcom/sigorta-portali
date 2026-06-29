@@ -2,6 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -46,7 +55,17 @@ const emptyForm: FormState = {
   notes: '',
 };
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Şirket', defaultWidth: 200, minWidth: 140 },
+  { id: 'code', label: 'Kod', defaultWidth: 100, minWidth: 72 },
+  { id: 'taxNo', label: 'Vergi No', defaultWidth: 120, minWidth: 96 },
+  { id: 'contact', label: 'İletişim', defaultWidth: 160, minWidth: 120 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+  { id: 'createdAt', label: 'Kayıt Tarihi', defaultWidth: 120, minWidth: 96 },
+];
+
 export default function SigortaSirketleriPage() {
+  const tableColumns = usePanelTableColumns('table-cols:sigorta-sirketleri', TABLE_COLUMNS);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -152,6 +171,7 @@ export default function SigortaSirketleriPage() {
     'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div>
       {/* Page Header */}
       <div className="mb-6 flex items-center justify-between">
@@ -170,7 +190,7 @@ export default function SigortaSirketleriPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex gap-2 items-center flex-wrap">
         {(['all', 'active', 'inactive'] as const).map((s) => (
           <button type="button"
             key={s}
@@ -189,6 +209,9 @@ export default function SigortaSirketleriPage() {
             )}
           </button>
         ))}
+        <div className="ml-auto">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
+        </div>
       </div>
 
       {/* Table */}
@@ -204,44 +227,44 @@ export default function SigortaSirketleriPage() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
-          <table className="w-full">
+          <table className="w-full" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="name" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   Şirket
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                </PanelTableTh>
+                <PanelTableTh colId="code" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   Kod
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                </PanelTableTh>
+                <PanelTableTh colId="taxNo" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   Vergi No
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                </PanelTableTh>
+                <PanelTableTh colId="contact" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   İletişim
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                </PanelTableTh>
+                <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   Durum
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                </PanelTableTh>
+                <PanelTableTh colId="createdAt" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
                   Kayıt Tarihi
-                </th>
+                </PanelTableTh>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map((c) => (
                 <tr key={c.id} className="transition-colors hover:bg-slate-50">
-                  <td className="px-5 py-3.5">
+                  <PanelTableTd colId="name" className="px-5 py-3.5">
                     <p className="text-sm font-medium text-slate-800">{c.name}</p>
                     {c.address && (
                       <p className="mt-0.5 max-w-xs truncate text-xs text-slate-400">{c.address}</p>
                     )}
-                  </td>
-                  <td className="px-5 py-3.5">
+                  </PanelTableTd>
+                  <PanelTableTd colId="code" className="px-5 py-3.5">
                     <code className="rounded bg-slate-100 px-2 py-0.5 text-xs">{c.code}</code>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-slate-600">{c.taxNumber || '—'}</td>
-                  <td className="px-5 py-3.5">
+                  </PanelTableTd>
+                  <PanelTableTd colId="taxNo" className="px-5 py-3.5 text-sm text-slate-600">{c.taxNumber || '—'}</PanelTableTd>
+                  <PanelTableTd colId="contact" className="px-5 py-3.5">
                     <div className="space-y-0.5">
                       {c.contactEmail && (
                         <p className="text-xs text-slate-600">{c.contactEmail}</p>
@@ -253,8 +276,8 @@ export default function SigortaSirketleriPage() {
                         <span className="text-xs text-slate-300">—</span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-5 py-3.5">
+                  </PanelTableTd>
+                  <PanelTableTd colId="status" className="px-5 py-3.5">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         c.status === 'active'
@@ -264,10 +287,10 @@ export default function SigortaSirketleriPage() {
                     >
                       {c.status === 'active' ? 'Aktif' : 'Pasif'}
                     </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-slate-400">
+                  </PanelTableTd>
+                  <PanelTableTd colId="createdAt" className="px-5 py-3.5 text-sm text-slate-400">
                     {new Date(c.createdAt).toLocaleDateString('tr-TR')}
-                  </td>
+                  </PanelTableTd>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center justify-end gap-3">
                       <button type="button"
@@ -428,5 +451,6 @@ export default function SigortaSirketleriPage() {
         </div>
       )}
     </div>
+    </TableColumnsProvider>
   );
 }

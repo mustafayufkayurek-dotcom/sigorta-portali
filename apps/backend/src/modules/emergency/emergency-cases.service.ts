@@ -121,11 +121,19 @@ export class EmergencyCasesService {
     if (filters.status) where.status = filters.status;
     if (filters.customerId) where.customerId = filters.customerId;
     if (filters.search) {
-      where.OR = [
-        { customerName: { contains: filters.search, mode: 'insensitive' } },
-        { address: { contains: filters.search, mode: 'insensitive' } },
-        { caseNo: { contains: filters.search, mode: 'insensitive' } },
+      const q = filters.search.trim();
+      const digits = q.replace(/[\s\-./]/g, '');
+      const or: Array<Record<string, unknown>> = [
+        { customerName: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { caseNo: { contains: q, mode: 'insensitive' } },
+        { fileNo: { contains: q, mode: 'insensitive' } },
       ];
+      if (digits && digits !== q) {
+        or.push({ fileNo: { contains: digits, mode: 'insensitive' } });
+        or.push({ caseNo: { contains: digits, mode: 'insensitive' } });
+      }
+      where.OR = or;
     }
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);

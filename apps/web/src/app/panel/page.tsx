@@ -9,7 +9,7 @@ import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
 import { PendingActionsWidget } from '@/features/dashboard/components/queue';
 import { SlaRiskWidget } from '@/features/dashboard/components/sla';
 import { OwnershipLoadWidget } from '@/features/dashboard/components/ownership';
-import { FinanceBottleneckWidget } from '@/features/dashboard/components/finance';
+import { FinanceBottleneckWidget, OverheadAllocationReminderWidget } from '@/features/dashboard/components/finance';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import { RunningLightsText } from '@/components/ui/RunningLightsText';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
@@ -64,19 +64,21 @@ export default function PanelPage() {
 
       <OperationFlowStrip hideFinance={isOfficeStaff} />
 
-      <CriticalAlertsWidget staggerIndex={1} />
+      {!isOfficeStaff && <OverheadAllocationReminderWidget staggerIndex={2} />}
 
-      <PendingActionsWidget staggerIndex={2} />
+      <CriticalAlertsWidget staggerIndex={3} />
+
+      <PendingActionsWidget staggerIndex={4} />
 
       <DashboardGrid>
-        <SlaRiskWidget staggerIndex={3} />
-        {!isOfficeStaff && <OwnershipLoadWidget staggerIndex={4} />}
+        <SlaRiskWidget staggerIndex={5} />
+        {!isOfficeStaff && <OwnershipLoadWidget staggerIndex={6} />}
       </DashboardGrid>
 
       {!isOfficeStaff && (
         <DashboardGrid>
-          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={5} />
-          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={6} />
+          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={7} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={8} />
         </DashboardGrid>
       )}
 

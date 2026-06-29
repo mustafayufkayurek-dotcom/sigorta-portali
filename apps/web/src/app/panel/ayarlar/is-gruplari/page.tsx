@@ -21,6 +21,16 @@ import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/Settin
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'subGroup', label: 'Alt Grup', defaultWidth: 200, minWidth: 140 },
+  { id: 'unit', label: 'Birim', defaultWidth: 90, minWidth: 70 },
+  { id: 'unitPrice', label: 'Birim Fiyat', defaultWidth: 110, minWidth: 90 },
+  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
 
@@ -368,13 +378,16 @@ export default function IsGruplariPage() {
   const selectedParentForModal = parentGroup(subForm.workGroupId);
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="İş Grubu Yönetimi"
-      description="İş grupları ve alt grupları hiyerarşik olarak yönetin. Her alt grup mutlaka bir iş grubuna bağlanır."
+      description="Onarım maliyet kalemleri ve tedarikçi hasar hizmet kolları (Sıva, Boya, Mobilya). Tedarikçi kartında Hasar Onarım seçilince bu gruplar listelenir."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
           {groups.length === 0 && (
             <button
               type="button"
@@ -504,17 +517,17 @@ export default function IsGruplariPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh>Alt Grup</SettingsTableTh>
-                          <SettingsTableTh>Birim</SettingsTableTh>
-                          <SettingsTableTh>Birim Fiyat</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh>Durum</SettingsTableTh>
+                          <SettingsTableTh colId="subGroup">Alt Grup</SettingsTableTh>
+                          <SettingsTableTh colId="unit">Birim</SettingsTableTh>
+                          <SettingsTableTh colId="unitPrice">Birim Fiyat</SettingsTableTh>
+                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {subs.map((sub) => (
                             <SettingsTableRow key={sub.id}>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="subGroup">
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
                                   {sub.description && (
@@ -523,16 +536,16 @@ export default function IsGruplariPage() {
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{sub.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="unit">
                                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
                                   {UNIT_LABELS[sub.unitType] ?? sub.unitType}
                                 </span>
                               </SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="unitPrice">
                                 <span className="text-sm font-semibold text-slate-900">{fmt(sub.unitPrice)}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd colId="status">
                                 <button type="button" onClick={() => toggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />
                                 </button>
@@ -727,5 +740,7 @@ export default function IsGruplariPage() {
         itemName={deleteSubTarget?.name}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

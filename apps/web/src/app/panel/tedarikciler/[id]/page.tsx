@@ -1,10 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { toWhatsAppLink } from '@/utils/date-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import {
+  buildDepartmentCodeMap,
+  filterDocumentTypesForCategory,
+  findOtherDocumentTypeId,
+  isOtherDocumentTypeName,
+  VENDOR_DOC_OTHER_SELECT,
+  VENDOR_RELATION_SECTION_TITLE,
+  formatVendorTypeLabel,
+  type VendorCategory,
+  type VendorDocumentTypeRow,
+} from '@/utils/vendor-form-helpers';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -30,14 +43,12 @@ const CONTACT_LABEL: Record<string, string> = {
   general: 'Genel', work: 'İş', personal: 'Kişisel',
 };
 
-type VendorTab = 'profil' | 'yetkili' | 'iletisim' | 'bolgeler' | 'is-gruplari' | 'performans' | 'evraklar' | 'odemeler';
+type VendorTab = 'profil' | 'yetkili-iletisim' | 'hizmet-kapsam' | 'performans' | 'evraklar' | 'odemeler';
 
 const TABS: { id: VendorTab; label: string; icon: string }[] = [
   { id: 'profil', label: 'Profil', icon: '👤' },
-  { id: 'yetkili', label: 'Yetkili Kişiler', icon: '👥' },
-  { id: 'iletisim', label: 'İletişim', icon: '📡' },
-  { id: 'bolgeler', label: 'Hizmet Bölgeleri', icon: '🗺' },
-  { id: 'is-gruplari', label: 'İş Grupları', icon: '⚙' },
+  { id: 'yetkili-iletisim', label: 'Yetkili & İletişim', icon: '📡' },
+  { id: 'hizmet-kapsam', label: 'Hizmet Kapsamı', icon: '🗺' },
   { id: 'performans', label: 'Performans', icon: '📊' },
   { id: 'evraklar', label: 'Evraklar', icon: '📄' },
   { id: 'odemeler', label: 'Ödemeler / Ekstre', icon: '💰' },
@@ -98,13 +109,13 @@ function ProfilTab({ vendor }: { vendor: any }) {
                 <InfoRow label="Vergi No" value={vendor.taxNumber} />
                 <InfoRow label="Vergi Dairesi" value={vendor.taxOffice} />
                 <InfoRow label="Ticaret Sicil No" value={vendor.tradeRegistryNo} />
-                <InfoRow label="Tedarikçi Türü" value={vendor.type} />
+                <InfoRow label="Tedarikçi Türü" value={formatVendorTypeLabel(vendor.type)} />
               </>
             ) : (
               <>
                 <InfoRow label="Ad Soyad" value={vendor.name} className="col-span-2" />
                 <InfoRow label="TC Kimlik No" value={vendor.identityNo} />
-                <InfoRow label="Tedarikçi Türü" value={vendor.type} />
+                <InfoRow label="Tedarikçi Türü" value={formatVendorTypeLabel(vendor.type)} />
               </>
             )}
           </div>
@@ -131,8 +142,8 @@ function ProfilTab({ vendor }: { vendor: any }) {
           </div>
         </SectionCard>
 
-        {/* CRM */}
-        <SectionCard title="CRM Bilgileri">
+        {/* İlişki Özeti */}
+        <SectionCard title={VENDOR_RELATION_SECTION_TITLE} subtitle="Kayıt anı ilişki bilgileri">
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <InfoRow label="Kaynak" value={vendor.source ? SOURCE_LABEL[vendor.source] ?? vendor.source : null} />
             <InfoRow label="Durum" value={
@@ -152,94 +163,29 @@ function ProfilTab({ vendor }: { vendor: any }) {
         </SectionCard>
       </div>
 
-      {vendor.notes && (
-        <SectionCard title="Notlar">
+      <SectionCard title="Kayıt Notu" subtitle="Kayıt sırasında girilen not — detaylı CRM geçmişi için sol menüdeki CRM modülünü kullanın">
+        {vendor.notes ? (
           <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{vendor.notes}</p>
-        </SectionCard>
-      )}
+        ) : (
+          <p className="text-sm text-slate-400">Kayıt notu girilmemiş.</p>
+        )}
+      </SectionCard>
     </div>
   );
 }
 
-// ── Yetkili Kişiler Tab ────────────────────────────────────────────────────────
-function YetkiliKisilerTab({ vendor }: { vendor: any }) {
+// ── Yetkili & İletişim Tab ────────────────────────────────────────────────────
+function YetkiliIletisimTab({ vendor }: { vendor: any }) {
   const contacts: any[] = vendor.contacts || [];
-  if (!contacts.length) {
-    return (
-      <SectionCard title="Yetkili Kişiler">
-        <div className="py-8 text-center">
-          <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-2 text-xl">👥</div>
-          <p className="text-slate-500 font-medium text-sm">Yetkili Kişi Eklenmemiş</p>
-          <p className="text-xs text-slate-400 mt-1">Profil Düzenle Sayfasından Yetkili Kişi Ekleyebilirsiniz</p>
-        </div>
-      </SectionCard>
-    );
-  }
-  const today = new Date();
-  return (
-    <SectionCard title="Yetkili Kişiler" subtitle={`${contacts.length} kişi kayıtlı`}>
-      <div className="space-y-3">
-        {contacts.map((c: any, i: number) => {
-          const isBirthday = c.birthDate && (() => {
-            const bd = new Date(c.birthDate);
-            return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
-          })();
-          return (
-            <div key={c.id ?? i} className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${isBirthday ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}>
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-indigo-600' : 'bg-slate-400'}`}>
-                  {(c.fullName || '?').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-800">{c.fullName}</p>
-                    {c.isPrimary && <Badge variant="indigo">Birincil</Badge>}
-                    {isBirthday && <Badge variant="amber">🎂 Bugün Doğum Günü!</Badge>}
-                  </div>
-                  {c.title && <p className="text-xs text-slate-500 mt-0.5">{c.title}</p>}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                    {c.phone && <a href={`tel:${c.phone}`} className="text-xs text-blue-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors"><svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>{c.phone}</a>}
-                    {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-indigo-600 flex items-center gap-1">✉ {c.email}</a>}
-                    {c.birthDate && <p className="text-xs text-slate-400">🎂 {fmtDate(c.birthDate)}</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </SectionCard>
-  );
-}
-
-// ── İletişim Bilgileri Tab ─────────────────────────────────────────────────────
-function IletisimTab({ vendor }: { vendor: any }) {
   const contactInfos: any[] = vendor.contactInfos || [];
+  const today = new Date();
+
   return (
     <div className="space-y-4">
-      {/* Ana iletişim */}
       <SectionCard title="Birincil İletişim Bilgileri">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           <InfoRow label="Telefon" value={vendor.phone ? (
-            <div className="flex items-center gap-2">
-              <a href={`tel:${vendor.phone}`} className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1">
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                {vendor.phone}
-              </a>
-              {toWhatsAppLink(vendor.phone) && (
-                <a
-                  href={toWhatsAppLink(vendor.phone)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="WhatsApp"
-                  className="w-6 h-6 bg-green-50 hover:bg-green-100 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
-                >
-                  <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                </a>
-              )}
-            </div>
+            <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" />
           ) : null} />
           <InfoRow label="E-posta" value={vendor.email ? (
             <a href={`mailto:${vendor.email}`} className="text-indigo-600 hover:underline">{vendor.email}</a>
@@ -247,7 +193,46 @@ function IletisimTab({ vendor }: { vendor: any }) {
         </div>
       </SectionCard>
 
-      {/* Çoklu iletişim */}
+      <SectionCard title="Yetkili Kişiler" subtitle={`${contacts.length} kişi kayıtlı`}>
+        {contacts.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-slate-500 font-medium text-sm">Yetkili Kişi Eklenmemiş</p>
+            <p className="text-xs text-slate-400 mt-1">Düzenle panelinden yetkili kişi ekleyebilirsiniz</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {contacts.map((c: any, i: number) => {
+              const isBirthday = c.birthDate && (() => {
+                const bd = new Date(c.birthDate);
+                return bd.getMonth() === today.getMonth() && bd.getDate() === today.getDate();
+              })();
+              return (
+                <div key={c.id ?? i} className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${isBirthday ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-indigo-600' : 'bg-slate-400'}`}>
+                      {(c.fullName || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-800">{c.fullName}</p>
+                        {c.isPrimary && <Badge variant="indigo">Birincil</Badge>}
+                        {isBirthday && <Badge variant="amber">🎂 Bugün Doğum Günü!</Badge>}
+                      </div>
+                      {c.title && <p className="text-xs text-slate-500 mt-0.5">{c.title}</p>}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                        {c.phone && <PhoneContactActions phone={c.phone} variant="inline" accent="indigo" size="sm" />}
+                        {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-indigo-600 flex items-center gap-1">✉ {c.email}</a>}
+                        {c.birthDate && <p className="text-xs text-slate-400">🎂 {fmtDate(c.birthDate)}</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard title="Ek İletişim Kanalları" subtitle={`${contactInfos.length} kayıtlı kanal`}>
         {contactInfos.length === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">Ek İletişim Kanalı Eklenmemiş.</p>
@@ -259,10 +244,7 @@ function IletisimTab({ vendor }: { vendor: any }) {
                   <span className="text-lg">{CONTACT_TYPE_ICON[ci.type] ?? '📞'}</span>
                   <div>
                     {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
-                      <a href={`tel:${ci.value}`} className="text-sm font-medium text-blue-600 hover:underline cursor-pointer flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                        {ci.value}
-                      </a>
+                      <PhoneContactActions phone={ci.value} variant="inline" accent="indigo" size="sm" />
                     ) : ci.type === 'email' ? (
                       <a href={`mailto:${ci.value}`} className="text-sm font-medium text-indigo-600 hover:underline">{ci.value}</a>
                     ) : (
@@ -281,36 +263,126 @@ function IletisimTab({ vendor }: { vendor: any }) {
   );
 }
 
+// ── Hizmet Kapsamı Tab (Bölgeler + İş Grupları) ───────────────────────────────
+function HizmetKapsamTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }) {
+  return (
+    <div className="space-y-4">
+      <BolgelerTab vendor={vendor} onUpdate={onUpdate} />
+      <IsGruplariTab vendor={vendor} onUpdate={onUpdate} />
+    </div>
+  );
+}
+
 // ── Hizmet Bölgeleri Tab ──────────────────────────────────────────────────────
 function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }) {
   const [provinces, setProvinces] = useState<any[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<any>(null);
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [districts, setDistricts] = useState<any[]>([]);
+  const [districtCache, setDistrictCache] = useState<Map<string, { id: string; name: string }[]>>(new Map());
   const [serviceAreas, setServiceAreas] = useState<Array<{ provinceId: string; districtId: string | null }>>(
-    (vendor.serviceAreas || []).map((sa: any) => ({ provinceId: sa.provinceId, districtId: sa.districtId ?? null }))
+    (vendor.serviceAreas || []).map((sa: any) => ({ provinceId: sa.provinceId, districtId: sa.districtId ?? null })),
   );
   const [saving, setSaving] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   useEffect(() => {
     axios.get(`${API}/locations/provinces`, { headers: authHeader() })
       .then((r) => setProvinces(r.data.data || [])).catch(console.error);
   }, []);
 
-  const loadDistricts = async (id: string) => {
-    const r = await axios.get(`${API}/locations/provinces/${id}/districts`, { headers: authHeader() });
-    setDistricts(r.data.data || []);
+  useEffect(() => {
+    setServiceAreas(
+      (vendor.serviceAreas || []).map((sa: any) => ({ provinceId: sa.provinceId, districtId: sa.districtId ?? null })),
+    );
+  }, [vendor.id, vendor.serviceAreas]);
+
+  useEffect(() => {
+    const cache = new Map<string, { id: string; name: string }[]>();
+    for (const sa of vendor.serviceAreas ?? []) {
+      if (sa.district && sa.provinceId) {
+        const list = cache.get(sa.provinceId) ?? [];
+        if (!list.some((d) => d.id === sa.district.id)) {
+          cache.set(sa.provinceId, [...list, { id: sa.district.id, name: sa.district.name }]);
+        }
+      }
+    }
+    if (cache.size > 0) {
+      setDistrictCache((prev) => {
+        const next = new Map(prev);
+        cache.forEach((v, k) => {
+          const merged = [...(next.get(k) ?? [])];
+          v.forEach((d) => { if (!merged.some((x) => x.id === d.id)) merged.push(d); });
+          next.set(k, merged);
+        });
+        return next;
+      });
+    }
+  }, [vendor.serviceAreas]);
+
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: p.id, label: p.name })),
+    [provinces],
+  );
+
+  const loadDistricts = async (provinceId: string) => {
+    const cached = districtCache.get(provinceId);
+    if (cached) {
+      setDistricts(cached);
+      return;
+    }
+    setLoadingDistricts(true);
+    try {
+      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
+      const data: { id: string; name: string }[] = r.data.data || [];
+      setDistrictCache((prev) => new Map(prev).set(provinceId, data));
+      setDistricts(data);
+    } catch (e) {
+      console.error(e);
+      setDistricts([]);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
+
+  const onProvinceChange = (provinceId: string) => {
+    setSelectedProvinceId(provinceId);
+    if (provinceId) loadDistricts(provinceId);
+    else setDistricts([]);
   };
 
   const toggleArea = (provinceId: string, districtId: string | null) => {
     const key = districtId ? `${provinceId}:${districtId}` : `${provinceId}:`;
     const exists = serviceAreas.some((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) === key);
-    if (exists) setServiceAreas((p) => p.filter((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) !== key));
-    else setServiceAreas((p) => [...p, { provinceId, districtId }]);
+    if (exists) {
+      setServiceAreas((p) => p.filter((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) !== key));
+    } else {
+      setServiceAreas((p) => [...p, { provinceId, districtId }]);
+    }
   };
 
   const addWholeProvince = () => {
-    if (!selectedProvince) return;
-    setServiceAreas((p) => [...p.filter((sa) => sa.provinceId !== selectedProvince.id), { provinceId: selectedProvince.id, districtId: null }]);
+    if (!selectedProvinceId) return;
+    setServiceAreas((p) => [
+      ...p.filter((sa) => sa.provinceId !== selectedProvinceId),
+      { provinceId: selectedProvinceId, districtId: null },
+    ]);
+  };
+
+  const removeArea = (sa: { provinceId: string; districtId: string | null }) => {
+    const key = sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`;
+    setServiceAreas((p) => p.filter((x) => (x.districtId ? `${x.provinceId}:${x.districtId}` : `${x.provinceId}:`) !== key));
+  };
+
+  const areaLabel = (sa: { provinceId: string; districtId: string | null }) => {
+    const prov = provinces.find((p) => p.id === sa.provinceId);
+    const fromVendor = (vendor.serviceAreas ?? []).find(
+      (v: any) => v.provinceId === sa.provinceId && (v.districtId ?? null) === sa.districtId,
+    );
+    const provName = prov?.name ?? fromVendor?.province?.name ?? 'İl';
+    if (!sa.districtId) return `${provName} · Tüm ilçeler`;
+    const dist = districtCache.get(sa.provinceId)?.find((d) => d.id === sa.districtId)
+      ?? fromVendor?.district;
+    return `${provName} / ${dist?.name ?? 'İlçe'}`;
   };
 
   const handleSave = async () => {
@@ -321,82 +393,105 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
-  const groupedAreas = provinces.filter((p) => serviceAreas.some((sa) => sa.provinceId === p.id));
+  const selectedProvince = provinces.find((p) => p.id === selectedProvinceId);
 
   return (
-    <div className="space-y-4">
-      <SectionCard title="Mevcut Hizmet Bölgeleri" subtitle={`${serviceAreas.length} bölge tanımlı`}>
-        {groupedAreas.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-4">Henüz Hizmet Bölgesi Eklenmemiş.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {groupedAreas.map((prov) => {
-              const provAreas = serviceAreas.filter((sa) => sa.provinceId === prov.id);
-              const isAllProv = provAreas.some((sa) => !sa.districtId);
-              return (
-                <Badge key={prov.id} variant="blue">
-                  🗺 {prov.name} {isAllProv ? '(Tümü)' : `(${provAreas.length} ilçe)`}
-                </Badge>
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
+    <SectionCard title="Hizmet Bölgeleri" subtitle={`${serviceAreas.length} bölge tanımlı`}>
+      {serviceAreas.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {serviceAreas.map((sa, i) => (
+            <span
+              key={`${sa.provinceId}-${sa.districtId ?? 'all'}-${i}`}
+              className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-800 rounded-full pl-2.5 pr-1.5 py-1 border border-blue-100"
+            >
+              <span className="max-w-[12rem] truncate">{areaLabel(sa)}</span>
+              <button
+                type="button"
+                onClick={() => removeArea(sa)}
+                className="w-4 h-4 flex items-center justify-center rounded-full text-blue-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                aria-label="Kaldır"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 mb-4">Henüz hizmet bölgesi eklenmemiş. Aşağıdan il seçerek başlayın.</p>
+      )}
 
-      <SectionCard title="Bölge Düzenle">
-        <div className="flex gap-2 mb-3">
-          <select className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-            value={selectedProvince?.id ?? ''}
-            onChange={(e) => {
-              const p = provinces.find((x) => x.id === e.target.value);
-              setSelectedProvince(p ?? null);
-              if (p) loadDistricts(p.id); else setDistricts([]);
-            }}>
-          <option value="">İl Seçin...</option>
-            {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
-          </select>
-          {selectedProvince && (
-            <button type="button" onClick={addWholeProvince} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 whitespace-nowrap">
-              Tüm İlçeleri Ekle
-            </button>
+      <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+        <p className="text-xs font-medium text-slate-600 mb-3">Bölge ekle</p>
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
+          <div className="w-full sm:w-52 flex-shrink-0 space-y-2">
+            <label className="block text-[11px] text-slate-500">İl</label>
+            <SearchableSelect
+              options={provinceOptions}
+              value={selectedProvinceId}
+              onChange={onProvinceChange}
+              placeholder="İl ara veya seç..."
+              emptyText="İl bulunamadı"
+              inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            />
+            {selectedProvince && (
+              <button
+                type="button"
+                onClick={addWholeProvince}
+                className="w-full text-xs font-medium text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors"
+              >
+                Tüm ilçeleri ekle
+              </button>
+            )}
+          </div>
+
+          {selectedProvince ? (
+            <div className="flex-1 min-w-0 w-full">
+              <p className="text-[11px] text-slate-500 mb-2">
+                {loadingDistricts ? 'İlçeler yükleniyor…' : `${selectedProvince.name} — ilçe seçin (isteğe bağlı)`}
+              </p>
+              {!loadingDistricts && districts.length > 0 && (
+                <div className="max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 bg-white rounded-lg p-3 border border-slate-100">
+                  {districts.map((d) => {
+                    const checked = serviceAreas.some(
+                      (sa) => sa.provinceId === selectedProvinceId && sa.districtId === d.id,
+                    );
+                    return (
+                      <label
+                        key={d.id}
+                        className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-indigo-600 rounded px-1 py-0.5"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleArea(selectedProvinceId, d.id)}
+                          className="rounded accent-indigo-600 flex-shrink-0"
+                        />
+                        <span className="truncate">{d.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 min-w-0 hidden sm:flex items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white/50 px-4 py-6">
+              <p className="text-xs text-slate-400 text-center">İl seçildiğinde ilçeler burada listelenir.</p>
+            </div>
           )}
         </div>
-        {selectedProvince && districts.length > 0 && (
-          <div className="max-h-32 overflow-y-auto grid grid-cols-3 gap-1.5 mb-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-            {districts.map((d) => {
-              const checked = serviceAreas.some((sa) => sa.provinceId === selectedProvince.id && sa.districtId === d.id);
-              return (
-                <label key={d.id} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-indigo-600">
-                  <input type="checkbox" checked={checked} onChange={() => toggleArea(selectedProvince.id, d.id)} className="rounded accent-indigo-600" />
-                  {d.name}
-                </label>
-              );
-            })}
-          </div>
-        )}
-        {serviceAreas.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {serviceAreas.map((sa, i) => {
-              const prov = provinces.find((p) => p.id === sa.provinceId);
-              const label = sa.districtId ? `${prov?.name}/${sa.districtId}` : `${prov?.name} (Tümü)`;
-              return (
-                <span key={i} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 border border-blue-100">
-                  {label}
-                  <button type="button" onClick={() => {
-                    const key = sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`;
-                    setServiceAreas((p) => p.filter((x) => (x.districtId ? `${x.provinceId}:${x.districtId}` : `${x.provinceId}:`) !== key));
-                  }} className="text-blue-400 hover:text-red-500 ml-0.5">×</button>
-                </span>
-              );
-            })}
-          </div>
-        )}
-        <button type="button" onClick={handleSave} disabled={saving}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium">
-          {saving ? 'Kaydediliyor...' : '💾 Kaydet'}
+      </div>
+
+      <div className="flex justify-end pt-4 mt-1 border-t border-slate-50">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors"
+        >
+          {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
-      </SectionCard>
-    </div>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -448,10 +543,47 @@ function IsGruplariTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void
           ))}
         </div>
         <button type="button" onClick={handleSave} disabled={saving}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium">
-          {saving ? 'Kaydediliyor...' : '💾 Kaydet'}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors">
+          {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </SectionCard>
+    </div>
+  );
+}
+
+// ── Performans Göstergeleri (sayfa üstü) ─────────────────────────────────────
+function VendorPerformanceStats({ vendorId }: { vendorId: string }) {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get(`${API}/vendors/${vendorId}/stats`, { headers: authHeader() })
+      .then((r) => setStats(r.data.data)).catch(console.error).finally(() => setLoading(false));
+  }, [vendorId]);
+
+  const metrics = [
+    { label: 'Tamamlanan İş', value: stats?.completedJobs ?? 0, color: 'text-slate-900' },
+    { label: 'Aktif İş', value: stats?.activeJobs ?? 0, color: 'text-indigo-600' },
+    { label: 'Memnuniyet', value: '—', color: 'text-slate-400' },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-3 mb-5">
+      {metrics.map((m) => (
+        <div key={m.label} className="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-3.5 text-center">
+          {loading ? (
+            <>
+              <div className="h-8 w-10 bg-slate-100 rounded mx-auto animate-pulse" />
+              <div className="h-3 w-16 bg-slate-100 rounded mx-auto mt-2 animate-pulse" />
+            </>
+          ) : (
+            <>
+              <p className={`text-2xl font-bold ${m.color}`}>{m.value}</p>
+              <p className="text-xs text-slate-400 mt-1">{m.label}</p>
+            </>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -469,51 +601,31 @@ function PerformansTab({ vendorId }: { vendorId: string }) {
   if (loading) return <div className="text-slate-400 py-12 text-center">Yükleniyor...</div>;
   if (!stats) return <div className="text-slate-400 py-12 text-center">İstatistik Bulunamadı.</div>;
 
+  if (!stats.avgByCategory?.length) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center">
+        <p className="text-sm text-slate-400">Kategori bazlı detay henüz oluşmadı.</p>
+        <p className="text-xs text-slate-300 mt-1">Özet göstergeler sayfa üstünde görüntülenir.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Tamamlanan İş', value: stats.completedJobs, color: 'text-slate-900' },
-          { label: 'Aktif İş', value: stats.activeJobs, color: 'text-indigo-600' },
-          { label: 'Memnuniyet', value: '—', color: 'text-slate-400' },
-        ].map((m) => (
-          <div key={m.label} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-center">
-            <p className={`text-3xl font-bold ${m.color}`}>{m.value}</p>
-            <p className="text-xs text-slate-400 mt-1.5">{m.label}</p>
+    <SectionCard title="Kategori Bazlı Ortalama Tutar">
+      <div className="space-y-2">
+        {stats.avgByCategory.map((cat: any) => (
+          <div key={cat.category} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+            <span className="text-sm text-slate-700">{CATEGORIES[cat.category] ?? cat.category}</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-slate-400">{cat._count?.id ?? 0} iş</span>
+              <span className="text-sm font-semibold text-slate-900">{fmtCurrency(cat._avg?.amount)}</span>
+            </div>
           </div>
         ))}
       </div>
-      {stats.avgByCategory?.length > 0 && (
-        <SectionCard title="Kategori Bazlı Ortalama Tutar">
-          <div className="space-y-2">
-            {stats.avgByCategory.map((cat: any) => (
-              <div key={cat.category} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                <span className="text-sm text-slate-700">{CATEGORIES[cat.category] ?? cat.category}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-slate-400">{cat._count?.id ?? 0} iş</span>
-                  <span className="text-sm font-semibold text-slate-900">{fmtCurrency(cat._avg?.amount)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-    </div>
+    </SectionCard>
   );
 }
-
-// ── Evrak türleri (hardcoded, ileride ayarlardan yönetilebilir) ───────────────
-const EVRAK_TURLERI = [
-  'Vergi Levhası',
-  'İmza Sirküleri',
-  'Ticaret Sicil Gazetesi',
-  'Faaliyet Belgesi',
-  'Sözleşme',
-  'Sigorta Poliçesi',
-  'İş Güvenliği Belgesi',
-  'Referans Mektubu',
-  'Diğer',
-];
 
 // ── Evrak Önizleme Modalı ─────────────────────────────────────────────────────
 function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
@@ -583,14 +695,22 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
 }
 
 // ── Evraklar Tab ──────────────────────────────────────────────────────────────
-function EvraklarTab({ vendorId }: { vendorId: string }) {
+function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCategory: VendorCategory }) {
   const [documents, setDocuments] = useState<any[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<VendorDocumentTypeRow[]>([]);
+  const [deptCodeById, setDeptCodeById] = useState<Map<string, string>>(() => new Map());
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedTypeId, setSelectedTypeId] = useState('');
   const [customType, setCustomType] = useState('');
   const [previewDoc, setPreviewDoc] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredTypes = filterDocumentTypesForCategory(documentTypes, vendorCategory, deptCodeById);
+  const otherDocumentTypeId = findOtherDocumentTypeId(documentTypes, vendorCategory, deptCodeById);
+  const otherSelected = selectedTypeId === VENDOR_DOC_OTHER_SELECT
+    || (!!otherDocumentTypeId && selectedTypeId === otherDocumentTypeId)
+    || isOtherDocumentTypeName(filteredTypes.find((dt) => dt.id === selectedTypeId)?.name ?? '');
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -599,24 +719,38 @@ function EvraklarTab({ vendorId }: { vendorId: string }) {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [vendorId]);
 
-  useEffect(() => { loadDocuments(); }, [loadDocuments]);
+  useEffect(() => {
+    loadDocuments();
+    axios.get(`${API}/document-types`, { params: { status: 'active' }, headers: authHeader() })
+      .then((r) => setDocumentTypes(r.data.data ?? []))
+      .catch(() => setDocumentTypes([]));
+    axios.get(`${API}/departments`, { headers: authHeader() })
+      .then((r) => setDeptCodeById(buildDepartmentCodeMap((r.data.data ?? []) as { id: string; code: string }[])))
+      .catch(() => setDeptCodeById(new Map()));
+  }, [loadDocuments]);
 
-  const effectiveType = selectedType === 'Diğer' ? customType.trim() : selectedType;
-  const canUpload = !!(effectiveType && selectedType);
+  const canUpload = !!selectedTypeId && (!otherSelected || (!!customType.trim() && !!otherDocumentTypeId));
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !canUpload) return;
+    if (!file || !selectedTypeId) return;
+    const isManualOther = selectedTypeId === VENDOR_DOC_OTHER_SELECT
+      || isOtherDocumentTypeName(filteredTypes.find((dt) => dt.id === selectedTypeId)?.name ?? '');
+    const customLabel = isManualOther ? customType.trim() : '';
+    if (isManualOther && !customLabel) return;
+    const typeId = selectedTypeId === VENDOR_DOC_OTHER_SELECT ? otherDocumentTypeId : selectedTypeId;
+    if (!typeId) return;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('documentTypeName', effectiveType);
+      fd.append('documentTypeId', typeId);
+      if (customLabel) fd.append('customLabel', customLabel);
       await axios.post(`${API}/vendors/${vendorId}/documents`, fd, {
         headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
       });
       loadDocuments();
-      setSelectedType('');
+      setSelectedTypeId('');
       setCustomType('');
     } catch (e: any) { alert(e.response?.data?.message ?? 'Yükleme başarısız'); }
     finally { setUploading(false); if (e.target) e.target.value = ''; }
@@ -649,17 +783,29 @@ function EvraklarTab({ vendorId }: { vendorId: string }) {
           <div className="flex-1 min-w-48">
             <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
             <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-              value={selectedType} onChange={(e) => { setSelectedType(e.target.value); setCustomType(''); }}>
+              value={selectedTypeId}
+              onChange={(e) => { setSelectedTypeId(e.target.value); setCustomType(''); }}>
               <option value="">Seçin...</option>
-              {EVRAK_TURLERI.map((t) => <option key={t} value={t}>{t}</option>)}
+              {filteredTypes.map((dt) => (
+                <option key={dt.id} value={dt.id}>{dt.name}{dt.isRequired ? ' *' : ''}</option>
+              ))}
+              {!filteredTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
+                <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+              )}
             </select>
-            {selectedType === 'Diğer' && (
+            {otherSelected && (
               <input
                 className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 placeholder="Evrak türünü yazın..."
                 value={customType}
                 onChange={(e) => setCustomType(e.target.value)}
               />
+            )}
+            {otherSelected && !otherDocumentTypeId && (
+              <p className="text-xs text-amber-600 mt-1.5">Ayarlarda &quot;Diğer&quot; evrak türü tanımlı değil.</p>
+            )}
+            {filteredTypes.length === 0 && !otherDocumentTypeId && (
+              <p className="text-xs text-amber-600 mt-1.5">Bu kategori için tanımlı evrak türü yok.</p>
             )}
           </div>
           <div>
@@ -699,7 +845,7 @@ function EvraklarTab({ vendorId }: { vendorId: string }) {
                       <p className="text-sm font-medium text-slate-800 truncate">{doc.fileName}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs mr-1">
-                          {doc.documentType?.name ?? doc.documentTypeName ?? '—'}
+                          {doc.customLabel ?? doc.documentType?.name ?? doc.documentTypeName ?? '—'}
                         </span>
                         {fmtSize(doc.fileSize)} · {new Date(doc.createdAt).toLocaleDateString('tr-TR')}
                         {doc.uploadedBy && ` · ${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
@@ -804,7 +950,7 @@ export default function VendorDetailPage() {
                 <h1 className="text-xl font-bold text-slate-900">{vendor.name}</h1>
                 <p className="text-sm text-slate-400 mt-0.5">
                   {isCorporate ? 'Kurumsal' : 'Bireysel'}
-                  {vendor.type && ` · ${vendor.type}`}
+                  {vendor.type && ` · ${formatVendorTypeLabel(vendor.type)}`}
                   {vendor.city && ` · ${vendor.city}`}
                 </p>
               </div>
@@ -819,34 +965,12 @@ export default function VendorDetailPage() {
             {/* Quick info */}
             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3">
               {vendor.phone && (
-                <span className="flex items-center gap-1.5">
-                  <a href={`tel:${vendor.phone}`} className="text-xs text-blue-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors"><svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>{vendor.phone}</a>
-                  {toWhatsAppLink(vendor.phone) && (
-                    <a href={toWhatsAppLink(vendor.phone)!} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-green-500 hover:text-green-600 transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                    </a>
-                  )}
-                </span>
+                <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" size="sm" />
               )}
               {vendor.email && <a href={`mailto:${vendor.email}`} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1">✉ {vendor.email}</a>}
               {vendor.taxNumber && <span className="text-xs text-slate-400">VKN: {vendor.taxNumber}</span>}
             </div>
           </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-50">
-          {[
-            { label: 'Yetkili Kişi', value: contactCount },
-            { label: 'İletişim Kanalı', value: vendor.contactInfos?.length ?? 0 },
-            { label: 'Hizmet Bölgesi', value: vendor.serviceAreas?.length ?? 0 },
-            { label: 'İş Grubu', value: vendor.vendorWorkGroups?.length ?? 0 },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-xl font-bold text-slate-800">{stat.value}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{stat.label}</p>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -866,7 +990,7 @@ export default function VendorDetailPage() {
         {vendor.phone && (
           <div className="min-w-0">
             <p className="text-xs text-blue-400 leading-none mb-0.5">Telefon</p>
-            <a href={`tel:${vendor.phone}`} className="text-sm font-medium text-blue-700 hover:underline">{vendor.phone}</a>
+            <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" size="sm" />
           </div>
         )}
         {vendor.email && (
@@ -883,6 +1007,8 @@ export default function VendorDetailPage() {
         )}
       </div>
 
+      <VendorPerformanceStats vendorId={id!} />
+
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-5 overflow-x-auto">
         <div className="flex min-w-max">
@@ -895,7 +1021,7 @@ export default function VendorDetailPage() {
               }`}>
               <span>{tab.icon}</span>
               {tab.label}
-              {tab.id === 'yetkili' && contactCount > 0 && (
+              {tab.id === 'yetkili-iletisim' && contactCount > 0 && (
                 <span className="ml-1 bg-indigo-100 text-indigo-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">{contactCount}</span>
               )}
             </button>
@@ -905,12 +1031,15 @@ export default function VendorDetailPage() {
 
       {/* ── Tab Content ── */}
       {activeTab === 'profil' && <ProfilTab vendor={vendor} />}
-      {activeTab === 'yetkili' && <YetkiliKisilerTab vendor={vendor} />}
-      {activeTab === 'iletisim' && <IletisimTab vendor={vendor} />}
-      {activeTab === 'bolgeler' && <BolgelerTab vendor={vendor} onUpdate={loadVendor} />}
-      {activeTab === 'is-gruplari' && <IsGruplariTab vendor={vendor} onUpdate={loadVendor} />}
+      {activeTab === 'yetkili-iletisim' && <YetkiliIletisimTab vendor={vendor} />}
+      {activeTab === 'hizmet-kapsam' && <HizmetKapsamTab vendor={vendor} onUpdate={loadVendor} />}
       {activeTab === 'performans' && <PerformansTab vendorId={id!} />}
-      {activeTab === 'evraklar' && <EvraklarTab vendorId={id!} />}
+      {activeTab === 'evraklar' && (
+        <EvraklarTab
+          vendorId={id!}
+          vendorCategory={(['hasar', 'acil', 'her_ikisi'].includes(vendor.category) ? vendor.category : 'hasar') as VendorCategory}
+        />
+      )}
       {activeTab === 'odemeler' && <OdemelerTab vendorId={id!} />}
     </div>
   );
@@ -928,6 +1057,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 function OdemelerTab({ vendorId }: { vendorId: string }) {
   const [statements, setStatements] = useState<any[]>([]);
+  const [filePayments, setFilePayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -935,15 +1065,27 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [stmtRes, summaryRes] = await Promise.all([
+      const [stmtRes, summaryRes, payRes] = await Promise.all([
         axios.get(`${API}/vendor-statements?vendorId=${vendorId}&limit=50`, { headers: authHeader() }),
         axios.get(`${API}/vendor-statements/vendor/${vendorId}/summary`, { headers: authHeader() }),
+        axios.get(`${API}/payments?payerId=${vendorId}&payerType=vendor&paymentType=outgoing&status=completed&limit=50`, { headers: authHeader() }),
       ]);
       setStatements(stmtRes.data.data ?? []);
       setSummary(summaryRes.data);
+      setFilePayments(payRes.data.data ?? []);
     } catch { /* ignore */ }
     setLoading(false);
   }, [vendorId]);
+
+  const openReceipt = async (paymentId: string) => {
+    try {
+      const res = await axios.get(`${API}/payments/${paymentId}/receipt/download`, { headers: authHeader() });
+      const url = res.data?.data?.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      alert('Dekont açılamadı');
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -966,8 +1108,8 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Toplam Ekstre', value: summary.totalStatements, color: 'text-slate-700' },
-            { label: 'Onaylanan', value: summary.approvedStatements, color: 'text-green-600' },
-            { label: 'Açık İtiraz', value: summary.openDisputes, color: 'text-red-600' },
+            { label: 'Dosya Ödemesi', value: summary.filePaymentCount ?? 0, color: 'text-indigo-600' },
+            { label: 'Dekontlu Ödeme', value: summary.filePaymentsWithReceipt ?? 0, color: 'text-green-600' },
             { label: 'Onaylı Tutar', value: fmtCurrency(summary.totalApprovedAmount), color: 'text-indigo-700' },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 text-center">
@@ -977,6 +1119,55 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
           ))}
         </div>
       )}
+
+      <SectionCard
+        title="Dosya Bazlı Ödemeler"
+        subtitle="Hasar dosyasından yapılan tedarikçi ödemeleri — dekont burada görünür"
+      >
+        {filePayments.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-6">Henüz dosya bazlı ödeme kaydı yok</p>
+        ) : (
+          <div className="space-y-2">
+            {filePayments.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
+                    {p.claimFile?.fileNo ?? 'Dosya'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {fmtDate(p.paymentDate)} · {p.method?.toUpperCase() ?? '—'}
+                    {p.referenceNo ? ` · Ref: ${p.referenceNo}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-sm font-bold text-slate-700">{fmtCurrency(p.amount)}</span>
+                  {p.receiptStorageKey ? (
+                    <button
+                      type="button"
+                      onClick={() => openReceipt(p.id)}
+                      className="text-xs px-2 py-1 bg-green-50 text-green-700 border border-green-100 rounded font-medium hover:bg-green-100"
+                    >
+                      Dekont
+                    </button>
+                  ) : (
+                    <span className="text-xs px-2 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded font-medium">
+                      Dekont yok
+                    </span>
+                  )}
+                  {p.claimFile?.id && (
+                    <a
+                      href={`/panel/hasar-dosyalari/${p.claimFile.id}`}
+                      className="text-xs px-2 py-1 border border-slate-200 hover:bg-white rounded font-medium text-slate-600 transition-colors"
+                    >
+                      Dosya
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard
         title="Ödeme Ekstreleri"
@@ -1027,12 +1218,12 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
                         Gönder
                       </button>
                     )}
-                    <a
+                    <Link
                       href={`/panel/tedarikciler/${vendorId}/ekstreler/${stmt.id}`}
                       className="text-xs px-2 py-1 border border-slate-200 hover:bg-white rounded font-medium text-slate-600 transition-colors"
                     >
                       Detay
-                    </a>
+                    </Link>
                   </div>
                 </div>
               );
@@ -1222,6 +1413,9 @@ function CreateStatementModal({
                         <p className="text-xs text-slate-400">
                           {item.claimFileNo && `Dosya: ${item.claimFileNo} · `}
                           {item.receiptDate && `Tarih: ${fmtDate(item.receiptDate)}`}
+                          {item.hasReceipt && (
+                            <span className="ml-2 text-green-600 font-medium">· Dekont var</span>
+                          )}
                         </p>
                       </div>
                       <span className="text-sm font-bold text-slate-700 flex-shrink-0">{fmtCurrency(item.totalAmount)}</span>

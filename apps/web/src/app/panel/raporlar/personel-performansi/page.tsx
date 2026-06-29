@@ -4,6 +4,15 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -14,6 +23,23 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
 
 type Tab = 'staff' | 'vendor';
+
+const STAFF_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'userName', label: 'Ad Soyad', defaultWidth: 160, minWidth: 120 },
+  { id: 'userType', label: 'Tip', defaultWidth: 100, minWidth: 80 },
+  { id: 'totalFiles', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'openFiles', label: 'Açık', defaultWidth: 80, minWidth: 64 },
+  { id: 'closedFiles', label: 'Kapanan', defaultWidth: 88, minWidth: 64 },
+  { id: 'slaViolations', label: 'SLA İhlali', defaultWidth: 96, minWidth: 72 },
+  { id: 'avgCloseDays', label: 'Ort. Kapanış (gün)', defaultWidth: 120, minWidth: 96 },
+];
+
+const VENDOR_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'vendorName', label: 'Tedarikçi', defaultWidth: 160, minWidth: 120 },
+  { id: 'assignmentCount', label: 'Atama', defaultWidth: 80, minWidth: 64 },
+  { id: 'completedCount', label: 'Tamamlanan', defaultWidth: 96, minWidth: 72 },
+  { id: 'completionRate', label: 'Tamamlama Oranı', defaultWidth: 120, minWidth: 96 },
+];
 
 interface StaffUser {
   userId: string; userName: string; userType: string;
@@ -33,6 +59,9 @@ export default function PersonelPerformansPage() {
   const [tab, setTab] = useState<Tab>('staff');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  const staffTableColumns = usePanelTableColumns('table-cols:rapor-personel-1', STAFF_TABLE_COLUMNS);
+  const vendorTableColumns = usePanelTableColumns('table-cols:rapor-personel-2', VENDOR_TABLE_COLUMNS);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -147,34 +176,41 @@ export default function PersonelPerformansPage() {
             </ResponsiveContainer>
           </div>
 
+          <TableColumnsProvider value={staffTableColumns}>
           <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+              <PanelTableColumnPicker tableColumns={staffTableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(staffTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-left">Ad Soyad</th>
-                  <th className="px-4 py-3 text-left">Tip</th>
-                  <th className="px-4 py-3 text-right">Toplam</th>
-                  <th className="px-4 py-3 text-right">Açık</th>
-                  <th className="px-4 py-3 text-right">Kapanan</th>
-                  <th className="px-4 py-3 text-right">SLA İhlali</th>
-                  <th className="px-4 py-3 text-right">Ort. Kapanış (gün)</th>
+                  <PanelTableTh colId="userName" className="px-4 py-3 text-left">Ad Soyad</PanelTableTh>
+                  <PanelTableTh colId="userType" className="px-4 py-3 text-left">Tip</PanelTableTh>
+                  <PanelTableTh colId="totalFiles" className="px-4 py-3 text-right">Toplam</PanelTableTh>
+                  <PanelTableTh colId="openFiles" className="px-4 py-3 text-right">Açık</PanelTableTh>
+                  <PanelTableTh colId="closedFiles" className="px-4 py-3 text-right">Kapanan</PanelTableTh>
+                  <PanelTableTh colId="slaViolations" className="px-4 py-3 text-right">SLA İhlali</PanelTableTh>
+                  <PanelTableTh colId="avgCloseDays" className="px-4 py-3 text-right">Ort. Kapanış (gün)</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {staffUsers.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800">{u.userName}</td>
-                    <td className="px-4 py-3 text-slate-500">{u.userType}</td>
-                    <td className="px-4 py-3 text-right">{u.totalFiles}</td>
-                    <td className="px-4 py-3 text-right text-blue-600">{u.openFiles}</td>
-                    <td className="px-4 py-3 text-right text-green-600">{u.closedFiles}</td>
-                    <td className="px-4 py-3 text-right text-red-600 font-medium">{u.slaViolations}</td>
-                    <td className="px-4 py-3 text-right">{u.avgCloseDays}</td>
+                    <PanelTableTd colId="userName" className="px-4 py-3 font-medium text-slate-800">{u.userName}</PanelTableTd>
+                    <PanelTableTd colId="userType" className="px-4 py-3 text-slate-500">{u.userType}</PanelTableTd>
+                    <PanelTableTd colId="totalFiles" className="px-4 py-3 text-right">{u.totalFiles}</PanelTableTd>
+                    <PanelTableTd colId="openFiles" className="px-4 py-3 text-right text-blue-600">{u.openFiles}</PanelTableTd>
+                    <PanelTableTd colId="closedFiles" className="px-4 py-3 text-right text-green-600">{u.closedFiles}</PanelTableTd>
+                    <PanelTableTd colId="slaViolations" className="px-4 py-3 text-right text-red-600 font-medium">{u.slaViolations}</PanelTableTd>
+                    <PanelTableTd colId="avgCloseDays" className="px-4 py-3 text-right">{u.avgCloseDays}</PanelTableTd>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
+          </TableColumnsProvider>
         </div>
       ) : (
         <div className="space-y-5">
@@ -193,32 +229,39 @@ export default function PersonelPerformansPage() {
             </ResponsiveContainer>
           </div>
 
+          <TableColumnsProvider value={vendorTableColumns}>
           <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+              <PanelTableColumnPicker tableColumns={vendorTableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(vendorTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-left">Tedarikçi</th>
-                  <th className="px-4 py-3 text-right">Atama</th>
-                  <th className="px-4 py-3 text-right">Tamamlanan</th>
-                  <th className="px-4 py-3 text-right">Tamamlama Oranı</th>
+                  <PanelTableTh colId="vendorName" className="px-4 py-3 text-left">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="assignmentCount" className="px-4 py-3 text-right">Atama</PanelTableTh>
+                  <PanelTableTh colId="completedCount" className="px-4 py-3 text-right">Tamamlanan</PanelTableTh>
+                  <PanelTableTh colId="completionRate" className="px-4 py-3 text-right">Tamamlama Oranı</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {vendorStats.map((v) => (
                   <tr key={v.vendorId} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800">{v.vendorName}</td>
-                    <td className="px-4 py-3 text-right">{v.assignmentCount}</td>
-                    <td className="px-4 py-3 text-right text-green-600">{v.completedCount}</td>
-                    <td className="px-4 py-3 text-right">
+                    <PanelTableTd colId="vendorName" className="px-4 py-3 font-medium text-slate-800">{v.vendorName}</PanelTableTd>
+                    <PanelTableTd colId="assignmentCount" className="px-4 py-3 text-right">{v.assignmentCount}</PanelTableTd>
+                    <PanelTableTd colId="completedCount" className="px-4 py-3 text-right text-green-600">{v.completedCount}</PanelTableTd>
+                    <PanelTableTd colId="completionRate" className="px-4 py-3 text-right">
                       <span className={`font-medium ${v.completionRate >= 80 ? 'text-green-700' : v.completionRate >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
                         %{v.completionRate}
                       </span>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
+          </TableColumnsProvider>
         </div>
       )}
     </div>

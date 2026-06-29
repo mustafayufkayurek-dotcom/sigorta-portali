@@ -445,7 +445,7 @@ export default function VakaDetayPage() {
   }
   if (!vaka) {
     return (
-      <div className="text-center py-20 text-slate-500">Vaka bulunamadı.</div>
+      <div className="text-center py-20 text-slate-500">Dosya bulunamadı.</div>
     );
   }
 

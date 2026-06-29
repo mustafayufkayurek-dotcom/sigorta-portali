@@ -7,6 +7,25 @@ import {
   getFinanceList, getMonthlySummary, createInvoiceDraft,
   FinanceRow, MonthlySummary,
 } from '@/utils/emergencyApi';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const EMERGENCY_FINANCE_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'date', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 120 },
+  { id: 'issueType', label: 'Konu', defaultWidth: 120, minWidth: 96 },
+  { id: 'gelir', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'gider', label: 'Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'kar', label: 'Kâr', defaultWidth: 108, minWidth: 88 },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 108, minWidth: 88 },
+];
 
 function fmt(n: number) {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -45,6 +64,7 @@ function FinansPageInner() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkCustomerName, setBulkCustomerName] = useState('');
+  const tableColumns = usePanelTableColumns('table-cols:acil-yardim-finans', EMERGENCY_FINANCE_TABLE_COLUMNS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,11 +238,15 @@ function FinansPageInner() {
       ) : rows.length === 0 ? (
         <div className="text-center py-16 text-slate-400 text-sm">Bu döneme ait kayıt bulunamadı.</div>
       ) : (
+        <TableColumnsProvider value={tableColumns}>
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
+          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-500">
-                <th className="px-4 py-3 text-left">
+                <th className="px-4 py-3 text-left w-10">
                   <input
                     type="checkbox"
                     checked={selected.size === unfaturedCount && unfaturedCount > 0}
@@ -230,13 +254,13 @@ function FinansPageInner() {
                     className="rounded"
                   />
                 </th>
-                <th className="px-4 py-3 text-left font-semibold">Tarih</th>
-                <th className="px-4 py-3 text-left font-semibold">Müşteri</th>
-                <th className="px-4 py-3 text-left font-semibold">Konu</th>
-                <th className="px-4 py-3 text-right font-semibold">Gelir</th>
-                <th className="px-4 py-3 text-right font-semibold">Gider</th>
-                <th className="px-4 py-3 text-right font-semibold">Kâr</th>
-                <th className="px-4 py-3 text-left font-semibold">Fatura</th>
+                <PanelTableTh colId="date" className="px-4 py-3 text-left font-semibold">Tarih</PanelTableTh>
+                <PanelTableTh colId="customer" className="px-4 py-3 text-left font-semibold">Müşteri</PanelTableTh>
+                <PanelTableTh colId="issueType" className="px-4 py-3 text-left font-semibold">Konu</PanelTableTh>
+                <PanelTableTh colId="gelir" className="px-4 py-3 text-right font-semibold">Gelir</PanelTableTh>
+                <PanelTableTh colId="gider" className="px-4 py-3 text-right font-semibold">Gider</PanelTableTh>
+                <PanelTableTh colId="kar" className="px-4 py-3 text-right font-semibold">Kâr</PanelTableTh>
+                <PanelTableTh colId="invoice" className="px-4 py-3 text-left font-semibold">Fatura</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -255,20 +279,20 @@ function FinansPageInner() {
                       />
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(row.fileDate ?? row.createdAt)}</td>
-                  <td className="px-4 py-3">
+                  <PanelTableTd colId="date" className="px-4 py-3 text-slate-500">{fmtDate(row.fileDate ?? row.createdAt)}</PanelTableTd>
+                  <PanelTableTd colId="customer" className="px-4 py-3">
                     <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-blue-600">
                       {row.customerName}
                     </Link>
                     <p className="text-xs text-slate-400">{row.caseNo}</p>
-                  </td>
-                  <td className="px-4 py-3 text-blue-700 font-medium">{row.issueType}</td>
-                  <td className="px-4 py-3 text-right text-green-700 font-semibold whitespace-nowrap">{fmt(row.totalGelir)} ₺</td>
-                  <td className="px-4 py-3 text-right text-red-600 font-semibold whitespace-nowrap">{fmt(row.totalGider)} ₺</td>
-                  <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${row.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                  </PanelTableTd>
+                  <PanelTableTd colId="issueType" className="px-4 py-3 text-blue-700 font-medium">{row.issueType}</PanelTableTd>
+                  <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700 font-semibold">{fmt(row.totalGelir)} ₺</PanelTableTd>
+                  <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600 font-semibold">{fmt(row.totalGider)} ₺</PanelTableTd>
+                  <PanelTableTd colId="kar" className={`px-4 py-3 text-right font-bold ${row.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
                     {fmt(row.netKar)} ₺
-                  </td>
-                  <td className="px-4 py-3">
+                  </PanelTableTd>
+                  <PanelTableTd colId="invoice" className="px-4 py-3">
                     {row.isFaturalandildi ? (
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
                         Faturalandı
@@ -282,21 +306,22 @@ function FinansPageInner() {
                         Bekliyor
                       </span>
                     )}
-                  </td>
+                  </PanelTableTd>
                 </tr>
               ))}
             </tbody>
             <tfoot className="border-t-2 border-slate-100 bg-slate-50">
               <tr className="text-xs font-bold text-slate-700">
                 <td colSpan={4} className="px-4 py-3">{listSummary.totalCases} kayıt</td>
-                <td className="px-4 py-3 text-right text-green-700">{fmt(listSummary.totalGelir)} ₺</td>
-                <td className="px-4 py-3 text-right text-red-600">{fmt(listSummary.totalGider)} ₺</td>
-                <td className={`px-4 py-3 text-right ${listSummary.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(listSummary.netKar)} ₺</td>
-                <td />
+                <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700">{fmt(listSummary.totalGelir)} ₺</PanelTableTd>
+                <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600">{fmt(listSummary.totalGider)} ₺</PanelTableTd>
+                <PanelTableTd colId="kar" className={`px-4 py-3 text-right ${listSummary.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(listSummary.netKar)} ₺</PanelTableTd>
+                <PanelTableTd colId="invoice" className="px-4 py-3">{null}</PanelTableTd>
               </tr>
             </tfoot>
           </table>
         </div>
+        </TableColumnsProvider>
       )}
 
       {/* Toplu Fatura Modal */}
@@ -311,7 +336,7 @@ function FinansPageInner() {
                 </svg>
               </button>
             </div>
-            <p className="text-sm text-slate-500">{selected.size} vaka tek faturada birleştirilecek.</p>
+            <p className="text-sm text-slate-500">{selected.size} dosya tek faturada birleştirilecek.</p>
             {bulkError && <p className="text-xs text-red-600">{bulkError}</p>}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Müşteri Adı <span className="text-red-500">*</span></label>

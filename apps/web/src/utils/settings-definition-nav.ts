@@ -9,6 +9,7 @@ export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/durumlar',
   '/panel/ayarlar/evrak-turleri',
   '/panel/ayarlar/hizmet-turleri',
+  '/panel/ayarlar/tedarikci-hizmet-kollari',
   '/panel/ayarlar/is-gruplari',
   '/panel/ayarlar/masraf-kategorileri',
   '/panel/ayarlar/mahaller',

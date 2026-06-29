@@ -77,3 +77,8 @@ export const EXCEL_VALIDATION_PIPE = new FileValidationPipe({
   maxSize: 5 * 1024 * 1024,
   allowedMime: new Set(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
 });
+
+export const RECEIPT_IMAGE_VALIDATION_PIPE = new FileValidationPipe({
+  maxSize: 8 * 1024 * 1024,
+  allowedMime: new Set(['image/jpeg', 'image/png', 'image/webp']),
+});

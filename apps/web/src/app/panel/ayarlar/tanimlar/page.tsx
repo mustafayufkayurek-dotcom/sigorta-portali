@@ -9,7 +9,8 @@ import { API, authHeader } from '@/utils/api';
 type MetricKey =
   | 'departments'
   | 'relationshipTypes'
-  | 'serviceTypes'
+  | 'meridyenServiceBranches'
+  | 'vendorServiceBranches'
   | 'locations'
   | 'workGroups'
   | 'claimSubjects'
@@ -64,10 +65,17 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
     description: 'Saha ve hizmet sözlükleri.',
     items: [
       {
-        key: 'serviceTypes',
-        title: 'Hizmet Türleri',
-        purpose: 'Hasar ve acil yardım hizmet türleri.',
+        key: 'meridyenServiceBranches',
+        title: 'Meridyen Hizmet Branşları',
+        purpose: 'Meridyen operasyon branşları (hasar / acil). Müşteri, sigorta ve saha formlarında kullanılır. Tedarikçi kartı ile karışmaz.',
         href: '/panel/ayarlar/hizmet-turleri',
+        tone: 'emerald',
+      },
+      {
+        key: 'vendorServiceBranches',
+        title: 'Tedarikçi Hizmet Kolları',
+        purpose: 'Tedarikçi kartında seçilen uzmanlık alanları (sıvacı, çilingir vb.).',
+        href: '/panel/ayarlar/tedarikci-hizmet-kollari',
         tone: 'emerald',
       },
       {
@@ -80,7 +88,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       {
         key: 'workGroups',
         title: 'İş Grupları',
-        purpose: 'Maliyet ve fiyat listesi iş kalemleri.',
+        purpose: 'Maliyet kalemleri + tedarikçi hasar hizmet kolları (Sıva, Boya, Mobilya…).',
         href: '/panel/ayarlar/is-gruplari',
         tone: 'amber',
       },
@@ -177,7 +185,8 @@ export default function TanimlarPage() {
   const [metrics, setMetrics] = useState<Record<MetricKey, DefinitionMetric>>({
     departments: emptyMetric(),
     relationshipTypes: emptyMetric(),
-    serviceTypes: emptyMetric(),
+    meridyenServiceBranches: emptyMetric(),
+    vendorServiceBranches: emptyMetric(),
     locations: emptyMetric(),
     workGroups: emptyMetric(),
     claimSubjects: emptyMetric(),
@@ -192,7 +201,8 @@ export default function TanimlarPage() {
       const [
         departments,
         relationshipTypes,
-        serviceTypes,
+        meridyenServiceBranches,
+        vendorServiceBranches,
         locations,
         workGroups,
         claimSubjects,
@@ -206,7 +216,11 @@ export default function TanimlarPage() {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
         }),
-        safeMetric(axios.get(`${API}/service-branches/admin`, { headers }), (raw) => {
+        safeMetric(axios.get(`${API}/service-branches/admin`, { headers, params: { scope: 'meridyen' } }), (raw) => {
+          const items = extractArray(raw);
+          return { total: items.length, active: countActive(items) };
+        }),
+        safeMetric(axios.get(`${API}/service-branches/admin`, { headers, params: { scope: 'vendor', type: 'acil_yardim' } }), (raw) => {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
         }),
@@ -250,7 +264,8 @@ export default function TanimlarPage() {
       setMetrics({
         departments,
         relationshipTypes,
-        serviceTypes,
+        meridyenServiceBranches,
+        vendorServiceBranches,
         locations,
         workGroups,
         claimSubjects,

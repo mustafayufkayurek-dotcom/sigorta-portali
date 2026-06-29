@@ -2,6 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const SIGORTA_INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'invoiceNumber', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
+  { id: 'issueDate', label: 'Düzenleme', defaultWidth: 104, minWidth: 88 },
+  { id: 'dueDate', label: 'Vade', defaultWidth: 104, minWidth: 88 },
+  { id: 'totalAmount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
+  { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -25,6 +42,7 @@ export default function SigortaFaturalarPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-faturalar', SIGORTA_INVOICE_TABLE_COLUMNS);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -101,34 +119,39 @@ export default function SigortaFaturalarPage() {
           <p className="text-slate-500">Fatura bulunamadı.</p>
         </div>
       ) : (
+        <TableColumnsProvider value={tableColumns}>
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-200">
+          <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
+          <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Fatura No</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Düzenleme</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Vade</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tutar</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Durum</th>
+                <PanelTableTh colId="invoiceNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Fatura No</PanelTableTh>
+                <PanelTableTh colId="issueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Düzenleme</PanelTableTh>
+                <PanelTableTh colId="dueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Vade</PanelTableTh>
+                <PanelTableTh colId="totalAmount" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tutar</PanelTableTh>
+                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Durum</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{fmt(inv.issueDate)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{fmt(inv.dueDate)}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</td>
-                  <td className="px-4 py-3">
+                  <PanelTableTd colId="invoiceNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNumber}</PanelTableTd>
+                  <PanelTableTd colId="issueDate" className="px-4 py-3 text-sm text-slate-600">{fmt(inv.issueDate)}</PanelTableTd>
+                  <PanelTableTd colId="dueDate" className="px-4 py-3 text-sm text-slate-600">{fmt(inv.dueDate)}</PanelTableTd>
+                  <PanelTableTd colId="totalAmount" className="px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
+                  <PanelTableTd colId="status" className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
                       {statusLabel(inv.status)}
                     </span>
-                  </td>
+                  </PanelTableTd>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        </TableColumnsProvider>
       )}
     </div>
   );

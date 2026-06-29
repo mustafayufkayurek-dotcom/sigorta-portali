@@ -171,6 +171,25 @@ export function formatPhone(phone: string): string {
   return result.formatted ?? phone;
 }
 
+/** Liste ve kartlarda okunaklı gösterim: 0555 123 45 67 (4-3-2-2) */
+export function formatPhoneGrouped(phone: string): string {
+  if (!phone?.trim()) return '';
+  let digits = phone.replace(/\D/g, '');
+
+  if (digits.startsWith('90') && digits.length >= 12) {
+    digits = `0${digits.slice(2, 12)}`;
+  } else if (digits.length === 10 && !digits.startsWith('0')) {
+    digits = `0${digits}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
+  }
+
+  const validated = validatePhone(phone);
+  return validated.formatted ?? phone.trim();
+}
+
 /**
  * Uluslararası formata dönüştür (+905321234567)
  * Hem eski yerel hem de yeni uluslararası formatı kabul eder.

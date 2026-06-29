@@ -4,6 +4,15 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
 
@@ -88,8 +97,20 @@ function remainingTime(deadline: string | null): { label: string; isOverdue: boo
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'reportNo', label: 'Rapor No', defaultWidth: 120, minWidth: 96 },
+  { id: 'requester', label: 'Talep Eden', defaultWidth: 160, minWidth: 120 },
+  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
+  { id: 'reason', label: 'Sebep', defaultWidth: 200, minWidth: 120 },
+  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
+  { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
+  { id: 'duration', label: 'Süre', defaultWidth: 110, minWidth: 88 },
+  { id: 'assignee', label: 'Atanan', defaultWidth: 140, minWidth: 100 },
+];
+
 export default function RevisionRequestsPage() {
   const router = useRouter();
+  const tableColumns = usePanelTableColumns('table-cols:revizyon-talepleri', TABLE_COLUMNS);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -157,6 +178,7 @@ export default function RevisionRequestsPage() {
   const overdueCount = overdueData.length;
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div>
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
@@ -238,6 +260,7 @@ export default function RevisionRequestsPage() {
               Temizle ×
             </button>
           )}
+          <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
       </div>
 
@@ -279,17 +302,17 @@ export default function RevisionRequestsPage() {
         </div>
       ) : filteredRevisions.length > 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="text-left px-5 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Rapor No</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Talep Eden</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Tarih</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Sebep</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Öncelik</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Durum</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Süre</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Atanan</th>
+                <PanelTableTh colId="reportNo" className="text-left px-5 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Rapor No</PanelTableTh>
+                <PanelTableTh colId="requester" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Talep Eden</PanelTableTh>
+                <PanelTableTh colId="date" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Tarih</PanelTableTh>
+                <PanelTableTh colId="reason" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Sebep</PanelTableTh>
+                <PanelTableTh colId="priority" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Öncelik</PanelTableTh>
+                <PanelTableTh colId="status" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Durum</PanelTableTh>
+                <PanelTableTh colId="duration" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Süre</PanelTableTh>
+                <PanelTableTh colId="assignee" className="text-left px-4 py-3 text-xs font-semibold uppercase text-slate-500 tracking-wide">Atanan</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -302,38 +325,38 @@ export default function RevisionRequestsPage() {
                     onClick={() => router.push(`/panel/revizyon-talepleri/${rev.id}`)}
                     className={`hover:bg-blue-50/30 cursor-pointer transition-colors ${isUrgent ? 'border-l-4 border-red-400' : ''}`}
                   >
-                    <td className="px-5 py-3.5">
+                    <PanelTableTd colId="reportNo" className="px-5 py-3.5">
                       <p className="font-medium text-slate-900">{rev.report?.reportNo ?? '—'}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="requester" className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                           {rev.requestedBy?.firstName?.charAt(0) ?? '?'}
                         </div>
                         <span className="text-sm text-slate-600">{rev.requestedBy?.firstName} {rev.requestedBy?.lastName}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-400 text-xs">{fmtDate(rev.createdAt)}</td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="date" className="px-4 py-3.5 text-slate-400 text-xs">{fmtDate(rev.createdAt)}</PanelTableTd>
+                    <PanelTableTd colId="reason" className="px-4 py-3.5">
                       <div>
                         <p className="text-slate-700 text-xs font-medium">{REASON_LABELS[rev.reason] ?? rev.reason}</p>
                         <p className="text-slate-400 text-xs mt-0.5 max-w-[200px] truncate">{rev.reasonNote}</p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="priority" className="px-4 py-3.5">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[rev.priority]}`}>
                         {PRIORITY_LABELS[rev.priority]}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="status" className="px-4 py-3.5">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[rev.status]}`}>
                         {rev.status === 'ESCALATED' && (
                           <span className="mr-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
                         )}
                         {STATUS_LABELS[rev.status]}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="duration" className="px-4 py-3.5">
                       {rev.deadlineAt ? (
                         <span className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-slate-500'}`}>
                           {isOverdue && <span className="mr-1">⚠</span>}
@@ -342,8 +365,8 @@ export default function RevisionRequestsPage() {
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </PanelTableTd>
+                    <PanelTableTd colId="assignee" className="px-4 py-3.5">
                       {rev.assignedTo ? (
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
@@ -354,7 +377,7 @@ export default function RevisionRequestsPage() {
                       ) : (
                         <span className="text-xs text-slate-300">Atanmadı</span>
                       )}
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 );
               })}
@@ -363,5 +386,6 @@ export default function RevisionRequestsPage() {
         </div>
       ) : null}
     </div>
+    </TableColumnsProvider>
   );
 }

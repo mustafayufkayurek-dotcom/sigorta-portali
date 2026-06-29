@@ -2,6 +2,25 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const ACCESS_LOG_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'user', label: 'Kullanıcı', defaultWidth: 140, minWidth: 100 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 140, minWidth: 100 },
+  { id: 'file', label: 'Dosya', defaultWidth: 108, minWidth: 88 },
+  { id: 'accessType', label: 'Erişim Tipi', defaultWidth: 120, minWidth: 96 },
+  { id: 'createdAt', label: 'Tarih', defaultWidth: 140, minWidth: 110 },
+  { id: 'ipAddress', label: 'IP', defaultWidth: 120, minWidth: 96 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
@@ -56,6 +75,7 @@ export default function ErisimLoglariPage() {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const [page, setPage] = useState(1);
+  const tableColumns = usePanelTableColumns('table-cols:guvenlik-erisim-loglari', ACCESS_LOG_TABLE_COLUMNS);
 
   const getToken = () =>
     typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -223,7 +243,11 @@ export default function ErisimLoglariPage() {
       </div>
 
       {/* Tablo */}
+      <TableColumnsProvider value={tableColumns}>
       <div className="overflow-hidden rounded-lg bg-white shadow-sm border border-slate-200">
+        <div className="px-4 py-2 border-b border-slate-200 flex justify-end">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-sm text-slate-500">Yükleniyor...</p>
@@ -234,39 +258,39 @@ export default function ErisimLoglariPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Kullanıcı</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Müşteri</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Dosya</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Erişim Tipi</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Tarih</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">IP</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Durum</th>
+                  <PanelTableTh colId="user" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
+                  <PanelTableTh colId="customer" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="file" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Dosya</PanelTableTh>
+                  <PanelTableTh colId="accessType" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
+                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Tarih</PanelTableTh>
+                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">IP</PanelTableTh>
+                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Durum</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {logs.map((log) => (
                   <tr key={log.id} className={log.isAnomaly ? 'bg-red-50' : ''}>
-                    <td className="px-4 py-3 text-sm text-slate-900">
+                    <PanelTableTd colId="user" className="px-4 py-3 text-sm text-slate-900">
                       {log.user
                         ? `${log.user.firstName} ${log.user.lastName}`
                         : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">
+                    </PanelTableTd>
+                    <PanelTableTd colId="customer" className="px-4 py-3 text-sm text-slate-900">
                       {log.customer
                         ? log.customer.fullName ?? log.customer.companyName ?? '—'
                         : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
+                    </PanelTableTd>
+                    <PanelTableTd colId="file" className="px-4 py-3 text-sm text-slate-700">
                       {log.claimFile ? (
                         <span className="font-mono text-xs">{log.claimFile.fileNo}</span>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
+                    </PanelTableTd>
+                    <PanelTableTd colId="accessType" className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                           ACCESS_TYPE_COLORS[log.accessType] ?? 'bg-slate-100 text-slate-800'
@@ -274,10 +298,10 @@ export default function ErisimLoglariPage() {
                       >
                         {ACCESS_TYPE_LABELS[log.accessType] ?? log.accessType}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(log.createdAt)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500 font-mono">{log.ipAddress ?? '—'}</td>
-                    <td className="px-4 py-3">
+                    </PanelTableTd>
+                    <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-600">{formatDate(log.createdAt)}</PanelTableTd>
+                    <PanelTableTd colId="ipAddress" className="px-4 py-3 text-xs text-slate-500 font-mono">{log.ipAddress ?? '—'}</PanelTableTd>
+                    <PanelTableTd colId="status" className="px-4 py-3">
                       {log.isAnomaly ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -289,7 +313,7 @@ export default function ErisimLoglariPage() {
                           Normal
                         </span>
                       )}
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
@@ -322,6 +346,7 @@ export default function ErisimLoglariPage() {
           </div>
         )}
       </div>
+      </TableColumnsProvider>
     </div>
   );
 }

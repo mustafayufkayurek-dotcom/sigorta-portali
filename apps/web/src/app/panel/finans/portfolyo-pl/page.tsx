@@ -4,8 +4,29 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { getPortfolioPeriodRange, type PortfolioPeriod } from '@/utils/profitability';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 
-type Period = 'Aylık' | 'Çeyreklik' | 'Yıllık';
+const PORTFOLIO_PL_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'sigortaSirketi', label: 'Sigorta Şirketi', defaultWidth: 160, minWidth: 120 },
+  { id: 'donem', label: 'Dönem', defaultWidth: 100, minWidth: 80 },
+  { id: 'dosyaSayisi', label: 'Dosya Sayısı', defaultWidth: 96, minWidth: 80 },
+  { id: 'gelir', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'gider', label: 'Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'netKZ', label: 'Net KZ', defaultWidth: 108, minWidth: 88 },
+  { id: 'marjPct', label: 'Marj %', defaultWidth: 96, minWidth: 80 },
+];
+
+type Period = PortfolioPeriod;
 
 interface PortfolioRow {
   id: string;
@@ -22,11 +43,7 @@ function fmtCurrency(n: number) {
   return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
 }
 
-const PERIOD_PARAM: Record<Period, string> = {
-  Aylık: 'monthly',
-  Çeyreklik: 'quarterly',
-  Yıllık: 'yearly',
-};
+const PERIOD_OPTIONS: Period[] = ['Aylık', 'Çeyreklik', 'Yıllık'];
 
 export default function PortfolyoPLPage() {
   const router = useRouter();
@@ -34,17 +51,38 @@ export default function PortfolyoPLPage() {
   const [rows, setRows] = useState<PortfolioRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const tableColumns = usePanelTableColumns('table-cols:finans-portfolyo-pl', PORTFOLIO_PL_TABLE_COLUMNS);
 
   const load = useCallback(() => {
     setLoading(true);
     setError('');
+    const { dateFrom, dateTo, label: periodLabel } = getPortfolioPeriodRange(period);
     axios
-      .get(`${API}/finance/portfolio-pl`, {
-        params: { period: PERIOD_PARAM[period] },
+      .get(`${API}/reports/profitability`, {
+        params: { groupBy: 'company', dateFrom, dateTo },
         headers: authHeader(),
       })
       .then((r) => {
-        setRows(r.data?.data ?? r.data ?? []);
+        const raw = r.data?.data ?? r.data ?? [];
+        const items = Array.isArray(raw) ? raw : [];
+        setRows(
+          items.map((item: Record<string, unknown>, idx: number) => {
+            const gelir = Number(item.actualRevenue ?? 0);
+            const gider = Number(item.actualCost ?? 0);
+            const netKZ = Number(item.grossProfit ?? gelir - gider);
+            const marjPct = Number(item.grossMarginPct ?? (gelir > 0 ? (netKZ / gelir) * 100 : 0));
+            return {
+              id: String(item.insuranceCompany ?? idx),
+              sigortaSirketi: String(item.insuranceCompany ?? 'Bilinmeyen'),
+              donem: periodLabel,
+              dosyaSayisi: Number(item.fileCount ?? 0),
+              gelir,
+              gider,
+              netKZ,
+              marjPct,
+            };
+          }),
+        );
       })
       .catch((err) => {
         if (axios.isAxiosError(err) && err.response?.status === 401) { router.push('/giris'); return; }
@@ -111,7 +149,8 @@ export default function PortfolyoPLPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen bg-white dark:bg-slate-900 p-6">
+      <FinansSubpageBreadcrumb current="Portföy Kârlılık" />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -123,7 +162,7 @@ export default function PortfolyoPLPage() {
 
         {/* Period Selector */}
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-xl p-1">
-          {(['Aylık', 'Çeyreklik', 'Yıllık'] as Period[]).map((p) => (
+          {PERIOD_OPTIONS.map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -153,12 +192,16 @@ export default function PortfolyoPLPage() {
       </div>
 
       {/* Table */}
+      <TableColumnsProvider value={tableColumns}>
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Sigorta Şirketi Bazlı KZ — <span className="text-blue-600 dark:text-blue-400">{period}</span>
           </p>
-          {!loading && <span className="text-xs text-slate-400 dark:text-slate-500">{rows.length} şirket</span>}
+          <div className="flex items-center gap-2">
+            {!loading && <span className="text-xs text-slate-400 dark:text-slate-500">{rows.length} şirket</span>}
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
         </div>
 
         {loading ? (
@@ -178,38 +221,37 @@ export default function PortfolyoPLPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/50">
-                  {['Sigorta Şirketi', 'Dönem', 'Dosya Sayısı', 'Gelir', 'Gider', 'Net KZ', 'Marj %'].map((h, i) => (
-                    <th
-                      key={h}
-                      className={`px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${i <= 1 ? 'text-left' : 'text-right'}`}
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  <PanelTableTh colId="sigortaSirketi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="donem" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-left">Dönem</PanelTableTh>
+                  <PanelTableTh colId="dosyaSayisi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Dosya Sayısı</PanelTableTh>
+                  <PanelTableTh colId="gelir" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Gelir</PanelTableTh>
+                  <PanelTableTh colId="gider" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Gider</PanelTableTh>
+                  <PanelTableTh colId="netKZ" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Net KZ</PanelTableTh>
+                  <PanelTableTh colId="marjPct" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Marj %</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
                 {rows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
-                    <td className="px-5 py-3.5">
+                    <PanelTableTd colId="sigortaSirketi" className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 flex-shrink-0" />
                         <span className="font-medium text-slate-800 dark:text-slate-100">{row.sigortaSirketi}</span>
                       </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{row.donem}</td>
-                    <td className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.dosyaSayisi}</td>
-                    <td className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gelir)}</td>
-                    <td className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gider)}</td>
-                    <td className="px-5 py-3.5 text-right">
+                    </PanelTableTd>
+                    <PanelTableTd colId="donem" className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{row.donem}</PanelTableTd>
+                    <PanelTableTd colId="dosyaSayisi" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.dosyaSayisi}</PanelTableTd>
+                    <PanelTableTd colId="gelir" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gelir)}</PanelTableTd>
+                    <PanelTableTd colId="gider" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gider)}</PanelTableTd>
+                    <PanelTableTd colId="netKZ" className="px-5 py-3.5 text-right">
                       <span className={`font-bold ${row.netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                         {row.netKZ >= 0 ? '+' : ''}{fmtCurrency(row.netKZ)}
                       </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
+                    </PanelTableTd>
+                    <PanelTableTd colId="marjPct" className="px-5 py-3.5 text-right">
                       <span className={`inline-flex items-center justify-center text-xs font-bold px-2.5 py-1 rounded-full ${
                         row.marjPct >= 20
                           ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
@@ -219,40 +261,42 @@ export default function PortfolyoPLPage() {
                       }`}>
                         {row.marjPct >= 0 ? '+' : ''}{row.marjPct.toFixed(2)}%
                       </span>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60">
-                  <td className="px-5 py-3 font-bold text-slate-800 dark:text-slate-100" colSpan={2}>Toplam</td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                  <PanelTableTd colId="sigortaSirketi" className="px-5 py-3 font-bold text-slate-800 dark:text-slate-100">Toplam</PanelTableTd>
+                  <PanelTableTd colId="donem" className="px-5 py-3">{null}</PanelTableTd>
+                  <PanelTableTd colId="dosyaSayisi" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
                     {rows.reduce((s, r) => s + r.dosyaSayisi, 0)}
-                  </td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                  </PanelTableTd>
+                  <PanelTableTd colId="gelir" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
                     {fmtCurrency(rows.reduce((s, r) => s + r.gelir, 0))}
-                  </td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                  </PanelTableTd>
+                  <PanelTableTd colId="gider" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
                     {fmtCurrency(rows.reduce((s, r) => s + r.gider, 0))}
-                  </td>
-                  <td className="px-5 py-3 text-right">
+                  </PanelTableTd>
+                  <PanelTableTd colId="netKZ" className="px-5 py-3 text-right">
                     <span className={`font-bold ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                       {netKZ >= 0 ? '+' : ''}{fmtCurrency(netKZ)}
                     </span>
-                  </td>
-                  <td className="px-5 py-3 text-right">
+                  </PanelTableTd>
+                  <PanelTableTd colId="marjPct" className="px-5 py-3 text-right">
                     <span className={`font-bold text-sm ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                       {totalPortfolyoDegeri > 0
                         ? `${netKZ >= 0 ? '+' : ''}${((netKZ / totalPortfolyoDegeri) * 100).toFixed(2)}%`
                         : '—'}
                     </span>
-                  </td>
+                  </PanelTableTd>
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </div>
+      </TableColumnsProvider>
     </div>
   );
 }

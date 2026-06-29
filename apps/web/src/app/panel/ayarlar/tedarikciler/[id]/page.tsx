@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
+import { formatVendorTypeLabel } from '@/utils/vendor-form-helpers';
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
@@ -56,7 +57,7 @@ function ProfilTab({ vendor }: { vendor: any }) {
   const isCorporate = vendor.entityType !== 'individual';
   const fields = isCorporate ? [
     { label: 'Şirket Adı', value: vendor.name },
-    { label: 'Tür', value: vendor.type ?? '—' },
+    { label: 'Tür', value: formatVendorTypeLabel(vendor.type) ?? '—' },
     { label: 'Tip', value: 'Kurumsal' },
     { label: 'Vergi No', value: vendor.taxNumber ?? '—' },
     { label: 'Vergi Dairesi', value: vendor.taxOffice ?? '—' },
@@ -75,7 +76,7 @@ function ProfilTab({ vendor }: { vendor: any }) {
     { label: 'Kayıt Tarihi', value: fmtDate(vendor.createdAt) },
   ] : [
     { label: 'Ad Soyad', value: vendor.name },
-    { label: 'Tür', value: vendor.type ?? '—' },
+    { label: 'Tür', value: formatVendorTypeLabel(vendor.type) ?? '—' },
     { label: 'Tip', value: 'Bireysel' },
     { label: 'TC Kimlik No', value: vendor.identityNo ?? '—' },
     { label: 'Telefon', value: vendor.phone ?? '—' },
@@ -196,7 +197,7 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
             onChange={(e) => handleSelectProvince(e.target.value)}
           >
             <option value="">İl Seçin...</option>
-            {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
+            {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {selectedProvince && (
             <button type="button" onClick={addWholeProvince} className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-100">
@@ -394,7 +395,7 @@ export default function VendorDetailPage() {
         <button type="button" onClick={() => router.push('/panel/ayarlar/tedarikciler')} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-slate-900">{vendor.name}</h2>
-          <p className="text-sm text-slate-400">{vendor.type ?? ''} · {vendor.city ?? ''}</p>
+          <p className="text-sm text-slate-400">{formatVendorTypeLabel(vendor.type) ?? ''}{vendor.type && vendor.city ? ' · ' : ''}{vendor.city ?? ''}</p>
         </div>
         <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${vendor.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
           {vendor.status === 'active' ? 'Aktif' : 'Pasif'}

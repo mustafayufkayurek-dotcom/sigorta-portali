@@ -1,4 +1,5 @@
-import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional, ForbiddenException } from '@nestjs/common';
+import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from './financial-summary.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -164,9 +165,22 @@ export class InvoicesService {
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
   }
 
-  async getFinancialSummary(claimFileId: string) {
-    const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
+  async getFinancialSummary(claimFileId: string, user?: { id: string; roleCode?: string }) {
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        hideFinancialFromAssignees: true,
+        financialVisibilityConfig: true,
+        assignedFieldUserId: true,
+        assignedOfficeUserId: true,
+        currentResponsibleUserId: true,
+      },
+    });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+    if (user && !canViewFileFinancials(user, claimFile)) {
+      throw new ForbiddenException('Bu dosyada finansal özet görüntüleme yetkiniz yok.');
+    }
 
     let summary = await this.financialSummary.getByClaimFile(claimFileId);
     if (!summary) {

@@ -9,6 +9,7 @@ import {
   OwnershipLoadResponse,
   FinanceBottlenecksResponse,
   ActivityFeedResponse,
+  PortfolioPLResponse,
 } from '../types/dashboard';
 
 export function useDashboardOperations() {
@@ -33,6 +34,55 @@ export function useOwnershipLoad() {
 
 export function useFinanceBottlenecks() {
   return useApiQuery<FinanceBottlenecksResponse>(['dashboard-finance-bottlenecks'], '/dashboard/finance-bottlenecks');
+}
+
+export function usePortfolioPL(year: number, month: number) {
+  const params: Record<string, number> = { year };
+  if (month > 0) params.month = month;
+
+  return useApiQuery<PortfolioPLResponse>(
+    ['finance-portfolio-pl', year, month],
+    '/finance/analytics/portfolio-pl',
+    { params },
+  );
+}
+
+export type OverheadAllocationRemindersResponse = {
+  reminders: Array<{
+    year: number;
+    month: number;
+    periodLabel: string;
+    totalNet: number;
+    urgency: 'month_end' | 'overdue';
+    message: string;
+    needsSync?: boolean;
+  }>;
+  hasPending: boolean;
+  criticalCount: number;
+};
+
+export function useOverheadAllocationReminders() {
+  return useApiQuery<OverheadAllocationRemindersResponse>(
+    ['overhead-allocation-reminders'],
+    '/finance/overhead/allocation-reminder',
+  );
+}
+
+export type OverheadPeriodStatusResponse = {
+  needsAllocation?: boolean;
+  needsSync?: boolean;
+  allocationComplete?: boolean;
+  entryCount?: number;
+  totalNet?: number;
+  targetCount?: number;
+};
+
+export function useOverheadPeriodStatus(year: number, month: number) {
+  return useApiQuery<OverheadPeriodStatusResponse>(
+    ['overhead-period-status', year, month],
+    '/finance/overhead/period-status',
+    { params: { year, month } },
+  );
 }
 
 export function useActivityFeed(limit: number = 20) {

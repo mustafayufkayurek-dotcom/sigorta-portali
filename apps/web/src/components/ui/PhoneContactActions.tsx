@@ -1,6 +1,7 @@
 'use client';
 
 import { toWhatsAppLink } from '@/utils/date-helpers';
+import { formatPhoneGrouped } from '@/utils/validators';
 
 export type PhoneContactActionsVariant = 'inline' | 'panel';
 
@@ -77,6 +78,7 @@ export function PhoneContactActions({
   if (!trimmed) return null;
 
   const waLink = toWhatsAppLink(trimmed);
+  const displayPhone = formatPhoneGrouped(trimmed);
 
   if (variant === 'panel') {
     const iconBg = accent === 'indigo'
@@ -99,7 +101,7 @@ export function PhoneContactActions({
           <span className={`w-7 h-7 ${iconBg} rounded-lg flex items-center justify-center transition-colors flex-shrink-0`}>
             <PhoneIcon className="w-3.5 h-3.5" />
           </span>
-          <span className="truncate">{trimmed}</span>
+          <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
         </a>
         {waLink && <WhatsAppLinkButton href={waLink} size="md" />}
       </div>
@@ -115,7 +117,7 @@ export function PhoneContactActions({
         className={`${textSize} text-blue-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors min-w-0`}
       >
         <PhoneIcon className="w-3 h-3 flex-shrink-0" />
-        <span className="truncate">{trimmed}</span>
+        <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
       </a>
       {waLink && <WhatsAppLinkButton href={waLink} size="sm" />}
     </div>

@@ -5,6 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCases, EmergencyCase } from '@/utils/emergencyApi';
 import { apiClient } from '@/lib/api-client';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('tr-TR');
@@ -104,8 +113,20 @@ function StatCard({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'kind', label: 'Tür', defaultWidth: 88, minWidth: 72 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 140, minWidth: 100 },
+  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
+  { id: 'subject', label: 'İhbar Konusu', defaultWidth: 160, minWidth: 100 },
+  { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
+];
+
 export default function OperasyonPage() {
   const router = useRouter();
+  const tableColumns = usePanelTableColumns('table-cols:operasyon', TABLE_COLUMNS);
 
   const [claims, setClaims] = useState<any[]>([]);
   const [claimsTotal, setClaimsTotal] = useState(0);
@@ -202,6 +223,7 @@ export default function OperasyonPage() {
   const isLoading = claimsLoading || casesLoading;
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div className="space-y-6">
       {/* Header */}
             {/* Breadcrumb */}
@@ -320,6 +342,7 @@ export default function OperasyonPage() {
               <option value="paid">Ödendi</option>
               <option value="overdue">Gecikmiş</option>
             </select>
+            <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
         </div>
 
@@ -331,17 +354,17 @@ export default function OperasyonPage() {
           <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <th className="table-th">Tür</th>
-                  <th className="table-th">Dosya No</th>
-                  <th className="table-th">Müşteri</th>
-                  <th className="table-th">Tarih</th>
-                  <th className="table-th">İhbar Konusu</th>
-                  <th className="table-th">Durum</th>
-                  <th className="table-th">Fatura</th>
-                  <th className="table-th">Tutar</th>
+                  <PanelTableTh colId="kind" className="table-th">Tür</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
+                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
+                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -357,7 +380,7 @@ export default function OperasyonPage() {
                       )
                     }
                   >
-                    <td className="table-td whitespace-nowrap">
+                    <PanelTableTd colId="kind" className="table-td whitespace-nowrap">
                       {row.kind === 'hasar' ? (
                         <span className="badge badge-blue">Hasar</span>
                       ) : (
@@ -366,18 +389,18 @@ export default function OperasyonPage() {
                           Acil
                         </span>
                       )}
-                    </td>
-                    <td className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="fileNo" className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
                       {row.fileNo}
-                    </td>
-                    <td className="table-td max-w-[140px] truncate whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="customer" className="table-td max-w-[140px] whitespace-nowrap" title={row.customerName}>
                       {row.customerName}
-                    </td>
-                    <td className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</td>
-                    <td className="table-td text-slate-500 max-w-[160px] truncate whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="date" className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</PanelTableTd>
+                    <PanelTableTd colId="subject" className="table-td text-slate-500 max-w-[160px] whitespace-nowrap" title={row.subject}>
                       {row.subject}
-                    </td>
-                    <td className="table-td whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="status" className="table-td whitespace-nowrap">
                       {row.kind === 'hasar' ? (
                         <span className="badge badge-blue">{row.statusLabel}</span>
                       ) : (
@@ -385,15 +408,15 @@ export default function OperasyonPage() {
                           {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
                         </span>
                       )}
-                    </td>
-                    <td className="table-td whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="invoice" className="table-td whitespace-nowrap">
                       <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
                         {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                       </span>
-                    </td>
-                    <td className="table-td whitespace-nowrap font-semibold">
+                    </PanelTableTd>
+                    <PanelTableTd colId="amount" className="table-td whitespace-nowrap font-semibold">
                       {row.amount ?? <span className="text-slate-300">—</span>}
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
@@ -427,5 +450,6 @@ export default function OperasyonPage() {
         </div>
       </div>
     </div>
+    </TableColumnsProvider>
   );
 }

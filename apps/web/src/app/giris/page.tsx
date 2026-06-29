@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API } from '@/utils/api';
-import { CORPORATE_LOGO_DARK } from '@/constants/brand';
+import { LoginBrandLogo } from '@/components/brand/LoginBrandLogo';
 import {
   attemptAutoLogin,
   storeAuthAfterLogin,
@@ -406,20 +406,21 @@ export default function LoginPage() {
         .logo-brand-shell {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           background: #ffffff;
-          border-radius: 12px;
-          padding: 8px 18px;
+          border-radius: 10px;
+          padding: 10px 24px 10px 14px;
           box-shadow:
-            0 10px 28px rgba(0, 0, 0, 0.22),
-            0 0 0 1px rgba(255, 255, 255, 0.08);
+            0 8px 24px rgba(0, 0, 0, 0.18),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
         }
-        .logo-static-img {
+        .login-brand-full {
           display: block;
-          width: clamp(240px, 26vw, 320px);
-          height: clamp(48px, 5.6vw, 62px);
-          object-fit: cover;
-          object-position: 10% 46%;
+          height: 58px;
+          width: auto;
+          max-width: min(300px, 52vw);
+          object-fit: contain;
+          object-position: left center;
         }
         .nav-right {
           display: flex;
@@ -974,12 +975,12 @@ export default function LoginPage() {
         @media (max-width: 1023px) {
           .login-panel { flex: 0 0 380px; width: 380px; }
           .marketing-panel { padding: 44px 40px 0; }
-          .logo-static-img {
-            width: clamp(200px, 34vw, 260px);
-            height: clamp(40px, 6vw, 52px);
-          }
           .logo-brand-shell {
-            padding: 7px 14px;
+            padding: 8px 18px 8px 12px;
+          }
+          .login-brand-full {
+            height: 50px;
+            max-width: 260px;
           }
           .nav-right {
             max-width: 300px;
@@ -993,9 +994,9 @@ export default function LoginPage() {
           .login-scroll { padding: 36px 24px; }
           .stats-band { grid-template-columns: repeat(2, 1fr); }
           .nav-contacts { display: flex; }
-          .logo-static-img {
-            width: clamp(188px, 52vw, 240px);
-            height: clamp(38px, 8vw, 48px);
+          .login-brand-full {
+            height: 46px;
+            max-width: 240px;
           }
         }
         @media (max-width: 540px) {
@@ -1010,14 +1011,14 @@ export default function LoginPage() {
             width: 100%;
             justify-content: center;
           }
-          .logo-static-img {
-            width: min(92vw, 260px);
-            height: 46px;
-          }
           .logo-brand-shell {
             width: 100%;
-            max-width: 320px;
-            padding: 8px 16px;
+            max-width: 340px;
+            justify-content: center;
+          }
+          .login-brand-full {
+            height: 44px;
+            max-width: min(280px, 88vw);
           }
           .nav-right {
             width: 100%;
@@ -1052,11 +1053,7 @@ export default function LoginPage() {
         <nav className="top-nav">
           <div className="top-nav-logo">
             <div className="logo-brand-shell">
-              <img
-                src={CORPORATE_LOGO_DARK}
-                alt={companyName}
-                className="logo-static-img"
-              />
+              <LoginBrandLogo alt={companyName} />
             </div>
           </div>
 

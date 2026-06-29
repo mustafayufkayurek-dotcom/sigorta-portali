@@ -4,6 +4,32 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const DEPT_PERF_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'dept', label: 'Departman / Branş', defaultWidth: 180, minWidth: 120 },
+  { id: 'total', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'open', label: 'Açık', defaultWidth: 80, minWidth: 64 },
+  { id: 'closed', label: 'Kapanan', defaultWidth: 88, minWidth: 64 },
+  { id: 'avgCloseDays', label: 'Ort. Kapanış (gün)', defaultWidth: 120, minWidth: 96 },
+  { id: 'slaCompliance', label: 'SLA Uyum %', defaultWidth: 96, minWidth: 72 },
+  { id: 'performance', label: 'Performans', defaultWidth: 140, minWidth: 100 },
+];
+
+const INS_STATS_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Şirket', defaultWidth: 160, minWidth: 120 },
+  { id: 'total', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'open', label: 'Açık', defaultWidth: 80, minWidth: 64 },
+  { id: 'closed', label: 'Kapanan', defaultWidth: 88, minWidth: 64 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -50,6 +76,9 @@ export default function DosyaPerformansPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [productBranch, setProductBranch] = useState('');
+
+  const deptTableColumns = usePanelTableColumns('table-cols:rapor-dosya-perf-1', DEPT_PERF_TABLE_COLUMNS);
+  const insTableColumns = usePanelTableColumns('table-cols:rapor-dosya-perf-2', INS_STATS_TABLE_COLUMNS);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -200,21 +229,23 @@ export default function DosyaPerformansPage() {
       </div>
 
       {/* Department Comparison Table */}
+      <TableColumnsProvider value={deptTableColumns}>
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
+        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Departman Bazlı Karşılaştırma</h3>
+          <PanelTableColumnPicker tableColumns={deptTableColumns} />
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
             <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman / Branş</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Açık</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Kapanan</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Kapanış (gün)</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SLA Uyum %</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-36">Performans</th>
+                <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman / Branş</PanelTableTh>
+                <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</PanelTableTh>
+                <PanelTableTh colId="open" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Açık</PanelTableTh>
+                <PanelTableTh colId="closed" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Kapanan</PanelTableTh>
+                <PanelTableTh colId="avgCloseDays" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Kapanış (gün)</PanelTableTh>
+                <PanelTableTh colId="slaCompliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SLA Uyum %</PanelTableTh>
+                <PanelTableTh colId="performance" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Performans</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -225,20 +256,20 @@ export default function DosyaPerformansPage() {
                 const closedPct = row.total > 0 ? Math.round((row.closed / row.total) * 100) : 0;
                 return (
                   <tr key={row.dept} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</td>
-                    <td className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.total}</td>
-                    <td className="px-5 py-3.5 text-right text-blue-600 dark:text-blue-400 font-medium">{row.open}</td>
-                    <td className="px-5 py-3.5 text-right text-green-600 dark:text-green-400 font-medium">{row.closed}</td>
-                    <td className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.avgCloseDays} gün</td>
-                    <td className={`px-5 py-3.5 text-right font-bold ${slaColor}`}>%{sla}</td>
-                    <td className="px-5 py-3.5">
+                    <PanelTableTd colId="dept" className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</PanelTableTd>
+                    <PanelTableTd colId="total" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.total}</PanelTableTd>
+                    <PanelTableTd colId="open" className="px-5 py-3.5 text-right text-blue-600 dark:text-blue-400 font-medium">{row.open}</PanelTableTd>
+                    <PanelTableTd colId="closed" className="px-5 py-3.5 text-right text-green-600 dark:text-green-400 font-medium">{row.closed}</PanelTableTd>
+                    <PanelTableTd colId="avgCloseDays" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.avgCloseDays} gün</PanelTableTd>
+                    <PanelTableTd colId="slaCompliance" className={`px-5 py-3.5 text-right font-bold ${slaColor}`}>%{sla}</PanelTableTd>
+                    <PanelTableTd colId="performance" className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                           <div className={`${barColor} h-2 rounded-full transition-all`} style={{ width: `${closedPct}%` }} />
                         </div>
                         <span className="text-xs text-slate-500 dark:text-slate-400 w-8 text-right">{closedPct}%</span>
                       </div>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 );
               })}
@@ -246,36 +277,40 @@ export default function DosyaPerformansPage() {
           </table>
         </div>
       </div>
+      </TableColumnsProvider>
 
       {/* Insurance Company Table */}
       {insStats.length > 0 && (
+        <TableColumnsProvider value={insTableColumns}>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sigorta Şirketi Bazında Durum Dağılımı</h3>
+            <PanelTableColumnPicker tableColumns={insTableColumns} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(insTableColumns)}>
               <thead className="bg-slate-50/70 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <th className="px-5 py-3 text-left">Şirket</th>
-                  <th className="px-5 py-3 text-right">Toplam</th>
-                  <th className="px-5 py-3 text-right">Açık</th>
-                  <th className="px-5 py-3 text-right">Kapanan</th>
+                  <PanelTableTh colId="name" className="px-5 py-3 text-left">Şirket</PanelTableTh>
+                  <PanelTableTh colId="total" className="px-5 py-3 text-right">Toplam</PanelTableTh>
+                  <PanelTableTh colId="open" className="px-5 py-3 text-right">Açık</PanelTableTh>
+                  <PanelTableTh colId="closed" className="px-5 py-3 text-right">Kapanan</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {insStats.slice(0, 10).map((ins) => (
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-5 py-3 text-slate-700 dark:text-slate-200">{ins.name}</td>
-                    <td className="px-5 py-3 text-right font-medium text-slate-800 dark:text-slate-100">{ins.total}</td>
-                    <td className="px-5 py-3 text-right text-blue-600 dark:text-blue-400">{ins.open}</td>
-                    <td className="px-5 py-3 text-right text-green-600 dark:text-green-400">{ins.closed}</td>
+                    <PanelTableTd colId="name" className="px-5 py-3 text-slate-700 dark:text-slate-200">{ins.name}</PanelTableTd>
+                    <PanelTableTd colId="total" className="px-5 py-3 text-right font-medium text-slate-800 dark:text-slate-100">{ins.total}</PanelTableTd>
+                    <PanelTableTd colId="open" className="px-5 py-3 text-right text-blue-600 dark:text-blue-400">{ins.open}</PanelTableTd>
+                    <PanelTableTd colId="closed" className="px-5 py-3 text-right text-green-600 dark:text-green-400">{ins.closed}</PanelTableTd>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+        </TableColumnsProvider>
       )}
     </div>
   );

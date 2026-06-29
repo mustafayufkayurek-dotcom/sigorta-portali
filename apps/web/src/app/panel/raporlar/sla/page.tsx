@@ -4,6 +4,45 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const DEPT_SLA_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'dept', label: 'Departman', defaultWidth: 180, minWidth: 120 },
+  { id: 'total', label: 'Toplam', defaultWidth: 80, minWidth: 64 },
+  { id: 'onTime', label: 'Zamanında', defaultWidth: 96, minWidth: 72 },
+  { id: 'violated', label: 'İhlal', defaultWidth: 80, minWidth: 64 },
+  { id: 'avgResponse', label: 'Ort. Yanıt', defaultWidth: 96, minWidth: 72 },
+  { id: 'compliance', label: 'Uyum %', defaultWidth: 88, minWidth: 72 },
+  { id: 'status', label: 'Durum', defaultWidth: 140, minWidth: 100 },
+];
+
+const VIOLATED_FILES_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
+  { id: 'claimNo', label: 'Hasar No', defaultWidth: 100, minWidth: 80 },
+  { id: 'branch', label: 'Branş', defaultWidth: 100, minWidth: 80 },
+  { id: 'status', label: 'Durum', defaultWidth: 88, minWidth: 72 },
+  { id: 'officeUser', label: 'Sorumlu', defaultWidth: 120, minWidth: 96 },
+  { id: 'insuranceCompany', label: 'Sigorta Şirketi', defaultWidth: 140, minWidth: 100 },
+  { id: 'daysOverdue', label: 'Gecikme (gün)', defaultWidth: 100, minWidth: 80 },
+];
+
+const RULES_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Kural Adı', defaultWidth: 160, minWidth: 120 },
+  { id: 'claimType', label: 'Hasar Tipi', defaultWidth: 120, minWidth: 96 },
+  { id: 'productBranch', label: 'Branş', defaultWidth: 120, minWidth: 96 },
+  { id: 'targetDays', label: 'Hedef (gün)', defaultWidth: 96, minWidth: 72 },
+  { id: 'warningDays', label: 'Uyarı (gün)', defaultWidth: 96, minWidth: 72 },
+  { id: 'status', label: 'Durum', defaultWidth: 88, minWidth: 72 },
+  { id: 'action', label: 'İşlem', defaultWidth: 72, minWidth: 56 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -76,6 +115,10 @@ export default function SlaRaporPage() {
   // Rule form
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', claimType: '', productBranch: '', targetDays: '30', warningDays: '7' });
+
+  const deptTableColumns = usePanelTableColumns('table-cols:rapor-sla-1', DEPT_SLA_TABLE_COLUMNS);
+  const violatedTableColumns = usePanelTableColumns('table-cols:rapor-sla-2', VIOLATED_FILES_TABLE_COLUMNS);
+  const rulesTableColumns = usePanelTableColumns('table-cols:rapor-sla-3', RULES_TABLE_COLUMNS);
 
   const loadReport = useCallback(() => {
     setLoading(true);
@@ -332,21 +375,23 @@ export default function SlaRaporPage() {
           </div>
 
           {/* Department SLA Performance Table */}
+          <TableColumnsProvider value={deptTableColumns}>
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Departman Bazlı SLA Performansı</h3>
+              <PanelTableColumnPicker tableColumns={deptTableColumns} />
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zamanında</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İhlal</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Yanıt</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uyum %</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Durum</th>
+                    <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman</PanelTableTh>
+                    <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</PanelTableTh>
+                    <PanelTableTh colId="onTime" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zamanında</PanelTableTh>
+                    <PanelTableTh colId="violated" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İhlal</PanelTableTh>
+                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Yanıt</PanelTableTh>
+                    <PanelTableTh colId="compliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uyum %</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Durum</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -356,19 +401,19 @@ export default function SlaRaporPage() {
                     const barColor = pct >= 90 ? 'bg-green-500' : pct >= 75 ? 'bg-amber-500' : 'bg-red-500';
                     return (
                       <tr key={row.dept} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
-                        <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</td>
-                        <td className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.total}</td>
-                        <td className="px-5 py-3.5 text-right text-green-600 dark:text-green-400 font-medium">{row.onTime}</td>
-                        <td className="px-5 py-3.5 text-right text-red-600 dark:text-red-400 font-medium">{row.violated}</td>
-                        <td className="px-5 py-3.5 text-right text-slate-600 dark:text-slate-300">{row.avgResponseHrs.toFixed(1)} sa</td>
-                        <td className={`px-5 py-3.5 text-right font-bold ${slaColor}`}>%{pct.toFixed(1)}</td>
-                        <td className="px-5 py-3.5">
+                        <PanelTableTd colId="dept" className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</PanelTableTd>
+                        <PanelTableTd colId="total" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.total}</PanelTableTd>
+                        <PanelTableTd colId="onTime" className="px-5 py-3.5 text-right text-green-600 dark:text-green-400 font-medium">{row.onTime}</PanelTableTd>
+                        <PanelTableTd colId="violated" className="px-5 py-3.5 text-right text-red-600 dark:text-red-400 font-medium">{row.violated}</PanelTableTd>
+                        <PanelTableTd colId="avgResponse" className="px-5 py-3.5 text-right text-slate-600 dark:text-slate-300">{row.avgResponseHrs.toFixed(1)} sa</PanelTableTd>
+                        <PanelTableTd colId="compliance" className={`px-5 py-3.5 text-right font-bold ${slaColor}`}>%{pct.toFixed(1)}</PanelTableTd>
+                        <PanelTableTd colId="status" className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                               <div className={`${barColor} h-2 rounded-full`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
-                        </td>
+                        </PanelTableTd>
                       </tr>
                     );
                   })}
@@ -376,50 +421,56 @@ export default function SlaRaporPage() {
               </table>
             </div>
           </div>
+          </TableColumnsProvider>
 
           {/* Violated files list */}
+          <TableColumnsProvider value={violatedTableColumns}>
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">İhlal Edilen Dosyalar ({violatedFiles.length})</h3>
-              <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
-                SLA Aşıldı
-              </span>
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">İhlal Edilen Dosyalar ({violatedFiles.length})</h3>
+                <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full font-medium shrink-0">
+                  SLA Aşıldı
+                </span>
+              </div>
+              <PanelTableColumnPicker tableColumns={violatedTableColumns} />
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(violatedTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-3 text-left">Dosya No</th>
-                    <th className="px-4 py-3 text-left">Hasar No</th>
-                    <th className="px-4 py-3 text-left">Branş</th>
-                    <th className="px-4 py-3 text-left">Durum</th>
-                    <th className="px-4 py-3 text-left">Sorumlu</th>
-                    <th className="px-4 py-3 text-left">Sigorta Şirketi</th>
-                    <th className="px-4 py-3 text-right">Gecikme (gün)</th>
+                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-left">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="claimNo" className="px-4 py-3 text-left">Hasar No</PanelTableTh>
+                    <PanelTableTh colId="branch" className="px-4 py-3 text-left">Branş</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-4 py-3 text-left">Durum</PanelTableTh>
+                    <PanelTableTh colId="officeUser" className="px-4 py-3 text-left">Sorumlu</PanelTableTh>
+                    <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-left">Sigorta Şirketi</PanelTableTh>
+                    <PanelTableTh colId="daysOverdue" className="px-4 py-3 text-right">Gecikme (gün)</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {violatedFiles.slice(0, 50).map((f) => (
                     <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <td className="px-4 py-2.5">
+                      <PanelTableTd colId="fileNo" className="px-4 py-2.5">
                         <a href={`/panel/hasar-dosyalari/${f.id}`} className="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline">{f.fileNo}</a>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.claimNo}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.productBranch ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">{f.status}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">{f.officeUser ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.insuranceCompany ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-right">
+                      </PanelTableTd>
+                      <PanelTableTd colId="claimNo" className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.claimNo}</PanelTableTd>
+                      <PanelTableTd colId="branch" className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.productBranch ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="status" className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">{f.status}</PanelTableTd>
+                      <PanelTableTd colId="officeUser" className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-300">{f.officeUser ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="insuranceCompany" className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.insuranceCompany ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="daysOverdue" className="px-4 py-2.5 text-right">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${f.daysOverdue >= 14 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : f.daysOverdue >= 7 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'}`}>
                           {f.daysOverdue} gün
                         </span>
-                      </td>
+                      </PanelTableTd>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
+          </TableColumnsProvider>
         </div>
       )}
 
@@ -472,43 +523,50 @@ export default function SlaRaporPage() {
             </div>
           )}
 
+          <TableColumnsProvider value={rulesTableColumns}>
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelTableColumnPicker tableColumns={rulesTableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
               <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 text-left">Kural Adı</th>
-                  <th className="px-4 py-3 text-left">Hasar Tipi</th>
-                  <th className="px-4 py-3 text-left">Branş</th>
-                  <th className="px-4 py-3 text-right">Hedef (gün)</th>
-                  <th className="px-4 py-3 text-right">Uyarı (gün)</th>
-                  <th className="px-4 py-3 text-center">Durum</th>
-                  <th className="px-4 py-3 text-right">İşlem</th>
+                  <PanelTableTh colId="name" className="px-4 py-3 text-left">Kural Adı</PanelTableTh>
+                  <PanelTableTh colId="claimType" className="px-4 py-3 text-left">Hasar Tipi</PanelTableTh>
+                  <PanelTableTh colId="productBranch" className="px-4 py-3 text-left">Branş</PanelTableTh>
+                  <PanelTableTh colId="targetDays" className="px-4 py-3 text-right">Hedef (gün)</PanelTableTh>
+                  <PanelTableTh colId="warningDays" className="px-4 py-3 text-right">Uyarı (gün)</PanelTableTh>
+                  <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="action" className="px-4 py-3 text-right">İşlem</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {rules.map((rule) => (
                   <tr key={rule.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{rule.name}</td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{rule.claimType ?? 'Tümü'}</td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{rule.productBranch ?? 'Tümü'}</td>
-                    <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{rule.targetDays}</td>
-                    <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{rule.warningDays}</td>
-                    <td className="px-4 py-3 text-center">
+                    <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{rule.name}</PanelTableTd>
+                    <PanelTableTd colId="claimType" className="px-4 py-3 text-slate-500 dark:text-slate-400">{rule.claimType ?? 'Tümü'}</PanelTableTd>
+                    <PanelTableTd colId="productBranch" className="px-4 py-3 text-slate-500 dark:text-slate-400">{rule.productBranch ?? 'Tümü'}</PanelTableTd>
+                    <PanelTableTd colId="targetDays" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{rule.targetDays}</PanelTableTd>
+                    <PanelTableTd colId="warningDays" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{rule.warningDays}</PanelTableTd>
+                    <PanelTableTd colId="status" className="px-4 py-3 text-center">
                       <button type="button" onClick={() => handleToggleRule(rule)} className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${rule.isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                         {rule.isActive ? 'Aktif' : 'Pasif'}
                       </button>
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </PanelTableTd>
+                    <PanelTableTd colId="action" className="px-4 py-3 text-right">
                       <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Sil</button>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
                 {rules.length === 0 && (
-                  <tr><td colSpan={7} className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Henüz SLA Kuralı Tanımlanmamış</td></tr>
+                  <tr><td colSpan={rulesTableColumns.prefs.visibleIds.length || 1} className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Henüz SLA Kuralı Tanımlanmamış</td></tr>
                 )}
               </tbody>
             </table>
+            </div>
           </div>
+          </TableColumnsProvider>
         </div>
       )}
     </div>

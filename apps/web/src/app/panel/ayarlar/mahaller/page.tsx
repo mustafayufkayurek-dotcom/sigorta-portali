@@ -22,6 +22,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'subRegion', label: 'Alt Bölge', defaultWidth: 200, minWidth: 140 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
+  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 type ClaimLocation = {
   id: string;
@@ -380,22 +389,27 @@ export default function MahallerPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Mahal ve Bölgeler"
       description="Hasar raporunda hangi bölgede ne iş yapılacağını tanımlayın (ör. Salon zemin, Çocuk odası tavan)."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Mahal Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Mahal Ekle
+          </button>
+        </div>
       }
     >
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -513,26 +527,26 @@ export default function MahallerPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh>Alt Bölge</SettingsTableTh>
-                          <SettingsTableTh>Açıklama</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh>Durum</SettingsTableTh>
+                          <SettingsTableTh colId="subRegion">Alt Bölge</SettingsTableTh>
+                          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
+                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {visibleSubs.map((sub) => (
                             <SettingsTableRow key={sub.id}>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="subRegion">
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{sub.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="description">
                                 <span className="text-sm text-slate-500">{sub.description || '—'}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd>
+                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd colId="status">
                                 <button type="button" onClick={() => handleToggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />
                                 </button>
@@ -628,5 +642,7 @@ export default function MahallerPage() {
         itemName={deleteSubTarget?.name}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

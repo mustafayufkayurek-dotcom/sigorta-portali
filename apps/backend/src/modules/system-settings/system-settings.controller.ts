@@ -37,7 +37,7 @@ export class SystemSettingsController {
   }
 
   @Put('vendor-types')
-  @RequirePermissions('settings.manage')
+  @RequirePermissions('settings.manage', 'vendor.create')
   @ApiOperation({ summary: 'Tedarikçi türlerini güncelle' })
   async setVendorTypes(@Body() body: { types: string[] }) {
     const data = await this.service.setVendorTypes(body.types);
@@ -215,7 +215,7 @@ export class SystemSettingsController {
   }
 
   @Put('relationship-types')
-  @RequirePermissions('settings.manage')
+  @RequirePermissions('settings.manage', 'vendor.create', 'customer.create', 'adjuster.create')
   @ApiOperation({ summary: 'İlgili kişi ilişki türlerini güncelle' })
   async setRelationshipTypes(@Body() body: { values: RelationshipType[] }) {
     const data = await this.service.setRelationshipTypes(body.values);

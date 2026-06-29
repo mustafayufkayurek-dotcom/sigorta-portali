@@ -72,3 +72,17 @@ export type ActivityItem = {
   createdAt: string;
 };
 export type ActivityFeedResponse = { items: ActivityItem[] };
+
+export type PortfolioPLResponse = {
+  fileCount: number;
+  totalRevenue: number;
+  fileFeeRevenue: number;
+  extraWorkRevenue: number;
+  totalCost: number;
+  totalVariableCost: number;
+  overheadShare: number;
+  netProfit: number;
+  totalCollected: number;
+  outstandingBalance: number;
+  netMarginPct: number;
+};

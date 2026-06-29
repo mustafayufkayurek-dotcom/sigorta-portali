@@ -27,6 +27,17 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Ad', defaultWidth: 200, minWidth: 120 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
+  { id: 'required', label: 'Zorunlu', defaultWidth: 90, minWidth: 70 },
+  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
+  { id: 'count', label: 'Evrak Sayısı', defaultWidth: 100, minWidth: 80 },
+  { id: 'status', label: 'Durum', defaultWidth: 90, minWidth: 70 },
+];
 
 type Department = DepartmentTab & { code: string };
 
@@ -219,24 +230,29 @@ export default function EvrakTurleriPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Evrak Türleri"
       description="Departman bazlı tedarikçi belge türlerini tanımlayın. Her evrak bir departmana bağlıdır."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
-        selectedDept ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Evrak Türü Ekle
-          </button>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
+          {selectedDept ? (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Evrak Türü Ekle
+            </button>
+          ) : null}
+        </div>
       }
     >
       <div className="space-y-4">
@@ -285,12 +301,12 @@ export default function EvrakTurleriPage() {
               }
             >
               <SettingsTableHead>
-                <SettingsTableTh>Ad</SettingsTableTh>
-                <SettingsTableTh>Açıklama</SettingsTableTh>
-                <SettingsTableTh className="text-center">Zorunlu</SettingsTableTh>
-                <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
-                <SettingsTableTh className="text-center">Evrak Sayısı</SettingsTableTh>
-                <SettingsTableTh className="text-center">Durum</SettingsTableTh>
+                <SettingsTableTh colId="name">Ad</SettingsTableTh>
+                <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
+                <SettingsTableTh colId="required" className="text-center">Zorunlu</SettingsTableTh>
+                <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
+                <SettingsTableTh colId="count" className="text-center">Evrak Sayısı</SettingsTableTh>
+                <SettingsTableTh colId="status" className="text-center">Durum</SettingsTableTh>
                 <SettingsTableTh />
               </SettingsTableHead>
               <SettingsTableBody>
@@ -298,7 +314,7 @@ export default function EvrakTurleriPage() {
                   const unassigned = parseIds(dt.departmentIds).length === 0;
                   return (
                     <SettingsTableRow key={dt.id}>
-                      <SettingsTableTd>
+                      <SettingsTableTd colId="name">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-slate-900">{dt.name}</span>
                           {unassigned && (
@@ -307,17 +323,17 @@ export default function EvrakTurleriPage() {
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5 font-mono">{dt.code}</p>
                       </SettingsTableTd>
-                      <SettingsTableTd className="max-w-xs truncate text-slate-500">{dt.description || '—'}</SettingsTableTd>
-                      <SettingsTableTd className="text-center">
+                      <SettingsTableTd colId="description" className="max-w-xs truncate text-slate-500">{dt.description || '—'}</SettingsTableTd>
+                      <SettingsTableTd colId="required" className="text-center">
                         {dt.isRequired ? (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Zorunlu</span>
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}
                       </SettingsTableTd>
-                      <SettingsTableTd className="text-center text-slate-600">{dt.sortOrder}</SettingsTableTd>
-                      <SettingsTableTd className="text-center text-slate-600">{dt._count?.vendorDocuments ?? 0}</SettingsTableTd>
-                      <SettingsTableTd className="text-center">
+                      <SettingsTableTd colId="sort" className="text-center text-slate-600">{dt.sortOrder}</SettingsTableTd>
+                      <SettingsTableTd colId="count" className="text-center text-slate-600">{dt._count?.vendorDocuments ?? 0}</SettingsTableTd>
+                      <SettingsTableTd colId="status" className="text-center">
                         <StatusBadge active={dt.status === 'active'} />
                       </SettingsTableTd>
                       <SettingsTableActions>
@@ -422,5 +438,7 @@ export default function EvrakTurleriPage() {
         }
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

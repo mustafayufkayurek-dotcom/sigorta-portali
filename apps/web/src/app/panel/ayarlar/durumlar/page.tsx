@@ -19,6 +19,17 @@ import { DeleteConfirmDialog, SettingsModal } from '@/components/settings/Settin
 import { ApiError, apiClient } from '@/lib/api-client';
 import { applyNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'sortOrder', label: 'Sıra No', defaultWidth: 80, minWidth: 60 },
+  { id: 'name', label: 'Ad', defaultWidth: 200, minWidth: 120 },
+  { id: 'color', label: 'Renk', defaultWidth: 100, minWidth: 80 },
+  { id: 'isClosed', label: 'Kapalı Durumu', defaultWidth: 120, minWidth: 90 },
+  { id: 'isWaiting', label: 'Bekleme Durumu', defaultWidth: 120, minWidth: 90 },
+  { id: 'slaWarning', label: 'SLA Uyarı %', defaultWidth: 100, minWidth: 80 },
+];
 
 type ClaimStatus = {
   id: string;
@@ -211,6 +222,8 @@ export default function DurumlarPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Durumlar"
       description="Hasar ve operasyon dosyalarının ekranda hangi aşamada görüneceğini, kapanmış veya beklemede sayılıp sayılmayacağını ve takip sırasını yönetin."
@@ -218,6 +231,7 @@ export default function DurumlarPage() {
       onAdd={openCreate}
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
+      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
       <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
         Bu sayfa dosya akışındaki durum etiketlerini yönetir. Buradaki kayıtlar dashboard sayıları, dosya listesi filtreleri,
@@ -232,33 +246,33 @@ export default function DurumlarPage() {
 
       <SettingsTable loading={loading} empty={sortedStatuses.length === 0} emptyText="Henüz durum tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh className="w-20">Sıra No</SettingsTableTh>
-          <SettingsTableTh>Ad</SettingsTableTh>
-          <SettingsTableTh className="w-24">Renk</SettingsTableTh>
-          <SettingsTableTh className="w-32">Kapalı Durumu</SettingsTableTh>
-          <SettingsTableTh className="w-32">Bekleme Durumu</SettingsTableTh>
-          <SettingsTableTh className="w-28">SLA Uyarı %</SettingsTableTh>
+          <SettingsTableTh colId="sortOrder" className="w-20">Sıra No</SettingsTableTh>
+          <SettingsTableTh colId="name">Ad</SettingsTableTh>
+          <SettingsTableTh colId="color" className="w-24">Renk</SettingsTableTh>
+          <SettingsTableTh colId="isClosed" className="w-32">Kapalı Durumu</SettingsTableTh>
+          <SettingsTableTh colId="isWaiting" className="w-32">Bekleme Durumu</SettingsTableTh>
+          <SettingsTableTh colId="slaWarning" className="w-28">SLA Uyarı %</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {sortedStatuses.map((status) => (
             <SettingsTableRow key={status.id}>
-              <SettingsTableTd className="font-mono text-xs text-slate-500">{status.sortOrder}</SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="sortOrder" className="font-mono text-xs text-slate-500">{status.sortOrder}</SettingsTableTd>
+              <SettingsTableTd colId="name">
                 <div className="space-y-1">
                   <p className="font-medium text-slate-800">{status.name}</p>
                   <p className="text-xs text-slate-400">{status.code}</p>
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="color">
                 <div className="flex items-center gap-2">
                   <span className="h-5 w-5 rounded border border-slate-200" style={{ backgroundColor: status.color }} />
                   <span className="text-xs text-slate-500">{status.color}</span>
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd>{status.isClosed ? 'Evet' : 'Hayır'}</SettingsTableTd>
-              <SettingsTableTd>{status.isWaiting ? 'Evet' : 'Hayır'}</SettingsTableTd>
-              <SettingsTableTd>%{status.slaWarningPercent}</SettingsTableTd>
+              <SettingsTableTd colId="isClosed">{status.isClosed ? 'Evet' : 'Hayır'}</SettingsTableTd>
+              <SettingsTableTd colId="isWaiting">{status.isWaiting ? 'Evet' : 'Hayır'}</SettingsTableTd>
+              <SettingsTableTd colId="slaWarning">%{status.slaWarningPercent}</SettingsTableTd>
               <SettingsTableActions>
                 <EditButton onClick={() => openEdit(status)} />
                 <DeleteButton onClick={() => { setDeleteTarget(status); setDeleteError(''); }} />
@@ -395,5 +409,7 @@ export default function DurumlarPage() {
         title="Durumu Sil"
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

@@ -230,7 +230,7 @@ export default function AcilYardimPage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Müşteri, adres, vaka no..."
+          placeholder="Müşteri, adres, dosya no..."
           className="input-base-sm pl-9"
         />
       </div>

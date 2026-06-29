@@ -8,7 +8,7 @@ import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, CUSTOMER_RELATION_SECTION_HINT } from '@/utils/customer-form-helpers';
+import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE } from '@/utils/customer-form-helpers';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -218,8 +218,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SectionCard title={CUSTOMER_RELATION_SECTION_TITLE}>
-          <p className="text-xs text-slate-500 mb-4 leading-relaxed">{CUSTOMER_RELATION_SECTION_HINT}</p>
+        <SectionCard title={CUSTOMER_RELATION_SECTION_TITLE} subtitle="Kayıt anı ilişki bilgileri">
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <InfoRow label="Kaynak" value={customer.source ? SOURCE_LABEL[customer.source] ?? customer.source : null} />
             <InfoRow label="Takip Tarihi" value={customer.followUpDate ? (

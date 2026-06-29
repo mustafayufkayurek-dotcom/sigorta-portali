@@ -3,9 +3,10 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { FinancialSummaryService } from '../invoices/financial-summary.service';
 import { PrismaModule } from '@/prisma/prisma.module';
+import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, StorageModule],
   controllers: [PaymentsController],
   providers: [PaymentsService, FinancialSummaryService],
   exports: [PaymentsService],

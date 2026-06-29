@@ -167,13 +167,6 @@ function canSeeNavItemDynamic(navPath: string, allowedScreens: string[], roleCod
 
 const CONTEXT_BACK_LINKS: Record<string, { href: string; label: string }> = {
   '/panel/admin/audit-logs': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
-  '/panel/finans/banka-hesaplari': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/dosya-pl': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/fatura-talepleri': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/karlilik': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/masraflar': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/portfolyo-pl': { href: '/panel/finans', label: 'Finans sayfasına dön' },
-  '/panel/finans/sabit-giderler': { href: '/panel/finans', label: 'Finans sayfasına dön' },
   '/panel/guvenlik/erisim-loglari': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
   '/panel/itirazlar': { href: '/panel/operasyon', label: 'Operasyon sayfasına dön' },
   '/panel/masraflar': { href: '/panel/finans', label: 'Finans sayfasına dön' },

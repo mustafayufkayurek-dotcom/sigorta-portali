@@ -1,3 +1,5 @@
-/** Kurumsal marka — Mustafa onaylı globe + MERIDYEN ASISTANCE PNG */
-export const CORPORATE_LOGO_LIGHT = '/meridyen-corporate-logo-correct.png';
-export const CORPORATE_LOGO_DARK = '/meridyen-corporate-logo-correct.png';
+/** Kurumsal marka — Mustafa onaylı orijinal logo (küre + MERİDYEN ASİSTANCE) */
+export const CORPORATE_LOGO_LIGHT = '/meridyen-logo-original.png';
+export const CORPORATE_LOGO_DARK = '/meridyen-logo-original.png';
+export const CORPORATE_LOGO_GLOBE = '/meridyen-logo-globe.png';
+export const CORPORATE_LOGO_TEXT = '/meridyen-logo-text.png';

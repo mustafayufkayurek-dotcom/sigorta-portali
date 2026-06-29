@@ -5,6 +5,15 @@ import Link from 'next/link';
 import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -116,7 +125,19 @@ function SectionTitle({ title }: { title: string }) {
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
 const inpErr = 'w-full border border-red-400 ring-2 ring-red-500/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-colors bg-red-50';
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Eksper', defaultWidth: 200, minWidth: 140 },
+  { id: 'region', label: 'Bölge', defaultWidth: 120, minWidth: 96 },
+  { id: 'total', label: 'Toplam İş', defaultWidth: 100, minWidth: 80 },
+  { id: 'completed', label: 'Tamamlanan', defaultWidth: 110, minWidth: 88 },
+  { id: 'avgReportDays', label: 'Ort. Rapor Süresi', defaultWidth: 130, minWidth: 100 },
+  { id: 'revisionRate', label: 'Revizyon Oranı', defaultWidth: 120, minWidth: 96 },
+  { id: 'performance', label: 'Performans', defaultWidth: 100, minWidth: 80 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
+
 export default function AdjustersPage() {
+  const tableColumns = usePanelTableColumns('table-cols:eksperler', TABLE_COLUMNS);
   const [adjusters, setAdjusters] = useState<any[]>([]);
   const [performance, setPerformance] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -197,7 +218,7 @@ export default function AdjustersPage() {
   useEffect(() => { load(); }, [search, statusFilter]); // eslint-disable-line
 
   useEffect(() => {
-    axios.get(`${API}/service-branches?type=hasar`, { headers: authHeader() })
+    axios.get(`${API}/service-branches?type=hasar&scope=meridyen`, { headers: authHeader() })
       .then((r) => {
         const names = (r.data.data ?? []).map((b: any) => b.name as string).filter(Boolean);
         if (names.length > 0) setAvailableBranches(names);
@@ -363,6 +384,7 @@ export default function AdjustersPage() {
   const scoreColor = (s: number) => s >= 80 ? 'text-green-600' : s >= 60 ? 'text-yellow-600' : 'text-red-500';
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div>
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
@@ -406,6 +428,7 @@ export default function AdjustersPage() {
           {([['performanceScore', 'Skor'], ['total', 'Toplam İş'], ['avgReportDays', 'Rapor Süresi ↑'], ['revisionRate', 'Revizyon Oranı ↑']] as const).map(([k, l]) => (
             <button type="button" key={k} onClick={() => setSortBy(k)} className={`text-xs px-3 py-1.5 rounded-lg transition-all ${sortBy === k ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{l}</button>
           ))}
+          <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
       </div>
 
@@ -415,24 +438,24 @@ export default function AdjustersPage() {
         <div className="text-slate-400 py-16 text-center">Eksper bulunamadı.</div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead>
               <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
-                <th className="text-left px-4 py-3">Eksper</th>
-                <th className="text-left px-4 py-3">Bölge</th>
-                <th className="text-center px-4 py-3">Toplam İş</th>
-                <th className="text-center px-4 py-3">Tamamlanan</th>
-                <th className="text-center px-4 py-3">Ort. Rapor Süresi</th>
-                <th className="text-center px-4 py-3">Revizyon Oranı</th>
-                <th className="text-center px-4 py-3">Performans</th>
-                <th className="text-center px-4 py-3">Durum</th>
+                <PanelTableTh colId="name" className="text-left px-4 py-3">Eksper</PanelTableTh>
+                <PanelTableTh colId="region" className="text-left px-4 py-3">Bölge</PanelTableTh>
+                <PanelTableTh colId="total" className="text-center px-4 py-3">Toplam İş</PanelTableTh>
+                <PanelTableTh colId="completed" className="text-center px-4 py-3">Tamamlanan</PanelTableTh>
+                <PanelTableTh colId="avgReportDays" className="text-center px-4 py-3">Ort. Rapor Süresi</PanelTableTh>
+                <PanelTableTh colId="revisionRate" className="text-center px-4 py-3">Revizyon Oranı</PanelTableTh>
+                <PanelTableTh colId="performance" className="text-center px-4 py-3">Performans</PanelTableTh>
+                <PanelTableTh colId="status" className="text-center px-4 py-3">Durum</PanelTableTh>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {sorted.map((adj) => (
                 <tr key={adj.id} className="hover:bg-blue-50/30">
-                  <td className="px-4 py-3">
+                  <PanelTableTd colId="name" className="px-4 py-3">
                     <Link href={`/panel/eksperler/${adj.id}`} className="font-semibold text-blue-700 hover:underline">{adj.name}</Link>
                     <p className="text-xs text-slate-400">{adj.company ?? '—'}</p>
                     {adj.insuranceCompanies?.length > 0 && (
@@ -449,21 +472,21 @@ export default function AdjustersPage() {
                         )}
                       </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  </PanelTableTd>
+                  <PanelTableTd colId="region" className="px-4 py-3 text-slate-600">
                     <p>{adj.city ?? '—'}</p>
                     {adj.district && <p className="text-xs text-slate-400">{adj.district}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-center font-medium">{adj.total ?? 0}</td>
-                  <td className="px-4 py-3 text-center text-green-600 font-medium">{adj.completed ?? 0}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">{adj.avgReportDays ? `${adj.avgReportDays} gün` : '—'}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">{adj.revisionRate != null ? `%${adj.revisionRate}` : '—'}</td>
-                  <td className="px-4 py-3 text-center">
+                  </PanelTableTd>
+                  <PanelTableTd colId="total" className="px-4 py-3 text-center font-medium">{adj.total ?? 0}</PanelTableTd>
+                  <PanelTableTd colId="completed" className="px-4 py-3 text-center text-green-600 font-medium">{adj.completed ?? 0}</PanelTableTd>
+                  <PanelTableTd colId="avgReportDays" className="px-4 py-3 text-center text-slate-600">{adj.avgReportDays ? `${adj.avgReportDays} gün` : '—'}</PanelTableTd>
+                  <PanelTableTd colId="revisionRate" className="px-4 py-3 text-center text-slate-600">{adj.revisionRate != null ? `%${adj.revisionRate}` : '—'}</PanelTableTd>
+                  <PanelTableTd colId="performance" className="px-4 py-3 text-center">
                     <span className={`text-lg font-bold ${scoreColor(adj.performanceScore ?? 0)}`}>{adj.performanceScore ?? '—'}</span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  </PanelTableTd>
+                  <PanelTableTd colId="status" className="px-4 py-3 text-center">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[adj.status] ?? 'bg-slate-100 text-slate-500'}`}>{STATUS_LABELS[adj.status] ?? adj.status}</span>
-                  </td>
+                  </PanelTableTd>
                   <td className="px-4 py-3">
                     <div className="flex gap-2 justify-end">
                       <Link href={`/panel/eksperler/${adj.id}`} className="text-xs text-blue-600 hover:underline">Profil</Link>
@@ -1126,5 +1149,6 @@ export default function AdjustersPage() {
         onClose={() => setShowLocationPicker(false)}
       />
     </div>
+    </TableColumnsProvider>
   );
 }

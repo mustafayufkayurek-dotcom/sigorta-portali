@@ -27,6 +27,14 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'sort', label: 'Sıra', defaultWidth: 64, minWidth: 48 },
+  { id: 'name', label: 'Konu Adı', defaultWidth: 220, minWidth: 140 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 type Department = DepartmentTab & { code: string; reportFormat: string; isSystem: boolean };
 type FileSubject = { id: string; code: string; name: string; sortOrder: number; isSystem: boolean; status: string };
@@ -199,24 +207,29 @@ export default function DosyaKonulariPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Dosya Konuları"
       description="Departman bazlı dosya konularını tanımlayın. İhbar konuları bu ekranda birleştirildi."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
-        selectedDept ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Konu Ekle
-          </button>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
+          {selectedDept ? (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Konu Ekle
+            </button>
+          ) : null}
+        </div>
       }
     >
       <div className="space-y-4">
@@ -265,16 +278,16 @@ export default function DosyaKonulariPage() {
               }
             >
               <SettingsTableHead>
-                <SettingsTableTh className="w-16">Sıra</SettingsTableTh>
-                <SettingsTableTh>Konu Adı</SettingsTableTh>
-                <SettingsTableTh>Durum</SettingsTableTh>
+                <SettingsTableTh colId="sort" className="w-16">Sıra</SettingsTableTh>
+                <SettingsTableTh colId="name">Konu Adı</SettingsTableTh>
+                <SettingsTableTh colId="status">Durum</SettingsTableTh>
                 <SettingsTableTh />
               </SettingsTableHead>
               <SettingsTableBody>
                 {filteredSubjects.map((s) => (
                   <SettingsTableRow key={s.id}>
-                    <SettingsTableTd className="w-16 text-slate-600">{s.sortOrder}</SettingsTableTd>
-                    <SettingsTableTd>
+                    <SettingsTableTd colId="sort" className="w-16 text-slate-600">{s.sortOrder}</SettingsTableTd>
+                    <SettingsTableTd colId="name">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-900">{s.name}</span>
                         {s.isSystem && (
@@ -283,7 +296,7 @@ export default function DosyaKonulariPage() {
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5 font-mono">{s.code}</p>
                     </SettingsTableTd>
-                    <SettingsTableTd>
+                    <SettingsTableTd colId="status">
                       <button type="button" onClick={() => handleToggleStatus(s)}>
                         <StatusBadge active={s.status === 'active'} />
                       </button>
@@ -391,5 +404,7 @@ export default function DosyaKonulariPage() {
         itemName={deleteTarget?.name}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

@@ -10,6 +10,7 @@ import { ExtraWorkItemService } from './extra-work-item.service';
 import { ClaimFileRevenueService } from './claim-file-revenue.service';
 import { MonthlyOverheadService } from './monthly-overhead.service';
 import { FinancialSummaryService } from './financial-summary.service';
+import { VatReportService } from './vat-report.service';
 
 @Module({
   imports: [PrismaModule],
@@ -24,12 +25,14 @@ import { FinancialSummaryService } from './financial-summary.service';
     ClaimFileRevenueService,
     MonthlyOverheadService,
     FinancialSummaryService,
+    VatReportService,
   ],
   exports: [
     ExtraWorkItemService,
     ClaimFileRevenueService,
     MonthlyOverheadService,
     FinancialSummaryService,
+    VatReportService,
   ],
 })
 export class FinanceModule {}

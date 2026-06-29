@@ -1,10 +1,38 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  FaturaTalepleriSection,
+  computeTalepOzet,
+  type TalepOzet,
+} from '@/components/finance/FaturaTalepleriSection';
+import { getInvoiceRequests } from '@/utils/invoiceRequestApi';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  SortablePanelTableTh,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
+  { id: 'expert', label: 'Eksper', defaultWidth: 140, minWidth: 100 },
+  { id: 'insuranceCompany', label: 'Sigorta Şirketi', defaultWidth: 148, minWidth: 100 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 108, minWidth: 88 },
+  { id: 'invoiceType', label: 'Tip', defaultWidth: 88, minWidth: 72 },
+  { id: 'invoiceDate', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
+  { id: 'totalAmount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
+  { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
+];
 
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
 function fmtCurrency(n: number | null | undefined) {
@@ -26,9 +54,19 @@ const STATUS_COLOR: Record<string, string> = {
 
 type SortKey = 'invoiceDate' | 'totalAmount' | 'invoiceNo' | 'status';
 type SortDir = 'asc' | 'desc';
+type FaturaTab = 'kesilen' | 'talepler';
 
 export default function FaturalarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: FaturaTab = tabParam === 'talepler' ? 'talepler' : 'kesilen';
+
+  const setTab = (tab: FaturaTab) => {
+    const qs = tab === 'talepler' ? '?tab=talepler' : '';
+    router.replace(`/panel/finans/faturalar${qs}`, { scroll: false });
+  };
+
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -39,6 +77,18 @@ export default function FaturalarPage() {
   const [sortKey, setSortKey] = useState<SortKey>('invoiceDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [stats, setStats] = useState({ total: 0, paid: 0, pending: 0, overdue: 0, totalCount: 0, paidCount: 0 });
+  const [talepOzet, setTalepOzet] = useState<TalepOzet>({
+    total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0,
+  });
+  const tableColumns = usePanelTableColumns('table-cols:finans-faturalar', INVOICE_TABLE_COLUMNS);
+
+  const loadTalepOzet = useCallback(() => {
+    getInvoiceRequests()
+      .then((data) => setTalepOzet(computeTalepOzet(data)))
+      .catch(() => setTalepOzet({ total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0 }));
+  }, []);
+
+  useEffect(() => { loadTalepOzet(); }, [loadTalepOzet]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -72,7 +122,7 @@ export default function FaturalarPage() {
       .finally(() => setLoading(false));
   }, [filters, search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (activeTab === 'kesilen') load(); }, [load, activeTab]);
 
   const handleStatusChange = async (id: string, status: string, label: string) => {
     try {
@@ -104,33 +154,77 @@ export default function FaturalarPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <a href="/panel/finans" className="hover:text-blue-600 transition-colors">Finans</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Faturalar</span>
-      </nav>
-
+      <FinansSubpageBreadcrumb current="Faturalar" />
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturalar</h2>
-          <p className="text-sm text-slate-400 dark:text-slate-500">Tüm satış ve alış faturalarını görüntüleyin ve yönetin.</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            Kesilen faturalar ve dosya kapanış fatura talepleri — tek ekrandan özet ve işlem.
+          </p>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <SummaryCard label="Toplam Tutar"    value={fmtCurrency(stats.total)}   sub={`${stats.totalCount} fatura`}           color="blue"   />
-        <SummaryCard label="Tahsil Edilen"   value={fmtCurrency(stats.paid)}    sub={`%${collectionRate} tahsilat oranı`}    color="green"  />
-        <SummaryCard label="Bekleyen"        value={fmtCurrency(stats.pending)} sub="Henüz tahsil edilmedi"                  color="yellow" />
-        <SummaryCard label="Vadesi Geçmiş"   value={fmtCurrency(stats.overdue)} sub="Acil takip gerekiyor"                   color="red"    />
+      {/* Birleşik özet */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <SummaryCard label="Kesilen Toplam" value={fmtCurrency(stats.total)} sub={`${stats.totalCount} fatura`} color="blue" />
+        <SummaryCard label="Tahsil Edilen" value={fmtCurrency(stats.paid)} sub={stats.total > 0 ? `%${collectionRate} oran` : '—'} color="green" />
+        <SummaryCard label="Bekleyen Fatura" value={fmtCurrency(stats.pending)} sub="Tahsil edilmedi" color="yellow" />
+        <SummaryCard label="Vadesi Geçmiş" value={fmtCurrency(stats.overdue)} sub="Acil takip" color="red" />
+        <SummaryCard
+          label="Bekleyen Talep"
+          value={talepOzet.pendingCount > 0 ? String(talepOzet.pendingCount) : '—'}
+          sub={talepOzet.pendingCount > 0 ? fmtCurrency(talepOzet.pendingAmount) : 'Onay bekliyor'}
+          color="yellow"
+        />
+        <SummaryCard
+          label="Onaylı Talep"
+          value={talepOzet.approvedCount > 0 ? String(talepOzet.approvedCount) : '—'}
+          sub={talepOzet.approvedCount > 0 ? fmtCurrency(talepOzet.approvedAmount) : 'Faturalandırılacak'}
+          color="blue"
+        />
       </div>
 
-      {/* Tahsilat Oranı Bar */}
-      {stats.total > 0 && (
+      {/* Sekmeler */}
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setTab('kesilen')}
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'kesilen'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+          }`}
+        >
+          Kesilen Faturalar
+          {stats.totalCount > 0 && (
+            <span className="ml-1.5 text-xs font-bold text-slate-400">{stats.totalCount}</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('talepler')}
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'talepler'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+          }`}
+        >
+          Fatura Talepleri
+          {talepOzet.pendingCount > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 text-xs font-bold">
+              {talepOzet.pendingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'talepler' ? (
+        <FaturaTalepleriSection onOzetChange={setTalepOzet} />
+      ) : (
+        <>
+      {/* Tahsilat Oranı Bar — yalnızca kesilen faturalar */}
+      {activeTab === 'kesilen' && stats.total > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm px-5 py-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Tahsilat Oranı</span>
@@ -191,20 +285,24 @@ export default function FaturalarPage() {
       ) : invoices.length === 0 ? (
         <EmptyState msg="Henüz veri bulunmamaktadır." />
       ) : (
+        <TableColumnsProvider value={tableColumns}>
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400 uppercase">
                 <tr>
                   <th className="text-left px-4 py-3 w-10">#</th>
-                  <SortableTh label="Fatura No"  col="invoiceNo"   sortKey={sortKey} dir={sortDir} onToggle={toggleSort} />
-                  <th className="text-left px-4 py-3">Eksper</th>
-                  <th className="text-left px-4 py-3">Sigorta Şirketi</th>
-                  <th className="text-left px-4 py-3">Dosya No</th>
-                  <th className="text-left px-4 py-3">Tip</th>
-                  <SortableTh label="Tarih"      col="invoiceDate" sortKey={sortKey} dir={sortDir} onToggle={toggleSort} />
-                  <SortableTh label="Tutar"      col="totalAmount" sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
-                  <SortableTh label="Durum"      col="status"      sortKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Fatura No</SortablePanelTableTh>
+                  <PanelTableTh colId="expert" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Eksper</PanelTableTh>
+                  <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="invoiceType" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Tip</PanelTableTh>
+                  <SortablePanelTableTh colId="invoiceDate" sortKey="invoiceDate" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Tarih</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-right">Tutar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Durum</SortablePanelTableTh>
                   <th className="text-left px-4 py-3">İşlem</th>
                 </tr>
               </thead>
@@ -215,32 +313,32 @@ export default function FaturalarPage() {
                     className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 transition-colors ${rowIdx % 2 !== 0 ? 'bg-slate-50/30 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-800'}`}
                   >
                     <td className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">{(filters.page - 1) * filters.limit + rowIdx + 1}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">{inv.invoiceNo ?? '—'}</td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <PanelTableTd colId="invoiceNo" className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">{inv.invoiceNo ?? '—'}</PanelTableTd>
+                    <PanelTableTd colId="expert" className="px-4 py-3 text-slate-700 dark:text-slate-200">
                       {inv.claimFile?.assignedExpert
                         ? `${inv.claimFile.assignedExpert.firstName ?? ''} ${inv.claimFile.assignedExpert.lastName ?? ''}`.trim()
                         : (inv.claimFile?.expert?.name ?? '—')}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs whitespace-nowrap">
+                    </PanelTableTd>
+                    <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">
                       {inv.claimFile?.insuranceCompany?.name ?? inv.insuranceCompany ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </PanelTableTd>
+                    <PanelTableTd colId="fileNo" className="px-4 py-3">
                       {inv.claimFileId
                         ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
                         : <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
+                    </PanelTableTd>
+                    <PanelTableTd colId="invoiceType" className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${inv.invoiceType === 'sales' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800' : 'bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800'}`}>
                         {inv.invoiceType === 'sales' ? 'Satış' : 'Alış'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{fmtDate(inv.invoiceDate)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{fmtCurrency(inv.totalAmount)}</td>
-                    <td className="px-4 py-3">
+                    </PanelTableTd>
+                    <PanelTableTd colId="invoiceDate" className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtDate(inv.invoiceDate)}</PanelTableTd>
+                    <PanelTableTd colId="totalAmount" className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>
+                    <PanelTableTd colId="status" className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[inv.status] ?? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}>
                         {STATUS_LABEL[inv.status] ?? inv.status}
                       </span>
-                    </td>
+                    </PanelTableTd>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         {inv.status === 'draft' && (
@@ -281,31 +379,15 @@ export default function FaturalarPage() {
             </div>
           </div>
         </div>
+        </TableColumnsProvider>
+      )}
+        </>
       )}
     </div>
   );
 }
 
 // ── Shared components ─────────────────────────────────────────────────────────
-
-function SortableTh({ label, col, sortKey, dir, onToggle, right }: {
-  label: string; col: string; sortKey: string; dir: SortDir; onToggle: (k: any) => void; right?: boolean;
-}) {
-  const active = sortKey === col;
-  return (
-    <th
-      className={`px-4 py-3 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xs uppercase text-slate-500 dark:text-slate-400 font-medium ${right ? 'text-right' : 'text-left'}`}
-      onClick={() => onToggle(col)}
-    >
-      <span className={`inline-flex items-center gap-1 ${right ? 'justify-end w-full' : ''}`}>
-        {label}
-        <span className={`transition-opacity ${active ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30'}`}>
-          {active && dir === 'desc' ? '↓' : '↑'}
-        </span>
-      </span>
-    </th>
-  );
-}
 
 function QuickActionBtn({ onClick, color, children }: { onClick: () => void; color: 'blue' | 'green' | 'red'; children: React.ReactNode }) {
   const cls = {

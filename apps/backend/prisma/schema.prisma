@@ -162,6 +162,7 @@ model User {
   // P&L Faz 3
   createdExtraWorkItems      ExtraWorkItem[]           @relation("CreatedExtraWorkItems")
   createdFileRevenues        ClaimFileRevenue[]        @relation("CreatedFileRevenues")
+  createdCollectionLinks     PaymentCollectionLink[]   @relation("CreatedCollectionLinks")
   createdOverheadEntries     MonthlyOverheadEntry[]    @relation("CreatedOverheadEntries")
   // Acil Yardım
   emergencyCasesCreated      EmergencyCase[]           @relation("EmergencyCreatedBy")
@@ -303,6 +304,15 @@ model ClaimFile {
   insuredName           String?   @map("insured_name")         // Sigortalı adı
   insuredPhone          String?   @map("insured_phone")        // Sigortalı telefon
 
+  // Online kart tahsilat (PayTR)
+  requiresOnlineCardCollection Boolean @default(false) @map("requires_online_card_collection")
+  onlineCardCollectionStatus   String? @map("online_card_collection_status")
+  // not_required | pending | link_sent | paid | failed
+
+  // Atanan dosya/saha sorumlusu ciro ve karlılık göremesin (legacy — financialVisibilityConfig tercih)
+  hideFinancialFromAssignees Boolean @default(false) @map("hide_financial_from_assignees")
+  financialVisibilityConfig Json? @map("financial_visibility_config")
+
   closedAt              DateTime? @map("closed_at")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
@@ -349,6 +359,7 @@ model ClaimFile {
   // Dosya Evrak & Fatura Talebi
   fileDocuments        FileDocument[]
   invoiceRequests      InvoiceRequest[]
+  collectionLinks      PaymentCollectionLink[]
   // Müşteri Memnuniyet Anketi
   surveyCampaigns      SurveyCampaign[]
   // Masraf İzleme
@@ -848,6 +859,8 @@ model Vendor {
   contractNotes     String?   @map("contract_notes")
   // Tedarikçi kategorisi: hasar | acil | her_ikisi
   category         String   @default("hasar")
+  // Acil yardım hizmet kolları — Ayarlar → Meridyen Hizmet Branşları (acil_yardim)
+  serviceBranches  Json     @default("[]") @map("service_branches")
   status           String   @default("active")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
@@ -1008,8 +1021,10 @@ model ExpenseCategory {
   parent      ExpenseCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
   children    ExpenseCategory[] @relation("CategoryTree")
   costEntries CostEntry[]
+  expenses    Expense[]
   // P&L Faz 3
   overheadEntries MonthlyOverheadEntry[]
+  emergencyCostEntries EmergencyCostEntry[]
 
   @@index([parentId])
   @@map("expense_categories")
@@ -1314,6 +1329,7 @@ model VendorDocument {
   id               String   @id @default(uuid())
   vendorId         String   @map("vendor_id")
   documentTypeId   String   @map("document_type_id")
+  customLabel      String?  @map("custom_label")
   fileName         String   @map("file_name")
   fileExtension    String   @map("file_extension")
   mimeType         String   @map("mime_type")
@@ -1439,6 +1455,7 @@ model Payment {
   claimFileId     String   @map("claim_file_id")
   paymentType     String   @map("payment_type")    // incoming | outgoing
   paymentDate     DateTime @map("payment_date")
+  dueDate         DateTime? @map("due_date")
   amount          Float
   currency        String   @default("TRY")
   method          String                            // eft | havale | credit_card | cash | offset
@@ -1447,8 +1464,17 @@ model Payment {
   invoiceId       String?  @map("invoice_id")
   referenceNo     String?  @map("reference_no")
   status          String   @default("completed")   // pending | completed | cancelled
+  collectionChannel String? @map("collection_channel") // muhasebe | online_kart | manuel_onay
+  collectionLinkId  String? @unique @map("collection_link_id")
+  providerRef       String? @map("provider_ref")
+  vendorStatementItemId String? @unique @map("vendor_statement_item_id")
   bankAccountId   String?  @map("bank_account_id")
   note            String?
+  receiptStorageKey String?   @map("receipt_storage_key")
+  receiptFileName   String?   @map("receipt_file_name")
+  receiptMimeType   String?   @map("receipt_mime_type")
+  receiptFileSize   Int?      @map("receipt_file_size")
+  receiptUploadedAt DateTime? @map("receipt_uploaded_at")
   createdByUserId String   @map("created_by_user_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -1461,10 +1487,15 @@ model Payment {
   statementReceipts VendorStatementReceipt[]
   // P&L Faz 3
   revenueRecords ClaimFileRevenue[] @relation("RevenuePayment")
+  collectionLink PaymentCollectionLink? @relation(fields: [collectionLinkId], references: [id])
+  vendorStatementItem VendorStatementItem? @relation("StatementItemPayment", fields: [vendorStatementItemId], references: [id])
 
   @@index([claimFileId])
   @@index([invoiceId])
+  @@index([payerId, payerType, paymentType])
   @@index([status])
+  @@index([dueDate])
+  @@index([paymentType, status])
   @@map("payments")
 }
 
@@ -1891,16 +1922,18 @@ model RevisionMessage {
 // ─── Yetkili Kişiler & Çoklu İletişim ────────────────────────────────────────
 
 model VendorContact {
-  id         String    @id @default(uuid())
-  vendorId   String    @map("vendor_id")
-  fullName   String    @map("full_name")
-  title      String?
-  phone      String?
-  email      String?
-  birthDate  DateTime? @map("birth_date")
-  isPrimary  Boolean   @default(false) @map("is_primary")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  vendorId       String    @map("vendor_id")
+  fullName       String    @map("full_name")
+  title          String?
+  phone          String?
+  phoneType      String    @default("gsm") @map("phone_type")
+  phoneExtension String?   @map("phone_extension")
+  email          String?
+  birthDate      DateTime? @map("birth_date")
+  isPrimary      Boolean   @default(false) @map("is_primary")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
@@ -1933,12 +1966,15 @@ model ServiceBranch {
   id        String   @id @default(uuid())
   name      String
   type      String   // hasar | acil_yardim
+  // meridyen = Meridyen operasyon branşları | vendor = tedarikçi hizmet kolları
+  scope     String   @default("meridyen")
   isActive  Boolean  @default(true) @map("is_active")
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([type])
+  @@index([type, scope])
   @@map("service_branches")
 }
 
@@ -2155,6 +2191,7 @@ model VendorStatementItem {
 
   statement        VendorPaymentStatement  @relation(fields: [statementId], references: [id], onDelete: Cascade)
   payment          Payment?                @relation(fields: [paymentId], references: [id])
+  vendorPayment    Payment?                @relation("StatementItemPayment")
   claimFile        ClaimFile               @relation(fields: [claimFileId], references: [id])
   repairReportItem RepairReportItem?       @relation(fields: [repairReportItemId], references: [id])
   workGroup        WorkGroup?              @relation(fields: [workGroupId], references: [id])
@@ -2421,6 +2458,7 @@ model ClaimFileRevenue {
   extraWorkItem  ExtraWorkItem? @relation(fields: [extraWorkItemId], references: [id])
   relatedPayment Payment?      @relation("RevenuePayment", fields: [relatedPaymentId], references: [id])
   createdBy      User          @relation("CreatedFileRevenues", fields: [createdByUserId], references: [id])
+  collectionLinks PaymentCollectionLink[]
 
   @@index([claimFileId])
   @@index([revenueType])
@@ -2429,12 +2467,51 @@ model ClaimFileRevenue {
   @@map("claim_file_revenues")
 }
 
+model PaymentCollectionLink {
+  id              String    @id @default(uuid())
+  claimFileId     String    @map("claim_file_id")
+  revenueId       String?   @map("revenue_id")
+  merchantOid     String    @unique @map("merchant_oid")
+  amount          Float
+  currency        String    @default("TRY")
+  publicToken     String    @unique @map("public_token")
+  tokenExpiresAt  DateTime  @map("token_expires_at")
+  status          String    @default("draft")
+  // draft | sent | opened | processing | paid | expired | cancelled | failed
+  payerName       String?   @map("payer_name")
+  payerPhone      String?   @map("payer_phone")
+  payerEmail      String?   @map("payer_email")
+  description     String?
+  sentAt          DateTime? @map("sent_at")
+  paidAt          DateTime? @map("paid_at")
+  paymentId       String?   @map("payment_id")
+  provider        String    @default("paytr")
+  providerRef     String?   @map("provider_ref")
+  providerPayload Json?     @map("provider_payload")
+  failReason      String?   @map("fail_reason")
+  createdByUserId String    @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  claimFile  ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  revenue    ClaimFileRevenue?  @relation(fields: [revenueId], references: [id])
+  payment    Payment?
+  createdBy  User               @relation("CreatedCollectionLinks", fields: [createdByUserId], references: [id])
+
+  @@index([claimFileId])
+  @@index([status])
+  @@index([tokenExpiresAt])
+  @@map("payment_collection_links")
+}
+
 model MonthlyOverheadEntry {
   id                String    @id @default(uuid())
   year              Int
   month             Int       // 1–12
   expenseCategoryId String    @map("expense_category_id")
   amount            Float
+  vatRate           Int       @default(20) @map("vat_rate")
+  grossAmount       Float?    @map("gross_amount")
   currency          String    @default("TRY")
   description       String?
   source            String    @default("manual")
@@ -2456,24 +2533,28 @@ model MonthlyOverheadEntry {
 }
 
 model OverheadAllocation {
-  id               String   @id @default(uuid())
-  overheadEntryId  String   @map("overhead_entry_id")
-  claimFileId      String   @map("claim_file_id")
-  allocationMethod String   @map("allocation_method")
+  id                   String   @id @default(uuid())
+  overheadEntryId      String   @map("overhead_entry_id")
+  claimFileId          String?  @map("claim_file_id")
+  emergencyCaseId      String?  @map("emergency_case_id")
+  allocationMethod     String   @map("allocation_method")
   // equal | proportional_revenue | hybrid
-  allocationWeight Float    @map("allocation_weight")
+  allocationWeight     Float    @map("allocation_weight")
   // 0–1, bu dosyanın toplam portföydeki ağırlığı
-  allocatedAmount  Float    @map("allocated_amount")
-  costEntryId      String?  @unique @map("cost_entry_id")
-  // CostEntry (isOverhead=true) kaydının ID'si
-  createdAt        DateTime @default(now()) @map("created_at")
+  allocatedAmount      Float    @map("allocated_amount")
+  costEntryId          String?  @unique @map("cost_entry_id")
+  emergencyCostEntryId String?  @unique @map("emergency_cost_entry_id")
+  createdAt            DateTime @default(now()) @map("created_at")
 
-  overheadEntry MonthlyOverheadEntry @relation(fields: [overheadEntryId], references: [id], onDelete: Cascade)
-  claimFile     ClaimFile            @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
-  costEntry     CostEntry?           @relation(fields: [costEntryId], references: [id])
+  overheadEntry      MonthlyOverheadEntry @relation(fields: [overheadEntryId], references: [id], onDelete: Cascade)
+  claimFile          ClaimFile?           @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  emergencyCase      EmergencyCase?       @relation(fields: [emergencyCaseId], references: [id], onDelete: Cascade)
+  costEntry          CostEntry?           @relation(fields: [costEntryId], references: [id])
+  emergencyCostEntry EmergencyCostEntry?  @relation(fields: [emergencyCostEntryId], references: [id])
 
   @@index([overheadEntryId])
   @@index([claimFileId])
+  @@index([emergencyCaseId])
   @@map("overhead_allocations")
 }
 
@@ -2564,8 +2645,9 @@ model EmergencyCase {
   assignedVendor Vendor?    @relation("EmergencyVendor", fields: [assignedVendorId], references: [id])
   assignedUser   User?      @relation("EmergencyAssignedUser", fields: [assignedUserId], references: [id])
   createdBy      User       @relation("EmergencyCreatedBy", fields: [createdByUserId], references: [id])
-  costEntries    EmergencyCostEntry[]
-  invoiceItems   EmergencyInvoiceItem[]
+  costEntries         EmergencyCostEntry[]
+  invoiceItems        EmergencyInvoiceItem[]
+  overheadAllocations OverheadAllocation[]
   // Dosya Evrak & Fatura Talebi
   fileDocuments  FileDocument[]
   invoiceRequests InvoiceRequest[]
@@ -2578,25 +2660,31 @@ model EmergencyCase {
 }
 
 model EmergencyCostEntry {
-  id              String    @id @default(uuid())
-  caseId          String    @map("case_id")
-  vendorId        String?   @map("vendor_id")
-  entryType       String    @map("entry_type")
-  description     String
-  amount          Float
-  receiptKey      String?   @map("receipt_key")
-  entryDate       DateTime  @map("entry_date")
-  createdByUserId String    @map("created_by_user_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  caseId            String    @map("case_id")
+  vendorId          String?   @map("vendor_id")
+  entryType         String    @map("entry_type")
+  description       String
+  amount            Float
+  receiptKey        String?   @map("receipt_key")
+  entryDate         DateTime  @map("entry_date")
+  isOverhead        Boolean   @default(false) @map("is_overhead")
+  source            String?
+  expenseCategoryId String?   @map("expense_category_id")
+  createdByUserId   String    @map("created_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  case      EmergencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  vendor    Vendor?       @relation("EmergencyCostVendor", fields: [vendorId], references: [id], onDelete: SetNull)
-  createdBy User          @relation("EmergencyCostCreatedBy", fields: [createdByUserId], references: [id])
+  case               EmergencyCase       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  vendor             Vendor?             @relation("EmergencyCostVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+  expenseCategory    ExpenseCategory?    @relation(fields: [expenseCategoryId], references: [id])
+  createdBy          User                @relation("EmergencyCostCreatedBy", fields: [createdByUserId], references: [id])
+  overheadAllocation OverheadAllocation?
 
   @@index([caseId])
   @@index([entryType])
   @@index([vendorId])
+  @@index([isOverhead])
   @@map("emergency_cost_entries")
 }
 
@@ -2884,6 +2972,7 @@ model ScreenPermission {
 enum ExpenseGroup {
   YONETIM_GIDERLERI
   OPERASYON_GIDERLERI
+  ONARIM_GIDERLERI
   MHY_OZEL_GIDERLER
 }
 
@@ -3023,17 +3112,23 @@ model Expense {
   approvedAt        DateTime?               @map("approved_at")
   operationSubject  ExpenseOperationSubject? @map("operation_subject")
   fileCaseId        String?                 @map("file_case_id")
+  expenseCategoryId String?                 @map("expense_category_id")
+  isOverheadPool    Boolean                 @default(false) @map("is_overhead_pool")
+  overheadAllocatedAt DateTime?             @map("overhead_allocated_at")
   receiptImageUrl   String?                 @map("receipt_image_url")
   createdById       String                  @map("created_by_id")
   weekNumber        Int?                    @map("week_number")
   createdAt         DateTime                @default(now()) @map("created_at")
   updatedAt         DateTime                @updatedAt @map("updated_at")
 
-  approvedBy  User?      @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
-  createdBy   User       @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
-  fileCase    ClaimFile? @relation(fields: [fileCaseId], references: [id])
+  approvedBy  User?             @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
+  createdBy   User              @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  fileCase    ClaimFile?        @relation(fields: [fileCaseId], references: [id])
+  expenseCategory ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id])
 
   @@index([expenseGroup])
+  @@index([expenseCategoryId])
+  @@index([isOverheadPool])
   @@index([approvalStatus])
   @@index([date])
   @@index([createdById])

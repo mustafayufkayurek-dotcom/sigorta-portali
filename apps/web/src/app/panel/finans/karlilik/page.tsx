@@ -4,24 +4,35 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { mapProfitabilityItem, type ProfitRow, type ProfitGroupBy } from '@/utils/profitability';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTd,
+  SortablePanelTableTh,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+
+const PROFIT_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'label', label: 'Grup', defaultWidth: 160, minWidth: 120 },
+  { id: 'count', label: 'Dosya', defaultWidth: 80, minWidth: 64 },
+  { id: 'revenue', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'cost', label: 'Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'profit', label: 'Net Kar', defaultWidth: 108, minWidth: 88 },
+  { id: 'margin', label: 'Marj %', defaultWidth: 120, minWidth: 96 },
+];
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
   return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
 }
 
-type GroupBy = 'file' | 'expert' | 'company';
+type GroupBy = ProfitGroupBy;
 type SortKey = 'revenue' | 'cost' | 'profit' | 'margin' | 'label';
 type SortDir = 'asc' | 'desc';
-
-interface ProfitRow {
-  label: string;
-  count: number;
-  revenue: number;
-  cost: number;
-  profit: number;
-  margin: number;
-}
 
 export default function KarlilikPage() {
   const router = useRouter();
@@ -32,20 +43,19 @@ export default function KarlilikPage() {
   const [sortKey, setSortKey] = useState<SortKey>('profit');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [totals, setTotals] = useState({ revenue: 0, cost: 0, profit: 0, count: 0 });
+  const tableColumns = usePanelTableColumns('table-cols:finans-karlilik', PROFIT_TABLE_COLUMNS);
+
+  const groupLabel = groupBy === 'expert' ? 'Eksper' : groupBy === 'company' ? 'Sigorta Şirketi' : 'Dosya No';
 
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    axios.get(`${API}/dashboard/profitability`, { headers: authHeader(), params: { groupBy } })
+    axios.get(`${API}/reports/profitability`, { headers: authHeader(), params: { groupBy } })
       .then((r) => {
-        const data: ProfitRow[] = (r.data?.data ?? r.data ?? []).map((item: any) => ({
-          label:   item.label ?? item.name ?? item.fileNo ?? '—',
-          count:   item.count ?? item.fileCount ?? 0,
-          revenue: item.revenue ?? item.totalRevenue ?? 0,
-          cost:    item.cost ?? item.totalCost ?? 0,
-          profit:  item.profit ?? item.netProfit ?? 0,
-          margin:  item.margin ?? (item.revenue > 0 ? Math.round(((item.profit ?? 0) / item.revenue) * 100) : 0),
-        }));
+        const raw = r.data?.data ?? r.data ?? [];
+        const data: ProfitRow[] = (Array.isArray(raw) ? raw : []).map((item: Record<string, unknown>) =>
+          mapProfitabilityItem(item, groupBy),
+        );
         setRows(data);
         const sumRev    = data.reduce((s, r) => s + r.revenue, 0);
         const sumCost   = data.reduce((s, r) => s + r.cost, 0);
@@ -82,6 +92,7 @@ export default function KarlilikPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
+      <FinansSubpageBreadcrumb current="Kârlılık Analizi" />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Karlılık Analizi</h2>
@@ -179,21 +190,22 @@ export default function KarlilikPage() {
       ) : rows.length === 0 ? (
         <EmptyState msg="Henüz veri bulunmamaktadır." />
       ) : (
+        <TableColumnsProvider value={tableColumns}>
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400 uppercase">
                 <tr>
                   <th className="text-left px-4 py-3 w-8">#</th>
-                  <SortableTh
-                    label={groupBy === 'expert' ? 'Eksper' : groupBy === 'company' ? 'Sigorta Şirketi' : 'Dosya No'}
-                    col="label" sortKey={sortKey} dir={sortDir} onToggle={toggleSort}
-                  />
-                  <SortableTh label="Dosya"   col="count"   sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
-                  <SortableTh label="Gelir"   col="revenue" sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
-                  <SortableTh label="Gider"   col="cost"    sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
-                  <SortableTh label="Net Kar" col="profit"  sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
-                  <SortableTh label="Marj %"  col="margin"  sortKey={sortKey} dir={sortDir} onToggle={toggleSort} right />
+                  <SortablePanelTableTh colId="label" sortKey="label" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase font-medium">{groupLabel}</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="count" sortKey="count" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase font-medium text-right">Dosya</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase font-medium text-right">Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="cost" sortKey="cost" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase font-medium text-right">Gider</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="profit" sortKey="profit" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase font-medium text-right">Net Kar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="margin" sortKey="margin" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase font-medium text-right">Marj %</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
@@ -203,14 +215,14 @@ export default function KarlilikPage() {
                     className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 transition-colors ${idx % 2 !== 0 ? 'bg-slate-50/30 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-800'}`}
                   >
                     <td className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">{idx + 1}</td>
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{row.label}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{row.count}</td>
-                    <td className="px-4 py-3 text-right text-green-700 dark:text-green-400 font-medium">{fmtCurrency(row.revenue)}</td>
-                    <td className="px-4 py-3 text-right text-orange-700 dark:text-orange-400">{fmtCurrency(row.cost)}</td>
-                    <td className={`px-4 py-3 text-right font-bold ${row.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
+                    <PanelTableTd colId="label" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{row.label}</PanelTableTd>
+                    <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{row.count}</PanelTableTd>
+                    <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-green-700 dark:text-green-400 font-medium">{fmtCurrency(row.revenue)}</PanelTableTd>
+                    <PanelTableTd colId="cost" className="px-4 py-3 text-right text-orange-700 dark:text-orange-400">{fmtCurrency(row.cost)}</PanelTableTd>
+                    <PanelTableTd colId="profit" className={`px-4 py-3 text-right font-bold ${row.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
                       {fmtCurrency(row.profit)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </PanelTableTd>
+                    <PanelTableTd colId="margin" className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
@@ -222,48 +234,31 @@ export default function KarlilikPage() {
                           %{row.margin}
                         </span>
                       </div>
-                    </td>
+                    </PanelTableTd>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-slate-50 dark:bg-slate-700/50 border-t-2 border-slate-200 dark:border-slate-600 text-xs font-bold">
                 <tr>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200" colSpan={2}>Toplam</td>
-                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-200">{totals.count}</td>
-                  <td className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(totals.revenue)}</td>
-                  <td className="px-4 py-3 text-right text-orange-700 dark:text-orange-400">{fmtCurrency(totals.cost)}</td>
-                  <td className={`px-4 py-3 text-right ${totals.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
+                  <td className="px-4 py-3" />
+                  <PanelTableTd colId="label" className="px-4 py-3 text-slate-700 dark:text-slate-200">Toplam</PanelTableTd>
+                  <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-700 dark:text-slate-200">{totals.count}</PanelTableTd>
+                  <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(totals.revenue)}</PanelTableTd>
+                  <PanelTableTd colId="cost" className="px-4 py-3 text-right text-orange-700 dark:text-orange-400">{fmtCurrency(totals.cost)}</PanelTableTd>
+                  <PanelTableTd colId="profit" className={`px-4 py-3 text-right ${totals.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
                     {fmtCurrency(totals.profit)}
-                  </td>
-                  <td className={`px-4 py-3 text-right ${overallMargin >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
+                  </PanelTableTd>
+                  <PanelTableTd colId="margin" className={`px-4 py-3 text-right ${overallMargin >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
                     %{overallMargin}
-                  </td>
+                  </PanelTableTd>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
+        </TableColumnsProvider>
       )}
     </div>
-  );
-}
-
-function SortableTh({ label, col, sortKey, dir, onToggle, right }: {
-  label: string; col: string; sortKey: string; dir: SortDir; onToggle: (k: any) => void; right?: boolean;
-}) {
-  const active = sortKey === col;
-  return (
-    <th
-      className={`px-4 py-3 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xs uppercase text-slate-500 dark:text-slate-400 font-medium ${right ? 'text-right' : 'text-left'}`}
-      onClick={() => onToggle(col)}
-    >
-      <span className={`inline-flex items-center gap-1 ${right ? 'justify-end w-full' : ''}`}>
-        {label}
-        <span className={`transition-opacity ${active ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30'}`}>
-          {active && dir === 'desc' ? '↓' : '↑'}
-        </span>
-      </span>
-    </th>
   );
 }
 

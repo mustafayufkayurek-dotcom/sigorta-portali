@@ -259,8 +259,8 @@ export default function ClosureConditionsPanel(props: Props) {
               />
               <ConditionRow
                 met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
-                label="Vaka tamamlandı (ÇÖZÜLDÜ)"
-                help="Vaka durumu ÇÖZÜLDÜ olarak işaretlenmeli"
+                label="Dosya tamamlandı (ÇÖZÜLDÜ)"
+                help="Dosya durumu ÇÖZÜLDÜ olarak işaretlenmeli"
               />
             </>
           ) : null}

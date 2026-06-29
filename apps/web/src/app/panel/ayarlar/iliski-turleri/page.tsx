@@ -20,7 +20,16 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'sort', label: 'Sıra', defaultWidth: 40, minWidth: 36 },
+  { id: 'name', label: 'İlişki Türü', defaultWidth: 200, minWidth: 120 },
+  { id: 'usageArea', label: 'Kullanım Alanı', defaultWidth: 180, minWidth: 120 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+  { id: 'reorder', label: 'Sırala', defaultWidth: 100, minWidth: 80 },
+];
 
 type UsageArea = 'musteri' | 'eksper' | 'tedarikci' | 'dosya';
 
@@ -141,6 +150,8 @@ export default function IliskiTurleriPage() {
   const activeCount = types.filter((t) => t.active).length;
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="İlişki Türleri"
       description="İlgili kişi eklerken kullanılacak görev / ünvan seçeneklerini ve kullanım alanlarını yönetin"
@@ -149,8 +160,9 @@ export default function IliskiTurleriPage() {
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
-        types.length >
- 0 ? (
+        <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
+          {types.length > 0 ? (
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 rounded-full px-2.5 py-1 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -163,7 +175,8 @@ export default function IliskiTurleriPage() {
               </span>
             )}
           </div>
-        ) : undefined
+          ) : null}
+        </div>
       }
     >
       {error && <p className="mb-4 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -180,23 +193,23 @@ export default function IliskiTurleriPage() {
 
       <SettingsTable loading={loading} empty={types.length === 0} emptyText="Henüz ilişki türü tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh className="w-10 text-center">Sıra</SettingsTableTh>
-          <SettingsTableTh>İlişki Türü</SettingsTableTh>
-          <SettingsTableTh>Kullanım Alanı</SettingsTableTh>
-          <SettingsTableTh className="w-28 text-center">Durum</SettingsTableTh>
-          <SettingsTableTh className="w-28 text-center">Sırala</SettingsTableTh>
+          <SettingsTableTh colId="sort" className="w-10 text-center">Sıra</SettingsTableTh>
+          <SettingsTableTh colId="name">İlişki Türü</SettingsTableTh>
+          <SettingsTableTh colId="usageArea">Kullanım Alanı</SettingsTableTh>
+          <SettingsTableTh colId="status" className="w-28 text-center">Durum</SettingsTableTh>
+          <SettingsTableTh colId="reorder" className="w-28 text-center">Sırala</SettingsTableTh>
           <SettingsTableTh className="w-28" />
         </SettingsTableHead>
         <SettingsTableBody>
           {types.map((type, idx) => (
             <SettingsTableRow key={idx}>
-              <SettingsTableTd className="text-center text-xs text-slate-400 font-mono">{idx + 1}</SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="sort" className="text-center text-xs text-slate-400 font-mono">{idx + 1}</SettingsTableTd>
+              <SettingsTableTd colId="name">
                 <span className={`font-medium ${type.active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                   {type.label}
                 </span>
               </SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="usageArea">
                 {type.usageAreas && type.usageAreas.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {type.usageAreas.map((area) => {
@@ -212,7 +225,7 @@ export default function IliskiTurleriPage() {
                   <span className="text-xs text-slate-300">—</span>
                 )}
               </SettingsTableTd>
-              <SettingsTableTd className="text-center">
+              <SettingsTableTd colId="status" className="text-center">
                 <button
                   type="button"
                   onClick={() => handleToggleActive(idx)}
@@ -223,7 +236,7 @@ export default function IliskiTurleriPage() {
                   <StatusBadge active={type.active} />
                 </button>
               </SettingsTableTd>
-              <SettingsTableTd className="text-center">
+              <SettingsTableTd colId="reorder" className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <button type="button" onClick={() => handleMoveUp(idx)} disabled={idx === 0 || saving}
                     className="text-slate-400 hover:text-slate-700 disabled:opacity-20 transition-colors p-1 rounded hover:bg-slate-100" title="Yukarı Taşı">
@@ -294,5 +307,7 @@ export default function IliskiTurleriPage() {
         itemName={deleteIdx !== null ? types[deleteIdx]?.label : undefined}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

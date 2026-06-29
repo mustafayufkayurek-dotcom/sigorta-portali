@@ -2,6 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+
+const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'bankName', label: 'Banka', defaultWidth: 140, minWidth: 100 },
+  { id: 'branchName', label: 'Şube', defaultWidth: 120, minWidth: 88 },
+  { id: 'iban', label: 'IBAN', defaultWidth: 200, minWidth: 140 },
+  { id: 'currency', label: 'Para Birimi', defaultWidth: 96, minWidth: 72 },
+  { id: 'status', label: 'Durum', defaultWidth: 88, minWidth: 72 },
+];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -16,6 +34,7 @@ export default function BankaHesaplariPage() {
   const [form, setForm] = useState<any>({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const tableColumns = usePanelTableColumns('table-cols:finans-banka-hesaplari', BANK_ACCOUNT_TABLE_COLUMNS);
 
   const load = () => {
     setLoading(true);
@@ -52,7 +71,8 @@ export default function BankaHesaplariPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-h-screen bg-white dark:bg-slate-900 p-6">
+      <FinansSubpageBreadcrumb current="Banka Hesapları" />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">Banka Hesapları</h2>
         <button type="button" onClick={() => { setShowForm(true); setEditId(null); setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true }); }} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Hesap</button>
@@ -101,26 +121,32 @@ export default function BankaHesaplariPage() {
       ) : accounts.length === 0 ? (
         <div className="bg-white rounded-xl border border-dashed border-slate-200 py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
       ) : (
+        <TableColumnsProvider value={tableColumns}>
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
+          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
-                <th className="text-left px-4 py-3">Banka</th>
-                <th className="text-left px-4 py-3">Şube</th>
-                <th className="text-left px-4 py-3">IBAN</th>
-                <th className="text-left px-4 py-3">Para Birimi</th>
-                <th className="text-left px-4 py-3">Durum</th>
+                <PanelTableTh colId="bankName" className="text-left px-4 py-3">Banka</PanelTableTh>
+                <PanelTableTh colId="branchName" className="text-left px-4 py-3">Şube</PanelTableTh>
+                <PanelTableTh colId="iban" className="text-left px-4 py-3">IBAN</PanelTableTh>
+                <PanelTableTh colId="currency" className="text-left px-4 py-3">Para Birimi</PanelTableTh>
+                <PanelTableTh colId="status" className="text-left px-4 py-3">Durum</PanelTableTh>
                 <th className="text-left px-4 py-3">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {accounts.map((acc) => (
                 <tr key={acc.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</td>
-                  <td className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{acc.iban}</td>
-                  <td className="px-4 py-3 text-slate-600">{acc.currency}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{acc.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                  <PanelTableTd colId="bankName" className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</PanelTableTd>
+                  <PanelTableTd colId="branchName" className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</PanelTableTd>
+                  <PanelTableTd colId="iban" className="px-4 py-3 font-mono text-xs text-slate-700">{acc.iban}</PanelTableTd>
+                  <PanelTableTd colId="currency" className="px-4 py-3 text-slate-600">{acc.currency}</PanelTableTd>
+                  <PanelTableTd colId="status" className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{acc.isActive ? 'Aktif' : 'Pasif'}</span>
+                  </PanelTableTd>
                   <td className="px-4 py-3">
                     <button type="button" onClick={() => handleEdit(acc)} className="text-xs text-blue-600 hover:underline">Düzenle</button>
                   </td>
@@ -129,6 +155,7 @@ export default function BankaHesaplariPage() {
             </tbody>
           </table>
         </div>
+        </TableColumnsProvider>
       )}
     </div>
   );

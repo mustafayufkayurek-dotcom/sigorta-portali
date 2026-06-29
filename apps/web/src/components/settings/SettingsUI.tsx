@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { PanelTableTd, PanelTableTh } from '@/components/ui/TableColumnPicker';
 
 // ── Status Badge ───────────────────────────────────────────────────────────────
 
@@ -123,7 +124,9 @@ export function SettingsTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
-      <table className="w-full">{children}</table>
+      <div className="overflow-x-auto">
+        <table className="w-full" style={{ tableLayout: 'fixed' }}>{children}</table>
+      </div>
     </div>
   );
 }
@@ -139,17 +142,21 @@ export function SettingsTableHead({ children }: { children: React.ReactNode }) {
 export function SettingsTableTh({
   children,
   className = '',
+  colId,
 }: {
   children?: React.ReactNode;
   className?: string;
+  colId?: string;
 }) {
-  return (
-    <th
-      className={`px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400 ${className}`}
-    >
-      {children}
-    </th>
-  );
+  const base = `px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400 ${className}`;
+  if (colId) {
+    return (
+      <PanelTableTh colId={colId} className={base}>
+        {children}
+      </PanelTableTh>
+    );
+  }
+  return <th className={base}>{children}</th>;
 }
 
 export function SettingsTableBody({ children }: { children: React.ReactNode }) {
@@ -176,11 +183,23 @@ export function SettingsTableRow({
 export function SettingsTableTd({
   children,
   className = '',
+  colId,
+  title,
 }: {
   children?: React.ReactNode;
   className?: string;
+  colId?: string;
+  title?: string;
 }) {
-  return <td className={`px-5 py-3.5 text-sm text-slate-700 dark:text-slate-300 ${className}`}>{children}</td>;
+  const base = `px-5 py-3.5 text-sm text-slate-700 dark:text-slate-300 ${className}`;
+  if (colId) {
+    return (
+      <PanelTableTd colId={colId} className={base} title={title}>
+        {children}
+      </PanelTableTd>
+    );
+  }
+  return <td className={base}>{children}</td>;
 }
 
 // ── Actions Cell ───────────────────────────────────────────────────────────────

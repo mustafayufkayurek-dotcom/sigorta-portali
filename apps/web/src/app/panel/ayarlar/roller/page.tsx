@@ -18,7 +18,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Rol Adı', defaultWidth: 180, minWidth: 120 },
+  { id: 'code', label: 'Kod', defaultWidth: 120, minWidth: 80 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 200, minWidth: 120 },
+  { id: 'userCount', label: 'Kullanıcı Sayısı', defaultWidth: 130, minWidth: 100 },
+];
 
 type Role = { id: string; code: string; name: string; description?: string | null; _count?: { users: number } };
 
@@ -92,11 +100,14 @@ export default function RollerPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Rol Yönetimi"
       description="Sistem rollerini ve yetkilerini yönetin"
       addButtonText="+ Yeni Rol"
       onAdd={openCreate}
+      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <div className="mb-4">
@@ -110,23 +121,23 @@ export default function RollerPage() {
       <SettingsTable loading={loading} empty={filtered.length === 0}
         emptyText={search ? 'Arama kriterlerine uyan rol bulunamadı.' : 'Henüz rol tanımlanmamış.'}>
         <SettingsTableHead>
-          <SettingsTableTh>Rol Adı</SettingsTableTh>
-          <SettingsTableTh>Kod</SettingsTableTh>
-          <SettingsTableTh>Açıklama</SettingsTableTh>
-          <SettingsTableTh>Kullanıcı Sayısı</SettingsTableTh>
+          <SettingsTableTh colId="name">Rol Adı</SettingsTableTh>
+          <SettingsTableTh colId="code">Kod</SettingsTableTh>
+          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
+          <SettingsTableTh colId="userCount">Kullanıcı Sayısı</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {filtered.map((r) => (
             <SettingsTableRow key={r.id}>
-              <SettingsTableTd><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="name"><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
+              <SettingsTableTd colId="code">
                 <code className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{r.code}</code>
               </SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="description">
                 <p className="text-sm text-slate-500">{r.description || <span className="text-slate-300 italic">—</span>}</p>
               </SettingsTableTd>
-              <SettingsTableTd>
+              <SettingsTableTd colId="userCount">
                 <span className="inline-flex items-center gap-1 text-sm text-slate-600">
                   <span className="font-medium">{r._count?.users ?? 0}</span>
                   <span className="text-slate-400">kullanıcı</span>
@@ -179,5 +190,7 @@ export default function RollerPage() {
         }
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

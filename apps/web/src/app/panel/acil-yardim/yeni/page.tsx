@@ -715,7 +715,7 @@ export default function YeniAcilDosyaPage() {
                   onChange={(e) => { setProvinceId(e.target.value); loadDistricts(e.target.value); }}
                 >
                   <option value="">Seçiniz...</option>
-                  {provinces.map((p) => <option key={p.id} value={p.id}>{p.plateCode} - {p.name}</option>)}
+                  {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               <div>

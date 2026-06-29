@@ -70,3 +70,10 @@ export function generateCodeFromName(name: string): string {
 export function generateSequentialCode(prefix: string, count: number, padLength = 3): string {
   return prefix + String(count).padStart(padLength, '0');
 }
+
+/** Arama kutularında TR locale + I/İ/ı eşlemesi (istanbul → İstanbul) */
+export function normalizeSearchTR(s: string): string {
+  return s
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i');
+}

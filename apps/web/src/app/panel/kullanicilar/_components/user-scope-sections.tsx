@@ -260,7 +260,6 @@ export function UserScopeSections({
                   <option value="">İl seçin...</option>
                   {provinces.map((province) => (
                     <option key={province.id} value={province.id}>
-                      {province.plateCode ? `${province.plateCode} - ` : ''}
                       {province.name}
                     </option>
                   ))}

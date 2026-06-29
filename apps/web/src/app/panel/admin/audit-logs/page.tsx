@@ -3,6 +3,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+
+const AUDIT_LOG_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'createdAt', label: 'Tarih', defaultWidth: 160, minWidth: 120 },
+  { id: 'user', label: 'Kullanıcı', defaultWidth: 160, minWidth: 120 },
+  { id: 'entity', label: 'Entity', defaultWidth: 180, minWidth: 120 },
+  { id: 'action', label: 'Action', defaultWidth: 100, minWidth: 80 },
+  { id: 'changes', label: 'Değişiklikler', defaultWidth: 280, minWidth: 160 },
+];
 
 const _base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _base.endsWith('/api/v1') ? _base : _base + '/api/v1';
@@ -37,6 +54,7 @@ export default function AuditLogsPage() {
   const [userId, setUserId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const tableColumns = usePanelTableColumns('table-cols:admin-audit-logs', AUDIT_LOG_TABLE_COLUMNS);
 
   const query = useMemo(
     () => ({
@@ -74,15 +92,19 @@ export default function AuditLogsPage() {
         <TrDateInput className="border rounded px-2 py-1" value={to} onChange={setTo} />
       </div>
 
+      <TableColumnsProvider value={tableColumns}>
       <div className="overflow-auto border rounded">
-        <table className="min-w-full text-sm">
+        <div className="px-3 py-2 border-b flex justify-end bg-slate-50">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
+        </div>
+        <table className="min-w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <thead>
             <tr className="bg-slate-50">
-              <th className="text-left p-2">Tarih</th>
-              <th className="text-left p-2">Kullanici</th>
-              <th className="text-left p-2">Entity</th>
-              <th className="text-left p-2">Action</th>
-              <th className="text-left p-2">Degisiklikler</th>
+              <PanelTableTh colId="createdAt" className="text-left p-2">Tarih</PanelTableTh>
+              <PanelTableTh colId="user" className="text-left p-2">Kullanici</PanelTableTh>
+              <PanelTableTh colId="entity" className="text-left p-2">Entity</PanelTableTh>
+              <PanelTableTh colId="action" className="text-left p-2">Action</PanelTableTh>
+              <PanelTableTh colId="changes" className="text-left p-2">Degisiklikler</PanelTableTh>
             </tr>
           </thead>
           <tbody>
@@ -92,18 +114,19 @@ export default function AuditLogsPage() {
               <tr><td className="p-3" colSpan={5}>Kayit yok</td></tr>
             ) : rows.map((r) => (
               <tr key={r.id} className="border-t">
-                <td className="p-2">{new Date(r.createdAt).toLocaleString('tr-TR')}</td>
-                <td className="p-2">{r.userEmail ?? r.user?.email ?? r.userId}</td>
-                <td className="p-2">{r.entityType} / {r.entityId}</td>
-                <td className="p-2">{r.action}</td>
-                <td className="p-2">
+                <PanelTableTd colId="createdAt" className="p-2">{new Date(r.createdAt).toLocaleString('tr-TR')}</PanelTableTd>
+                <PanelTableTd colId="user" className="p-2">{r.userEmail ?? r.user?.email ?? r.userId}</PanelTableTd>
+                <PanelTableTd colId="entity" className="p-2">{r.entityType} / {r.entityId}</PanelTableTd>
+                <PanelTableTd colId="action" className="p-2">{r.action}</PanelTableTd>
+                <PanelTableTd colId="changes" className="p-2">
                   <pre className="whitespace-pre-wrap">{JSON.stringify({ oldValue: r.oldValue, newValue: r.newValue }, null, 2)}</pre>
-                </td>
+                </PanelTableTd>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      </TableColumnsProvider>
 
       <div className="flex items-center gap-2">
         <button className="border rounded px-3 py-1 disabled:opacity-50" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Geri</button>

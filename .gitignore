@@ -47,3 +47,4 @@ apps/backend/prisma/migrations/*_migration_lock.toml
 # Misc
 *.pem
 .cache
+backups/

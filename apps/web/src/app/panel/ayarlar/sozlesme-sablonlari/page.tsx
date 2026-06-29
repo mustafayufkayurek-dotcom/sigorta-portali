@@ -20,7 +20,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Şablon Adı', defaultWidth: 200, minWidth: 120 },
+  { id: 'type', label: 'Tür', defaultWidth: 120, minWidth: 90 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
+  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
+];
 
 const CONTRACT_TYPES = [
   { value: 'tedarikci', label: 'Tedarikçi Sözleşmesi', color: 'bg-indigo-50 text-indigo-700' },
@@ -183,11 +191,14 @@ export default function SozlesmeSablonlariPage() {
   };
 
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Sözleşme Şablonları"
       description="Tedarikçi, müşteri, gizlilik ve KVKK sözleşme şablonlarını yönetin."
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
+      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <SettingsTable
@@ -196,10 +207,10 @@ export default function SozlesmeSablonlariPage() {
         emptyText="Henüz sözleşme şablonu tanımlanmamış."
       >
         <SettingsTableHead>
-          <SettingsTableTh>Şablon Adı</SettingsTableTh>
-          <SettingsTableTh>Tür</SettingsTableTh>
-          <SettingsTableTh>Açıklama</SettingsTableTh>
-          <SettingsTableTh>Durum</SettingsTableTh>
+          <SettingsTableTh colId="name">Şablon Adı</SettingsTableTh>
+          <SettingsTableTh colId="type">Tür</SettingsTableTh>
+          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
+          <SettingsTableTh colId="status">Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
@@ -207,18 +218,18 @@ export default function SozlesmeSablonlariPage() {
             const badge = typeBadge(t.type);
             return (
               <SettingsTableRow key={t.id}>
-                <SettingsTableTd>
+                <SettingsTableTd colId="name">
                   <p className="font-medium text-slate-800">{t.name}</p>
                 </SettingsTableTd>
-                <SettingsTableTd>
+                <SettingsTableTd colId="type">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                     {badge.label}
                   </span>
                 </SettingsTableTd>
-                <SettingsTableTd>
+                <SettingsTableTd colId="description">
                   <p className="text-xs text-slate-500 truncate max-w-xs">{t.description || '—'}</p>
                 </SettingsTableTd>
-                <SettingsTableTd>
+                <SettingsTableTd colId="status">
                   <button type="button" onClick={() => handleToggleActive(t)}>
                     <StatusBadge active={t.isActive} />
                   </button>
@@ -382,5 +393,7 @@ export default function SozlesmeSablonlariPage() {
         description={`"${deleteTarget?.name}" şablonunu silmek istediğinize emin misiniz?`}
       />
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }

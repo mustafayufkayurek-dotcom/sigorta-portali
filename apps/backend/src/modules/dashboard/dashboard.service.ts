@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
@@ -793,7 +794,10 @@ export class DashboardService {
     };
   }
 
-  async getProfitabilityReport(filters: { dateFrom?: string; dateTo?: string; insuranceCompanyId?: string; groupBy?: string }) {
+  async getProfitabilityReport(
+    filters: { dateFrom?: string; dateTo?: string; insuranceCompanyId?: string; groupBy?: string },
+    user?: { id: string; roleCode?: string },
+  ) {
     const groupBy = filters.groupBy ?? 'file';
     const where: any = {};
     if (filters.insuranceCompanyId) where.claimFile = { insuranceCompanyId: filters.insuranceCompanyId };
@@ -803,7 +807,13 @@ export class DashboardService {
       include: {
         claimFile: {
           select: {
+            id: true,
             fileNo: true,
+            hideFinancialFromAssignees: true,
+            financialVisibilityConfig: true,
+            assignedFieldUserId: true,
+            assignedOfficeUserId: true,
+            currentResponsibleUserId: true,
             insuranceCompany: { select: { name: true } },
             assignedAdjuster: { select: { firstName: true, lastName: true } },
             closedAt: true,
@@ -814,10 +824,14 @@ export class DashboardService {
       orderBy: { grossProfit: 'desc' },
     });
 
+    const visibleSummaries = user
+      ? (summaries as any[]).filter((s) => canViewFileFinancials(user, s.claimFile))
+      : (summaries as any[]);
+
     if (groupBy === 'expert') {
       // Group by expert
       const expertMap = new Map<string, { name: string; revenue: number; cost: number; profit: number; margin: number; count: number }>();
-      for (const s of (summaries as any[])) {
+      for (const s of visibleSummaries) {
         const fn = s.claimFile?.assignedAdjuster?.firstName ?? '';
         const ln = s.claimFile?.assignedAdjuster?.lastName ?? '';
         const key = `${fn} ${ln}`.trim() || 'Atanmamış';
@@ -841,7 +855,7 @@ export class DashboardService {
     if (groupBy === 'company') {
       // Group by insurance company
       const companyMap = new Map<string, { name: string; revenue: number; cost: number; profit: number; count: number }>();
-      for (const s of (summaries as any[])) {
+      for (const s of visibleSummaries) {
         const key = s.claimFile?.insuranceCompany?.name ?? 'Bilinmeyen';
         const existing = companyMap.get(key) ?? { name: key, revenue: 0, cost: 0, profit: 0, count: 0 };
         existing.revenue += s.actualRevenue ?? 0;
@@ -861,7 +875,7 @@ export class DashboardService {
     }
 
     // Default: file
-    return (summaries as any[]).map((s) => ({
+    return visibleSummaries.map((s) => ({
       claimFileId: s.claimFileId,
       fileNo: s.claimFile?.fileNo,
       insuranceCompany: s.claimFile?.insuranceCompany?.name ?? '—',
@@ -1340,7 +1354,11 @@ export class DashboardService {
     let overdueInvoices = 0;
     try { overdueInvoices = await this.prisma.invoice.count({ where: { status: 'overdue' } }); } catch {}
 
-    const result = { pendingPayments, totalPendingAmount: pendingPayments.reduce((s, p) => s + (p.amount || 0), 0), overdueInvoices };
+    const result = {
+      pendingPayments,
+      totalPendingAmount: pendingPayments.reduce((s, p) => s + (p.amount || 0), 0),
+      overdueInvoices,
+    };
     this.cache.set(cacheKey, result, DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC).catch(() => {});
     return result;
   }

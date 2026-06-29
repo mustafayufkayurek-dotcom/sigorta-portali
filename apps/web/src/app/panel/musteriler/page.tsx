@@ -1477,33 +1477,31 @@ export default function MusterilerPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
-        {/* Arama — üst satır, tam genişlik */}
-        <div className="relative mb-2.5">
-          <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            autoComplete="off"
-            placeholder="Ad, Telefon, TC, Vergi No..."
-            className="panel-search-input"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          {searchInput && (
-            <button type="button" onClick={() => setSearchInput('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-        {/* Filtreler — alt satır, grid ile yan yana */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 items-center">
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-2.5">
+        <div className="panel-filter-bar">
+          <div className="panel-filter-search-wrap">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="Ad, Telefon, TC, Vergi No..."
+              className="panel-search-input"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {searchInput && (
+              <button type="button" onClick={() => setSearchInput('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <select
-            className="input-base-sm w-full"
+            className="panel-filter-control"
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setSubTypeFilter(''); setPage(1); }}
           >
@@ -1511,9 +1509,8 @@ export default function MusterilerPage() {
             <option value="individual">Bireysel</option>
             <option value="corporate">Kurumsal</option>
           </select>
-          {/* Alt Tip filtresi — dropdown */}
           <select
-            className={`input-base-sm w-full ${subTypeFilter ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : ''}`}
+            className={`panel-filter-control ${subTypeFilter ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : ''}`}
             value={subTypeFilter}
             onChange={(e) => { setSubTypeFilter(e.target.value); setPage(1); }}
           >
@@ -1522,9 +1519,8 @@ export default function MusterilerPage() {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
-          {/* Bölge (il) filtresi */}
           <select
-            className="input-base-sm w-full"
+            className="panel-filter-control"
             value={cityFilter}
             onChange={(e) => { setCityFilter(e.target.value); setPage(1); }}
           >
@@ -1532,7 +1528,7 @@ export default function MusterilerPage() {
             {STATIC_PROVINCES.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
           </select>
           <select
-            className="input-base-sm w-full"
+            className="panel-filter-control"
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           >
@@ -1543,7 +1539,7 @@ export default function MusterilerPage() {
           </select>
           {customerSources.length > 0 && (
             <select
-              className="input-base-sm w-full"
+              className="panel-filter-control"
               value={sourceFilter}
               onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
             >
@@ -1552,18 +1548,18 @@ export default function MusterilerPage() {
             </select>
           )}
           {allTags.length > 0 && (
-            <div className="relative" ref={tagDropdownRef}>
+            <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]" ref={tagDropdownRef}>
               <button
                 type="button"
                 onClick={() => setTagDropdownOpen((o) => !o)}
-                className={`flex items-center gap-1.5 input-base-sm w-full ${
+                className={`flex items-center gap-1.5 panel-filter-control w-full ${
                   selectedTags.length ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : ''
                 }`}
               >
                 <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
-                <span className="truncate">Etiket{selectedTags.length > 0 && ` (${selectedTags.length})`}</span>
+                <span className="truncate min-w-0">Etiket{selectedTags.length > 0 && ` (${selectedTags.length})`}</span>
                 <svg className={`w-3 h-3 flex-shrink-0 ml-auto transition-transform ${tagDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -1588,9 +1584,9 @@ export default function MusterilerPage() {
               )}
             </div>
           )}
-        </div>
-        <div className="mt-2 flex justify-end gap-2">
-          <PanelTableColumnPicker tableColumns={tableColumns} />
+          <div className="flex-shrink-0 sm:ml-auto">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
         </div>
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">

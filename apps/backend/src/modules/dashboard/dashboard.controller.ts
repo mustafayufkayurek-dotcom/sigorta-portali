@@ -73,8 +73,8 @@ export class DashboardController {
   @Get('reports/profitability')
   @RequirePermissions('report.view')
   @ApiOperation({ summary: 'Dosya bazlı kârlılık raporu' })
-  async getProfitabilityReport(@Query() filters: any) {
-    const data = await this.dashboardService.getProfitabilityReport(filters);
+  async getProfitabilityReport(@Query() filters: any, @CurrentUser() user: any) {
+    const data = await this.dashboardService.getProfitabilityReport(filters, user);
     return { success: true, data };
   }
 

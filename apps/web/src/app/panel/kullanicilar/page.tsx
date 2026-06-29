@@ -14,6 +14,15 @@ import Link from 'next/link';
 import axios from 'axios';
 import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
 import { validateEmail } from '@/utils/validators';
@@ -478,7 +487,16 @@ function getCurrentUserId(): string | null {
   }
 }
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Ad Soyad', defaultWidth: 200, minWidth: 140 },
+  { id: 'email', label: 'E-posta', defaultWidth: 200, minWidth: 140 },
+  { id: 'role', label: 'Görev', defaultWidth: 140, minWidth: 100 },
+  { id: 'status', label: 'Durum', defaultWidth: 110, minWidth: 88 },
+  { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
+];
+
 export default function KullanicilarPage() {
+  const tableColumns = usePanelTableColumns('table-cols:kullanicilar', TABLE_COLUMNS);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -616,8 +634,8 @@ export default function KullanicilarPage() {
   const loadServiceBranches = useCallback(async () => {
     try {
       const [hasar, acil] = await Promise.all([
-        axios.get(`${API}/service-branches?type=hasar`, { headers: authHeader() }),
-        axios.get(`${API}/service-branches?type=acil_yardim`, { headers: authHeader() }),
+        axios.get(`${API}/service-branches?type=hasar&scope=meridyen`, { headers: authHeader() }),
+        axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() }),
       ]);
       const normalize = (response: any): ServiceBranch[] => {
         const list = response.data?.data ?? response.data ?? [];
@@ -1451,6 +1469,7 @@ export default function KullanicilarPage() {
   // ── JSX ───────────────────────────────────────────────────────────────────
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div className="space-y-6">
       <Link
         href="/panel/ayarlar"
@@ -1523,6 +1542,7 @@ export default function KullanicilarPage() {
               </option>
             ))}
           </select>
+          <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
           Arşivlenen kullanıcılar veri hafızası korunarak saklanır ve Arşiv filtresinden yeniden aktifleştirilebilir.
@@ -1585,7 +1605,7 @@ export default function KullanicilarPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="px-4 py-3 text-left">
@@ -1604,21 +1624,21 @@ export default function KullanicilarPage() {
                       )}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="name" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Ad Soyad
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  </PanelTableTh>
+                  <PanelTableTh colId="email" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     E-posta
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  </PanelTableTh>
+                  <PanelTableTh colId="role" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Görev
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  </PanelTableTh>
+                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Durum
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  </PanelTableTh>
+                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Son Giriş
-                  </th>
+                  </PanelTableTh>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                     İşlemler
                   </th>
@@ -1656,7 +1676,7 @@ export default function KullanicilarPage() {
                     </td>
 
                     {/* Ad Soyad */}
-                    <td className="px-4 py-3">
+                    <PanelTableTd colId="name" className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
                           {u.firstName[0]}{u.lastName[0]}
@@ -1670,15 +1690,15 @@ export default function KullanicilarPage() {
                           )}
                         </div>
                       </div>
-                    </td>
+                    </PanelTableTd>
 
                     {/* E-posta */}
-                    <td className="px-4 py-3 text-slate-600">
+                    <PanelTableTd colId="email" className="px-4 py-3 text-slate-600">
                       <span className="break-all">{u.email}</span>
-                    </td>
+                    </PanelTableTd>
 
                     {/* Rol */}
-                    <td className="px-4 py-3">
+                    <PanelTableTd colId="role" className="px-4 py-3">
                       {u.role ? (
                         <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
                           {displayRoleWithOperation(u)}
@@ -1686,10 +1706,10 @@ export default function KullanicilarPage() {
                       ) : (
                         <span className="text-slate-400 text-xs">—</span>
                       )}
-                    </td>
+                    </PanelTableTd>
 
                     {/* Durum */}
-                    <td className="px-4 py-3">
+                    <PanelTableTd colId="status" className="px-4 py-3">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadgeCls(rowStatus)}`}
                       >
@@ -1698,10 +1718,10 @@ export default function KullanicilarPage() {
                         />
                         {statusLabel(rowStatus)}
                       </span>
-                    </td>
+                    </PanelTableTd>
 
                     {/* Son Giriş */}
-                    <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</td>
+                    <PanelTableTd colId="lastLogin" className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</PanelTableTd>
 
                     {/* İşlemler */}
                     <td className="px-4 py-3">
@@ -2284,13 +2304,13 @@ export default function KullanicilarPage() {
 
                 {form.operationArea && (
                   <FormField
-                    label={form.operationArea === 'hasar' ? 'Hasar Onarım — Hizmet Türleri' : 'Acil Yardım — Hizmet Türleri'}
+                    label={form.operationArea === 'hasar' ? 'Hasar Onarım — Meridyen Branşları' : 'Acil Yardım — Meridyen Branşları'}
                     required
                     error={formErrors.selectedSubjects}
                   >
                     {selectedServiceBranches.length === 0 ? (
                       <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-                        Bu çalışma alanı için aktif hizmet türü bulunamadı. Liste Ayarlar → Hizmet Türleri ekranından gelir.
+                        Bu çalışma alanı için aktif Meridyen branşı bulunamadı. Liste Ayarlar → Meridyen Hizmet Branşları ekranından gelir.
                       </p>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -2331,7 +2351,7 @@ export default function KullanicilarPage() {
                       </div>
                     )}
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Liste Ayarlar → Hizmet Türleri ekranındaki tanımlardan gelir.
+                      Liste Ayarlar → Meridyen Hizmet Branşları ekranındaki tanımlardan gelir.
                     </p>
                   </FormField>
                 )}
@@ -2595,5 +2615,6 @@ export default function KullanicilarPage() {
         </Modal>
       )}
     </div>
+    </TableColumnsProvider>
   );
 }

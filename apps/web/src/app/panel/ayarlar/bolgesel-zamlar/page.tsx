@@ -17,6 +17,14 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { API, authHeader } from '@/utils/api';
+import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
+import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'region', label: 'Bölge', defaultWidth: 160, minWidth: 100 },
+  { id: 'rate', label: 'Mevcut Zam Oranı', defaultWidth: 140, minWidth: 100 },
+  { id: 'effectiveDate', label: 'Son Geçerlilik Tarihi', defaultWidth: 160, minWidth: 120 },
+];
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 type RegionAdjustment = {
@@ -208,6 +216,8 @@ export default function BolgeselZamlarPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
+    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
+      {(tableColumns) => (
     <SettingsPageLayout
       title="Bölgesel Zamlar"
       description="Türkiye bölgelerine göre yüzdelik zam oranı tanımlayın. Zam uygulandığında: baz fiyat × (1 + zam oranı) = nihai fiyat."
@@ -215,6 +225,7 @@ export default function BolgeselZamlarPage() {
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
+          <SettingsTableColumnPicker tableColumns={tableColumns} />
 
           {regions.length === 0 && (
             <button
@@ -291,20 +302,20 @@ export default function BolgeselZamlarPage() {
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <SettingsTable>
               <SettingsTableHead>
-                <SettingsTableTh>Bölge</SettingsTableTh>
-                <SettingsTableTh>Mevcut Zam Oranı</SettingsTableTh>
-                <SettingsTableTh>Son Geçerlilik Tarihi</SettingsTableTh>
+                <SettingsTableTh colId="region">Bölge</SettingsTableTh>
+                <SettingsTableTh colId="rate">Mevcut Zam Oranı</SettingsTableTh>
+                <SettingsTableTh colId="effectiveDate">Son Geçerlilik Tarihi</SettingsTableTh>
                 <SettingsTableTh>İşlemler</SettingsTableTh>
               </SettingsTableHead>
               <SettingsTableBody>
                 {regions.map((r) => (
                   <SettingsTableRow key={r.id}>
-                    <SettingsTableTd>
+                    <SettingsTableTd colId="region">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${REGION_COLORS[r.code] ?? 'bg-slate-100 text-slate-700'}`}>
                         {r.name}
                       </span>
                     </SettingsTableTd>
-                    <SettingsTableTd>
+                    <SettingsTableTd colId="rate">
                       {r.latestAdjustment ? (
                         <span className={`text-sm font-bold ${Number(r.latestAdjustment.adjustmentPercent) > 0 ? 'text-emerald-600' : Number(r.latestAdjustment.adjustmentPercent) < 0 ? 'text-red-600' : 'text-slate-500'}`}>
                           {fmtPct(Number(r.latestAdjustment.adjustmentPercent))}
@@ -313,7 +324,7 @@ export default function BolgeselZamlarPage() {
                         <span className="text-xs text-slate-400">Tanımlı değil</span>
                       )}
                     </SettingsTableTd>
-                    <SettingsTableTd>
+                    <SettingsTableTd colId="effectiveDate">
                       {r.latestAdjustment ? (
                         <span className="text-sm text-slate-600">{fmtDate(r.latestAdjustment.effectiveDate)}</span>
                       ) : (
@@ -501,6 +512,8 @@ export default function BolgeselZamlarPage() {
         </div>
       </SettingsModal>
     </SettingsPageLayout>
+      )}
+    </SettingsTableColumnsProvider>
   );
 }
 

@@ -1,19 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import { ChevronDown, RefreshCw, Search, Users } from 'lucide-react';
+import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTh,
+  PanelTableTd,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { API, authHeader } from '@/utils/api';
 import { relativeTime } from '@/utils/date-helpers';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+const CARI_TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Müşteri', defaultWidth: 180, minWidth: 120 },
+  { id: 'phone', label: 'Telefon', defaultWidth: 120, minWidth: 96 },
+  { id: 'totalFiles', label: 'Dosya', defaultWidth: 72, minWidth: 56 },
+  { id: 'openFiles', label: 'Açık', defaultWidth: 64, minWidth: 52 },
+  { id: 'closedFiles', label: 'Kapalı', defaultWidth: 64, minWidth: 52 },
+  { id: 'lastActivity', label: 'Son hareket', defaultWidth: 120, minWidth: 96 },
+  { id: 'status', label: 'Durum', defaultWidth: 96, minWidth: 80 },
+];
 
 function maskPhone(phone: string | null | undefined): string {
   if (!phone) return '—';
   const digits = phone.replace(/\D/g, '');
   if (digits.length < 8) return phone;
   return digits.slice(0, 4) + '***' + digits.slice(-4);
+}
+
+function pct(part: number, whole: number) {
+  if (whole <= 0) return 0;
+  return Math.min(100, Math.max(0, (part / whole) * 100));
 }
 
 interface CustomerFile {
@@ -35,216 +59,317 @@ interface MyCustomer {
   files: CustomerFile[];
 }
 
+type LoadState = 'loading' | 'ready' | 'error';
+
 export default function CarilerimPage() {
+  const router = useRouter();
+  const tableColumns = usePanelTableColumns('table-cols:carilerim', CARI_TABLE_COLUMNS);
   const [customers, setCustomers] = useState<MyCustomer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [error, setError] = useState('');
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [showClosed, setShowClosed] = useState(true);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const res = await fetch(`${API}/customers/my-customers`, { headers: authHeader() });
-        if (!res.ok) throw new Error('Veriler alınamadı');
-        const json = await res.json();
-        setCustomers(json.data ?? []);
-      } catch (err: any) {
-        setError(err.message ?? 'Bir hata oluştu');
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoadState('loading');
+    setError('');
+    try {
+      const res = await axios.get(`${API}/customers/my-customers`, { headers: authHeader() });
+      setCustomers(res.data?.data ?? []);
+      setLastLoadedAt(new Date());
+      setLoadState('ready');
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        router.push('/giris');
+        return;
       }
-    };
-    fetchCustomers();
-  }, []);
+      const msg = axios.isAxiosError(err)
+        ? (typeof err.response?.data?.message === 'string' ? err.response.data.message : 'Veriler yüklenemedi.')
+        : 'Veriler yüklenemedi.';
+      setError(msg);
+      setCustomers([]);
+      setLoadState('error');
+    }
+  }, [router]);
 
-  const filtered = customers.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const totalFiles = customers.reduce((sum, customer) => sum + customer.totalFiles, 0);
-  const openFiles = customers.reduce((sum, customer) => sum + customer.openFiles, 0);
-  const closedFiles = customers.reduce((sum, customer) => sum + customer.closedFiles, 0);
+  useEffect(() => { load(); }, [load]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-400">Carilerim yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
+  const filtered = useMemo(() => customers.filter((c) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || c.name.toLowerCase().includes(q) || (c.phone ?? '').includes(q);
+    const matchesClosed = showClosed || c.openFiles > 0;
+    return matchesSearch && matchesClosed;
+  }), [customers, search, showClosed]);
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="text-center">
-          <p className="text-red-500 text-sm font-medium">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  const totalFiles = customers.reduce((sum, c) => sum + c.totalFiles, 0);
+  const openFiles = customers.reduce((sum, c) => sum + c.openFiles, 0);
+  const closedFiles = customers.reduce((sum, c) => sum + c.closedFiles, 0);
+  const activeCustomers = customers.filter((c) => c.openFiles > 0).length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Finans / Cari İzleme</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">Carilerim</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Atanmış müşterileri, açık dosyaları ve son işlem hareketini tek ekranda izleyin.
-            </p>
-          </div>
-          <div className="grid min-w-full grid-cols-3 gap-3 lg:min-w-[420px]">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cari</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{customers.length}</p>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">Açık Dosya</p>
-              <p className="mt-1 text-xl font-bold text-emerald-700">{openFiles}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Toplam Dosya</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{totalFiles}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
+      <FinansSubpageBreadcrumb current="Carilerim" />
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">Cari Listesi</h2>
-          <p className="mt-0.5 text-xs text-slate-400">{closedFiles} kapalı dosya bilgisi arşiv niteliğinde gösterilir.</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500"><span className="font-medium text-slate-700">{filtered.length}</span> kayıt gösteriliyor</div>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Müşteri ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-        />
-      </div>
-
-      {/* Customer List */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <p className="text-slate-500 font-medium">
-            {search ? 'Eşleşen müşteri bulunamadı' : 'Henüz atanmış müşteriniz yok'}
-          </p>
-          <p className="text-slate-400 text-sm mt-1">
-            {search ? 'Farklı bir arama deneyin' : 'Size atanan dosyalardaki müşteriler burada görünür'}
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Carilerim</h2>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
+            Size atanmış dosyalardaki müşterileri, açık/kapalı dosya durumunu ve son hareketi izleyin.
           </p>
         </div>
+        <ConnectionStatus loadState={loadState} count={customers.length} lastLoadedAt={lastLoadedAt} onRetry={load} />
+      </div>
+
+      <CariSummaryStrip
+        customerCount={customers.length}
+        activeCustomers={activeCustomers}
+        openFiles={openFiles}
+        closedFiles={closedFiles}
+        totalFiles={totalFiles}
+        loading={loadState === 'loading'}
+      />
+
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm px-4 py-3 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Müşteri veya telefon ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} className="rounded border-slate-300" />
+          Kapalı dosyalı carileri göster
+        </label>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loadState === 'loading'}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loadState === 'loading' ? 'animate-spin' : ''}`} />
+          Yenile
+        </button>
+        <span className="text-xs text-slate-400 ml-auto tabular-nums">
+          {loadState === 'ready' ? `${filtered.length} / ${customers.length} cari` : '—'}
+        </span>
+      </div>
+
+      {loadState === 'loading' ? (
+        <TableSkeleton />
+      ) : loadState === 'error' ? (
+        <ErrorPanel message={error} onRetry={load} />
+      ) : filtered.length === 0 ? (
+        <EmptyPanel hasSearch={Boolean(search.trim()) || !showClosed} totalCustomers={customers.length} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((customer) => (
-            <div key={customer.customerId} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-              {/* Card Header */}
-              <div className="px-4 pt-4 pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 truncate">{customer.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono">{maskPhone(customer.phone)}</p>
-                  </div>
-                  <Link
-                    href={`/panel/musteriler?highlight=${customer.customerId}`}
-                    className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
-                  >
-                    Detay
-                  </Link>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center gap-3 mt-3">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="font-medium">{customer.totalFiles}</span> dosya
-                  </div>
-                  {customer.openFiles > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      {customer.openFiles} açık
-                    </span>
-                  )}
-                  {customer.closedFiles > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      {customer.closedFiles} kapalı
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-[11px] text-slate-400 mt-2">
-                  Son işlem: {relativeTime(customer.lastActivityDate)}
-                </p>
-              </div>
-
-              {/* Expand toggle */}
-              <button
-                type="button"
-                onClick={() => setExpandedId(expandedId === customer.customerId ? null : customer.customerId)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 text-xs text-slate-500 hover:bg-slate-100/80 transition-colors"
-              >
-                <span>{expandedId === customer.customerId ? 'Dosyaları gizle' : 'Dosyaları göster'}</span>
-                <svg
-                  className={`w-3.5 h-3.5 transition-transform ${expandedId === customer.customerId ? 'rotate-180' : ''}`}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* Expanded Files */}
-              {expandedId === customer.customerId && (
-                <div className="divide-y divide-slate-100">
-                  {customer.files.map((file) => (
-                    <Link
-                      key={file.id}
-                      href={`/panel/hasar-dosyalari/${file.id}`}
-                      className="flex items-center justify-between px-4 py-2.5 hover:bg-blue-50/40 transition-colors group"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span className="text-xs font-mono text-slate-700 group-hover:text-blue-700 truncate">{file.fileNo}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          file.isClosed
-                            ? 'bg-slate-100 text-slate-500'
-                            : 'bg-emerald-50 text-emerald-700'
-                        }`}>
-                          {file.statusName}
-                        </span>
-                        <svg className="w-3 h-3 text-slate-300 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
+        <TableColumnsProvider value={tableColumns}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelTableColumnPicker tableColumns={tableColumns} />
             </div>
-          ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 uppercase">
+                  <tr>
+                    <th className="w-8 px-2 py-3" aria-label="Genişlet" />
+                    <PanelTableTh colId="name" className="px-4 py-3 text-left">Müşteri</PanelTableTh>
+                    <PanelTableTh colId="phone" className="px-4 py-3 text-left">Telefon</PanelTableTh>
+                    <PanelTableTh colId="totalFiles" className="px-4 py-3 text-right">Dosya</PanelTableTh>
+                    <PanelTableTh colId="openFiles" className="px-4 py-3 text-right">Açık</PanelTableTh>
+                    <PanelTableTh colId="closedFiles" className="px-4 py-3 text-right">Kapalı</PanelTableTh>
+                    <PanelTableTh colId="lastActivity" className="px-4 py-3 text-left">Son hareket</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-4 py-3 text-left">Durum</PanelTableTh>
+                    <th className="px-4 py-3 text-left">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+                  {filtered.map((customer, idx) => {
+                    const expanded = expandedId === customer.customerId;
+                    const openPct = pct(customer.openFiles, customer.totalFiles);
+                    return (
+                      <Fragment key={customer.customerId}>
+                        <tr key={customer.customerId} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>
+                          <td className="px-2 py-3">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedId(expanded ? null : customer.customerId)}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
+                              aria-label={expanded ? 'Dosyaları gizle' : 'Dosyaları göster'}
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                            </button>
+                          </td>
+                          <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-900 dark:text-white">{customer.name}</PanelTableTd>
+                          <PanelTableTd colId="phone" className="px-4 py-3 font-mono text-xs text-slate-500">{maskPhone(customer.phone)}</PanelTableTd>
+                          <PanelTableTd colId="totalFiles" className="px-4 py-3 text-right tabular-nums">{customer.totalFiles}</PanelTableTd>
+                          <PanelTableTd colId="openFiles" className="px-4 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{customer.openFiles}</PanelTableTd>
+                          <PanelTableTd colId="closedFiles" className="px-4 py-3 text-right tabular-nums text-slate-500">{customer.closedFiles}</PanelTableTd>
+                          <PanelTableTd colId="lastActivity" className="px-4 py-3 text-xs text-slate-500">{relativeTime(customer.lastActivityDate)}</PanelTableTd>
+                          <PanelTableTd colId="status" className="px-4 py-3">
+                            <div className="flex items-center gap-2 min-w-[88px]">
+                              <div className="flex-1 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex">
+                                <div className="bg-emerald-500" style={{ width: `${openPct}%` }} />
+                                <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
+                              </div>
+                              <span className="text-[10px] text-slate-400 tabular-nums">{Math.round(openPct)}%</span>
+                            </div>
+                          </PanelTableTd>
+                          <td className="px-4 py-3">
+                            <Link href={`/panel/musteriler?highlight=${customer.customerId}`} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                              Detay
+                            </Link>
+                          </td>
+                        </tr>
+                        {expanded && customer.files.map((file) => (
+                          <tr key={`${customer.customerId}-${file.id}`} className="bg-slate-50/50 dark:bg-slate-800/40">
+                            <td />
+                            <td colSpan={8} className="px-4 py-2">
+                              <Link
+                                href={`/panel/hasar-dosyalari/${file.id}`}
+                                className="flex items-center justify-between gap-3 text-xs hover:text-blue-600 dark:hover:text-blue-400"
+                              >
+                                <span className="font-mono">{file.fileNo}</span>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                                  file.isClosed
+                                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+                                }`}>
+                                  {file.statusName}
+                                </span>
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TableColumnsProvider>
+      )}
+    </div>
+  );
+}
+
+function ConnectionStatus({
+  loadState, count, lastLoadedAt, onRetry,
+}: { loadState: LoadState; count: number; lastLoadedAt: Date | null; onRetry: () => void }) {
+  if (loadState === 'loading') {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-500">
+        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Yükleniyor…
+      </div>
+    );
+  }
+  if (loadState === 'error') {
+    return (
+      <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-xs text-red-700 dark:text-red-400">
+        <span className="w-2 h-2 rounded-full bg-red-500" /> Bağlantı hatası · Tekrar dene
+      </button>
+    );
+  }
+  return (
+    <div className="inline-flex flex-col items-end gap-0.5">
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-700 dark:text-emerald-400">
+        <span className="w-2 h-2 rounded-full bg-emerald-500" /> Canlı · {count} cari yüklendi
+      </div>
+      {lastLoadedAt && (
+        <span className="text-[10px] text-slate-400 tabular-nums">
+          {lastLoadedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CariSummaryStrip({
+  customerCount, activeCustomers, openFiles, closedFiles, totalFiles, loading,
+}: {
+  customerCount: number; activeCustomers: number; openFiles: number; closedFiles: number; totalFiles: number; loading: boolean;
+}) {
+  const openPct = pct(openFiles, totalFiles);
+  return (
+    <div className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden ${loading ? 'opacity-60 animate-pulse' : ''}`}>
+      <div className="flex flex-col sm:flex-row sm:items-stretch divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
+        <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-blue-500">
+          <div className="flex items-center gap-1 mb-1.5">
+            <Users className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Cari portföy</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MiniMetric label="Toplam cari" value={String(customerCount)} accent="blue" />
+            <MiniMetric label="Aktif cari" value={String(activeCustomers)} accent="emerald" sub="Açık dosyası olan" />
+          </div>
+        </section>
+        <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-emerald-500">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Dosya durumu</span>
+            {totalFiles > 0 && <span className="text-[10px] text-slate-400 tabular-nums">%{Math.round(openPct)} açık</span>}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MiniMetric label="Toplam" value={String(totalFiles)} accent="slate" />
+            <MiniMetric label="Açık" value={String(openFiles)} accent="emerald" />
+            <MiniMetric label="Kapalı" value={String(closedFiles)} accent="slate" />
+          </div>
+          {totalFiles > 0 && (
+            <div className="mt-2 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 flex">
+              <div className="bg-emerald-500" style={{ width: `${openPct}%` }} />
+              <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value, accent, sub }: { label: string; value: string; accent: 'blue' | 'emerald' | 'slate'; sub?: string }) {
+  const cls = { blue: 'text-blue-700 dark:text-blue-400', emerald: 'text-emerald-700 dark:text-emerald-400', slate: 'text-slate-700 dark:text-slate-200' }[accent];
+  return (
+    <div className="rounded-lg px-2 py-1.5 min-w-0">
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{label}</p>
+      <p className={`text-sm font-bold tabular-nums ${cls}`}>{value}</p>
+      {sub && <p className="text-[9px] text-slate-400 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return <div className="bg-white dark:bg-slate-800 rounded-xl border animate-pulse h-64" />;
+}
+
+function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 px-4 py-8 text-center">
+      <p className="text-sm font-medium text-red-700 dark:text-red-400">{message}</p>
+      <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-1">API yanıt vermedi; sayfa şu an çalışmıyor.</p>
+      <button type="button" onClick={onRetry} className="mt-4 px-4 py-2 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700">Tekrar yükle</button>
+    </div>
+  );
+}
+
+function EmptyPanel({ hasSearch, totalCustomers }: { hasSearch: boolean; totalCustomers: number }) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 py-16 text-center">
+      <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        {hasSearch ? 'Eşleşen cari bulunamadı' : totalCustomers === 0 ? 'Henüz atanmış cari yok' : 'Filtreye uygun cari yok'}
+      </p>
+      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-md mx-auto">
+        {totalCustomers === 0
+          ? 'Size atanmış hasar dosyalarındaki müşteriler burada listelenir. Atama yoksa liste boş kalır; bu normal bir durumdur.'
+          : 'Arama veya filtre kriterlerini değiştirmeyi deneyin.'}
+      </p>
+      {totalCustomers === 0 && (
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-700 dark:text-emerald-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" /> Sayfa çalışıyor · veri yok
         </div>
       )}
     </div>

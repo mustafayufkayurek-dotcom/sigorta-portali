@@ -4,9 +4,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 import { CreateStatementDto, CreateStatementItemDto } from './dto/create-statement.dto';
 
 const STATEMENT_DEADLINE_DAYS = 14;
@@ -22,7 +25,11 @@ const VENDOR_PAYMENT_CATEGORY_CODE = 'VENDOR_PAYMENT';
 export class VendorStatementsService {
   private readonly logger = new Logger(VendorStatementsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   // ── Util ──────────────────────────────────────────────────────────────────
 
@@ -317,6 +324,8 @@ export class VendorStatementsService {
       vatRate: 0,
       receiptRef: p.referenceNo ?? null,
       receiptDate: p.paymentDate.toISOString(),
+      hasReceipt: Boolean(p.receiptStorageKey),
+      receiptFileName: p.receiptFileName ?? null,
     }));
   }
 
@@ -515,6 +524,9 @@ export class VendorStatementsService {
     if (newStatus === 'APPROVED') {
       await this.syncApprovedStatementToCostEntries(statementId);
     }
+
+    // Finans kuyruğu: onaylı kalemler → bekleyen giden ödeme
+    await this.paymentsService.syncPendingPaymentsForStatement(statementId);
   }
 
   /**
@@ -769,13 +781,30 @@ export class VendorStatementsService {
   // ── Vendor Stats (tedarikçi kartı özeti) ─────────────────────────────────
 
   async getVendorStatementSummary(vendorId: string) {
-    const [totalStatements, approvedStatements, openDisputes, totalPaid] = await Promise.all([
+    const [totalStatements, approvedStatements, openDisputes, totalPaid, filePayments, filePaymentsWithReceipt] = await Promise.all([
       this.prisma.vendorPaymentStatement.count({ where: { vendorId } }),
       this.prisma.vendorPaymentStatement.count({ where: { vendorId, status: 'APPROVED' } }),
       this.prisma.vendorStatementDispute.count({ where: { vendorId, status: { in: ['OPEN', 'UNDER_REVIEW'] } } }),
       this.prisma.vendorPaymentStatement.aggregate({
         where: { vendorId, status: { in: ['APPROVED', 'CLOSED'] } },
         _sum: { totalAmount: true },
+      }),
+      this.prisma.payment.count({
+        where: {
+          payerType: 'vendor',
+          payerId: vendorId,
+          paymentType: 'outgoing',
+          status: 'completed',
+        },
+      }),
+      this.prisma.payment.count({
+        where: {
+          payerType: 'vendor',
+          payerId: vendorId,
+          paymentType: 'outgoing',
+          status: 'completed',
+          receiptStorageKey: { not: null },
+        },
       }),
     ]);
 
@@ -784,6 +813,8 @@ export class VendorStatementsService {
       approvedStatements,
       openDisputes,
       totalApprovedAmount: totalPaid._sum.totalAmount ?? 0,
+      filePaymentCount: filePayments,
+      filePaymentsWithReceipt,
     };
   }
 
@@ -810,6 +841,9 @@ export class VendorStatementsService {
         where: { id: stmt.id },
         data: { status: 'APPROVED', autoApprovedAt: new Date() },
       });
+
+      await this.syncApprovedStatementToCostEntries(stmt.id);
+      await this.paymentsService.syncPendingPaymentsForStatement(stmt.id);
 
       this.logger.log(`Otomatik onay: statement=${stmt.statementNo}`);
     }

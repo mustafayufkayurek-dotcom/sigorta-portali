@@ -5,6 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
@@ -96,6 +105,20 @@ function getUserScope() {
   } catch { return { officeStaffUserId: null, isFieldStaff: false }; }
 }
 
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 100 },
+  { id: 'insured', label: 'Sigortalı', defaultWidth: 140, minWidth: 100 },
+  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
+  { id: 'subject', label: 'İhbar Konusu', defaultWidth: 140, minWidth: 100 },
+  { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
+  { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
+  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
+  { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
+];
+
 export default function ClaimFilesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,6 +138,7 @@ export default function ClaimFilesPage() {
   const [page, setPage] = useState(1);
   const [pendingRevisionFilter, setPendingRevisionFilter] = useState(false);
   const limit = 20;
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -206,6 +230,7 @@ export default function ClaimFilesPage() {
   };
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
@@ -336,6 +361,9 @@ export default function ClaimFilesPage() {
             </button>
           )}
         </div>
+        <div className="mt-2 flex justify-end gap-2">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
+        </div>
       </div>
 
       {/* Error State */}
@@ -357,29 +385,29 @@ export default function ClaimFilesPage() {
       {loading ? (
         <div className="table-container">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <th className="table-th">Dosya No</th>
-                  <th className="table-th">Müşteri</th>
-                  <th className="table-th">Sigortalı</th>
-                  <th className="table-th">Tarih</th>
-                  <th className="table-th">İhbar Konusu</th>
-                  <th className="table-th">Durum</th>
-                  <th className="table-th">Tedarikçi</th>
-                  <th className="table-th">Fatura</th>
-                  <th className="table-th">Tutar</th>
-                  <th className="table-th">Öncelik</th>
-                  <th className="table-th">Revizyon</th>
+                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="insured" className="table-th">Sigortalı</PanelTableTh>
+                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
+                  <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
+                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
+                  <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
+                  <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    {Array.from({ length: 11 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3">
+                    {TABLE_COLUMNS.map((col) => (
+                      <PanelTableTd key={col.id} colId={col.id} className="px-4 py-3">
                         <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
-                      </td>
+                      </PanelTableTd>
                     ))}
                   </tr>
                 ))}
@@ -467,20 +495,20 @@ export default function ClaimFilesPage() {
             })}
           </div>
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <th className="table-th">Dosya No</th>
-                  <th className="table-th">Müşteri</th>
-                  <th className="table-th">Sigortalı</th>
-                  <th className="table-th">Tarih</th>
-                  <th className="table-th">İhbar Konusu</th>
-                  <th className="table-th">Durum</th>
-                  <th className="table-th">Tedarikçi</th>
-                  <th className="table-th">Fatura</th>
-                  <th className="table-th">Tutar</th>
-                  <th className="table-th">Öncelik</th>
-                  <th className="table-th">Revizyon</th>
+                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="insured" className="table-th">Sigortalı</PanelTableTh>
+                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
+                  <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
+                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
+                  <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
+                  <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -502,35 +530,35 @@ export default function ClaimFilesPage() {
                       className={`table-row cursor-pointer ${revCount > 0 ? 'border-l-4 border-amber-300' : ''}`}
                       onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
                     >
-                      <td className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claim.fileNo ?? claim.claimNo ?? '—'}</td>
-                      <td className="table-td text-xs font-medium whitespace-nowrap max-w-[160px] truncate">{customerName}</td>
-                      <td className="table-td text-xs whitespace-nowrap max-w-[140px] truncate">{insuredName}</td>
-                      <td className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</td>
-                      <td className="table-td text-xs whitespace-nowrap max-w-[140px] truncate">
+                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claim.fileNo ?? claim.claimNo ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="customer" className="table-td text-xs font-medium whitespace-nowrap max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
+                      <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={insuredName}>{insuredName}</PanelTableTd>
+                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={claim.lossType ?? claim.productBranch ?? '—'}>
                         {claim.lossType ?? claim.productBranch ?? '—'}
-                      </td>
-                      <td className="table-td whitespace-nowrap">
+                      </PanelTableTd>
+                      <PanelTableTd colId="status" className="table-td whitespace-nowrap">
                         <ClaimStatusBadge status={claim.currentStatus} />
-                      </td>
-                      <td className="table-td text-xs whitespace-nowrap max-w-[120px] truncate">
+                      </PanelTableTd>
+                      <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}
-                      </td>
-                      <td className="table-td whitespace-nowrap">
+                      </PanelTableTd>
+                      <PanelTableTd colId="invoice" className="table-td whitespace-nowrap">
                         <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>
                           {INVOICE_STATUS_LABELS[invStatus] ?? invStatus}
                         </span>
-                      </td>
-                      <td className="table-td text-xs whitespace-nowrap font-semibold">
+                      </PanelTableTd>
+                      <PanelTableTd colId="amount" className="table-td text-xs whitespace-nowrap font-semibold">
                         {fmtAmount(totalAmount)}
-                      </td>
-                      <td className="table-td whitespace-nowrap">
+                      </PanelTableTd>
+                      <PanelTableTd colId="priority" className="table-td whitespace-nowrap">
                         {claim.priority && (
                           <span className={PRIORITY_CLASSES[claim.priority] ?? 'badge badge-gray'}>
                             {PRIORITY_LABELS[claim.priority] ?? claim.priority}
                           </span>
                         )}
-                      </td>
-                      <td className="table-td whitespace-nowrap">
+                      </PanelTableTd>
+                      <PanelTableTd colId="revision" className="table-td whitespace-nowrap">
                         {revCount > 0 ? (
                           <span className="badge badge-amber">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
@@ -539,7 +567,7 @@ export default function ClaimFilesPage() {
                         ) : (
                           <span className="text-slate-300 text-xs">—</span>
                         )}
-                      </td>
+                      </PanelTableTd>
                     </tr>
                   );
                 })}
@@ -558,5 +586,6 @@ export default function ClaimFilesPage() {
         </div>
       )}
     </div>
+    </TableColumnsProvider>
   );
 }

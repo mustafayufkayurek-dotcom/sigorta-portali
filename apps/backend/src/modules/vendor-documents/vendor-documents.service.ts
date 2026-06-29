@@ -34,6 +34,7 @@ export class VendorDocumentsService {
     file: Express.Multer.File,
     documentTypeId: string,
     uploadedByUserId: string,
+    customLabel?: string,
   ) {
     const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
@@ -76,10 +77,12 @@ export class VendorDocumentsService {
     }
 
     const ext = path.extname(file.originalname);
+    const trimmedLabel = customLabel?.trim() || null;
     const data = await this.prisma.vendorDocument.create({
       data: {
         vendorId,
         documentTypeId,
+        customLabel: trimmedLabel,
         fileName: file.originalname,
         fileExtension: ext,
         mimeType,

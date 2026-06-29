@@ -42,9 +42,10 @@ export class VendorDocumentsController {
     @Param('id') vendorId: string,
     @UploadedFile(new FileValidationPipe()) file: Express.Multer.File,
     @Body('documentTypeId') documentTypeId: string,
+    @Body('customLabel') customLabel: string | undefined,
     @CurrentUser() user: any,
   ) {
-    return this.service.create(vendorId, file, documentTypeId, user.id);
+    return this.service.create(vendorId, file, documentTypeId, user.id, customLabel);
   }
 
   // Signed URL ile güvenli indirme

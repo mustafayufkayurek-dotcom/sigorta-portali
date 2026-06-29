@@ -76,9 +76,10 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     icon: Layers3,
     links: [
       { title: 'İş Grupları', href: '/panel/ayarlar/is-gruplari', icon: Layers3, description: 'İş grubu ve alt grup hiyerarşisi.' },
-      { title: 'Hizmet Türleri', href: '/panel/ayarlar/hizmet-turleri', icon: PackageCheck, description: 'Hasar ve acil yardım hizmet türleri (Konut Yangın, Acil Su vb.).' },
+      { title: 'Meridyen Hizmet Branşları', href: '/panel/ayarlar/hizmet-turleri', icon: PackageCheck, description: 'Meridyen operasyon branşları — hasar ve acil yardım (Yangın, Su Baskını vb.).' },
+      { title: 'Tedarikçi Hizmet Kolları', href: '/panel/ayarlar/tedarikci-hizmet-kollari', icon: Layers3, description: 'Tedarikçi kartı uzmanlık alanları — sıvacı, çilingir, elektrikçi vb.' },
       { title: 'Fiyat Listesi', href: '/panel/ayarlar/fiyat-listesi', icon: Receipt, description: 'Birim fiyat ve iş kalemleri.' },
-      { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: Tags, description: 'Ana grup ve masraf kalemi hiyerarşisi.' },
+      { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: Tags, description: 'Masraf grubu ve alt grup hiyerarşisi.' },
       { title: 'Mahal ve Bölgeler', href: '/panel/ayarlar/mahaller', icon: MapPin, description: 'Rapor mahal ve alt bölge tanımları.' },
       { title: 'Bölgesel Zamlar', href: '/panel/ayarlar/bolgesel-zamlar', icon: Landmark, description: 'Bölge bazlı fiyat etkileri.' },
     ],
