@@ -1,4 +1,9 @@
 import { toTitleCaseTR } from './text-helpers';
+import {
+  documentTypeMatchesVendorCategory,
+  filterDocumentTypesForVendorCategory,
+  type DocumentTypeScopeRow,
+} from './document-type-scope';
 
 export type VendorCategory = 'hasar' | 'acil' | 'her_ikisi';
 
@@ -8,17 +13,17 @@ export const VENDOR_CATEGORIES: { value: VendorCategory; label: string }[] = [
   { value: 'her_ikisi', label: 'Hasar + Acil Yardım' },
 ];
 
-export type VendorDocumentTypeRow = {
-  id: string;
-  name: string;
-  isRequired?: boolean;
-  /** Ayarlar → Evrak Türleri'nde seçilen departman(lar) */
+export type VendorDocumentTypeRow = DocumentTypeScopeRow & {
+  /** Ayarlar → Evrak Türleri'nde seçilen departman(lar) — geriye dönük */
   departmentIds?: unknown;
-  /** Eski/opsiyonel — ayarlar UI'si doldurmuyor; geriye dönük uyumluluk */
   serviceTypeIds?: unknown;
 };
 
 export type DepartmentRef = { id: string; code: string };
+
+export function buildDepartmentCodeMap(departments: DepartmentRef[]): Map<string, string> {
+  return new Map(departments.map((d) => [d.id, d.code]));
+}
 
 /** Evrak türü seçiminde "Diğer" + manuel açıklama */
 export const VENDOR_DOC_OTHER_SELECT = '__other__';
@@ -40,76 +45,25 @@ export function formatVendorTypeLabel(type: string | null | undefined): string |
   return toTitleCaseTR(type.trim());
 }
 
-const VENDOR_CATEGORY_DEPT_CODES: Record<VendorCategory, string[]> = {
-  hasar: ['hasar-onarim', 'sovtaj'],
-  acil: ['acil-yardim'],
-  her_ikisi: ['hasar-onarim', 'acil-yardim', 'sovtaj'],
-};
-
-function parseIdList(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((x): x is string => typeof x === 'string' && x.length > 0);
-}
-
-export function buildDepartmentCodeMap(departments: DepartmentRef[]): Map<string, string> {
-  return new Map(departments.map((d) => [d.id, d.code]));
-}
-
-function legacyServiceTypeMatch(ids: string[], category: VendorCategory): boolean {
-  const normalized = ids.map((id) => id.toLowerCase());
-  const targets =
-    category === 'acil'
-      ? ['acil', 'acil_yardim', 'emergency']
-      : category === 'her_ikisi'
-        ? ['hasar', 'acil', 'acil_yardim', 'her_ikisi', 'both', 'emergency', 'damage']
-        : ['hasar', 'damage'];
-  return normalized.some((id) => targets.includes(id));
-}
-
 /**
  * Evrak türü listesini tedarikçi hizmet kategorisine göre filtreler.
- * Birincil kaynak: Ayarlar → Tanımlar → Evrak Türleri (departman sekmesi / departmentIds).
+ * Birincil kaynak: Ayarlar → Evrak Türleri (hizmet türü / serviceBranchTypes).
  */
 export function documentTypeMatchesCategory(
   doc: VendorDocumentTypeRow,
   category: VendorCategory,
   deptCodeById: Map<string, string> = new Map(),
 ): boolean {
-  const deptIds = parseIdList(doc.departmentIds);
-  const allowed = VENDOR_CATEGORY_DEPT_CODES[category];
-
-  if (deptIds.length > 0 && deptCodeById.size > 0) {
-    const docCodes = deptIds
-      .map((id) => deptCodeById.get(id))
-      .filter((c): c is string => !!c);
-    if (docCodes.length === 0) return true;
-    return docCodes.some((code) => allowed.includes(code));
-  }
-
-  if (deptIds.length > 0 && deptCodeById.size === 0) {
-    return true;
-  }
-
-  const serviceIds = parseIdList(doc.serviceTypeIds);
-  if (serviceIds.length === 0) return true;
-  return legacyServiceTypeMatch(serviceIds, category);
+  return documentTypeMatchesVendorCategory(doc, category, deptCodeById);
 }
 
-/** Kategoriye göre evrak listesi; eşleşme yoksa departmansız / legacy türleri gösterir */
+/** Kategoriye göre evrak listesi; alfabetik sıralı */
 export function filterDocumentTypesForCategory(
   documentTypes: VendorDocumentTypeRow[],
   category: VendorCategory,
   deptCodeById: Map<string, string> = new Map(),
 ): VendorDocumentTypeRow[] {
-  const matched = documentTypes.filter((dt) => documentTypeMatchesCategory(dt, category, deptCodeById));
-  if (matched.length > 0) return matched;
-  return documentTypes.filter((dt) => {
-    const deptIds = parseIdList(dt.departmentIds);
-    const serviceIds = parseIdList(dt.serviceTypeIds);
-    if (deptIds.length === 0 && serviceIds.length === 0) return true;
-    if (serviceIds.length > 0) return legacyServiceTypeMatch(serviceIds, category);
-    return false;
-  });
+  return filterDocumentTypesForVendorCategory(documentTypes, category, deptCodeById);
 }
 
 /** "Diğer" evrak türü kaydı — kategori filtresine göre veya genel */

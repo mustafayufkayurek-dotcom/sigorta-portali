@@ -17,6 +17,8 @@ import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/
 import { useRouter, useSearchParams } from 'next/navigation';
 import { relativeTime, activityColor } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import {
   CUSTOMER_TYPE_OPTIONS,
@@ -1324,6 +1326,10 @@ export default function MusterilerPage() {
         customerType: form.customerType, entityType: form.customerType,
         phone: form.phone || null, email: form.email || null,
         city: form.city || null, district: form.district || null,
+        neighborhood: form.neighborhood || null,
+        streetName: form.streetName || null,
+        buildingNo: form.buildingNo || null,
+        doorNo: form.doorNo || null,
         address: computedAddress,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         notes: form.notes || null, source: form.source || null,
@@ -1442,7 +1448,7 @@ export default function MusterilerPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Toplam</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Toplam</p>
               <p className="text-base font-bold text-slate-800 leading-tight tabular-nums">{total}</p>
             </div>
           </div>
@@ -1455,7 +1461,7 @@ export default function MusterilerPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Bireysel</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Bireysel</p>
               <p className="text-base font-bold text-purple-700 leading-tight tabular-nums">{individualCount}</p>
             </div>
           </div>
@@ -1468,7 +1474,7 @@ export default function MusterilerPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Kurumsal</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Kurumsal</p>
               <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{corporateCount}</p>
             </div>
           </div>
@@ -2432,23 +2438,23 @@ export default function MusterilerPage() {
                   <SectionDivider emoji="📍" title="Adres Bilgileri" />
                   <div className="grid grid-cols-2 gap-4">
                     {/* İl */}
-                    <FormField label="İl">
+                    <FormField label={ADDRESS_FIELD.province}>
                       <select className={inp} value={form.cityCode}
                         onChange={(e) => {
                           const prov = STATIC_PROVINCES.find((p) => p.code === e.target.value);
                           setForm((p) => ({ ...p, cityCode: e.target.value, city: prov?.name ?? '', district: '', neighborhood: '' }));
                         }}>
-                        <option value="">İl seçin...</option>
+                        <option value="">{ADDRESS_FIELD.provincePlaceholder}</option>
                         {STATIC_PROVINCES.map((p) => (
                           <option key={p.code} value={p.code}>{p.name}</option>
                         ))}
                       </select>
                     </FormField>
                     {/* İlçe */}
-                    <FormField label="İlçe">
+                    <FormField label={ADDRESS_FIELD.district}>
                       <select key={form.cityCode} className={inp} value={form.district} disabled={!form.cityCode}
                         onChange={(e) => setForm((p) => ({ ...p, district: e.target.value, neighborhood: '' }))}>
-                        <option value="">İlçe seçin...</option>
+                        <option value="">{ADDRESS_FIELD.districtPlaceholder}</option>
                         {currentDistricts.map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
@@ -2456,43 +2462,47 @@ export default function MusterilerPage() {
                     </FormField>
                     {/* Mahalle */}
                     <div className="col-span-2">
-                      <FormField label="Mahalle">
-                        <input
-                          type="text"
-                          className={inp}
-                          placeholder="Mahalle adı girin..."
+                      <FormField label={ADDRESS_FIELD.neighborhood}>
+                        <NeighborhoodSelect
+                          provinceName={form.city}
+                          districtName={form.district}
                           value={form.neighborhood}
-                          onChange={(e) => setForm((p) => ({ ...p, neighborhood: e.target.value }))}
+                          onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
+                          inputClassName={inp}
                         />
                       </FormField>
                     </div>
                     {/* Cadde / Sokak */}
                     <div className="col-span-2">
-                      <FormField label="Cadde / Sokak">
+                      <FormField label={ADDRESS_FIELD.street}>
                         <input
                           type="text"
                           className={inp}
-                          placeholder="Cadde veya sokak adı..."
+                          placeholder={ADDRESS_FIELD.streetPlaceholder}
                           value={form.streetName}
                           onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
+                          onBlur={(e) => {
+                            const v = toTitleCaseTR(e.target.value.trim());
+                            if (v) setForm((p) => ({ ...p, streetName: v }));
+                          }}
                         />
                       </FormField>
                     </div>
                     {/* Bina No + Daire No */}
-                    <FormField label="Bina No">
+                    <FormField label={ADDRESS_FIELD.buildingNo}>
                       <input
                         type="text"
                         className={inp}
-                        placeholder="Örn: 12"
+                        placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
                         value={form.buildingNo}
                         onChange={(e) => setForm((p) => ({ ...p, buildingNo: e.target.value }))}
                       />
                     </FormField>
-                    <FormField label="Daire No (Opsiyonel)">
+                    <FormField label={ADDRESS_FIELD.doorNo}>
                       <input
                         type="text"
                         className={inp}
-                        placeholder="Örn: 3"
+                        placeholder={ADDRESS_FIELD.doorNoPlaceholder}
                         value={form.doorNo}
                         onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))}
                       />

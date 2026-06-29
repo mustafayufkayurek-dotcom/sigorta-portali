@@ -6,6 +6,13 @@ import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import {
+  addAllDistrictsInProvince,
+  isDistrictAreaChecked,
+  toggleDistrictArea,
+} from '@/utils/service-area-helpers';
 import {
   buildDepartmentCodeMap,
   filterDocumentTypesForCategory,
@@ -351,21 +358,26 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const toggleArea = (provinceId: string, districtId: string | null) => {
-    const key = districtId ? `${provinceId}:${districtId}` : `${provinceId}:`;
-    const exists = serviceAreas.some((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) === key);
+    if (districtId) {
+      setServiceAreas((p) =>
+        toggleDistrictArea(p, provinceId, districtId, districts, selectedProvince?.name),
+      );
+      return;
+    }
+    const key = `${provinceId}:`;
+    const exists = serviceAreas.some((sa) => !sa.districtId && `${sa.provinceId}:` === key);
     if (exists) {
-      setServiceAreas((p) => p.filter((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) !== key));
+      setServiceAreas((p) => p.filter((sa) => sa.districtId || `${sa.provinceId}:` !== key));
     } else {
-      setServiceAreas((p) => [...p, { provinceId, districtId }]);
+      setServiceAreas((p) => [...p, { provinceId, districtId: null }]);
     }
   };
 
-  const addWholeProvince = () => {
-    if (!selectedProvinceId) return;
-    setServiceAreas((p) => [
-      ...p.filter((sa) => sa.provinceId !== selectedProvinceId),
-      { provinceId: selectedProvinceId, districtId: null },
-    ]);
+  const addAllDistrictsForProvince = () => {
+    if (!selectedProvinceId || districts.length === 0) return;
+    setServiceAreas((p) =>
+      addAllDistrictsInProvince(p, selectedProvinceId, districts, selectedProvince?.name),
+    );
   };
 
   const removeArea = (sa: { provinceId: string; districtId: string | null }) => {
@@ -429,14 +441,14 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
               options={provinceOptions}
               value={selectedProvinceId}
               onChange={onProvinceChange}
-              placeholder="İl ara veya seç..."
-              emptyText="İl bulunamadı"
+              placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+              emptyText={ADDRESS_FIELD.provinceSearchEmpty}
               inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
             />
             {selectedProvince && (
               <button
                 type="button"
-                onClick={addWholeProvince}
+                onClick={addAllDistrictsForProvince}
                 className="w-full text-xs font-medium text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors"
               >
                 Tüm ilçeleri ekle
@@ -450,27 +462,12 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
                 {loadingDistricts ? 'İlçeler yükleniyor…' : `${selectedProvince.name} — ilçe seçin (isteğe bağlı)`}
               </p>
               {!loadingDistricts && districts.length > 0 && (
-                <div className="max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 bg-white rounded-lg p-3 border border-slate-100">
-                  {districts.map((d) => {
-                    const checked = serviceAreas.some(
-                      (sa) => sa.provinceId === selectedProvinceId && sa.districtId === d.id,
-                    );
-                    return (
-                      <label
-                        key={d.id}
-                        className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-indigo-600 rounded px-1 py-0.5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleArea(selectedProvinceId, d.id)}
-                          className="rounded accent-indigo-600 flex-shrink-0"
-                        />
-                        <span className="truncate">{d.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <DistrictCheckboxGrid
+                  districts={districts}
+                  loading={loadingDistricts}
+                  isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvinceId, districtId)}
+                  onToggle={(districtId) => toggleArea(selectedProvinceId, districtId)}
+                />
               )}
             </div>
           ) : (
@@ -721,7 +718,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
 
   useEffect(() => {
     loadDocuments();
-    axios.get(`${API}/document-types`, { params: { status: 'active' }, headers: authHeader() })
+    axios.get(`${API}/document-types`, { params: { status: 'active', entityScope: 'vendor' }, headers: authHeader() })
       .then((r) => setDocumentTypes(r.data.data ?? []))
       .catch(() => setDocumentTypes([]));
     axios.get(`${API}/departments`, { headers: authHeader() })
@@ -779,44 +776,46 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
       {previewDoc && <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
 
       <SectionCard title="Evrak Yükle">
-        <div className="flex gap-3 items-end flex-wrap">
-          <div className="flex-1 min-w-48">
-            <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
-            <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-              value={selectedTypeId}
-              onChange={(e) => { setSelectedTypeId(e.target.value); setCustomType(''); }}>
-              <option value="">Seçin...</option>
-              {filteredTypes.map((dt) => (
-                <option key={dt.id} value={dt.id}>{dt.name}{dt.isRequired ? ' *' : ''}</option>
-              ))}
-              {!filteredTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
-                <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-48">
+              <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
+              <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                value={selectedTypeId}
+                onChange={(e) => { setSelectedTypeId(e.target.value); setCustomType(''); }}>
+                <option value="">Seçin...</option>
+                {filteredTypes.map((dt) => (
+                  <option key={dt.id} value={dt.id}>{dt.name}{dt.isRequired ? ' *' : ''}</option>
+                ))}
+                {!filteredTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
+                  <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+                )}
+              </select>
+              {otherSelected && (
+                <input
+                  className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  placeholder="Evrak türünü yazın..."
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                />
               )}
-            </select>
-            {otherSelected && (
-              <input
-                className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                placeholder="Evrak türünü yazın..."
-                value={customType}
-                onChange={(e) => setCustomType(e.target.value)}
-              />
-            )}
-            {otherSelected && !otherDocumentTypeId && (
-              <p className="text-xs text-amber-600 mt-1.5">Ayarlarda &quot;Diğer&quot; evrak türü tanımlı değil.</p>
-            )}
-            {filteredTypes.length === 0 && !otherDocumentTypeId && (
-              <p className="text-xs text-amber-600 mt-1.5">Bu kategori için tanımlı evrak türü yok.</p>
-            )}
+            </div>
+            <div className="flex-shrink-0">
+              <input type="file" ref={fileInputRef} className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                onChange={handleUpload} disabled={!canUpload || uploading} />
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canUpload || uploading}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium">
+                {uploading ? 'Yükleniyor...' : 'Dosya Seç ve Yükle'}
+              </button>
+            </div>
           </div>
-          <div>
-            <input type="file" ref={fileInputRef} className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-              onChange={handleUpload} disabled={!canUpload || uploading} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canUpload || uploading}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium">
-              {uploading ? '⏳ Yükleniyor...' : '📎 Dosya Seç ve Yükle'}
-            </button>
-          </div>
+          {otherSelected && !otherDocumentTypeId && (
+            <p className="text-xs text-amber-600">Ayarlarda &quot;Diğer&quot; evrak türü tanımlı değil.</p>
+          )}
+          {filteredTypes.length === 0 && !otherDocumentTypeId && (
+            <p className="text-xs text-amber-600">Bu kategori için tanımlı evrak türü yok.</p>
+          )}
         </div>
         <p className="text-xs text-slate-400 mt-2">Desteklenen: PDF, JPG, PNG, Word, Excel — Maks. 20 MB</p>
       </SectionCard>

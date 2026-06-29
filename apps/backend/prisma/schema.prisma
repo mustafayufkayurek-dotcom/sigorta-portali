@@ -476,6 +476,10 @@ model Customer {
   email           String?
   city            String?
   district        String?
+  neighborhood    String?
+  streetName      String?   @map("street_name")
+  buildingNo      String?   @map("building_no")
+  doorNo          String?   @map("door_no")
   address         String?
   birthDate       DateTime? @map("birth_date")
   latitude        Float?
@@ -821,10 +825,22 @@ model District {
   province   Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
   serviceAreas     VendorServiceArea[]
   userServiceAreas UserServiceArea[]
+  neighborhoods  Neighborhood[]
 
   @@unique([provinceId, name])
   @@index([provinceId])
   @@map("districts")
+}
+
+model Neighborhood {
+  id         String   @id @default(uuid())
+  districtId String   @map("district_id")
+  name       String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@map("neighborhoods")
 }
 
 model Vendor {
@@ -844,6 +860,10 @@ model Vendor {
   address          String?
   city             String?
   district         String?
+  neighborhood     String?
+  streetName       String?  @map("street_name")
+  buildingNo       String?  @map("building_no")
+  doorNo           String?  @map("door_no")
   latitude         Float?
   longitude        Float?
   iban             String?
@@ -1306,17 +1326,20 @@ model SupplierPriceHistory {
 // ─── Özellik: Tedarikçi Evrak Yönetimi ────────────────────────────────────────
 
 model DocumentType {
-  id               String   @id @default(uuid())
-  code             String   @unique
-  name             String
-  description      String?
-  isRequired       Boolean  @default(false) @map("is_required")
-  sortOrder        Int      @default(0) @map("sort_order")
-  status           String   @default("active")
-  serviceTypeIds   Json     @default("[]") @map("service_type_ids")
-  departmentIds    Json     @default("[]") @map("department_ids")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  description        String?
+  isRequired         Boolean  @default(false) @map("is_required")
+  sortOrder          Int      @default(0) @map("sort_order")
+  status             String   @default("active")
+  serviceTypeIds     Json     @default("[]") @map("service_type_ids")
+  departmentIds      Json     @default("[]") @map("department_ids")
+  serviceBranchTypes Json     @default("[]") @map("service_branch_types")
+  customerSubTypes   Json     @default("[]") @map("customer_sub_types")
+  entityScope        String   @default("vendor") @map("entity_scope")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   vendorDocuments VendorDocument[]
   entityDocuments EntityDocument[]

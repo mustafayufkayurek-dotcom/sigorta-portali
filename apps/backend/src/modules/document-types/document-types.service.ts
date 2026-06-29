@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateDocumentTypeDto, UpdateDocumentTypeDto } from './dto/document-types.dto';
-
-function parseIdList(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
-}
+import {
+  DocumentEntityScope,
+  deriveServiceBranchTypes,
+  matchesCustomerSubType,
+  matchesEntityScope,
+  matchesServiceBranchType,
+  parseStringList,
+  scopesOverlap,
+  sortCompareTR,
+  ServiceBranchTypeKey,
+} from './document-type-scope';
 
 function matchesDepartment(documentType: { departmentIds: unknown }, departmentId?: string): boolean {
-  const ids = parseIdList(documentType.departmentIds);
+  const ids = parseStringList(documentType.departmentIds);
   if (!departmentId) return true;
   if (ids.length === 0) return true;
   return ids.includes(departmentId);
@@ -18,21 +24,101 @@ function matchesDepartment(documentType: { departmentIds: unknown }, departmentI
 export class DocumentTypesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(params?: { status?: string; departmentId?: string }) {
-    const where: any = {};
+  private async buildDeptCodeMap(): Promise<Map<string, string>> {
+    const rows = await this.prisma.department.findMany({ select: { id: true, code: true } });
+    return new Map(rows.map((r) => [r.id, r.code]));
+  }
+
+  private async nextSortOrder(): Promise<number> {
+    const agg = await this.prisma.documentType.aggregate({ _max: { sortOrder: true } });
+    return (agg._max.sortOrder ?? 0) + 10;
+  }
+
+  private validateScopePayload(dto: {
+    entityScope?: string;
+    serviceBranchTypes?: string[];
+    customerSubTypes?: string[];
+  }) {
+    const scope = (dto.entityScope ?? 'vendor') as DocumentEntityScope;
+    const branchTypes = parseStringList(dto.serviceBranchTypes);
+    const subTypes = parseStringList(dto.customerSubTypes);
+
+    if (scope === 'vendor' && branchTypes.length === 0 && subTypes.length > 0) {
+      throw new BadRequestException('Tedarikçi evrakları için en az bir hizmet türü seçilmelidir');
+    }
+    if (scope === 'customer' && subTypes.length === 0) {
+      throw new BadRequestException('Müşteri evrakları için en az bir müşteri tipi seçilmelidir');
+    }
+    for (const t of branchTypes) {
+      if (t !== 'hasar' && t !== 'acil_yardim') {
+        throw new BadRequestException('Geçersiz hizmet türü');
+      }
+    }
+  }
+
+  private async assertNameUnique(
+    name: string,
+    excludeId: string | null,
+    scope: DocumentEntityScope,
+    serviceBranchTypes: string[],
+    customerSubTypes: string[],
+    deptCodeById: Map<string, string>,
+  ) {
+    const candidates = await this.prisma.documentType.findMany({
+      where: {
+        name,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+    });
+    const conflict = candidates.find((row) =>
+      scopesOverlap(
+        {
+          entityScope: scope,
+          serviceBranchTypes,
+          customerSubTypes,
+        },
+        {
+          entityScope: (row.entityScope ?? 'vendor') as DocumentEntityScope,
+          serviceBranchTypes: row.serviceBranchTypes,
+          customerSubTypes: row.customerSubTypes,
+          departmentIds: row.departmentIds,
+        },
+        deptCodeById,
+      ),
+    );
+    if (conflict) {
+      throw new ConflictException('Bu kapsamda aynı isimde bir evrak türü zaten mevcut');
+    }
+  }
+
+  async findAll(params?: {
+    status?: string;
+    departmentId?: string;
+    entityScope?: DocumentEntityScope;
+    serviceBranchType?: ServiceBranchTypeKey;
+    customerSubType?: string;
+  }) {
+    const where: Record<string, unknown> = {};
     if (params?.status) where.status = params.status;
+    if (params?.entityScope) where.entityScope = params.entityScope;
+
+    const deptCodeById = await this.buildDeptCodeMap();
 
     const rows = await this.prisma.documentType.findMany({
       where,
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
-        _count: { select: { vendorDocuments: true } },
+        _count: { select: { vendorDocuments: true, entityDocuments: true } },
       },
     });
 
-    const data = params?.departmentId
-      ? rows.filter((row) => matchesDepartment(row, params.departmentId))
-      : rows;
+    let data = rows.filter((row) => matchesDepartment(row, params?.departmentId));
+    data = data.filter((row) => matchesEntityScope(row, params?.entityScope));
+    data = data.filter((row) =>
+      matchesServiceBranchType(row, params?.serviceBranchType, deptCodeById),
+    );
+    data = data.filter((row) => matchesCustomerSubType(row, params?.customerSubType));
+
+    data.sort((a, b) => sortCompareTR(a.name, b.name));
 
     return { data };
   }
@@ -41,7 +127,7 @@ export class DocumentTypesService {
     const documentType = await this.prisma.documentType.findUnique({
       where: { id },
       include: {
-        _count: { select: { vendorDocuments: true } },
+        _count: { select: { vendorDocuments: true, entityDocuments: true } },
       },
     });
 
@@ -53,10 +139,10 @@ export class DocumentTypesService {
   }
 
   async create(dto: CreateDocumentTypeDto) {
-    const departmentIds = parseIdList(dto.departmentIds);
-    if (departmentIds.length === 0) {
-      throw new BadRequestException('En az bir departman seçilmelidir');
-    }
+    const entityScope = (dto.entityScope ?? 'vendor') as DocumentEntityScope;
+    const serviceBranchTypes = parseStringList(dto.serviceBranchTypes);
+    const customerSubTypes = parseStringList(dto.customerSubTypes);
+    this.validateScopePayload({ entityScope, serviceBranchTypes, customerSubTypes });
 
     const existing = await this.prisma.documentType.findUnique({
       where: { code: dto.code },
@@ -66,16 +152,17 @@ export class DocumentTypesService {
       throw new ConflictException('Bu kod ile bir evrak türü zaten mevcut');
     }
 
-    const nameConflict = await this.prisma.documentType.findFirst({
-      where: { name: dto.name },
-    });
-    if (nameConflict) {
-      const conflictDepartments = parseIdList(nameConflict.departmentIds);
-      const overlaps = departmentIds.some((id) => conflictDepartments.includes(id));
-      if (overlaps || conflictDepartments.length === 0) {
-        throw new ConflictException('Bu departmanda aynı isimde bir evrak türü zaten mevcut');
-      }
-    }
+    const deptCodeById = await this.buildDeptCodeMap();
+    await this.assertNameUnique(
+      dto.name,
+      null,
+      entityScope,
+      serviceBranchTypes,
+      customerSubTypes,
+      deptCodeById,
+    );
+
+    const departmentIds = parseStringList(dto.departmentIds);
 
     return this.prisma.documentType.create({
       data: {
@@ -83,15 +170,19 @@ export class DocumentTypesService {
         name: dto.name,
         description: dto.description,
         isRequired: dto.isRequired ?? false,
-        sortOrder: dto.sortOrder ?? 0,
+        sortOrder: dto.sortOrder ?? (await this.nextSortOrder()),
         departmentIds,
         serviceTypeIds: dto.serviceTypeIds ?? [],
+        serviceBranchTypes,
+        customerSubTypes,
+        entityScope,
       },
     });
   }
 
   async update(id: string, dto: UpdateDocumentTypeDto) {
     const current = await this.findOne(id);
+    const deptCodeById = await this.buildDeptCodeMap();
 
     if (dto.code) {
       const existing = await this.prisma.documentType.findFirst({
@@ -102,29 +193,45 @@ export class DocumentTypesService {
       }
     }
 
+    const nextScope = (dto.entityScope ?? current.entityScope ?? 'vendor') as DocumentEntityScope;
+    const nextBranchTypes =
+      dto.serviceBranchTypes !== undefined
+        ? parseStringList(dto.serviceBranchTypes)
+        : deriveServiceBranchTypes(current.serviceBranchTypes, current.departmentIds, deptCodeById);
+    const nextSubTypes =
+      dto.customerSubTypes !== undefined
+        ? parseStringList(dto.customerSubTypes)
+        : parseStringList(current.customerSubTypes);
+
+    this.validateScopePayload({
+      entityScope: nextScope,
+      serviceBranchTypes: nextBranchTypes,
+      customerSubTypes: nextSubTypes,
+    });
+
     if (dto.name) {
-      const nextDepartments = dto.departmentIds !== undefined
-        ? parseIdList(dto.departmentIds)
-        : parseIdList(current.departmentIds);
-      const nameConflict = await this.prisma.documentType.findFirst({
-        where: { name: dto.name, NOT: { id } },
-      });
-      if (nameConflict) {
-        const conflictDepartments = parseIdList(nameConflict.departmentIds);
-        const overlaps = nextDepartments.some((deptId) => conflictDepartments.includes(deptId));
-        if (overlaps || conflictDepartments.length === 0) {
-          throw new ConflictException('Bu departmanda aynı isimde başka bir evrak türü zaten mevcut');
-        }
-      }
+      await this.assertNameUnique(
+        dto.name,
+        id,
+        nextScope,
+        nextBranchTypes,
+        nextSubTypes,
+        deptCodeById,
+      );
     }
 
-    const data: UpdateDocumentTypeDto = { ...dto };
+    const data: Record<string, unknown> = { ...dto };
     if (dto.departmentIds !== undefined) {
-      const departmentIds = parseIdList(dto.departmentIds);
-      if (departmentIds.length === 0) {
-        throw new BadRequestException('En az bir departman seçilmelidir');
-      }
-      data.departmentIds = departmentIds;
+      data.departmentIds = parseStringList(dto.departmentIds);
+    }
+    if (dto.serviceBranchTypes !== undefined) {
+      data.serviceBranchTypes = nextBranchTypes;
+    }
+    if (dto.customerSubTypes !== undefined) {
+      data.customerSubTypes = nextSubTypes;
+    }
+    if (dto.entityScope !== undefined) {
+      data.entityScope = nextScope;
     }
 
     return this.prisma.documentType.update({

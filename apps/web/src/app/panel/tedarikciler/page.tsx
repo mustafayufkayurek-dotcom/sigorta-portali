@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,12 +8,21 @@ import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { ContactPhoneField } from '@/components/ContactPhoneField';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import {
+  addAllDistrictsInProvince,
+  isDistrictAreaChecked,
+  toggleDistrictArea,
+} from '@/utils/service-area-helpers';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
 import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { relativeTime } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { validateIBAN } from '@/utils/validators';
 import {
   VENDOR_CATEGORIES,
@@ -32,6 +41,7 @@ import {
   vendorTypeModeBadge,
   formatVendorTypeLabel,
   formatVendorAddress,
+  filterDocumentTypesForCategory,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
   VENDOR_FORM_SECTIONS,
@@ -752,7 +762,7 @@ function VendorRowActionsMenu({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Tedarikçi', defaultWidth: 200, minWidth: 140 },
-  { id: 'type', label: 'Tür / Tip', defaultWidth: 108, minWidth: 100 },
+  { id: 'type', label: 'Tür / Tip', defaultWidth: 118, minWidth: 108 },
   { id: 'contact', label: 'İletişim', defaultWidth: 180, minWidth: 120 },
   { id: 'location', label: 'Konum', defaultWidth: 140, minWidth: 100 },
   { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 96, minWidth: 88 },
@@ -1204,7 +1214,10 @@ export default function VendorsPage() {
 
   const loadDocumentTypes = useCallback(async () => {
     try {
-      const r = await axios.get(`${API}/document-types`, { params: { status: 'active' }, headers: authHeader() });
+      const r = await axios.get(`${API}/document-types`, {
+        params: { status: 'active', entityScope: 'vendor' },
+        headers: authHeader(),
+      });
       setDocumentTypes(r.data.data ?? []);
     } catch {
       setDocumentTypes([]);
@@ -1330,14 +1343,21 @@ export default function VendorsPage() {
   };
 
   const toggleServiceArea = (provinceId: string, districtId?: string | null) => {
-    const key = districtId ? `${provinceId}:${districtId}` : `${provinceId}:`;
-    const exists = serviceAreas.some((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) === key);
-    if (exists) setServiceAreas((p) => p.filter((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) !== key));
-    else setServiceAreas((p) => [...p, { provinceId, districtId: districtId ?? null }]);
+    if (districtId) {
+      setServiceAreas((p) =>
+        toggleDistrictArea(p, provinceId, districtId, serviceDistricts, selectedProvince?.name),
+      );
+      return;
+    }
+    const key = `${provinceId}:`;
+    const exists = serviceAreas.some((sa) => !sa.districtId && `${sa.provinceId}:` === key);
+    if (exists) setServiceAreas((p) => p.filter((sa) => sa.districtId || `${sa.provinceId}:` !== key));
+    else setServiceAreas((p) => [...p, { provinceId, districtId: null }]);
   };
 
-  const addWholeProvince = (prov: Province) => {
-    setServiceAreas((p) => [...p.filter((sa) => sa.provinceId !== prov.id), { provinceId: prov.id, districtId: null }]);
+  const addAllDistrictsForProvince = (prov: Province) => {
+    if (serviceDistricts.length === 0) return;
+    setServiceAreas((p) => addAllDistrictsInProvince(p, prov.id, serviceDistricts, prov.name));
   };
 
   const handleAddVendorType = async () => {
@@ -1659,10 +1679,20 @@ export default function VendorsPage() {
   // Modal sections
   const MODAL_SECTIONS = [...VENDOR_FORM_SECTIONS];
 
-  const otherDocumentTypeId = documentTypes.find((dt) => isOtherDocumentTypeName(dt.name))?.id ?? null;
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: p.id, label: p.name })),
+    [provinces],
+  );
+
+  const scopedDocumentTypes = useMemo(
+    () => filterDocumentTypesForCategory(documentTypes, form.category),
+    [documentTypes, form.category],
+  );
+
+  const otherDocumentTypeId = scopedDocumentTypes.find((dt) => isOtherDocumentTypeName(dt.name))?.id ?? null;
   const vendorAddressLabel = formatVendorAddress(form);
   const docOtherSelected = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
-    || isOtherDocumentTypeName(documentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
+    || isOtherDocumentTypeName(scopedDocumentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
 
   const effectiveVendorType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
   const hizmetMode = form.type ? resolveVendorTypeHizmetMode(effectiveVendorType) : null;
@@ -1765,7 +1795,7 @@ export default function VendorsPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Toplam</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Toplam</p>
               <p className="text-base font-bold text-slate-800 leading-tight tabular-nums">{summary.total}</p>
             </div>
           </div>
@@ -1777,7 +1807,7 @@ export default function VendorsPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Aktif</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Aktif</p>
               <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{summary.activeCount}</p>
             </div>
           </div>
@@ -1789,7 +1819,7 @@ export default function VendorsPage() {
               </svg>
             </div>
             <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Kurumsal</p>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Kurumsal</p>
               <p className="text-base font-bold text-indigo-700 leading-tight tabular-nums">{summary.corporateCount}</p>
             </div>
           </div>
@@ -1806,7 +1836,7 @@ export default function VendorsPage() {
             <input
               type="text"
               autoComplete="off"
-              placeholder="Ad, telefon veya vergi no"
+              placeholder="Ad, Telefon, Vergi No..."
               className="panel-search-input"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -2047,13 +2077,13 @@ export default function VendorsPage() {
                     />
                   </th>
                   <PanelTableTh colId="name" className="table-th">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="type" className="table-th text-center">Tür / Tip</PanelTableTh>
+                  <PanelTableTh colId="type" className="table-th-center">Tür / Tip</PanelTableTh>
                   <PanelTableTh colId="contact" className="table-th">İletişim</PanelTableTh>
                   <PanelTableTh colId="location" className="table-th">Konum</PanelTableTh>
-                  <PanelTableTh colId="jobCount" className="table-th text-center">İş Sayısı</PanelTableTh>
-                  <PanelTableTh colId="lastJob" className="table-th text-center">Son İş</PanelTableTh>
-                  <PanelTableTh colId="contractEnd" className="table-th text-center">Sözleşme Bitiş</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="jobCount" className="table-th-center">İş Sayısı</PanelTableTh>
+                  <PanelTableTh colId="lastJob" className="table-th-center">Son İş</PanelTableTh>
+                  <PanelTableTh colId="contractEnd" className="table-th-center">Sözleşme Bitiş</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
                   <th className="table-th w-32" />
                 </tr>
               </thead>
@@ -2085,11 +2115,13 @@ export default function VendorsPage() {
                       </div>
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="type" className="table-td text-center">
-                    <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
-                      {v.entityType === 'individual' ? Icon.user : Icon.building}
-                      {v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}
-                    </span>
+                  <PanelTableTd colId="type" className="table-td-center">
+                    <div className="flex justify-center">
+                      <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                        {v.entityType === 'individual' ? Icon.user : Icon.building}
+                        {v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}
+                      </span>
+                    </div>
                   </PanelTableTd>
                   <PanelTableTd colId="contact" className="table-td">
                     <div className="space-y-1">
@@ -2107,7 +2139,7 @@ export default function VendorsPage() {
                       <p className="text-xs text-slate-600 flex items-center gap-1">{Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}</p>
                     ) : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="jobCount" className="table-td text-center">
+                  <PanelTableTd colId="jobCount" className="table-td-center">
                     {(v._count?.costEntries ?? 0) > 0 ? (
                       <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                         {v._count.costEntries}
@@ -2116,7 +2148,7 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="lastJob" className="table-td text-center">
+                  <PanelTableTd colId="lastJob" className="table-td-center">
                     {v.lastJobDate ? (
                       <span className="text-xs text-slate-500 whitespace-nowrap" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
                         {relativeTime(v.lastJobDate)}
@@ -2125,7 +2157,7 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="contractEnd" className="table-td text-center">
+                  <PanelTableTd colId="contractEnd" className="table-td-center">
                     {v.contractEndDate ? (() => {
                       const days = contractDaysLeft(v.contractEndDate);
                       const display = isoToDisplayContract(v.contractEndDate);
@@ -2138,7 +2170,7 @@ export default function VendorsPage() {
                       return <span className="text-xs text-slate-600 whitespace-nowrap">{display}</span>;
                     })() : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="status" className="table-td text-center">
+                  <PanelTableTd colId="status" className="table-td-center">
                     <button type="button" onClick={() => handleToggleStatus(v)}
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${v.status === 'active' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${v.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
@@ -2825,55 +2857,63 @@ export default function VendorsPage() {
                   <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
                   <SectionDivider icon={Icon.mapPin} title="Adres Bilgileri" />
                   <div className="grid grid-cols-2 gap-4 mb-2">
-                    <FormField label="İl">
+                    <FormField label={ADDRESS_FIELD.province}>
                       <select className={inp} value={form.cityCode}
                         onChange={(e) => {
                           const prov = STATIC_PROVINCES.find((p) => p.code === e.target.value);
                           setForm((p) => ({ ...p, cityCode: e.target.value, city: prov?.name ?? '', district: '', neighborhood: '' }));
                         }}>
-                        <option value="">İl seçin...</option>
+                        <option value="">{ADDRESS_FIELD.provincePlaceholder}</option>
                         {STATIC_PROVINCES.map((p) => (
                           <option key={p.code} value={p.code}>{p.name}</option>
                         ))}
                       </select>
                     </FormField>
-                    <FormField label="İlçe">
+                    <FormField label={ADDRESS_FIELD.district}>
                       <select className={inp} value={form.district} disabled={!form.cityCode}
                         onChange={(e) => setForm((p) => ({ ...p, district: e.target.value, neighborhood: '' }))}>
-                        <option value="">İlçe seçin...</option>
+                        <option value="">{ADDRESS_FIELD.districtPlaceholder}</option>
                         {(form.cityCode ? (STATIC_DISTRICTS[form.cityCode] ?? []) : []).map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
                       </select>
                     </FormField>
                     <div className="col-span-2">
-                      <FormField label="Mahalle">
-                        <input className={inp} placeholder="Mahalle adı"
+                      <FormField label={ADDRESS_FIELD.neighborhood}>
+                        <NeighborhoodSelect
+                          provinceName={form.city}
+                          districtName={form.district}
                           value={form.neighborhood}
-                          onChange={(e) => setForm((p) => ({ ...p, neighborhood: e.target.value }))} />
+                          onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
+                          inputClassName={inp}
+                        />
                       </FormField>
                     </div>
-                    <FormField label="Cadde / Sokak">
-                      <input className={inp} placeholder="Cadde veya sokak adı"
+                    <FormField label={ADDRESS_FIELD.street}>
+                      <input className={inp} placeholder={ADDRESS_FIELD.streetPlaceholder}
                         value={form.streetName}
-                        onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))} />
+                        onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
+                        onBlur={(e) => {
+                          const v = toTitleCaseTR(e.target.value.trim());
+                          if (v) setForm((p) => ({ ...p, streetName: v }));
+                        }} />
                     </FormField>
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Bina No">
-                        <input className={inp} placeholder="Bina no"
+                      <FormField label={ADDRESS_FIELD.buildingNo}>
+                        <input className={inp} placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
                           value={form.buildingNo}
                           onChange={(e) => setForm((p) => ({ ...p, buildingNo: e.target.value }))} />
                       </FormField>
-                      <FormField label="Daire No">
-                        <input className={inp} placeholder="Daire no"
+                      <FormField label={ADDRESS_FIELD.doorNo}>
+                        <input className={inp} placeholder={ADDRESS_FIELD.doorNoPlaceholder}
                           value={form.doorNo}
                           onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))} />
                       </FormField>
                     </div>
                     <div className="col-span-2">
-                      <FormField label="Açık Adres">
+                      <FormField label={ADDRESS_FIELD.openAddress}>
                         <textarea rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                          placeholder="Mahalle, Cadde, Sokak..." value={form.address}
+                          placeholder={ADDRESS_FIELD.openAddressPlaceholder} value={form.address}
                           onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
                       </FormField>
                     </div>
@@ -2963,35 +3003,35 @@ export default function VendorsPage() {
                   <SectionDivider icon={Icon.mapPin} title="Hizmet Bölgeleri" />
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
                     <div className="flex gap-2 mb-3">
-                      <select className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                      <SearchableSelect
+                        className="flex-1 min-w-0"
+                        options={provinceOptions}
                         value={selectedProvince?.id ?? ''}
-                        onChange={(e) => {
-                          const p = provinces.find((x) => x.id === e.target.value);
+                        onChange={(provinceId) => {
+                          const p = provinces.find((x) => x.id === provinceId);
                           if (p) { setSelectedProvince(p); loadServiceDistricts(p.id); }
                           else { setSelectedProvince(null); setServiceDistricts([]); }
-                        }}>
-                        <option value="">İl seçin...</option>
-                        {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
+                        }}
+                        placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+                        emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+                        inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
                       {selectedProvince && (
-                        <button type="button" onClick={() => addWholeProvince(selectedProvince)}
+                        <button type="button" onClick={() => addAllDistrictsForProvince(selectedProvince)}
                           className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 whitespace-nowrap">
                           Tüm İlçeleri Ekle
                         </button>
                       )}
                     </div>
                     {selectedProvince && serviceDistricts.length > 0 && (
-                      <div className="max-h-28 overflow-y-auto grid grid-cols-3 gap-1.5 mb-3 bg-white rounded-lg p-3 border border-slate-100">
-                        {serviceDistricts.map((d) => {
-                          const checked = serviceAreas.some((sa) => sa.provinceId === selectedProvince.id && sa.districtId === d.id);
-                          return (
-                            <label key={d.id} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-indigo-600">
-                              <input type="checkbox" checked={checked} onChange={() => toggleServiceArea(selectedProvince.id, d.id)} className="rounded accent-indigo-600" />
-                              {d.name}
-                            </label>
-                          );
-                        })}
-                      </div>
+                      <DistrictCheckboxGrid
+                        districts={serviceDistricts}
+                        maxHeightClass="max-h-28"
+                        gridClassName="grid grid-cols-3 gap-1.5"
+                        isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvince.id, districtId)}
+                        onToggle={(districtId) => toggleServiceArea(selectedProvince.id, districtId)}
+                        className="mb-3"
+                      />
                     )}
                     {serviceAreas.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
@@ -3151,95 +3191,97 @@ export default function VendorsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
                   } title="Evrak Yükleme" />
-                  <div className="flex gap-3 items-end flex-wrap mb-2">
-                    <div className="flex-1 min-w-48">
-                      <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
-                      <select
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        value={docSelectedTypeId}
-                        onChange={(e) => {
-                          setDocSelectedTypeId(e.target.value);
-                          setDocCustomType('');
-                        }}
-                      >
-                        <option value="">Seçin...</option>
-                        {documentTypes.map((dt) => (
-                          <option key={dt.id} value={dt.id}>
-                            {dt.name}
-                          </option>
-                        ))}
-                        {!documentTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
-                          <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+                  <div className="space-y-2 mb-2">
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div className="flex-1 min-w-48">
+                        <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
+                        <select
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                          value={docSelectedTypeId}
+                          onChange={(e) => {
+                            setDocSelectedTypeId(e.target.value);
+                            setDocCustomType('');
+                          }}
+                        >
+                          <option value="">Seçin...</option>
+                          {scopedDocumentTypes.map((dt) => (
+                            <option key={dt.id} value={dt.id}>
+                              {dt.name}
+                            </option>
+                          ))}
+                          {!scopedDocumentTypes.some((dt) => isOtherDocumentTypeName(dt.name)) && (
+                            <option value={VENDOR_DOC_OTHER_SELECT}>Diğer</option>
+                          )}
+                        </select>
+                        {docOtherSelected && (
+                          <input
+                            className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                            placeholder="Evrak türünü yazın..."
+                            value={docCustomType}
+                            onChange={(e) => setDocCustomType(e.target.value)}
+                          />
                         )}
-                      </select>
-                      {docOtherSelected && (
+                      </div>
+                      <div className="flex-shrink-0">
                         <input
-                          className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                          placeholder="Evrak türünü yazın..."
-                          value={docCustomType}
-                          onChange={(e) => setDocCustomType(e.target.value)}
+                          type="file"
+                          ref={docFileInputRef}
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !docSelectedTypeId) return;
+                            const isManualOther = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
+                              || isOtherDocumentTypeName(scopedDocumentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
+                            const customLabel = isManualOther ? docCustomType.trim() : '';
+                            if (isManualOther && !customLabel) return;
+                            const typeId = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
+                              ? otherDocumentTypeId
+                              : docSelectedTypeId;
+                            if (!typeId) return;
+                            const dt = scopedDocumentTypes.find((d) => d.id === typeId);
+                            if (!dt) return;
+                            const displayName = isManualOther ? customLabel : dt.name;
+                            setPendingDocs((p) => [...p, {
+                              id: `${Date.now()}-${Math.random()}`,
+                              file,
+                              documentTypeId: typeId,
+                              documentTypeName: displayName,
+                              customLabel: isManualOther ? customLabel : undefined,
+                            }]);
+                            setDocSelectedTypeId('');
+                            setDocCustomType('');
+                            if (e.target) e.target.value = '';
+                          }}
                         />
-                      )}
-                      {documentTypes.length === 0 && (
-                        <p className="text-xs text-amber-600 mt-1.5">
-                          Henüz evrak türü tanımlı değil.{' '}
-                          <Link href="/panel/ayarlar/evrak-turleri" className="underline font-medium">
-                            Ayarlar → Evrak Türleri
-                          </Link>
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        type="file"
-                        ref={docFileInputRef}
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file || !docSelectedTypeId) return;
-                          const isManualOther = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
-                            || isOtherDocumentTypeName(documentTypes.find((dt) => dt.id === docSelectedTypeId)?.name ?? '');
-                          const customLabel = isManualOther ? docCustomType.trim() : '';
-                          if (isManualOther && !customLabel) return;
-                          const typeId = docSelectedTypeId === VENDOR_DOC_OTHER_SELECT
-                            ? otherDocumentTypeId
-                            : docSelectedTypeId;
-                          if (!typeId) return;
-                          const dt = documentTypes.find((d) => d.id === typeId);
-                          if (!dt) return;
-                          const displayName = isManualOther ? customLabel : dt.name;
-                          setPendingDocs((p) => [...p, {
-                            id: `${Date.now()}-${Math.random()}`,
-                            file,
-                            documentTypeId: typeId,
-                            documentTypeName: displayName,
-                            customLabel: isManualOther ? customLabel : undefined,
-                          }]);
-                          setDocSelectedTypeId('');
-                          setDocCustomType('');
-                          if (e.target) e.target.value = '';
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!docSelectedTypeId) return;
-                          if (docOtherSelected) {
-                            if (docCustomType.trim() && otherDocumentTypeId) docFileInputRef.current?.click();
-                            return;
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!docSelectedTypeId) return;
+                            if (docOtherSelected) {
+                              if (docCustomType.trim() && otherDocumentTypeId) docFileInputRef.current?.click();
+                              return;
+                            }
+                            docFileInputRef.current?.click();
+                          }}
+                          disabled={
+                            !docSelectedTypeId
+                            || (docOtherSelected && (!docCustomType.trim() || !otherDocumentTypeId))
                           }
-                          docFileInputRef.current?.click();
-                        }}
-                        disabled={
-                          !docSelectedTypeId
-                          || (docOtherSelected && (!docCustomType.trim() || !otherDocumentTypeId))
-                        }
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium"
-                      >
-                        📎 Dosya Seç
-                      </button>
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium"
+                        >
+                          Dosya Seç
+                        </button>
+                      </div>
                     </div>
+                    {scopedDocumentTypes.length === 0 && (
+                      <p className="text-xs text-amber-600">
+                        Henüz evrak türü tanımlı değil.{' '}
+                        <Link href="/panel/ayarlar/evrak-turleri" className="underline font-medium">
+                          Ayarlar → Evrak Türleri
+                        </Link>
+                      </p>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 mb-3">Desteklenen: PDF, JPG, PNG, Word, Excel — Maks. 20 MB</p>
 

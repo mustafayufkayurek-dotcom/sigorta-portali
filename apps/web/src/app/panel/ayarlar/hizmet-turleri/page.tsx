@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { MERIDYEN_SERVICE_BRANCH_SCOPE } from '@/constants/service-branch-scope';
+import { sortByNameTR } from '@/utils/text-helpers';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
@@ -139,9 +140,11 @@ export default function HizmetTurleriPage() {
     finally { setDeleting(false); }
   };
 
-  const filtered = items
-    .filter((b) => b.type === activeTab)
-    .filter((b) => !search.trim() || b.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = sortByNameTR(
+    items
+      .filter((b) => b.type === activeTab)
+      .filter((b) => !search.trim() || b.name.toLowerCase().includes(search.toLowerCase())),
+  );
 
   const tabCounts = {
     hasar: items.filter((b) => b.type === 'hasar').length,

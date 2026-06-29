@@ -10,8 +10,17 @@ export class DocumentTypesController {
   async findAll(
     @Query('status') status?: string,
     @Query('departmentId') departmentId?: string,
+    @Query('entityScope') entityScope?: 'vendor' | 'customer',
+    @Query('serviceBranchType') serviceBranchType?: 'hasar' | 'acil_yardim',
+    @Query('customerSubType') customerSubType?: string,
   ) {
-    return this.service.findAll({ status, departmentId });
+    return this.service.findAll({
+      status,
+      departmentId,
+      entityScope,
+      serviceBranchType,
+      customerSubType,
+    });
   }
 
   @Get(':id')

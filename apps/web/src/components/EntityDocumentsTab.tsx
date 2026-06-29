@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
+import {
+  filterDocumentTypesForCustomerSubType,
+  filterDocumentTypesForVendorCategory,
+} from '@/utils/document-type-scope';
 
 const DwgDxfViewerModal = dynamic(
   () => import('./DwgDxfViewerModal').then((m) => m.DwgDxfViewerModal),
@@ -112,6 +116,10 @@ type Props = {
   entityId: string;
   /** For mode='entity' only: 'customer' | 'insurance_company' */
   entityType?: string;
+  /** Müşteri alt tipi — evrak türü filtresi (insured, sigorta_sirketi, …) */
+  customerSubType?: string | null;
+  /** Tedarikçi hizmet kategorisi — hasar | acil | her_ikisi */
+  vendorCategory?: string | null;
   /** Optional section card title */
   title?: string;
 };
@@ -148,7 +156,14 @@ function ActionBtn({
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export function EntityDocumentsTab({ mode, entityId, entityType, title = 'Evraklar' }: Props) {
+export function EntityDocumentsTab({
+  mode,
+  entityId,
+  entityType,
+  customerSubType,
+  vendorCategory,
+  title = 'Evraklar',
+}: Props) {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,10 +203,26 @@ export function EntityDocumentsTab({ mode, entityId, entityType, title = 'Evrakl
 
   useEffect(() => {
     loadDocuments();
-    axios.get(`${API}/document-types?status=active`, { headers: authHeader() })
-      .then((r) => setDocTypes(r.data.data || []))
+    const params: Record<string, string> = { status: 'active' };
+    if (mode === 'entity') {
+      params.entityScope = 'customer';
+      if (customerSubType) params.customerSubType = customerSubType;
+      else if (entityType === 'insurance_company') params.customerSubType = 'sigorta_sirketi';
+    } else {
+      params.entityScope = 'vendor';
+    }
+    axios.get(`${API}/document-types`, { headers: authHeader(), params })
+      .then((r) => {
+        let rows = r.data.data || [];
+        if (mode === 'entity') {
+          rows = filterDocumentTypesForCustomerSubType(rows, customerSubType ?? (entityType === 'insurance_company' ? 'sigorta_sirketi' : null));
+        } else if (vendorCategory) {
+          rows = filterDocumentTypesForVendorCategory(rows, vendorCategory);
+        }
+        setDocTypes(rows);
+      })
       .catch(console.error);
-  }, [loadDocuments]);
+  }, [loadDocuments, mode, entityType, customerSubType, vendorCategory]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

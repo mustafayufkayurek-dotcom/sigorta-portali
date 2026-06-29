@@ -5,6 +5,9 @@ import Link from 'next/link';
 import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
@@ -649,7 +652,7 @@ export default function AdjustersPage() {
 
                   <SectionTitle title="Adres Bilgileri" />
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField label="İl">
+                    <FormField label={ADDRESS_FIELD.province}>
                       <select
                         className={inp}
                         value={form.cityCode}
@@ -664,66 +667,71 @@ export default function AdjustersPage() {
                           }));
                         }}
                       >
-                        <option value="">İl Seçin...</option>
+                        <option value="">{ADDRESS_FIELD.provincePlaceholder}</option>
                         {STATIC_PROVINCES.map((prov) => (
                           <option key={prov.code} value={prov.code}>{prov.name}</option>
                         ))}
                       </select>
                     </FormField>
-                    <FormField label="İlçe">
+                    <FormField label={ADDRESS_FIELD.district}>
                       <select
                         className={inp}
                         value={form.district}
                         disabled={!form.cityCode}
                         onChange={(e) => setForm((p) => ({ ...p, district: e.target.value, neighborhood: '' }))}
                       >
-                        <option value="">İlçe Seçin...</option>
+                        <option value="">{ADDRESS_FIELD.districtPlaceholder}</option>
                         {currentDistricts.map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
                       </select>
                     </FormField>
                     <div className="col-span-2">
-                      <FormField label="Mahalle">
-                        <input
-                          className={inp}
-                          placeholder="Mahalle adı"
+                      <FormField label={ADDRESS_FIELD.neighborhood}>
+                        <NeighborhoodSelect
+                          provinceName={form.city}
+                          districtName={form.district}
                           value={form.neighborhood}
-                          onChange={(e) => setForm((p) => ({ ...p, neighborhood: e.target.value }))}
+                          onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
+                          inputClassName={inp}
                         />
                       </FormField>
                     </div>
-                    <FormField label="Cadde / Sokak">
+                    <FormField label={ADDRESS_FIELD.street}>
                       <input
                         className={inp}
-                        placeholder="Cadde veya sokak adı"
+                        placeholder={ADDRESS_FIELD.streetPlaceholder}
                         value={form.streetName}
                         onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
+                        onBlur={(e) => {
+                          const v = toTitleCaseTR(e.target.value.trim());
+                          if (v) setForm((p) => ({ ...p, streetName: v }));
+                        }}
                       />
                     </FormField>
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField label="Bina No">
+                      <FormField label={ADDRESS_FIELD.buildingNo}>
                         <input
                           className={inp}
-                          placeholder="Bina no"
+                          placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
                           value={form.buildingNo}
                           onChange={(e) => setForm((p) => ({ ...p, buildingNo: e.target.value }))}
                         />
                       </FormField>
-                      <FormField label="Daire No">
+                      <FormField label={ADDRESS_FIELD.doorNo}>
                         <input
                           className={inp}
-                          placeholder="Daire no"
+                          placeholder={ADDRESS_FIELD.doorNoPlaceholder}
                           value={form.doorNo}
                           onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))}
                         />
                       </FormField>
                     </div>
                     <div className="col-span-2">
-                      <FormField label="Açık Adres">
+                      <FormField label={ADDRESS_FIELD.openAddress}>
                         <input
                           className={inp}
-                          placeholder="Cadde, sokak, bina no..."
+                          placeholder={ADDRESS_FIELD.openAddressPlaceholder}
                           value={form.address}
                           onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
                         />

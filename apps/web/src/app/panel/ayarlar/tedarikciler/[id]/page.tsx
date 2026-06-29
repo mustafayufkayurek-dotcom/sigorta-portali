@@ -1,11 +1,19 @@
 'use client';
 
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { formatVendorTypeLabel } from '@/utils/vendor-form-helpers';
+import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import {
+  addAllDistrictsInProvince,
+  isDistrictAreaChecked,
+  toggleDistrictArea,
+} from '@/utils/service-area-helpers';
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
@@ -139,21 +147,26 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const toggleArea = (provinceId: string, districtId: string | null) => {
-    const key = districtId ? `${provinceId}:${districtId}` : `${provinceId}:`;
-    const exists = serviceAreas.some((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) === key);
+    if (districtId) {
+      setServiceAreas((prev) =>
+        toggleDistrictArea(prev, provinceId, districtId, districts, selectedProvince?.name),
+      );
+      return;
+    }
+    const key = `${provinceId}:`;
+    const exists = serviceAreas.some((sa) => !sa.districtId && `${sa.provinceId}:` === key);
     if (exists) {
-      setServiceAreas((prev) => prev.filter((sa) => (sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`) !== key));
+      setServiceAreas((prev) => prev.filter((sa) => sa.districtId || `${sa.provinceId}:` !== key));
     } else {
-      setServiceAreas((prev) => [...prev, { provinceId, districtId }]);
+      setServiceAreas((prev) => [...prev, { provinceId, districtId: null }]);
     }
   };
 
-  const addWholeProvince = () => {
-    if (!selectedProvince) return;
-    setServiceAreas((prev) => [
-      ...prev.filter((sa) => sa.provinceId !== selectedProvince.id),
-      { provinceId: selectedProvince.id, districtId: null },
-    ]);
+  const addAllDistrictsForProvince = () => {
+    if (!selectedProvince || districts.length === 0) return;
+    setServiceAreas((prev) =>
+      addAllDistrictsInProvince(prev, selectedProvince.id, districts, selectedProvince.name),
+    );
   };
 
   const handleSave = async () => {
@@ -163,6 +176,11 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
       onUpdate();
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
+
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: p.id, label: p.name })),
+    [provinces],
+  );
 
   const groupedAreas = provinces.filter((p) => serviceAreas.some((sa) => sa.provinceId === p.id));
 
@@ -191,32 +209,31 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
 
       <SectionCard title="Bölge Ekle / Güncelle">
         <div className="flex gap-2 mb-3">
-          <select
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+          <SearchableSelect
+            className="flex-1 min-w-0"
+            options={provinceOptions}
             value={selectedProvince?.id ?? ''}
-            onChange={(e) => handleSelectProvince(e.target.value)}
-          >
-            <option value="">İl Seçin...</option>
-            {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+            onChange={handleSelectProvince}
+            placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+            emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+            inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          />
           {selectedProvince && (
-            <button type="button" onClick={addWholeProvince} className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-100">
+            <button type="button" onClick={addAllDistrictsForProvince} className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-100">
               Tüm İlçeleri Ekle
             </button>
           )}
         </div>
         {selectedProvince && districts.length > 0 && (
-          <div className="max-h-32 overflow-y-auto grid grid-cols-3 gap-1 mb-3">
-            {districts.map((d) => {
-              const checked = serviceAreas.some((sa) => sa.provinceId === selectedProvince.id && sa.districtId === d.id);
-              return (
-                <label key={d.id} className="flex items-center gap-1 text-xs text-slate-600 cursor-pointer hover:text-blue-600">
-                  <input type="checkbox" checked={checked} onChange={() => toggleArea(selectedProvince.id, d.id)} className="rounded" />
-                  {d.name}
-                </label>
-              );
-            })}
-          </div>
+          <DistrictCheckboxGrid
+            districts={districts}
+            maxHeightClass="max-h-32"
+            gridClassName="grid grid-cols-3 gap-1"
+            accentClass="accent-blue-600"
+            isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvince.id, districtId)}
+            onToggle={(districtId) => toggleArea(selectedProvince.id, districtId)}
+            className="mb-3"
+          />
         )}
         {serviceAreas.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">

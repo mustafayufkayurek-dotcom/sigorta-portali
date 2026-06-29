@@ -77,3 +77,12 @@ export function normalizeSearchTR(s: string): string {
     .toLocaleLowerCase('tr-TR')
     .replace(/ı/g, 'i');
 }
+
+/** Türkçe alfabetik sıralama */
+export function sortCompareTR(a: string, b: string): number {
+  return a.localeCompare(b, 'tr', { sensitivity: 'base' });
+}
+
+export function sortByNameTR<T extends { name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => sortCompareTR(a.name, b.name));
+}

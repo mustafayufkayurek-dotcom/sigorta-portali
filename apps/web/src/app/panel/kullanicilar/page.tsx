@@ -8,12 +8,21 @@
  * docs/product/UI_GUARDRAIL_CHECKLIST.md
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
 import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
+import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import {
+  addAllDistrictsInProvince,
+  addWholeProvinceEntry,
+  isDistrictAreaChecked,
+  toggleDistrictArea,
+} from '@/utils/service-area-helpers';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
@@ -506,6 +515,10 @@ export default function KullanicilarPage() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [districts, setDistricts] = useState<District[]>([]);
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: p.id, label: p.name })),
+    [provinces],
+  );
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('active');
@@ -952,23 +965,26 @@ export default function KullanicilarPage() {
 
   const toggleServiceArea = (provinceId: string, districtId: string | null) => {
     const province = provinces.find((item) => item.id === provinceId);
-    const district = districtId ? districts.find((item) => item.id === districtId) : null;
-    const key = `${provinceId}:${districtId ?? ''}`;
+    if (districtId) {
+      setForm((prev) => ({
+        ...prev,
+        serviceAreas: toggleDistrictArea(
+          prev.serviceAreas,
+          provinceId,
+          districtId,
+          districts,
+          province?.name,
+        ) as ServiceAreaSelection[],
+      }));
+      return;
+    }
     setForm((prev) => {
-      const exists = prev.serviceAreas.some((item) => `${item.provinceId}:${item.districtId ?? ''}` === key);
+      const hasWhole = prev.serviceAreas.some((sa) => sa.provinceId === provinceId && !sa.districtId);
       return {
         ...prev,
-        serviceAreas: exists
-          ? prev.serviceAreas.filter((item) => `${item.provinceId}:${item.districtId ?? ''}` !== key)
-          : [
-              ...prev.serviceAreas.filter((item) => districtId || item.provinceId !== provinceId),
-              {
-                provinceId,
-                districtId,
-                provinceName: province?.name,
-                districtName: district?.name ?? null,
-              },
-            ],
+        serviceAreas: hasWhole
+          ? prev.serviceAreas.filter((sa) => !(sa.provinceId === provinceId && !sa.districtId))
+          : addWholeProvinceEntry(prev.serviceAreas, provinceId, province?.name) as ServiceAreaSelection[],
       };
     });
   };
@@ -978,21 +994,18 @@ export default function KullanicilarPage() {
     toggleServiceArea(selectedProvinceId, null);
   };
 
-  const addAllDistrictsInProvince = () => {
+  const addAllDistrictsInProvinceHandler = () => {
     if (!selectedProvinceId || districts.length === 0) return;
     const province = provinces.find((item) => item.id === selectedProvinceId);
-    setForm((prev) => {
-      const withoutProvinceDistricts = prev.serviceAreas.filter(
-        (area) => !(area.provinceId === selectedProvinceId && area.districtId),
-      );
-      const districtEntries = districts.map((district) => ({
-        provinceId: selectedProvinceId,
-        districtId: district.id,
-        provinceName: province?.name,
-        districtName: district.name,
-      }));
-      return { ...prev, serviceAreas: [...withoutProvinceDistricts, ...districtEntries] };
-    });
+    setForm((prev) => ({
+      ...prev,
+      serviceAreas: addAllDistrictsInProvince(
+        prev.serviceAreas,
+        selectedProvinceId,
+        districts,
+        province?.name,
+      ) as ServiceAreaSelection[],
+    }));
   };
 
   // ── Seçim işlemleri ───────────────────────────────────────────────────────
@@ -2042,21 +2055,18 @@ export default function KullanicilarPage() {
                 {!form.countrywide && (
                   <div className="rounded-xl border border-slate-200 bg-white p-3">
                     <div className="mb-3 flex gap-2">
-                      <select
+                      <SearchableSelect
+                        className="flex-1 min-w-0"
+                        options={provinceOptions}
                         value={selectedProvinceId}
-                        onChange={(e) => {
-                          setSelectedProvinceId(e.target.value);
-                          loadDistricts(e.target.value);
+                        onChange={(provinceId) => {
+                          setSelectedProvinceId(provinceId);
+                          loadDistricts(provinceId);
                         }}
-                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                      >
-                        <option value="">İl seçin...</option>
-                        {provinces.map((province) => (
-                          <option key={province.id} value={province.id}>
-                            {province.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+                        emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+                        inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
                           {selectedProvinceId && (
                             <>
                               <button
@@ -2069,7 +2079,7 @@ export default function KullanicilarPage() {
                               {districts.length > 0 && (
                                 <button
                                   type="button"
-                                  onClick={addAllDistrictsInProvince}
+                                  onClick={addAllDistrictsInProvinceHandler}
                                   className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
                                 >
                                   Tüm İlçeler
@@ -2079,19 +2089,14 @@ export default function KullanicilarPage() {
                           )}
                     </div>
                     {selectedProvinceId && districts.length > 0 && (
-                      <div className="grid max-h-36 gap-2 overflow-y-auto rounded-lg bg-slate-50 p-2 sm:grid-cols-3">
-                        {districts.map((district) => (
-                          <label key={district.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <input
-                              type="checkbox"
-                              checked={form.serviceAreas.some((area) => area.provinceId === selectedProvinceId && area.districtId === district.id)}
-                              onChange={() => toggleServiceArea(selectedProvinceId, district.id)}
-                              className="rounded border-slate-300 text-blue-600"
-                            />
-                            {district.name}
-                          </label>
-                        ))}
-                      </div>
+                      <DistrictCheckboxGrid
+                        districts={districts}
+                        maxHeightClass="max-h-36"
+                        gridClassName="grid gap-2 sm:grid-cols-3"
+                        accentClass="accent-blue-600"
+                        isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
+                        onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
+                      />
                     )}
                     {form.serviceAreas.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2202,21 +2207,18 @@ export default function KullanicilarPage() {
 	                    {!form.countrywide && (
 	                      <div className="rounded-xl border border-slate-200 bg-white p-3">
 	                        <div className="mb-3 flex gap-2">
-	                          <select
+	                          <SearchableSelect
+	                            className="flex-1 min-w-0"
+	                            options={provinceOptions}
 	                            value={selectedProvinceId}
-	                            onChange={(e) => {
-	                              setSelectedProvinceId(e.target.value);
-	                              loadDistricts(e.target.value);
+	                            onChange={(provinceId) => {
+	                              setSelectedProvinceId(provinceId);
+	                              loadDistricts(provinceId);
 	                            }}
-	                            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-	                          >
-	                            <option value="">İl seçin...</option>
-	                            {provinces.map((province) => (
-	                              <option key={province.id} value={province.id}>
-	                                {province.name}
-	                              </option>
-	                            ))}
-	                          </select>
+	                            placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+	                            emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+	                            inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+	                          />
                           {selectedProvinceId && (
                             <>
                               <button
@@ -2229,7 +2231,7 @@ export default function KullanicilarPage() {
                               {districts.length > 0 && (
                                 <button
                                   type="button"
-                                  onClick={addAllDistrictsInProvince}
+                                  onClick={addAllDistrictsInProvinceHandler}
                                   className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
                                 >
                                   Tüm İlçeler
@@ -2239,19 +2241,14 @@ export default function KullanicilarPage() {
                           )}
 	                        </div>
 	                        {selectedProvinceId && districts.length > 0 && (
-	                          <div className="grid max-h-36 gap-2 overflow-y-auto rounded-lg bg-slate-50 p-2 sm:grid-cols-3">
-	                            {districts.map((district) => (
-	                              <label key={district.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-	                                <input
-	                                  type="checkbox"
-	                                  checked={form.serviceAreas.some((area) => area.provinceId === selectedProvinceId && area.districtId === district.id)}
-	                                  onChange={() => toggleServiceArea(selectedProvinceId, district.id)}
-	                                  className="rounded border-slate-300 text-blue-600"
-	                                />
-	                                {district.name}
-	                              </label>
-	                            ))}
-	                          </div>
+	                          <DistrictCheckboxGrid
+	                            districts={districts}
+	                            maxHeightClass="max-h-36"
+	                            gridClassName="grid gap-2 sm:grid-cols-3"
+	                            accentClass="accent-blue-600"
+	                            isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
+	                            onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
+	                          />
 	                        )}
 	                        {form.serviceAreas.length > 0 && (
 	                          <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2377,21 +2374,18 @@ export default function KullanicilarPage() {
                   {!form.countrywide && (
                     <div className="rounded-xl border border-slate-200 bg-white p-3">
                       <div className="mb-3 flex gap-2">
-                        <select
+                        <SearchableSelect
+                          className="flex-1 min-w-0"
+                          options={provinceOptions}
                           value={selectedProvinceId}
-                          onChange={(e) => {
-                            setSelectedProvinceId(e.target.value);
-                            loadDistricts(e.target.value);
+                          onChange={(provinceId) => {
+                            setSelectedProvinceId(provinceId);
+                            loadDistricts(provinceId);
                           }}
-                          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                        >
-                          <option value="">İl seçin...</option>
-                          {provinces.map((province) => (
-                            <option key={province.id} value={province.id}>
-                              {province.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+                          emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+                          inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                        />
                           {selectedProvinceId && (
                             <>
                               <button
@@ -2404,7 +2398,7 @@ export default function KullanicilarPage() {
                               {districts.length > 0 && (
                                 <button
                                   type="button"
-                                  onClick={addAllDistrictsInProvince}
+                                  onClick={addAllDistrictsInProvinceHandler}
                                   className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
                                 >
                                   Tüm İlçeler
@@ -2414,19 +2408,14 @@ export default function KullanicilarPage() {
                           )}
                       </div>
                       {selectedProvinceId && districts.length > 0 && (
-                        <div className="grid max-h-36 gap-2 overflow-y-auto rounded-lg bg-slate-50 p-2 sm:grid-cols-3">
-                          {districts.map((district) => (
-                            <label key={district.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-                              <input
-                                type="checkbox"
-                                checked={form.serviceAreas.some((area) => area.provinceId === selectedProvinceId && area.districtId === district.id)}
-                                onChange={() => toggleServiceArea(selectedProvinceId, district.id)}
-                                className="rounded border-slate-300 text-blue-600"
-                              />
-                              {district.name}
-                            </label>
-                          ))}
-                        </div>
+                        <DistrictCheckboxGrid
+                          districts={districts}
+                          maxHeightClass="max-h-36"
+                          gridClassName="grid gap-2 sm:grid-cols-3"
+                          accentClass="accent-blue-600"
+                          isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
+                          onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
+                        />
                       )}
                       {form.serviceAreas.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-1.5">

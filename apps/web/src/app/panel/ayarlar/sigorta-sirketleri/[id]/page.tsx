@@ -126,6 +126,7 @@ export default function SigortaSirketiDetayPage() {
           mode="entity"
           entityType="insurance_company"
           entityId={id!}
+          customerSubType="sigorta_sirketi"
           title="Evraklar"
         />
       )}

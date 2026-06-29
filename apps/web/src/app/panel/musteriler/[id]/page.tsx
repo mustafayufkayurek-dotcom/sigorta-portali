@@ -7,6 +7,9 @@ import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE } from '@/utils/customer-form-helpers';
 import {
@@ -185,7 +188,15 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
             ) : null} />
             <InfoRow label="İl" value={customer.city} />
             <InfoRow label="İlçe" value={customer.district} />
-            <InfoRow label="Adres" value={customer.address} className="col-span-2" />
+            {customer.neighborhood && <InfoRow label={ADDRESS_FIELD.neighborhood} value={customer.neighborhood} />}
+            {customer.streetName && <InfoRow label={ADDRESS_FIELD.street} value={customer.streetName} />}
+            {(customer.buildingNo || customer.doorNo) && (
+              <InfoRow
+                label="Bina / Daire"
+                value={[customer.buildingNo && `No: ${customer.buildingNo}`, customer.doorNo && `D: ${customer.doorNo}`].filter(Boolean).join(' · ')}
+              />
+            )}
+            <InfoRow label={ADDRESS_FIELD.openAddress} value={customer.address} className="col-span-2" />
           </div>
           {customer.latitude != null && customer.longitude != null ? (
             <div className="mt-4 pt-4 border-t border-slate-50">
@@ -757,16 +768,24 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
 // ── Edit Modal ─────────────────────────────────────────────────────────────────
 function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onClose: () => void; onSaved: () => void }) {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
+  const matchedProv = STATIC_PROVINCES.find((p) => p.name === customer.city);
+  const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30';
   const [form, setForm] = useState({
     firstName: customer.firstName ?? '',
     lastName: customer.lastName ?? '',
     companyName: customer.companyName ?? '',
     phone: customer.phone ?? '',
     email: customer.email ?? '',
+    cityCode: matchedProv?.code ?? '',
     city: customer.city ?? '',
     district: customer.district ?? '',
+    neighborhood: customer.neighborhood ?? '',
+    streetName: customer.streetName ?? '',
+    buildingNo: customer.buildingNo ?? '',
+    doorNo: customer.doorNo ?? '',
     address: customer.address ?? '',
   });
+  const currentDistricts = form.cityCode ? (STATIC_DISTRICTS[form.cityCode] ?? []) : [];
   const [locationCoords, setLocationCoords] = useState<LatLng | null>(
     customer.latitude != null && customer.longitude != null
       ? { lat: customer.latitude, lng: customer.longitude }
@@ -778,7 +797,15 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addressLabel = [form.address, form.district, form.city].filter(Boolean).join(', ');
+  const addressLabel = [
+    form.neighborhood,
+    form.streetName,
+    form.buildingNo ? `No: ${form.buildingNo}` : '',
+    form.doorNo ? `D: ${form.doorNo}` : '',
+    form.address,
+    form.district,
+    form.city,
+  ].filter(Boolean).join(', ');
 
   const handleGeocodeAddress = async () => {
     const query = addressLabel.trim();
@@ -806,8 +833,26 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
     setSaving(true);
     setError(null);
     try {
+      const addressParts = [
+        form.neighborhood,
+        form.streetName,
+        form.buildingNo ? `No: ${form.buildingNo}` : '',
+        form.doorNo ? `D: ${form.doorNo}` : '',
+      ].filter(Boolean);
+      const computedAddress = addressParts.length > 0 ? addressParts.join(' ') : (form.address || null);
       await axios.patch(`${API}/customers/${customer.id}`, {
-        ...form,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        companyName: form.companyName,
+        phone: form.phone,
+        email: form.email,
+        city: form.city || null,
+        district: form.district || null,
+        neighborhood: form.neighborhood || null,
+        streetName: form.streetName || null,
+        buildingNo: form.buildingNo || null,
+        doorNo: form.doorNo || null,
+        address: computedAddress,
         latitude: locationCoords?.lat ?? null,
         longitude: locationCoords?.lng ?? null,
       }, { headers: authHeader() });
@@ -868,20 +913,63 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">İl</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
+                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.province}</label>
+                <select className={inp} value={form.cityCode}
+                  onChange={(e) => {
+                    const prov = STATIC_PROVINCES.find((p) => p.code === e.target.value);
+                    setForm((p) => ({ ...p, cityCode: e.target.value, city: prov?.name ?? '', district: '', neighborhood: '' }));
+                  }}>
+                  <option value="">{ADDRESS_FIELD.provincePlaceholder}</option>
+                  {STATIC_PROVINCES.map((p) => (
+                    <option key={p.code} value={p.code}>{p.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">İlçe</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  value={form.district} onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))} />
+                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.district}</label>
+                <select className={inp} value={form.district} disabled={!form.cityCode}
+                  onChange={(e) => setForm((p) => ({ ...p, district: e.target.value, neighborhood: '' }))}>
+                  <option value="">{ADDRESS_FIELD.districtPlaceholder}</option>
+                  {currentDistricts.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Adres</label>
-              <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none"
-                rows={2} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
+              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.neighborhood}</label>
+              <NeighborhoodSelect
+                provinceName={form.city}
+                districtName={form.district}
+                value={form.neighborhood}
+                onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
+                inputClassName={inp}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.street}</label>
+              <input className={inp} placeholder={ADDRESS_FIELD.streetPlaceholder}
+                value={form.streetName}
+                onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
+                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, streetName: v })); }} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.buildingNo}</label>
+                <input className={inp} placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
+                  value={form.buildingNo} onChange={(e) => setForm((p) => ({ ...p, buildingNo: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.doorNo}</label>
+                <input className={inp} placeholder={ADDRESS_FIELD.doorNoPlaceholder}
+                  value={form.doorNo} onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.openAddress}</label>
+              <textarea className={`${inp} resize-none`}
+                rows={2} placeholder={ADDRESS_FIELD.openAddressPlaceholder}
+                value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
             </div>
 
             <div className="pt-1 border-t border-slate-100">
@@ -1122,7 +1210,13 @@ export default function CustomerDetailPage() {
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
       {activeTab === 'evraklar' && (
-        <EntityDocumentsTab mode="entity" entityType="customer" entityId={id!} title="Müşteri Evrakları" />
+        <EntityDocumentsTab
+          mode="entity"
+          entityType="customer"
+          entityId={id!}
+          customerSubType={customer.subType}
+          title="Müşteri Evrakları"
+        />
       )}
       {activeTab === 'analiz' && <CustomerAnalizTab customerId={id!} />}
 

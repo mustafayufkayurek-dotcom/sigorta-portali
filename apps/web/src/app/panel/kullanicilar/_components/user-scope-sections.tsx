@@ -1,5 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
+import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { ADDRESS_FIELD } from '@/constants/address-fields';
+import { isDistrictAreaChecked } from '@/utils/service-area-helpers';
 import { ScopeValidationErrors } from '../_lib/user-scope-validation';
 import { RoleScopeRules, ScopeFormState, isRequired, isVisible } from '../_lib/user-scope-rules';
 
@@ -41,6 +46,7 @@ interface Props {
   onScopeChange: (field: keyof ScopeFormState, value: any) => void;
   onToggleWorkflow: (value: string) => void;
   onToggleServiceArea: (provinceId: string, districtId: string | null) => void;
+  /** Tüm ilçeleri tek tek seçer — checkbox'ların işaretlenmesi için addAllDistrictsInProvince kullanın */
   onAddWholeProvince: () => void;
 }
 
@@ -70,6 +76,10 @@ export function UserScopeSections({
   onAddWholeProvince,
 }: Props) {
   const selectedDepartments = departments.filter((item) => formScope.departmentIds.includes(item.id));
+  const provinceOptions = useMemo(
+    () => provinces.map((p) => ({ value: p.id, label: p.name })),
+    [provinces],
+  );
 
   return (
     <div className="space-y-6">
@@ -252,18 +262,15 @@ export function UserScopeSections({
                 {isRequired(rules.regionScope) && <span className="text-red-500 ml-0.5">*</span>}
               </label>
               <div className="flex gap-2 mb-3">
-                <select
-                  className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"
+                <SearchableSelect
+                  className="flex-1 min-w-0"
+                  options={provinceOptions}
                   value={selectedProvinceId}
-                  onChange={(e) => onSelectedProvinceChange(e.target.value)}
-                >
-                  <option value="">İl seçin...</option>
-                  {provinces.map((province) => (
-                    <option key={province.id} value={province.id}>
-                      {province.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={onSelectedProvinceChange}
+                  placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
+                  emptyText={ADDRESS_FIELD.provinceSearchEmpty}
+                  inputClassName="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                />
                 {selectedProvinceId && (
                   <button
                     type="button"
@@ -276,24 +283,14 @@ export function UserScopeSections({
               </div>
 
               {selectedProvinceId && districts.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  {districts.map((district) => {
-                    const checked = formScope.serviceAreas.some(
-                      (item) => item.provinceId === selectedProvinceId && item.districtId === district.id,
-                    );
-                    return (
-                      <label key={district.id} className="flex items-center gap-2 text-xs text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => onToggleServiceArea(selectedProvinceId, district.id)}
-                          className="rounded border-slate-300 text-blue-600"
-                        />
-                        {district.name}
-                      </label>
-                    );
-                  })}
-                </div>
+                <DistrictCheckboxGrid
+                  districts={districts}
+                  maxHeightClass="max-h-48"
+                  gridClassName="grid gap-2 sm:grid-cols-3"
+                  accentClass="accent-blue-600"
+                  isChecked={(districtId) => isDistrictAreaChecked(formScope.serviceAreas, selectedProvinceId, districtId)}
+                  onToggle={(districtId) => onToggleServiceArea(selectedProvinceId, districtId)}
+                />
               )}
 
               {formScope.serviceAreas.length > 0 && (

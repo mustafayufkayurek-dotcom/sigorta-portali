@@ -364,7 +364,7 @@ export function PanelTableTd({ colId, className = '', children, title }: PanelTa
   const width = ctx?.widths.getWidth(colId);
   return (
     <td
-      className={`truncate ${className}`}
+      className={`${className.includes('table-td-center') ? '' : 'truncate'} ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >

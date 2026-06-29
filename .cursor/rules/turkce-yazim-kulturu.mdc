@@ -24,6 +24,7 @@ Meridyen panelinde kullanıcıya görünen metinler **Türkçe Title Case** (ba�
 2. **Serbest metin (açıklama, not, ad):** Kayıt öncesi ve `onBlur` sırasında `toTitleCaseTR()` (`@/utils/text-helpers`) uygula.
 3. **Kod / enum / API alanları:** Yalnızca `sanitizeCode`, `generateCodeFromName` gibi kod üreten yardımcılar ALL CAPS kullanabilir; UI’da gösterirken Title Case’e çevir.
 4. **Yeni modül veya özellik:** Form, tablo, modal, boş durum metinleri eklendiğinde bu kuralı kontrol et.
+5. **Noktadan sonra harf büyük olabilir:** Kısaltma ve adres parçalarında nokta sonrası büyük harf doğru — örn. `A.Ş.`, `No: 12`, `D: 3`, `GG.AA.YYYY`.
 
 ## Terimler (Meridyen dili)
 

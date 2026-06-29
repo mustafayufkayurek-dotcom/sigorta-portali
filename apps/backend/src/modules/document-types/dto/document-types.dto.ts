@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsInt, IsNotEmpty, IsArray, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, IsNotEmpty, IsArray, IsUUID, IsIn } from 'class-validator';
 
 export class CreateDocumentTypeDto {
   @IsString()
@@ -30,6 +30,20 @@ export class CreateDocumentTypeDto {
   @IsArray()
   @IsUUID('4', { each: true })
   departmentIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  serviceBranchTypes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  customerSubTypes?: string[];
+
+  @IsOptional()
+  @IsIn(['vendor', 'customer'])
+  entityScope?: string;
 }
 
 export class UpdateDocumentTypeDto {
@@ -66,4 +80,18 @@ export class UpdateDocumentTypeDto {
   @IsArray()
   @IsUUID('4', { each: true })
   departmentIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  serviceBranchTypes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  customerSubTypes?: string[];
+
+  @IsOptional()
+  @IsIn(['vendor', 'customer'])
+  entityScope?: string;
 }

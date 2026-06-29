@@ -106,11 +106,11 @@
 }
 .table-th {
   @apply px-5 py-3.5 text-left text-xs font-semibold text-slate-500
-         uppercase tracking-wider;
+         tracking-wide;
 }
 .table-th-center {
   @apply px-4 py-3.5 text-center text-xs font-semibold text-slate-500
-         uppercase tracking-wider;
+         tracking-wide whitespace-nowrap;
 }
 .table-body {
   @apply divide-y divide-slate-100;
@@ -123,7 +123,7 @@
   @apply px-5 py-3.5 text-sm text-slate-700;
 }
 .table-td-center {
-  @apply px-4 py-3.5 text-sm text-slate-700 text-center;
+  @apply px-4 py-3.5 text-sm text-slate-700 text-center align-middle;
 }
 
 /* Sayfa Header */
