@@ -7,10 +7,10 @@
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v45-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v91-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v92-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v90-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v91-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v44-amd64"
   },
   "mustPassSmokeRoutes": [
