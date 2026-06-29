@@ -99,7 +99,7 @@ function StatCard({
         </div>
       )}
       <div className="flex flex-col min-w-0">
-        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide leading-none truncate">{label}</p>
+        <p className="text-[11px] font-medium text-slate-400 tracking-wide leading-none truncate">{label}</p>
         <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums">{value}</span>
         {badge && (
           <span className="badge badge-blue self-start mt-0.5">{badge}</span>

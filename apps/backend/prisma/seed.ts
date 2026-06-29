@@ -1136,6 +1136,46 @@ async function main() {
   }
   console.log(`✅ Created/updated ${serviceTypes.length} service types`);
 
+  // ── Evrak Türleri (DocumentType) — tedarikçi kapsamı ─────────────────────
+  const vendorDocumentTypes = [
+    { code: 'DOC-00001', name: 'Hasar Tespit Raporu', sortOrder: 10, isRequired: false },
+    { code: 'DOC-00002', name: 'Eksper Raporu', sortOrder: 20, isRequired: false },
+    { code: 'DOC-00003', name: 'Poliçe Fotokopisi', sortOrder: 30, isRequired: false },
+    { code: 'DOC-00004', name: 'Kimlik Fotokopisi', sortOrder: 40, isRequired: false },
+    { code: 'DOC-00005', name: 'Onarım Faturası', sortOrder: 50, isRequired: false },
+    { code: 'DOC-00006', name: 'Fotoğraflar (Hasar Öncesi)', sortOrder: 60, isRequired: false },
+    { code: 'DOC-00007', name: 'Fotoğraflar (Hasar Sonrası)', sortOrder: 70, isRequired: false },
+    { code: 'DOC-00008', name: 'Keşif Raporu', sortOrder: 80, isRequired: false },
+    { code: 'DOC-00009', name: 'Teklif/Proforma', sortOrder: 90, isRequired: false },
+    { code: 'DOC-00010', name: 'Ödeme Dekontu', sortOrder: 100, isRequired: false },
+    { code: 'DOC-00011', name: 'Tutanak', sortOrder: 110, isRequired: false },
+    { code: 'DOC-00012', name: 'Vekaletname', sortOrder: 120, isRequired: false },
+    { code: 'DOC-OTHER', name: 'Diğer', sortOrder: 999, isRequired: false },
+  ];
+
+  for (const dt of vendorDocumentTypes) {
+    await prisma.documentType.upsert({
+      where: { code: dt.code },
+      create: {
+        ...dt,
+        entityScope: 'vendor',
+        serviceBranchTypes: ['hasar', 'acil_yardim'],
+        customerSubTypes: [],
+        departmentIds: [],
+        serviceTypeIds: [],
+        status: 'active',
+      },
+      update: {
+        name: dt.name,
+        sortOrder: dt.sortOrder,
+        entityScope: 'vendor',
+        serviceBranchTypes: ['hasar', 'acil_yardim'],
+        status: 'active',
+      },
+    });
+  }
+  console.log(`✅ Created/updated ${vendorDocumentTypes.length} vendor document types`);
+
   console.log('🎉 Seeding completed!');
 }
 

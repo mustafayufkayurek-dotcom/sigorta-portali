@@ -636,7 +636,7 @@ function PanelSidebar({
       <div className="sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto px-3 py-4">
         <div className={`mb-3 flex items-center ${collapsed ? 'justify-center px-0' : 'justify-between px-3'}`}>
           {!collapsed ? (
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Menü</p>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">Menü</p>
           ) : null}
           <button
             type="button"

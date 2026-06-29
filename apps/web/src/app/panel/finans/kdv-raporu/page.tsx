@@ -217,7 +217,7 @@ export default function KdvRaporuPage() {
               <span className="text-xs font-semibold flex items-center gap-1.5">
                 {m.label}
                 {m.recommended && (
-                  <span className="text-[8px] uppercase font-bold px-1 py-px rounded bg-emerald-100 text-emerald-700">Önerilen</span>
+                  <span className="text-[8px] font-bold px-1 py-px rounded bg-emerald-100 text-emerald-700">Önerilen</span>
                 )}
               </span>
             </button>
@@ -369,7 +369,7 @@ function PeriodControls({
   return (
     <div className="flex flex-wrap items-end gap-2">
       <div>
-        <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">Yıl</label>
+        <label className="block text-[10px] tracking-wide text-slate-500 mb-1">Yıl</label>
         <select value={year} onChange={(e) => onYear(parseInt(e.target.value, 10))}
           className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800">
           {[CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].map((y) => (
@@ -379,7 +379,7 @@ function PeriodControls({
       </div>
       {!annual && (
         <div>
-          <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">Ay</label>
+          <label className="block text-[10px] tracking-wide text-slate-500 mb-1">Ay</label>
           <select value={month} onChange={(e) => onMonth(parseInt(e.target.value, 10))}
             className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800">
             {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -439,7 +439,7 @@ function CompactVatCell({
 }) {
   return (
     <div className={`px-4 py-3 ${highlight ? 'bg-slate-50 dark:bg-slate-700/30' : ''}`}>
-      <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] tracking-wide text-slate-500">{label}</p>
       <p className="text-[10px] text-slate-400">{meta}</p>
       <p className={`text-lg tabular-nums mt-1 ${className}`}>{fmtCurrency(value)}</p>
     </div>
@@ -500,7 +500,7 @@ function KpiCard({ label, value, sub, tone }: { label: string; value: string; su
   };
   return (
     <div className={`rounded-xl border p-4 shadow-sm ${tones[tone] ?? tones.slate}`}>
-      <p className="text-[10px] uppercase text-slate-500">{label}</p>
+      <p className="text-[10px] text-slate-500">{label}</p>
       <p className="text-xl font-bold text-slate-900 mt-1 tabular-nums">{value}</p>
       <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
     </div>
@@ -537,7 +537,7 @@ function LinesTable({
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
               {['Tarih', 'Belge No', 'Kaynak', 'Dosya', 'Kategori', 'Açıklama', 'Matrah', 'KDV %', 'KDV', 'Toplam', ...(showDirection ? ['Yön'] : []), 'Durum'].map((h) => (
-                <th key={h} className={`px-3 py-2 text-xs font-semibold uppercase text-slate-500 ${
+                <th key={h} className={`px-3 py-2 text-xs font-semibold text-slate-500 ${
                   ['Matrah', 'KDV', 'Toplam'].includes(h) ? 'text-right' : 'text-left'
                 }`}>{h}</th>
               ))}

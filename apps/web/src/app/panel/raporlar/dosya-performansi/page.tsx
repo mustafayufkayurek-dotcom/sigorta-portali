@@ -239,13 +239,13 @@ export default function DosyaPerformansPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
             <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
               <tr>
-                <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman / Branş</PanelTableTh>
-                <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</PanelTableTh>
-                <PanelTableTh colId="open" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Açık</PanelTableTh>
-                <PanelTableTh colId="closed" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Kapanan</PanelTableTh>
-                <PanelTableTh colId="avgCloseDays" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Kapanış (gün)</PanelTableTh>
-                <PanelTableTh colId="slaCompliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">SLA Uyum %</PanelTableTh>
-                <PanelTableTh colId="performance" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Performans</PanelTableTh>
+                <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman / Branş</PanelTableTh>
+                <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
+                <PanelTableTh colId="open" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Açık</PanelTableTh>
+                <PanelTableTh colId="closed" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Kapanan</PanelTableTh>
+                <PanelTableTh colId="avgCloseDays" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Kapanış (gün)</PanelTableTh>
+                <PanelTableTh colId="slaCompliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">SLA Uyum %</PanelTableTh>
+                <PanelTableTh colId="performance" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Performans</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">

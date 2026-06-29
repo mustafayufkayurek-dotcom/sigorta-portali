@@ -292,17 +292,17 @@ export default function FaturalarPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
-              <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400 uppercase">
+              <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
                   <th className="text-left px-4 py-3 w-10">#</th>
-                  <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Fatura No</SortablePanelTableTh>
-                  <PanelTableTh colId="expert" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Eksper</PanelTableTh>
-                  <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="invoiceType" className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-left">Tip</PanelTableTh>
-                  <SortablePanelTableTh colId="invoiceDate" sortKey="invoiceDate" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Tarih</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium text-right">Tutar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-slate-400 font-medium">Durum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Fatura No</SortablePanelTableTh>
+                  <PanelTableTh colId="expert" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-left">Eksper</PanelTableTh>
+                  <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-left">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-left">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="invoiceType" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-left">Tip</PanelTableTh>
+                  <SortablePanelTableTh colId="invoiceDate" sortKey="invoiceDate" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Tarih</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-right">Tutar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Durum</SortablePanelTableTh>
                   <th className="text-left px-4 py-3">İşlem</th>
                 </tr>
               </thead>

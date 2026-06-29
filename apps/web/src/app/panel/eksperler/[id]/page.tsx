@@ -153,7 +153,7 @@ export default function AdjusterProfilePage() {
             {adjuster.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-blue-400 font-medium uppercase tracking-wide leading-none mb-0.5">Eksper</p>
+            <p className="text-xs text-blue-400 font-medium tracking-wide leading-none mb-0.5">Eksper</p>
             <p className="text-sm font-semibold text-blue-800 truncate">{adjuster.name}</p>
           </div>
         </div>

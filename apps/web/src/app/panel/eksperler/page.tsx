@@ -120,7 +120,7 @@ function FormField({ label, required, error, children }: { label: string; requir
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-2 pb-2 border-b border-slate-100 mb-4">
-      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</span>
+      <span className="text-xs font-semibold text-slate-500 tracking-wide">{title}</span>
     </div>
   );
 }
@@ -443,7 +443,7 @@ export default function AdjustersPage() {
         <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead>
-              <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
+              <tr className="bg-slate-50 text-xs text-slate-500">
                 <PanelTableTh colId="name" className="text-left px-4 py-3">Eksper</PanelTableTh>
                 <PanelTableTh colId="region" className="text-left px-4 py-3">Bölge</PanelTableTh>
                 <PanelTableTh colId="total" className="text-center px-4 py-3">Toplam İş</PanelTableTh>
@@ -797,7 +797,7 @@ export default function AdjustersPage() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-slate-500 tracking-wide">
                           Hasar Branşları <span className="text-red-400">*</span>
                         </p>
                         {fieldErrors.serviceBranches && (
@@ -860,7 +860,7 @@ export default function AdjustersPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <p className="text-xs font-semibold text-slate-500 tracking-wide">
                         Hizmet Bölgeleri{' '}
                         <span className="text-slate-400 font-normal normal-case">(opsiyonel)</span>
                       </p>
@@ -896,7 +896,7 @@ export default function AdjustersPage() {
                   {insuranceCompanies.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-slate-500 tracking-wide">
                           Çalıştığı Sigorta Şirketleri{' '}
                           <span className="text-slate-400 font-normal normal-case">(opsiyonel)</span>
                         </p>

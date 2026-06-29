@@ -980,7 +980,7 @@ export default function EksperPortalPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">Meridyen Assistance</span>
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-blue-200">Meridyen Assistance</span>
                   <span className="w-1 h-1 rounded-full bg-blue-300" />
                   <span className="text-[10px] text-blue-300">Eksper Portalı</span>
                 </div>

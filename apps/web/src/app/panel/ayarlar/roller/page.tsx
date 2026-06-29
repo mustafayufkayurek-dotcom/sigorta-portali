@@ -161,7 +161,7 @@ export default function RollerPage() {
         </div>
         <div>
           <label className={labelCls}>Kod <span className="text-red-500">*</span></label>
-          <input className={`${inputCls} font-mono uppercase ${editing ? 'bg-slate-50 text-slate-400' : ''}`}
+          <input className={`${inputCls} font-mono ${editing ? 'bg-slate-50 text-slate-400' : ''}`}
             value={form.code}
             onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z_]/g, '') })}
             placeholder="ORNEK_KOD"

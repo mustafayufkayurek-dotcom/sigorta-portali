@@ -497,10 +497,10 @@ export default function RevisionDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50/70">
                       <tr>
-                        <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kalem</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Eski</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Yeni</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fark</th>
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Kalem</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Eski</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Yeni</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Fark</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">

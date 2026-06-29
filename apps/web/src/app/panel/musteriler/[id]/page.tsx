@@ -91,7 +91,7 @@ function SectionCard({ title, subtitle, children, action }: { title: string; sub
 function InfoRow({ label, value, className = '' }: { label: string; value: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-xs font-medium text-slate-400 tracking-wide mb-0.5">{label}</p>
       <div className="text-sm text-slate-800 font-medium">{value || <span className="text-slate-300">—</span>}</div>
     </div>
   );
@@ -200,7 +200,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
           </div>
           {customer.latitude != null && customer.longitude != null ? (
             <div className="mt-4 pt-4 border-t border-slate-50">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Harita Konumu</p>
+              <p className="text-xs font-medium text-slate-400 tracking-wide mb-2">Harita Konumu</p>
               <LocationPreview
                 lat={customer.latitude}
                 lng={customer.longitude}
@@ -249,7 +249,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
           </div>
           {Array.isArray(customer.tags) && customer.tags.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-50">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Etiketler</p>
+              <p className="text-xs font-medium text-slate-400 tracking-wide mb-2">Etiketler</p>
               <div className="flex flex-wrap gap-1.5">
                 {customer.tags.map((t: string) => <Badge key={t} variant="amber">{t}</Badge>)}
               </div>
@@ -726,7 +726,7 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
               <thead>
                 <tr className="border-b border-slate-100">
                   {['Branş', 'Toplam', 'Açık', 'Kapalı', 'Ort. Süre', 'Son Dosya'].map((h, i) => (
-                    <th key={h} className={`py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                    <th key={h} className={`py-2.5 text-xs font-semibold text-slate-500 tracking-wide ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -973,7 +973,7 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
             </div>
 
             <div className="pt-1 border-t border-slate-100">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Harita Konumu</p>
+              <p className="text-xs font-semibold text-slate-500 tracking-wide mb-2">Harita Konumu</p>
               <div className="flex flex-wrap gap-2 mb-2">
                 <button
                   type="button"

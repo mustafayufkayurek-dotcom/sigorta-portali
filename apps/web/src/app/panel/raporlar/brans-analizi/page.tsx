@@ -244,7 +244,7 @@ export default function BransAnaliziPage() {
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Başlangıç</label>
+            <label className="text-xs font-medium text-slate-500 tracking-wide block mb-1">Başlangıç</label>
             <TrDateInput
               value={dateFrom}
               onChange={setDateFrom}
@@ -252,7 +252,7 @@ export default function BransAnaliziPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Bitiş</label>
+            <label className="text-xs font-medium text-slate-500 tracking-wide block mb-1">Bitiş</label>
             <TrDateInput
               value={dateTo}
               onChange={setDateTo}
@@ -260,7 +260,7 @@ export default function BransAnaliziPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Hizmet Türü</label>
+            <label className="text-xs font-medium text-slate-500 tracking-wide block mb-1">Hizmet Türü</label>
             <select
               value={serviceTypeFilter}
               onChange={(e) => setServiceTypeFilter(e.target.value)}
@@ -434,12 +434,12 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(branchDetailTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</PanelTableTh>
-                        <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam</PanelTableTh>
-                        <PanelTableTh colId="open" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Açık</PanelTableTh>
-                        <PanelTableTh colId="closed" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Kapanan</PanelTableTh>
-                        <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
-                        <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</PanelTableTh>
+                        <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
+                        <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</PanelTableTh>
+                        <PanelTableTh colId="open" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</PanelTableTh>
+                        <PanelTableTh colId="closed" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</PanelTableTh>
+                        <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -472,7 +472,7 @@ export default function BransAnaliziPage() {
               {/* Sıralama & Filtre */}
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Sıralama:</span>
+                  <span className="text-xs font-medium text-slate-500 tracking-wide">Sıralama:</span>
                   {[
                     { val: 'total', label: 'En Çok Dosya' },
                     { val: 'avgClose', label: 'En Hızlı Kapanma' },
@@ -507,13 +507,13 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(customerPerfTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <PanelTableTh colId="customer" className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Müşteri</PanelTableTh>
-                        <PanelTableTh colId="service" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hizmet</PanelTableTh>
-                        <PanelTableTh colId="files" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya</PanelTableTh>
-                        <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş Dağılımı</PanelTableTh>
-                        <PanelTableTh colId="trend" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trend</PanelTableTh>
-                        <PanelTableTh colId="avgClose" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
-                        <PanelTableTh colId="action" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">İşlem</PanelTableTh>
+                        <PanelTableTh colId="customer" className="text-left px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</PanelTableTh>
+                        <PanelTableTh colId="service" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</PanelTableTh>
+                        <PanelTableTh colId="files" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</PanelTableTh>
+                        <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Branş Dağılımı</PanelTableTh>
+                        <PanelTableTh colId="trend" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Trend</PanelTableTh>
+                        <PanelTableTh colId="avgClose" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="action" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">İşlem</PanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -627,10 +627,10 @@ export default function BransAnaliziPage() {
                     <table className="w-full text-sm" style={panelTableLayoutStyle(growthTableColumns)}>
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Branş</PanelTableTh>
-                          <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Toplam Dosya</PanelTableTh>
-                          <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ort. Kapanma</PanelTableTh>
-                          <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Son Dosya</PanelTableTh>
+                          <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
+                          <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</PanelTableTh>
+                          <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                          <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">

@@ -217,7 +217,7 @@ export default function TestNotlariGorevTakipPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <a href="/panel/ayarlar" className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700">← Ayarlar</a>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Admin-only / Geçici Modül</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">Admin-only / Geçici Modül</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Test Notları ve Geçici İş/Görev Takip</h1>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">Kalıcı görev-haberleşme modülü devreye girene kadar kullanılacak geçici yönetim ekranı.</p>
         </div>

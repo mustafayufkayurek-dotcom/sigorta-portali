@@ -180,7 +180,7 @@ function StaffDetailPanel({ staff, onClose }: { staff: StaffWorkload | null; onC
 
         {/* File list */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Atanmış Dosyalar</p>
+          <p className="text-xs font-semibold text-slate-500 tracking-wide mb-3">Atanmış Dosyalar</p>
           {!staff.assignments || staff.assignments.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-2 text-xl">📂</div>
@@ -935,11 +935,11 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(approvalsTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="fileNo" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dosya No</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</PanelTableTh>
-                      <PanelTableTh colId="jobType" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Tipi</PanelTableTh>
-                      <PanelTableTh colId="waiting" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bekleme</PanelTableTh>
-                      <PanelTableTh colId="timeout" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timeout</PanelTableTh>
+                      <PanelTableTh colId="fileNo" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="jobType" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</PanelTableTh>
+                      <PanelTableTh colId="waiting" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bekleme</PanelTableTh>
+                      <PanelTableTh colId="timeout" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Timeout</PanelTableTh>
                       <th className="px-4 py-3.5 w-32" />
                     </tr>
                   </thead>
@@ -1046,11 +1046,11 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="jobGroup" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">İş Grubu</PanelTableTh>
-                      <PanelTableTh colId="region" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bölge</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Personel</PanelTableTh>
-                      <PanelTableTh colId="priority" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Öncelik</PanelTableTh>
-                      <PanelTableTh colId="status" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Durum</PanelTableTh>
+                      <PanelTableTh colId="jobGroup" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Grubu</PanelTableTh>
+                      <PanelTableTh colId="region" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bölge</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="priority" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
+                      <PanelTableTh colId="status" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
                       <th className="px-4 py-3.5 w-24" />
                     </tr>
                   </thead>
@@ -1233,7 +1233,7 @@ export default function PersonelYonetimiPage() {
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`w-3 h-3 rounded-full ${cfg.dotCls}`} />
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${level === 'escalation' ? 'text-slate-300' : level === 'critical' ? 'text-red-700' : 'text-yellow-700'}`}>
+                      <span className={`text-xs font-semibold tracking-wide ${level === 'escalation' ? 'text-slate-300' : level === 'critical' ? 'text-red-700' : 'text-yellow-700'}`}>
                         {cfg.label}
                       </span>
                     </div>
@@ -1281,7 +1281,7 @@ export default function PersonelYonetimiPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                     <thead>
-                      <tr className="text-left bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <tr className="text-left bg-slate-50 text-xs font-semibold text-slate-500 tracking-wide">
                         <th className="px-4 py-3 w-8">&nbsp;</th>
                         <PanelTableTh colId="fileNo" className="px-4 py-3">Dosya No</PanelTableTh>
                         <PanelTableTh colId="staff" className="px-4 py-3">Personel</PanelTableTh>

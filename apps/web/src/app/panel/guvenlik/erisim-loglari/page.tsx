@@ -166,19 +166,19 @@ export default function ErisimLoglariPage() {
       {stats && (
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Bugünkü Erişim</p>
+            <p className="text-xs font-medium text-slate-500 tracking-wide">Bugünkü Erişim</p>
             <p className="mt-1 text-3xl font-semibold text-slate-900">{stats.todayTotal}</p>
           </div>
           <div className="rounded-lg bg-white p-4 shadow-sm border border-red-200">
-            <p className="text-xs font-medium text-red-500 uppercase tracking-wide">Bugünkü Alarm</p>
+            <p className="text-xs font-medium text-red-500 tracking-wide">Bugünkü Alarm</p>
             <p className="mt-1 text-3xl font-semibold text-red-600">{stats.todayAnomalies}</p>
           </div>
           <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Haftalık Erişim</p>
+            <p className="text-xs font-medium text-slate-500 tracking-wide">Haftalık Erişim</p>
             <p className="mt-1 text-3xl font-semibold text-slate-900">{stats.weekTotal}</p>
           </div>
           <div className="rounded-lg bg-white p-4 shadow-sm border border-orange-200">
-            <p className="text-xs font-medium text-orange-500 uppercase tracking-wide">Haftalık Alarm</p>
+            <p className="text-xs font-medium text-orange-500 tracking-wide">Haftalık Alarm</p>
             <p className="mt-1 text-3xl font-semibold text-orange-600">{stats.weekAnomalies}</p>
           </div>
         </div>
@@ -261,13 +261,13 @@ export default function ErisimLoglariPage() {
             <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50">
                 <tr>
-                  <PanelTableTh colId="user" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
-                  <PanelTableTh colId="customer" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="file" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Dosya</PanelTableTh>
-                  <PanelTableTh colId="accessType" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
-                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Tarih</PanelTableTh>
-                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">IP</PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Durum</PanelTableTh>
+                  <PanelTableTh colId="user" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
+                  <PanelTableTh colId="customer" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="file" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Dosya</PanelTableTh>
+                  <PanelTableTh colId="accessType" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
+                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Tarih</PanelTableTh>
+                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">IP</PanelTableTh>
+                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Durum</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">

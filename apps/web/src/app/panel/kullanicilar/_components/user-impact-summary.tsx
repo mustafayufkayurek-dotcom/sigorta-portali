@@ -39,7 +39,7 @@ export function UserImpactSummary({
       <div className="grid gap-3 md:grid-cols-2">
         {rows.map((row) => (
           <div key={row.label} className="rounded-xl bg-white/80 border border-blue-100 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-slate-400">{row.label}</p>
+            <p className="text-[11px] tracking-wide text-slate-400">{row.label}</p>
             <p className="text-sm font-medium text-slate-800">{row.value}</p>
           </div>
         ))}

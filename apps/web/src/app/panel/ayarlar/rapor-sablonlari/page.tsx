@@ -270,7 +270,7 @@ export default function RaporSablonlariPage() {
 
         {previewMode ? (
           <div>
-            <p className="text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">İçerik Önizlemesi</p>
+            <p className="text-xs font-medium text-slate-500 mb-1.5 tracking-wide">İçerik Önizlemesi</p>
             <div className="border border-slate-200 rounded-lg p-4 min-h-48 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.content || '<p class="text-slate-300 italic">İçerik yok</p>') }} />
           </div>
         ) : (

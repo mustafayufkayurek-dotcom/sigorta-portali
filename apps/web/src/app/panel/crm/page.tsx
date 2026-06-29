@@ -457,7 +457,7 @@ function DecisionMetric({ label, value, tone = 'slate' }: { label: string; value
   };
   return (
     <div className={`min-h-[58px] min-w-0 rounded-lg border px-2 py-2 ${tones[tone]}`}>
-      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="truncate text-[10px] font-bold tracking-wide text-slate-400">{label}</p>
       <p className="mt-1 truncate text-xs font-bold">{value}</p>
     </div>
   );
@@ -836,7 +836,7 @@ export default function CrmPage() {
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-2">
         <header className="flex flex-col gap-1.5 border-b border-slate-200 pb-1.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.02em] text-blue-600">
+            <p className="truncate text-xs font-semibold tracking-[0.02em] text-blue-600">
               Operasyon İlişkileri <span className="mx-1 text-slate-300">&gt;</span> CRM
             </p>
           </div>
@@ -905,7 +905,7 @@ export default function CrmPage() {
 
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div className="border-b border-slate-100 px-2.5 py-2">
-                <p className="text-xs font-semibold uppercase text-slate-500">İlişki Havuzu</p>
+                <p className="text-xs font-semibold text-slate-500">İlişki Havuzu</p>
                 <p className="mt-0.5 text-xs text-slate-600">Seçilen ilişki sağdaki workspace alanında açılır.</p>
               </div>
 
@@ -956,7 +956,7 @@ export default function CrmPage() {
                 <div className="border-b border-slate-200 bg-white p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase text-blue-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
+                      <p className="text-xs font-semibold text-blue-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
                       <h2 className="mt-0.5 text-base font-bold text-slate-950">{selected.name}</h2>
                       <p className="mt-0.5 text-xs text-slate-500">{[selected.city, selected.district].filter(Boolean).join(' / ') || 'Konum yok'}</p>
                     </div>

@@ -111,11 +111,11 @@ export default function EksperDosyalarPage() {
           <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50">
               <tr>
-                <PanelTableTh colId="fileNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dosya No</PanelTableTh>
-                <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Sigorta Şirketi</PanelTableTh>
-                <PanelTableTh colId="subject" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Konu</PanelTableTh>
-                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Durum</PanelTableTh>
-                <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tarih</PanelTableTh>
+                <PanelTableTh colId="fileNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Dosya No</PanelTableTh>
+                <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Sigorta Şirketi</PanelTableTh>
+                <PanelTableTh colId="subject" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Konu</PanelTableTh>
+                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Durum</PanelTableTh>
+                <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tarih</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

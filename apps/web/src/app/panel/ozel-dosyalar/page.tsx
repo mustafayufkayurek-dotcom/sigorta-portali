@@ -12,7 +12,7 @@ export default function OzelDosyalarPage() {
           Bu modül yakında kullanıma açılacak. Hasar onarımından farklı akışlara sahip özel dosyaları bu alan üzerinden yönetebileceksiniz.
         </p>
       </div>
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 uppercase tracking-wide">
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 tracking-wide">
         Yakında
       </span>
     </div>

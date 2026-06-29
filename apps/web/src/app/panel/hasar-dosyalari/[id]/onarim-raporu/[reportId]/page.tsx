@@ -320,7 +320,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
             `}</style>
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-slate-50 text-slate-400 uppercase text-[10px] tracking-wide">
+                <tr className="bg-slate-50 text-slate-400 text-[10px] tracking-wide">
                   <th className="text-left px-3 py-2 rounded-l-lg">İş Grubu</th>
                   <th className="text-right px-3 py-2">Tedarikçi (TDR)</th>
                   <th className="text-right px-3 py-2">Satış Fiyatı</th>
@@ -347,7 +347,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               </tbody>
               <tfoot>
                 <tr className={`font-bold ${grandProfit < 0 ? 'loss-flash' : 'bg-slate-700'}`}>
-                  <td className="px-3 py-3.5 text-white text-xs font-extrabold uppercase tracking-widest rounded-bl-lg">
+                  <td className="px-3 py-3.5 text-white text-xs font-extrabold tracking-widest rounded-bl-lg">
                     {grandProfit < 0 ? '⚠ ZARAR' : 'GENEL TOPLAM'}
                   </td>
                   <td className="px-3 py-3.5 text-right text-slate-200 text-sm font-bold">{fmtCurrency(grandSupplier)}</td>
@@ -365,22 +365,22 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
 
           {/* Genel Analiz */}
           <div className="mt-4 border-t border-indigo-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-center mb-3">Genel Analiz</p>
+            <p className="text-xs font-semibold text-slate-500 tracking-wider text-center mb-3">Genel Analiz</p>
             <div className="flex flex-wrap justify-center gap-4">
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Toplam Satış</p>
+                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Satış</p>
                 <p className="text-sm font-bold text-slate-800">{fmtCurrency(grandSales)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Toplam Tedarikçi</p>
+                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Tedarikçi</p>
                 <p className="text-sm font-bold text-slate-600">{fmtCurrency(grandSupplier)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Toplam Kar</p>
+                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Kar</p>
                 <p className={`text-sm font-bold ${grandProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtCurrency(grandProfit)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Kar Oranı</p>
+                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Kar Oranı</p>
                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-extrabold ${profitBg(grandProfitPct)} ${profitColor(grandProfitPct)}`}>
                   %{grandProfitPct.toFixed(1)}
                 </span>
@@ -553,7 +553,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
 
         {/* Hesaplama Türü */}
         <div className="px-6 pt-4 pb-2">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Hesaplama Türü</p>
+          <p className="text-xs font-semibold text-slate-500 tracking-wide mb-2">Hesaplama Türü</p>
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(hesaplamaTuruLabel) as HesaplamaTuru[]).map((t) => (
               <button
@@ -3077,7 +3077,7 @@ export default function RepairReportPage() {
           return (
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Hasar Toplam Özeti</p>
+                <p className="text-xs font-semibold text-slate-500 tracking-wide">Hasar Toplam Özeti</p>
                 {isEditable && Object.keys(pendingFields).length > 0 && (
                   <button
                     type="button"
@@ -3113,11 +3113,11 @@ export default function RepairReportPage() {
         {/* Hasar nedeni bazlı özet (multi only) */}
         {report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 && (
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Hasar Nedeni Bazlı Özet</p>
+            <p className="text-xs font-semibold text-slate-500 tracking-wide mb-3">Hasar Nedeni Bazlı Özet</p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-400 uppercase">
+                  <tr className="bg-slate-50 text-slate-400">
                     <th className="text-left px-3 py-2">Hasar Nedeni</th>
                     {effectiveViewMode === 'internal' && <th className="text-right px-3 py-2">Maliyet</th>}
                     <th className="text-right px-3 py-2">Satış</th>
@@ -3668,7 +3668,7 @@ export default function RepairReportPage() {
               {templateSuggestions.map((tpl: any) => (
                 <div key={tpl.id}>
                   {templateSuggestions.length > 1 && (
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{tpl.name}</p>
+                    <p className="text-xs font-semibold text-slate-500 tracking-wide mb-2">{tpl.name}</p>
                   )}
                   <div className="space-y-1">
                     {(tpl.items ?? []).map((item: any) => {

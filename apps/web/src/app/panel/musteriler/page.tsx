@@ -459,7 +459,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
       {/* Custom header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
         <div>
-          <p className="text-xs text-emerald-200 font-medium uppercase tracking-wide">Müşteri Özeti</p>
+          <p className="text-xs text-emerald-200 font-medium tracking-wide">Müşteri Özeti</p>
           <h3 className="text-sm font-semibold text-white mt-0.5 truncate max-w-[280px]">{name}</h3>
         </div>
         <button
@@ -556,7 +556,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
           <div className="px-5 pt-4 pb-4 border-b border-slate-50">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base">📂</span>
-              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Hasar Dosyaları</p>
+              <p className="text-xs font-semibold text-slate-700 tracking-wide">Hasar Dosyaları</p>
               {customer._count?.claimFiles != null && (
                 <span className="ml-auto text-xs text-slate-400">{customer._count.claimFiles} Toplam</span>
               )}
@@ -586,7 +586,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-base">🛠</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Hizmet Türü</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Hizmet Türü</p>
               </div>
               {customer.serviceType && (
                 <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border mb-2 ${
@@ -611,7 +611,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
           <div className="px-5 pt-4 pb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base">📊</span>
-              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{CUSTOMER_RELATION_SECTION_TITLE}</p>
+              <p className="text-xs font-semibold text-slate-700 tracking-wide">{CUSTOMER_RELATION_SECTION_TITLE}</p>
             </div>
             <div className="space-y-3">
               {customer.source && (

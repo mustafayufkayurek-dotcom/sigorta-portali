@@ -267,7 +267,7 @@ export default function SlaRaporPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Gauge card */}
         <div className="md:col-span-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm flex flex-col items-center justify-center">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">SLA Uyum Oranı</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider mb-3">SLA Uyum Oranı</p>
           {/* CSS semicircle gauge */}
           <div className="relative flex items-center justify-center" style={{ width: 140, height: 76 }}>
             {/* Background track */}
@@ -385,13 +385,13 @@ export default function SlaRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman</PanelTableTh>
-                    <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam</PanelTableTh>
-                    <PanelTableTh colId="onTime" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zamanında</PanelTableTh>
-                    <PanelTableTh colId="violated" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İhlal</PanelTableTh>
-                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ort. Yanıt</PanelTableTh>
-                    <PanelTableTh colId="compliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uyum %</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Durum</PanelTableTh>
+                    <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman</PanelTableTh>
+                    <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
+                    <PanelTableTh colId="onTime" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Zamanında</PanelTableTh>
+                    <PanelTableTh colId="violated" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">İhlal</PanelTableTh>
+                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Yanıt</PanelTableTh>
+                    <PanelTableTh colId="compliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Uyum %</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Durum</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">

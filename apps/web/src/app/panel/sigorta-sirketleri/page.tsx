@@ -230,22 +230,22 @@ export default function SigortaSirketleriPage() {
           <table className="w-full" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                <PanelTableTh colId="name" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="name" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   Şirket
                 </PanelTableTh>
-                <PanelTableTh colId="code" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="code" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   Kod
                 </PanelTableTh>
-                <PanelTableTh colId="taxNo" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="taxNo" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   Vergi No
                 </PanelTableTh>
-                <PanelTableTh colId="contact" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="contact" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   İletişim
                 </PanelTableTh>
-                <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   Durum
                 </PanelTableTh>
-                <PanelTableTh colId="createdAt" className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                <PanelTableTh colId="createdAt" className="px-5 py-3 text-left text-xs font-medium text-slate-500">
                   Kayıt Tarihi
                 </PanelTableTh>
                 <th className="px-5 py-3" />

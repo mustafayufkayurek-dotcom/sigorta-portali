@@ -174,7 +174,7 @@ export default function CarilerimPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
-                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 uppercase">
+                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
                     <th className="w-8 px-2 py-3" aria-label="Genişlet" />
                     <PanelTableTh colId="name" className="px-4 py-3 text-left">Müşteri</PanelTableTh>
@@ -301,7 +301,7 @@ function CariSummaryStrip({
         <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-blue-500">
           <div className="flex items-center gap-1 mb-1.5">
             <Users className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Cari portföy</span>
+            <span className="text-[10px] font-semibold tracking-wide text-blue-700 dark:text-blue-400">Cari portföy</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MiniMetric label="Toplam cari" value={String(customerCount)} accent="blue" />
@@ -310,7 +310,7 @@ function CariSummaryStrip({
         </section>
         <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-emerald-500">
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Dosya durumu</span>
+            <span className="text-[10px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">Dosya durumu</span>
             {totalFiles > 0 && <span className="text-[10px] text-slate-400 tabular-nums">%{Math.round(openPct)} açık</span>}
           </div>
           <div className="grid grid-cols-3 gap-2">

@@ -19,7 +19,7 @@ export function DanismanFormatiTab({ selected, format, onGenerate, loading }: Pr
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">{selected.testNo}</p>
+            <p className="text-xs font-semibold tracking-wide text-blue-600">{selected.testNo}</p>
             <h3 className="mt-1 text-lg font-semibold text-slate-900">{selected.ekranModul}</h3>
             <p className="mt-2 text-sm text-slate-600">{selected.kullaniciGozlemi}</p>
           </div>
@@ -41,7 +41,7 @@ export function DanismanFormatiTab({ selected, format, onGenerate, loading }: Pr
             ['Onay', format.onayli ? 'Onaylı' : 'Onaysız öneri'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+              <p className="text-xs font-semibold tracking-wide text-slate-400">{label}</p>
               <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{value}</p>
             </div>
           ))}

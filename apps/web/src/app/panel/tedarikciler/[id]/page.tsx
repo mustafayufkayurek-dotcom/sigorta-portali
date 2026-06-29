@@ -82,7 +82,7 @@ function SectionCard({ title, subtitle, action, children }: {
 function InfoRow({ label, value, className = '' }: { label: string; value: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-xs font-medium text-slate-400 tracking-wide mb-0.5">{label}</p>
       <div className="text-sm text-slate-800 font-medium">{value || <span className="text-slate-300">—</span>}</div>
     </div>
   );
@@ -160,7 +160,7 @@ function ProfilTab({ vendor }: { vendor: any }) {
             } />
             {Array.isArray(vendor.tags) && vendor.tags.length > 0 && (
               <div className="col-span-2">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Etiketler</p>
+                <p className="text-xs font-medium text-slate-400 tracking-wide mb-2">Etiketler</p>
                 <div className="flex flex-wrap gap-1.5">
                   {vendor.tags.map((t: string) => <Badge key={t} variant="amber">{t}</Badge>)}
                 </div>
@@ -980,7 +980,7 @@ export default function VendorDetailPage() {
             {vendor.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-blue-400 font-medium uppercase tracking-wide leading-none mb-0.5">
+            <p className="text-xs text-blue-400 font-medium tracking-wide leading-none mb-0.5">
               {isCorporate ? 'Kurumsal Tedarikçi' : 'Bireysel Tedarikçi'}
             </p>
             <p className="text-sm font-semibold text-blue-800 truncate">{vendor.name}</p>

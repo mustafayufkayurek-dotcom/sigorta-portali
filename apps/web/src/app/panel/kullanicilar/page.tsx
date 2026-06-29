@@ -135,11 +135,11 @@ function CredentialSuccessPanel({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr]">
         <div className="rounded-xl border border-emerald-200 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">E-posta</p>
+          <p className="text-xs font-semibold tracking-wide text-emerald-600">E-posta</p>
           <p className="mt-1 break-all font-medium text-slate-800">{email}</p>
         </div>
         <div className="rounded-xl border border-slate-800 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Geçici Şifre</p>
+          <p className="text-xs font-semibold tracking-wide text-emerald-600">Geçici Şifre</p>
           <TemporaryPasswordCopy value={temporaryPassword} />
         </div>
       </div>
@@ -1637,22 +1637,22 @@ export default function KullanicilarPage() {
                       )}
                     </button>
                   </th>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="name" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     Ad Soyad
                   </PanelTableTh>
-                  <PanelTableTh colId="email" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="email" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     E-posta
                   </PanelTableTh>
-                  <PanelTableTh colId="role" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="role" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     Görev
                   </PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     Durum
                   </PanelTableTh>
-                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     Son Giriş
                   </PanelTableTh>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500">
                     İşlemler
                   </th>
                 </tr>

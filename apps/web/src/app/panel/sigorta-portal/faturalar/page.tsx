@@ -127,11 +127,11 @@ export default function SigortaFaturalarPage() {
           <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50">
               <tr>
-                <PanelTableTh colId="invoiceNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Fatura No</PanelTableTh>
-                <PanelTableTh colId="issueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Düzenleme</PanelTableTh>
-                <PanelTableTh colId="dueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Vade</PanelTableTh>
-                <PanelTableTh colId="totalAmount" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tutar</PanelTableTh>
-                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Durum</PanelTableTh>
+                <PanelTableTh colId="invoiceNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Fatura No</PanelTableTh>
+                <PanelTableTh colId="issueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Düzenleme</PanelTableTh>
+                <PanelTableTh colId="dueDate" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Vade</PanelTableTh>
+                <PanelTableTh colId="totalAmount" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tutar</PanelTableTh>
+                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Durum</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

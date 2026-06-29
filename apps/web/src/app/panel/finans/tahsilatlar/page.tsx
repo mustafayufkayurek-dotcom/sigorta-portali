@@ -258,7 +258,7 @@ export default function TahsilatlarPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
-                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 uppercase">
+                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
                     <PanelTableTh colId="paymentDate" className="px-4 py-3 text-left">Tarih / Vade</PanelTableTh>
                     <PanelTableTh colId="fileCase" className="px-4 py-3 text-left">Dosya</PanelTableTh>
@@ -372,7 +372,7 @@ function FinanceSummaryStrip({
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1">
               <ArrowDownLeft className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Tahsilat</span>
+              <span className="text-[10px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">Tahsilat</span>
             </div>
             <PipelineBar
               realized={summary.totalIncoming}
@@ -409,7 +409,7 @@ function FinanceSummaryStrip({
         <section className="shrink-0 px-3 py-2 lg:w-[6.75rem] flex flex-row lg:flex-col items-center justify-center gap-2 bg-slate-50/70 dark:bg-slate-800/50">
           <NetGauge incoming={summary.totalIncoming} outgoing={summary.totalOutgoing} net={net} />
           <div className="text-center min-w-0">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400 block">Net</span>
+            <span className="text-[10px] font-medium tracking-wide text-slate-400 block">Net</span>
             <span className={`text-sm font-bold tabular-nums leading-tight ${net >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
               {net >= 0 ? '+' : ''}{fmtCurrency(net)}
             </span>
@@ -420,7 +420,7 @@ function FinanceSummaryStrip({
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1">
               <ArrowUpRight className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-400">Ödeme</span>
+              <span className="text-[10px] font-semibold tracking-wide text-orange-700 dark:text-orange-400">Ödeme</span>
             </div>
             <PipelineBar
               realized={summary.totalOutgoing}

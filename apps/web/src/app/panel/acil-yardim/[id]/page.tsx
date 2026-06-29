@@ -461,7 +461,7 @@ export default function VakaDetayPage() {
           </svg>
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Acil Yardım Operasyon Akışı</p>
+          <p className="text-[11px] font-bold tracking-[0.18em] text-orange-600">Acil Yardım Operasyon Akışı</p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             {vaka.fileNo && <span className="text-xs font-mono text-slate-500">Dosya No: {vaka.fileNo}</span>}
             <span className="text-xs font-mono text-slate-400">{vaka.caseNo}</span>
@@ -483,7 +483,7 @@ export default function VakaDetayPage() {
 
       {/* Durum Stepper */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Acil Yardım Süreç Durumu</p>
+        <p className="text-xs font-semibold text-slate-500 tracking-wider mb-3">Acil Yardım Süreç Durumu</p>
         <div className="flex items-center gap-1">
           {STATUS_STEPS.map((s, i) => {
             const isActive = s === vaka.status;
@@ -511,7 +511,7 @@ export default function VakaDetayPage() {
 
       {/* Dosya Bilgileri */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dosya Bilgileri</p>
+        <p className="text-xs font-semibold text-slate-500 tracking-wider">Dosya Bilgileri</p>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-slate-400">Sorun Türü</p>
@@ -564,7 +564,7 @@ export default function VakaDetayPage() {
         return (
           <div className={`rounded-2xl border shadow-sm overflow-hidden ${isLoss ? 'border-red-300' : 'border-slate-100'}`}>
             <div className={`px-4 py-2.5 flex items-center gap-2 ${isLoss ? 'loss-flash' : 'bg-slate-700'}`}>
-              <span className="text-white text-xs font-extrabold uppercase tracking-widest">
+              <span className="text-white text-xs font-extrabold tracking-widest">
                 {isLoss ? '⚠ ZARAR' : 'Kar Analizi'}
               </span>
               {!isLoss && (
@@ -609,7 +609,7 @@ export default function VakaDetayPage() {
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           {/* Başlık */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-            <span className="text-xs font-bold text-green-700 uppercase tracking-wide flex items-center gap-1.5">
+            <span className="text-xs font-bold text-green-700 tracking-wide flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
               Gelir
               {costs.filter((c) => c.entryType === 'gelir').length > 0 && (
@@ -762,7 +762,7 @@ export default function VakaDetayPage() {
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           {/* Başlık */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-            <span className="text-xs font-bold text-red-700 uppercase tracking-wide flex items-center gap-1.5">
+            <span className="text-xs font-bold text-red-700 tracking-wide flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
               Gider
               {costs.filter((c) => c.entryType === 'gider').length > 0 && (

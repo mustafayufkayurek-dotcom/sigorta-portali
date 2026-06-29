@@ -46,7 +46,7 @@ export default function AyarlarPage() {
           <SettingsBreadcrumbs items={[{ label: 'Ayarlar' }]} />
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Yönetim Merkezi</p>
+              <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">Yönetim Merkezi</p>
               <h1 className="mt-2 text-3xl font-bold">Ayarlar</h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
                 Aşağıdaki kartlardan ilgili ayar bölümüne gidin. Arama satırı ile hızlı geçiş yapabilirsiniz.

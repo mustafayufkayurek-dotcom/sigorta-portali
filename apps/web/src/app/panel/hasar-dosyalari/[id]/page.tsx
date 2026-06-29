@@ -995,7 +995,7 @@ function SozlesmelerSection({ claimId }: { claimId: string }) {
   return (
     <div className="mt-8">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Tedarikçi Sözleşmeleri</h3>
+        <h3 className="text-sm font-bold text-slate-700 tracking-wide">Tedarikçi Sözleşmeleri</h3>
         <button
           type="button"
           onClick={() => setShowCreate(true)}
@@ -1505,7 +1505,7 @@ function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string 
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
+                    <tr className="bg-slate-50 text-xs text-slate-500">
                       <th className="text-left px-3 py-2">Açıklama</th>
                       <th className="text-left px-3 py-2">Kategori</th>
                       <th className="text-right px-3 py-2">Miktar</th>
@@ -1640,7 +1640,7 @@ function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string 
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-xs text-slate-500 uppercase">
+                <tr className="bg-slate-50 text-xs text-slate-500">
                   <th className="text-left px-3 py-2">Açıklama</th>
                   <th className="text-left px-3 py-2">Kategori</th>
                   <th className="text-left px-3 py-2">Tedarikçi</th>
@@ -3354,7 +3354,7 @@ function PLOzetTab({ claimId }: { claimId: string }) {
         <div className="space-y-4">
           {/* Gelir kırılımı */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Gelir</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Gelir</p>
             <div className="space-y-1">
               <div className="flex justify-between text-sm"><span className="text-slate-600">Dosya Bedeli</span><span className="font-medium">{fmtCurrency(s.fileFeeRevenue ?? 0)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-600">Ekstra İşler</span><span className="font-medium">{fmtCurrency(s.extraWorkRevenue ?? 0)}</span></div>
@@ -3363,7 +3363,7 @@ function PLOzetTab({ claimId }: { claimId: string }) {
           </div>
           {/* Gider kırılımı */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Gider</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Gider</p>
             <div className="space-y-1">
               <div className="flex justify-between text-sm"><span className="text-slate-600">Tedarikçi Hakediş</span><span className="font-medium">{fmtCurrency(s.vendorCost ?? 0)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-600">Saha Giderleri (Ulaşım + Denetim)</span><span className="font-medium">{fmtCurrency(s.fieldExpenseCost ?? 0)}</span></div>
@@ -3385,7 +3385,7 @@ function PLOzetTab({ claimId }: { claimId: string }) {
           </div>
           {/* Tahsilat */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Tahsilat</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Tahsilat</p>
             <div className="space-y-1">
               <div className="flex justify-between text-sm"><span className="text-slate-600">Sigortacıdan Tahsil</span><span className="font-medium text-green-700">{fmtCurrency(s.collectedFromInsurer ?? 0)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-600">Sigortalıdan Tahsil</span><span className="font-medium text-green-700">{fmtCurrency(s.collectedFromInsured ?? 0)}</span></div>
@@ -3982,7 +3982,7 @@ export default function ClaimFileDetailPage() {
               {(claim.customer.fullName ?? claim.customer.companyName ?? '?').charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0">
-              <p className="text-xs text-blue-400 font-medium uppercase tracking-wide leading-none mb-0.5">Müşteri</p>
+              <p className="text-xs text-blue-400 font-medium tracking-wide leading-none mb-0.5">Müşteri</p>
               <p className="text-sm font-semibold text-blue-800 truncate">{claim.customer.fullName ?? claim.customer.companyName ?? '—'}</p>
             </div>
           </div>

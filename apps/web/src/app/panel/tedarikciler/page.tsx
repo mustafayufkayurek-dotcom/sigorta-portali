@@ -488,7 +488,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
       {/* Custom header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0">
         <div>
-          <p className="text-xs text-indigo-200 font-medium uppercase tracking-wide">Tedarikçi Özeti</p>
+          <p className="text-xs text-indigo-200 font-medium tracking-wide">Tedarikçi Özeti</p>
           <h3 className="text-sm font-semibold text-white mt-0.5 truncate max-w-[280px]">{displayName}</h3>
         </div>
         <button
@@ -557,7 +557,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tedarikçi Hizmet Kolları</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Tedarikçi Hizmet Kolları</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {workGroups.map((vwg: any) => (
@@ -579,7 +579,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">{Icon.mapPin}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Hizmet Bölgeleri</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Hizmet Bölgeleri</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {serviceAreas.map((sa: any, i: number) => {
@@ -601,7 +601,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0">{Icon.bank}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Banka Bilgileri</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Banka Bilgileri</p>
               </div>
               <div className="space-y-2">
                 {vendor.bankName && (
@@ -625,7 +625,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 flex-shrink-0">{Icon.users}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Referans</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Referans</p>
               </div>
               <p className="text-sm text-slate-700">{vendor.referral}</p>
             </div>
@@ -636,7 +636,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
             <div className="px-5 pt-4 pb-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 flex-shrink-0">{Icon.tag}</span>
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Etiketler</p>
+                <p className="text-xs font-semibold text-slate-700 tracking-wide">Etiketler</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {vendor.tags.map((t: string) => (
@@ -2364,7 +2364,7 @@ export default function VendorsPage() {
                       <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
                         <span className="text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
                         <span className="text-sm font-semibold text-slate-800">Tedarikçi Hizmet Kolları</span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-semibold tracking-wide bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
                           {vendorTypeModeBadge(hizmetMode)}
                         </span>
                         {selectedHizmetKolCount > 0 && (

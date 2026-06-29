@@ -100,7 +100,7 @@ export default function VendorStatementDetailPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-indigo-500 font-medium uppercase tracking-wide mb-1">Ödeme Ekstresi</p>
+            <p className="text-xs text-indigo-500 font-medium tracking-wide mb-1">Ödeme Ekstresi</p>
             <h1 className="text-xl font-bold text-slate-900">{statement.statementNo}</h1>
             <p className="text-sm text-slate-500 mt-1">
               {statement.vendor?.name ?? '—'} · {fmtDate(statement.periodStart)} – {fmtDate(statement.periodEnd)}
@@ -135,7 +135,7 @@ export default function VendorStatementDetailPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+              <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
                   <th className="text-left px-5 py-2.5 font-semibold">Açıklama</th>
                   <th className="text-left px-5 py-2.5 font-semibold">Dosya</th>

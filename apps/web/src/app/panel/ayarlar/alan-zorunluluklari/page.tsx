@@ -92,8 +92,8 @@ function FieldsToggleSection({
       </div>
       <div className="divide-y divide-slate-50">
         <div className="px-5 py-2.5 bg-slate-50 grid grid-cols-12 gap-4">
-          <div className="col-span-8 text-xs font-medium text-slate-500 uppercase">Alan Adı</div>
-          <div className="col-span-4 text-xs font-medium text-slate-500 uppercase text-center">Zorunlu</div>
+          <div className="col-span-8 text-xs font-medium text-slate-500">Alan Adı</div>
+          <div className="col-span-4 text-xs font-medium text-slate-500 text-center">Zorunlu</div>
         </div>
         {Object.entries(fields).map(([key, rule]) => (
           <div key={key} className="px-5 py-3.5 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
@@ -352,7 +352,7 @@ export default function AlanZorunluluklariPage() {
           <div className="col-span-1 space-y-4">
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-50 bg-slate-50">
-                <p className="text-xs font-semibold text-slate-500 uppercase">Departman</p>
+                <p className="text-xs font-semibold text-slate-500">Departman</p>
               </div>
               <div className="divide-y divide-slate-50">
                 {departments.map((d) => (
@@ -371,7 +371,7 @@ export default function AlanZorunluluklariPage() {
             {selectedDept && displayFormats.length > 0 && (
               <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-50 bg-slate-50">
-                  <p className="text-xs font-semibold text-slate-500 uppercase">Rapor Formatı</p>
+                  <p className="text-xs font-semibold text-slate-500">Rapor Formatı</p>
                 </div>
                 <div className="divide-y divide-slate-50">
                   {displayFormats.map((f) => (
@@ -431,10 +431,10 @@ export default function AlanZorunluluklariPage() {
                 ) : (
                   <div className="divide-y divide-slate-50">
                     <div className="px-5 py-2.5 bg-slate-50 grid grid-cols-12 gap-4">
-                      <div className="col-span-5 text-xs font-medium text-slate-500 uppercase">Alan</div>
-                      <div className="col-span-3 text-xs font-medium text-slate-500 uppercase">Anahtar</div>
-                      <div className="col-span-2 text-xs font-medium text-slate-500 uppercase text-center">Zorunlu</div>
-                      <div className="col-span-2 text-xs font-medium text-slate-500 uppercase text-center">Görünür</div>
+                      <div className="col-span-5 text-xs font-medium text-slate-500">Alan</div>
+                      <div className="col-span-3 text-xs font-medium text-slate-500">Anahtar</div>
+                      <div className="col-span-2 text-xs font-medium text-slate-500 text-center">Zorunlu</div>
+                      <div className="col-span-2 text-xs font-medium text-slate-500 text-center">Görünür</div>
                     </div>
                     {configs.map((cfg) => (
                       <div key={cfg.fieldKey} className="px-5 py-3.5 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
@@ -542,8 +542,8 @@ export default function AlanZorunluluklariPage() {
             <>
               <div className="divide-y divide-slate-50">
                 <div className="px-5 py-2.5 bg-slate-50 grid grid-cols-12 gap-4">
-                  <div className="col-span-8 text-xs font-medium text-slate-500 uppercase">Ayar</div>
-                  <div className="col-span-4 text-xs font-medium text-slate-500 uppercase text-center">Zorunlu</div>
+                  <div className="col-span-8 text-xs font-medium text-slate-500">Ayar</div>
+                  <div className="col-span-4 text-xs font-medium text-slate-500 text-center">Zorunlu</div>
                 </div>
                 <div className="px-5 py-4 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
                   <div className="col-span-8">

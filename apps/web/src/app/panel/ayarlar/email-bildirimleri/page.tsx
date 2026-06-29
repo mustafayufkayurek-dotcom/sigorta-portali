@@ -247,7 +247,7 @@ export default function EmailBildirimleriPage() {
 
         {previewMode ? (
           <div>
-            <p className="text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">HTML Önizleme</p>
+            <p className="text-xs font-medium text-slate-500 mb-1.5 tracking-wide">HTML Önizleme</p>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
                 <p className="text-xs text-slate-500"><span className="font-medium">Konu:</span> {form.subject || <span className="italic text-slate-300">boş</span>}</p>
