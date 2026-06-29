@@ -2,7 +2,7 @@
 
 **Güncelleme:** 29 Haziran 2026  
 **Canlı:** https://app.meridyen-tr.com  
-**Bilinen iyi sürüm:** Web v78 + Backend v43 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Bilinen iyi sürüm:** Web v79 + Backend v43 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
 
 Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `❌ FAIL`
 

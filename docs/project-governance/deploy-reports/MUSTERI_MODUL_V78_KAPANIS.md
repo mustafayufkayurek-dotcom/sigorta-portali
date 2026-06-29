@@ -1,4 +1,4 @@
-# Müşteri Modülü — Canlı Kapanış Raporu (v76–v78)
+# Müşteri Modülü — Canlı Kapanış Raporu (v76–v79)
 
 **Tarih:** 29 Haziran 2026  
 **Kapsam:** Web-only (backend değişmedi — `v43`)  
@@ -11,10 +11,10 @@
 
 | Bileşen | Image |
 |---------|--------|
-| Web (aktif) | `sigorta-web:dalga2-agreement-hr-01-v78-amd64` |
+| Web (aktif) | `sigorta-web:dalga2-agreement-hr-01-v79-amd64` |
 | Backend (sabit) | `app-backend:dalga2-agreement-hr-01-v43-amd64` |
-| Web rollback −1 | `sigorta-web:dalga2-agreement-hr-01-v77-amd64` |
-| Web rollback −2 | `sigorta-web:dalga2-agreement-hr-01-v76-amd64` |
+| Web rollback −1 | `sigorta-web:dalga2-agreement-hr-01-v78-amd64` |
+| Web rollback −2 | `sigorta-web:dalga2-agreement-hr-01-v77-amd64` |
 
 Manifest: `deploy/manifests/KNOWN_GOOD_IMAGES.json`
 
@@ -27,6 +27,7 @@ Manifest: `deploy/manifests/KNOWN_GOOD_IMAGES.json`
 | v76 | Yeşil tema, SlidePanel form, harita/GPS, İlişki Özeti ayrımı |
 | v77 | Yeni Müşteri butonu + header ikonu yeşil (`btn-primary-emerald`) |
 | v78 | Kurumsal sol / Bireysel sağ, telefon tam genişlik, doğum tarihi kaldırıldı |
+| v79 | Veri kaybı önlemleri (liste/drawer hata yönetimi) + güvenlik script hizalama |
 
 **Migration:** Yok — yalnızca frontend.
 
@@ -107,6 +108,6 @@ bash scripts/verify-critical-paths.sh --remote
 - [x] KNOWN_GOOD_IMAGES güncel
 - [x] Rollback script v78/v43 ile hizalı
 - [x] Smoke + kritik path listesi müşteri rotalarını kapsıyor
-- [ ] Git safety snapshot (`safety/pre-musteri-v78-*`)
+- [x] Git safety snapshot (`safety/pre-musteri-v79-20260629` — commit `41f4b3c`)
 
 **Sıradaki modül:** Tedarikçiler (aynı güvenlik paketi uygulanacak)
