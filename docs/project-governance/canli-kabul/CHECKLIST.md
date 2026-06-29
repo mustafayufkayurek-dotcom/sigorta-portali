@@ -1,8 +1,8 @@
 # Canlı Kabul Checklist
 
-**Güncelleme:** 28 Haziran 2026  
+**Güncelleme:** 29 Haziran 2026  
 **Canlı:** https://app.meridyen-tr.com  
-**Git snapshot:** `c086b05` (branch `safety/pre-inventory-20260628`)
+**Bilinen iyi sürüm:** Web v78 + Backend v43 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
 
 Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `❌ FAIL`
 
@@ -21,14 +21,16 @@ Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `�
 | 11 | Navigasyon | `/panel` | 🤖 PASS | ⏳ | Route 200 |
 | 12 | CRM | `/panel/crm` | ⏳ | ⏳ | Smoke'a henüz eklenmedi |
 | 13 | Finans | `/panel/finans` | 🤖 PASS | ⏳ | B1 adayı |
-| 14 | Mail / hoş geldin | davet akışı | ❌ | ⏳ | Smoke login — gerçek test şifresi gerekli |
+| 14 | Müşteriler | `/panel/musteriler` | 🤖 PASS | ✅ | v76–v78: yeşil tema, SlidePanel, İlişki Özeti, form UX |
+| 15 | Tedarikçiler | `/panel/tedarikciler` | 🤖 PASS | ⏳ | Sıradaki modül |
+| 16 | Mail / hoş geldin | davet akışı | ❌ | ⏳ | Smoke login — gerçek test şifresi gerekli |
 
-**Otomatik log:** `otomatik/smoke-20260628.log`
+**Otomatik log:** `otomatik/smoke-musteri-v78.log` (hedef)
 
 ---
 
 ## Dalga 3 ilerleme
 
-- [x] Adım 1 — Git safety snapshot
-- [ ] Adım 2 — Mustafa PASS (ekran görüntüsü `ekran-goruntuleri/`)
+- [x] Adım 1 — Git safety snapshot (müşteri modülü — devam ediyor)
+- [x] Adım 2 — Mustafa PASS — Müşteriler (29 Haziran 2026)
 - [ ] Adım 3 — B paketi öncelik kararı

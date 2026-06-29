@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, CUSTOMER_RELATION_SECTION_HINT } from '@/utils/customer-form-helpers';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -38,7 +42,7 @@ function maskTC(tc: string | null | undefined): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
+  open: 'bg-emerald-100 text-emerald-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
   closed: 'bg-slate-100 text-slate-500',
   cancelled: 'bg-red-100 text-red-700',
@@ -94,7 +98,7 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'blue' | 'pu
   const cls = {
     green: 'bg-green-50 text-green-700 border-green-100',
     gray: 'bg-slate-100 text-slate-500 border-slate-200',
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    blue: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     purple: 'bg-purple-50 text-purple-700 border-purple-100',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
     orange: 'bg-orange-50 text-orange-700 border-orange-100',
@@ -105,9 +109,9 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'blue' | 'pu
 }
 
 // ── Profil Tab ────────────────────────────────────────────────────────────────
-function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any; isFieldStaff: boolean; onReload: () => void }) {
+function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { customer: any; isFieldStaff: boolean; onReload: () => void; onEdit: () => void }) {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
-  const subTypeLabel = customer.subType === 'insured' ? 'Sigortalı' : customer.subType === 'private_customer' ? 'Özel Müşteri' : null;
+  const subTypeLabel = customerSubTypeLabel(customer.subType);
 
   // Quick note state
   const [noteText, setNoteText] = useState('');
@@ -129,6 +133,13 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
     } catch (e) { console.error(e); } finally { setSavingNote(false); }
   };
 
+  const handleClearLocation = async () => {
+    try {
+      await axios.patch(`${API}/customers/${customer.id}`, { latitude: null, longitude: null }, { headers: authHeader() });
+      onReload();
+    } catch (e) { console.error(e); }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -138,9 +149,12 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
             {isCorporate ? (
               <>
                 <InfoRow label="Şirket Adı" value={customer.companyName} className="col-span-2" />
+                <InfoRow label="Alt Tip" value={subTypeLabel ? (
+                  <Badge variant="blue">{subTypeLabel}</Badge>
+                ) : null} />
                 <InfoRow label="Vergi No" value={customer.taxNumber} />
                 <InfoRow label="Vergi Dairesi" value={customer.taxOffice} />
-                <InfoRow label="Yetkili" value={customer.authorizedPerson} />
+                <InfoRow label="Yetkili" value={customer.authorizedPerson} className="col-span-2" />
               </>
             ) : (
               <>
@@ -153,7 +167,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
                   ) : null
                 } />
                 <InfoRow label="Alt Tip" value={subTypeLabel ? (
-                  <Badge variant={customer.subType === 'insured' ? 'orange' : 'green'}>{subTypeLabel}</Badge>
+                  <Badge variant={customer.subType === 'insured' ? 'orange' : customer.subType === 'private_customer' ? 'green' : 'purple'}>{subTypeLabel}</Badge>
                 ) : null} />
               </>
             )}
@@ -164,24 +178,48 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
         <SectionCard title="İletişim Bilgileri">
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <InfoRow label="Telefon" value={customer.phone ? (
-              <a href={`tel:${customer.phone}`} className="text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1">
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                {customer.phone}
-              </a>
+              <PhoneContactActions phone={customer.phone} variant="inline" size="sm" />
             ) : null} />
             <InfoRow label="E-posta" value={customer.email ? (
-              <a href={`mailto:${customer.email}`} className="text-blue-600 hover:underline">{customer.email}</a>
+              <a href={`mailto:${customer.email}`} className="text-emerald-600 hover:underline">{customer.email}</a>
             ) : null} />
             <InfoRow label="İl" value={customer.city} />
             <InfoRow label="İlçe" value={customer.district} />
             <InfoRow label="Adres" value={customer.address} className="col-span-2" />
           </div>
+          {customer.latitude != null && customer.longitude != null ? (
+            <div className="mt-4 pt-4 border-t border-slate-50">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Harita Konumu</p>
+              <LocationPreview
+                lat={customer.latitude}
+                lng={customer.longitude}
+                addressLabel={[customer.city, customer.district, customer.address].filter(Boolean).join(', ') || undefined}
+                onEdit={onEdit}
+                onClear={handleClearLocation}
+                accentColor="emerald"
+              />
+            </div>
+          ) : (
+            <div className="mt-4 pt-4 border-t border-slate-50">
+              <p className="text-xs text-slate-400 mb-2">Harita konumu kayıtlı değil. Saha ziyaretinde yol tarifi için konum ekleyin.</p>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                </svg>
+                Konum Ekle
+              </button>
+            </div>
+          )}
         </SectionCard>
       </div>
 
-      {/* CRM */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SectionCard title="CRM Bilgileri">
+        <SectionCard title={CUSTOMER_RELATION_SECTION_TITLE}>
+          <p className="text-xs text-slate-500 mb-4 leading-relaxed">{CUSTOMER_RELATION_SECTION_HINT}</p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <InfoRow label="Kaynak" value={customer.source ? SOURCE_LABEL[customer.source] ?? customer.source : null} />
             <InfoRow label="Takip Tarihi" value={customer.followUpDate ? (
@@ -207,13 +245,24 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
               </div>
             </div>
           )}
+          <div className="mt-4 pt-4 border-t border-slate-50">
+            <Link
+              href="/panel/crm"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg border border-emerald-100 transition-colors"
+            >
+              CRM modülünde takip ve not geçmişi
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
         </SectionCard>
 
         {/* İstatistik */}
         <SectionCard title="Dosya İstatistikleri">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Toplam Dosya', value: customer._count?.claimFiles ?? 0, color: 'text-blue-600' },
+              { label: 'Toplam Dosya', value: customer._count?.claimFiles ?? 0, color: 'text-emerald-600' },
               { label: 'Durum', value: (
                 <Badge variant={customer.status === 'active' ? 'green' : customer.status === 'blacklisted' ? 'red' : 'gray'}>
                   {customer.status === 'active' ? '● Aktif' : customer.status === 'blacklisted' ? '⛔ Kara Liste' : '● Pasif'}
@@ -245,7 +294,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
         <div className="border-t border-slate-50 pt-4">
           <div className="flex gap-2 items-end">
             <textarea
-              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none"
+              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none"
               rows={2}
               placeholder="Not ekle..."
               value={noteText}
@@ -255,7 +304,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
               type="button"
               onClick={handleAddNote}
               disabled={savingNote || !noteText.trim()}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
             >
               {savingNote ? 'Ekleniyor...' : 'Not Ekle'}
             </button>
@@ -274,7 +323,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload }: { customer: any
             {customer.serviceType && (
               <span className={`inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full border ${
                 customer.serviceType === 'HASAR'
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-red-50 text-red-700 border-red-200'
               }`}>
                 {customer.serviceType === 'HASAR' ? 'Hasar' : 'Acil Yardım'}
@@ -305,8 +354,8 @@ function YetkiliIletisimTab({ customer }: { customer: any }) {
         ) : (
           <div className="space-y-3">
             {contacts.map((c: any, i: number) => (
-              <div key={c.id ?? i} className={`flex items-start gap-3 p-4 rounded-xl border ${c.isPrimary ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-100'}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-blue-600' : 'bg-slate-400'}`}>
+              <div key={c.id ?? i} className={`flex items-start gap-3 p-4 rounded-xl border ${c.isPrimary ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-emerald-600' : 'bg-slate-400'}`}>
                   {(c.name || '?').charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1">
@@ -317,12 +366,9 @@ function YetkiliIletisimTab({ customer }: { customer: any }) {
                   {c.role && <p className="text-xs text-slate-500 mt-0.5">{c.role}</p>}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                     {c.phone && (
-                      <a href={`tel:${c.phone}`} className="text-xs text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                        {c.phone}
-                      </a>
+                      <PhoneContactActions phone={c.phone} variant="inline" />
                     )}
-                    {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-blue-600">✉ {c.email}</a>}
+                    {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-emerald-600">✉ {c.email}</a>}
                   </div>
                 </div>
               </div>
@@ -342,9 +388,9 @@ function YetkiliIletisimTab({ customer }: { customer: any }) {
                   <span className="text-lg">{CONTACT_TYPE_ICON[ci.type] ?? '📞'}</span>
                   <div>
                     {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
-                      <a href={`tel:${ci.value}`} className="text-sm font-medium text-blue-600 hover:underline">{ci.value}</a>
+                      <a href={`tel:${ci.value}`} className="text-sm font-medium text-emerald-600 hover:underline">{ci.value}</a>
                     ) : ci.type === 'email' ? (
-                      <a href={`mailto:${ci.value}`} className="text-sm font-medium text-blue-600 hover:underline">{ci.value}</a>
+                      <a href={`mailto:${ci.value}`} className="text-sm font-medium text-emerald-600 hover:underline">{ci.value}</a>
                     ) : (
                       <p className="text-sm font-medium text-slate-800">{ci.value}</p>
                     )}
@@ -410,10 +456,10 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
         ) : (
           <div className="space-y-2">
             {files.map((f) => (
-              <div key={f.id} className="border border-slate-100 rounded-xl hover:border-blue-200 transition-all">
+              <div key={f.id} className="border border-slate-100 rounded-xl hover:border-emerald-200 transition-all">
                 <div className="flex items-center justify-between p-3.5">
                   <a href={`/panel/hasar-dosyalari/${f.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 text-sm flex-shrink-0">📋</div>
+                    <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-sm flex-shrink-0">📋</div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{f.claimNo ?? f.id.slice(0, 8).toUpperCase()}</p>
                       <p className="text-xs text-slate-400 mt-0.5 truncate">{f.subject ?? '—'} · {f.incidentDate ? new Date(f.incidentDate).toLocaleDateString('tr-TR') : '—'}</p>
@@ -428,7 +474,7 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
                       type="button"
                       title="Önizle"
                       onClick={() => setPreviewFile(previewFile?.id === f.id ? null : f)}
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -521,7 +567,7 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
             </div>
             <div className="px-5 pb-5 flex justify-end gap-2">
               <button type="button" onClick={() => setPreviewFile(null)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Kapat</button>
-              <a href={`/panel/hasar-dosyalari/${previewFile.id}`} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Dosyaya Git</a>
+              <a href={`/panel/hasar-dosyalari/${previewFile.id}`} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Dosyaya Git</a>
             </div>
           </div>
         </div>
@@ -578,7 +624,7 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3 text-slate-400">
-          <svg className="w-8 h-8 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
@@ -600,7 +646,7 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
       {/* Özet Metrikler */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Toplam Dosya', value: summary.totalFiles, icon: '📂', color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Toplam Dosya', value: summary.totalFiles, icon: '📂', color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Aktif Branş', value: summary.branchCount, icon: '🏷', color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: 'En Aktif Branş', value: summary.mostActiveBranch ?? '—', icon: '🏆', color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Ort. Kapanma', value: summary.avgCloseDays != null ? `${summary.avgCloseDays} gün` : '—', icon: '⏱', color: 'text-green-600', bg: 'bg-green-50' },
@@ -684,7 +730,7 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
                       </div>
                     </td>
                     <td className="py-3 text-right">
-                      <span className="font-semibold text-blue-600">{row.total}</span>
+                      <span className="font-semibold text-emerald-600">{row.total}</span>
                     </td>
                     <td className="py-3 text-right">
                       <span className="text-amber-600 font-medium">{row.open}</span>
@@ -722,14 +768,50 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
     district: customer.district ?? '',
     address: customer.address ?? '',
   });
+  const [locationCoords, setLocationCoords] = useState<LatLng | null>(
+    customer.latitude != null && customer.longitude != null
+      ? { lat: customer.latitude, lng: customer.longitude }
+      : null,
+  );
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const addressLabel = [form.address, form.district, form.city].filter(Boolean).join(', ');
+
+  const handleGeocodeAddress = async () => {
+    const query = addressLabel.trim();
+    if (!query) return;
+    setGeocoding(true);
+    setGeocodeMsg(null);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tr&limit=1`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'SigortaHasarSistemi/1.0 (contact@example.com)' } });
+      const data = await res.json();
+      if (data?.length > 0) {
+        setLocationCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        setGeocodeMsg('Konum bulundu');
+      } else {
+        setGeocodeMsg('Konum bulunamadı. Haritadan veya GPS ile belirleyin.');
+      }
+    } catch {
+      setGeocodeMsg('Geocoding başarısız.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     try {
-      await axios.patch(`${API}/customers/${customer.id}`, form, { headers: authHeader() });
+      await axios.patch(`${API}/customers/${customer.id}`, {
+        ...form,
+        latitude: locationCoords?.lat ?? null,
+        longitude: locationCoords?.lng ?? null,
+      }, { headers: authHeader() });
       onSaved();
       onClose();
     } catch (e: any) {
@@ -738,79 +820,126 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-800">Müşteri Düzenle</h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-5 space-y-3">
-          {isCorporate ? (
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Şirket Adı</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                value={form.companyName} onChange={(e) => setForm((p) => ({ ...p, companyName: e.target.value }))}
-                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
-            </div>
-          ) : (
+    <>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+            <h3 className="text-sm font-semibold text-slate-800">Müşteri Düzenle</h3>
+            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-5 space-y-3">
+            {isCorporate ? (
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Şirket Adı</label>
+                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  value={form.companyName} onChange={(e) => setForm((p) => ({ ...p, companyName: e.target.value }))}
+                  onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Ad</label>
+                  <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
+                    onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Soyad</label>
+                  <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
+                    onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Ad</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                  value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
-                  onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }} />
+                <label className="block text-xs font-medium text-slate-600 mb-1">Telefon</label>
+                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Soyad</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                  value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
-                  onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
+                <label className="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
+                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
               </div>
             </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Telefon</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">İl</label>
+                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">İlçe</label>
+                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  value={form.district} onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))} />
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+              <label className="block text-xs font-medium text-slate-600 mb-1">Adres</label>
+              <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none"
+                rows={2} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
             </div>
+
+            <div className="pt-1 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Harita Konumu</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button
+                  type="button"
+                  disabled={geocoding || !addressLabel}
+                  onClick={handleGeocodeAddress}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                >
+                  {geocoding ? 'Aranıyor...' : 'Konumu Bul'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLocationPicker(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${locationCoords ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                >
+                  {locationCoords ? 'Konum Seçildi' : 'Haritadan Konum Seç'}
+                </button>
+              </div>
+              {geocodeMsg && (
+                <p className={`text-xs mb-2 px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                  {geocodeMsg}
+                </p>
+              )}
+              {locationCoords && (
+                <LocationPreview
+                  lat={locationCoords.lat}
+                  lng={locationCoords.lng}
+                  addressLabel={addressLabel || undefined}
+                  onEdit={() => setShowLocationPicker(true)}
+                  onClear={() => { setLocationCoords(null); setGeocodeMsg(null); }}
+                  accentColor="emerald"
+                />
+              )}
+            </div>
+
+            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">İl</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">İlçe</label>
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                value={form.district} onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))} />
-            </div>
+          <div className="px-5 pb-5 flex justify-end gap-2 sticky bottom-0 bg-white border-t border-slate-100 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+              {saving ? 'Kaydediliyor...' : 'Kaydet'}
+            </button>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Adres</label>
-            <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none"
-              rows={2} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
-          </div>
-          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-        </div>
-        <div className="px-5 pb-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
-          <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
-          </button>
         </div>
       </div>
-    </div>
+
+      <LocationPickerModal
+        open={showLocationPicker}
+        initial={locationCoords}
+        addressHint={addressLabel || undefined}
+        onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
+        onClose={() => setShowLocationPicker(false)}
+      />
+    </>
   );
 }
 
@@ -843,7 +972,7 @@ export default function CustomerDetailPage() {
   if (loading) return (
     <div className="flex items-center justify-center min-h-64">
       <div className="flex flex-col items-center gap-3 text-slate-400">
-        <svg className="w-8 h-8 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+        <svg className="w-8 h-8 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
@@ -857,7 +986,7 @@ export default function CustomerDetailPage() {
   const displayName = isCorporate
     ? customer.companyName ?? '—'
     : `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || '—';
-  const subTypeLabel = customer.subType === 'insured' ? 'Sigortalı' : customer.subType === 'private_customer' ? 'Özel Müşteri' : null;
+  const subTypeLabel = customerSubTypeLabel(customer.subType);
   const contactCount = customer.contacts?.length ?? 0;
   const isOverdue = customer.followUpDate && new Date(customer.followUpDate) < new Date();
 
@@ -875,7 +1004,7 @@ export default function CustomerDetailPage() {
       {/* ── Header Card ── */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-5">
         <div className="flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm ${isCorporate ? 'bg-blue-600' : 'bg-purple-600'}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm ${isCorporate ? 'bg-emerald-600' : 'bg-purple-600'}`}>
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -884,11 +1013,16 @@ export default function CustomerDetailPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-bold text-slate-900">{displayName}</h1>
                   {/* Fix #7: inline badge ismin yanında */}
-                  <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${isCorporate ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
+                  <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${isCorporate ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
                     {isCorporate ? '🏢 Kurumsal' : '👤 Bireysel'}
                   </span>
                   {subTypeLabel && (
-                    <Badge variant={customer.subType === 'insured' ? 'orange' : 'green'}>{subTypeLabel}</Badge>
+                    <Badge variant={
+                      customer.subType === 'insured' ? 'orange'
+                        : customer.subType === 'private_customer' ? 'green'
+                          : customer.subType === 'sigorta_sirketi' || customer.subType === 'asistan_firmasi' ? 'blue'
+                            : 'purple'
+                    }>{subTypeLabel}</Badge>
                   )}
                 </div>
                 {customer.city && (
@@ -922,14 +1056,11 @@ export default function CustomerDetailPage() {
               </div>
             </div>
             {/* Quick contact */}
-            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
               {customer.phone && (
-                <a href={`tel:${customer.phone}`} className="text-xs text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                  {customer.phone}
-                </a>
+                <PhoneContactActions phone={customer.phone} variant="inline" size="sm" />
               )}
-              {customer.email && <a href={`mailto:${customer.email}`} className="text-xs text-slate-500 hover:text-blue-600">✉ {customer.email}</a>}
+              {customer.email && <a href={`mailto:${customer.email}`} className="text-xs text-slate-500 hover:text-emerald-600">✉ {customer.email}</a>}
               {customer.identityNo && (
                 <span className="text-xs text-slate-400">
                   TC: {isFieldStaff ? maskTC(customer.identityNo) : customer.identityNo}
@@ -972,13 +1103,13 @@ export default function CustomerDetailPage() {
             <button type="button" key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50/30'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}>
               <span>{tab.icon}</span>
               {tab.label}
               {tab.id === 'dosyalar' && (customer._count?.claimFiles ?? 0) > 0 && (
-                <span className="ml-1 bg-blue-100 text-blue-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">
+                <span className="ml-1 bg-emerald-100 text-emerald-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">
                   {customer._count?.claimFiles}
                 </span>
               )}
@@ -988,7 +1119,7 @@ export default function CustomerDetailPage() {
       </div>
 
       {/* ── Tab Content ── */}
-      {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} />}
+      {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => setShowEditModal(true)} />}
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
       {activeTab === 'evraklar' && (

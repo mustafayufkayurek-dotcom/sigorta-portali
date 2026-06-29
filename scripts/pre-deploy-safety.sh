@@ -30,10 +30,14 @@ log "=== 3/6 Çalışan image kaydı ==="
 
 log "=== 4/6 Bilinen iyi image'ların silinmesini engelle ==="
 KEEP_IMAGES=(
-  "app-backend:dalga2-agreement-hr-01-v27-amd64"
-  "app-backend:dalga2-agreement-hr-01-v26-amd64"
+  "app-backend:dalga2-agreement-hr-01-v43-amd64"
+  "app-backend:dalga2-agreement-hr-01-v29-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v76-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v77-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v78-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v79-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v31-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v30-amd64"
+  "sigorta-web:dalga2-agreement-hr-01-v32-amd64"
   "app-backend:dalga2-agreement-hr-01-v1-amd64"
   "sigorta-web:dalga2-agreement-hr-01-v1-amd64"
 )

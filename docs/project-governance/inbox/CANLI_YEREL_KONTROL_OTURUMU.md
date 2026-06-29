@@ -14,8 +14,8 @@
 | 2 | Panel / Nav | `/panel` | `/panel` | | **Yerel PASS** (Mustafa) | |
 | 3 | Kullanıcılar | `/panel/kullanicilar` | `/panel/kullanicilar` | | **Tasarım güncellendi** — Mustafa onayı | Kartlı görev seçimi + kurumsal logo |
 | 4 | CRM | `/panel/crm` | `/panel/crm` | | | |
-| 5 | Müşteriler | `/panel/musteriler` | `/panel/musteriler` | | | |
-| 6 | Tedarikçiler | `/panel/tedarikciler` | `/panel/tedarikciler` | | | |
+| 5 | Müşteriler | `/panel/musteriler` | `/panel/musteriler` | **PASS** (29 Haz) | **PASS** | Canlı v78 — yeşil tema, form UX |
+| 6 | Tedarikçiler | `/panel/tedarikciler` | `/panel/tedarikciler` | | | Sıradaki |
 | 7 | Ayarlar | `/panel/ayarlar` | `/panel/kullanicilar` | | | |
 
 **Mustafa sütunları:** `PASS` / `HAYIR: …` / `ATLA`

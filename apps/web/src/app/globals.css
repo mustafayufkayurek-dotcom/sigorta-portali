@@ -51,10 +51,16 @@
          focus:border-blue-400 transition-colors;
 }
 .input-base-sm {
-  @apply w-full border border-slate-200 rounded-lg px-3 py-2 text-sm
+  @apply w-full border border-slate-200 rounded-lg px-3 py-2 text-sm leading-5 min-h-[2.5rem]
          text-slate-800 placeholder:text-slate-400 bg-white
          focus:outline-none focus:ring-2 focus:ring-blue-500/20
          focus:border-blue-400 transition-colors;
+}
+/* Sol ikonlu arama — px-3 kullanma; pl-10 ile çakışma olmaz */
+.panel-search-input {
+  @apply block w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-8 text-sm
+         text-slate-800 placeholder:text-slate-400 min-h-[2.5rem]
+         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors;
 }
 
 /* Butonlar */
@@ -62,6 +68,12 @@
   @apply inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700
          active:bg-blue-800 text-white text-sm font-medium
          px-4 py-2.5 rounded-xl shadow-sm shadow-blue-200/60
+         transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+.btn-primary-emerald {
+  @apply inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700
+         active:bg-emerald-800 text-white text-sm font-medium
+         px-4 py-2.5 rounded-xl shadow-sm shadow-emerald-200/60
          transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed;
 }
 .btn-secondary {
@@ -113,6 +125,10 @@
   @apply w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center
          text-blue-600 flex-shrink-0;
 }
+.page-header-icon-emerald {
+  @apply w-10 h-10 rounded-xl bg-emerald-600/10 flex items-center justify-center
+         text-emerald-600 flex-shrink-0;
+}
 .page-title {
   @apply text-xl font-bold text-slate-900 tracking-tight;
 }
@@ -134,6 +150,15 @@
 /* Filtre Bar */
 .filter-bar {
   @apply bg-white rounded-2xl border border-slate-200/70 shadow-card p-4 mb-5;
+}
+.filter-bar input[type='text'],
+.filter-bar input[type='search'] {
+  display: block;
+  min-height: 2.5rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Dark tema görünürlüğü

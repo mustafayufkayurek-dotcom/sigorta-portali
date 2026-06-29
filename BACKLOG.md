@@ -17,8 +17,8 @@ Aşağıdaki dosyalarda API hatası durumunda sessizce state boşaltan veya 0/nu
 | 7 | `panel/musteriler/[id]/page.tsx` | 31 | `catch { return null; }` | Düşük — SSR helper |
 | 8 | `panel/musteriler/[id]/page.tsx` | 386 | `catch(e) { console.error(e); }` | Düşük — action error |
 | 9 | `panel/musteriler/[id]/page.tsx` | 397 | `catch(e) { console.error(e); }` | Düşük — action error |
-| 10 | `panel/musteriler/page.tsx` | 428 | `.catch(() => setCustomer(null))` | Orta — detay veri kaybı |
-| 11 | `panel/musteriler/page.tsx` | 1243 | `.catch(() => { /* empty */ })` | Orta — listeleme veri kaybı |
+| 10 | `panel/musteriler/page.tsx` | 428 | `.catch(() => setCustomer(null))` | ~~Orta~~ **Düzeltildi v79** — toast + Tekrar Dene |
+| 11 | `panel/musteriler/page.tsx` | 1243 | `.catch(() => { /* empty */ })` | ~~Orta~~ **Düzeltildi v79** — toast, liste korunur |
 | 12 | `panel/hasar-dosyalari/yeni/page.tsx` | 262 | `catch { setTcDupError(null); }` | Düşük — form validasyon |
 | 13 | `panel/hasar-dosyalari/yeni/page.tsx` | 275 | `catch { setPhoneDupError(null); }` | Düşük — form validasyon |
 | 14 | `panel/hasar-dosyalari/yeni/page.tsx` | 288 | `catch { setNameDupWarn(null); }` | Düşük — form validasyon |

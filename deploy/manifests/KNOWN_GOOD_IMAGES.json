@@ -1,31 +1,23 @@
 {
-  "updatedAt": "2026-06-28",
-  "label": "finans-ux-v31",
-  "description": "Masraf formu: GG.AA.YYYY tarih, binlik tutar, Kaydet ve Yeni. Panel geneli TrDateInput standardı.",
+  "updatedAt": "2026-06-29",
+  "label": "musteri-guvenlik-v79",
+  "description": "Müşteri modülü kapanış: veri kaybı önlemleri, rollback/smoke/kritik path hizalama.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v27-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v31-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v43-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v79-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v30-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v26-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v78-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v43-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
-    "/panel",
-    "/panel/kullanicilar",
-    "/panel/ayarlar",
-    "/panel/ayarlar/tanimlar",
-    "/panel/ayarlar/masraf-kategorileri",
-    "/panel/ayarlar/is-gruplari",
-    "/panel/ayarlar/dosya-konulari",
-    "/panel/ayarlar/evrak-turleri",
-    "/panel/ayarlar/mahaller",
-    "/panel/ayarlar/hizmet-turleri",
-    "/panel/finans",
-    "/panel/finans/masraflar"
+    "/panel/musteriler",
+    "/panel/tedarikciler",
+    "/panel/ayarlar/tedarikci-hizmet-kollari",
+    "/api/v1/vendors/summary"
   ]
 }

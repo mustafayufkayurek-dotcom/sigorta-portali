@@ -13,4 +13,12 @@ apps/web/src/utils/settings-definition-nav.ts
 apps/web/src/utils/settings-breadcrumbs.ts
 apps/web/src/app/giris/page.tsx
 apps/web/src/constants/brand.ts
+apps/web/src/app/panel/musteriler/page.tsx
+apps/web/src/app/panel/musteriler/[id]/page.tsx
+apps/web/src/utils/customer-form-helpers.ts
+apps/web/src/components/ContactPhoneField.tsx
+apps/web/src/components/ui/PhoneContactActions.tsx
+apps/web/src/components/LocationPickerModal.tsx
+apps/web/src/components/SlidePanel.tsx
+apps/web/src/app/globals.css
 apps/backend/src/modules/users/users.service.ts

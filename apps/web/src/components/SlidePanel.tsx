@@ -7,10 +7,12 @@ interface SlidePanelProps {
   onClose: () => void;
   title?: string;
   width?: number;
+  /** false: children manage scroll (sticky header/footer forms) */
+  scrollContent?: boolean;
   children: React.ReactNode;
 }
 
-export function SlidePanel({ open, onClose, title, width = 400, children }: SlidePanelProps) {
+export function SlidePanel({ open, onClose, title, width = 400, scrollContent = true, children }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +63,9 @@ export function SlidePanel({ open, onClose, title, width = 400, children }: Slid
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className={scrollContent ? 'flex-1 overflow-y-auto' : 'flex-1 flex flex-col min-h-0 overflow-hidden'}>
+          {children}
+        </div>
       </div>
     </>
   );

@@ -9,7 +9,7 @@ Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka
 
 ## Zorunlu adımlar
 
-1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v29, backend v27)
+1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v78, backend v43)
 2. Deploy öncesi: `scripts/pre-deploy-safety.sh ETİKET` (sunucuda)
 3. Hash doğrulama: `scripts/verify-critical-paths.sh --remote`
 4. Deploy sonrası: `scripts/post-deploy-smoke.sh`

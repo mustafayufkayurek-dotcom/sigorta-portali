@@ -11,120 +11,39 @@ import {
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
+import { ContactPhoneField } from '@/components/ContactPhoneField';
+import { PhoneInput } from '@/components/PhoneInput';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { relativeTime, activityColor } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import {
+  CUSTOMER_TYPE_OPTIONS,
+  CUSTOMER_FORM_SECTIONS,
+  CUSTOMER_RELATION_SECTION_TITLE,
+  CUSTOMER_RELATION_SECTION_HINT,
+  DEFAULT_CUSTOMER_SUB_TYPES,
+  customerSubTypeHint,
+  subTypeActiveClass,
+  customerPhoneValidationError,
+  type CustomerSubTypeDef,
+} from '@/utils/customer-form-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  TableColumnsProvider,
+  usePanelTableColumns,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
 function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
-
-// ── Telefon Numarası mask helpers ─────────────────────────────────────────────
-/**
- * Ham rakam dizisinden "0 (5XX) XXX XX XX" maskesi üretir.
- * rawDigits: kullanıcının girdiği tüm rakamlar (0 dahil), max 11 karakter
- */
-function maskPhoneTR(rawDigits: string): string {
-  const d = rawDigits.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 1) return d; // "0"
-  if (d.length <= 4) return `${d[0]} (${d.slice(1)}`; // "0 (5", "0 (53", "0 (532"
-  if (d.length <= 7) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4)}`; // "0 (532) 1", ...
-  if (d.length <= 9) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7)}`; // "0 (532) 123 45"
-  return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
-}
-
-/** Maske içindeki rakamları çıkarır: "0 (532) 123 45 67" → "05321234567" */
-function unmaskPhoneTR(masked: string): string {
-  return masked.replace(/\D/g, '');
-}
-
-/** Yükleme formatı: "05321234567" → "0 (532) 123 45 67" */
-function storageToMask(stored: string): string {
-  if (!stored) return '';
-  return maskPhoneTR(stored.replace(/\D/g, ''));
-}
-
-// ── TRPhoneInput bileşeni ─────────────────────────────────────────────────────
-interface TRPhoneInputProps {
-  value: string; // saklama formatı: "05321234567"
-  onChange: (raw: string) => void; // "05321234567" formatında geri bildirir
-  onBlur?: (raw: string) => void;
-  className?: string;
-  placeholder?: string;
-  disabled?: boolean;
-  hasError?: boolean;
-}
-
-function TRPhoneInput({ value, onChange, onBlur, className = '', placeholder = '0 (5XX) XXX XX XX', disabled, hasError }: TRPhoneInputProps) {
-  const [display, setDisplay] = useState(() => storageToMask(value));
-
-  // Dışarıdan value değiştiğinde senkronize et (edit modu)
-  useEffect(() => {
-    setDisplay(storageToMask(value));
-  }, [value]); // eslint-disable-line
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawDigits = e.target.value.replace(/\D/g, '').slice(0, 11);
-    const masked = maskPhoneTR(rawDigits);
-    setDisplay(masked);
-    onChange(rawDigits); // sadece rakamları geri bildir
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text');
-    const rawDigits = pasted.replace(/\D/g, '').slice(0, 11);
-    const masked = maskPhoneTR(rawDigits);
-    setDisplay(masked);
-    onChange(rawDigits);
-  };
-
-  const borderCls = hasError
-    ? 'border-red-400 ring-2 ring-red-500/20 bg-red-50'
-    : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400';
-
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      className={`w-full border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none transition-colors ${borderCls} ${disabled ? 'bg-slate-50 text-slate-400' : ''} ${className}`}
-      placeholder={placeholder}
-      value={display}
-      disabled={disabled}
-      maxLength={18} // "0 (532) 123 45 67" = 17 karakter + 1 tolerans
-      onChange={handleChange}
-      onPaste={handlePaste}
-      onBlur={() => {
-        if (onBlur) {
-          onBlur(unmaskPhoneTR(display));
-        }
-      }}
-    />
-  );
-}
-
-// ── Doğum Tarihi mask helpers ──────────────────────────────────────────────────
-function maskBirthDate(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
-}
-function birthMaskToISO(masked: string): string {
-  const digits = masked.replace(/\D/g, '');
-  if (digits.length < 8) return '';
-  const dd = digits.slice(0, 2), mm = digits.slice(2, 4), yyyy = digits.slice(4, 8);
-  return `${yyyy}-${mm}-${dd}`;
-}
-function isoToDisplayBirth(iso: string): string {
-  if (!iso || iso.length < 10) return iso;
-  const [yyyy, mm, dd] = iso.split('-');
-  return `${dd}.${mm}.${yyyy}`;
-}
 
 async function turmobQuery(taxNumber: string, token: string | null) {
   const r = await axios.get(`${API}/tax-verification/turmob-query?taxNumber=${encodeURIComponent(taxNumber)}`, {
@@ -139,18 +58,29 @@ const STATUS_COLOR: Record<string, string> = {
   blacklisted: 'bg-red-50 text-red-700 border-red-100',
 };
 
-type ContactPerson = { id?: string; firstName: string; lastName: string; role: string; phone: string; email: string };
+type ContactPerson = {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phone: string;
+  phoneType: 'gsm' | 'landline';
+  extensionNo: string;
+  email: string;
+};
 type ContactInfoItem = { id?: string; type: string; value: string; label: string };
 
 // Branş listeleri artık API'den dinamik geliyor — sabit diziler kaldırıldı
 
-const emptyContact = (): ContactPerson => ({ firstName: '', lastName: '', role: '', phone: '', email: '' });
+const emptyContact = (): ContactPerson => ({
+  firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm', extensionNo: '', email: '',
+});
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
   customerType: 'individual' as 'individual' | 'corporate',
   subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi',
   firstName: '', lastName: '', companyName: '',
-  taxNumber: '', taxOffice: '', identityNo: '', birthDate: '',
+  taxNumber: '', taxOffice: '', identityNo: '',
   contactFirstName: '', contactLastName: '',
   phone: '', email: '',
   phoneType: 'gsm' as 'gsm' | 'landline',
@@ -165,8 +95,68 @@ const emptyForm = () => ({
   privateServiceType: '' as string,
 });
 
-const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
+const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors';
 const inpError = 'w-full border border-red-400 ring-2 ring-red-500/20 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-colors bg-red-50';
+
+function CustomerSubTypeHintBanner({ subType }: { subType: string }) {
+  const hint = customerSubTypeHint(subType);
+  if (!hint) return null;
+  return (
+    <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+      {hint}
+    </p>
+  );
+}
+
+function CustomerSubTypePicker({
+  customerType,
+  subTypes,
+  selectedSubType,
+  required,
+  hasError,
+  onToggle,
+}: {
+  customerType: 'individual' | 'corporate';
+  subTypes: CustomerSubTypeDef[];
+  selectedSubType: string;
+  required: boolean;
+  hasError: boolean;
+  onToggle: (value: string) => void;
+}) {
+  const filtered = subTypes.filter(
+    (t) => t.forType === customerType || t.forType === 'both',
+  );
+  if (filtered.length === 0) return null;
+
+  return (
+    <div className="mb-5">
+      <p className="text-xs font-medium text-slate-500 mb-2">
+        Alt Tip
+        {required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}
+      </p>
+      <div className="flex gap-2 flex-wrap">
+        {filtered.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => onToggle(t.value)}
+            className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all min-w-[7rem] ${
+              selectedSubType === t.value
+                ? subTypeActiveClass(t.color)
+                : hasError
+                  ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {hasError && <p className="text-xs text-red-500 mt-1.5">Alt tip seçimi zorunludur</p>}
+      {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} />}
+    </div>
+  );
+}
 
 function FormField({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
@@ -183,7 +173,7 @@ function FormField({ label, required, error, children }: { label: string; requir
 function SectionDivider({ emoji, title }: { emoji: string; title: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4 mt-7 first:mt-0 pb-2 border-b border-slate-100">
-      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-base">{emoji}</span>
+      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-base">{emoji}</span>
       <span className="text-sm font-semibold text-slate-700">{title}</span>
     </div>
   );
@@ -192,12 +182,12 @@ function SectionDivider({ emoji, title }: { emoji: string; title: string }) {
 // ── Filter Chip (future use) ────────────────────────────────────────────────
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2.5 py-1 font-medium">
+    <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full px-2.5 py-1 font-medium">
       {label}
       <button
         type="button"
         onClick={onRemove}
-        className="ml-0.5 text-blue-400 hover:text-blue-700 transition-colors rounded-full w-3.5 h-3.5 flex items-center justify-center hover:bg-blue-100"
+        className="ml-0.5 text-emerald-400 hover:text-emerald-700 transition-colors rounded-full w-3.5 h-3.5 flex items-center justify-center hover:bg-emerald-100"
         aria-label="Filtreyi kaldır"
       >
         <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,11 +198,11 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   );
 }
 
-const MODAL_SECTIONS = ['Müşteri Bilgileri', 'Yetkili & İletişim', 'Adres', 'CRM'];
+const MODAL_SECTIONS = [...CUSTOMER_FORM_SECTIONS];
 
 // ── Drawer helpers ───────────────────────────────────────────────────────────
 const CLAIM_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  open: { label: 'Açık', cls: 'bg-blue-50 text-blue-700 border-blue-100' },
+  open: { label: 'Açık', cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
   in_progress: { label: 'İşlemde', cls: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
   closed: { label: 'Kapalı', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
   cancelled: { label: 'İptal', cls: 'bg-red-50 text-red-700 border-red-100' },
@@ -289,7 +279,7 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
     >
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-emerald-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Müşteriler</span>
       </nav>
@@ -298,7 +288,7 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
       <div className="px-4 pt-4 pb-3 border-b border-slate-100">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${customer.customerType === 'individual' ? 'bg-violet-600' : 'bg-blue-600'}`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${customer.customerType === 'individual' ? 'bg-violet-600' : 'bg-emerald-600'}`}>
               {(name || '?').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -309,7 +299,7 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
             </div>
           </div>
           <div className="flex flex-wrap gap-1 flex-shrink-0 mt-0.5">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${customer.customerType === 'individual' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${customer.customerType === 'individual' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
               {customer.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
             </span>
             {customer.serviceType && (
@@ -326,9 +316,8 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
         {/* Sol: İletişim bilgileri */}
         <div className="flex-1 min-w-0 space-y-1.5">
           {customer.phone && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-              <span className="truncate">{customer.phone}</span>
+            <div className="pointer-events-auto">
+              <PhoneContactActions phone={customer.phone} variant="inline" />
             </div>
           )}
           {customer.email && (
@@ -350,9 +339,9 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
 
         {/* Sağ: Dosya mini kartları */}
         <div className="flex gap-1 flex-shrink-0">
-          <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl px-2.5 py-1.5">
-            <span className="text-sm font-bold text-blue-600 leading-none">{totalFiles}</span>
-            <span className="text-[9px] text-blue-400 font-medium mt-0.5">Toplam</span>
+          <div className="flex flex-col items-center bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-1.5">
+            <span className="text-sm font-bold text-emerald-600 leading-none">{totalFiles}</span>
+            <span className="text-[9px] text-emerald-400 font-medium mt-0.5">Toplam</span>
           </div>
           <div className="flex flex-col items-center bg-orange-50 border border-orange-100 rounded-xl px-2.5 py-1.5">
             <span className="text-sm font-bold text-orange-500 leading-none">{openFiles}</span>
@@ -418,17 +407,28 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   const router = useRouter();
   const [customer, setCustomer] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open || !customerId) return;
+  const loadDetail = useCallback(() => {
+    if (!customerId) return;
     setCustomer(null);
+    setDetailError(null);
     setLoadingDetail(true);
     axios
       .get(`${API}/customers/${customerId}`, { headers: authHeader() })
       .then((r) => setCustomer(r.data.data ?? r.data))
-      .catch(() => setCustomer(null))
+      .catch((e) => {
+        console.error(e);
+        setCustomer(null);
+        setDetailError('Müşteri detayı yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');
+      })
       .finally(() => setLoadingDetail(false));
-  }, [customerId, open]);
+  }, [customerId]);
+
+  useEffect(() => {
+    if (!open || !customerId) return;
+    loadDetail();
+  }, [open, customerId, loadDetail]);
 
   const name = customer
     ? customer.customerType === 'individual'
@@ -442,7 +442,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
         👤 Bireysel
       </span>
     ) : (
-      <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-100">
+      <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-100">
         🏢 Kurumsal
       </span>
     );
@@ -455,15 +455,15 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   return (
     <SlidePanel open={open} onClose={onClose} width={400}>
       {/* Custom header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
         <div>
-          <p className="text-xs text-blue-200 font-medium uppercase tracking-wide">Müşteri Özeti</p>
+          <p className="text-xs text-emerald-200 font-medium uppercase tracking-wide">Müşteri Özeti</p>
           <h3 className="text-sm font-semibold text-white mt-0.5 truncate max-w-[280px]">{name}</h3>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
           aria-label="Kapat"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -475,13 +475,22 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
       {loadingDetail ? (
         <div className="space-y-3 animate-pulse p-4">{Array.from({length:4}).map((_,i)=><div key={i} className="h-10 rounded-lg bg-slate-200"/>)}</div>
       ) : !customer ? (
-        <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Veri Alınamadı</div>
+        <div className="flex flex-col items-center justify-center h-40 px-6 text-center gap-3">
+          <p className="text-sm text-slate-500">{detailError ?? 'Veri alınamadı'}</p>
+          <button
+            type="button"
+            onClick={loadDetail}
+            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-100 transition-colors"
+          >
+            Tekrar Dene
+          </button>
+        </div>
       ) : (
         <div className="pb-24">
           {/* Kimlik */}
           <div className="px-5 pt-5 pb-4 border-b border-slate-50">
             <div className="flex items-start gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold flex-shrink-0 ${customer.customerType === 'individual' ? 'bg-purple-500' : 'bg-blue-600'}`}>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold flex-shrink-0 ${customer.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
                 {(name || '?').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -497,14 +506,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
             </div>
             <div className="space-y-2.5">
               {customer.phone && (
-                <a href={`tel:${customer.phone}`} className="flex items-center gap-2.5 text-sm text-blue-600 hover:text-blue-700 transition-colors group">
-                  <span className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors flex-shrink-0">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </span>
-                  {customer.phone}
-                </a>
+                <PhoneContactActions phone={customer.phone} variant="panel" accent="emerald" />
               )}
               {customer.email && (
                 <div className="flex items-center gap-2.5 text-sm text-slate-600">
@@ -514,6 +516,35 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
                     </svg>
                   </span>
                   <span className="truncate">{customer.email}</span>
+                </div>
+              )}
+              {(customer.city || customer.district || customer.address) && (
+                <div className="flex items-start gap-2.5 text-sm text-slate-600">
+                  <span className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    {(customer.city || customer.district) && (
+                      <p className="font-medium text-slate-700">{[customer.city, customer.district].filter(Boolean).join(' / ')}</p>
+                    )}
+                    {customer.address && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{customer.address}</p>}
+                    {customer.latitude != null && customer.longitude != null && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${customer.latitude},${customer.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-100 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        Yol Tarifi
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -558,7 +589,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
               {customer.serviceType && (
                 <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border mb-2 ${
                   customer.serviceType === 'hasar'
-                    ? 'bg-blue-50 text-blue-700 border-blue-100'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                     : 'bg-orange-50 text-orange-700 border-orange-100'
                 }`}>
                   {customer.serviceType === 'hasar' ? 'Hasar' : 'Acil Yardım'}
@@ -574,11 +605,11 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
             </div>
           )}
 
-          {/* CRM */}
+          {/* İlişki özeti */}
           <div className="px-5 pt-4 pb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base">📊</span>
-              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">CRM</p>
+              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{CUSTOMER_RELATION_SECTION_TITLE}</p>
             </div>
             <div className="space-y-3">
               {customer.source && (
@@ -623,7 +654,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
         <button
           type="button"
           onClick={() => { onClose(); router.push(`/panel/musteriler/${customerId}`); }}
-          className="flex-1 bg-blue-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-blue-700 transition-colors"
+          className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"
         >
           Detaya Git
         </button>
@@ -640,65 +671,22 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   );
 }
 
-// ── Resizable Columns ─────────────────────────────────────────────────────────
-const COL_KEYS = ['check', 'name', 'phone', 'type', 'service', 'files', 'activity', 'status', 'action'] as const;
-type ColKey = typeof COL_KEYS[number];
-const COL_MIN_W: Record<ColKey, number> = {
-  check: 36, name: 160, phone: 110, type: 90, service: 70, files: 56, activity: 90, status: 76, action: 68,
-};
-const COL_DEFAULT_W: Record<ColKey, number> = {
-  check: 36, name: 220, phone: 140, type: 120, service: 90, files: 72, activity: 110, status: 90, action: 78,
-};
-const LS_COL_KEY = 'musteriler_col_widths_v2';
-
-function loadColWidths(): Record<ColKey, number> {
-  try {
-    if (typeof window === 'undefined') return { ...COL_DEFAULT_W };
-    const raw = localStorage.getItem(LS_COL_KEY);
-    if (!raw) return { ...COL_DEFAULT_W };
-    const parsed = JSON.parse(raw) as Partial<Record<ColKey, number>>;
-    return COL_KEYS.reduce((acc, k) => {
-      acc[k] = Math.max(COL_MIN_W[k], parsed[k] ?? COL_DEFAULT_W[k]);
-      return acc;
-    }, {} as Record<ColKey, number>);
-  } catch { return { ...COL_DEFAULT_W }; }
-}
-
-function useResizableCols() {
-  const [widths, setWidths] = useState<Record<ColKey, number>>(loadColWidths);
-  const dragging = useRef<{ key: ColKey; startX: number; startW: number } | null>(null);
-
-  const startResize = useCallback((key: ColKey, e: React.MouseEvent) => {
-    e.preventDefault();
-    dragging.current = { key, startX: e.clientX, startW: widths[key] };
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current) return;
-      const delta = ev.clientX - dragging.current.startX;
-      const newW = Math.max(COL_MIN_W[dragging.current.key], dragging.current.startW + delta);
-      setWidths((prev) => ({ ...prev, [dragging.current!.key]: newW }));
-    };
-    const onUp = () => {
-      setWidths((prev) => {
-        try { localStorage.setItem(LS_COL_KEY, JSON.stringify(prev)); } catch { /* noop */ }
-        return prev;
-      });
-      dragging.current = null;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [widths]);
-
-  return { widths, startResize };
-}
+const TABLE_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
+  { id: 'phone', label: 'Telefon', defaultWidth: 160, minWidth: 130 },
+  { id: 'type', label: 'Tip', defaultWidth: 120, minWidth: 90 },
+  { id: 'service', label: 'Hizmet', defaultWidth: 90, minWidth: 70 },
+  { id: 'files', label: 'Dosya', defaultWidth: 72, minWidth: 56 },
+  { id: 'activity', label: 'Aktivite', defaultWidth: 110, minWidth: 90 },
+  { id: 'status', label: 'Durum', defaultWidth: 90, minWidth: 76 },
+];
 
 export default function MusterilerPage() {
   const { showToast } = useToast();
   const router = useRouter();
+  const tableColumns = usePanelTableColumns('table-cols:musteriler', TABLE_COLUMNS);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { widths, startResize } = useResizableCols();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [subTypeFilter, setSubTypeFilter] = useState('');
@@ -736,7 +724,7 @@ export default function MusterilerPage() {
   const saveModeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [customerSources, setCustomerSources] = useState<string[]>([]);
-  const [customerSubTypes, setCustomerSubTypes] = useState<Array<{ value: string; label: string; forType: 'individual' | 'corporate' | 'both'; color: 'orange' | 'green' | 'purple' | 'blue' | 'gray' }>>([]);
+  const [customerSubTypes, setCustomerSubTypes] = useState<CustomerSubTypeDef[]>([]);
   const [relationshipTypes, setRelationshipTypes] = useState<string[]>([]); // sadece aktif olanların label listesi
   const [addingNewRelType, setAddingNewRelType] = useState(false);
   const [newRelTypeValue, setNewRelTypeValue] = useState('');
@@ -889,6 +877,14 @@ export default function MusterilerPage() {
 
   // Statik il/ilçe verisinden türetilen ilçe listesi
   const currentDistricts = form.cityCode ? (STATIC_DISTRICTS[form.cityCode] ?? []) : [];
+  const customerAddressLabel = [
+    form.neighborhood,
+    form.streetName,
+    form.buildingNo ? `No: ${form.buildingNo}` : '',
+    form.doorNo ? `D: ${form.doorNo}` : '',
+    form.district,
+    form.city,
+  ].filter(Boolean).join(', ');
 
   const resetForm = () => {
     setForm(emptyForm()); setGibError(null); setTcResult(null);
@@ -986,15 +982,12 @@ export default function MusterilerPage() {
   };
 
   const handlePhoneBlur = (raw: string) => {
-    if (!raw) { setPhoneError(null); return; }
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length > 0 && digits.length < 11) {
-      setPhoneError(`Telefon numarası 11 hane olmalıdır (şu an ${digits.length} hane)`);
-    } else if (digits.length === 11 && form.phoneType === 'gsm' && digits[0] !== '0') {
-      setPhoneError('Telefon numarası 0 ile başlamalıdır');
-    } else {
+    const err = customerPhoneValidationError(raw, form.phoneType);
+    setPhoneError(err);
+    if (!err && raw.trim()) {
+      handlePhoneDuplicateCheck(raw.replace(/\D/g, ''));
+    } else if (!raw.trim()) {
       setPhoneError(null);
-      if (digits.length === 11) handlePhoneDuplicateCheck(digits);
     }
   };
 
@@ -1045,7 +1038,10 @@ export default function MusterilerPage() {
       if (tagSet.size > 0) {
         setAllTags((prev) => Array.from(new Set([...prev, ...tagSet])).sort());
       }
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+      showToast('error', 'Müşteri listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
+    } finally { setLoading(false); }
   }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
 
   // Debounce searchInput → search
@@ -1102,14 +1098,7 @@ export default function MusterilerPage() {
   const loadCustomerSubTypes = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
       .then((r) => setCustomerSubTypes(r.data.data ?? []))
-      .catch(() => setCustomerSubTypes([
-        { value: 'sigorta_sirketi',  label: 'Sigorta Şirketi', forType: 'corporate',  color: 'blue'   },
-        { value: 'asistan_firmasi',  label: 'Asistan Firması', forType: 'corporate',  color: 'orange' },
-        { value: 'eksper',           label: 'Eksper',          forType: 'individual', color: 'purple' },
-        { value: 'eksper_firmasi',   label: 'Eksper Firması',  forType: 'corporate',  color: 'purple' },
-        { value: 'insured',          label: 'Sigortalı',       forType: 'both',       color: 'orange' },
-        { value: 'private_customer', label: 'Özel Müşteri',    forType: 'individual', color: 'green'  },
-      ]));
+      .catch(() => setCustomerSubTypes(DEFAULT_CUSTOMER_SUB_TYPES));
   }, []);
 
   useEffect(() => { loadCustomerSources(); }, [loadCustomerSources]);
@@ -1184,8 +1173,8 @@ export default function MusterilerPage() {
   useEffect(() => {
     setBranchesLoading(true);
     Promise.all([
-      axios.get(`${API}/service-branches?type=hasar`, { headers: authHeader() }),
-      axios.get(`${API}/service-branches?type=acil_yardim`, { headers: authHeader() }),
+      axios.get(`${API}/service-branches?type=hasar&scope=meridyen`, { headers: authHeader() }),
+      axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() }),
     ])
       .then(([rHasar, rAcil]) => {
         const toNames = (r: any) => (r.data.data ?? []).map((b: any) => b.name as string);
@@ -1213,6 +1202,7 @@ export default function MusterilerPage() {
   };
 
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
+  const upContact = (i: number, patch: Partial<ContactPerson>) => setContacts((p) => p.map((c, j) => j === i ? { ...c, ...patch } : c));
   const upCI = (i: number, f: keyof ContactInfoItem, v: string) => setContactInfos((p) => p.map((ci, j) => j === i ? { ...ci, [f]: v } : ci));
   const addTag = () => { const t = tagInput.trim(); if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] })); setTagInput(''); };
 
@@ -1232,12 +1222,8 @@ export default function MusterilerPage() {
       if (!form.companyName.trim()) errors.companyName = 'Bu alan zorunludur';
     }
     if (form.phone) {
-      const phoneDigits = form.phone.replace(/\D/g, '');
-      if (phoneDigits.length > 0 && phoneDigits.length !== 11) {
-        errors.phone = `Telefon numarası 11 hane olmalıdır (şu an ${phoneDigits.length} hane)`;
-      } else if (phoneDigits.length === 11 && form.phoneType === 'gsm' && phoneDigits[0] !== '0') {
-        errors.phone = 'Telefon numarası 0 ile başlamalıdır';
-      }
+      const phoneErr = customerPhoneValidationError(form.phone, form.phoneType);
+      if (phoneErr) errors.phone = phoneErr;
     }
     return errors;
   };
@@ -1282,15 +1268,11 @@ export default function MusterilerPage() {
       if (!form.companyName.trim()) { errors.companyName = 'Bu alan zorunludur'; missingLabels.push('Şirket Adı'); }
     }
 
-    // Telefon format validasyonu
     if (form.phone) {
-      const phoneDigits = form.phone.replace(/\D/g, '');
-      if (phoneDigits.length > 0 && phoneDigits.length !== 11) {
-        errors.phone = `Telefon numarası 11 hane olmalıdır (şu an ${phoneDigits.length} hane)`;
-        setPhoneError(errors.phone);
-      } else if (phoneDigits.length === 11 && form.phoneType === 'gsm' && phoneDigits[0] !== '0') {
-        errors.phone = 'Telefon numarası 0 ile başlamalıdır';
-        setPhoneError(errors.phone);
+      const phoneErr = customerPhoneValidationError(form.phone, form.phoneType);
+      if (phoneErr) {
+        errors.phone = phoneErr;
+        setPhoneError(phoneErr);
       }
     }
 
@@ -1360,7 +1342,6 @@ export default function MusterilerPage() {
       if (form.customerType === 'individual') {
         payload.firstName = form.firstName; payload.lastName = form.lastName;
         payload.identityNo = form.identityNo || null; payload.subType = form.subType || null;
-        payload.birthDate = form.birthDate || null;
       } else {
         payload.companyName = form.companyName; payload.taxNumber = form.taxNumber || null;
         payload.taxOffice = form.taxOffice || null;
@@ -1420,10 +1401,11 @@ export default function MusterilerPage() {
   const typeLabel: Record<string, string> = { individual: 'Bireysel', corporate: 'Kurumsal' };
 
   return (
+    <TableColumnsProvider value={tableColumns}>
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-emerald-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Müşteriler</span>
       </nav>
@@ -1431,7 +1413,7 @@ export default function MusterilerPage() {
       {/* Header */}
       <div className="page-header">
         <div className="flex items-center gap-3">
-          <div className="page-header-icon">
+          <div className="page-header-icon-emerald">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -1442,7 +1424,7 @@ export default function MusterilerPage() {
           </div>
         </div>
         <button type="button" onClick={() => { resetForm(); loadCustomerSources(); loadCustomerSubTypes(); setShowModal(true); }}
-          className="btn-primary">
+          className="btn-primary-emerald">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -1454,7 +1436,7 @@ export default function MusterilerPage() {
         <div className="flex items-center gap-1 min-w-max">
           {/* Toplam */}
           <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -1480,14 +1462,14 @@ export default function MusterilerPage() {
           <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
           {/* Kurumsal */}
           <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
             <div>
               <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide leading-none">Kurumsal</p>
-              <p className="text-base font-bold text-blue-700 leading-tight tabular-nums">{corporateCount}</p>
+              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{corporateCount}</p>
             </div>
           </div>
           {/* Finans istatistikleri: gerçek API verisi geldikten sonra eklenecek */}
@@ -1498,12 +1480,14 @@ export default function MusterilerPage() {
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
         {/* Arama — üst satır, tam genişlik */}
         <div className="relative mb-2.5">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
+            type="text"
+            autoComplete="off"
             placeholder="Ad, Telefon, TC, Vergi No..."
-            className="input-base-sm pl-9 pr-8 w-full"
+            className="panel-search-input"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
@@ -1529,7 +1513,7 @@ export default function MusterilerPage() {
           </select>
           {/* Alt Tip filtresi — dropdown */}
           <select
-            className={`input-base-sm w-full ${subTypeFilter ? 'border-blue-400 text-blue-700 bg-blue-50' : ''}`}
+            className={`input-base-sm w-full ${subTypeFilter ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : ''}`}
             value={subTypeFilter}
             onChange={(e) => { setSubTypeFilter(e.target.value); setPage(1); }}
           >
@@ -1573,7 +1557,7 @@ export default function MusterilerPage() {
                 type="button"
                 onClick={() => setTagDropdownOpen((o) => !o)}
                 className={`flex items-center gap-1.5 input-base-sm w-full ${
-                  selectedTags.length ? 'border-blue-400 bg-blue-50 text-blue-700' : ''
+                  selectedTags.length ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : ''
                 }`}
               >
                 <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1588,9 +1572,9 @@ export default function MusterilerPage() {
                 <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-slate-100 rounded-xl shadow-card min-w-[160px] py-1 max-h-52 overflow-y-auto">
                   {allTags.map((tag) => (
                     <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-slate-50 transition-colors ${selectedTags.includes(tag) ? 'text-blue-700 font-medium' : 'text-slate-700'}`}
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-slate-50 transition-colors ${selectedTags.includes(tag) ? 'text-emerald-700 font-medium' : 'text-slate-700'}`}
                     >
-                      <span className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedTags.includes(tag) ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                      <span className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${selectedTags.includes(tag) ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300'}`}>
                         {selectedTags.includes(tag) && (
                           <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -1604,6 +1588,9 @@ export default function MusterilerPage() {
               )}
             </div>
           )}
+        </div>
+        <div className="mt-2 flex justify-end gap-2">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
@@ -1628,7 +1615,7 @@ export default function MusterilerPage() {
       {/* ── Toplu İşlem Toolbar ── */}
       {selectedIds.size > 0 && (
         <div className="sticky top-4 z-30 mb-4">
-          <div className="bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 px-5 py-3 flex flex-wrap items-center gap-3">
+          <div className="bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200 px-5 py-3 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 mr-2">
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-xs font-bold">{selectedIds.size}</div>
               <span className="text-sm font-medium">{selectedIds.size} Müşteri Seçildi</span>
@@ -1643,7 +1630,7 @@ export default function MusterilerPage() {
               <div className="absolute left-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 min-w-36 hidden group-hover:block z-50">
                 {(['active', 'passive', 'blacklisted'] as const).map((val) => (
                   <button key={val} type="button" onClick={() => handleBulkStatus(val)}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2">
+                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${val === 'active' ? 'bg-green-500' : val === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
                     {val === 'active' ? 'Aktif' : val === 'passive' ? 'Pasif' : 'Kara Liste'}
                   </button>
@@ -1665,18 +1652,18 @@ export default function MusterilerPage() {
             </div>
           </div>
           {showTagPanel && (
-            <div className="bg-white border border-blue-100 rounded-xl shadow-lg mt-2 p-4">
+            <div className="bg-white border border-emerald-100 rounded-xl shadow-lg mt-2 p-4">
               <p className="text-xs font-semibold text-slate-600 mb-3">Etiket İşlemi</p>
               <div className="flex gap-3 mb-3">
                 {(['add', 'replace'] as const).map((act) => (
                   <button key={act} type="button" onClick={() => setBulkTagAction(act)}
-                    className={`flex-1 py-1.5 text-xs rounded-lg border font-medium transition-colors ${bulkTagAction === act ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}>
+                    className={`flex-1 py-1.5 text-xs rounded-lg border font-medium transition-colors ${bulkTagAction === act ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 text-slate-600 hover:border-emerald-300'}`}>
                     {act === 'add' ? 'Mevcut Etiketlere Ekle' : 'Etiketleri Değiştir'}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2 mb-3">
-                <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
+                <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
                   placeholder="Etiket Adı Girin..." value={bulkTagInput} onChange={(e) => setBulkTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); } }} />
                 <button type="button" onClick={() => { const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); }}
@@ -1695,7 +1682,7 @@ export default function MusterilerPage() {
                 <button type="button" onClick={() => { setShowTagPanel(false); setBulkTags([]); setBulkTagInput(''); }}
                   className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
                 <button type="button" onClick={handleBulkTagsConfirm}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Uygula</button>
+                  className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">Uygula</button>
               </div>
             </div>
           )}
@@ -1707,7 +1694,7 @@ export default function MusterilerPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl">
                 {bulkConfirm.action === 'export' ? '📊' : '⚡'}
               </div>
               <div>
@@ -1719,7 +1706,7 @@ export default function MusterilerPage() {
               <button type="button" onClick={() => setBulkConfirm(null)} disabled={bulkLoading}
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">İptal</button>
               <button type="button" onClick={runBulkConfirm} disabled={bulkLoading}
-                className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2">
+                className="px-5 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-50 flex items-center gap-2">
                 {bulkLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
                 Evet, Devam Et
               </button>
@@ -1772,7 +1759,7 @@ export default function MusterilerPage() {
                 Filtreleri Temizle
               </button>
             ) : (
-              <button type="button" onClick={() => { loadCustomerSources(); loadCustomerSubTypes(); setShowModal(true); }} className="btn-primary mt-4">
+              <button type="button" onClick={() => { loadCustomerSources(); loadCustomerSubTypes(); setShowModal(true); }} className="btn-primary-emerald mt-4">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Yeni Müşteri Ekle
               </button>
@@ -1789,46 +1776,26 @@ export default function MusterilerPage() {
             <span className="text-xs text-slate-400">Sayfa {page} / {Math.max(1, Math.ceil(total / limit))}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="text-sm" style={{ tableLayout: 'fixed', width: '100%', minWidth: COL_KEYS.reduce((s, k) => s + widths[k], 0) + 'px' }}>
-              <colgroup>
-                {COL_KEYS.map((k) => <col key={k} style={{ width: widths[k] + 'px' }} />)}
-              </colgroup>
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="sticky top-0 z-10">
                 <tr className="table-head-row">
-                  <th className="px-3 py-2.5 relative" style={{ width: widths.check }}>
+                  <th className="px-3 py-2.5 w-9">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
                       ref={(el) => { if (el) el.indeterminate = isIndeterminate; }}
                       onChange={toggleSelectAll}
-                      className="w-3.5 h-3.5 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                     />
-                    <span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('check', e)} />
                   </th>
-                  <th className="table-th relative" style={{ width: widths.name }}>
-                    Ad Soyad<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('name', e)} />
-                  </th>
-                  <th className="table-th relative" style={{ width: widths.phone }}>
-                    Telefon<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('phone', e)} />
-                  </th>
-                  <th className="table-th relative" style={{ width: widths.type }}>
-                    Tip<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('type', e)} />
-                  </th>
-                  <th className="table-th relative" style={{ width: widths.service }}>
-                    Hizmet<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('service', e)} />
-                  </th>
-                  <th className="table-th text-right relative" style={{ width: widths.files }}>
-                    Dosya<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('files', e)} />
-                  </th>
-                  <th className="table-th relative" style={{ width: widths.activity }}>
-                    Aktivite<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('activity', e)} />
-                  </th>
-                  <th className="table-th text-center relative" style={{ width: widths.status }}>
-                    Durum<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('status', e)} />
-                  </th>
-                  <th className="table-th text-right relative" style={{ width: widths.action }}>
-                    İşlem<span className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300/40 select-none" onMouseDown={(e) => startResize('action', e)} />
-                  </th>
+                  <PanelTableTh colId="name" className="table-th">Ad Soyad</PanelTableTh>
+                  <PanelTableTh colId="phone" className="table-th">Telefon</PanelTableTh>
+                  <PanelTableTh colId="type" className="table-th">Tip</PanelTableTh>
+                  <PanelTableTh colId="service" className="table-th">Hizmet</PanelTableTh>
+                  <PanelTableTh colId="files" className="table-th text-right">Dosya</PanelTableTh>
+                  <PanelTableTh colId="activity" className="table-th">Aktivite</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
+                  <th className="table-th text-right">İşlem</th>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -1842,7 +1809,7 @@ export default function MusterilerPage() {
                   return (
                     <tr
                       key={c.id}
-                      className={`table-row cursor-pointer ${selectedIds.has(c.id) ? 'bg-blue-50/60' : ''} ${isOverdue ? 'border-l-2 border-amber-400' : ''}`}
+                      className={`table-row cursor-pointer ${selectedIds.has(c.id) ? 'bg-emerald-50/60' : ''} ${isOverdue ? 'border-l-2 border-amber-400' : ''}`}
                       onMouseEnter={(e) => handleRowMouseEnter(c, e.currentTarget)}
                       onMouseLeave={handleRowMouseLeave}
                       onClick={(e) => {
@@ -1852,40 +1819,38 @@ export default function MusterilerPage() {
                       }}
                     >
                       {/* Checkbox */}
-                      <td className="px-3 py-2 overflow-hidden" style={{ width: widths.check }} onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(c.id)}
                           onChange={() => toggleSelect(c.id)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                         />
                       </td>
                       {/* Ad Soyad */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.name }}>
+                      <PanelTableTd colId="name" className="table-td">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-blue-600'}`}>
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
                             {(name || '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-blue-600 transition-colors truncate block">{name || '—'}</Link>
+                            <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-emerald-600 transition-colors truncate block">{name || '—'}</Link>
                             {c.city && <p className="text-[11px] text-slate-400 leading-tight truncate">{c.city}</p>}
                           </div>
                         </div>
-                      </td>
+                      </PanelTableTd>
                       {/* Telefon */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.phone }}>
+                      <PanelTableTd colId="phone" className="table-td">
                         {c.phone ? (
-                          <a href={`tel:${c.phone}`} className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 transition-colors truncate">
-                            {c.phone}
-                          </a>
+                          <PhoneContactActions phone={c.phone} variant="inline" />
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
-                      </td>
+                      </PanelTableTd>
                       {/* Tip */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.type }}>
+                      <PanelTableTd colId="type" className="table-td">
                         <div className="flex flex-col gap-0.5">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
                             {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
                           </span>
                           {subTypeLabel && (
@@ -1893,20 +1858,20 @@ export default function MusterilerPage() {
                               subTypeDef?.color === 'orange' ? 'bg-orange-50 text-orange-700' :
                               subTypeDef?.color === 'green'  ? 'bg-green-50 text-green-700' :
                               subTypeDef?.color === 'purple' ? 'bg-purple-50 text-purple-700' :
-                              subTypeDef?.color === 'blue'   ? 'bg-blue-50 text-blue-700' :
+                              subTypeDef?.color === 'blue'   ? 'bg-emerald-50 text-emerald-700' :
                               'bg-slate-50 text-slate-600'
                             }`}>
                               {subTypeLabel}
                             </span>
                           )}
                         </div>
-                      </td>
+                      </PanelTableTd>
                       {/* Hizmet Türü */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.service }}>
+                      <PanelTableTd colId="service" className="table-td">
                         {c.serviceType ? (
                           <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                             c.serviceType === 'hasar'
-                              ? 'bg-blue-50 text-blue-700 border-blue-100'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                               : 'bg-orange-50 text-orange-700 border-orange-100'
                           }`}>
                             {c.serviceType === 'hasar' ? 'Hasar' : 'Acil'}
@@ -1914,15 +1879,15 @@ export default function MusterilerPage() {
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
                         )}
-                      </td>
+                      </PanelTableTd>
                       {/* Dosya Sayısı */}
-                      <td className="table-td text-right overflow-hidden" style={{ width: widths.files }}>
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                      <PanelTableTd colId="files" className="table-td text-right">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
                           {c._count?.claimFiles ?? 0}
                         </span>
-                      </td>
+                      </PanelTableTd>
                       {/* Aktivite */}
-                      <td className="table-td overflow-hidden" style={{ width: widths.activity }}>
+                      <PanelTableTd colId="activity" className="table-td">
                         {isOverdue ? (
                           <div>
                             <span className="text-[11px] font-semibold text-red-500">{overdueDays}g gecikme</span>
@@ -1933,18 +1898,18 @@ export default function MusterilerPage() {
                             {relativeTime(c.lastActivityDate)}
                           </span>
                         )}
-                      </td>
+                      </PanelTableTd>
                       {/* Durum */}
-                      <td className="table-td text-center overflow-hidden" style={{ width: widths.status }}>
+                      <PanelTableTd colId="status" className="table-td text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
                           {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara' : 'Pasif'}
                         </span>
-                      </td>
+                      </PanelTableTd>
                       {/* Operasyon */}
-                      <td className="table-td text-right overflow-hidden" style={{ width: widths.action }}>
+                      <td className="table-td text-right">
                         <Link href={`/panel/musteriler/${c.id}`}
-                          className="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                          className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
                           Detay
                         </Link>
                       </td>
@@ -1990,15 +1955,14 @@ export default function MusterilerPage() {
         }}
       />
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 py-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700">
+      <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
+        <div className="flex flex-col h-full min-h-0">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
               <div>
                 <h3 className="text-base font-semibold text-white">Yeni Müşteri Ekle</h3>
-                <p className="text-blue-200 text-xs mt-0.5">Tüm Bilgileri Eksiksiz Doldurun</p>
+                <p className="text-emerald-200 text-xs mt-0.5">Tüm Bilgileri Eksiksiz Doldurun</p>
               </div>
-              <button type="button" onClick={() => setShowModal(false)} className="text-blue-200 hover:text-white transition-colors">
+              <button type="button" onClick={() => setShowModal(false)} className="text-emerald-200 hover:text-white transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -2010,12 +1974,12 @@ export default function MusterilerPage() {
                 : form.companyName.trim();
               const typeLabel = form.customerType === 'individual' ? 'Bireysel' : 'Kurumsal';
               return displayName ? (
-                <div className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 border-b border-blue-100">
-                  <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 border-b border-emerald-100">
+                  <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  <span className="text-sm font-semibold text-blue-800">{displayName}</span>
-                  <span className="text-xs text-blue-500 font-medium">— {typeLabel}</span>
+                  <span className="text-sm font-semibold text-emerald-800">{displayName}</span>
+                  <span className="text-xs text-emerald-500 font-medium">— {typeLabel}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-slate-100">
@@ -2027,57 +1991,48 @@ export default function MusterilerPage() {
               );
             })()}
 
-            <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+            <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
               {MODAL_SECTIONS.map((sec, i) => (
                 <button key={sec} type="button" onClick={() => setActiveSection(i)}
-                  className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${activeSection === i ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}>
+                  className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${activeSection === i ? 'border-emerald-600 text-emerald-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}>
                   {i + 1}. {sec}
                 </button>
               ))}
             </div>
 
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto p-6">
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Müşteri Tipi" />
                   <div className="grid grid-cols-2 gap-3 mb-5">
-                    {[
-                      { val: 'individual', label: 'Bireysel', emoji: '👤' },
-                      { val: 'corporate', label: 'Kurumsal', emoji: '🏢' },
-                    ].map(({ val, label, emoji }) => (
+                    {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
                       <button key={val} type="button"
-                        onClick={() => { setForm((p) => ({ ...p, customerType: val as any, subType: '', serviceType: '', serviceBranches: [] })); setTcResult(null); setGibError(null); setTaxNoError(null); setFieldErrors({}); }}
-                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-all ${form.customerType === val ? val === 'individual' ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                        onClick={() => { setForm((p) => ({ ...p, customerType: val, subType: '', serviceType: '', serviceBranches: [] })); setTcResult(null); setGibError(null); setTaxNoError(null); setFieldErrors({}); }}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-all ${form.customerType === val ? val === 'individual' ? 'bg-purple-600 text-white border-purple-600' : 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
                         <span>{emoji}</span>{label}
                       </button>
                     ))}
                   </div>
 
-                  {form.customerType === 'individual' && (
-                    <div className="mb-5">
-                      <p className="text-xs font-medium text-slate-500 mb-2">Alt Tip{customerSubTypeRequired && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {customerSubTypes
-                          .filter((t) => t.forType === 'individual' || t.forType === 'both')
-                          .map((t) => {
-                            const activeClass =
-                              t.color === 'orange' ? 'bg-orange-500 text-white border-orange-500' :
-                              t.color === 'green'  ? 'bg-green-600 text-white border-green-600' :
-                              t.color === 'purple' ? 'bg-purple-600 text-white border-purple-600' :
-                              t.color === 'blue'   ? 'bg-blue-600 text-white border-blue-600' :
-                                                     'bg-slate-600 text-white border-slate-600';
-                            return (
-                              <button key={t.value} type="button"
-                                onClick={() => { setForm((p) => { const nextSubType = p.subType === t.value as any ? '' : t.value as any; return { ...p, subType: nextSubType, serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '', serviceBranches: [] }; }); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
-                                className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all ${form.subType === t.value ? activeClass : fieldErrors.subType ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                                {t.label}
-                              </button>
-                            );
-                          })}
-                      </div>
-                      {fieldErrors.subType && <p className="text-xs text-red-500 mt-1.5">{fieldErrors.subType}</p>}
-                    </div>
-                  )}
+                  <CustomerSubTypePicker
+                    customerType={form.customerType}
+                    subTypes={customerSubTypes}
+                    selectedSubType={form.subType}
+                    required={customerSubTypeRequired}
+                    hasError={!!fieldErrors.subType}
+                    onToggle={(value) => {
+                      setForm((p) => {
+                        const nextSubType = p.subType === value ? '' : value as typeof p.subType;
+                        return {
+                          ...p,
+                          subType: nextSubType,
+                          serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '',
+                          serviceBranches: [],
+                        };
+                      });
+                      setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; });
+                    }}
+                  />
 
                   {form.customerType === 'individual' ? (
                     <>
@@ -2130,60 +2085,25 @@ export default function MusterilerPage() {
                             {!identityNoError && tcWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {tcWarn}</p>}
                           </FormField>
                         </div>
+                        <div className="col-span-2">
                         <FormField label="Telefon" error={phoneError ?? undefined}>
-                          <div className="flex gap-1.5 items-center">
-                            {/* Telefon tipi ikonu */}
-                            <span className="flex-shrink-0 w-8 h-9 flex items-center justify-center rounded-lg bg-slate-50 border border-slate-200 text-slate-400">
-                              {form.phoneType === 'gsm' ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <rect x="5" y="2" width="14" height="20" rx="2" strokeWidth={1.8} />
-                                  <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
-                                </svg>
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                              )}
-                            </span>
-                            <select
-                              className="border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors bg-white flex-shrink-0 h-9"
-                              value={form.phoneType}
-                              onChange={(e) => setForm((p) => ({ ...p, phoneType: e.target.value as 'gsm' | 'landline', extensionNo: '' }))}
-                            >
-                              <option value="gsm">GSM</option>
-                              <option value="landline">Sabit Hat</option>
-                            </select>
-                            <TRPhoneInput
-                              className="flex-1"
-                              placeholder={form.phoneType === 'gsm' ? '0 (5XX) XXX XX XX' : '0 (XXX) XXX XX XX'}
-                              value={form.phone}
-                              onChange={(v) => { setForm((p) => ({ ...p, phone: v })); setPhoneError(null); setPhoneWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; }); }}
-                              onBlur={handlePhoneBlur}
-                              hasError={!!phoneError}
-                            />
-                            {form.phoneType === 'landline' && (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={5}
-                                placeholder="Dahili"
-                                className="w-16 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors flex-shrink-0 h-9"
-                                value={form.extensionNo}
-                                onChange={(e) => setForm((p) => ({ ...p, extensionNo: e.target.value.replace(/\D/g, '').slice(0, 5) }))}
-                              />
-                            )}
-                          </div>
+                          <ContactPhoneField
+                            phone={form.phone}
+                            phoneType={form.phoneType}
+                            extensionNo={form.extensionNo}
+                            onPhoneChange={(v) => {
+                              setForm((p) => ({ ...p, phone: v }));
+                              setPhoneError(null);
+                              setPhoneWarn(null);
+                              setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; });
+                            }}
+                            onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
+                            onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
+                            onPhoneBlur={handlePhoneBlur}
+                          />
                           {!phoneError && phoneWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {phoneWarn}</p>}
                         </FormField>
-                        <FormField label="Doğum Tarihi">
-                          <input type="text" inputMode="numeric" className={inp} placeholder="GG.AA.YYYY" maxLength={10}
-                            value={isoToDisplayBirth(form.birthDate)}
-                            onChange={(e) => {
-                              const masked = maskBirthDate(e.target.value);
-                              const iso = birthMaskToISO(masked);
-                              setForm((p) => ({ ...p, birthDate: iso || masked }));
-                            }} />
-                        </FormField>
+                        </div>
                         <FormField label="E-posta">
                           <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
                             onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailError(null); setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); }}
@@ -2195,29 +2115,6 @@ export default function MusterilerPage() {
                     </>
                   ) : (
                     <>
-                      <div className="mb-5">
-                        <p className="text-xs font-medium text-slate-500 mb-2">Alt Tip{customerSubTypeRequired && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {customerSubTypes
-                            .filter((t) => t.forType === 'corporate' || t.forType === 'both')
-                            .map((t) => {
-                              const activeClass =
-                                t.color === 'orange' ? 'bg-orange-500 text-white border-orange-500' :
-                                t.color === 'green'  ? 'bg-green-600 text-white border-green-600' :
-                                t.color === 'purple' ? 'bg-purple-600 text-white border-purple-600' :
-                                t.color === 'blue'   ? 'bg-blue-600 text-white border-blue-600' :
-                                                       'bg-slate-600 text-white border-slate-600';
-                              return (
-                                <button key={t.value} type="button"
-                                  onClick={() => { setForm((p) => { const nextSubType = p.subType === t.value as any ? '' : t.value as any; return { ...p, subType: nextSubType, serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '', serviceBranches: [] }; }); setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; }); }}
-                                  className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all ${form.subType === t.value ? activeClass : fieldErrors.subType ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                                  {t.label}
-                                </button>
-                              );
-                            })}
-                        </div>
-                        {fieldErrors.subType && <p className="text-xs text-red-500 mt-1.5">{fieldErrors.subType}</p>}
-                      </div>
                       <SectionDivider emoji="🏢" title="Kurumsal Bilgiler" />
                       <div className="grid grid-cols-2 gap-4 items-start">
                         <div className="col-span-2">
@@ -2227,7 +2124,7 @@ export default function MusterilerPage() {
                         </div>
                         <FormField label="Vergi No">
                           <div className="flex gap-2">
-                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
+                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
                               placeholder="10 Haneli VKN" maxLength={10} inputMode="numeric"
                               value={form.taxNumber}
                               onChange={(e) => {
@@ -2236,7 +2133,7 @@ export default function MusterilerPage() {
                               }}
                               onBlur={handleTaxNoBlur} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
-                              className="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
+                              className="bg-emerald-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
                               {gibLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
                               Ünvan Sorgula
                             </button>
@@ -2261,51 +2158,25 @@ export default function MusterilerPage() {
                             </FormField>
                           </div>
                         </div>
+                        <div className="col-span-2">
                         <FormField label="Telefon" error={phoneError ?? undefined}>
-                          <div className="flex gap-1.5 items-center">
-                            {/* Telefon tipi ikonu */}
-                            <span className="flex-shrink-0 w-8 h-9 flex items-center justify-center rounded-lg bg-slate-50 border border-slate-200 text-slate-400">
-                              {form.phoneType === 'gsm' ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <rect x="5" y="2" width="14" height="20" rx="2" strokeWidth={1.8} />
-                                  <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
-                                </svg>
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                              )}
-                            </span>
-                            <select
-                              className="border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors bg-white flex-shrink-0 h-9"
-                              value={form.phoneType}
-                              onChange={(e) => setForm((p) => ({ ...p, phoneType: e.target.value as 'gsm' | 'landline', extensionNo: '' }))}
-                            >
-                              <option value="gsm">GSM</option>
-                              <option value="landline">Sabit Hat</option>
-                            </select>
-                            <TRPhoneInput
-                              className="flex-1"
-                              placeholder={form.phoneType === 'gsm' ? '0 (5XX) XXX XX XX' : '0 (XXX) XXX XX XX'}
-                              value={form.phone}
-                              onChange={(v) => { setForm((p) => ({ ...p, phone: v })); setPhoneError(null); setPhoneWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; }); }}
-                              onBlur={handlePhoneBlur}
-                              hasError={!!phoneError}
-                            />
-                            {form.phoneType === 'landline' && (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={5}
-                                placeholder="Dahili"
-                                className="w-16 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors flex-shrink-0 h-9"
-                                value={form.extensionNo}
-                                onChange={(e) => setForm((p) => ({ ...p, extensionNo: e.target.value.replace(/\D/g, '').slice(0, 5) }))}
-                              />
-                            )}
-                          </div>
+                          <ContactPhoneField
+                            phone={form.phone}
+                            phoneType={form.phoneType}
+                            extensionNo={form.extensionNo}
+                            onPhoneChange={(v) => {
+                              setForm((p) => ({ ...p, phone: v }));
+                              setPhoneError(null);
+                              setPhoneWarn(null);
+                              setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; });
+                            }}
+                            onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
+                            onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
+                            onPhoneBlur={handlePhoneBlur}
+                          />
                           {!phoneError && phoneWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {phoneWarn}</p>}
                         </FormField>
+                        </div>
                         <FormField label="E-posta">
                           <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
                             onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailError(null); setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); }}
@@ -2330,10 +2201,10 @@ export default function MusterilerPage() {
                         className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors"
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-base">👥</span>
+                          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-base">👥</span>
                           <span className="text-sm font-semibold text-slate-700">İlgili Kişi Ekle</span>
                           {contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).length > 0 && (
-                            <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-medium">
                               {contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).length} kişi
                             </span>
                           )}
@@ -2406,7 +2277,7 @@ export default function MusterilerPage() {
                                         />
                                         <button type="button" disabled={savingRelType || !newRelTypeValue.trim()}
                                           onClick={() => handleAddNewRelType((label) => upC(idx, 'role', label))}
-                                          className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                                          className="px-2.5 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex-shrink-0">
                                           {savingRelType ? '...' : 'Ekle'}
                                         </button>
                                         <button type="button" onClick={() => { setAddingNewRelType(false); setNewRelTypeValue(''); }}
@@ -2424,14 +2295,23 @@ export default function MusterilerPage() {
                                       />
                                     )}
                                   </FormField>
-                                  <FormField label="Telefon"><TRPhoneInput value={c.phone} onChange={(v) => upC(idx, 'phone', v)} /></FormField>
+                                  <FormField label="Telefon">
+                                    <ContactPhoneField
+                                      phone={c.phone}
+                                      phoneType={c.phoneType}
+                                      extensionNo={c.extensionNo}
+                                      onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                      onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                      onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                    />
+                                  </FormField>
                                   <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                                 </div>
                               </div>
                             ))}
                           </div>
                           <button type="button" onClick={() => setContacts((p) => [...p, emptyContact()])}
-                            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">
+                            className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 px-3 rounded-lg hover:bg-emerald-50 transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                             Kişi Ekle
                           </button>
@@ -2491,14 +2371,23 @@ export default function MusterilerPage() {
                                   />
                                 )}
                               </FormField>
-                              <FormField label="Telefon"><TRPhoneInput value={c.phone} onChange={(v) => upC(idx, 'phone', v)} /></FormField>
+                              <FormField label="Telefon">
+                                <ContactPhoneField
+                                  phone={c.phone}
+                                  phoneType={c.phoneType}
+                                  extensionNo={c.extensionNo}
+                                  onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                  onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                  onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                />
+                              </FormField>
                               <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                             </div>
                           </div>
                         ))}
                       </div>
                       <button type="button" onClick={() => setContacts((p) => [...p, emptyContact()])}
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors mb-5">
+                        className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 px-3 rounded-lg hover:bg-emerald-50 transition-colors mb-5">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         Yetkili Kişi Ekle
                       </button>
@@ -2515,7 +2404,7 @@ export default function MusterilerPage() {
                           <option value="whatsapp">💬 WhatsApp</option>
                         </select>
                         {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
-                          <TRPhoneInput className="flex-1" value={ci.value} onChange={(v) => upCI(idx, 'value', v)} />
+                          <PhoneInput className="flex-1 min-w-0" value={ci.value} onChange={(v) => upCI(idx, 'value', v)} />
                         ) : (
                           <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
                             placeholder={ci.type === 'email' ? 'ornek@sirket.com' : 'Faks numarası'}
@@ -2535,7 +2424,7 @@ export default function MusterilerPage() {
                     ))}
                   </div>
                   <button type="button" onClick={() => setContactInfos((p) => [...p, emptyContactInfo()])}
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors">
+                    className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 px-3 rounded-lg hover:bg-emerald-50 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     Kanal Ekle
                   </button>
@@ -2555,7 +2444,7 @@ export default function MusterilerPage() {
                         }}>
                         <option value="">İl seçin...</option>
                         {STATIC_PROVINCES.map((p) => (
-                          <option key={p.code} value={p.code}>{p.plateCode} - {p.name}</option>
+                          <option key={p.code} value={p.code}>{p.name}</option>
                         ))}
                       </select>
                     </FormField>
@@ -2612,76 +2501,61 @@ export default function MusterilerPage() {
                         onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))}
                       />
                     </FormField>
-                    {/* Konum butonları */}
-                    <div className="col-span-2 pt-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Konumu Bul (geocoding) */}
-                        {(form.city || form.district || form.neighborhood || form.streetName) && (
-                          <button
-                            type="button"
-                            onClick={() => handleGeocodeAddress(form.city, form.district, form.neighborhood, form.streetName, form.buildingNo)}
-                            disabled={geocoding}
-                            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium bg-green-50 text-green-700 border-green-200 hover:bg-green-100 disabled:opacity-60"
-                          >
-                            {geocoding ? (
-                              <>
-                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                Aranıyor...
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                Konumu Bul
-                              </>
-                            )}
-                          </button>
-                        )}
-                        {/* Haritadan seç */}
-                        <button
-                          type="button"
-                          onClick={() => setShowLocationPicker(true)}
-                          title="Haritadan Konum Seç"
-                          className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${locationCoords ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {/* Konum araçları */}
+                    <div className="col-span-2 flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={geocoding || !customerAddressLabel}
+                        onClick={() => handleGeocodeAddress(form.city, form.district, form.neighborhood, form.streetName, form.buildingNo)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                        title={!customerAddressLabel ? 'Önce adres bilgisi girin' : undefined}
+                      >
+                        {geocoding ? (
+                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          {locationCoords ? 'Konum Seçildi' : 'Haritadan Konum Seç'}
-                        </button>
-                        {locationCoords && (
-                          <button type="button" onClick={() => { setLocationCoords(null); setGeocodeMsg(null); }} className="text-xs text-slate-400 hover:text-red-500 transition-colors ml-auto">Konumu Kaldır</button>
                         )}
-                      </div>
-                      {/* Geocode mesajı */}
-                      {geocodeMsg && (
-                        <div className={`mt-2 flex items-start gap-2 text-xs rounded-lg px-3 py-2 ${geocodeMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-                          {geocodeMsg.type === 'success' ? (
-                            <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          <span>{geocodeMsg.text}</span>
-                        </div>
-                      )}
+                        {geocoding ? 'Aranıyor...' : 'Konumu Bul'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowLocationPicker(true)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${locationCoords ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        {locationCoords ? 'Konum Seçildi' : 'Haritadan Konum Seç'}
+                      </button>
                     </div>
+                    {!customerAddressLabel && (
+                      <p className="col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun. Sahada ziyaret sırasında &quot;Haritadan Konum Seç&quot; ile GPS de kullanabilirsiniz.</p>
+                    )}
+                    {customerAddressLabel && (
+                      <div className="col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
+                        <span className="font-medium text-slate-500">Adres özeti: </span>{customerAddressLabel}
+                      </div>
+                    )}
+                    {geocodeMsg && (
+                      <div className={`col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {geocodeMsg.text}
+                      </div>
+                    )}
                     {locationCoords && (
                       <div className="col-span-2">
                         <LocationPreview
                           lat={locationCoords.lat}
                           lng={locationCoords.lng}
+                          addressLabel={customerAddressLabel || undefined}
                           onEdit={() => setShowLocationPicker(true)}
                           onClear={() => { setLocationCoords(null); setGeocodeMsg(null); }}
-                          accentColor="blue"
+                          accentColor="emerald"
                         />
                       </div>
                     )}
@@ -2689,17 +2563,12 @@ export default function MusterilerPage() {
                 </div>
               )}
 
-              <LocationPickerModal
-                open={showLocationPicker}
-                initial={locationCoords}
-                addressHint={[form.neighborhood, form.streetName, form.buildingNo ? `No: ${form.buildingNo}` : '', form.district, form.city].filter(Boolean).join(' ') || undefined}
-                onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
-                onClose={() => setShowLocationPicker(false)}
-              />
-
               {activeSection === 3 && (
                 <div>
-                  <SectionDivider emoji="📊" title="CRM Bilgileri" />
+                  <SectionDivider emoji="📊" title={CUSTOMER_RELATION_SECTION_TITLE} />
+                  <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed">
+                    {CUSTOMER_RELATION_SECTION_HINT}
+                  </p>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <FormField label="Müşteri Kaynağı">
                       <select className={inp} value={form.source} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
@@ -2724,7 +2593,7 @@ export default function MusterilerPage() {
                   <div className="mt-4">
                     <FormField label="Etiketler / Segment">
                       <div className="flex gap-1.5">
-                        <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors" placeholder="VIP, Standart, Riskli..." value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
+                        <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors" placeholder="VIP, Standart, Riskli..." value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
                         <button type="button" onClick={addTag} className="bg-slate-100 text-slate-600 text-sm px-3 py-2 rounded-lg hover:bg-slate-200">+</button>
                       </div>
                     </FormField>
@@ -2740,8 +2609,8 @@ export default function MusterilerPage() {
                     )}
                   </div>
                   <div className="mt-5">
-                    <FormField label="Notlar">
-                      <textarea rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="Müşteri Hakkında Ek Notlar..." value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+                    <FormField label="Kayıt Notu">
+                      <textarea rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="İlk kayıt sırasında kısa not (detaylı görüşme geçmişi CRM modülünde tutulur)..." value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
                     </FormField>
                   </div>
 
@@ -2754,7 +2623,7 @@ export default function MusterilerPage() {
                     <SectionDivider emoji="🛠" title="Hizmet Türü" />
                     <FormField label="Hizmet Türü">
                       <select
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
                         value={form.privateServiceType}
                         onChange={(e) => setForm((p) => ({ ...p, privateServiceType: e.target.value }))}
                       >
@@ -2782,7 +2651,7 @@ export default function MusterilerPage() {
                             className={`flex-1 py-2 px-3 rounded-lg text-sm border transition-all font-medium ${
                               form.serviceType === type
                                 ? type === 'hasar'
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                                   : 'border-orange-400 bg-orange-50 text-orange-700'
                                 : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                             }`}
@@ -2798,7 +2667,7 @@ export default function MusterilerPage() {
                       <div className="mt-3">
                         {branchesLoading ? (
                           <p className="text-xs text-slate-400 py-2 flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            <svg className="w-3.5 h-3.5 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                             Branşlar Yükleniyor...
                           </p>
                         ) : (
@@ -2828,9 +2697,9 @@ export default function MusterilerPage() {
                                       allSelected
                                         ? 'border-slate-300 text-slate-500 hover:bg-slate-50'
                                         : form.subType === 'sigorta_sirketi'
-                                          ? 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                           : form.serviceType === 'hasar'
-                                            ? 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                            ? 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                             : 'border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100'
                                     }`}
                                   >
@@ -2839,7 +2708,7 @@ export default function MusterilerPage() {
                                 )}
                               </div>
                               {branchList.length === 0 ? (
-                                <p className="text-xs text-slate-400 py-2">Hizmet türü bulunamadı. Ayarlar → Hizmet Türleri sayfasından ekleyin.</p>
+                                <p className="text-xs text-slate-400 py-2">Hizmet branşı bulunamadı. Ayarlar → Meridyen Hizmet Branşları sayfasından ekleyin.</p>
                               ) : (
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {branchList.map((branch) => {
@@ -2857,14 +2726,14 @@ export default function MusterilerPage() {
                                         className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border transition-all text-left ${
                                           selected
                                             ? (form.subType === 'sigorta_sirketi' || form.serviceType === 'hasar')
-                                              ? 'border-blue-400 bg-blue-50 text-blue-700 font-medium'
+                                              ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium'
                                               : 'border-orange-400 bg-orange-50 text-orange-700 font-medium'
                                             : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                         }`}
                                       >
                                         <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-[9px] ${
                                           selected
-                                            ? (form.subType === 'sigorta_sirketi' || form.serviceType === 'hasar') ? 'bg-blue-600 border-blue-600 text-white' : 'bg-orange-500 border-orange-500 text-white'
+                                            ? (form.subType === 'sigorta_sirketi' || form.serviceType === 'hasar') ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-orange-500 border-orange-500 text-white'
                                             : 'border-slate-300'
                                         }`}>
                                           {selected ? '✓' : ''}
@@ -2900,10 +2769,10 @@ export default function MusterilerPage() {
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
               <div className="flex gap-1.5">
                 {MODAL_SECTIONS.map((_, i) => (
-                  <button key={i} type="button" onClick={() => setActiveSection(i)} className={`h-2 rounded-full transition-all ${activeSection === i ? 'bg-blue-600 w-4' : 'w-2 bg-slate-300 hover:bg-slate-400'}`} />
+                  <button key={i} type="button" onClick={() => setActiveSection(i)} className={`h-2 rounded-full transition-all ${activeSection === i ? 'bg-emerald-600 w-4' : 'w-2 bg-slate-300 hover:bg-slate-400'}`} />
                 ))}
               </div>
               <div className="flex gap-2 items-center">
@@ -2911,7 +2780,7 @@ export default function MusterilerPage() {
                   <button type="button" onClick={() => setActiveSection((s) => s - 1)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">← Önceki</button>
                 )}
                 {activeSection < MODAL_SECTIONS.length - 1 ? (
-                  <button type="button" onClick={handleNextSection} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Sonraki →</button>
+                  <button type="button" onClick={handleNextSection} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">Sonraki →</button>
                 ) : (
                   // ── Split Kaydet Butonu ──────────────────────────────────
                   <div ref={saveModeDropdownRef} className="relative flex items-stretch">
@@ -2920,7 +2789,7 @@ export default function MusterilerPage() {
                       type="button"
                       onClick={() => handleSave()}
                       disabled={saving}
-                      className="flex items-center gap-2 px-5 py-2 text-sm bg-blue-600 text-white rounded-l-xl hover:bg-blue-700 disabled:opacity-50 font-medium border-r border-blue-500 transition-colors"
+                      className="flex items-center gap-2 px-5 py-2 text-sm bg-emerald-600 text-white rounded-l-xl hover:bg-emerald-700 disabled:opacity-50 font-medium border-r border-emerald-500 transition-colors"
                     >
                       {saving && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
                       {saving ? 'Kaydediliyor...' : saveMode === 'close' ? 'Kaydet ve Kapat' : saveMode === 'new' ? 'Kaydet ve Yeni Ekle' : 'Kaydet ve Detaya Git'}
@@ -2930,7 +2799,7 @@ export default function MusterilerPage() {
                       type="button"
                       disabled={saving}
                       onClick={() => setSaveModeDropdownOpen((o) => !o)}
-                      className="flex items-center justify-center px-2.5 bg-blue-600 text-white rounded-r-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      className="flex items-center justify-center px-2.5 bg-emerald-600 text-white rounded-r-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                       aria-label="Kaydetme seçenekleri"
                     >
                       <svg className={`w-3.5 h-3.5 transition-transform duration-150 ${saveModeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2955,11 +2824,11 @@ export default function MusterilerPage() {
                               // overrideSaveMode olarak mode'u geçirerek hemen kaydet
                               handleSave(mode);
                             }}
-                            className={`w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-blue-50 transition-colors ${saveMode === mode ? 'bg-blue-50' : ''}`}
+                            className={`w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-emerald-50 transition-colors ${saveMode === mode ? 'bg-emerald-50' : ''}`}
                           >
-                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${saveMode === mode ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{saveMode === mode ? '✓' : icon}</span>
+                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${saveMode === mode ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{saveMode === mode ? '✓' : icon}</span>
                             <div>
-                              <p className={`text-xs font-medium ${saveMode === mode ? 'text-blue-700' : 'text-slate-700'}`}>{label}</p>
+                              <p className={`text-xs font-medium ${saveMode === mode ? 'text-emerald-700' : 'text-slate-700'}`}>{label}</p>
                               <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
                             </div>
                           </button>
@@ -2971,9 +2840,16 @@ export default function MusterilerPage() {
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
               </div>
             </div>
-          </div>
         </div>
-      )}
+      </SlidePanel>
+
+      <LocationPickerModal
+        open={showLocationPicker}
+        initial={locationCoords}
+        addressHint={customerAddressLabel || undefined}
+        onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
+        onClose={() => setShowLocationPicker(false)}
+      />
 
       {/* ── Duplicate Onay Modalı ── */}
       {showDuplicateModal && (
@@ -3005,5 +2881,6 @@ export default function MusterilerPage() {
         </div>
       )}
     </div>
+    </TableColumnsProvider>
   );
 }

@@ -1,7 +1,7 @@
 # Canlı Kabul Kanıtları
 
 **Amaç:** Paket 1'deki "Kod PASS ≠ Canlı PASS" boşluğunu kapatmak.  
-**Referans sürüm:** Web v29 + Backend v27 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Referans sürüm:** Web v78 + Backend v43 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
 
 ## Klasör yapısı
 

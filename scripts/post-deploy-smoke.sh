@@ -179,9 +179,13 @@ if [ -n "$ACCESS_TOKEN" ]; then
   assert_auth_json "GET /api/v1/dashboard/ownership-load returns 200" "/api/v1/dashboard/ownership-load" "200" "" "$ACCESS_TOKEN"
   assert_auth_json "GET /api/v1/dashboard/pending-actions returns 200" "/api/v1/dashboard/pending-actions" "200" "" "$ACCESS_TOKEN"
   assert_auth_json "GET /api/v1/finance/overhead/entries returns 200" "/api/v1/finance/overhead/entries" "200" "" "$ACCESS_TOKEN"
+  assert_auth_json "GET /api/v1/customers returns 200 and data array" "/api/v1/customers?limit=1" "200" '"data":[' "$ACCESS_TOKEN"
+  assert_auth_json "GET /api/v1/vendors/summary returns 200" "/api/v1/vendors/summary" "200" "" "$ACCESS_TOKEN"
 fi
 
 assert_frontend_route "GET /panel returns 200" "/panel"
+assert_frontend_route "GET /panel/musteriler returns 200" "/panel/musteriler"
+assert_frontend_route "GET /panel/tedarikciler returns 200" "/panel/tedarikciler"
 assert_frontend_route "GET /panel/hasar-dosyalari returns 200" "/panel/hasar-dosyalari"
 assert_frontend_route "GET /panel/operasyon returns 200" "/panel/operasyon"
 assert_frontend_route "GET /panel/sahiplik returns 200" "/panel/sahiplik"
@@ -194,6 +198,7 @@ assert_frontend_route "GET /panel/ayarlar/dosya-konulari returns 200" "/panel/ay
 assert_frontend_route "GET /panel/ayarlar/evrak-turleri returns 200" "/panel/ayarlar/evrak-turleri"
 assert_frontend_route "GET /panel/ayarlar/mahaller returns 200" "/panel/ayarlar/mahaller"
 assert_frontend_route "GET /panel/ayarlar/hizmet-turleri returns 200" "/panel/ayarlar/hizmet-turleri"
+assert_frontend_route "GET /panel/ayarlar/tedarikci-hizmet-kollari returns 200" "/panel/ayarlar/tedarikci-hizmet-kollari"
 assert_frontend_route "GET /panel/guvenlik returns 200" "/panel/guvenlik"
 
 if [ "$FAILURES" -gt 0 ]; then

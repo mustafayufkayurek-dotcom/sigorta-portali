@@ -2,7 +2,7 @@
 
 **Amaç:** Sayfa kaybı, eski UI'ya dönüş, kısmi sync, yanlış build context ve migration felaketlerini önlemek.
 
-**Son bilinen iyi sürüm:** Web `v29` + Backend `v27` (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Son bilinen iyi sürüm:** Web `v78` + Backend `v43` (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
 
 ---
 
