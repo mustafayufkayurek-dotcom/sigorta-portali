@@ -180,3 +180,21 @@ export function FinansKpiStrip({
     </div>
   );
 }
+
+export function FinansFormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] font-semibold text-slate-500 border-b border-slate-100 pb-1.5">{title}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
+    </div>
+  );
+}
+
+export const finansFileInputClass =
+  'w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:text-slate-700 file:font-medium file:text-xs hover:file:bg-slate-50';

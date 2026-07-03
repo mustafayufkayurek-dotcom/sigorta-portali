@@ -11,8 +11,10 @@ import {
   FinansEmptyState,
   FinansFieldLabel,
   FinansFormPanel,
+  FinansFormSection,
   FinansKpiStrip,
   FinansPanelCard,
+  finansFileInputClass,
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
@@ -885,7 +887,14 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
     }
   };
 
-  if (loading) return <div className="py-12 text-center text-slate-400">Yükleniyor...</div>;
+  if (loading) return <div className="py-12 text-center text-slate-400 text-sm">Yükleniyor…</div>;
+
+  const incomingTotal = payments
+    .filter((p) => p.paymentType === 'incoming')
+    .reduce((s, p) => s + (p.amount ?? 0), 0);
+  const outgoingTotal = payments
+    .filter((p) => p.paymentType === 'outgoing')
+    .reduce((s, p) => s + (p.amount ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -901,88 +910,165 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
           active: showForm,
         }}
       >
+        <FinansKpiStrip
+          items={[
+            { label: 'Gelen Tahsilat', value: fmtCurrency(incomingTotal), accent: 'text-emerald-400' },
+            { label: 'Giden Ödeme', value: fmtCurrency(outgoingTotal), accent: 'text-amber-400' },
+            {
+              label: 'Kayıt Sayısı',
+              value: String(payments.length),
+              accent: payments.length > 0 ? 'text-white' : 'text-slate-400',
+            },
+          ]}
+        />
+
         {showForm && (
           <FinansFormPanel
             title="Yeni Ödeme Kaydı"
-            onCancel={() => setShowForm(false)}
+            onCancel={() => {
+              setShowForm(false);
+              setReceiptFile(null);
+            }}
             onSubmit={handleSave}
             saving={saving}
           >
-            <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Ödeme Yönü</label>
-              <select value={form.paymentType} onChange={(e) => setForm({ ...form, paymentType: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                <option value="incoming">Gelen (Tahsilat)</option>
-                <option value="outgoing">Giden (Ödeme)</option>
-              </select>
+            <div className="space-y-4">
+              <FinansFormSection title="Ödeme Bilgileri">
+                <div>
+                  <FinansFieldLabel>Ödeme Yönü</FinansFieldLabel>
+                  <select
+                    value={form.paymentType}
+                    onChange={(e) => setForm({ ...form, paymentType: e.target.value })}
+                    className={finansInputClass}
+                  >
+                    <option value="incoming">Gelen (Tahsilat)</option>
+                    <option value="outgoing">Giden (Ödeme)</option>
+                  </select>
+                </div>
+                <div>
+                  <FinansFieldLabel required>Ödeme Tarihi</FinansFieldLabel>
+                  <TrDateInput
+                    value={form.paymentDate}
+                    onChange={(paymentDate) => setForm({ ...form, paymentDate })}
+                    className={finansInputClass}
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel required>Tutar (TRY)</FinansFieldLabel>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
+                    className={finansInputClass}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel>Ödeme Yöntemi</FinansFieldLabel>
+                  <select
+                    value={form.method}
+                    onChange={(e) => setForm({ ...form, method: e.target.value })}
+                    className={finansInputClass}
+                  >
+                    <option value="eft">EFT</option>
+                    <option value="havale">Havale</option>
+                    <option value="credit_card">Kredi Kartı</option>
+                    <option value="cash">Nakit</option>
+                    <option value="offset">Mahsuplaşma</option>
+                  </select>
+                </div>
+              </FinansFormSection>
+
+              <FinansFormSection title="Karşı Taraf">
+                <div>
+                  <FinansFieldLabel>Karşı Taraf Tipi</FinansFieldLabel>
+                  <select
+                    value={form.payerType}
+                    onChange={(e) => setForm({ ...form, payerType: e.target.value, payerId: '' })}
+                    className={finansInputClass}
+                  >
+                    <option value="insurance_company">Sigorta Şirketi</option>
+                    <option value="vendor">Tedarikçi</option>
+                    <option value="customer">Müşteri</option>
+                  </select>
+                </div>
+                {form.paymentType === 'outgoing' && form.payerType === 'vendor' ? (
+                  <div>
+                    <FinansFieldLabel required>Tedarikçi</FinansFieldLabel>
+                    <select
+                      value={form.payerId ?? ''}
+                      onChange={(e) => setForm({ ...form, payerId: e.target.value })}
+                      className={finansInputClass}
+                    >
+                      <option value="">Tedarikçi Seçin…</option>
+                      {vendors.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="hidden sm:block" aria-hidden />
+                )}
+              </FinansFormSection>
+
+              <FinansFormSection title="Bağlantılar ve Not">
+                <div>
+                  <FinansFieldLabel>Bağlı Fatura</FinansFieldLabel>
+                  <select
+                    value={form.invoiceId ?? ''}
+                    onChange={(e) => setForm({ ...form, invoiceId: e.target.value || undefined })}
+                    className={finansInputClass}
+                  >
+                    <option value="">Seçiniz…</option>
+                    {invoices.filter((i) => !['cancelled', 'paid'].includes(i.status)).map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.invoiceNo} ({fmtCurrency(inv.totalAmount)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <FinansFieldLabel>Referans No</FinansFieldLabel>
+                  <input
+                    type="text"
+                    value={form.referenceNo ?? ''}
+                    onChange={(e) => setForm({ ...form, referenceNo: e.target.value })}
+                    className={finansInputClass}
+                    placeholder="Dekont / havale referansı"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <FinansFieldLabel>Not</FinansFieldLabel>
+                  <input
+                    type="text"
+                    value={form.note ?? ''}
+                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    onBlur={(e) => {
+                      const v = toTitleCaseTR(e.target.value.trim());
+                      if (v) setForm({ ...form, note: v });
+                    }}
+                    className={finansInputClass}
+                    placeholder="Kısa açıklama"
+                  />
+                </div>
+                {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
+                  <div className="sm:col-span-2">
+                    <FinansFieldLabel>Ödeme Dekontu</FinansFieldLabel>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                      className={finansFileInputClass}
+                    />
+                    <p className="text-xs text-slate-400 mt-1.5">
+                      Dekont yüklendiğinde tedarikçi ekstresine otomatik yansır.
+                    </p>
+                  </div>
+                )}
+              </FinansFormSection>
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Ödeme Tarihi</label>
-              <TrDateInput value={form.paymentDate} onChange={(paymentDate) => setForm({ ...form, paymentDate })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Tutar (TRY)</label>
-              <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Ödeme Yöntemi</label>
-              <select value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                <option value="eft">EFT</option>
-                <option value="havale">Havale</option>
-                <option value="credit_card">Kredi Kartı</option>
-                <option value="cash">Nakit</option>
-                <option value="offset">Mahsuplaşma</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Karşı Taraf Tipi</label>
-              <select value={form.payerType} onChange={(e) => setForm({ ...form, payerType: e.target.value, payerId: '' })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                <option value="insurance_company">Sigorta Şirketi</option>
-                <option value="vendor">Tedarikçi</option>
-                <option value="customer">Müşteri</option>
-              </select>
-            </div>
-            {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Tedarikçi *</label>
-                <select value={form.payerId ?? ''} onChange={(e) => setForm({ ...form, payerId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                  <option value="">— Tedarikçi Seçin —</option>
-                  {vendors.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Bağlı Fatura (opsiyonel)</label>
-              <select value={form.invoiceId ?? ''} onChange={(e) => setForm({ ...form, invoiceId: e.target.value || undefined })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                <option value="">— Seçiniz —</option>
-                {invoices.filter((i) => !['cancelled', 'paid'].includes(i.status)).map((inv) => (
-                  <option key={inv.id} value={inv.id}>{inv.invoiceNo} ({fmtCurrency(inv.totalAmount)})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Referans No</label>
-              <input type="text" value={form.referenceNo ?? ''} onChange={(e) => setForm({ ...form, referenceNo: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Not</label>
-              <input type="text" value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({ ...form, note: v }); }} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
-              <div className="col-span-2">
-                <label className="text-xs text-slate-500 mb-1 block">Ödeme Dekontu</label>
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-medium"
-                />
-                <p className="text-xs text-slate-400 mt-1">Dekont yüklendiğinde tedarikçinin Ödemeler / Ekstre sayfasına otomatik yansır.</p>
-              </div>
-            )}
-          </div>
           </FinansFormPanel>
         )}
 
