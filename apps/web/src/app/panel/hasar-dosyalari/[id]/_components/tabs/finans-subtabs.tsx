@@ -7,6 +7,7 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
 import {
+  FinansActionButton,
   FinansDataTable,
   FinansEmptyState,
   FinansFieldLabel,
@@ -20,8 +21,7 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
-import { Badge, SectionCard } from '../claim-detail-ui';
-import { FinansMetrikHucre } from '../FinansRaporOzeti';
+import { SectionCard } from '../claim-detail-ui';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
@@ -153,145 +153,163 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
     } catch (e) { console.error(e); }
   };
 
-  if (loading) return <div className="text-slate-400 py-8 text-center">Yükleniyor...</div>;
-
-  const versionStatusColor: Record<string, string> = {
-    draft: 'bg-slate-100 text-slate-600',
-    submitted: 'bg-blue-100 text-blue-700',
-    revision: 'bg-yellow-100 text-yellow-700',
-    approved: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-  };
+  if (loading) return <div className="text-slate-400 py-8 text-center text-sm">Yükleniyor…</div>;
 
   const activeVersion = versions.find((v) => v.id === activeVersionId);
   const totalBudget = activeVersion?.totalAmount ?? 0;
   const totalCosts = costEntries.reduce((s: number, c: any) => s + c.amount, 0);
   const variance = totalCosts - totalBudget;
 
-  const budgetMetrikleri = [
-    { label: 'Toplam Bütçe', value: fmtCurrency(totalBudget), accent: 'text-blue-700' },
-    { label: 'Toplam Gerçekleşen', value: fmtCurrency(totalCosts), accent: 'text-orange-700' },
-    {
-      label: 'Fark',
-      value: `${variance >= 0 ? '+' : ''}${fmtCurrency(variance)}`,
-      accent: variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-700' : 'text-slate-700',
-      highlight: true,
-    },
-  ];
+  const versionStatusLabel: Record<string, string> = {
+    draft: 'Taslak',
+    submitted: 'Onay Bekliyor',
+    revision: 'Revizyon',
+    approved: 'Onaylandı',
+    rejected: 'Reddedildi',
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 rounded-xl border border-slate-100 overflow-hidden shadow-sm">
-        {budgetMetrikleri.map((m) => (
-          <FinansMetrikHucre key={m.label} metrik={m} />
-        ))}
-      </div>
+      <FinansKpiStrip
+        items={[
+          { label: 'Toplam Bütçe', value: fmtCurrency(totalBudget), accent: 'text-blue-400' },
+          { label: 'Toplam Gerçekleşen', value: fmtCurrency(totalCosts), accent: 'text-amber-400' },
+          {
+            label: 'Fark',
+            value: `${variance >= 0 ? '+' : ''}${fmtCurrency(variance)}`,
+            accent: variance > 0 ? 'text-red-400' : variance < 0 ? 'text-emerald-400' : 'text-white',
+          },
+        ]}
+      />
 
-      {/* Bütçe Kalemleri */}
-      <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-800">Bütçe Kalemleri</h3>
-              {activeVersion && (
-                <Badge text={`v${activeVersion.versionNo}`} color={versionStatusColor[activeVersion.status]} />
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!activeVersionId) {
-                  const id = await ensureBudgetVersion();
-                  if (!id) return;
-                }
-                setShowItemModal(true);
-              }}
-              className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-            >
-              + Kalem Ekle
-            </button>
-          </div>
-
-          {activeVersion ? (
-            <SectionCard title={`Planlanan – Toplam: ${fmtCurrency(activeVersion.totalAmount)}`}>
-              <div className="flex gap-2 mb-4">
-                {['draft', 'revision'].includes(activeVersion.status) && (
-                  <button type="button" onClick={() => handleSubmitVersion(activeVersion.id)} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700">Sigorta&apos;ya Sun</button>
-                )}
-                {activeVersion.status === 'submitted' && (
-                  <>
-                    <button type="button" onClick={() => handleReviewVersion(activeVersion.id, 'approved')} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg">Onayla</button>
-                    <button type="button" onClick={() => handleReviewVersion(activeVersion.id, 'rejected')} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg">Reddet</button>
-                    <button type="button" onClick={() => handleReviewVersion(activeVersion.id, 'revision')} className="text-xs bg-yellow-600 text-white px-3 py-1.5 rounded-lg">Revizyon İste</button>
-                  </>
-                )}
+      <FinansPanelCard
+        title="Bütçe Kalemleri"
+        subtitle={
+          activeVersion
+            ? `Planlanan · sürüm ${activeVersion.versionNo} · ${versionStatusLabel[activeVersion.status] ?? activeVersion.status}`
+            : 'Dosya bütçe planı — kalemler ve iç onay akışı'
+        }
+        action={{
+          label: 'Kalem Ekle',
+          onClick: async () => {
+            if (!activeVersionId) {
+              const id = await ensureBudgetVersion();
+              if (!id) return;
+            }
+            setShowItemModal(true);
+          },
+          variant: 'primary',
+        }}
+      >
+        {!activeVersion ? (
+          <FinansEmptyState
+            title="Henüz Bütçe Oluşturulmadı"
+            description="İlk bütçe kalemini eklemek için Bütçe Başlat veya Kalem Ekle kullanın."
+          />
+        ) : (
+          <>
+            {['draft', 'revision'].includes(activeVersion.status) && (
+              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                <p className="text-xs text-slate-500 flex-1 min-w-[200px]">
+                  Bütçe taslağı hazır — yönetici onayına gönderin.
+                </p>
+                <FinansActionButton
+                  label="Onaya Gönder"
+                  onClick={() => handleSubmitVersion(activeVersion.id)}
+                  variant="success"
+                />
               </div>
+            )}
+            {activeVersion.status === 'submitted' && (
+              <div className="mb-4 flex flex-wrap gap-2 rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2.5">
+                <p className="text-xs text-blue-800 w-full mb-1">Yönetici onayı bekleniyor</p>
+                <FinansActionButton label="Onayla" onClick={() => handleReviewVersion(activeVersion.id, 'approved')} variant="success" />
+                <FinansActionButton label="Reddet" onClick={() => handleReviewVersion(activeVersion.id, 'rejected')} variant="neutral" />
+                <FinansActionButton label="Revizyon İste" onClick={() => handleReviewVersion(activeVersion.id, 'revision')} variant="neutral" />
+              </div>
+            )}
 
-              {!activeVersion.items?.length ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 17h.01M15 17h.01M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-500">Henüz Kalem Eklenmedi</p>
-                  <p className="text-xs text-slate-400 mt-0.5">İlk kaleminizi ekleyin.</p>
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-xs text-slate-500">
-                      <th className="text-left px-3 py-2">Açıklama</th>
-                      <th className="text-left px-3 py-2">Kategori</th>
-                      <th className="text-right px-3 py-2">Miktar</th>
-                      <th className="text-right px-3 py-2">Birim Fiyat</th>
-                      <th className="text-right px-3 py-2">KDV</th>
-                      <th className="text-right px-3 py-2">Toplam</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {activeVersion.items.map((item: any) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50">
-                        <td className="px-3 py-2 font-medium text-slate-800">{item.description}</td>
-                        <td className="px-3 py-2 text-slate-500">{CATEGORIES[item.category] ?? item.category}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{item.quantity} {item.unit}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{fmtCurrency(item.unitPrice)}</td>
-                        <td className="px-3 py-2 text-right text-slate-500">%{item.vatRate}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtCurrency(item.totalAmount)}</td>
-                        <td className="px-3 py-2">
-                          {['draft', 'revision'].includes(activeVersion.status) && (
-                            <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-red-400 hover:text-red-600 text-xs">Sil</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </SectionCard>
-          ) : (
-            <div className="bg-white rounded-xl border border-dashed border-slate-200 py-10 text-center">
-              <p className="text-sm text-slate-500 mb-3">Henüz bütçe oluşturulmadı.</p>
-              <button type="button" onClick={() => ensureBudgetVersion()} className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Bütçe Başlat</button>
-            </div>
-          )}
-      </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Planlanan toplam: <span className="font-semibold text-slate-700">{fmtCurrency(activeVersion.totalAmount)}</span>
+            </p>
 
-      {/* Gerçekleşen Maliyetler */}
-        <SectionCard title={`Gerçekleşen Maliyetler – Toplam: ${fmtCurrency(totalCosts)}`}>
-          <div className="flex items-center justify-between mb-3">
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="rounded border-slate-300"
-                checked={groupByCategory}
-                onChange={(e) => setGroupByCategory(e.target.checked)}
+            {!activeVersion.items?.length ? (
+              <FinansEmptyState
+                title="Henüz Kalem Eklenmedi"
+                description="İlk bütçe kalemini eklemek için Kalem Ekle butonunu kullanın."
               />
-              Kategoriye Göre Grupla
-            </label>
-            <button type="button" onClick={() => setShowCostModal(true)} className="text-sm bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">+ Maliyet Ekle</button>
+            ) : (
+              <FinansDataTable>
+                <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-3 py-2.5">Açıklama</th>
+                    <th className="text-left px-3 py-2.5">Kategori</th>
+                    <th className="text-right px-3 py-2.5">Miktar</th>
+                    <th className="text-right px-3 py-2.5">Birim Fiyat</th>
+                    <th className="text-right px-3 py-2.5">KDV</th>
+                    <th className="text-right px-3 py-2.5">Toplam</th>
+                    <th className="px-3 py-2.5 w-12" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {activeVersion.items.map((item: any) => (
+                    <tr key={item.id} className="hover:bg-slate-50/80">
+                      <td className="px-3 py-2.5 font-medium text-slate-800">{item.description}</td>
+                      <td className="px-3 py-2.5 text-slate-500">{CATEGORIES[item.category] ?? item.category}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{item.quantity} {item.unit}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{fmtCurrency(item.unitPrice)}</td>
+                      <td className="px-3 py-2.5 text-right text-slate-500">%{item.vatRate}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">{fmtCurrency(item.totalAmount)}</td>
+                      <td className="px-3 py-2.5">
+                        {['draft', 'revision'].includes(activeVersion.status) && (
+                          <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-xs text-red-500 hover:text-red-700">Sil</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </FinansDataTable>
+            )}
+          </>
+        )}
+
+        {!activeVersion && (
+          <div className="mt-3 flex justify-center">
+            <FinansActionButton label="Bütçe Başlat" onClick={() => ensureBudgetVersion()} variant="primary" />
           </div>
-          {!costEntries.length ? (
-            <p className="text-slate-400 text-sm">Maliyet Kaydı Bulunamadı.</p>
-          ) : groupByCategory ? (
+        )}
+      </FinansPanelCard>
+
+      <FinansPanelCard
+        title="Gerçekleşen Maliyetler"
+        subtitle="Dosyada fiilen oluşan gider kayıtları — operasyon ve finans takibi"
+        action={{
+          label: 'Maliyet Ekle',
+          onClick: () => setShowCostModal(true),
+          variant: 'primary',
+        }}
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={groupByCategory}
+              onChange={(e) => setGroupByCategory(e.target.checked)}
+            />
+            Kategoriye Göre Grupla
+          </label>
+          <span className="text-xs text-slate-500">
+            Toplam: <span className="font-semibold tabular-nums text-slate-800">{fmtCurrency(totalCosts)}</span>
+          </span>
+        </div>
+
+        {!costEntries.length ? (
+          <FinansEmptyState
+            title="Maliyet Kaydı Bulunamadı"
+            description="Saha gideri, malzeme veya tedarikçi maliyeti eklemek için Maliyet Ekle butonunu kullanın."
+          />
+        ) : groupByCategory ? (
             (() => {
               // Kategoriye göre grupla
               type GroupMap = Record<string, { parentName: string; parentId: string; children: Record<string, { childName: string; entries: any[] }> }>;
@@ -403,7 +421,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
               </tbody>
             </table>
           )}
-        </SectionCard>
+      </FinansPanelCard>
 
       {/* Kalem Modal */}
       {showItemModal && (
@@ -1414,40 +1432,45 @@ export function EkstraIslerTab({ claimId }: { claimId: string }) {
   if (loading) return <div className="py-8 text-center text-slate-400 text-sm">Yükleniyor...</div>;
 
   return (
-    <SectionCard title="Ekstra İşler">
-      <div className="flex justify-end mb-4">
-        <button onClick={() => setShowForm(!showForm)} className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700">
-          + Ekstra İş Ekle
-        </button>
-      </div>
-
+    <FinansPanelCard
+      title="Ekstra İşler"
+      subtitle="Dosya kapsamı dışı ek işler — gelir ve gider mini özeti"
+      action={{
+        label: showForm ? 'Formu Kapat' : 'Ekstra İş Ekle',
+        onClick: () => setShowForm((v) => !v),
+        variant: 'primary',
+        active: showForm,
+      }}
+    >
       {showForm && (
-        <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs text-slate-600 mb-1">İş Tanımı <span className="text-red-500">*</span></label>
-              <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, title: v}); }} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Örn: Mutfak dolap değişimi" />
+        <FinansFormPanel
+          title="Yeni Ekstra İş"
+          onCancel={() => setShowForm(false)}
+          onSubmit={handleSubmit}
+          saving={saving}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <FinansFieldLabel required>İş Tanımı</FinansFieldLabel>
+              <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, title: v}); }} className={finansInputClass} placeholder="Örn: Mutfak Dolap Değişimi" />
             </div>
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Anlaşma Tarihi</label>
-              <TrDateInput value={form.agreedAt} onChange={(agreedAt) => setForm({...form, agreedAt})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
+              <FinansFieldLabel>Anlaşma Tarihi</FinansFieldLabel>
+              <TrDateInput value={form.agreedAt} onChange={(agreedAt) => setForm({...form, agreedAt})} className={finansInputClass} />
             </div>
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Notlar</label>
-              <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, description: v}); }} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Opsiyonel" />
+              <FinansFieldLabel>Notlar</FinansFieldLabel>
+              <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, description: v}); }} className={finansInputClass} placeholder="Opsiyonel" />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-xs text-slate-500 px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</button>
-            <button onClick={handleSubmit} disabled={saving} className="text-xs bg-purple-600 text-white px-4 py-1.5 rounded-lg hover:bg-purple-700 disabled:opacity-50">
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
-            </button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4 text-center">Henüz ekstra iş yok</p>
+        <FinansEmptyState
+          title="Henüz Ekstra İş Yok"
+          description="Kapsam dışı iş tanımı eklemek için Ekstra İş Ekle butonunu kullanın."
+        />
       ) : (
         <div className="space-y-2">
           {items.map((item: any) => {
@@ -1499,6 +1522,6 @@ export function EkstraIslerTab({ claimId }: { claimId: string }) {
           })}
         </div>
       )}
-    </SectionCard>
+    </FinansPanelCard>
   );
 }

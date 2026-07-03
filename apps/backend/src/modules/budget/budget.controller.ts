@@ -39,7 +39,7 @@ export class BudgetController {
 
   @Post('budget-versions/:id/submit')
   @RequirePermissions('budget.submit')
-  @ApiOperation({ summary: 'Bütçeyi sigorta şirketine sun' })
+  @ApiOperation({ summary: 'Bütçeyi yönetici onayına gönder' })
   async submitVersion(@Param('id') id: string) {
     const data = await this.budgetService.submitVersion(id);
     return { success: true, data };
