@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-03",
-  "label": "v165-web-v155-backend-muvafakat-dijital-paket",
-  "description": "Web v165 muvafakat dijital akış, evrak UX, mikrofon fix; Backend v155 @Public evrak, fiziki zorunluluk kaldırıldı, logo şablonu",
+  "label": "v166-finans-evrak-ux",
+  "description": "Web v166 finans kurumsal UX, evrak CSS fix, P&L tablo, fiili gider; Backend v166 muvafakat şablonu, financial summary sync",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v155-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v165-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v166-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v166-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v164-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v154-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v165-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v155-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
