@@ -56,7 +56,7 @@ export async function getDocumentBranding(
     ? customLogo
     : buildAppPath(
         config,
-        customLogo ? (customLogo.startsWith('/') ? customLogo : `/${customLogo}`) : '/meridyen-logo-official.png',
+        customLogo ? (customLogo.startsWith('/') ? customLogo : `/${customLogo}`) : '/meridyen-logo-original.png',
       );
 
   return {

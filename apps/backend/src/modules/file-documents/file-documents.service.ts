@@ -215,15 +215,7 @@ export class FileDocumentsService {
         ...companyPlaceholders,
       };
 
-      let rendered = this.renderTemplate(MUVAFAKATNAME_TEMPLATE, placeholders);
-
-      // Ayarlardan özel template varsa üzerine yaz
-      const customTpl = await this.prisma.systemSetting.findUnique({
-        where: { key: 'muvafakatname_template' },
-      });
-      if (customTpl) {
-        rendered = this.renderTemplate(String((customTpl.value as any) ?? ''), placeholders);
-      }
+      const rendered = this.renderTemplate(MUVAFAKATNAME_TEMPLATE, placeholders);
 
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
