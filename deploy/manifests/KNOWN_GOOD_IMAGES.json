@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-03",
-  "label": "v166-finans-evrak-ux",
-  "description": "Web v166 finans kurumsal UX, evrak CSS fix, P&L tablo, fiili gider; Backend v166 muvafakat şablonu, financial summary sync",
+  "label": "v167-web-v166-backend-tahsilat-ux",
+  "description": "Web v167 tahsilatlar kurumsal form + finans panel; Backend v166",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
