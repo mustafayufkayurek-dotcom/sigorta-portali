@@ -44,8 +44,6 @@ export class InvoiceRequestsService {
         const missing: string[] = [];
         if (!conds.muvafakatnameDigitallyApproved)
           missing.push('Muvafakatname dijital onayı');
-        if (!conds.muvafakatnamePhysicallyUploaded)
-          missing.push('Muvafakatname fiziki yükleme');
         if (!conds.repairReportApproved) missing.push('Onaylı onarım raporu');
         if (!conds.vendorContractSigned) missing.push('İmzalı tedarikçi sözleşmesi');
         throw new BadRequestException(

@@ -69,6 +69,7 @@ export class FinancialSummaryService {
       where: { id: claimFileId },
       data: {
         invoicedAmount: actualRevenue,
+        actualCostAmount: actualCost,
         collectedAmount,
         profitAmount: grossProfit,
       },

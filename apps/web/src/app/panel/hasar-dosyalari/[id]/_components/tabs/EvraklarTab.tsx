@@ -32,7 +32,7 @@ function SozlesmelerOnaylarPanel({
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Muvafakatname">
+      <SectionCard title="Mutabakat / Muvafakat Formu">
         <FileDocumentPanel
           entityType="claim_file"
           entityId={claimId}

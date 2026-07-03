@@ -17,34 +17,48 @@ function formatPriority(priority: string | null | undefined): string {
   return PRIORITY_LABELS[key] ?? toTitleCaseTR(priority);
 }
 
-function formatLossType(lossType: string | null | undefined): string {
-  if (!lossType) return '—';
-  return toTitleCaseTR(String(lossType));
-}
-
 export function buildDosyaBilgileriFields(claim: any) {
-  return [
-    { label: 'Dosya No', value: claim.fileNo ?? '—' },
-    { label: 'Hasar No', value: claim.claimNo ?? '—' },
-    { label: 'Hasar Tipi', value: formatLossType(claim.lossType) },
+  const core = [
     { label: 'Hasar Tarihi', value: fmtDate(claim.incidentDate) },
     { label: 'İhbar Tarihi', value: fmtDate(claim.notificationDate) },
-    { label: 'Sigorta Şirketi', value: claim.insuranceCompany?.name ?? '—' },
-    { label: 'Durum', value: claim.currentStatus?.name ?? '—' },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
   ];
+
+  const supplementary: { label: string; value: string }[] = [];
+  if (claim.policyNo?.trim()) {
+    supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
+  }
+  if (claim.productBranch?.trim()) {
+    supplementary.push({ label: 'Ürün Branşı', value: toTitleCaseTR(claim.productBranch.trim()) });
+  }
+  if (claim.sourceChannel?.trim()) {
+    supplementary.push({ label: 'Kaynak Kanal', value: toTitleCaseTR(claim.sourceChannel.trim()) });
+  }
+  if (claim.fileType?.trim()) {
+    supplementary.push({ label: 'Dosya Tipi', value: toTitleCaseTR(claim.fileType.trim()) });
+  }
+  if (claim.insuredName?.trim()) {
+    supplementary.push({ label: 'Sigortalı', value: toTitleCaseTR(claim.insuredName.trim()) });
+  }
+  if (claim.description?.trim()) {
+    supplementary.push({ label: 'Açıklama', value: claim.description.trim() });
+  }
+
+  return [...core, ...supplementary];
 }
 
 function buildDosyaBilgileriSubtitle(claim: any): string {
-  return [
-    claim.claimNo && `Hasar ${claim.claimNo}`,
-    claim.lossType && formatLossType(claim.lossType),
-    claim.insuranceCompany?.name,
-    claim.currentStatus?.name,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const parts: string[] = [];
+  const notification = fmtDate(claim.notificationDate);
+  if (notification !== '—') parts.push(`İhbar ${notification}`);
+  const incident = fmtDate(claim.incidentDate);
+  if (incident !== '—') parts.push(`Hasar ${incident}`);
+  const priority = formatPriority(claim.priority);
+  if (priority !== '—') parts.push(priority);
+  const sla = fmtDate(claim.slaDueAt);
+  if (sla !== '—') parts.push(`SLA ${sla}`);
+  return parts.join(' · ');
 }
 
 /** Üst bantta özet altında açılır dosya detayı — tüm sekmelerde görünür */

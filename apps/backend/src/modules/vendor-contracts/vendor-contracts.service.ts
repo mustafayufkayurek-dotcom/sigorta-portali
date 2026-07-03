@@ -2,6 +2,11 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
+import {
+  getDocumentBranding,
+  renderDocumentHeaderHtml,
+  DOCUMENT_HEADER_STYLES,
+} from '@/common/utils/document-branding';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -222,6 +227,7 @@ export class VendorContractsService {
     });
 
     // 8. HTML birleştir
+    const branding = await getDocumentBranding(this.prisma, this.config);
     const renderedContent = this.buildContractHtml({
       contractNo,
       contractDate,
@@ -232,6 +238,9 @@ export class VendorContractsService {
       insuredName,
       damageAddress,
       clauses: renderedClauses,
+      logoUrl: branding.logoUrl,
+      companyName: branding.companyName,
+      companyAddress: branding.companyAddress,
     });
 
     // 9. publicToken
@@ -520,6 +529,9 @@ export class VendorContractsService {
     insuredName: string;
     damageAddress: string;
     clauses: Array<{ title: string; content: string }>;
+    logoUrl: string;
+    companyName: string;
+    companyAddress: string;
   }): string {
     const clausesHtml = opts.clauses
       .map(
@@ -567,6 +579,7 @@ export class VendorContractsService {
       letter-spacing: 4px;
     }
     .content { position: relative; z-index: 1; }
+${DOCUMENT_HEADER_STYLES}
     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a4080; padding-bottom: 12px; margin-bottom: 16px; }
     .header-left h1 { font-size: 18px; font-weight: bold; color: #1a4080; margin: 0; }
     .header-left p { font-size: 11px; color: #6b7280; margin: 2px 0 0; }
@@ -583,9 +596,10 @@ export class VendorContractsService {
   </style>
 </head>
 <body>
-<div class="watermark">MEKİDYEN ASSISTANCE — GİZLİ</div>
+<div class="watermark">MERİDYEN ASSISTANCE — GİZLİ</div>
 <div class="page">
   <div class="content">
+    ${renderDocumentHeaderHtml({ logoUrl: opts.logoUrl, companyName: opts.companyName, companyAddress: opts.companyAddress })}
     <div class="header">
       <div class="header-left">
         <h1>TEDARİKÇİ ONARIM SÖZLEŞMESİ</h1>

@@ -6,6 +6,15 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
+import {
+  FinansDataTable,
+  FinansEmptyState,
+  FinansFieldLabel,
+  FinansFormPanel,
+  FinansKpiStrip,
+  FinansPanelCard,
+  finansInputClass,
+} from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
@@ -882,15 +891,24 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
     <div className="space-y-4">
       <OnlineCollectionLinksPanel claimFileId={claimId} />
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">Tahsilatlar & Ödemeler</h3>
-        <button type="button" onClick={() => setShowForm(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Ödeme</button>
-      </div>
-
-      {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <h4 className="font-medium text-slate-800 text-sm">Yeni Ödeme Kaydı</h4>
-          <div className="grid grid-cols-2 gap-4">
+      <FinansPanelCard
+        title="Tahsilatlar & Ödemeler"
+        subtitle="Gelen tahsilat ve giden ödemeler — fatura ve dekont bağlantıları"
+        action={{
+          label: showForm ? 'Formu Kapat' : 'Yeni Ödeme',
+          onClick: () => setShowForm((v) => !v),
+          variant: 'primary',
+          active: showForm,
+        }}
+      >
+        {showForm && (
+          <FinansFormPanel
+            title="Yeni Ödeme Kaydı"
+            onCancel={() => setShowForm(false)}
+            onSubmit={handleSave}
+            saving={saving}
+          >
+            <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Ödeme Yönü</label>
               <select value={form.paymentType} onChange={(e) => setForm({ ...form, paymentType: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
@@ -965,40 +983,38 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
               </div>
             )}
           </div>
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
-          </div>
-        </div>
-      )}
+          </FinansFormPanel>
+        )}
 
-      {payments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">Henüz Ödeme Kaydı Eklenmemiş</div>
-      ) : (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500">
+        {payments.length === 0 ? (
+          <FinansEmptyState
+            title="Henüz Ödeme Kaydı Yok"
+            description="Tahsilat veya tedarikçi ödemesi eklemek için Yeni Ödeme butonunu kullanın."
+          />
+        ) : (
+          <FinansDataTable>
+            <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3">Tarih</th>
-                <th className="text-left px-4 py-3">Yön</th>
-                <th className="text-left px-4 py-3">Yöntem</th>
-                <th className="text-left px-4 py-3">Bağlı Fatura</th>
-                <th className="text-right px-4 py-3">Tutar</th>
-                <th className="text-left px-4 py-3">Ref No</th>
-                <th className="text-left px-4 py-3">Dekont</th>
-                <th className="text-left px-4 py-3">Not</th>
+                <th className="text-left px-3 py-2.5">Tarih</th>
+                <th className="text-left px-3 py-2.5">Yön</th>
+                <th className="text-left px-3 py-2.5">Yöntem</th>
+                <th className="text-left px-3 py-2.5">Bağlı Fatura</th>
+                <th className="text-right px-3 py-2.5">Tutar</th>
+                <th className="text-left px-3 py-2.5">Ref No</th>
+                <th className="text-left px-3 py-2.5">Dekont</th>
+                <th className="text-left px-3 py-2.5">Not</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {payments.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-600">{fmtDate(p.paymentDate)}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.paymentType === 'incoming' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{PAYMENT_TYPE_LABEL[p.paymentType] ?? p.paymentType}</span></td>
-                  <td className="px-4 py-3 text-slate-600">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</td>
-                  <td className="px-4 py-3 text-xs font-mono text-slate-500">{p.invoice?.invoiceNo ?? '—'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-slate-800">{fmtCurrency(p.amount)}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{p.referenceNo ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs">
+                <tr key={p.id} className="hover:bg-slate-50/80">
+                  <td className="px-3 py-2.5 text-slate-600">{fmtDate(p.paymentDate)}</td>
+                  <td className="px-3 py-2.5"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.paymentType === 'incoming' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{PAYMENT_TYPE_LABEL[p.paymentType] ?? p.paymentType}</span></td>
+                  <td className="px-3 py-2.5 text-slate-600">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</td>
+                  <td className="px-3 py-2.5 text-xs font-mono text-slate-500">{p.invoice?.invoiceNo ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-right font-medium tabular-nums text-slate-800">{fmtCurrency(p.amount)}</td>
+                  <td className="px-3 py-2.5 text-slate-500 text-xs">{p.referenceNo ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-xs">
                     {p.paymentType === 'outgoing' && p.payerType === 'vendor' ? (
                       p.receiptStorageKey ? (
                         <button type="button" onClick={() => openReceipt(p.id)} className="text-indigo-600 hover:underline">
@@ -1017,18 +1033,18 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
                               e.target.value = '';
                             }}
                           />
-                          {uploadingReceiptId === p.id ? 'Yükleniyor...' : '+ Dekont yükle'}
+                          {uploadingReceiptId === p.id ? 'Yükleniyor…' : 'Dekont Yükle'}
                         </label>
                       )
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-[120px]">{p.note ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-slate-500 text-xs truncate max-w-[120px]">{p.note ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      )}
+          </FinansDataTable>
+        )}
+      </FinansPanelCard>
     </div>
   );
 }
@@ -1130,112 +1146,121 @@ export function GelirlerTab({ claimId }: { claimId: string }) {
   if (loading) return <div className="py-8 text-center text-slate-400 text-sm">Yükleniyor...</div>;
 
   return (
-    <SectionCard title="Gelir Kayıtları">
-      <div className="grid grid-cols-3 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm mb-4">
-        <FinansMetrikHucre metrik={{ label: 'Toplam Gelir', value: fmtCurrency(totalRevenue), fullValue: fmtCurrency(totalRevenue) }} />
-        <FinansMetrikHucre metrik={{ label: 'Tahsil Edilen', value: fmtCurrency(totalCollected), fullValue: fmtCurrency(totalCollected), accent: 'text-green-700' }} />
-        <FinansMetrikHucre metrik={{ label: 'Kalan Bakiye', value: fmtCurrency(remainingBalance), fullValue: fmtCurrency(remainingBalance), accent: remainingBalance > 0 ? 'text-orange-600' : 'text-slate-900' }} />
-      </div>
-
-      <div className="flex items-center justify-end mb-4">
-        <button type="button" onClick={() => setShowForm(!showForm)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
-          + Gelir Ekle
-        </button>
-      </div>
+    <FinansPanelCard
+      title="Gelir Kayıtları"
+      subtitle="Dosya bedeli ve ekstra iş gelirleri — tahsilat durumu özette"
+      action={{
+        label: showForm ? 'Formu Kapat' : 'Gelir Ekle',
+        onClick: () => setShowForm((v) => !v),
+        variant: 'primary',
+        active: showForm,
+      }}
+    >
+      <FinansKpiStrip
+        items={[
+          { label: 'Toplam Gelir', value: fmtCurrency(totalRevenue) },
+          { label: 'Tahsil Edilen', value: fmtCurrency(totalCollected), accent: 'text-emerald-400' },
+          {
+            label: 'Kalan Bakiye',
+            value: fmtCurrency(remainingBalance),
+            accent: remainingBalance > 0 ? 'text-amber-400' : 'text-white',
+          },
+        ]}
+      />
 
       {showForm && (
-        <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <FinansFormPanel
+          title="Yeni Gelir Kaydı"
+          onCancel={() => setShowForm(false)}
+          onSubmit={handleSubmit}
+          saving={saving}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Tarih <span className="text-red-500">*</span></label>
-              <TrDateInput value={form.entryDate} onChange={(entryDate) => setForm({...form, entryDate})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
+              <FinansFieldLabel required>Tarih</FinansFieldLabel>
+              <TrDateInput value={form.entryDate} onChange={(entryDate) => setForm({...form, entryDate})} className={finansInputClass} />
             </div>
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Gelir Tipi</label>
-              <select value={form.revenueType} onChange={e => setForm({...form, revenueType: e.target.value, extraWorkItemId: ''})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2">
+              <FinansFieldLabel>Gelir Tipi</FinansFieldLabel>
+              <select value={form.revenueType} onChange={e => setForm({...form, revenueType: e.target.value, extraWorkItemId: ''})} className={finansInputClass}>
                 <option value="file_fee">Dosya Bedeli</option>
                 <option value="extra_work">Ekstra İş</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Tahsilat Kaynağı</label>
-              <select value={form.collectionSource} onChange={e => setForm({...form, collectionSource: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2">
+              <FinansFieldLabel>Tahsilat Kaynağı</FinansFieldLabel>
+              <select value={form.collectionSource} onChange={e => setForm({...form, collectionSource: e.target.value})} className={finansInputClass}>
                 <option value="insurance_company">Sigorta Şirketi</option>
                 <option value="insured">Sigortalı</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-600 mb-1">Tutar (TL) <span className="text-red-500">*</span></label>
-              <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="0.00" />
+              <FinansFieldLabel required>Tutar (TL)</FinansFieldLabel>
+              <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className={finansInputClass} placeholder="0,00" />
+            </div>
+            <div>
+              <FinansFieldLabel>KDV (%)</FinansFieldLabel>
+              <input type="number" min="0" max="100" value={form.vatRate} onChange={e => setForm({...form, vatRate: e.target.value})} className={finansInputClass} placeholder="0" />
             </div>
             {form.revenueType === 'extra_work' && (
-              <div className="col-span-2">
-                <label className="block text-xs text-slate-600 mb-1">Ekstra İş <span className="text-red-500">*</span></label>
-                <select value={form.extraWorkItemId} onChange={e => setForm({...form, extraWorkItemId: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2">
-                  <option value="">Seçiniz...</option>
+              <div className="sm:col-span-2">
+                <FinansFieldLabel required>Ekstra İş</FinansFieldLabel>
+                <select value={form.extraWorkItemId} onChange={e => setForm({...form, extraWorkItemId: e.target.value})} className={finansInputClass}>
+                  <option value="">Seçiniz…</option>
                   {extraWorks.map((ew: any) => (
                     <option key={ew.id} value={ew.id}>{ew.title}</option>
                   ))}
                 </select>
               </div>
             )}
-            <div className="col-span-2">
-              <label className="block text-xs text-slate-600 mb-1">Açıklama <span className="text-red-500">*</span></label>
-              <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, description: v}); }} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Gelir açıklaması" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-600 mb-1">KDV (%)</label>
-              <input type="number" min="0" max="100" value={form.vatRate} onChange={e => setForm({...form, vatRate: e.target.value})} className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="0" />
+            <div className="sm:col-span-2">
+              <FinansFieldLabel required>Açıklama</FinansFieldLabel>
+              <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({...form, description: v}); }} className={finansInputClass} placeholder="Gelir açıklaması" />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-slate-500 px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSubmit} disabled={saving} className="text-xs bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
-            </button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {revenues.length === 0 ? (
-        <p className="text-sm text-slate-400 py-4 text-center">Henüz Gelir Kaydı Yok</p>
+        <FinansEmptyState
+          title="Henüz Gelir Kaydı Yok"
+          description="Dosya bedeli veya ekstra iş geliri eklemek için Gelir Ekle butonunu kullanın."
+        />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr>
-                <th className="text-left px-3 py-2 w-8" />
-                <th className="text-left px-3 py-2">Tarih</th>
-                <th className="text-left px-3 py-2">Gelir Tipi</th>
-                <th className="text-left px-3 py-2">Tahsilat Kaynağı</th>
-                <th className="text-right px-3 py-2">Tutar</th>
-                <th className="text-left px-3 py-2">Açıklama</th>
+        <FinansDataTable>
+          <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
+            <tr>
+              <th className="text-left px-3 py-2.5 w-8" />
+              <th className="text-left px-3 py-2.5">Tarih</th>
+              <th className="text-left px-3 py-2.5">Gelir Tipi</th>
+              <th className="text-left px-3 py-2.5">Tahsilat Kaynağı</th>
+              <th className="text-right px-3 py-2.5">Tutar</th>
+              <th className="text-left px-3 py-2.5">Açıklama</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {revenues.map((r: any) => (
+              <tr key={r.id} className="hover:bg-slate-50/80">
+                <td className="px-3 py-2.5">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor(r.status)}`}>{statusLabel(r.status)}</span>
+                </td>
+                <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{fmtDate(r.entryDate)}</td>
+                <td className="px-3 py-2.5 text-slate-700">
+                  {typeLabel(r.revenueType)}
+                  {r.extraWorkItem && <span className="text-xs text-purple-600 ml-1">({r.extraWorkItem.title})</span>}
+                </td>
+                <td className="px-3 py-2.5 text-slate-600">{sourceLabel(r.collectionSource)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-800 whitespace-nowrap">
+                  {fmtCurrency(r.totalAmount)}
+                  {r.collectedAmount > 0 && <span className="block text-[10px] font-normal text-green-600">Tahsil: {fmtCurrency(r.collectedAmount)}</span>}
+                </td>
+                <td className="px-3 py-2.5 text-slate-600">{r.description ?? '—'}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {revenues.map((r: any) => (
-                <tr key={r.id} className="hover:bg-slate-50/50">
-                  <td className="px-3 py-2">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor(r.status)}`}>{statusLabel(r.status)}</span>
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{fmtDate(r.entryDate)}</td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {typeLabel(r.revenueType)}
-                    {r.extraWorkItem && <span className="text-xs text-purple-600 ml-1">({r.extraWorkItem.title})</span>}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">{sourceLabel(r.collectionSource)}</td>
-                  <td className="px-3 py-2 text-right font-semibold text-slate-800 whitespace-nowrap">
-                    {fmtCurrency(r.totalAmount)}
-                    {r.collectedAmount > 0 && <span className="block text-[10px] font-normal text-green-600">Tahsil: {fmtCurrency(r.collectedAmount)}</span>}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">{r.description ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </FinansDataTable>
       )}
-    </SectionCard>
+    </FinansPanelCard>
   );
 }
 

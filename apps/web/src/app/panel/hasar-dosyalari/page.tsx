@@ -461,19 +461,19 @@ function ClaimFilesPageContent() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="insured" className="table-th">Sigortalı</PanelTableTh>
-                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
-                  <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
-                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
-                  <PanelTableTh colId="reportStatus" className="table-th">Rapor Akıbeti</PanelTableTh>
-                  <PanelTableTh colId="reportSales" className="table-th">Beklenen Ciro</PanelTableTh>
-                  <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
-                  <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="table-th-center">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
+                  <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th-center">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
+                  <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
+                  <PanelTableTh colId="reportStatus" className="table-th-center">Rapor Akıbeti</PanelTableTh>
+                  <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
+                  <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
+                  <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
@@ -584,19 +584,19 @@ function ClaimFilesPageContent() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="insured" className="table-th">Sigortalı</PanelTableTh>
-                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
-                  <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
-                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
-                  <PanelTableTh colId="reportStatus" className="table-th">Rapor Akıbeti</PanelTableTh>
-                  <PanelTableTh colId="reportSales" className="table-th">Beklenen Ciro</PanelTableTh>
-                  <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
-                  <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="table-th-center">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
+                  <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th-center">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
+                  <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
+                  <PanelTableTh colId="reportStatus" className="table-th-center">Rapor Akıbeti</PanelTableTh>
+                  <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
+                  <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
+                  <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">

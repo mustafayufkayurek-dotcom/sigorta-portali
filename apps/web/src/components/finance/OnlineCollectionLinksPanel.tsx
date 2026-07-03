@@ -4,6 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
+import {
+  FinansActionButton,
+  FinansDataTable,
+  FinansEmptyState,
+  FinansFieldLabel,
+  FinansFormPanel,
+  FinansPanelCard,
+  finansInputClass,
+} from '@/components/finance/FinansPanelUI';
 
 function fmtCurrency(n: number) {
   return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
@@ -18,7 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
   opened: 'Açıldı',
   processing: 'İşleniyor',
   paid: 'Ödendi',
-  expired: 'Süresi doldu',
+  expired: 'Süresi Doldu',
   cancelled: 'İptal',
   failed: 'Başarısız',
 };
@@ -122,116 +131,140 @@ export function OnlineCollectionLinksPanel({ claimFileId }: { claimFileId: strin
   const activePending = links.filter((l) => ['sent', 'opened', 'processing', 'draft'].includes(l.status)).length;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h4 className="text-sm font-semibold text-slate-800">Online Kart Tahsilat (PayTR)</h4>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Sigortalıya güvenli ödeme linki gönderin — tahsilat otomatik kayda düşer.
-            {activePending > 0 && <span className="ml-1 text-yellow-700 font-medium">{activePending} bekleyen link</span>}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-        >
-          + Ödeme Linki
-        </button>
-      </div>
-
+    <FinansPanelCard
+      title="Online Kart Tahsilat (PayTR)"
+      subtitle={
+        <>
+          Sigortalıya güvenli ödeme linki gönderin — tahsilat otomatik kayda düşer.
+          {activePending > 0 && (
+            <span className="ml-1 font-medium text-amber-700">{activePending} bekleyen link</span>
+          )}
+        </>
+      }
+      action={{
+        label: showForm ? 'Formu Kapat' : 'Ödeme Linki',
+        onClick: () => setShowForm((v) => !v),
+        variant: 'success',
+        active: showForm,
+      }}
+    >
       {showForm && (
-        <div className="px-4 py-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <FinansFormPanel
+          title="Yeni Ödeme Linki"
+          onCancel={() => setShowForm(false)}
+          onSubmit={handleCreate}
+          submitLabel="Link Oluştur"
+          saving={saving}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Tutar (TRY) *</label>
+              <FinansFieldLabel required>Tutar (TRY)</FinansFieldLabel>
               <input
                 type="number"
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className={finansInputClass}
                 placeholder="0"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Sigortalı adı</label>
+              <FinansFieldLabel>Sigortalı Adı</FinansFieldLabel>
               <input
                 type="text"
                 value={form.payerName}
                 onChange={(e) => setForm({ ...form, payerName: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className={finansInputClass}
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">E-posta</label>
+              <FinansFieldLabel>E-posta</FinansFieldLabel>
               <input
                 type="email"
                 value={form.payerEmail}
                 onChange={(e) => setForm({ ...form, payerEmail: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className={finansInputClass}
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Telefon</label>
+              <FinansFieldLabel>Telefon</FinansFieldLabel>
               <input
                 type="tel"
                 value={form.payerPhone}
                 onChange={(e) => setForm({ ...form, payerPhone: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className={finansInputClass}
               />
             </div>
-            <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Açıklama</label>
+            <div className="sm:col-span-2">
+              <FinansFieldLabel>Açıklama</FinansFieldLabel>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className={finansInputClass}
                 placeholder="Dosya kapanış ücreti vb."
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600">İptal</button>
-            <button type="button" onClick={handleCreate} disabled={saving} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg disabled:opacity-50">
-              {saving ? 'Oluşturuluyor…' : 'Link Oluştur'}
-            </button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {loading ? (
-        <div className="p-6 text-center text-sm text-slate-400">Yükleniyor…</div>
+        <div className="py-8 text-center text-sm text-slate-400">Yükleniyor…</div>
       ) : links.length === 0 ? (
-        <div className="p-6 text-center text-sm text-slate-400">Henüz online ödeme linki yok.</div>
+        <FinansEmptyState
+          title="Henüz Online Ödeme Linki Yok"
+          description="Sigortalıya PayTR ile kart ödemesi almak için Ödeme Linki oluşturun."
+        />
       ) : (
-        <div className="divide-y divide-slate-50">
-          {links.map((link) => (
-            <div key={link.id} className="px-4 py-3 flex flex-wrap items-center gap-3 justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-slate-800">{fmtCurrency(link.amount)}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[link.status] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+        <FinansDataTable>
+          <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
+            <tr>
+              <th className="text-left px-3 py-2.5">Tutar</th>
+              <th className="text-left px-3 py-2.5">Durum</th>
+              <th className="text-left px-3 py-2.5">Sigortalı</th>
+              <th className="text-left px-3 py-2.5">Son Geçerlilik</th>
+              <th className="text-right px-3 py-2.5">İşlem</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {links.map((link) => (
+              <tr key={link.id} className="hover:bg-slate-50/80">
+                <td className="px-3 py-2.5 font-semibold tabular-nums text-slate-800">{fmtCurrency(link.amount)}</td>
+                <td className="px-3 py-2.5">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[link.status] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                     {STATUS_LABEL[link.status] ?? link.status}
                   </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {link.payerName ?? '—'} · son: {fmtDate(link.tokenExpiresAt)}
-                  {link.paidAt && ` · ödendi: ${fmtDate(link.paidAt)}`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {['sent', 'opened', 'processing', 'draft'].includes(link.status) && (
-                  <>
-                    <button type="button" onClick={() => copyLink(link.paymentUrl)} className="text-xs text-blue-600 hover:underline">Kopyala</button>
-                    <button type="button" onClick={() => cancelLink(link.id)} className="text-xs text-red-500 hover:underline">İptal</button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                </td>
+                <td className="px-3 py-2.5 text-sm text-slate-600">{link.payerName ?? '—'}</td>
+                <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">
+                  {fmtDate(link.tokenExpiresAt)}
+                  {link.paidAt && <span className="block text-green-600">Ödendi: {fmtDate(link.paidAt)}</span>}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <div className="inline-flex gap-2">
+                    {['sent', 'opened', 'processing', 'draft'].includes(link.status) && (
+                      <>
+                        <FinansActionButton
+                          label="Kopyala"
+                          onClick={() => copyLink(link.paymentUrl)}
+                          variant="neutral"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => cancelLink(link.id)}
+                          className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1"
+                        >
+                          İptal
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </FinansDataTable>
       )}
-    </div>
+    </FinansPanelCard>
   );
 }

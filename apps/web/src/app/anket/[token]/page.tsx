@@ -24,23 +24,23 @@ type Ratings = {
 const QUESTIONS = [
   {
     key: 'q1' as keyof Ratings,
-    label: 'Genel hizmet memnuniyetinizi nasıl değerlendirirsiniz?',
+    label: 'Telefonda Size Yardımcı Olan Personelimizin Hizmet Kalitesi',
   },
   {
     key: 'q2' as keyof Ratings,
-    label: 'Meridyen Assistance ekibinin müdahale hızından memnun musunuz?',
+    label: 'Hasar Onarım Ekibinin Randevu ve İş Programı Zamanlaması',
   },
   {
     key: 'q3' as keyof Ratings,
-    label: 'Meridyen Assistance\'ın süreç boyunca bilgilendirmesini nasıl değerlendirirsiniz?',
+    label: 'Hasar Onarım Ekibinin Davranışları',
   },
   {
     key: 'q4' as keyof Ratings,
-    label: 'Yapılan işin kalitesini nasıl değerlendirirsiniz?',
+    label: 'Hasar Onarım Ekibinin Dış Görünümü',
   },
   {
     key: 'q5' as keyof Ratings,
-    label: 'Ekibimizin profesyonelliğini nasıl değerlendirirsiniz?',
+    label: 'Hasar Onarım Ekibinin İş Kalitesi',
   },
 ];
 
@@ -120,7 +120,7 @@ export default function AnketPage() {
       return;
     }
     if (recommend === null) {
-      setSubmitError('Lütfen tavsiye sorusunu yanıtlayın');
+      setSubmitError('Lütfen genel memnuniyet sorusunu yanıtlayın');
       return;
     }
 
@@ -215,29 +215,32 @@ export default function AnketPage() {
         <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500">Meridyen Assistance</p>
-            <p className="text-sm font-bold text-slate-800">Müşteri Memnuniyet Anketi</p>
+            <p className="text-sm font-bold text-slate-800">Kalite Kontrol Anket Formu</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-400">Yaklaşık 30 saniye</p>
-            <p className="text-xs text-indigo-600 font-medium">7 soru</p>
+            <p className="text-xs text-slate-400">Yaklaşık 1 Dakika</p>
+            <p className="text-xs text-indigo-600 font-medium">6 Soru</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
         {/* Karşılama */}
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4">
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4 space-y-2">
           {meta.insuredName ? (
-            <p className="text-sm text-indigo-800">
-              Sayın <strong>{meta.insuredName}</strong>, size sunduğumuz hizmetlerle
-              ilgili deneyiminizi değerlendirmeniz bizim için değerlidir.
+            <p className="text-sm text-indigo-900">
+              Değerli Sigortalımız <strong>{meta.insuredName}</strong>,
             </p>
           ) : (
-            <p className="text-sm text-indigo-800">
-              Size sunduğumuz hizmetlerle ilgili deneyiminizi değerlendirmeniz bizim
-              için değerlidir.
-            </p>
+            <p className="text-sm text-indigo-900">Değerli Sigortalımız,</p>
           )}
+          <p className="text-sm text-indigo-800 leading-relaxed">
+            Hasar dosyanız kapsamında konut / işyerinizdeki onarım ve restorasyon çalışmaları tamamlanmıştır.
+            Bu form; mahalin eksiksiz teslim alındığını ve memnuniyetinizi değerlendirmek amacıyla hazırlanmıştır.
+          </p>
+          <p className="text-xs text-indigo-700">
+            Görüş ve önerilerinize önem veriyoruz. Teşekkür ederiz.
+          </p>
         </div>
 
         {/* Yıldız soruları */}
@@ -257,11 +260,11 @@ export default function AnketPage() {
           ))}
         </div>
 
-        {/* Soru 6: Tavsiye */}
+        {/* Soru 6: Genel memnuniyet */}
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             <span className="text-indigo-500 font-semibold">6.</span>{' '}
-            Meridyen Assistance&apos;ı tavsiye eder misiniz?
+            Genel Olarak Memnuniyet Derecesi
           </p>
           <div className="flex gap-3">
             <button
@@ -274,7 +277,7 @@ export default function AnketPage() {
                   : 'border-slate-200 text-slate-600 hover:border-green-300'
               }`}
             >
-              Evet
+              Memnunum
             </button>
             <button
               type="button"
@@ -286,16 +289,15 @@ export default function AnketPage() {
                   : 'border-slate-200 text-slate-600 hover:border-red-300'
               }`}
             >
-              Hayır
+              Memnun Değilim
             </button>
           </div>
         </div>
 
-        {/* Soru 7: Yorum (opsiyonel) */}
+        {/* Teşekkür, şikayet, öneri */}
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-3">
-            <span className="text-indigo-500 font-semibold">7.</span>{' '}
-            Eklemek istediğiniz görüş veya öneriniz var mı?{' '}
+            Teşekkür, Şikayet ve Önerileriniz{' '}
             <span className="text-slate-400 font-normal">(Opsiyonel)</span>
           </p>
           <textarea

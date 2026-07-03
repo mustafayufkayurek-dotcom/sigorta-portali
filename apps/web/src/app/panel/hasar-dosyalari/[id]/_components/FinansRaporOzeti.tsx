@@ -46,33 +46,58 @@ function metrikFromAmount(
   amount: number | null | undefined,
   opts?: { highlight?: boolean; accent?: string },
 ): FinansMetrik {
-  if (amount == null) {
-    return { label, value: '—' };
-  }
+  const n = amount ?? 0;
   return {
     label,
-    value: fmtCurrencyCompact(amount),
-    fullValue: fmtCurrency(amount),
+    value: fmtCurrencyCompact(n),
+    fullValue: fmtCurrency(n),
     highlight: opts?.highlight,
     accent: opts?.accent,
   };
 }
 
+function resolveFiiliGider(
+  claim: {
+    actualCostAmount?: number | null;
+    financialSummary?: { totalCost?: number; actualCost?: number } | null;
+  },
+  summary?: FinansOzetSummary | null,
+): number {
+  return (
+    summary?.totalCost
+    ?? summary?.actualCost
+    ?? claim.financialSummary?.totalCost
+    ?? claim.financialSummary?.actualCost
+    ?? claim.actualCostAmount
+    ?? 0
+  );
+}
+
 function buildFiiliMetrikleri(
-  claim: { actualCostAmount?: number; invoicedAmount?: number; collectedAmount?: number },
+  claim: {
+    actualCostAmount?: number | null;
+    invoicedAmount?: number | null;
+    collectedAmount?: number | null;
+    financialSummary?: { totalCost?: number; actualCost?: number; actualRevenue?: number; totalRevenue?: number; totalCollected?: number } | null;
+  },
   summary?: FinansOzetSummary | null,
 ): FinansMetrik[] {
-  const fiiliGider = summary?.totalCost ?? summary?.actualCost ?? claim.actualCostAmount;
-  const faturalananGelir = summary?.totalRevenue ?? summary?.actualRevenue ?? claim.invoicedAmount;
-  const tahsilEdilen = summary?.totalCollected ?? claim.collectedAmount;
-  const collected = tahsilEdilen ?? 0;
+  const fiiliGider = resolveFiiliGider(claim, summary);
+  const faturalananGelir =
+    summary?.totalRevenue ?? summary?.actualRevenue
+    ?? claim.financialSummary?.totalRevenue ?? claim.financialSummary?.actualRevenue
+    ?? claim.invoicedAmount ?? 0;
+  const tahsilEdilen =
+    summary?.totalCollected
+    ?? claim.financialSummary?.totalCollected
+    ?? claim.collectedAmount ?? 0;
 
   return [
     metrikFromAmount('Fiili Gider', fiiliGider),
     metrikFromAmount('Faturalanan Gelir', faturalananGelir, { highlight: true }),
     metrikFromAmount('Tahsil Edilen', tahsilEdilen, {
       highlight: true,
-      accent: collected > 0 ? 'text-emerald-700' : undefined,
+      accent: tahsilEdilen > 0 ? 'text-emerald-700' : undefined,
     }),
   ];
 }

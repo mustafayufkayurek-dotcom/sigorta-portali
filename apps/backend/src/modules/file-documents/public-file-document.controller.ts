@@ -9,9 +9,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { Public } from '@/common/decorators/public.decorator';
 import { FileDocumentsService } from './file-documents.service';
 import { ApproveFileDocumentDto } from './dto/file-documents.dto';
 
+@Public()
 @Controller('public/evrak')
 export class PublicFileDocumentController {
   constructor(private readonly service: FileDocumentsService) {}

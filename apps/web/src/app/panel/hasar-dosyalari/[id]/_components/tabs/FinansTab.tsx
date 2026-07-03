@@ -33,16 +33,16 @@ export function FinansTab({
   return (
     <div className="space-y-4">
       <div className="sticky top-[52px] z-10 -mx-1 px-1 py-2 bg-[#f8fafc]/95 backdrop-blur-sm">
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
           {FINANS_SUB_TABS.map((tab) => (
             <button
               type="button"
               key={tab.id}
               onClick={() => setSubTab(tab.id)}
-              className={`shrink-0 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 subTab === tab.id
-                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab.label}

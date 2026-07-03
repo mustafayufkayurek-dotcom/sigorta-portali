@@ -275,6 +275,15 @@ export class ClaimFilesService {
           orderBy: { changedAt: 'desc' },
           take: 10,
         },
+        financialSummary: {
+          select: {
+            actualCost: true,
+            totalCost: true,
+            actualRevenue: true,
+            totalRevenue: true,
+            totalCollected: true,
+          },
+        },
       },
     });
 

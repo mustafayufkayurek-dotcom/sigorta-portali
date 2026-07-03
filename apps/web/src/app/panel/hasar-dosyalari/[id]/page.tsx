@@ -136,13 +136,25 @@ function CollapsibleSectionCard({
   );
 }
 
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Düşük',
+  normal: 'Normal',
+  high: 'Yüksek',
+  critical: 'Kritik',
+};
+
+function formatPriorityChip(priority: string | null | undefined): string | null {
+  if (!priority) return null;
+  const key = String(priority).trim().toLowerCase();
+  return PRIORITY_LABELS[key] ?? toTitleCaseTR(priority);
+}
+
 function DosyaOzetiChipleri({ claim }: { claim: any }) {
-  const region = [claim.propertyAddress?.city, claim.propertyAddress?.district].filter(Boolean).join(' / ') || null;
   const chips = [
-    { label: 'Bölge', value: region },
     { label: 'İhbar', value: fmtDate(claim.notificationDate) },
     { label: 'Hasar Tarihi', value: fmtDate(claim.incidentDate) },
-    { label: 'Hasar Tipi', value: claim.lossType ? toTitleCaseTR(String(claim.lossType)) : null },
+    { label: 'Öncelik', value: formatPriorityChip(claim.priority) },
+    { label: 'SLA', value: fmtDate(claim.slaDueAt) },
   ].filter((c) => c.value && c.value !== '—');
 
   if (chips.length === 0) return null;

@@ -274,11 +274,6 @@ export default function ClosureConditionsPanel(props: Props) {
                   help="Muvafakatname WhatsApp ile gönderilmeli ve onaylanmalı"
                 />
                 <ConditionRow
-                  met={conditions.muvafakatnamePhysicallyUploaded}
-                  label="Muvafakatname fiziki aslı yüklendi"
-                  help="Dijital onay sonrası taranmış orijinal yüklenmelidir"
-                />
-                <ConditionRow
                   met={conditions.repairReportApproved}
                   label="Onarım raporu onaylandı"
                   help="Onarım raporu 'Onaylı' durumunda olmalı"

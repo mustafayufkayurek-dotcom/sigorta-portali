@@ -16,15 +16,15 @@ function ErisimToggle({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded-lg bg-slate-100 p-0.5 shrink-0">
+    <div className="inline-flex shrink-0 border-b border-slate-200">
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange(true)}
-        className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all whitespace-nowrap ${
+        className={`px-2 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap disabled:opacity-50 ${
           value
-            ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/80'
-            : 'text-slate-500 hover:text-slate-700'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
         }`}
       >
         Görüntüleyebilir
@@ -33,10 +33,10 @@ function ErisimToggle({
         type="button"
         disabled={disabled}
         onClick={() => onChange(false)}
-        className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all whitespace-nowrap ${
+        className={`px-2 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap disabled:opacity-50 ${
           !value
-            ? 'bg-white text-slate-700 shadow-sm ring-1 ring-slate-200/80'
-            : 'text-slate-500 hover:text-slate-700'
+            ? 'border-blue-600 text-blue-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
         }`}
       >
         Görüntüleyemez

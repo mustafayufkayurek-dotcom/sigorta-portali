@@ -5,105 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { getDocumentBranding, DOCUMENT_HEADER_STYLES } from '@/common/utils/document-branding';
 import { buildAppPath } from '@/common/utils/app-url';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
   SendWhatsappDto,
 } from './dto/file-documents.dto';
-
-const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Muvafakatname — {{dosya_no}}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
-    .page { padding: 24px; max-width: 800px; margin: 0 auto; }
-    .header { border-bottom: 2px solid #1a4080; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
-    .header h1 { font-size: 18px; font-weight: bold; color: #1a4080; margin: 0; }
-    .header p { font-size: 11px; color: #6b7280; margin: 2px 0 0; }
-    .header-right { text-align: right; font-size: 11px; color: #374151; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; }
-    .info-item label { font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 2px; }
-    .info-item span { font-size: 12px; color: #111827; font-weight: 500; }
-    .content { line-height: 1.7; color: #374151; font-size: 12px; }
-    .content p { margin: 0 0 12px; }
-    .signature-section { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 16px; }
-    .sig-box h4 { font-size: 11px; font-weight: bold; color: #374151; margin: 0 0 8px; text-transform: uppercase; }
-    .sig-line { border-top: 1px solid #9ca3af; margin-top: 50px; padding-top: 6px; font-size: 10px; color: #6b7280; }
-    .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #9ca3af; text-align: center; }
-    .electronic-badge { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 10px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 6px; }
-  </style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div>
-      <h1>MUVAFAKATname</h1>
-      <p>Meridyen Assistance — Hasar Onarım Onayı</p>
-    </div>
-    <div class="header-right">
-      <div><strong>Dosya No: {{dosya_no}}</strong></div>
-      <div>Tarih: {{tarih}}</div>
-    </div>
-  </div>
-
-  <div class="info-grid">
-    <div class="info-item"><label>Sigorta Şirketi</label><span>{{sigorta_sirketi}}</span></div>
-    <div class="info-item"><label>Dosya No</label><span>{{dosya_no}}</span></div>
-    <div class="info-item"><label>Poliçe No</label><span>{{police_no}}</span></div>
-    <div class="info-item"><label>Hasar No</label><span>{{hasar_no}}</span></div>
-    <div class="info-item"><label>Sigortalı / Hak Sahibi</label><span>{{sigorta_musteri_ad}}</span></div>
-    <div class="info-item"><label>Hasar Adresi</label><span>{{hasar_adresi}}</span></div>
-  </div>
-
-  <div class="content">
-    <p>
-      Ben, aşağıda imzası bulunan <strong>{{sigorta_musteri_ad}}</strong>, <strong>{{sigorta_sirketi}}</strong> nezdinde
-      <strong>{{police_no}}</strong> poliçe numarası ile kayıtlı sigorta poliçemin kapsadığı hasara ilişkin olarak;
-    </p>
-    <p>
-      Meridyen Assistance tarafından yapılacak hasar tespiti, onarım organizasyonu ve ilgili tüm teknik çalışmaların
-      <strong>{{hasar_adresi}}</strong> adresinde gerçekleştirilmesine <strong>açıkça muvafakat ediyorum</strong>.
-    </p>
-    <p>
-      Bu muvafakatname ile; Meridyen Assistance'ın onarım sürecinde yetkili tedarikçilerle sözleşme yapmasına,
-      hasar bölgesine erişim sağlamasına, fotoğraf ve video kayıt almasına, gerekli ölçüm ve inceleme
-      çalışmalarını yürütmesine izin veriyorum.
-    </p>
-    <p>
-      Onarım kapsamı ve maliyet konusunda Meridyen Assistance tarafından hazırlanan onarım raporunu onaylaması
-      durumunda, sigorta şirketinin belirlediği limitler çerçevesinde ödemenin sigorta şirketi tarafından
-      Meridyen Assistance'a yapılmasına muvafakat ediyorum.
-    </p>
-    <p>
-      Bu belge, {{tarih}} tarihinde elektronik ortamda imzalanmıştır. Elektronik imza, ıslak imza ile eşdeğer
-      hukuki geçerliliğe sahiptir.
-    </p>
-  </div>
-
-  <div class="signature-section">
-    <div class="sig-box">
-      <h4>Meridyen Assistance Adına</h4>
-      <div class="electronic-badge">Elektronik imza kullanılmıştır</div>
-      <div class="sig-line">Meridyen Assistance · {{tarih}}</div>
-    </div>
-    <div class="sig-box">
-      <h4>Sigortalı / Hak Sahibi</h4>
-      <p style="font-size:11px;color:#6b7280;margin:4px 0">Ad Soyad / İmza</p>
-      <div class="sig-line">İmza · Tarih</div>
-    </div>
-  </div>
-
-  <div class="footer">
-    Bu belge Meridyen Assistance tarafından otomatik oluşturulmuştur. Yetkisiz kopyalanması yasaktır.
-  </div>
-</div>
-</body>
-</html>`;
+import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 
 const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
 <html lang="tr">
@@ -112,12 +21,12 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
   <title>Hizmet Onay Formu — {{case_no}}</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
     .page { padding: 28px; max-width: 780px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a4080; padding-bottom: 14px; margin-bottom: 20px; }
-    .header-left h1 { font-size: 17px; font-weight: bold; color: #1a4080; margin: 0 0 2px; }
-    .header-left p { font-size: 11px; color: #6b7280; margin: 0; }
-    .header-right { text-align: right; font-size: 11px; color: #374151; }
+${DOCUMENT_HEADER_STYLES}
+    h1 { text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 4px; color: #1a4080; }
+    .form-subtitle { text-align: center; font-size: 11px; color: #6b7280; margin: 0 0 20px; }
+    .header-right { text-align: right; font-size: 11px; color: #374151; margin-bottom: 20px; }
     .header-right strong { display: block; font-size: 13px; color: #111827; }
     .section { margin-bottom: 18px; }
     .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #6b7280; letter-spacing: 0.04em; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
@@ -141,21 +50,27 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
 <body>
 <div class="page">
 
-  <!-- Başlık -->
-  <div class="header">
-    <div class="header-left">
-      <h1>HİZMET ONAY FORMU</h1>
-      <p>Meridyen Assistance — Acil Yardım Hizmetleri</p>
+  <div class="doc-header">
+    <div class="doc-header-logo">
+      <img src="{{logo_url}}" alt="Meridyen Assistance" />
     </div>
-    <div class="header-right">
-      <strong>{{case_no}}</strong>
-      Düzenlenme Tarihi: {{tarih}}
+    <div class="doc-header-meta">
+      <strong>{{sirket_ad}}</strong>
+      {{sirket_adres}}
     </div>
+  </div>
+
+  <h1>Hizmet Onay Formu</h1>
+  <p class="form-subtitle">Meridyen Assistance — Acil Yardım Hizmetleri</p>
+
+  <div class="header-right">
+    <strong>{{case_no}}</strong>
+    Düzenlenme Tarihi: {{tarih}}
   </div>
 
   <!-- Müşteri & Vaka Bilgileri -->
   <div class="section">
-    <div class="section-title">Müşteri ve Vaka Bilgileri</div>
+    <div class="section-title">Müşteri ve Dosya Bilgileri</div>
     <div class="info-grid">
       <div class="info-row"><span class="label">Ad Soyad:</span><span class="value">{{musteri_ad}}</span></div>
       <div class="info-row"><span class="label">Telefon:</span><span class="value">{{musteri_telefon}}</span></div>
@@ -207,7 +122,7 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
   </div>
 
   <div class="footer">
-    Bu form Meridyen Assistance tarafından düzenlenmiştir. Vaka No: {{case_no}} · {{tarih}}
+    Bu form Meridyen Assistance tarafından düzenlenmiştir. Dosya No: {{case_no}} · {{tarih}}
   </div>
 
 </div>
@@ -221,6 +136,33 @@ export class FileDocumentsService {
     private readonly config: ConfigService,
   ) {}
 
+  private renderTemplate(template: string, placeholders: Record<string, string>): string {
+    let rendered = template;
+    for (const [key, value] of Object.entries(placeholders)) {
+      rendered = rendered.replaceAll(key, value);
+    }
+    return rendered;
+  }
+
+  private async getDocumentCompanyPlaceholders(): Promise<Record<string, string>> {
+    const branding = await getDocumentBranding(this.prisma, this.config);
+
+    return {
+      '{{logo_url}}': branding.logoUrl,
+      '{{sirket_ad}}': branding.companyName,
+      '{{sirket_adres}}': branding.companyAddress,
+      '{{servis_veren}}': branding.servisVeren,
+      '{{servis_veren_adres}}': branding.servisVerenAdres,
+      '{{musteri_hizmetleri}}': branding.musteriHizmetleri,
+      '{{whatsapp_hatti}}': branding.whatsappHatti,
+    };
+  }
+
+  private formatCurrency(amount: number | null | undefined): string {
+    if (amount == null || Number.isNaN(amount)) return '—';
+    return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   // ── Oluşturma ─────────────────────────────────────────────────────────────
 
   async create(dto: CreateFileDocumentDto, createdByUserId: string) {
@@ -232,42 +174,55 @@ export class FileDocumentsService {
           insuranceCompany: true,
           customer: true,
           propertyAddress: true,
+          budgetVersions: {
+            orderBy: { versionNo: 'desc' },
+            take: 1,
+            select: { totalAmount: true },
+          },
         },
       });
       if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
 
-      const insuredName = cf.customer?.fullName ?? cf.customer?.companyName ?? cf.customer?.firstName
-        ? `${cf.customer.firstName ?? ''} ${cf.customer.lastName ?? ''}`.trim()
-        : '';
+      const insuredName =
+        cf.customer?.fullName ??
+        cf.customer?.companyName ??
+        `${cf.customer?.firstName ?? ''} ${cf.customer?.lastName ?? ''}`.trim();
       const damageAddress = cf.propertyAddress
         ? `${cf.propertyAddress.addressLine ?? ''} ${cf.propertyAddress.district ?? ''} ${cf.propertyAddress.city ?? ''}`.trim()
         : '';
+      const budgetTotal = cf.budgetVersions[0]?.totalAmount ?? null;
+      const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
 
-      // Muvafakatname template render
-      let rendered = MUVAFAKATNAME_TEMPLATE;
       const placeholders: Record<string, string> = {
         '{{dosya_no}}': cf.fileNo,
         '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
         '{{sigorta_sirketi}}': cf.insuranceCompany?.name ?? '—',
+        '{{hasar_nedeni}}': cf.lossType ?? '—',
         '{{police_no}}': cf.policyNo ?? '—',
         '{{hasar_no}}': cf.claimNo ?? '—',
         '{{sigorta_musteri_ad}}': insuredName || '—',
         '{{hasar_adresi}}': damageAddress || '—',
+        '{{sigortali_ad}}': insuredName || '—',
+        '{{sigortali_tc}}': cf.customer?.identityNo ?? '—',
+        '{{sigortali_tazminat_bedeli}}': this.formatCurrency(budgetTotal),
+        '{{sigortali_adres}}': damageAddress || '—',
+        '{{magdur_ad}}': '—',
+        '{{magdur_tc}}': '—',
+        '{{magdur_konum}}': '—',
+        '{{magdur_adres}}': '—',
+        '{{onarim_bitis_tarihi}}': '… / … / ……',
+        '{{tazminat_bedeli_toplam}}': this.formatCurrency(budgetTotal),
+        ...companyPlaceholders,
       };
-      for (const [k, v] of Object.entries(placeholders)) {
-        rendered = rendered.replaceAll(k, v);
-      }
+
+      let rendered = this.renderTemplate(MUVAFAKATNAME_TEMPLATE, placeholders);
 
       // Ayarlardan özel template varsa üzerine yaz
       const customTpl = await this.prisma.systemSetting.findUnique({
         where: { key: 'muvafakatname_template' },
       });
       if (customTpl) {
-        let customRendered = String((customTpl.value as any) ?? '');
-        for (const [k, v] of Object.entries(placeholders)) {
-          customRendered = customRendered.replaceAll(k, v);
-        }
-        rendered = customRendered;
+        rendered = this.renderTemplate(String((customTpl.value as any) ?? ''), placeholders);
       }
 
       const publicToken = randomUUID();
@@ -317,6 +272,7 @@ export class FileDocumentsService {
         where: { key: 'matbu_evrak_template' },
       });
       const sourceTpl = customTpl ? String((customTpl.value as any) ?? '') : MATBU_EVRAK_TEMPLATE;
+      const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
 
       const placeholders: Record<string, string> = {
         '{{case_no}}': ec.caseNo,
@@ -330,6 +286,7 @@ export class FileDocumentsService {
         '{{tedarikci}}': tedarikci,
         '{{is_ozeti}}': isOzeti,
         '{{toplam_tutar}}': toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
+        ...companyPlaceholders,
       };
 
       let rendered = sourceTpl;
@@ -367,6 +324,8 @@ export class FileDocumentsService {
         id: true,
         documentKind: true,
         status: true,
+        publicToken: true,
+        publicTokenExpiresAt: true,
         whatsappSentAt: true,
         whatsappPhone: true,
         viewedAt: true,
@@ -546,7 +505,10 @@ export class FileDocumentsService {
 
     return {
       ...conditions,
-      canCreateInvoiceRequest: Object.values(conditions).every(Boolean),
+      canCreateInvoiceRequest:
+        conditions.muvafakatnameDigitallyApproved &&
+        conditions.repairReportApproved &&
+        conditions.vendorContractSigned,
       muvafakatnameId: muvafakatname?.id ?? null,
       muvafakatnameStatus: muvafakatname?.status ?? null,
     };

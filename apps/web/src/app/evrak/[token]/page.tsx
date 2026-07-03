@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import { sanitizeHtml } from '@/utils/sanitize-html';
+import { useParams, useSearchParams } from 'next/navigation';
+import { prepareTrustedDocumentHtml } from '@/utils/sanitize-html';
 import {
   getPublicDocument,
   markDocumentViewed,
@@ -13,7 +13,9 @@ type Stage = 'loading' | 'view' | 'approve' | 'done' | 'error' | 'already_approv
 
 export default function EvrakOnayPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const token = params?.token as string;
+  const printMode = searchParams?.get('print') === '1';
 
   const [stage, setStage] = useState<Stage>('loading');
   const [doc, setDoc] = useState<{
@@ -52,6 +54,12 @@ export default function EvrakOnayPage() {
         setStage('error');
       });
   }, [token]);
+
+  useEffect(() => {
+    if (!printMode || stage !== 'view' || !doc?.renderedContent) return;
+    const timer = window.setTimeout(() => window.print(), 400);
+    return () => window.clearTimeout(timer);
+  }, [printMode, stage, doc?.renderedContent]);
 
   const handleApprove = async () => {
     if (!fullName.trim()) return;
@@ -147,9 +155,9 @@ export default function EvrakOnayPage() {
 
   // View + approve stages
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50 evrak-page">
+      {/* Header — yazdırma sırasında gizlenir */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 print:hidden">
         <div>
           <p className="text-xs text-gray-500">Meridyen Assistance</p>
           <h1 className="text-sm font-semibold text-gray-900">{kindLabel}</h1>
@@ -167,12 +175,14 @@ export default function EvrakOnayPage() {
       </div>
 
       {/* Document HTML */}
-      <div className="max-w-3xl mx-auto my-4 px-4">
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="max-w-3xl mx-auto my-4 px-4 print:max-w-none print:mx-0 print:px-0 print:my-0">
+        <div className="bg-white rounded-xl shadow overflow-hidden print:shadow-none print:rounded-none">
           {doc?.renderedContent && (
             <div
-              className="w-full"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.renderedContent) }}
+              className="w-full evrak-document-root"
+              dangerouslySetInnerHTML={{
+                __html: prepareTrustedDocumentHtml(doc.renderedContent),
+              }}
             />
           )}
         </div>

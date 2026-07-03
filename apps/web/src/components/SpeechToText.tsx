@@ -50,6 +50,58 @@ function createSpeechRecognition(): SpeechRecognitionInstance | null {
   return new SRConstructor() as SpeechRecognitionInstance;
 }
 
+type MicAccessReason = 'denied' | 'unavailable' | 'insecure';
+
+type MicAccessResult =
+  | { ok: true }
+  | { ok: false; reason: MicAccessReason };
+
+/** Tarayıcı izin penceresini tetiklemek için önce getUserMedia kullan */
+async function requestMicrophoneAccess(): Promise<MicAccessResult> {
+  if (typeof window === 'undefined') return { ok: false, reason: 'unavailable' };
+  if (!window.isSecureContext) return { ok: false, reason: 'insecure' };
+
+  if (navigator.permissions?.query) {
+    try {
+      const status = await navigator.permissions.query({
+        name: 'microphone' as PermissionName,
+      });
+      if (status.state === 'denied') {
+        return { ok: false, reason: 'denied' };
+      }
+    } catch {
+      // Bazı tarayıcılar microphone permission name desteklemez — getUserMedia dene
+    }
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return { ok: false, reason: 'unavailable' };
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    return { ok: true };
+  } catch (err: unknown) {
+    const name = err instanceof DOMException ? err.name : '';
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+      return { ok: false, reason: 'denied' };
+    }
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
+function micAccessErrorMessage(reason: MicAccessReason): string {
+  switch (reason) {
+    case 'denied':
+      return 'Mikrofon izni verilmedi. Adres çubuğundaki kilit simgesinden mikrofonu açın.';
+    case 'insecure':
+      return 'Ses kaydı yalnızca güvenli bağlantıda (HTTPS) çalışır.';
+    default:
+      return 'Mikrofon bulunamadı veya erişilemiyor.';
+  }
+}
+
 // ─── STT Interface (ileride Whisper / Google Cloud STT için) ─────────────────
 export interface STTProvider {
   name: string;
@@ -91,11 +143,13 @@ export default function SpeechToText({
   disabled = false,
 }: SpeechToTextProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [interimText, setInterimText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const finalTextRef = useRef('');
+  const micGrantedRef = useRef(false);
 
   // Tarayıcı desteğini kontrol et
   useEffect(() => {
@@ -117,7 +171,7 @@ export default function SpeechToText({
     setInterimText('');
   }, []);
 
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     setError(null);
     finalTextRef.current = '';
 
@@ -125,6 +179,20 @@ export default function SpeechToText({
     if (!recognition) {
       setError('Bu tarayıcı ses tanımayı desteklemiyor.');
       return;
+    }
+
+    setIsStarting(true);
+    try {
+      if (!micGrantedRef.current) {
+        const micAccess = await requestMicrophoneAccess();
+        if (!micAccess.ok) {
+          setError(micAccessErrorMessage(micAccess.reason));
+          return;
+        }
+        micGrantedRef.current = true;
+      }
+    } finally {
+      setIsStarting(false);
     }
 
     recognition.lang = 'tr-TR';
@@ -158,7 +226,9 @@ export default function SpeechToText({
 
     recognition.onerror = (event: Event & { error: string }) => {
       const errMap: Record<string, string> = {
-        'not-allowed': 'Mikrofon izni reddedildi. Tarayıcı ayarlarından izin verin.',
+        'not-allowed': micGrantedRef.current
+          ? 'Ses tanıma başlatılamadı. Sayfayı yenileyip tekrar deneyin.'
+          : 'Mikrofon izni verilmedi. Adres çubuğundaki kilit simgesinden mikrofonu açın.',
         'no-speech': 'Ses algılanamadı. Lütfen tekrar deneyin.',
         'audio-capture': 'Mikrofon bulunamadı veya erişilemiyor.',
         'network': 'Ağ hatası oluştu.',
@@ -166,6 +236,9 @@ export default function SpeechToText({
       };
       const msg = errMap[event.error] ?? `Hata: ${event.error}`;
       if (msg) setError(msg);
+      if (event.error === 'not-allowed') {
+        micGrantedRef.current = false;
+      }
       setIsRecording(false);
       setInterimText('');
     };
@@ -189,12 +262,12 @@ export default function SpeechToText({
   }, [onTranscript, onInterim]);
 
   const handleToggle = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
+    if (isRecording || isStarting) {
+      if (isRecording) stopRecording();
+      return;
     }
-  }, [isRecording, startRecording, stopRecording]);
+    void startRecording();
+  }, [isRecording, isStarting, startRecording, stopRecording]);
 
   // Unmount'ta durdur
   useEffect(() => {
@@ -224,15 +297,17 @@ export default function SpeechToText({
       <button
         type="button"
         onClick={handleToggle}
-        disabled={disabled || isSupported === null}
-        title={isRecording ? 'Kaydı Durdur' : 'Sesli Not Ekle (Türkçe)'}
+        disabled={disabled || isSupported === null || isStarting}
+        title={isRecording ? 'Kaydı Durdur' : isStarting ? 'Mikrofon İzni İsteniyor…' : 'Sesli Not Ekle (Türkçe)'}
         className={[
           SIZE_CLASSES[size],
           'relative flex items-center justify-center rounded-full flex-shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-offset-1',
           isRecording
             ? 'bg-red-600 text-white focus:ring-red-400'
-            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 focus:ring-slate-400',
-          (disabled || isSupported === null) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+            : isStarting
+              ? 'bg-blue-100 text-blue-600 focus:ring-blue-300'
+              : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 focus:ring-slate-400',
+          (disabled || isSupported === null || isStarting) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
           className,
         ].join(' ')}
         aria-label={isRecording ? 'Kaydı durdur' : 'Ses kaydı başlat'}
@@ -252,18 +327,18 @@ export default function SpeechToText({
         )}
       </button>
 
-      {/* Hata mesajı */}
+      {/* Hata mesajı — textarea alt köşesinde olduğu için yukarıda göster */}
       {error && (
-        <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-56 z-50">
+        <div className="absolute bottom-full mb-1.5 right-0 w-56 z-50">
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 shadow-lg">
-            <p className="text-xs text-red-700 text-center">{error}</p>
+            <p className="text-xs text-red-700 text-left leading-snug">{error}</p>
           </div>
         </div>
       )}
 
       {/* Geçici transcript gösterimi */}
       {isRecording && interimText && (
-        <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-64 z-50">
+        <div className="absolute bottom-full mb-1.5 right-0 w-64 z-50">
           <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-lg">
             <p className="text-xs text-slate-400 italic text-center truncate">{interimText}</p>
           </div>
