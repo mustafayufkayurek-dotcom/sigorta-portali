@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { API, authHeader } from '../claim-detail-utils';
+import { API, authAxios } from '../claim-detail-utils';
 import { Badge, CollapsibleSectionCard } from '../claim-detail-ui';
 
 // ─── Tab: Dosya Görevleri & Hatırlatmalar ─────────────────────────────────────
@@ -312,17 +312,22 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
   const todayStart = useMemo(() => startOfDay(new Date()), []);
   const todayEnd = useMemo(() => endOfDay(new Date()), []);
 
-  const loadTasks = useCallback(() => {
+  const loadTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
-    axios
-      .get(`${API}/tasks?claimFileId=${claimId}&limit=100`, { headers: authHeader() })
-      .then((r) => setTasks(r.data.data || []))
-      .catch((e) => {
-        console.error(e);
-        setError(e?.response?.data?.message ?? 'Görevler yüklenemedi');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const r = await authAxios<{ data: TaskRecord[] }>({
+        method: 'GET',
+        url: `${API}/tasks?claimFileId=${claimId}&limit=100`,
+      });
+      setTasks(r.data.data || []);
+    } catch (e: any) {
+      if (axios.isAxiosError(e) && e.response?.status === 401) return;
+      console.error(e);
+      setError(e?.response?.data?.message ?? 'Görevler yüklenemedi');
+    } finally {
+      setLoading(false);
+    }
   }, [claimId]);
 
   useEffect(() => {
@@ -336,8 +341,10 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
       ...prev,
       assignedUserId: prev.assignedUserId || defaultAssignee,
     }));
-    axios
-      .get(`${API}/users?limit=100`, { headers: authHeader() })
+    void authAxios<{ data: any[] }>({
+      method: 'GET',
+      url: `${API}/users?limit=100`,
+    })
       .then((r) => setUsers(r.data.data || []))
       .catch(() => setUsers([]));
   }, [showForm, claim]);
@@ -390,9 +397,10 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     }
     setSaving(true);
     try {
-      await axios.post(
-        `${API}/tasks`,
-        {
+      await authAxios({
+        method: 'POST',
+        url: `${API}/tasks`,
+        data: {
           claimFileId: claimId,
           title: form.title.trim(),
           description: form.description.trim() || undefined,
@@ -401,8 +409,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
           assignedUserId: form.assignedUserId || undefined,
           dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : undefined,
         },
-        { headers: authHeader() },
-      );
+      });
       setShowForm(false);
       resetForm();
       loadTasks();
@@ -416,7 +423,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
   const handleComplete = async (taskId: string) => {
     setActionLoading(`${taskId}-complete`);
     try {
-      await axios.post(`${API}/tasks/${taskId}/complete`, {}, { headers: authHeader() });
+      await authAxios({ method: 'POST', url: `${API}/tasks/${taskId}/complete` });
       loadTasks();
     } catch (e: any) {
       alert(e?.response?.data?.message ?? 'Tamamlanamadı');
@@ -428,7 +435,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
   const handleInProgress = async (taskId: string) => {
     setActionLoading(`${taskId}-progress`);
     try {
-      await axios.patch(`${API}/tasks/${taskId}`, { status: 'in_progress' }, { headers: authHeader() });
+      await authAxios({ method: 'PATCH', url: `${API}/tasks/${taskId}`, data: { status: 'in_progress' } });
       loadTasks();
     } catch (e: any) {
       alert(e?.response?.data?.message ?? 'Durum güncellenemedi');
@@ -441,7 +448,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     if (!confirm('Bu hatırlatmayı iptal etmek istediğinize emin misiniz?')) return;
     setActionLoading(`${taskId}-cancel`);
     try {
-      await axios.delete(`${API}/tasks/${taskId}`, { headers: authHeader() });
+      await authAxios({ method: 'DELETE', url: `${API}/tasks/${taskId}` });
       loadTasks();
     } catch (e: any) {
       alert(e?.response?.data?.message ?? 'İptal edilemedi');

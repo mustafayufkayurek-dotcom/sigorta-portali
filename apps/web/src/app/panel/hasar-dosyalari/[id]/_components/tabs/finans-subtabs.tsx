@@ -21,7 +21,6 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
-import { SectionCard } from '../claim-detail-ui';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
@@ -685,14 +684,22 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
     } catch (e: any) { showToast('error', e?.response?.data?.message ?? 'Hata'); }
   };
 
-  if (loading) return <div className="py-12 text-center text-slate-400">Yükleniyor...</div>;
+  if (loading) return <div className="py-12 text-center text-slate-400 text-sm">Yükleniyor…</div>;
+
+  const salesTotal = invoices
+    .filter((i) => i.invoiceType === 'sales')
+    .reduce((s, i) => s + (i.totalAmount ?? 0), 0);
+  const purchaseTotal = invoices
+    .filter((i) => i.invoiceType === 'purchase')
+    .reduce((s, i) => s + (i.totalAmount ?? 0), 0);
+  const pendingCount = invoices.filter((i) => ['draft', 'sent'].includes(i.status)).length;
 
   return (
-    <div className="space-y-6">
-      <SectionCard title="Fatura Talebi">
-        <p className="text-xs text-slate-500 mb-4">
-          Sigortaya kesilecek fatura için talep oluşturun. Evrak durumunu Evraklar → Özet sekmesinden takip edebilirsiniz.
-        </p>
+    <div className="space-y-4">
+      <FinansPanelCard
+        title="Fatura Talebi"
+        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Evrak durumunu Evraklar → Özet sekmesinden takip edebilirsiniz."
+      >
         <ClosureConditionsPanel
           serviceType="claim"
           entityId={claimId}
@@ -705,102 +712,200 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
           showInvoiceRequest
           showSurvey
         />
-      </SectionCard>
+      </FinansPanelCard>
 
-      <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">Kesilen Faturalar</h3>
-        <button type="button" onClick={() => setShowForm(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Fatura</button>
-      </div>
+      <FinansPanelCard
+        title="Kesilen Faturalar"
+        subtitle="Dosyaya bağlı satış ve alış faturaları — durum takibi ve tahsilat bağlantısı"
+        action={{
+          label: showForm ? 'Formu Kapat' : 'Yeni Fatura',
+          onClick: () => setShowForm((v) => !v),
+          variant: 'primary',
+          active: showForm,
+        }}
+      >
+        <FinansKpiStrip
+          items={[
+            { label: 'Satış (Gelir)', value: fmtCurrency(salesTotal), accent: 'text-emerald-400' },
+            { label: 'Alış (Gider)', value: fmtCurrency(purchaseTotal), accent: 'text-amber-400' },
+            {
+              label: 'Bekleyen',
+              value: String(pendingCount),
+              accent: pendingCount > 0 ? 'text-blue-400' : 'text-slate-400',
+            },
+            {
+              label: 'Fatura Sayısı',
+              value: String(invoices.length),
+              accent: invoices.length > 0 ? 'text-white' : 'text-slate-400',
+            },
+          ]}
+        />
 
-      {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-          <h4 className="font-medium text-slate-800 text-sm">Yeni Fatura</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Fatura Tipi</label>
-              <select value={form.invoiceType} onChange={(e) => setForm({ ...form, invoiceType: e.target.value })} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm">
-                <option value="sales">Satış (Gelir)</option>
-                <option value="purchase">Alış (Gider)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Fatura Tarihi</label>
-              <TrDateInput value={form.invoiceDate} onChange={(invoiceDate) => setForm({ ...form, invoiceDate })} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Karşı Taraf Tipi</label>
-              <select value={form.counterpartyType} onChange={(e) => setForm({ ...form, counterpartyType: e.target.value })} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm">
-                <option value="insurance_company">Sigorta Şirketi</option>
-                <option value="vendor">Tedarikçi</option>
-                <option value="customer">Müşteri</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Ara Toplam (KDV Hariç)</label>
-              <input type="number" min="0" step="0.01" value={form.subtotalAmount} onChange={(e) => setForm({ ...form, subtotalAmount: e.target.value })} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm" placeholder="0.00" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">KDV Oranı (%)</label>
-              <input type="number" min="0" max="100" step="1" value={form.vatRate} onChange={(e) => setForm({ ...form, vatRate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">KDV Tutarı</label>
-              <input type="text" readOnly value={fmtCurrency(computedAmounts.vatAmount)} className="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-sm text-slate-700" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Genel Toplam</label>
-              <input type="text" readOnly value={fmtCurrency(computedAmounts.totalAmount)} className="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-slate-800" />
-            </div>
-            <div className="col-span-2 sm:col-span-3">
-              <label className="text-xs text-slate-500 mb-1 block">Notlar</label>
-              <input type="text" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({ ...form, notes: v }); }} className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm" placeholder="Opsiyonel" />
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
-          </div>
-        </div>
-      )}
+        {showForm && (
+          <FinansFormPanel
+            title="Yeni Fatura"
+            onCancel={() => setShowForm(false)}
+            onSubmit={handleSave}
+            saving={saving}
+          >
+            <div className="space-y-4">
+              <FinansFormSection title="Fatura Bilgileri">
+                <div>
+                  <FinansFieldLabel>Fatura Tipi</FinansFieldLabel>
+                  <select
+                    value={form.invoiceType}
+                    onChange={(e) => setForm({ ...form, invoiceType: e.target.value })}
+                    className={finansInputClass}
+                  >
+                    <option value="sales">Satış (Gelir)</option>
+                    <option value="purchase">Alış (Gider)</option>
+                  </select>
+                </div>
+                <div>
+                  <FinansFieldLabel required>Fatura Tarihi</FinansFieldLabel>
+                  <TrDateInput
+                    value={form.invoiceDate}
+                    onChange={(invoiceDate) => setForm({ ...form, invoiceDate })}
+                    className={finansInputClass}
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel>Karşı Taraf Tipi</FinansFieldLabel>
+                  <select
+                    value={form.counterpartyType}
+                    onChange={(e) => setForm({ ...form, counterpartyType: e.target.value })}
+                    className={finansInputClass}
+                  >
+                    <option value="insurance_company">Sigorta Şirketi</option>
+                    <option value="vendor">Tedarikçi</option>
+                    <option value="customer">Müşteri</option>
+                  </select>
+                </div>
+              </FinansFormSection>
 
-      {invoices.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">Henüz Fatura Eklenmemiş</div>
-      ) : (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500">
+              <FinansFormSection title="Tutar Bilgileri">
+                <div>
+                  <FinansFieldLabel required>Ara Toplam (KDV Hariç)</FinansFieldLabel>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.subtotalAmount}
+                    onChange={(e) => setForm({ ...form, subtotalAmount: e.target.value })}
+                    className={finansInputClass}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel>KDV Oranı (%)</FinansFieldLabel>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={form.vatRate}
+                    onChange={(e) => setForm({ ...form, vatRate: e.target.value })}
+                    className={finansInputClass}
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel>KDV Tutarı</FinansFieldLabel>
+                  <input
+                    type="text"
+                    readOnly
+                    value={fmtCurrency(computedAmounts.vatAmount)}
+                    className={`${finansInputClass} bg-slate-50 text-slate-700`}
+                  />
+                </div>
+                <div>
+                  <FinansFieldLabel>Genel Toplam</FinansFieldLabel>
+                  <input
+                    type="text"
+                    readOnly
+                    value={fmtCurrency(computedAmounts.totalAmount)}
+                    className={`${finansInputClass} bg-slate-50 font-semibold text-slate-800`}
+                  />
+                </div>
+              </FinansFormSection>
+
+              <FinansFormSection title="Not">
+                <div className="sm:col-span-2">
+                  <FinansFieldLabel>Notlar</FinansFieldLabel>
+                  <input
+                    type="text"
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    onBlur={(e) => {
+                      const v = toTitleCaseTR(e.target.value.trim());
+                      if (v) setForm({ ...form, notes: v });
+                    }}
+                    className={finansInputClass}
+                    placeholder="Opsiyonel"
+                  />
+                </div>
+              </FinansFormSection>
+            </div>
+          </FinansFormPanel>
+        )}
+
+        {invoices.length === 0 ? (
+          <FinansEmptyState
+            title="Henüz Fatura Eklenmemiş"
+            description="Satış veya alış faturası kaydetmek için Yeni Fatura butonunu kullanın."
+          />
+        ) : (
+          <FinansDataTable>
+            <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3">Fatura No</th>
-                <th className="text-left px-4 py-3">Tip</th>
-                <th className="text-left px-4 py-3">Tarih</th>
-                <th className="text-right px-4 py-3">Ara Toplam</th>
-                <th className="text-right px-4 py-3">Toplam</th>
-                <th className="text-left px-4 py-3">Durum</th>
-                <th className="text-left px-4 py-3">İşlem</th>
+                <th className="text-left px-3 py-2.5">Fatura No</th>
+                <th className="text-left px-3 py-2.5">Tip</th>
+                <th className="text-left px-3 py-2.5">Tarih</th>
+                <th className="text-right px-3 py-2.5">Ara Toplam</th>
+                <th className="text-right px-3 py-2.5">Toplam</th>
+                <th className="text-left px-3 py-2.5">Durum</th>
+                <th className="text-left px-3 py-2.5">İşlem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{inv.invoiceNo}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${inv.invoiceType === 'sales' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{INVOICE_TYPE_LABEL[inv.invoiceType] ?? inv.invoiceType}</span></td>
-                  <td className="px-4 py-3 text-slate-600">{fmtDate(inv.invoiceDate)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{fmtCurrency(inv.subtotalAmount)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-slate-800">{fmtCurrency(inv.totalAmount)}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? 'bg-slate-100 text-slate-600'}`}>{INVOICE_STATUS_LABEL[inv.status] ?? inv.status}</span></td>
-                  <td className="px-4 py-3">
-                    {inv.status === 'draft' && <button type="button" onClick={() => handleStatusChange(inv.id, 'sent')} className="text-xs text-blue-600 hover:underline mr-2">Gönder</button>}
-                    {inv.status === 'sent' && <button type="button" onClick={() => handleStatusChange(inv.id, 'paid')} className="text-xs text-green-600 hover:underline mr-2">Ödendi</button>}
-                    {!['cancelled', 'paid'].includes(inv.status) && <button type="button" onClick={() => handleStatusChange(inv.id, 'cancelled')} className="text-xs text-red-500 hover:underline">İptal</button>}
+                <tr key={inv.id} className="hover:bg-slate-50/80">
+                  <td className="px-3 py-2.5 font-mono text-xs text-slate-700">{inv.invoiceNo}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${inv.invoiceType === 'sales' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {INVOICE_TYPE_LABEL[inv.invoiceType] ?? inv.invoiceType}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-600">{fmtDate(inv.invoiceDate)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{fmtCurrency(inv.subtotalAmount)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-medium text-slate-800">{fmtCurrency(inv.totalAmount)}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INVOICE_STATUS_COLOR[inv.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                      {INVOICE_STATUS_LABEL[inv.status] ?? inv.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {inv.status === 'draft' && (
+                      <button type="button" onClick={() => handleStatusChange(inv.id, 'sent')} className="text-xs text-blue-600 hover:underline mr-2">
+                        Gönder
+                      </button>
+                    )}
+                    {inv.status === 'sent' && (
+                      <button type="button" onClick={() => handleStatusChange(inv.id, 'paid')} className="text-xs text-green-600 hover:underline mr-2">
+                        Ödendi
+                      </button>
+                    )}
+                    {!['cancelled', 'paid'].includes(inv.status) && (
+                      <button type="button" onClick={() => handleStatusChange(inv.id, 'cancelled')} className="text-xs text-red-500 hover:underline">
+                        İptal
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      )}
-      </div>
+          </FinansDataTable>
+        )}
+      </FinansPanelCard>
     </div>
   );
 }

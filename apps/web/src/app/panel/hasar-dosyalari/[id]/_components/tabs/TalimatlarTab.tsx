@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import SpeechToText from '@/components/SpeechToText';
-import { API, authHeader } from '../claim-detail-utils';
+import { useToast } from '@/contexts/ToastContext';
+import { API, authAxios } from '../claim-detail-utils';
 
 export function TalimatlarTab({ claimId }: { claimId: string }) {
+  const { showToast } = useToast();
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
@@ -14,7 +16,10 @@ export function TalimatlarTab({ claimId }: { claimId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axios.get(`${API}/notes?claimFileId=${claimId}&noteType=manager_instruction`, { headers: authHeader() });
+      const r = await authAxios<{ data: any[] }>({
+        method: 'GET',
+        url: `${API}/notes?claimFileId=${claimId}&noteType=manager_instruction`,
+      });
       setNotes(r.data.data || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -26,11 +31,16 @@ export function TalimatlarTab({ claimId }: { claimId: string }) {
     if (!content.trim()) return;
     setSaving(true);
     try {
-      await axios.post(`${API}/notes`, { claimFileId: claimId, content: content.trim(), noteType: 'manager_instruction' }, { headers: authHeader() });
+      await authAxios({
+        method: 'POST',
+        url: `${API}/notes`,
+        data: { claimFileId: claimId, content: content.trim(), noteType: 'manager_instruction' },
+      });
       setContent('');
       load();
     } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Talimat kaydedilemedi');
+      if (axios.isAxiosError(e) && e.response?.status === 401) return;
+      showToast('error', e?.response?.data?.message ?? 'Talimat kaydedilemedi');
     } finally {
       setSaving(false);
     }

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { API, authHeader } from '../claim-detail-utils';
-import { SectionCard } from '../claim-detail-ui';
-import { FinansMetrikHucre } from '../FinansRaporOzeti';
-
-// ─── Revizyonlar Tab ──────────────────────────────────────────────────────────
+import {
+  FinansEmptyState,
+  FinansKpiStrip,
+  FinansPanelCard,
+} from '@/components/finance/FinansPanelUI';
+import { API, authAxios } from '../claim-detail-utils';
 
 type RevisionStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'ESCALATED';
 type RevisionPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
@@ -58,66 +59,88 @@ const REV_PRIORITY_BADGE: Record<RevisionPriority, string> = {
   CRITICAL: 'bg-red-50 text-red-700 border border-red-200',
 };
 
-export function RevizuonlarTab({ claimId }: { claimId: string }) {
+export function RevizyonTalepleriPanel({ claimId }: { claimId: string }) {
   const router = useRouter();
   const [revisions, setRevisions] = useState<RevisionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    axios.get(`${API}/revision-requests?claimFileId=${claimId}&limit=50`, { headers: authHeader() })
-      .then((r) => setRevisions(r.data.data ?? []))
-      .catch((e: any) => setError(e?.response?.data?.message ?? 'Revizyonlar yüklenemedi.'))
-      .finally(() => setLoading(false));
+    try {
+      const r = await authAxios<{ data: RevisionRequest[] }>({
+        method: 'GET',
+        url: `${API}/revision-requests?claimFileId=${claimId}&limit=50`,
+      });
+      setRevisions(r.data.data ?? []);
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e) && e.response?.status === 401) return;
+      const message =
+        axios.isAxiosError(e) && e.response?.data?.message
+          ? String(e.response.data.message)
+          : 'Revizyon talepleri yüklenemedi';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }, [claimId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const pendingCount = revisions.filter((r) => r.status === 'REQUESTED').length;
   const escalatedCount = revisions.filter((r) => r.status === 'ESCALATED').length;
 
   return (
-    <div className="space-y-4">
-      {!loading && revisions.length > 0 && (
-        <div className="grid grid-cols-3 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-          <FinansMetrikHucre metrik={{ label: 'Toplam', value: String(revisions.length) }} />
-          <FinansMetrikHucre metrik={{ label: 'Bekleyen', value: String(pendingCount), accent: pendingCount > 0 ? 'text-amber-700' : undefined }} />
-          <FinansMetrikHucre metrik={{ label: 'Eskalasyon', value: String(escalatedCount), accent: escalatedCount > 0 ? 'text-red-700' : undefined }} />
+    <FinansPanelCard
+      title="Sigorta Revizyon Talepleri"
+      subtitle="Sigorta şirketinden gelen revizyon istekleri — rapor zinciri yukarıda listelenir"
+      action={{
+        label: 'Tüm Revizyonlar',
+        onClick: () => router.push('/panel/revizyon-talepleri'),
+        variant: 'neutral',
+      }}
+    >
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-700">{error}</p>
+          <button
+            type="button"
+            onClick={load}
+            className="text-xs text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 shrink-0"
+          >
+            Tekrar Dene
+          </button>
         </div>
       )}
 
-      <SectionCard title="Revizyon Talepleri">
-        <div className="flex items-center justify-end mb-4 -mt-2">
-          <button
-            type="button"
-            onClick={() => router.push(`/panel/revizyon-talepleri`)}
-            className="text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
-          >
-            Tüm Revizyonlar
-          </button>
-        </div>
-
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-red-700">{error}</p>
-          <button type="button" onClick={load} className="text-xs text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100">Tekrar Dene</button>
-        </div>
+      {!loading && revisions.length > 0 && (
+        <FinansKpiStrip
+          items={[
+            { label: 'Toplam Talep', value: String(revisions.length) },
+            {
+              label: 'Bekleyen',
+              value: String(pendingCount),
+              accent: pendingCount > 0 ? 'text-amber-400' : 'text-slate-400',
+            },
+            {
+              label: 'Eskalasyon',
+              value: String(escalatedCount),
+              accent: escalatedCount > 0 ? 'text-red-400' : 'text-slate-400',
+            },
+          ]}
+        />
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-slate-400">Yükleniyor...</div>
+        <div className="py-10 text-center text-sm text-slate-400">Yükleniyor…</div>
       ) : revisions.length === 0 && !error ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-200 py-12 text-center">
-          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="text-sm font-semibold text-slate-600">Bekleyen Revizyon Talebi Yok</p>
-          <p className="text-xs text-slate-400 mt-1">Bu dosyaya ait revizyon talebi bulunmamaktadır.</p>
-        </div>
+        <FinansEmptyState
+          title="Bekleyen Revizyon Talebi Yok"
+          description="Sigorta şirketinden revizyon talebi geldiğinde burada görünür."
+        />
       ) : (
         <div className="space-y-3">
           {revisions.map((rev) => {
@@ -125,8 +148,17 @@ export function RevizuonlarTab({ claimId }: { claimId: string }) {
             return (
               <div
                 key={rev.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => router.push(`/panel/revizyon-talepleri/${rev.id}`)}
-                className={`bg-white rounded-xl border shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow ${isUrgent ? 'border-l-4 border-red-400 border-y-gray-100 border-r-gray-100' : 'border-slate-100'}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    router.push(`/panel/revizyon-talepleri/${rev.id}`);
+                  }
+                }}
+                className={`rounded-xl border bg-white p-4 cursor-pointer hover:shadow-md transition-shadow ${
+                  isUrgent ? 'border-l-4 border-l-red-400 border-slate-100' : 'border-slate-100'
+                }`}
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
@@ -146,16 +178,20 @@ export function RevizuonlarTab({ claimId }: { claimId: string }) {
                     <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xl">{rev.reason}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-slate-400">{new Date(rev.requestedAt).toLocaleDateString('tr-TR')}</p>
-                    {rev.assignedTo && <p className="text-xs text-slate-500 mt-0.5">{rev.assignedTo}</p>}
+                    <p className="text-xs text-slate-400">
+                      {new Date(rev.requestedAt).toLocaleDateString('tr-TR')}
+                    </p>
+                    {rev.assignedTo && (
+                      <p className="text-xs text-slate-500 mt-0.5">{rev.assignedTo}</p>
+                    )}
                     {rev.deadlineAt && (() => {
                       const diffMs = new Date(rev.deadlineAt).getTime() - Date.now();
                       const isOverdue = diffMs < 0;
                       const hours = Math.abs(Math.floor(diffMs / 3600000));
-                      const label = hours < 24 ? `${hours}sa` : `${Math.floor(hours / 24)}g`;
+                      const label = hours < 24 ? `${hours} Sa` : `${Math.floor(hours / 24)} G`;
                       return (
                         <p className={`text-xs mt-0.5 font-medium ${isOverdue ? 'text-red-600' : 'text-slate-400'}`}>
-                          {isOverdue ? `⚠ Süre Aşımı (${label})` : `${label} kaldı`}
+                          {isOverdue ? `Süre Aşımı (${label})` : `${label} Kaldı`}
                         </p>
                       );
                     })()}
@@ -166,7 +202,11 @@ export function RevizuonlarTab({ claimId }: { claimId: string }) {
           })}
         </div>
       )}
-      </SectionCard>
-    </div>
+    </FinansPanelCard>
   );
+}
+
+/** @deprecated Raporlar sekmesi içinde RevizyonTalepleriPanel kullanın */
+export function RevizuonlarTab({ claimId }: { claimId: string }) {
+  return <RevizyonTalepleriPanel claimId={claimId} />;
 }

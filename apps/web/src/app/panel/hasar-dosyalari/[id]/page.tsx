@@ -12,9 +12,7 @@ import { FinansRaporOzeti } from './_components/FinansRaporOzeti';
 import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
-import { IletisimTab } from './_components/tabs/IletisimTab';
 import { TakipTab } from './_components/tabs/TakipTab';
-import { RevizuonlarTab } from './_components/tabs/RevizyonlarTab';
 import { DosyaBilgileriDetay } from './_components/DosyaBilgileriDetay';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
 import {
@@ -84,16 +82,14 @@ function fmtCurrencyCompact(n: number | null | undefined) {
 }
 
 // ─── Gruplandırılmış Tab Yapısı ───────────────────────────────────────────────
-type GroupTab = 'genel-bilgiler' | 'raporlar' | 'evraklar' | 'finans' | 'iletisim' | 'operasyon' | 'revizyonlar';
+type GroupTab = 'genel-bilgiler' | 'raporlar' | 'evraklar' | 'finans' | 'operasyon';
 
 const GROUP_TABS: { id: GroupTab; label: string; icon: string }[] = [
   { id: 'genel-bilgiler', label: 'Genel Bilgiler', icon: '📋' },
   { id: 'raporlar',       label: 'Raporlar',       icon: '📊' },
   { id: 'evraklar',       label: 'Evraklar',        icon: '📁' },
   { id: 'finans',         label: 'Finans',           icon: '💰' },
-  { id: 'iletisim',       label: 'İletişim',         icon: '💬' },
   { id: 'operasyon',      label: 'Operasyon',        icon: '⚙️' },
-  { id: 'revizyonlar',    label: 'Revizyonlar',      icon: '↩' },
 ];
 
 
@@ -966,13 +962,9 @@ export default function ClaimFileDetailPage() {
           onOpenRaporlarTab={() => setActiveGroup('raporlar')}
         />
       )}
-      {activeGroup === 'iletisim' && (
-        <IletisimTab claimId={id!} />
-      )}
       {activeGroup === 'operasyon' && (
         <TakipTab claimId={id!} claim={claim} />
       )}
-      {activeGroup === 'revizyonlar' && <RevizuonlarTab claimId={id!} />}
     </div>
   );
 }

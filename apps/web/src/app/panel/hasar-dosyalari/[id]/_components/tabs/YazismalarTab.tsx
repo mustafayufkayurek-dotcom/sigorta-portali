@@ -50,7 +50,13 @@ export function ChatBubble({ msg, isSelf }: { msg: ChatMessage; isSelf: boolean 
   );
 }
 
-export function YazismalarTab({ claimId }: { claimId: string }) {
+export function YazismalarTab({
+  claimId,
+  embedded = false,
+}: {
+  claimId: string;
+  embedded?: boolean;
+}) {
   const [archives, setArchives] = useState<ChatArchive[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArchive, setSelectedArchive] = useState<ChatArchiveDetail | null>(null);
@@ -118,11 +124,14 @@ export function YazismalarTab({ claimId }: { claimId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">Yazışmalar</h3>
-        <button type="button"
+      <div className={`flex items-center ${embedded ? 'justify-end' : 'justify-between'}`}>
+        {!embedded && (
+          <h3 className="text-base font-semibold text-slate-800">Yazışmalar</h3>
+        )}
+        <button
+          type="button"
           onClick={() => setShowUploadModal(true)}
-          className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+          className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
         >
           + Yazışma Yükle
         </button>

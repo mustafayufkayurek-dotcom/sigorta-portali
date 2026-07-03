@@ -7,8 +7,13 @@ import {
   repairReportStatusBadge,
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
-import { SectionCard } from '../claim-detail-ui';
-import { API, authHeader } from '../claim-detail-utils';
+import {
+  FinansActionButton,
+  FinansEmptyState,
+  FinansPanelCard,
+} from '@/components/finance/FinansPanelUI';
+import { API, authAxios } from '../claim-detail-utils';
+import { RevizyonTalepleriPanel } from './RevizyonlarTab';
 
 const DAMAGE_CODES = [
   'Dahili Su', 'Yangın', 'Deprem', 'Sel-Seylap', 'Fırtına',
@@ -17,7 +22,7 @@ const DAMAGE_CODES = [
 
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
-type StatusFilter = 'all' | 'pending' | 'draft' | 'approved' | 'rejected';
+type StatusFilter = 'all' | 'pending' | 'draft' | 'approved' | 'rejected' | 'revision';
 
 type RepairReportListItem = {
   id: string;
@@ -83,7 +88,12 @@ function matchesStatusFilter(status: string, filter: StatusFilter): boolean {
   return true;
 }
 
+function chainHasRevision(chain: ReportChain): boolean {
+  return chain.allVersions.length > 1;
+}
+
 function chainMatchesFilter(chain: ReportChain, filter: StatusFilter): boolean {
+  if (filter === 'revision') return chainHasRevision(chain);
   if (filter === 'all') return true;
   return chain.allVersions.some((v) => matchesStatusFilter(v.status, filter));
 }
@@ -134,7 +144,7 @@ function ReportChainRow({
   claimId: string;
 }) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(chain.older.length > 0);
   const report = chain.latest;
   const needsAction = isPendingStatus(report.status) || report.status === 'draft';
   const showVersionBadge = (report.versionNo ?? 1) > 1 || (report.revisionCount ?? 0) > 0;
@@ -198,13 +208,15 @@ function ReportChainRow({
       </div>
 
       {chain.older.length > 0 && (
-        <div className="border-t border-slate-100 bg-slate-50/50">
+        <div className="border-t border-purple-100 bg-purple-50/30">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="w-full px-4 py-2 text-left text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+            className="w-full px-4 py-2 text-left text-xs font-medium text-purple-700 hover:bg-purple-50/80 transition-colors"
           >
-            {expanded ? 'Önceki Versiyonları Gizle' : `Önceki Versiyonlar (${chain.older.length})`}
+            {expanded
+              ? 'Revizyon Geçmişini Gizle'
+              : `Revizyon Geçmişi (${chain.older.length} Önceki Versiyon)`}
           </button>
           {expanded && (
             <div className="px-4 pb-3 space-y-1.5">
@@ -263,7 +275,7 @@ function YeniRaporWizard({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    axios.get(`${API}/departments`, { headers: authHeader() })
+    void authAxios<{ data: DeptOption[] }>({ method: 'GET', url: `${API}/departments` })
       .then((r) => setDepartments(r.data.data ?? []))
       .catch(console.error);
   }, []);
@@ -305,32 +317,32 @@ function YeniRaporWizard({
     setCreating(true);
     setError('');
     try {
-      const res = await axios.post(
-        `${API}/claim-files/${claimId}/repair-reports`,
-        {
+      const res = await authAxios<{ data: { id: string } }>({
+        method: 'POST',
+        url: `${API}/claim-files/${claimId}/repair-reports`,
+        data: {
           reportType,
           reportDate: new Date().toISOString(),
           departmentId: selectedDept.id,
         },
-        { headers: authHeader() },
-      );
+      });
       const created = res.data.data;
       if (!created?.id) throw new Error('Rapor oluşturulamadı');
 
       if (reportType === 'single' && singleDamageCode) {
-        await axios.post(
-          `${API}/repair-reports/${created.id}/damage-types`,
-          { damageTypeCode: singleDamageCode, damageTypeName: singleDamageCode, sortOrder: 0 },
-          { headers: authHeader() },
-        );
+        await authAxios({
+          method: 'POST',
+          url: `${API}/repair-reports/${created.id}/damage-types`,
+          data: { damageTypeCode: singleDamageCode, damageTypeName: singleDamageCode, sortOrder: 0 },
+        });
       } else if (reportType === 'multi') {
         await Promise.all(
           multiDamageCodes.map((code, idx) =>
-            axios.post(
-              `${API}/repair-reports/${created.id}/damage-types`,
-              { damageTypeCode: code, damageTypeName: code, sortOrder: idx },
-              { headers: authHeader() },
-            ),
+            authAxios({
+              method: 'POST',
+              url: `${API}/repair-reports/${created.id}/damage-types`,
+              data: { damageTypeCode: code, damageTypeName: code, sortOrder: idx },
+            }),
           ),
         );
       }
@@ -576,9 +588,13 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/claim-files/${claimId}/repair-reports`, { headers: authHeader() });
+      const res = await authAxios<{ data: RepairReportListItem[] }>({
+        method: 'GET',
+        url: `${API}/claim-files/${claimId}/repair-reports`,
+      });
       setReports(res.data.data || []);
     } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 401) return;
       console.error(e);
     } finally {
       setLoading(false);
@@ -600,6 +616,7 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
     draft: chains.filter((c) => c.allVersions.some((v) => v.status === 'draft')).length,
     approved: chains.filter((c) => c.allVersions.some((v) => isApprovedStatus(v.status))).length,
     rejected: chains.filter((c) => c.allVersions.some((v) => isRejectedStatus(v.status))).length,
+    revision: chains.filter((c) => chainHasRevision(c)).length,
   }), [chains]);
 
   const filteredChains = useMemo(
@@ -609,63 +626,55 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
 
   const filterTabs: { id: StatusFilter; label: string }[] = [
     { id: 'all', label: `Tümü (${counts.total})` },
+    { id: 'revision', label: `Revizyonlu (${counts.revision})` },
     { id: 'pending', label: `Onay Bekleyen (${counts.pending})` },
     { id: 'draft', label: `Taslak (${counts.draft})` },
     { id: 'approved', label: `Onaylı (${counts.approved})` },
     { id: 'rejected', label: `Reddedilen (${counts.rejected})` },
   ];
 
-  if (loading) return <div className="text-slate-400 py-8 text-center">Yükleniyor...</div>;
+  if (loading) return <div className="text-slate-400 py-8 text-center text-sm">Yükleniyor…</div>;
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Onarım Raporları">
+      <FinansPanelCard
+        title="Onarım Raporları"
+        subtitle="Orijinal, revize edilmiş ve onaylanmış rapor sürümleri — revizyon geçmişi her rapor kartında"
+        action={
+          reports.length > 0
+            ? {
+                label: showWizard ? 'Formu Kapat' : 'Yeni Rapor',
+                onClick: () => setShowWizard((v) => !v),
+                variant: 'primary',
+                active: showWizard,
+              }
+            : undefined
+        }
+      >
         {reports.length === 0 ? (
-          <div className="py-12 text-center border border-dashed border-slate-200 rounded-xl">
-            <p className="text-sm text-slate-500 mb-1">Henüz onarım raporu oluşturulmamış.</p>
-            <p className="text-xs text-slate-400 mb-5">
-              Bu dosya için departman ve hasar türü seçerek ilk raporu oluşturabilirsiniz.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowWizard(true)}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
-            >
-              Yeni Rapor Oluştur
-            </button>
-          </div>
+          <FinansEmptyState
+            title="Henüz Onarım Raporu Yok"
+            description="Departman ve hasar türü seçerek ilk raporu oluşturabilirsiniz."
+          />
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 -mt-1">
-              <div className="flex flex-wrap gap-1.5">
-                {filterTabs.map((tab) => (
-                  <button
-                    type="button"
-                    key={tab.id}
-                    onClick={() => setStatusFilter(tab.id)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                      statusFilter === tab.id
-                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowWizard(true)}
-                className="shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
-              >
-                Yeni Rapor
-              </button>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {filterTabs.map((tab) => (
+                <FinansActionButton
+                  key={tab.id}
+                  label={tab.label}
+                  variant="neutral"
+                  active={statusFilter === tab.id}
+                  onClick={() => setStatusFilter(tab.id)}
+                />
+              ))}
             </div>
 
             {!filteredChains.length ? (
-              <div className="text-slate-400 py-10 text-center border border-dashed border-slate-200 rounded-xl">
-                Bu durumda rapor bulunmuyor.
-              </div>
+              <FinansEmptyState
+                title="Bu Filtrede Rapor Yok"
+                description="Farklı bir durum filtresi seçin veya yeni rapor oluşturun."
+              />
             ) : (
               <div className="space-y-3">
                 {filteredChains.map((chain) => (
@@ -675,7 +684,21 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
             )}
           </>
         )}
-      </SectionCard>
+
+        {reports.length === 0 && (
+          <div className="flex justify-center mt-4">
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
+            >
+              Yeni Rapor Oluştur
+            </button>
+          </div>
+        )}
+      </FinansPanelCard>
+
+      <RevizyonTalepleriPanel claimId={claimId} />
 
       {showWizard && (
         <YeniRaporWizard claimId={claimId} onCreated={handleCreated} onClose={() => setShowWizard(false)} />

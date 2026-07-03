@@ -3,16 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import ProcessTimeline from '@/components/timeline/ProcessTimeline';
-import { API, authHeader } from '../claim-detail-utils';
+import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { API, authAxios } from '../claim-detail-utils';
 import { SectionCard } from '../claim-detail-ui';
-import { SubTabNav } from './sub-tab-nav';
 import { GorevlerTab } from './GorevlerTab';
+import { IletisimTab } from './IletisimTab';
 import { RandevularTab } from './RandevularTab';
 
-type OperasyonSubTab = 'gorevler' | 'randevular' | 'surec' | 'gecmis';
+type OperasyonSubTab = 'gorevler' | 'iletisim' | 'randevular' | 'surec' | 'gecmis';
 
 const OPERASYON_SUB_TABS: { id: OperasyonSubTab; label: string }[] = [
   { id: 'gorevler', label: 'Görevler & Hatırlatmalar' },
+  { id: 'iletisim', label: 'İletişim & Günlük' },
   { id: 'randevular', label: 'Randevular' },
   { id: 'surec', label: 'Süreç Durumu' },
   { id: 'gecmis', label: 'Hareket Geçmişi' },
@@ -44,13 +46,20 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
   const [activityLog, setActivityLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadLog = useCallback(() => {
+  const loadLog = useCallback(async () => {
     setLoading(true);
-    axios
-      .get(`${API}/claim-files/${claimId}/activity-log`, { headers: authHeader() })
-      .then((r) => setActivityLog(r.data.data ?? []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    try {
+      const r = await authAxios<{ data: any[] }>({
+        method: 'GET',
+        url: `${API}/claim-files/${claimId}/activity-log`,
+      });
+      setActivityLog(r.data.data ?? []);
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 401) return;
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, [claimId]);
 
   useEffect(() => {
@@ -58,10 +67,10 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
   }, [loadLog]);
 
   return (
-    <SectionCard title="Hareket Geçmişi">
-      <p className="text-xs text-slate-500 mb-4">
-        Dosyada yapılan atama, randevu, tespit ve durum değişiklikleri otomatik kaydedilir.
-      </p>
+    <FinansPanelCard
+      title="Hareket Geçmişi"
+      subtitle="Atama, randevu, tespit ve durum değişiklikleri otomatik kaydedilir"
+    >
       {loading ? (
         <p className="text-sm text-slate-400 py-8 text-center">Yükleniyor…</p>
       ) : activityLog.length === 0 ? (
@@ -71,7 +80,7 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <p className="text-sm text-slate-500">Henüz hareket kaydı yok.</p>
+          <p className="text-sm text-slate-500">Henüz Hareket Kaydı Yok</p>
           <p className="text-xs text-slate-400 mt-1">İşlemler burada kronolojik olarak görünecek.</p>
         </div>
       ) : (
@@ -108,7 +117,7 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
           </div>
         </div>
       )}
-    </SectionCard>
+    </FinansPanelCard>
   );
 }
 
@@ -117,18 +126,39 @@ export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-        <p className="text-sm font-semibold text-slate-800">Dosya Operasyonu</p>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Hatırlatmalar, randevular, süreç durumu ve hareket geçmişi tek yerden yönetilir.
-        </p>
-      </div>
-
-      <SubTabNav tabs={OPERASYON_SUB_TABS} active={subTab} onChange={setSubTab} />
+      <FinansPanelCard
+        title="Dosya Operasyonu"
+        subtitle="Görevler, iletişim günlüğü, randevular, süreç durumu ve hareket geçmişi tek merkezden yönetilir"
+        noPadding
+      >
+        <div className="sticky top-[52px] z-10 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-100">
+          <div className="flex gap-1 overflow-x-auto">
+            {OPERASYON_SUB_TABS.map((tab) => (
+              <button
+                type="button"
+                key={tab.id}
+                onClick={() => setSubTab(tab.id)}
+                className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                  subTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </FinansPanelCard>
 
       {subTab === 'gorevler' && <GorevlerTab claimId={claimId} claim={claim} />}
+      {subTab === 'iletisim' && <IletisimTab claimId={claimId} />}
       {subTab === 'randevular' && <RandevularTab claimId={claimId} claim={claim} />}
-      {subTab === 'surec' && <ProcessTimeline claimFileId={claimId} />}
+      {subTab === 'surec' && (
+        <SectionCard title="Süreç Durumu">
+          <ProcessTimeline claimFileId={claimId} />
+        </SectionCard>
+      )}
       {subTab === 'gecmis' && <HareketGecmisiPanel claimId={claimId} />}
     </div>
   );
