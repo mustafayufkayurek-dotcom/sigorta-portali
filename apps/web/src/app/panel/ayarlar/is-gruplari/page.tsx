@@ -20,17 +20,9 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
-import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'subGroup', label: 'Alt Grup', defaultWidth: 200, minWidth: 140 },
-  { id: 'unit', label: 'Birim', defaultWidth: 90, minWidth: 70 },
-  { id: 'unitPrice', label: 'Birim Fiyat', defaultWidth: 110, minWidth: 90 },
-  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
 
@@ -208,15 +200,17 @@ export default function IsGruplariPage() {
   };
 
   const saveGroup = async () => {
+    const name = normalizeFormFreeText(groupForm.name);
+    const description = groupForm.description.trim() ? normalizeFormFreeText(groupForm.description) : '';
     const missing: string[] = [];
-    if (isFieldRequired(groupFieldConfig, 'name') && !groupForm.name.trim()) missing.push('Ad');
-    if (isFieldRequired(groupFieldConfig, 'description') && !groupForm.description.trim()) missing.push('Açıklama');
+    if (isFieldRequired(groupFieldConfig, 'name') && !name) missing.push('Ad');
+    if (isFieldRequired(groupFieldConfig, 'description') && !description) missing.push('Açıklama');
     if (missing.length > 0) {
       setGroupError(`${missing.join(', ')} zorunludur`);
       return;
     }
     const dupName = groups.find((g) =>
-      g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase() && (!editGroup || g.id !== editGroup.id),
+      g.name.trim().toLowerCase() === name.toLowerCase() && (!editGroup || g.id !== editGroup.id),
     );
     if (dupName) {
       setGroupError('Bu isimde bir iş grubu zaten mevcut');
@@ -224,19 +218,19 @@ export default function IsGruplariPage() {
     }
     setGroupSaving(true);
     setGroupError('');
-    const code = editGroup ? groupForm.code : (groupForm.code.trim() || suggestAutoCode('WG', groupForm.name));
+    const code = editGroup ? groupForm.code : (groupForm.code.trim() || suggestAutoCode('WG', name));
     try {
       if (editGroup) {
         await axios.put(`${API}/work-groups/${editGroup.id}`, {
-          name: groupForm.name,
-          description: groupForm.description || undefined,
+          name,
+          description: description || undefined,
           sortOrder: groupForm.sortOrder,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/work-groups`, {
           code,
-          name: groupForm.name,
-          description: groupForm.description || undefined,
+          name,
+          description: description || undefined,
           sortOrder: groupForm.sortOrder,
         }, { headers: authHeader() });
       }
@@ -303,10 +297,12 @@ export default function IsGruplariPage() {
   };
 
   const saveSub = async () => {
+    const name = normalizeFormFreeText(subForm.name);
+    const description = subForm.description.trim() ? normalizeFormFreeText(subForm.description) : '';
     const missing: string[] = [];
     if (!subForm.workGroupId) missing.push('İş Grubu');
-    if (isFieldRequired(subFieldConfig, 'name') && !subForm.name.trim()) missing.push('Ad');
-    if (isFieldRequired(subFieldConfig, 'description') && !subForm.description.trim()) missing.push('Açıklama');
+    if (isFieldRequired(subFieldConfig, 'name') && !name) missing.push('Ad');
+    if (isFieldRequired(subFieldConfig, 'description') && !description) missing.push('Açıklama');
     if (isFieldRequired(subFieldConfig, 'unitType') && !subForm.unitType) missing.push('Birim');
     if (missing.length > 0) {
       setSubError(`${missing.join(', ')} zorunludur`);
@@ -315,7 +311,7 @@ export default function IsGruplariPage() {
     const parent = parentGroup(subForm.workGroupId);
     const siblings = parent?.workSubGroups ?? [];
     const dupName = siblings.find((s) =>
-      s.name.trim().toLowerCase() === subForm.name.trim().toLowerCase() && (!editSub || s.id !== editSub.id),
+      s.name.trim().toLowerCase() === name.toLowerCase() && (!editSub || s.id !== editSub.id),
     );
     if (dupName) {
       setSubError('Seçili iş grubunda aynı isimde bir alt grup zaten mevcut');
@@ -324,9 +320,9 @@ export default function IsGruplariPage() {
     setSubSaving(true);
     setSubError('');
     const payload = {
-      code: subForm.code.trim() || suggestAutoCode(parent?.code ?? 'WSG', subForm.name),
-      name: subForm.name,
-      description: subForm.description || undefined,
+      code: subForm.code.trim() || suggestAutoCode(parent?.code ?? 'WSG', name),
+      name,
+      description: description || undefined,
       unitType: subForm.unitType,
       unitPrice: subForm.unitPrice ? parseFloat(subForm.unitPrice) : undefined,
       sortOrder: subForm.sortOrder,
@@ -378,8 +374,6 @@ export default function IsGruplariPage() {
   const selectedParentForModal = parentGroup(subForm.workGroupId);
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="İş Grubu Yönetimi"
       description="Onarım maliyet kalemleri ve tedarikçi hasar hizmet kolları (Sıva, Boya, Mobilya). Tedarikçi kartında Hasar Onarım seçilince bu gruplar listelenir."
@@ -387,7 +381,6 @@ export default function IsGruplariPage() {
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
-          <SettingsTableColumnPicker tableColumns={tableColumns} />
           {groups.length === 0 && (
             <button
               type="button"
@@ -499,7 +492,7 @@ export default function IsGruplariPage() {
                       <StatusBadge active={group.status === 'active'} />
                     </button>
                     <EditButton onClick={() => openEditGroup(group)} />
-                    {!group.isSystem && <DeleteButton onClick={() => setDeleteGroupTarget(group)} />}
+                    <DeleteButton onClick={() => setDeleteGroupTarget(group)} />
                   </div>
                 </div>
 
@@ -517,17 +510,17 @@ export default function IsGruplariPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh colId="subGroup">Alt Grup</SettingsTableTh>
-                          <SettingsTableTh colId="unit">Birim</SettingsTableTh>
-                          <SettingsTableTh colId="unitPrice">Birim Fiyat</SettingsTableTh>
-                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+                          <SettingsTableTh>Alt Grup</SettingsTableTh>
+                          <SettingsTableTh>Birim</SettingsTableTh>
+                          <SettingsTableTh>Birim Fiyat</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {subs.map((sub) => (
                             <SettingsTableRow key={sub.id}>
-                              <SettingsTableTd colId="subGroup">
+                              <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
                                   {sub.description && (
@@ -536,16 +529,16 @@ export default function IsGruplariPage() {
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{sub.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="unit">
+                              <SettingsTableTd>
                                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
                                   {UNIT_LABELS[sub.unitType] ?? sub.unitType}
                                 </span>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="unitPrice">
+                              <SettingsTableTd>
                                 <span className="text-sm font-semibold text-slate-900">{fmt(sub.unitPrice)}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd colId="status">
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd>
                                 <button type="button" onClick={() => toggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />
                                 </button>
@@ -589,6 +582,7 @@ export default function IsGruplariPage() {
             className={inputCls}
             value={groupForm.name}
             onChange={(e) => setGroupForm((f) => applyNameWithAutoCode(f, e.target.value, !!editGroup, 'WG'))}
+            onBlur={() => setGroupForm((f) => blurNameWithAutoCode(f, !!editGroup, 'WG'))}
             placeholder={buildPlaceholder(groupFieldConfig, 'name')}
           />
         </div>
@@ -598,6 +592,10 @@ export default function IsGruplariPage() {
             className={inputCls}
             value={groupForm.description}
             onChange={(e) => setGroupForm((f) => ({ ...f, description: e.target.value }))}
+            onBlur={(e) => {
+              const v = normalizeFormFreeText(e.target.value);
+              if (v !== e.target.value.trim()) setGroupForm((f) => ({ ...f, description: v }));
+            }}
             placeholder={buildPlaceholder(groupFieldConfig, 'description')}
           />
         </div>
@@ -670,6 +668,11 @@ export default function IsGruplariPage() {
                 ),
               )
             }
+            onBlur={() =>
+              setSubForm((f) =>
+                blurNameWithAutoCode(f, !!editSub, selectedParentForModal?.code ?? 'WSG'),
+              )
+            }
             placeholder={buildPlaceholder(subFieldConfig, 'name')}
           />
         </div>
@@ -679,6 +682,10 @@ export default function IsGruplariPage() {
             className={inputCls}
             value={subForm.description}
             onChange={(e) => setSubForm((f) => ({ ...f, description: e.target.value }))}
+            onBlur={(e) => {
+              const v = normalizeFormFreeText(e.target.value);
+              if (v !== e.target.value.trim()) setSubForm((f) => ({ ...f, description: v }));
+            }}
             placeholder={buildPlaceholder(subFieldConfig, 'description')}
           />
         </div>
@@ -740,7 +747,5 @@ export default function IsGruplariPage() {
         itemName={deleteSubTarget?.name}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

@@ -6,13 +6,14 @@ interface SlidePanelProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  subtitle?: string;
   width?: number;
   /** false: children manage scroll (sticky header/footer forms) */
   scrollContent?: boolean;
   children: React.ReactNode;
 }
 
-export function SlidePanel({ open, onClose, title, width = 400, scrollContent = true, children }: SlidePanelProps) {
+export function SlidePanel({ open, onClose, title, subtitle, width = 400, scrollContent = true, children }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,9 +29,9 @@ export function SlidePanel({ open, onClose, title, width = 400, scrollContent = 
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-300 ${
+        className={`fixed inset-0 z-[200] transition-all duration-300 ${
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        } bg-black/30 backdrop-blur-sm`}
+        } bg-black/20 backdrop-blur-[2px]`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -39,7 +40,7 @@ export function SlidePanel({ open, onClose, title, width = 400, scrollContent = 
       <div
         ref={panelRef}
         style={{ width: `${width}px` }}
-        className={`fixed top-0 right-0 h-full z-50 bg-white shadow-2xl shadow-black/20 border-l border-gray-100 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full z-[210] bg-white shadow-2xl shadow-black/20 border-l border-gray-100 flex flex-col transition-transform duration-300 ease-in-out ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
@@ -47,8 +48,11 @@ export function SlidePanel({ open, onClose, title, width = 400, scrollContent = 
       >
         {/* Header */}
         {title !== undefined && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-            <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 flex-shrink-0 bg-white">
+            <div className="min-w-0 pr-3">
+              <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+              {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>}
+            </div>
             <button
               type="button"
               onClick={onClose}

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -199,14 +200,16 @@ function EmailSablonlarTab() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.subject.trim()) { setError('Ad ve konu zorunludur.'); return; }
+    const name = normalizeFormFreeText(form.name);
+    if (!name || !form.subject.trim()) { setError('Ad ve konu zorunludur.'); return; }
     setSaving(true); setError('');
     try {
       let updated: EmailTemplate[];
+      const payload = { ...form, name };
       if (editing) {
-        updated = templates.map(t => t.id === editing.id ? { ...t, ...form } : t);
+        updated = templates.map(t => t.id === editing.id ? { ...t, ...payload } : t);
       } else {
-        const newT: EmailTemplate = { id: `etpl-${Date.now()}`, ...form };
+        const newT: EmailTemplate = { id: `etpl-${Date.now()}`, ...payload };
         updated = [...templates, newT];
       }
       await axios.put(`${API}/system-settings/email-templates`, { values: updated }, { headers: authHeader() });
@@ -280,7 +283,7 @@ function EmailSablonlarTab() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={labelCls}>Şablon Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
+              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm(p => ({ ...p, name: v })); }} />
             </div>
             <div>
               <label className={labelCls}>Olay Türü</label>
@@ -370,13 +373,16 @@ function RaporSablonlarTab() {
   const openEdit = (t: DocumentTemplate) => { setEditing(t); setForm({ name: t.name, type: t.type, description: t.description ?? '', content: t.content, isActive: t.isActive, sortOrder: t.sortOrder }); setError(''); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Şablon adı zorunludur.'); return; }
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
+    if (!name) { setError('Şablon adı zorunludur.'); return; }
+    const payload = { ...form, name, description };
     setSaving(true); setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/system-settings/document-report-templates/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/system-settings/document-report-templates/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/system-settings/document-report-templates`, form, { headers: authHeader() });
+        await axios.post(`${API}/system-settings/document-report-templates`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       fetchTemplates();
@@ -453,7 +459,7 @@ function RaporSablonlarTab() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={labelCls}>Şablon Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
+              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm(p => ({ ...p, name: v })); }} />
             </div>
             <div>
               <label className={labelCls}>Tür</label>
@@ -463,7 +469,7 @@ function RaporSablonlarTab() {
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Açıklama</label>
-              <input className={inputCls} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} />
+              <input className={inputCls} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm(p => ({ ...p, description: v })); }} />
             </div>
           </div>
           <div className="mb-3">
@@ -528,13 +534,16 @@ function SozlesmeSablonlarTab() {
   const openEdit = (t: ContractTemplate) => { setEditing(t); setForm({ name: t.name, type: t.type, description: t.description ?? '', content: t.content, isActive: t.isActive, sortOrder: t.sortOrder }); setError(''); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Şablon adı zorunludur.'); return; }
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
+    if (!name) { setError('Şablon adı zorunludur.'); return; }
+    const payload = { ...form, name, description };
     setSaving(true); setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/system-settings/contract-templates/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/system-settings/contract-templates/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/system-settings/contract-templates`, form, { headers: authHeader() });
+        await axios.post(`${API}/system-settings/contract-templates`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       fetchTemplates();
@@ -603,7 +612,7 @@ function SozlesmeSablonlarTab() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={labelCls}>Şablon Adı <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span></label>
-              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} />
+              <input className={inputCls} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm(p => ({ ...p, name: v })); }} />
             </div>
             <div>
               <label className={labelCls}>Tür</label>
@@ -613,7 +622,7 @@ function SozlesmeSablonlarTab() {
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Açıklama</label>
-              <input className={inputCls} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} />
+              <input className={inputCls} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm(p => ({ ...p, description: v })); }} />
             </div>
           </div>
           <div className="mb-3">

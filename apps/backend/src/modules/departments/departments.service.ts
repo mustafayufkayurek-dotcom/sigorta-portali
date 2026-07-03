@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import {
   CreateDepartmentDto,
   UpdateDepartmentDto,
@@ -125,33 +126,45 @@ export class DepartmentsService {
 
   async createFileSubject(departmentId: string, dto: CreateFileSubjectDto) {
     await this.findOne(departmentId);
+    const name = toTitleCaseTR(dto.name.trim());
+    if (!name) throw new BadRequestException('Konu adı zorunludur');
     const existing = await this.prisma.departmentFileSubject.findUnique({
       where: { departmentId_code: { departmentId, code: dto.code } },
     });
     if (existing) throw new BadRequestException('Bu kod zaten kullanımda');
     const nameConflict = await this.prisma.departmentFileSubject.findFirst({
-      where: { departmentId, name: dto.name },
+      where: { departmentId, name },
     });
     if (nameConflict) throw new ConflictException('Bu isimde bir dosya konusu zaten mevcut');
-    return this.prisma.departmentFileSubject.create({ data: { ...dto, departmentId } });
+    return this.prisma.departmentFileSubject.create({ data: { ...dto, name, departmentId } });
   }
 
   async updateFileSubject(id: string, dto: UpdateFileSubjectDto) {
     const subject = await this.prisma.departmentFileSubject.findUnique({ where: { id } });
     if (!subject) throw new NotFoundException('Dosya konusu bulunamadı');
+    const nextName = dto.name !== undefined ? toTitleCaseTR(dto.name.trim()) : undefined;
+    if (nextName !== undefined && !nextName) {
+      throw new BadRequestException('Konu adı zorunludur');
+    }
     if (dto.code && dto.code !== subject.code) {
       const conflict = await this.prisma.departmentFileSubject.findUnique({
         where: { departmentId_code: { departmentId: subject.departmentId, code: dto.code } },
       });
       if (conflict) throw new BadRequestException('Bu kod zaten kullanımda');
     }
-    if (dto.name && dto.name !== subject.name) {
+    if (nextName && nextName !== subject.name) {
       const nameConflict = await this.prisma.departmentFileSubject.findFirst({
-        where: { departmentId: subject.departmentId, name: dto.name, NOT: { id } },
+        where: { departmentId: subject.departmentId, name: nextName, NOT: { id } },
       });
       if (nameConflict) throw new ConflictException('Bu isimde bir dosya konusu zaten mevcut');
     }
-    return this.prisma.departmentFileSubject.update({ where: { id }, data: dto });
+    return this.prisma.departmentFileSubject.update({
+      where: { id },
+      data: {
+        ...dto,
+        ...(nextName !== undefined ? { name: nextName } : {}),
+      },
+    });
   }
 
   async removeFileSubject(id: string) {

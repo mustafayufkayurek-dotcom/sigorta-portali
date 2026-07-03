@@ -9,15 +9,18 @@ Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka
 
 ## Zorunlu adımlar
 
-1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v78, backend v43)
+1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v127, backend v61)
 2. Deploy öncesi: `scripts/pre-deploy-safety.sh ETİKET` (sunucuda)
-3. Hash doğrulama: `scripts/verify-critical-paths.sh --remote`
-4. Deploy sonrası: `scripts/post-deploy-smoke.sh`
-5. Sorun varsa: `scripts/rollback-production.sh` — onay almadan force push / hard reset yok
+3. Web restart: `scripts/restart-web-production.sh` veya `scripts/deploy-web-production.sh ETİKET` — **`-p sigorta-hasar-sistemi` zorunlu**
+4. Routing doğrulama: `scripts/verify-nginx-web-routing.sh` (sunucuda, PASS olmadan deploy bitmiş sayılmaz)
+5. Hash doğrulama: `scripts/verify-critical-paths.sh --remote`
+6. Deploy sonrası: `scripts/post-deploy-smoke.sh`
+7. Sorun varsa: `scripts/rollback-production.sh` — onay almadan force push / hard reset yok
 
 ## Yasaklar
 
 - `/opt/app/source/` build context — her zaman `/opt/app/apps/`
+- **`docker compose up` proje adı (`-p sigorta-hasar-sistemi`) olmadan web/backend restart** — 502 regresyonu
 - Kısmi rsync sonrası hash doğrulaması olmadan build
 - Eski worktree'den (d272, d278 vb.) dosya kopyalama — Mustafa onayı olmadan
 - Ayarlar menüsü için `layout.tsx` içine ikinci liste — tek kaynak `settings-nav.ts`

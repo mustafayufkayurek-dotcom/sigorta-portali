@@ -751,7 +751,7 @@ export default function ImageAnnotationEditor({
           style={{ background: '#1a1d27', width: 220 }}>
 
           {/* Tools */}
-          <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1 px-1">Araçlar</p>
+          <p className="text-gray-500 text-[10px] mb-1 px-1">Araçlar</p>
           {TOOLS.map((t) => {
             const isStampTool = t.id === 'stamp';
             return (
@@ -796,7 +796,7 @@ export default function ImageAnnotationEditor({
           <div className="h-px bg-gray-800 my-2" />
 
           {/* Color */}
-          <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1 px-1">Renk</p>
+          <p className="text-gray-500 text-[10px] mb-1 px-1">Renk</p>
           <div className="flex flex-wrap gap-2 px-1">
             {COLORS.map((c) => (
               <button
@@ -815,7 +815,7 @@ export default function ImageAnnotationEditor({
           <div className="h-px bg-gray-800 my-2" />
 
           {/* Stroke Width */}
-          <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1 px-1">Kalınlık</p>
+          <p className="text-gray-500 text-[10px] mb-1 px-1">Kalınlık</p>
           <div className="flex gap-1 px-1">
             {STROKE_WIDTHS.map((sw) => (
               <button

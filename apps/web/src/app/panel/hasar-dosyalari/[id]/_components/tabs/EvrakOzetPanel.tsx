@@ -6,7 +6,7 @@ import {
   getClaimClosureConditions,
 } from '@/utils/fileDocumentApi';
 
-type EvrakSubTab = 'ozet' | 'sozlesmeler' | 'arsiv' | 'kapama';
+type EvrakSubTab = 'ozet' | 'sozlesmeler';
 
 const MUVAFAKAT_STATUS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Taslak', color: 'bg-slate-100 text-slate-600' },
@@ -51,18 +51,16 @@ function ChecklistRow({
   description,
   badge,
   onClick,
+  interactive = true,
 }: {
   label: string;
   description?: string;
   badge: { label: string; color: string };
-  onClick: () => void;
+  onClick?: () => void;
+  interactive?: boolean;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors text-left group"
-    >
+  const inner = (
+    <>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-slate-800">{label}</p>
         {description && (
@@ -72,16 +70,36 @@ function ChecklistRow({
       <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${badge.color}`}>
         {badge.label}
       </span>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
+      {interactive && (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      )}
+    </>
+  );
+
+  if (!interactive || !onClick) {
+    return (
+      <div className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors text-left group"
+    >
+      {inner}
     </button>
   );
 }
@@ -194,14 +212,14 @@ export function EvrakOzetPanel({
             onClick={() => onNavigate('sozlesmeler')}
           />
           <ChecklistRow
-            label="Kapama Hazır mı"
+            label="Fatura Talebine Hazır mı"
             description={
               conditions.canCreateInvoiceRequest
-                ? 'Tüm kapama koşulları sağlandı'
+                ? 'Evrak ve rapor koşulları tamam — Finans → Faturalar sekmesinden talep oluşturabilirsiniz'
                 : 'Onarım raporu, muvafakatname veya sözleşme eksik olabilir'
             }
             badge={kapamaBadge}
-            onClick={() => onNavigate('kapama')}
+            interactive={false}
           />
         </div>
       </div>

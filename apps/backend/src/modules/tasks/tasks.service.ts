@@ -38,7 +38,10 @@ export class TasksService {
           assignedUser: { select: { id: true, firstName: true, lastName: true } },
           checklists: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { dueAt: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
       }),
       this.prisma.task.count({ where }),
     ]);

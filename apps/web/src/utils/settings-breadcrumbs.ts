@@ -7,12 +7,15 @@ export interface SettingsBreadcrumb {
 }
 
 const DEFINITION_PAGE_LABELS: Record<string, string> = {
+  '/panel/ayarlar/musteri-tipleri': 'Müşteri Tipleri',
+  '/panel/ayarlar/eksper-sigorta-iliskileri': 'Eksper–Sigorta İlişkileri',
   '/panel/ayarlar/departmanlar': 'Departmanlar',
   '/panel/ayarlar/iliski-turleri': 'İlişki Türleri',
   '/panel/ayarlar/dosya-konulari': 'Dosya Konuları',
   '/panel/ayarlar/durumlar': 'Durumlar',
   '/panel/ayarlar/evrak-turleri': 'Evrak Türleri',
-  '/panel/ayarlar/hizmet-turleri': 'Meridyen Hizmet Branşları',
+  '/panel/ayarlar/hizmet-turleri': 'Dosya Konuları',
+  '/panel/ayarlar/hizmet-branslari': 'Dosya Konuları',
   '/panel/ayarlar/tedarikci-hizmet-kollari': 'Tedarikçi Hizmet Kolları',
   '/panel/ayarlar/is-gruplari': 'İş Grupları',
   '/panel/ayarlar/masraf-kategorileri': 'Masraf Kategorileri',
@@ -44,11 +47,17 @@ export function getSettingsBreadcrumbs(pathname: string, pageTitle?: string): Se
 
   if (definitionPaths.has(normalized)) {
     const label = pageTitle ?? DEFINITION_PAGE_LABELS[normalized] ?? 'Tanım';
-    return [
-      ayarlarRoot,
-      { label: 'Tanımlar Merkezi', href: TANIMLAR_BACK_HREF },
-      { label },
-    ];
+    const viaTanimlar = normalized === '/panel/ayarlar/eksper-sigorta-iliskileri'
+      ? false
+      : DEFINITION_PAGE_LABELS[normalized] !== undefined;
+    if (viaTanimlar) {
+      return [
+        ayarlarRoot,
+        { label: 'Tanımlar Merkezi', href: TANIMLAR_BACK_HREF },
+        { label },
+      ];
+    }
+    return [ayarlarRoot, { label }];
   }
 
   const navLink = flattenSettingsNavLinks().find((item) => item.href === normalized);

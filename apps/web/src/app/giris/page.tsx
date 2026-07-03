@@ -319,6 +319,13 @@ export default function LoginPage() {
     setRememberMePreference(checked, checked ? email : undefined);
   };
 
+  const scrollFieldIntoView = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (typeof window === 'undefined' || window.innerWidth > 900) return;
+    window.setTimeout(() => {
+      e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 280);
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
@@ -377,13 +384,19 @@ export default function LoginPage() {
         .login-root {
           --login-nav-h: 80px;
           --login-strip-h: 88px;
-          min-height: 100vh;
-          max-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           flex-direction: column;
           background: var(--white);
           font-family: 'DM Sans', sans-serif;
-          overflow: hidden;
+        }
+
+        @media (min-width: 901px) {
+          .login-root {
+            min-height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+          }
         }
 
         /* ── TOP NAV BAR ── */
@@ -517,8 +530,13 @@ export default function LoginPage() {
           display: flex;
           flex: 1 1 auto;
           min-height: 0;
-          max-height: calc(100vh - var(--login-nav-h) - var(--login-strip-h));
-          overflow: hidden;
+        }
+
+        @media (min-width: 901px) {
+          .hero-section {
+            max-height: calc(100vh - var(--login-nav-h) - var(--login-strip-h));
+            overflow: hidden;
+          }
         }
 
         /* ── LEFT MARKETING PANEL ── */
@@ -988,10 +1006,48 @@ export default function LoginPage() {
           }
         }
         @media (max-width: 900px) {
-          .hero-section { flex-direction: column; }
-          .marketing-panel { flex: none; padding: 36px 24px 0; }
-          .login-panel { flex: none; width: 100%; border-left: none; border-top: 1px solid rgba(0,0,0,0.06); }
-          .login-scroll { padding: 36px 24px; }
+          .login-root {
+            max-height: none;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          .hero-section {
+            flex-direction: column;
+            max-height: none;
+            overflow: visible;
+            flex: none;
+          }
+          .login-panel {
+            order: -1;
+            flex: none;
+            width: 100%;
+            border-left: none;
+            border-top: none;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+          }
+          .login-scroll {
+            overflow-y: visible;
+            justify-content: flex-start;
+            padding: 28px 20px 24px;
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+            scroll-padding-bottom: max(24px, env(safe-area-inset-bottom));
+          }
+          .login-panel-status {
+            position: static;
+            align-self: flex-end;
+            margin: 12px 20px 0;
+          }
+          .marketing-panel {
+            flex: none;
+            overflow: visible;
+            padding: 36px 24px 20px;
+          }
+          .feature-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 24px;
+          }
           .stats-band { grid-template-columns: repeat(2, 1fr); }
           .nav-contacts { display: flex; }
           .login-brand-full {
@@ -1151,8 +1207,9 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onFocus={scrollFieldIntoView}
                     placeholder="ornek@sirket.com"
-                    className="form-input"
+                    className="form-input scroll-input-safe"
                     required
                     autoComplete="email"
                   />
@@ -1169,8 +1226,9 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onFocus={scrollFieldIntoView}
                     placeholder="••••••••"
-                    className="form-input"
+                    className="form-input scroll-input-safe"
                     style={{ paddingRight: 40 }}
                     required
                     autoComplete="current-password"

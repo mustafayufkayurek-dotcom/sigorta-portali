@@ -193,6 +193,8 @@ model User {
   // Ofis-Saha İş Akışı
   fileActivityLogs           FileActivityLog[]         @relation("FileActivityActor")
   createdFileAppointments    FileAppointment[]         @relation("FileAppointmentCreatedBy")
+  assignedInboundMessages  InboundMessage[]          @relation("InboundMessageAssignee")
+  vendorDiscoverySessions  VendorDiscoverySession[]
 
   // Personel modülü (pod — ileride bağlanacak)
   hrEmployeeProfile          HrEmployeeProfile?
@@ -368,6 +370,7 @@ model ClaimFile {
   // Ofis-Saha İş Akışı
   activityLogs         FileActivityLog[]
   fileAppointments     FileAppointment[]
+  inboundMessages      InboundMessage[]
 
   @@index([fileNo])
   @@index([insuranceCompanyId])
@@ -906,6 +909,7 @@ model Vendor {
 
   // Ofis-Saha: Atanmış Dosyalar
   assignedClaimFiles       ClaimFile[]     @relation("AssignedSupplier")
+  importedDiscoveryCandidates VendorDiscoveryCandidate[] @relation("ImportedDiscoveryVendor")
 
   @@index([status])
   @@index([category])
@@ -2674,6 +2678,7 @@ model EmergencyCase {
   // Dosya Evrak & Fatura Talebi
   fileDocuments  FileDocument[]
   invoiceRequests InvoiceRequest[]
+  inboundMessages InboundMessage[]
 
   @@index([status])
   @@index([urgency])
@@ -3480,4 +3485,145 @@ model FixedAsset {
 
   @@index([status])
   @@map("fixed_assets")
+}
+
+// ─── Operasyon Gelen Kutusu (Microsoft 365) ─────────────────────────────────
+
+enum InboundMailbox {
+  IHBAR
+  HASAR
+}
+
+enum InboundMessageStatus {
+  NEW
+  CLASSIFYING
+  CLASSIFIED
+  ACTIONED
+  ARCHIVED
+  ERROR
+}
+
+enum InboundClassification {
+  HASAR_IHBAR
+  ACIL_YARDIM
+  BELGE_TALEP
+  FATURA_ODEME
+  GENEL
+  SPAM
+  UNKNOWN
+}
+
+model GraphSubscription {
+  id             String         @id @default(uuid())
+  mailbox        InboundMailbox
+  subscriptionId String         @unique @map("subscription_id")
+  resource       String
+  changeType     String         @map("change_type")
+  clientState    String         @map("client_state")
+  expiresAt      DateTime       @map("expires_at")
+  deltaLink      String?        @map("delta_link") @db.Text
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@map("graph_subscriptions")
+}
+
+model InboundMessage {
+  id                  String                  @id @default(uuid())
+  graphMessageId      String                  @unique @map("graph_message_id")
+  internetMessageId   String?                 @map("internet_message_id")
+  conversationId      String?                 @map("conversation_id")
+  mailbox             InboundMailbox
+  fromAddress         String                  @map("from_address")
+  fromName            String?                 @map("from_name")
+  toAddresses         String[]                @map("to_addresses")
+  subject             String
+  bodyPreview         String?                 @map("body_preview") @db.Text
+  bodyHtml            String?                 @map("body_html") @db.Text
+  bodyText            String?                 @map("body_text") @db.Text
+  receivedAt          DateTime                @map("received_at")
+  status              InboundMessageStatus    @default(NEW)
+  classification      InboundClassification?
+  confidence          Float?
+  aiSummary           String?                 @map("ai_summary") @db.Text
+  aiExtractedJson     Json?                   @map("ai_extracted_json")
+  suggestedAction     String?                 @map("suggested_action")
+  managerInstruction  String?                 @map("manager_instruction") @db.Text
+  claimFileId         String?                 @map("claim_file_id")
+  emergencyCaseId     String?                 @map("emergency_case_id")
+  assignedUserId      String?                 @map("assigned_user_id")
+  processedAt         DateTime?               @map("processed_at")
+  errorMsg            String?                 @map("error_msg")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
+
+  attachments    InboundAttachment[]
+  claimFile      ClaimFile?      @relation(fields: [claimFileId], references: [id])
+  emergencyCase  EmergencyCase?  @relation(fields: [emergencyCaseId], references: [id])
+  assignedUser   User?           @relation("InboundMessageAssignee", fields: [assignedUserId], references: [id])
+
+  @@index([mailbox, status])
+  @@index([receivedAt])
+  @@index([classification])
+  @@map("inbound_messages")
+}
+
+model InboundAttachment {
+  id                String   @id @default(uuid())
+  inboundMessageId  String   @map("inbound_message_id")
+  graphAttachmentId String   @map("graph_attachment_id")
+  fileName          String   @map("file_name")
+  contentType       String   @map("content_type")
+  sizeBytes         Int      @map("size_bytes")
+  storageKey        String?  @map("storage_key")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  inboundMessage InboundMessage @relation(fields: [inboundMessageId], references: [id], onDelete: Cascade)
+
+  @@map("inbound_attachments")
+}
+
+// ─── Tedarikçi Dış Kaynak Arama ───────────────────────────────────────────────
+
+model VendorDiscoverySession {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  city        String
+  district    String?
+  serviceType String   @map("service_type")
+  minRating   Float?   @map("min_rating")
+  source      String   @default("google_places")
+  resultCount Int      @map("result_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user       User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidates VendorDiscoveryCandidate[]
+
+  @@index([userId, createdAt])
+  @@map("vendor_discovery_sessions")
+}
+
+model VendorDiscoveryCandidate {
+  id               String   @id @default(uuid())
+  sessionId        String   @map("session_id")
+  externalId       String   @map("external_id")
+  name             String
+  address          String?
+  phone            String?
+  rating           Float?
+  reviewCount      Int?     @map("review_count")
+  latitude         Float?
+  longitude        Float?
+  source           String
+  rawPayload       Json?    @map("raw_payload")
+  importedVendorId String?  @map("imported_vendor_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  session        VendorDiscoverySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  importedVendor Vendor?              @relation("ImportedDiscoveryVendor", fields: [importedVendorId], references: [id])
+
+  @@unique([sessionId, externalId])
+  @@index([sessionId])
+  @@map("vendor_discovery_candidates")
 }

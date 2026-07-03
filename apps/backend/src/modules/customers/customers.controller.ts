@@ -35,19 +35,20 @@ export class CustomersController {
 
   @Get('check-duplicate')
   @RequirePermissions('customer.view')
-  @ApiOperation({ summary: 'Telefon/e-posta/TC/isim çakışma kontrolü' })
+  @ApiOperation({ summary: 'Telefon/e-posta/TC/vergi no/isim çakışma kontrolü' })
   async checkDuplicate(
     @Query('phone') phone: string,
     @Query('email') email: string,
     @Query('tc') tc: string,
+    @Query('taxNumber') taxNumber: string,
     @Query('firstName') firstName: string,
     @Query('lastName') lastName: string,
     @Query('excludeId') excludeId: string,
   ) {
-    if (!phone && !email && !tc && !(firstName && lastName)) {
-      throw new BadRequestException('phone, email, tc veya firstName+lastName parametresi gerekli');
+    if (!phone && !email && !tc && !taxNumber && !(firstName && lastName)) {
+      throw new BadRequestException('phone, email, tc, taxNumber veya firstName+lastName parametresi gerekli');
     }
-    const data = await this.customersService.checkDuplicate({ phone, email, tc, firstName, lastName }, excludeId);
+    const data = await this.customersService.checkDuplicate({ phone, email, tc, taxNumber, firstName, lastName }, excludeId);
     return { success: true, data };
   }
 

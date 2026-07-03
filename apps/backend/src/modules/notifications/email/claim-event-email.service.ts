@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolveAppUrl } from '@/common/utils/app-url';
 import { EmailService } from './email.service';
 
 @Injectable()
@@ -10,7 +11,7 @@ export class ClaimEventEmailService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
   ) {
-    this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
+    this.appUrl = resolveAppUrl(this.config);
   }
 
   /** 1. Yeni dosya oluşturuldu */

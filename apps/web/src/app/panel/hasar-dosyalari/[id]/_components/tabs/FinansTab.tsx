@@ -73,7 +73,9 @@ export function FinansTab({
         </div>
       )}
 
-      {subTab === 'faturalar' && <FaturalarTab claimId={claimId} />}
+      {subTab === 'faturalar' && (
+        <FaturalarTab claimId={claimId} claim={claim} />
+      )}
     </div>
   );
 }

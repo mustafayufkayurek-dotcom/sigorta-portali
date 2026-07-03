@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { buildAppPath } from '@/common/utils/app-url';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
@@ -428,9 +429,32 @@ export class RepairReportsService {
     const goodsDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
       (i.damageCategory ?? 'bina') === 'esya' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
 
-    await this.prisma.repairReport.update({
+    const report = await this.prisma.repairReport.update({
       where: { id: reportId },
       data: { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal },
+    });
+    await this.syncClaimFromLatestReport(report.claimFileId);
+  }
+
+  /** Son onarım raporu toplamlarını claim dosyası beklenti alanlarına yansıt */
+  private async syncClaimFromLatestReport(claimFileId: string) {
+    const latest = await this.prisma.repairReport.findFirst({
+      where: { claimFileId },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        totalSalesAmount: true,
+        totalSupplierCost: true,
+        grossProfit: true,
+      },
+    });
+    if (!latest) return;
+    await this.prisma.claimFile.update({
+      where: { id: claimFileId },
+      data: {
+        approvedBudgetAmount: latest.totalSalesAmount,
+        estimatedCostAmount: latest.totalSupplierCost,
+        profitAmount: latest.grossProfit,
+      },
     });
   }
 
@@ -576,7 +600,7 @@ export class RepairReportsService {
       });
     }
 
-    const baseUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
+    const baseUrl = buildAppPath(this.config, '');
     const url = `${baseUrl}/onay/${approval.token}`;
     return {
       url,
@@ -681,6 +705,8 @@ export class RepairReportsService {
       data: { reportId, userId, action: 'pending_approval' },
     });
 
+    await this.syncClaimFromLatestReport(report.claimFileId);
+
     // Notify approvers
     const approvers = await this.getApprovers();
     for (const approver of approvers) {
@@ -750,6 +776,8 @@ export class RepairReportsService {
     // Tedarikçi risk ve anomali analizi (async, non-blocking)
     void this.triggerRiskAnalysis(reportId, report.claimFileId);
 
+    await this.syncClaimFromLatestReport(report.claimFileId);
+
     return this.getReport(reportId);
   }
 
@@ -796,6 +824,8 @@ export class RepairReportsService {
         reportId,
       });
     }
+
+    await this.syncClaimFromLatestReport(report.claimFileId);
 
     return this.getReport(reportId);
   }

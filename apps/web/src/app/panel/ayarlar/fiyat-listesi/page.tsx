@@ -20,16 +20,9 @@ import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/Settin
 import Link from 'next/link';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { API, authHeader } from '@/utils/api';
-import { applyNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'subGroupName', label: 'Alt Grup Adı', defaultWidth: 200, minWidth: 140 },
-  { id: 'unit', label: 'Birim', defaultWidth: 90, minWidth: 70 },
-  { id: 'unitPrice', label: 'Birim Fiyat', defaultWidth: 110, minWidth: 90 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 type WorkSubGroup = {
@@ -124,8 +117,10 @@ export default function FiyatListesiPage() {
   const openEditWG = (wg: WorkGroup) => { setEditWG(wg); setWgForm({ code: wg.code, name: wg.name, description: wg.description ?? '', sortOrder: wg.sortOrder }); setWgError(''); setWgModal(true); };
 
   const saveWG = async () => {
-    if (!wgForm.name.trim()) { setWgError('İş grubu adı zorunludur'); return; }
-    const code = editWG ? wgForm.code : (wgForm.code.trim() || suggestAutoCode('WG', wgForm.name));
+    const name = normalizeFormFreeText(wgForm.name);
+    if (!name) { setWgError('İş grubu adı zorunludur'); return; }
+    const description = wgForm.description.trim() ? normalizeFormFreeText(wgForm.description) : '';
+    const code = editWG ? wgForm.code : (wgForm.code.trim() || suggestAutoCode('WG', name));
     if (!code.trim() && !editWG) { setWgError('Kod üretilemedi'); return; }
     setWgSaving(true); setWgError('');
     try {
@@ -134,7 +129,7 @@ export default function FiyatListesiPage() {
       const res = await fetch(url, {
         method,
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...wgForm, code, sortOrder: Number(wgForm.sortOrder) }),
+        body: JSON.stringify({ ...wgForm, name, description, code, sortOrder: Number(wgForm.sortOrder) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? 'Hata oluştu');
@@ -161,11 +156,13 @@ export default function FiyatListesiPage() {
   const openEditSG = (sg: WorkSubGroup, parentId: string) => { setSgParentId(parentId); setEditSG(sg); setSgForm({ code: sg.code, name: sg.name, description: sg.description ?? '', unitType: sg.unitType, unitPrice: sg.unitPrice != null ? String(sg.unitPrice) : '', sortOrder: sg.sortOrder, workGroupId: parentId }); setSgError(''); setSgModal(true); };
 
   const saveSG = async () => {
-    if (!sgForm.name.trim()) { setSgError('Alt grup adı zorunludur'); return; }
+    const name = normalizeFormFreeText(sgForm.name);
+    if (!name) { setSgError('Alt grup adı zorunludur'); return; }
+    const description = sgForm.description.trim() ? normalizeFormFreeText(sgForm.description) : '';
     const targetGroupId = sgForm.workGroupId || sgParentId;
     if (!targetGroupId) { setSgError('İş grubu seçilmelidir'); return; }
     const parentCode = groups.find((g) => g.id === targetGroupId)?.code ?? 'WSG';
-    const code = editSG ? sgForm.code : (sgForm.code.trim() || suggestAutoCode(parentCode, sgForm.name));
+    const code = editSG ? sgForm.code : (sgForm.code.trim() || suggestAutoCode(parentCode, name));
     if (!code.trim() && !editSG) { setSgError('Kod üretilemedi'); return; }
     setSgSaving(true); setSgError('');
     try {
@@ -173,6 +170,8 @@ export default function FiyatListesiPage() {
       const method = editSG ? 'PUT' : 'POST';
       const payload = {
         ...sgForm,
+        name,
+        description,
         code,
         sortOrder: Number(sgForm.sortOrder),
         unitPrice: sgForm.unitPrice !== '' ? Number(sgForm.unitPrice) : undefined,
@@ -224,8 +223,6 @@ export default function FiyatListesiPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Fiyat Listesi"
       description="İş grubu ve alt gruba göre birim fiyat tanımlama. Her alt grup bir iş grubuna bağlıdır."
@@ -233,7 +230,6 @@ export default function FiyatListesiPage() {
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
-          <SettingsTableColumnPicker tableColumns={tableColumns} />
           <Link
             href="/panel/ayarlar/fiyat-listesi/yukle"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
@@ -318,7 +314,7 @@ export default function FiyatListesiPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">{wg.name}</span>
+          <span className="text-sm font-semibold text-slate-900">{wg.name}</span>
                         <span className="text-xs text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded">{wg.code}</span>
                         {wg.isSystem && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Sistem</span>}
                       </div>
@@ -337,7 +333,7 @@ export default function FiyatListesiPage() {
                       Alt Grup Ekle
                     </button>
                     <EditButton onClick={() => openEditWG(wg)} />
-                    {!wg.isSystem && <DeleteButton onClick={() => setDeleteWG(wg)} />}
+                    <DeleteButton onClick={() => setDeleteWG(wg)} />
                   </div>
                 </div>
 
@@ -352,30 +348,30 @@ export default function FiyatListesiPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh colId="subGroupName">Alt Grup Adı</SettingsTableTh>
-                          <SettingsTableTh colId="unit">Birim</SettingsTableTh>
-                          <SettingsTableTh colId="unitPrice">Birim Fiyat</SettingsTableTh>
-                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+                          <SettingsTableTh>Alt Grup Adı</SettingsTableTh>
+                          <SettingsTableTh>Birim</SettingsTableTh>
+                          <SettingsTableTh>Birim Fiyat</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {wg.workSubGroups.map((sg) => (
                             <SettingsTableRow key={sg.id}>
-                              <SettingsTableTd colId="subGroupName">
+                              <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sg.name}</span>
                                   {sg.description && <p className="text-xs text-slate-400 mt-0.5">{sg.description}</p>}
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="unit">
+                              <SettingsTableTd>
                                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
                                   {UNIT_LABELS[sg.unitType] ?? sg.unitType}
                                 </span>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="unitPrice">
+                              <SettingsTableTd>
                                 <span className="text-sm font-semibold text-slate-900">{fmt(sg.unitPrice)}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="status">
+                              <SettingsTableTd>
                                 <StatusBadge active={sg.status !== 'inactive'} />
                               </SettingsTableTd>
                               <SettingsTableTd>
@@ -417,11 +413,11 @@ export default function FiyatListesiPage() {
           )}
           <div>
             <label className={labelCls}>İş Grubu Adı <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
-            <input className={inputCls} value={wgForm.name} onChange={(e) => setWgForm((f) => applyNameWithAutoCode(f, e.target.value, !!editWG, 'WG'))} placeholder="Tesisat" />
+            <input className={inputCls} value={wgForm.name} onChange={(e) => setWgForm((f) => applyNameWithAutoCode(f, e.target.value, !!editWG, 'WG'))} onBlur={() => setWgForm((f) => blurNameWithAutoCode(f, !!editWG, 'WG'))} placeholder="Tesisat" />
           </div>
           <div>
             <label className={labelCls}>Açıklama</label>
-            <input className={inputCls} value={wgForm.description} onChange={(e) => setWgForm((f) => ({ ...f, description: e.target.value }))} placeholder="İsteğe bağlı açıklama" />
+            <input className={inputCls} value={wgForm.description} onChange={(e) => setWgForm((f) => ({ ...f, description: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setWgForm((f) => ({ ...f, description: v })); }} placeholder="İsteğe bağlı açıklama" />
           </div>
           <div>
             <label className={labelCls}>Sıra No</label>
@@ -486,12 +482,21 @@ export default function FiyatListesiPage() {
                   ),
                 )
               }
+              onBlur={() =>
+                setSgForm((f) =>
+                  blurNameWithAutoCode(
+                    f,
+                    !!editSG,
+                    groups.find((g) => g.id === (f.workGroupId || sgParentId))?.code ?? 'WSG',
+                  ),
+                )
+              }
               placeholder="Musluk Değişimi"
             />
           </div>
           <div>
             <label className={labelCls}>Açıklama</label>
-            <input className={inputCls} value={sgForm.description} onChange={(e) => setSgForm((f) => ({ ...f, description: e.target.value }))} placeholder="İsteğe bağlı" />
+            <input className={inputCls} value={sgForm.description} onChange={(e) => setSgForm((f) => ({ ...f, description: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setSgForm((f) => ({ ...f, description: v })); }} placeholder="İsteğe bağlı" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -528,7 +533,5 @@ export default function FiyatListesiPage() {
         itemName={deleteSG?.name ?? ''}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

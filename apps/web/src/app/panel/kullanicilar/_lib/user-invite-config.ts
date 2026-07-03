@@ -3,6 +3,27 @@ export const FIELD_OPERATION_AREA_OPTIONS = [
   { value: 'acil' as const, label: 'Acil Yardım' },
 ];
 
+/** Seed (field_staff) ile Ayarlar → Roller (FIELD_STAFF) kod biçimlerini eşleştirir */
+export function normalizeRoleCode(code?: string | null): string {
+  return String(code ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_');
+}
+
+export function roleCodesMatch(a?: string | null, b?: string | null): boolean {
+  return normalizeRoleCode(a) === normalizeRoleCode(b);
+}
+
+export function findRoleByCode<T extends { code: string }>(
+  roles: T[],
+  code: string,
+  ...aliases: string[]
+): T | undefined {
+  const targets = new Set([code, ...aliases].map(normalizeRoleCode));
+  return roles.find((role) => targets.has(normalizeRoleCode(role.code)));
+}
+
 export type OperationAreaCode = '' | 'hasar' | 'acil' | 'both';
 
 /** Seed ve canlı ortamda birlikte yaşayan departman kodları */
@@ -81,7 +102,30 @@ export function isAcilYardimAssistantCustomer(customer: AcilYardimAssistantCusto
   return customer.subType === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE;
 }
 
-/** Saha operasyonu — tanımlı iş kolu dışı açıklama */
+/** Müşteriler → kurumsal → alt tip Eksper Firması (hasar ihbar cari) */
+export const HASAR_EXPERT_CUSTOMER_SUB_TYPE = 'eksper_firmasi';
+
+export interface HasarExpertCustomerRecord {
+  id: string;
+  entityType?: string;
+  subType?: string | null;
+  serviceType?: string | null;
+  status?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+}
+
+export function hasarExpertCustomerName(customer: HasarExpertCustomerRecord) {
+  return (customer.companyName ?? customer.fullName ?? '').trim();
+}
+
+export function isHasarExpertCustomer(customer: HasarExpertCustomerRecord) {
+  if (customer.status && customer.status !== 'active') return false;
+  if (customer.entityType && customer.entityType !== 'corporate') return false;
+  return customer.subType === HASAR_EXPERT_CUSTOMER_SUB_TYPE || customer.subType === 'eksper';
+}
+
+/** Saha operasyonu — tanımlı iş kolu dışı açıklama (Acil Yardım) */
 export const FIELD_OTHER_SUBJECT_LABEL = 'Diğer';
 
 export interface FieldOperationServiceBranch {
@@ -164,18 +208,5 @@ export function fieldOperationBranchOptions(
   operationArea: 'hasar' | 'acil',
 ): FieldOperationServiceBranch[] {
   const type = operationArea === 'hasar' ? 'hasar' : 'acil_yardim';
-  const sanitized = sanitizeFieldOperationServiceBranches(branches, type);
-  if (operationArea === 'hasar') {
-    return [
-      ...sanitized,
-      {
-        id: 'field-other-subject',
-        name: FIELD_OTHER_SUBJECT_LABEL,
-        type: 'hasar',
-        isActive: true,
-        sortOrder: 999,
-      },
-    ];
-  }
-  return sanitized;
+  return sanitizeFieldOperationServiceBranches(branches, type);
 }

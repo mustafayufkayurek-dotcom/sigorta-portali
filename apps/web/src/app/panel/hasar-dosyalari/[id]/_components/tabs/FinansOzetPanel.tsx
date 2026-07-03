@@ -124,7 +124,7 @@ export function FinansOzetPanel({
               <div>
                 <p className="text-xs font-semibold text-slate-500 mb-2">Tahsilat</p>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-sm"><span className="text-slate-600">Sigortacıdan Tahsil</span><span className="font-medium text-green-700">{fmtCurrency(s.collectedFromInsurer ?? 0)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Sigorta Şirketinden Tahsilat</span><span className="font-medium text-green-700">{fmtCurrency(s.collectedFromInsurer ?? 0)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-slate-600">Sigortalıdan Tahsil</span><span className="font-medium text-green-700">{fmtCurrency(s.collectedFromInsured ?? 0)}</span></div>
                 </div>
               </div>

@@ -140,6 +140,7 @@ export default function OperasyonPage() {
   const [todayCount, setTodayCount] = useState<number | null>(null);
   const [overdueCount, setOverdueCount] = useState<number | null>(null);
   const [invoicePendingCount, setInvoicePendingCount] = useState<number | null>(null);
+  const [inboxPendingCount, setInboxPendingCount] = useState<number | null>(null);
 
   const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
   const [filterInvoice, setFilterInvoice] = useState('');
@@ -158,16 +159,21 @@ export default function OperasyonPage() {
   const loadStats = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10);
     try {
-      const [openRes, todayRes, overdueRes, invoiceRes] = await Promise.allSettled([
+      const [openRes, todayRes, overdueRes, invoiceRes, inboxRes] = await Promise.allSettled([
         apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, statusCode: 'open' }),
         apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, dateFrom: today, dateTo: today }),
         apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, slaExceeded: true }),
         apiClient.getWithMeta<any[], { total?: number }>('/claim-files', { limit: 1, invoiceStatus: 'none' }),
+        apiClient.get<{ pending?: number; unownedCount?: number }>('/operation-inbox/stats'),
       ]);
       if (openRes.status === 'fulfilled') setOpenCount(openRes.value.meta?.total ?? openRes.value.data?.length ?? 0);
       if (todayRes.status === 'fulfilled') setTodayCount(todayRes.value.meta?.total ?? todayRes.value.data?.length ?? 0);
       if (overdueRes.status === 'fulfilled') setOverdueCount(overdueRes.value.meta?.total ?? overdueRes.value.data?.length ?? 0);
       if (invoiceRes.status === 'fulfilled') setInvoicePendingCount(invoiceRes.value.meta?.total ?? invoiceRes.value.data?.length ?? 0);
+      if (inboxRes.status === 'fulfilled') {
+        const inbox = inboxRes.value;
+        setInboxPendingCount(inbox.unownedCount ?? inbox.pending ?? 0);
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -246,11 +252,15 @@ export default function OperasyonPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/panel/hasar-dosyalari/yeni" className="btn-primary shadow-sm shadow-blue-200/60">
+          <Link href="/panel/operasyon/gelen-kutusu" className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            Gelen Kutusu
+          </Link>
+          <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Hasar Dosyası
           </Link>
-          <Link href="/panel/acil-yardim/yeni" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+          <Link href="/panel/acil-yardim?yeni=1" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Acil Dosyası
           </Link>
@@ -258,7 +268,15 @@ export default function OperasyonPage() {
       </div>
 
       {/* Özet Kartları */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard
+          label="Gelen Kutu (Bekleyen)"
+          value={inboxPendingCount ?? '—'}
+          accentClass="card-accent-purple"
+          iconBg="bg-violet-50"
+          icon={<svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+          href="/panel/operasyon/gelen-kutusu"
+        />
         <StatCard
           label="Açık Hasar Dosyası"
           value={openCount ?? claimsTotal}

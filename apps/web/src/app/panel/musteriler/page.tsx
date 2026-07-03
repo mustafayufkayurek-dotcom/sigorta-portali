@@ -16,7 +16,8 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { relativeTime, activityColor } from '@/utils/date-helpers';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, normalizeFreeTextInput } from '@/utils/text-helpers';
+import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
@@ -27,10 +28,19 @@ import {
   CUSTOMER_RELATION_SECTION_HINT,
   DEFAULT_CUSTOMER_SUB_TYPES,
   customerSubTypeHint,
+  mergeCustomerSubTypes,
+  customerSubTypesForPicker,
+  normalizeCustomerAddressFields,
+  normalizeCustomerRow,
   subTypeActiveClass,
   customerPhoneValidationError,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
+import {
+  parseMusteriGrubuAddContext,
+  type MusteriGrubuAddContext,
+} from '@/utils/musteri-gruplari-add-context';
+import { consumeInboxCustomerPrefill, type InboxCustomerPrefillPayload } from '@/utils/inbox-customer-prefill';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PanelTableColumnPicker,
@@ -80,7 +90,7 @@ const emptyContact = (): ContactPerson => ({
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
   customerType: 'individual' as 'individual' | 'corporate',
-  subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi',
+  subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi' | 'broker_firmasi',
   firstName: '', lastName: '', companyName: '',
   taxNumber: '', taxOffice: '', identityNo: '',
   contactFirstName: '', contactLastName: '',
@@ -125,16 +135,14 @@ function CustomerSubTypePicker({
   hasError: boolean;
   onToggle: (value: string) => void;
 }) {
-  const filtered = subTypes.filter(
-    (t) => t.forType === customerType || t.forType === 'both',
-  );
+  const filtered = customerSubTypesForPicker(subTypes, customerType);
   if (filtered.length === 0) return null;
 
   return (
     <div className="mb-5">
       <p className="text-xs font-medium text-slate-500 mb-2">
-        Alt Tip
-        {required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}
+        Müşteri Tipi
+        {required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(önce seçin)</span>}
       </p>
       <div className="flex gap-2 flex-wrap">
         {filtered.map((t) => (
@@ -154,7 +162,7 @@ function CustomerSubTypePicker({
           </button>
         ))}
       </div>
-      {hasError && <p className="text-xs text-red-500 mt-1.5">Alt tip seçimi zorunludur</p>}
+      {hasError && <p className="text-xs text-red-500 mt-1.5">Müşteri tipi seçimi zorunludur</p>}
       {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} />}
     </div>
   );
@@ -706,9 +714,11 @@ export default function MusterilerPage() {
   const tagDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [typeSummary, setTypeSummary] = useState({ individual: 0, corporate: 0 });
   const limit = 20;
 
   const [showModal, setShowModal] = useState(false);
+  const [inboxPrefillFocusRole, setInboxPrefillFocusRole] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -746,13 +756,18 @@ export default function MusterilerPage() {
   const [phoneWarn, setPhoneWarn] = useState<string | null>(null);
   const [emailWarn, setEmailWarn] = useState<string | null>(null);
   const [tcWarn, setTcWarn] = useState<string | null>(null);
-  const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string; tc?: string }>({});
+  const [taxNoWarn, setTaxNoWarn] = useState<string | null>(null);
+  const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string; tc?: string; taxNumber?: string }>({});
+  const [duplicateExistingCustomerId, setDuplicateExistingCustomerId] = useState<string | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const hasHardDuplicate = !!(duplicateConflicts.tc || duplicateConflicts.taxNumber);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef = useRef<HTMLInputElement>(null);
   const companyNameRef = useRef<HTMLInputElement>(null);
+  const firstContactRoleRef = useRef<HTMLSelectElement>(null);
 
   const [contacts, setContacts] = useState<ContactPerson[]>([emptyContact()]);
   const [contactInfos, setContactInfos] = useState<ContactInfoItem[]>([emptyContactInfo()]);
@@ -768,6 +783,8 @@ export default function MusterilerPage() {
   // ── Drawer state ──────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerCustomerId, setDrawerCustomerId] = useState<string | null>(null);
+  const [settingsReturn, setSettingsReturn] = useState<MusteriGrubuAddContext | null>(null);
+  const groupAddHandled = useRef(false);
 
   // ── Hover card state ──────────────────────────────────────────────────────
   const [hoverCustomer, setHoverCustomer] = useState<any>(null);
@@ -879,9 +896,11 @@ export default function MusterilerPage() {
 
   // Statik il/ilçe verisinden türetilen ilçe listesi
   const currentDistricts = form.cityCode ? (STATIC_DISTRICTS[form.cityCode] ?? []) : [];
+  const normalizedAddress = normalizeCustomerAddressFields(form);
   const customerAddressLabel = [
-    form.neighborhood,
-    form.streetName,
+    normalizedAddress.neighborhood,
+    normalizedAddress.streetName,
+    normalizedAddress.address,
     form.buildingNo ? `No: ${form.buildingNo}` : '',
     form.doorNo ? `D: ${form.doorNo}` : '',
     form.district,
@@ -891,48 +910,92 @@ export default function MusterilerPage() {
   const resetForm = () => {
     setForm(emptyForm()); setGibError(null); setTcResult(null);
     setIdentityNoError(null); setPhoneError(null); setEmailError(null); setTaxNoError(null);
-    setPhoneWarn(null); setEmailWarn(null); setTcWarn(null);
-    setDuplicateConflicts({}); setShowDuplicateModal(false);
+    setPhoneWarn(null); setEmailWarn(null); setTcWarn(null); setTaxNoWarn(null);
+    setDuplicateConflicts({}); setShowDuplicateModal(false); setDuplicateExistingCustomerId(null);
     setFieldErrors({}); setSectionErrors(null);
     setContacts([emptyContact()]); setContactInfos([emptyContactInfo()]);
     setTagInput(''); setActiveSection(0); setContactsOpen(false);
     setLocationCoords(null); setShowLocationPicker(false);
     setGeocodeMsg(null);
+    setInboxPrefillFocusRole(false);
   };
 
-  /** Nominatim geocoding — adres alanlarından koordinat bul */
-  const handleGeocodeAddress = useCallback(async (
-    city: string,
-    district: string,
-    neighborhood: string,
-    streetName: string,
-    buildingNo: string,
-  ) => {
-    const parts = [neighborhood, streetName, buildingNo ? `No: ${buildingNo}` : '', district, city].filter(Boolean);
-    const query = parts.join(' ').trim();
-    if (!query) return;
+  const applyInboxPrefill = useCallback((payload: InboxCustomerPrefillPayload) => {
+    setForm({ ...emptyForm(), ...payload.form });
+    setContacts(payload.contacts?.length ? payload.contacts : [emptyContact()]);
+    setContactInfos([emptyContactInfo()]);
+    setGibError(null);
+    setTcResult(null);
+    setIdentityNoError(null);
+    setPhoneError(null);
+    setEmailError(null);
+    setTaxNoError(null);
+    setPhoneWarn(null);
+    setEmailWarn(null);
+    setTcWarn(null);
+    setTaxNoWarn(null);
+    setDuplicateConflicts({});
+    setDuplicateExistingCustomerId(null);
+    setFieldErrors({});
+    setSectionErrors(null);
+    setTagInput('');
+    setContactsOpen(!!payload.openContacts);
+    setActiveSection(payload.initialSection ?? 0);
+    setInboxPrefillFocusRole(!!payload.focusContactRole);
+    setLocationCoords(null);
+    setGeocodeMsg(null);
+    setShowModal(true);
+    if (payload.toastMessage) {
+      showToast('info', payload.toastMessage);
+    }
+  }, [showToast]);
+
+  const goToDuplicateCustomer = () => {
+    if (!duplicateExistingCustomerId) return;
+    const targetId = duplicateExistingCustomerId;
+    setShowDuplicateModal(false);
+    setShowModal(false);
+    resetForm();
+    router.push(`/panel/musteriler/${targetId}`);
+  };
+
+  /** Nominatim geocoding — kademeli adres araması */
+  const handleGeocodeAddress = useCallback(async () => {
+    if (!form.city?.trim()) return;
     setGeocoding(true);
     setGeocodeMsg(null);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tr&limit=1`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'SigortaHasarSistemi/1.0 (contact@example.com)' },
+      const addr = normalizeCustomerAddressFields(form);
+      setForm((p) => ({ ...p, ...addr }));
+      const result = await geocodeAddressCascade({
+        city: form.city,
+        district: form.district,
+        neighborhood: addr.neighborhood,
+        streetName: addr.streetName,
+        siteName: addr.address,
+        buildingNo: form.buildingNo,
       });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        const coords: LatLng = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        setLocationCoords(coords);
-        const shortName = (data[0].display_name as string)?.split(',').slice(0, 2).join(',') ?? '';
-        setGeocodeMsg({ type: 'success', text: `Konum bulundu: ${shortName}` });
+      if (result) {
+        setLocationCoords({ lat: result.lat, lng: result.lng });
+        const shortName = result.displayName.split(',').slice(0, 2).join(',');
+        setGeocodeMsg({
+          type: 'success',
+          text: result.approximate
+            ? `Yaklaşık konum bulundu: ${shortName}`
+            : `Konum bulundu: ${shortName}`,
+        });
       } else {
-        setGeocodeMsg({ type: 'error', text: 'Konum bulunamadı. Haritadan pin atarak konumu manuel belirleyebilirsiniz.' });
+        setGeocodeMsg({
+          type: 'error',
+          text: 'Konum bulunamadı. Plaza adını ayrı alana yazıp tekrar deneyin veya haritadan pin atın.',
+        });
       }
     } catch {
       setGeocodeMsg({ type: 'error', text: 'Geocoding başarısız. İnternet bağlantınızı kontrol edin.' });
     } finally {
       setGeocoding(false);
     }
-  }, []);
+  }, [form.city, form.district, form.neighborhood, form.streetName, form.address, form.buildingNo]);
 
   const handleIdentityNoBlur = async () => {
     if (!form.identityNo) { setIdentityNoError(null); setTcResult(null); setTcWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.tc; return n; }); return; }
@@ -953,6 +1016,7 @@ export default function MusterilerPage() {
         const msg = `Bu TC kimlik numarası ile kayıtlı müşteri mevcut: ${d.existingRecord.fullName}`;
         setTcWarn(msg);
         setDuplicateConflicts((p) => ({ ...p, tc: msg }));
+        setDuplicateExistingCustomerId(d.existingRecord.id);
         showToast('warning', msg);
       } else {
         setTcWarn(null);
@@ -1010,14 +1074,46 @@ export default function MusterilerPage() {
     } catch { /* sessizce geç */ }
   };
 
-  const handleTaxNoBlur = () => {
-    if (!form.taxNumber) { setTaxNoError(null); return; }
+  const handleTaxNoDuplicateCheck = async (taxNumber: string) => {
+    if (!taxNumber || taxNumber.length !== 10 || !validateVergiNo(taxNumber)) return;
+    try {
+      const r = await axios.get(`${API}/customers/check-duplicate?taxNumber=${encodeURIComponent(taxNumber)}`, { headers: authHeader() });
+      const d = r.data.data;
+      if (d.exists) {
+        const displayName = d.existingRecord.fullName || form.companyName.trim() || 'Kayıtlı müşteri';
+        const msg = `Bu vergi numarası zaten "${displayName}" kaydında mevcut`;
+        setTaxNoWarn(msg);
+        setDuplicateConflicts((p) => ({ ...p, taxNumber: msg }));
+        setDuplicateExistingCustomerId(d.existingRecord.id);
+        showToast('warning', `${msg}. Mevcut kayda gidebilir veya farklı bir vergi numarası girebilirsiniz.`);
+      } else {
+        setTaxNoWarn(null);
+        setDuplicateConflicts((p) => { const n = { ...p }; delete n.taxNumber; return n; });
+      }
+    } catch { /* sessizce geç */ }
+  };
+
+  const handleTaxNoBlur = async () => {
+    if (!form.taxNumber) {
+      setTaxNoError(null);
+      setTaxNoWarn(null);
+      setDuplicateConflicts((p) => { const n = { ...p }; delete n.taxNumber; return n; });
+      setDuplicateExistingCustomerId(null);
+      return;
+    }
     const s = form.taxNumber.replace(/\s/g, '');
     if (s.length > 0 && s.length < 10) {
       setTaxNoError(`Vergi numarası 10 hane olmalıdır (şu an ${s.length} hane)`);
-    } else {
-      setTaxNoError(s.length === 10 ? (validateVergiNo(s) ? null : 'Geçersiz vergi numarası') : null);
+      setTaxNoWarn(null);
+      return;
     }
+    if (s.length === 10 && !validateVergiNo(s)) {
+      setTaxNoError('Geçersiz vergi numarası');
+      setTaxNoWarn(null);
+      return;
+    }
+    setTaxNoError(null);
+    await handleTaxNoDuplicateCheck(s);
   };
 
   const load = useCallback(async () => {
@@ -1033,7 +1129,7 @@ export default function MusterilerPage() {
       selectedTags.forEach((tag) => params.append('tags', tag));
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       const rows: any[] = r.data.data || [];
-      setCustomers(rows);
+      setCustomers(rows.map((row) => normalizeCustomerRow(row)));
       setTotal(r.data.meta?.total ?? 0);
       const tagSet = new Set<string>();
       rows.forEach((c) => (c.tags ?? []).forEach((t: string) => tagSet.add(t)));
@@ -1045,6 +1141,26 @@ export default function MusterilerPage() {
       showToast('error', 'Müşteri listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
     } finally { setLoading(false); }
   }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
+
+  const refreshTypeSummary = useCallback(async () => {
+    try {
+      const h = authHeader();
+      const [ind, corp] = await Promise.all([
+        axios.get(`${API}/customers?limit=1&customerType=individual`, { headers: h }),
+        axios.get(`${API}/customers?limit=1&customerType=corporate`, { headers: h }),
+      ]);
+      setTypeSummary({
+        individual: ind.data.meta?.total ?? 0,
+        corporate: corp.data.meta?.total ?? 0,
+      });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshTypeSummary();
+  }, [refreshTypeSummary]);
 
   // Debounce searchInput → search
   useEffect(() => {
@@ -1099,12 +1215,67 @@ export default function MusterilerPage() {
 
   const loadCustomerSubTypes = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
-      .then((r) => setCustomerSubTypes(r.data.data ?? []))
+      .then((r) => setCustomerSubTypes(mergeCustomerSubTypes(r.data.data ?? [])))
       .catch(() => setCustomerSubTypes(DEFAULT_CUSTOMER_SUB_TYPES));
   }, []);
 
   useEffect(() => { loadCustomerSources(); }, [loadCustomerSources]);
   useEffect(() => { loadCustomerSubTypes(); }, [loadCustomerSubTypes]);
+
+  // Gelen kutusundan müşteri ön-dolumu (?inboxPrefill=1)
+  useEffect(() => {
+    if (searchParams.get('inboxPrefill') !== '1') return;
+    const payload = consumeInboxCustomerPrefill();
+    if (!payload) return;
+    loadCustomerSources();
+    loadCustomerSubTypes();
+    applyInboxPrefill(payload);
+    router.replace('/panel/musteriler', { scroll: false });
+  }, [searchParams, applyInboxPrefill, loadCustomerSources, loadCustomerSubTypes, router]);
+
+  // Ayarlar → Müşteri Grupları'ndan ekleme (?openAdd=1&subType=…&returnTo=…)
+  useEffect(() => {
+    if (groupAddHandled.current) return;
+    if (searchParams.get('openAdd') !== '1') return;
+    groupAddHandled.current = true;
+
+    const ctx = parseMusteriGrubuAddContext(searchParams);
+    if (ctx) setSettingsReturn(ctx);
+
+    const subType = searchParams.get('subType')?.trim() ?? '';
+    const entityType = searchParams.get('entityType') === 'corporate' ? 'corporate' : 'individual';
+
+    if (subType || searchParams.get('openAdd') === '1') {
+      if (subType) {
+        setTypeFilter(entityType);
+        setSubTypeFilter(subType);
+      }
+      setForm({
+        ...emptyForm(),
+        customerType: entityType,
+        subType: subType as ReturnType<typeof emptyForm>['subType'],
+      });
+      loadCustomerSources();
+      loadCustomerSubTypes();
+      setShowModal(true);
+      if (ctx) {
+        showToast('info', `${ctx.returnLabel} için kurumsal cari ekliyorsunuz.`);
+      } else if (subType) {
+        showToast('info', 'Önce müşteri tipi seçili geldi; cari bilgilerini tamamlayın.');
+      }
+    }
+
+    router.replace('/panel/musteriler', { scroll: false });
+  }, [searchParams, router, showToast, loadCustomerSources, loadCustomerSubTypes]);
+
+  useEffect(() => {
+    if (!showModal || !inboxPrefillFocusRole) return;
+    const t = setTimeout(() => {
+      firstContactRoleRef.current?.focus();
+      setInboxPrefillFocusRole(false);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [showModal, inboxPrefillFocusRole, activeSection, contactsOpen]);
 
   useEffect(() => {
     axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() })
@@ -1248,6 +1419,9 @@ export default function MusterilerPage() {
         return;
       }
     }
+    if (activeSection === 2) {
+      setForm((p) => ({ ...p, ...normalizeCustomerAddressFields(p) }));
+    }
     setSectionErrors(null);
     setActiveSection((s) => s + 1);
   };
@@ -1313,21 +1487,25 @@ export default function MusterilerPage() {
     setFieldErrors({});
     setSaving(true);
     try {
+      const addr = normalizeCustomerAddressFields(form);
+      setForm((p) => ({ ...p, ...addr }));
+
       // Yapılandırılmış adres alanlarını birleştir
       const addressParts = [
-        form.neighborhood,
-        form.streetName,
+        addr.neighborhood,
+        addr.streetName,
+        addr.address,
         form.buildingNo ? `No: ${form.buildingNo}` : '',
         form.doorNo ? `D: ${form.doorNo}` : '',
       ].filter(Boolean);
-      const computedAddress = addressParts.length > 0 ? addressParts.join(' ') : (form.address || null);
+      const computedAddress = addressParts.length > 0 ? addressParts.join(' ') : null;
 
       const payload: any = {
         customerType: form.customerType, entityType: form.customerType,
         phone: form.phone || null, email: form.email || null,
         city: form.city || null, district: form.district || null,
-        neighborhood: form.neighborhood || null,
-        streetName: form.streetName || null,
+        neighborhood: addr.neighborhood || null,
+        streetName: addr.streetName || null,
         buildingNo: form.buildingNo || null,
         doorNo: form.doorNo || null,
         address: computedAddress,
@@ -1336,11 +1514,10 @@ export default function MusterilerPage() {
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
         followUpDate: form.followUpDate || null, tags: form.tags,
         serviceType: form.subType === 'private_customer'
-          ? null
+          ? (form.privateServiceType || null)
           : form.subType === 'asistan_firmasi'
             ? 'acil_yardim'
             : (form.serviceType || null),
-        privateServiceType: form.subType === 'private_customer' ? (form.privateServiceType || null) : null,
         serviceBranches: form.serviceBranches,
         contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map((c) => ({ ...c, role: c.role === '__other__' ? '' : c.role })),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
@@ -1362,6 +1539,13 @@ export default function MusterilerPage() {
       const newId = res.data?.data?.id;
       if (effectiveSaveMode === 'close') {
         setShowModal(false); resetForm(); load();
+        if (settingsReturn) {
+          const dest = settingsReturn.returnTo;
+          setSettingsReturn(null);
+          showToast('success', 'Kayıt eklendi — gruba dönülüyor');
+          router.push(dest);
+          return;
+        }
         showToast('success', 'Müşteri Başarıyla Eklendi');
       } else if (effectiveSaveMode === 'new') {
         resetForm(); load();
@@ -1378,12 +1562,24 @@ export default function MusterilerPage() {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen Bir Hata Oluştu';
       const status = e?.response?.status;
       console.error('[doSave] Müşteri kayıt hatası:', { status, msg, error: e });
+      if (msg.includes('Vergi No zaten kayıtlı') && form.taxNumber) {
+        try {
+          const taxNo = form.taxNumber.replace(/\s/g, '');
+          const r = await axios.get(`${API}/customers/check-duplicate?taxNumber=${encodeURIComponent(taxNo)}`, { headers: authHeader() });
+          const d = r.data.data;
+          if (d.exists && d.existingRecord?.id) {
+            const name = d.existingRecord.fullName;
+            showToast('warning', `Bu Vergi No zaten kayıtlı — ${name} müşterisine yönlendiriliyor`);
+            setShowModal(false);
+            resetForm();
+            router.push(`/panel/musteriler/${d.existingRecord.id}`);
+            return;
+          }
+        } catch { /* aşağıdaki genel hataya düş */ }
+      }
       showToast('error', `Kayıt Başarısız: ${msg}`);
     } finally { setSaving(false); }
   };
-
-  const individualCount = customers.filter((c) => c.customerType === 'individual').length;
-  const corporateCount = customers.filter((c) => c.customerType === 'corporate').length;
 
   const hasActiveFilters = !!(search || typeFilter || subTypeFilter || cityFilter || statusFilter || sourceFilter || selectedTags.length);
 
@@ -1415,6 +1611,33 @@ export default function MusterilerPage() {
         <span>/</span>
         <span className="text-slate-600 font-medium">Müşteriler</span>
       </nav>
+
+      {settingsReturn && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <p className="text-sm text-blue-900">
+            <span className="font-semibold">{settingsReturn.returnLabel}</span>
+            <span className="text-blue-700"> — Müşteri grubu kaydı ekliyorsunuz</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <Link
+              href={settingsReturn.returnTo}
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              ← Ayarlara Dön
+            </Link>
+            <button
+              type="button"
+              onClick={() => setSettingsReturn(null)}
+              className="rounded-lg p-1.5 text-blue-500 hover:bg-blue-100 transition-colors"
+              aria-label="Bağlamı kapat"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="page-header">
@@ -1462,7 +1685,7 @@ export default function MusterilerPage() {
             </div>
             <div>
               <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Bireysel</p>
-              <p className="text-base font-bold text-purple-700 leading-tight tabular-nums">{individualCount}</p>
+              <p className="text-base font-bold text-purple-700 leading-tight tabular-nums">{typeSummary.individual}</p>
             </div>
           </div>
           <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
@@ -1475,7 +1698,7 @@ export default function MusterilerPage() {
             </div>
             <div>
               <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Kurumsal</p>
-              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{corporateCount}</p>
+              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{typeSummary.corporate}</p>
             </div>
           </div>
           {/* Finans istatistikleri: gerçek API verisi geldikten sonra eklenecek */}
@@ -1961,8 +2184,22 @@ export default function MusterilerPage() {
         <div className="flex flex-col h-full min-h-0">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
               <div>
-                <h3 className="text-base font-semibold text-white">Yeni Müşteri Ekle</h3>
-                <p className="text-emerald-200 text-xs mt-0.5">Tüm Bilgileri Eksiksiz Doldurun</p>
+                <h3 className="text-base font-semibold text-white">
+                  {settingsReturn ? `${settingsReturn.returnLabel} Ekle` : 'Yeni Müşteri Ekle'}
+                </h3>
+                <p className="text-emerald-200 text-xs mt-0.5">
+                  {settingsReturn
+                    ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
+                    : 'Tüm Bilgileri Eksiksiz Doldurun'}
+                </p>
+                {settingsReturn && (
+                  <Link
+                    href={settingsReturn.returnTo}
+                    className="inline-block mt-1.5 text-xs font-medium text-emerald-100 hover:text-white underline underline-offset-2"
+                  >
+                    ← {settingsReturn.returnLabel} listesine dön
+                  </Link>
+                )}
               </div>
               <button type="button" onClick={() => setShowModal(false)} className="text-emerald-200 hover:text-white transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -2005,7 +2242,10 @@ export default function MusterilerPage() {
             <div className="flex-1 overflow-y-auto p-6">
               {activeSection === 0 && (
                 <div>
-                  <SectionDivider emoji="👤" title="Müşteri Tipi" />
+                  <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
+                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.
+                  </p>
                   <div className="grid grid-cols-2 gap-3 mb-5">
                     {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
                       <button key={val} type="button"
@@ -2036,7 +2276,11 @@ export default function MusterilerPage() {
                     }}
                   />
 
-                  {form.customerType === 'individual' ? (
+                  {customerSubTypeRequired && !form.subType ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                      Cari bilgileri için yukarıdan müşteri tipini seçin.
+                    </div>
+                  ) : form.customerType === 'individual' ? (
                     <>
                       <SectionDivider emoji="📋" title="Bireysel Bilgiler" />
                       <div className="grid grid-cols-2 gap-4 items-start">
@@ -2131,7 +2375,10 @@ export default function MusterilerPage() {
                               value={form.taxNumber}
                               onChange={(e) => {
                                 const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                setForm((p) => ({ ...p, taxNumber: onlyDigits })); setGibError(null); setTaxNoError(null);
+                                setForm((p) => ({ ...p, taxNumber: onlyDigits }));
+                                setGibError(null); setTaxNoError(null); setTaxNoWarn(null);
+                                setDuplicateConflicts((p) => { const n = { ...p }; delete n.taxNumber; return n; });
+                                setDuplicateExistingCustomerId(null);
                               }}
                               onBlur={handleTaxNoBlur} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
@@ -2141,7 +2388,18 @@ export default function MusterilerPage() {
                             </button>
                           </div>
                           {taxNoError && <p className="text-xs text-red-500 mt-1.5">{taxNoError}</p>}
-                          {!taxNoError && gibError && <p className="text-xs text-amber-600 mt-1.5">⚠ {gibError}</p>}
+                          {!taxNoError && taxNoWarn && (
+                            <div className="mt-1.5 space-y-1">
+                              <p className="text-xs text-amber-600 flex items-center gap-1">⚠ {taxNoWarn}</p>
+                              {duplicateExistingCustomerId && (
+                                <button type="button" onClick={goToDuplicateCustomer}
+                                  className="text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">
+                                  Mevcut Müşteriye Git
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!taxNoError && !taxNoWarn && gibError && <p className="text-xs text-amber-600 mt-1.5">⚠ {gibError}</p>}
                         </FormField>
                         <FormField label="Vergi Dairesi">
                           <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} />
@@ -2349,8 +2607,9 @@ export default function MusterilerPage() {
                                   </FormField>
                                 </div>
                               </div>
-                              <FormField label="İlişki Türü">
+                              <FormField label="Görev / Ünvan">
                                 <select
+                                  ref={idx === 0 ? firstContactRoleRef : undefined}
                                   className={inp}
                                   value={c.role === '' ? '' : (relationshipTypes.includes(c.role) ? c.role : '__other__')}
                                   onChange={(e) => {
@@ -2358,7 +2617,7 @@ export default function MusterilerPage() {
                                     else upC(idx, 'role', e.target.value);
                                   }}
                                 >
-                                  <option value="">Seçin...</option>
+                                  <option value="">Görevini seçin...</option>
                                   {relationshipTypes.filter((rt) => rt !== 'Diğer').map((rt) => (
                                     <option key={rt} value={rt}>{rt}</option>
                                   ))}
@@ -2467,7 +2726,7 @@ export default function MusterilerPage() {
                           provinceName={form.city}
                           districtName={form.district}
                           value={form.neighborhood}
-                          onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
+                          onChange={(v) => setForm((p) => ({ ...p, neighborhood: normalizeFreeTextInput(v) }))}
                           inputClassName={inp}
                         />
                       </FormField>
@@ -2480,7 +2739,7 @@ export default function MusterilerPage() {
                           className={inp}
                           placeholder={ADDRESS_FIELD.streetPlaceholder}
                           value={form.streetName}
-                          onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
+                          onChange={(e) => setForm((p) => ({ ...p, streetName: normalizeFreeTextInput(e.target.value) }))}
                           onBlur={(e) => {
                             const v = toTitleCaseTR(e.target.value.trim());
                             if (v) setForm((p) => ({ ...p, streetName: v }));
@@ -2488,6 +2747,19 @@ export default function MusterilerPage() {
                         />
                       </FormField>
                     </div>
+                    <FormField label={ADDRESS_FIELD.siteName}>
+                      <input
+                        type="text"
+                        className={inp}
+                        placeholder={ADDRESS_FIELD.siteNamePlaceholder}
+                        value={form.address}
+                        onChange={(e) => setForm((p) => ({ ...p, address: normalizeFreeTextInput(e.target.value) }))}
+                        onBlur={(e) => {
+                          const v = toTitleCaseTR(e.target.value.trim());
+                          if (v) setForm((p) => ({ ...p, address: v }));
+                        }}
+                      />
+                    </FormField>
                     {/* Bina No + Daire No */}
                     <FormField label={ADDRESS_FIELD.buildingNo}>
                       <input
@@ -2512,7 +2784,7 @@ export default function MusterilerPage() {
                       <button
                         type="button"
                         disabled={geocoding || !customerAddressLabel}
-                        onClick={() => handleGeocodeAddress(form.city, form.district, form.neighborhood, form.streetName, form.buildingNo)}
+                        onClick={() => void handleGeocodeAddress()}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
                         title={!customerAddressLabel ? 'Önce adres bilgisi girin' : undefined}
                       >
@@ -2641,12 +2913,12 @@ export default function MusterilerPage() {
                     </FormField>
                   </div>
                   )}
-                  {(form.subType === 'eksper' || form.subType === 'eksper_firmasi' || form.subType === 'sigorta_sirketi' || form.subType === 'asistan_firmasi') && (
+                  {(form.subType === 'eksper' || form.subType === 'eksper_firmasi' || form.subType === 'sigorta_sirketi' || form.subType === 'broker_firmasi' || form.subType === 'asistan_firmasi') && (
                   <div className="mt-5">
                     <SectionDivider emoji="🛠" title="Hizmet Türü & Branşlar" />
 
-                    {/* Sigorta Şirketi ve Asistan Firması için Hizmet Türü gizli */}
-                    {form.subType !== 'sigorta_sirketi' && form.subType !== 'asistan_firmasi' && (
+                    {/* Sigorta, broker ve asistan firması için Hizmet Türü gizli */}
+                    {form.subType !== 'sigorta_sirketi' && form.subType !== 'broker_firmasi' && form.subType !== 'asistan_firmasi' && (
                     <FormField label="Hizmet Türü">
                       <div className="flex gap-2">
                         {(['hasar', 'acil_yardim'] as const).map((type) => (
@@ -2714,7 +2986,7 @@ export default function MusterilerPage() {
                                 )}
                               </div>
                               {branchList.length === 0 ? (
-                                <p className="text-xs text-slate-400 py-2">Hizmet branşı bulunamadı. Ayarlar → Meridyen Hizmet Branşları sayfasından ekleyin.</p>
+                                <p className="text-xs text-slate-400 py-2">Hizmet branşı bulunamadı. Ayarlar → Dosya Konuları sayfasından ekleyin.</p>
                               ) : (
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {branchList.map((branch) => {
@@ -2865,23 +3137,35 @@ export default function MusterilerPage() {
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl">⚠</div>
               <div>
                 <h4 className="text-sm font-semibold text-slate-800 mb-1">Çakışan Bilgi Tespit Edildi</h4>
-                <p className="text-xs text-slate-500">Bu Bilgiler Başka Bir Kayıtta Mevcut. Yine de Kaydetmek İstiyor Musunuz?</p>
+                <p className="text-xs text-slate-500">
+                  {hasHardDuplicate
+                    ? 'Bu TC Kimlik No veya Vergi No sistemde benzersizdir; aynı numara ile yeni kayıt açılamaz.'
+                    : 'Bu Bilgiler Başka Bir Kayıtta Mevcut. Yine de Kaydetmek İstiyor Musunuz?'}
+                </p>
               </div>
             </div>
             <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4 space-y-1">
               {duplicateConflicts.tc && <p className="text-xs text-amber-700">🪪 {duplicateConflicts.tc}</p>}
+              {duplicateConflicts.taxNumber && <p className="text-xs text-amber-700">🏢 {duplicateConflicts.taxNumber}</p>}
               {duplicateConflicts.phone && <p className="text-xs text-amber-700">📞 {duplicateConflicts.phone}</p>}
               {duplicateConflicts.email && <p className="text-xs text-amber-700">✉ {duplicateConflicts.email}</p>}
             </div>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowDuplicateModal(false)}
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
-                İptal
+                {hasHardDuplicate ? 'Formda Kal' : 'İptal'}
               </button>
-              <button type="button" onClick={() => doSave()}
-                className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
-                Yine de Kaydet
-              </button>
+              {hasHardDuplicate && duplicateExistingCustomerId ? (
+                <button type="button" onClick={goToDuplicateCustomer}
+                  className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">
+                  Mevcut Müşteriye Git
+                </button>
+              ) : (
+                <button type="button" onClick={() => doSave()}
+                  className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
+                  Yine de Kaydet
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,26 +1,135 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+import ProcessTimeline from '@/components/timeline/ProcessTimeline';
+import { API, authHeader } from '../claim-detail-utils';
+import { SectionCard } from '../claim-detail-ui';
 import { SubTabNav } from './sub-tab-nav';
 import { GorevlerTab } from './GorevlerTab';
 import { RandevularTab } from './RandevularTab';
 
-type TakipSubTab = 'gorevler' | 'randevular';
+type OperasyonSubTab = 'gorevler' | 'randevular' | 'surec' | 'gecmis';
 
-const TAKIP_SUB_TABS: { id: TakipSubTab; label: string }[] = [
-  { id: 'gorevler', label: 'Görevler' },
+const OPERASYON_SUB_TABS: { id: OperasyonSubTab; label: string }[] = [
+  { id: 'gorevler', label: 'Görevler & Hatırlatmalar' },
   { id: 'randevular', label: 'Randevular' },
+  { id: 'surec', label: 'Süreç Durumu' },
+  { id: 'gecmis', label: 'Hareket Geçmişi' },
 ];
 
+const ACTIVITY_ACTION_LABELS: Record<string, string> = {
+  SUPPLIER_ASSIGNED: 'Tedarikçi Atandı',
+  APPOINTMENT_SCHEDULED: 'Randevu Planlandı',
+  APPOINTMENT_UPDATED: 'Randevu Güncellendi',
+  INSPECTION_DONE: 'Tespit Yapıldı',
+  COST_REPORT_SUBMITTED: 'Maliyet Raporu Gönderildi',
+  ATTACHMENT_ADDED: 'Ek Yüklendi',
+  STATUS_CHANGED: 'Durum Değişti',
+  NOTE_ADDED: 'Not Eklendi',
+};
+
+const ACTIVITY_ACTION_COLORS: Record<string, string> = {
+  SUPPLIER_ASSIGNED: 'bg-purple-100 text-purple-700 border-purple-200',
+  APPOINTMENT_SCHEDULED: 'bg-blue-100 text-blue-700 border-blue-200',
+  APPOINTMENT_UPDATED: 'bg-blue-50 text-blue-600 border-blue-100',
+  INSPECTION_DONE: 'bg-amber-100 text-amber-700 border-amber-200',
+  COST_REPORT_SUBMITTED: 'bg-green-100 text-green-700 border-green-200',
+  ATTACHMENT_ADDED: 'bg-slate-100 text-slate-600 border-slate-200',
+  STATUS_CHANGED: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  NOTE_ADDED: 'bg-slate-100 text-slate-600 border-slate-200',
+};
+
+function HareketGecmisiPanel({ claimId }: { claimId: string }) {
+  const [activityLog, setActivityLog] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadLog = useCallback(() => {
+    setLoading(true);
+    axios
+      .get(`${API}/claim-files/${claimId}/activity-log`, { headers: authHeader() })
+      .then((r) => setActivityLog(r.data.data ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [claimId]);
+
+  useEffect(() => {
+    loadLog();
+  }, [loadLog]);
+
+  return (
+    <SectionCard title="Hareket Geçmişi">
+      <p className="text-xs text-slate-500 mb-4">
+        Dosyada yapılan atama, randevu, tespit ve durum değişiklikleri otomatik kaydedilir.
+      </p>
+      {loading ? (
+        <p className="text-sm text-slate-400 py-8 text-center">Yükleniyor…</p>
+      ) : activityLog.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <p className="text-sm text-slate-500">Henüz hareket kaydı yok.</p>
+          <p className="text-xs text-slate-400 mt-1">İşlemler burada kronolojik olarak görünecek.</p>
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200" />
+          <div className="space-y-4 pl-10">
+            {activityLog.map((log) => {
+              const actionColor = ACTIVITY_ACTION_COLORS[log.action] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+              const actionLabel = ACTIVITY_ACTION_LABELS[log.action] ?? log.action;
+              return (
+                <div key={log.id} className="relative">
+                  <div className="absolute -left-10 top-2.5 w-4 h-4 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  </div>
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${actionColor}`}>
+                        {actionLabel}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(log.createdAt).toLocaleString('tr-TR')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700">{log.description}</p>
+                    {log.actor && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        {log.actor.firstName} {log.actor.lastName} · {log.actorRole}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
-  const [subTab, setSubTab] = useState<TakipSubTab>('gorevler');
+  const [subTab, setSubTab] = useState<OperasyonSubTab>('gorevler');
 
   return (
     <div className="space-y-4">
-      <SubTabNav tabs={TAKIP_SUB_TABS} active={subTab} onChange={setSubTab} />
+      <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+        <p className="text-sm font-semibold text-slate-800">Dosya Operasyonu</p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Hatırlatmalar, randevular, süreç durumu ve hareket geçmişi tek yerden yönetilir.
+        </p>
+      </div>
 
-      {subTab === 'gorevler' && <GorevlerTab claimId={claimId} />}
+      <SubTabNav tabs={OPERASYON_SUB_TABS} active={subTab} onChange={setSubTab} />
+
+      {subTab === 'gorevler' && <GorevlerTab claimId={claimId} claim={claim} />}
       {subTab === 'randevular' && <RandevularTab claimId={claimId} claim={claim} />}
+      {subTab === 'surec' && <ProcessTimeline claimFileId={claimId} />}
+      {subTab === 'gecmis' && <HareketGecmisiPanel claimId={claimId} />}
     </div>
   );
 }

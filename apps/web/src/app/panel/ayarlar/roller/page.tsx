@@ -18,15 +18,8 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Rol Adı', defaultWidth: 180, minWidth: 120 },
-  { id: 'code', label: 'Kod', defaultWidth: 120, minWidth: 80 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 200, minWidth: 120 },
-  { id: 'userCount', label: 'Kullanıcı Sayısı', defaultWidth: 130, minWidth: 100 },
-];
 
 type Role = { id: string; code: string; name: string; description?: string | null; _count?: { users: number } };
 
@@ -66,23 +59,26 @@ export default function RollerPage() {
   const openEdit = (r: Role) => { setEditing(r); setForm({ name: r.name, code: r.code, description: r.description ?? '' }); setError(''); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Rol Adı zorunludur'); return; }
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
+    if (!name) { setError('Rol Adı zorunludur'); return; }
     if (!form.code.trim()) { setError('Kod zorunludur'); return; }
     if (!/^[A-Z_]+$/.test(form.code)) { setError('Kod yalnızca büyük harf ve alt çizgi (_) içerebilir'); return; }
     const dupName = roles.find((r) =>
-      r.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || r.id !== editing.id)
+      r.name.trim().toLowerCase() === name.toLowerCase() && (!editing || r.id !== editing.id)
     );
     if (dupName) { setError('Bu isimde bir rol zaten mevcut!'); return; }
     const dupCode = roles.find((r) =>
       r.code.trim().toUpperCase() === form.code.trim().toUpperCase() && (!editing || r.id !== editing.id)
     );
     if (dupCode) { setError('Bu kodda bir rol zaten mevcut!'); return; }
+    const payload = { name, code: form.code, description: description || undefined };
     setSaving(true); setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/roles/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/roles/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/roles`, form, { headers: authHeader() });
+        await axios.post(`${API}/roles`, payload, { headers: authHeader() });
       }
       setShowModal(false); fetchRoles();
     } catch (e: any) { setError(e.response?.data?.message ?? 'Bir hata oluştu'); }
@@ -100,14 +96,11 @@ export default function RollerPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Rol Yönetimi"
       description="Sistem rollerini ve yetkilerini yönetin"
       addButtonText="+ Yeni Rol"
       onAdd={openCreate}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <div className="mb-4">
@@ -121,23 +114,23 @@ export default function RollerPage() {
       <SettingsTable loading={loading} empty={filtered.length === 0}
         emptyText={search ? 'Arama kriterlerine uyan rol bulunamadı.' : 'Henüz rol tanımlanmamış.'}>
         <SettingsTableHead>
-          <SettingsTableTh colId="name">Rol Adı</SettingsTableTh>
-          <SettingsTableTh colId="code">Kod</SettingsTableTh>
-          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
-          <SettingsTableTh colId="userCount">Kullanıcı Sayısı</SettingsTableTh>
+          <SettingsTableTh>Rol Adı</SettingsTableTh>
+          <SettingsTableTh>Kod</SettingsTableTh>
+          <SettingsTableTh>Açıklama</SettingsTableTh>
+          <SettingsTableTh>Kullanıcı Sayısı</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {filtered.map((r) => (
             <SettingsTableRow key={r.id}>
-              <SettingsTableTd colId="name"><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
-              <SettingsTableTd colId="code">
+              <SettingsTableTd><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
+              <SettingsTableTd>
                 <code className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{r.code}</code>
               </SettingsTableTd>
-              <SettingsTableTd colId="description">
+              <SettingsTableTd>
                 <p className="text-sm text-slate-500">{r.description || <span className="text-slate-300 italic">—</span>}</p>
               </SettingsTableTd>
-              <SettingsTableTd colId="userCount">
+              <SettingsTableTd>
                 <span className="inline-flex items-center gap-1 text-sm text-slate-600">
                   <span className="font-medium">{r._count?.users ?? 0}</span>
                   <span className="text-slate-400">kullanıcı</span>
@@ -157,7 +150,7 @@ export default function RollerPage() {
         onSave={handleSave} saving={saving} error={error}>
         <div>
           <label className={labelCls}>Rol Adı <span className="text-red-500">*</span></label>
-          <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Örn: Muhasebe Yöneticisi" />
+          <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm((p) => ({ ...p, name: v })); }} placeholder="Örn: Muhasebe Yöneticisi" />
         </div>
         <div>
           <label className={labelCls}>Kod <span className="text-red-500">*</span></label>
@@ -172,7 +165,9 @@ export default function RollerPage() {
         <div>
           <label className={labelCls}>Açıklama</label>
           <textarea className={`${inputCls} resize-none`} rows={3} value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opsiyonel açıklama" />
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm((p) => ({ ...p, description: v })); }}
+            placeholder="Opsiyonel açıklama" />
         </div>
       </SettingsModal>
 
@@ -190,7 +185,5 @@ export default function RollerPage() {
         }
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

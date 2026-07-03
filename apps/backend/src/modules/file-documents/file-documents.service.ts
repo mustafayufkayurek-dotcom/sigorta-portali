@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { buildAppPath } from '@/common/utils/app-url';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -397,8 +398,7 @@ export class FileDocumentsService {
     const doc = await this.findOne(id);
     if (!doc.publicToken) throw new BadRequestException('Public token bulunamadı');
 
-    const appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
-    const link = `${appUrl}/evrak/${doc.publicToken}`;
+    const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
 
     const kindLabel =
       doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';

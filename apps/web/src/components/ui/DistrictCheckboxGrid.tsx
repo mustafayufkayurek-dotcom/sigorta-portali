@@ -64,10 +64,16 @@ export function DistrictCheckboxGrid({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={searchPlaceholder}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          name="meridyen-district-grid-search"
+          data-1p-ignore
+          data-lpignore="true"
           className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
         />
         {query && (

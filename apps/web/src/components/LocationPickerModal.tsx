@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { geocodeAddressCascade } from '@/utils/geocode-address';
 
 export interface LatLng {
   lat: number;
@@ -57,16 +58,11 @@ const DEFAULT_LAT = 39.9255;
 const DEFAULT_LNG = 32.8663;
 const DEFAULT_ZOOM = 6;
 
-/** Nominatim geocoding — adres metninden koordinat döndürür */
+/** Nominatim geocoding — adres metninden koordinat döndürür (kademeli) */
 async function geocodeAddress(address: string): Promise<LatLng | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=tr&limit=1`;
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'SigortaHasarSistemi/1.0 (contact@example.com)' },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data || data.length === 0) return null;
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  const result = await geocodeAddressCascade({ streetName: address });
+  if (!result) return null;
+  return { lat: result.lat, lng: result.lng };
 }
 
 const GEO_ERROR_MESSAGES: Record<number, string> = {

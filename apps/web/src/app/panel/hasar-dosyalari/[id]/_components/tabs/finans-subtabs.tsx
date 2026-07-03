@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
@@ -567,7 +568,7 @@ const INVOICE_STATUS_COLOR: Record<string, string> = {
   partial: 'bg-yellow-100 text-yellow-700', cancelled: 'bg-red-100 text-red-700', overdue: 'bg-red-200 text-red-800',
 };
 
-export function FaturalarTab({ claimId }: { claimId: string }) {
+export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }) {
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -658,9 +659,28 @@ export function FaturalarTab({ claimId }: { claimId: string }) {
   if (loading) return <div className="py-12 text-center text-slate-400">Yükleniyor...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <SectionCard title="Fatura Talebi">
+        <p className="text-xs text-slate-500 mb-4">
+          Sigortaya kesilecek fatura için talep oluşturun. Evrak durumunu Evraklar → Özet sekmesinden takip edebilirsiniz.
+        </p>
+        <ClosureConditionsPanel
+          serviceType="claim"
+          entityId={claimId}
+          fileNo={claim?.fileNo ?? ''}
+          insuranceCompanyId={claim?.insuranceCompanyId}
+          insuranceCompanyName={claim?.insuranceCompany?.name}
+          totalAmount={claim?.budget?.totalAmount ?? 0}
+          workItemsSummary={[]}
+          showClosureChecklist={false}
+          showInvoiceRequest
+          showSurvey
+        />
+      </SectionCard>
+
+      <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">Faturalar</h3>
+        <h3 className="text-base font-semibold text-slate-800">Kesilen Faturalar</h3>
         <button type="button" onClick={() => setShowForm(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Fatura</button>
       </div>
 
@@ -751,6 +771,7 @@ export function FaturalarTab({ claimId }: { claimId: string }) {
           </table>
         </div>
       )}
+      </div>
     </div>
   );
 }

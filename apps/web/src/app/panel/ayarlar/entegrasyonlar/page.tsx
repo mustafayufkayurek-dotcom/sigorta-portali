@@ -9,7 +9,19 @@ import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { inputCls, labelCls } from '@/components/settings/SettingsUI';
 import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 
-type IntegrationTab = 'sms' | 'turmob' | 'logo-wings';
+type IntegrationTab = 'sms' | 'turmob' | 'logo-wings' | 'm365' | 'google-places';
+
+interface M365GraphConfig {
+  tenantId: string;
+  clientId: string;
+  clientSecret: string;
+  ihbarMailbox: string;
+  hasarMailbox: string;
+  active: boolean;
+  lastTestAt?: string;
+  lastTestSuccess?: boolean;
+  lastTestMessage?: string;
+}
 
 interface SmsConfig {
   provider: 'netgsm' | 'iletimerkezi' | 'other';
@@ -32,6 +44,11 @@ interface LogoWingsConfig {
   apiKey: string;
   username: string;
   password: string;
+  active: boolean;
+}
+
+interface GooglePlacesConfig {
+  apiKey: string;
   active: boolean;
 }
 
@@ -59,11 +76,30 @@ const defaultLogoWingsConfig: LogoWingsConfig = {
   active: false,
 };
 
+const defaultGooglePlacesConfig: GooglePlacesConfig = {
+  apiKey: '',
+  active: false,
+};
+
+const defaultM365Config: M365GraphConfig = {
+  tenantId: '',
+  clientId: '',
+  clientSecret: '',
+  ihbarMailbox: 'ihbar@safranbh.com',
+  hasarMailbox: 'hasar@safranbh.com',
+  active: false,
+};
+
 const TABS: { id: IntegrationTab; label: string; description: string }[] = [
   {
     id: 'sms',
     label: 'SMS Entegrasyonu',
     description: 'Netgsm / İleti Merkezi sağlayıcı bağlantısı',
+  },
+  {
+    id: 'm365',
+    label: 'Microsoft 365',
+    description: 'ihbar@ / hasar@ paylaşımlı kutu gelen kutusu',
   },
   {
     id: 'turmob',
@@ -75,10 +111,15 @@ const TABS: { id: IntegrationTab; label: string; description: string }[] = [
     label: 'Logo Wings ERP',
     description: 'Muhasebe ve ERP bağlantısı',
   },
+  {
+    id: 'google-places',
+    label: 'Google Places',
+    description: 'Tedarikçi dış kaynak arama (Places API)',
+  },
 ];
 
 function parseTab(value: string | null): IntegrationTab {
-  if (value === 'sms' || value === 'turmob' || value === 'logo-wings') return value;
+  if (value === 'sms' || value === 'turmob' || value === 'logo-wings' || value === 'm365' || value === 'google-places') return value;
   return 'sms';
 }
 
@@ -90,6 +131,13 @@ export default function EntegrasyonlarPage() {
   const [smsConfig, setSmsConfig] = useState<SmsConfig>(defaultSmsConfig);
   const [turmobConfig, setTurmobConfig] = useState<TurmobConfig>(defaultTurmobConfig);
   const [logoWingsConfig, setLogoWingsConfig] = useState<LogoWingsConfig>(defaultLogoWingsConfig);
+  const [googlePlacesConfig, setGooglePlacesConfig] = useState<GooglePlacesConfig>(defaultGooglePlacesConfig);
+  const [googlePlacesKeyConfigured, setGooglePlacesKeyConfigured] = useState(false);
+  const [googlePlacesTesting, setGooglePlacesTesting] = useState(false);
+  const [googlePlacesTestMsg, setGooglePlacesTestMsg] = useState('');
+  const [googlePlacesTestError, setGooglePlacesTestError] = useState('');
+  const [m365Config, setM365Config] = useState<M365GraphConfig>(defaultM365Config);
+  const [m365SecretConfigured, setM365SecretConfigured] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,6 +149,12 @@ export default function EntegrasyonlarPage() {
   const [testSuccess, setTestSuccess] = useState('');
   const [testError, setTestError] = useState('');
 
+  const [m365TestResult, setM365TestResult] = useState<{
+    success: boolean;
+    message: string;
+    mailboxes?: { label: string; address: string; ok: boolean; totalItems?: number; error?: string }[];
+  } | null>(null);
+
   useEffect(() => {
     setActiveTab(parseTab(searchParams.get('sekme')));
   }, [searchParams]);
@@ -108,10 +162,11 @@ export default function EntegrasyonlarPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [smsRes, turmobRes, integrationRes] = await Promise.all([
+        const [smsRes, turmobRes, integrationRes, m365Res] = await Promise.all([
           axios.get(`${API}/system-settings/sms-config`, { headers: authHeader() }),
           axios.get(`${API}/system-settings/turmob-config`, { headers: authHeader() }),
           axios.get(`${API}/system-settings/integration-config`, { headers: authHeader() }),
+          axios.get(`${API}/system-settings/m365-graph-config`, { headers: authHeader() }),
         ]);
 
         const smsData = smsRes.data?.data;
@@ -144,6 +199,31 @@ export default function EntegrasyonlarPage() {
             username: lw.username ?? '',
             password: lw.password ?? '',
             active: lw.active ?? false,
+          });
+        }
+
+        const gp = integrationRes.data?.data?.googlePlaces;
+        if (gp) {
+          setGooglePlacesKeyConfigured(Boolean(gp.apiKey));
+          setGooglePlacesConfig({
+            apiKey: '',
+            active: gp.active ?? false,
+          });
+        }
+
+        const m365Data = m365Res.data?.data;
+        if (m365Data) {
+          setM365SecretConfigured(Boolean(m365Data.clientSecretConfigured));
+          setM365Config({
+            tenantId: m365Data.tenantId ?? '',
+            clientId: m365Data.clientId ?? '',
+            clientSecret: '',
+            ihbarMailbox: m365Data.ihbarMailbox ?? 'ihbar@safranbh.com',
+            hasarMailbox: m365Data.hasarMailbox ?? 'hasar@safranbh.com',
+            active: m365Data.active ?? false,
+            lastTestAt: m365Data.lastTestAt,
+            lastTestSuccess: m365Data.lastTestSuccess,
+            lastTestMessage: m365Data.lastTestMessage,
           });
         }
       } catch {
@@ -190,6 +270,76 @@ export default function EntegrasyonlarPage() {
     }
   };
 
+  const handleSaveM365 = async () => {
+    if (!m365Config.tenantId.trim() || !m365Config.clientId.trim()) {
+      setSaveError('Kiracı kimliği ve uygulama kimliği zorunludur.');
+      return;
+    }
+    if (!m365SecretConfigured && !m365Config.clientSecret.trim()) {
+      setSaveError('Gizli anahtar zorunludur.');
+      return;
+    }
+    setSaving(true);
+    setSaveError('');
+    try {
+      const res = await axios.put(`${API}/system-settings/m365-graph-config`, m365Config, { headers: authHeader() });
+      if (res.data?.data?.clientSecretConfigured) {
+        setM365SecretConfigured(true);
+        setM365Config((prev) => ({ ...prev, clientSecret: '' }));
+      }
+      redirectAfterSettingsSave(router, 'entegrasyonlar-m365');
+    } catch (e: any) {
+      setSaveError(e.response?.data?.message ?? 'Microsoft 365 ayarları kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTestM365 = async () => {
+    if (!m365Config.tenantId.trim() || !m365Config.clientId.trim()) {
+      setTestError('Test için kiracı kimliği ve uygulama kimliği girin.');
+      return;
+    }
+    if (!m365SecretConfigured && !m365Config.clientSecret.trim()) {
+      setTestError('Test için gizli anahtar girin veya önce kaydedilmiş bir secret olmalı.');
+      return;
+    }
+    setTesting(true);
+    setM365TestResult(null);
+    setTestSuccess('');
+    setTestError('');
+    try {
+      const res = await axios.post(
+        `${API}/operation-inbox/test-connection`,
+        m365Config,
+        { headers: authHeader() },
+      );
+      const data = res.data?.data;
+      setM365TestResult(data ?? null);
+      if (res.data?.success) {
+        setTestSuccess(data?.message ?? 'Bağlantı başarılı.');
+        setM365Config((prev) => ({
+          ...prev,
+          lastTestAt: new Date().toISOString(),
+          lastTestSuccess: true,
+          lastTestMessage: data?.message,
+        }));
+      } else {
+        setTestError(data?.message ?? 'Bağlantı testi başarısız.');
+        setM365Config((prev) => ({
+          ...prev,
+          lastTestAt: new Date().toISOString(),
+          lastTestSuccess: false,
+          lastTestMessage: data?.message,
+        }));
+      }
+    } catch (e: any) {
+      setTestError(e.response?.data?.message ?? 'Bağlantı testi yapılamadı.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const handleSaveLogoWings = async () => {
     setSaving(true);
     setSaveError('');
@@ -204,6 +354,50 @@ export default function EntegrasyonlarPage() {
       setSaveError(e.response?.data?.message ?? 'Logo Wings ayarları kaydedilemedi.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveGooglePlaces = async () => {
+    if (googlePlacesConfig.active && !googlePlacesKeyConfigured && !googlePlacesConfig.apiKey.trim()) {
+      setSaveError('Google Places için API key zorunludur.');
+      return;
+    }
+    setSaving(true);
+    setSaveError('');
+    try {
+      await axios.put(
+        `${API}/system-settings/integration-config`,
+        { googlePlaces: googlePlacesConfig },
+        { headers: authHeader() },
+      );
+      if (googlePlacesConfig.apiKey.trim()) {
+        setGooglePlacesKeyConfigured(true);
+        setGooglePlacesConfig((prev) => ({ ...prev, apiKey: '' }));
+      }
+      redirectAfterSettingsSave(router, 'entegrasyonlar-google-places');
+    } catch (e: any) {
+      setSaveError(e.response?.data?.message ?? 'Google Places ayarları kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTestGooglePlaces = async () => {
+    setGooglePlacesTesting(true);
+    setGooglePlacesTestMsg('');
+    setGooglePlacesTestError('');
+    try {
+      const res = await axios.post(`${API}/vendor-discovery/test-google`, {}, { headers: authHeader() });
+      const data = res.data?.data;
+      if (res.data?.success && data?.ok) {
+        setGooglePlacesTestMsg(data.message ?? 'Bağlantı başarılı.');
+      } else {
+        setGooglePlacesTestError(data?.message ?? 'Bağlantı testi başarısız.');
+      }
+    } catch (e: any) {
+      setGooglePlacesTestError(e.response?.data?.data?.message ?? e.response?.data?.message ?? 'Bağlantı testi yapılamadı.');
+    } finally {
+      setGooglePlacesTesting(false);
     }
   };
 
@@ -240,7 +434,7 @@ export default function EntegrasyonlarPage() {
   return (
     <SettingsPageLayout
       title="Entegrasyon Merkezi"
-      description="SMS sağlayıcısı, TÜRMOB ünvan sorgusu ve Logo Wings ERP bağlantılarını yapılandırın"
+      description="SMS, Microsoft 365 gelen kutusu, TÜRMOB ünvan sorgusu, Logo Wings ERP ve Google Places bağlantılarını yapılandırın"
     >
       <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3">
         <p className="text-sm text-slate-600">
@@ -518,6 +712,204 @@ export default function EntegrasyonlarPage() {
         </div>
       )}
 
+      {activeTab === 'm365' && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between border-b border-slate-50 pb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">Microsoft 365 Gelen Kutusu</h3>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    Azure uygulama kaydı bilgileri ile ihbar@ ve hasar@ paylaşımlı kutularına erişim
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setM365Config((prev) => ({ ...prev, active: !prev.active }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    m365Config.active ? 'bg-blue-600' : 'bg-slate-200'
+                  }`}
+                  role="switch"
+                  aria-checked={m365Config.active}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      m365Config.active ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Kiracı Kimliği (Tenant ID)</label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="849fe7c7-c0e2-44a2-9b61-066caa5c3a75"
+                    value={m365Config.tenantId}
+                    onChange={(e) => setM365Config((prev) => ({ ...prev, tenantId: e.target.value.trim() }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Uygulama Kimliği (Client ID)</label>
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="bc13c71e-0396-4a96-8552-5f2b0312c3e0"
+                    value={m365Config.clientId}
+                    onChange={(e) => setM365Config((prev) => ({ ...prev, clientId: e.target.value.trim() }))}
+                  />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label className={labelCls}>Gizli Anahtar (Client Secret)</label>
+                    {m365SecretConfigured && (
+                      <span className="badge badge-green text-[11px]">Kayıtlı</span>
+                    )}
+                  </div>
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder={
+                      m365SecretConfigured
+                        ? 'Değiştirmek için yeni secret yapıştırın'
+                        : 'Azure’da oluşturduğunuz secret değeri'
+                    }
+                    value={m365Config.clientSecret}
+                    onChange={(e) => setM365Config((prev) => ({ ...prev, clientSecret: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    {m365SecretConfigured
+                      ? 'Güvenlik nedeniyle kayıtlı secret gösterilmez.'
+                      : 'Azure Sertifikalar ve gizli diziler → Değer sütununu kopyalayın.'}
+                  </p>
+                  {m365SecretConfigured && !m365Config.clientSecret && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Test başarısızsa Azure Değer sütununu tekrar yapıştırın (Secret ID değil).
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className={labelCls}>İhbar Paylaşımlı Kutu</label>
+                    <input
+                      type="email"
+                      className={inputCls}
+                      value={m365Config.ihbarMailbox}
+                      onChange={(e) => setM365Config((prev) => ({ ...prev, ihbarMailbox: e.target.value.trim() }))}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Hasar Paylaşımlı Kutu</label>
+                    <input
+                      type="email"
+                      className={inputCls}
+                      value={m365Config.hasarMailbox}
+                      onChange={(e) => setM365Config((prev) => ({ ...prev, hasarMailbox: e.target.value.trim() }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-50 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSaveM365}
+                  disabled={saving}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Kaydediliyor...' : 'Microsoft 365 Ayarlarını Kaydet'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestM365}
+                  disabled={testing}
+                  className="rounded-lg border border-blue-600 px-5 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {testing ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
+                </button>
+                {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+              </div>
+
+              {(testSuccess || testError) && (
+                <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${testSuccess ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  {testSuccess || testError}
+                </div>
+              )}
+
+              {m365TestResult?.mailboxes && m365TestResult.mailboxes.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {m365TestResult.mailboxes.map((mb) => (
+                    <div
+                      key={mb.address}
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                        mb.ok ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'
+                      }`}
+                    >
+                      <span className="font-medium text-slate-700">{mb.label} — {mb.address}</span>
+                      <span className={mb.ok ? 'text-green-700' : 'text-red-600'}>
+                        {mb.ok
+                          ? `Okunuyor (${mb.totalItems ?? 0} gelen)`
+                          : (mb.error ?? 'Erişim yok')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4 lg:col-span-1">
+            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-slate-700">Bağlantı Durumu</h3>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    m365Config.active && m365Config.lastTestSuccess
+                      ? 'bg-green-500'
+                      : m365Config.active
+                        ? 'bg-amber-400'
+                        : 'bg-slate-300'
+                  }`}
+                />
+                <span className="text-sm text-slate-600">
+                  {m365Config.active
+                    ? m365Config.lastTestSuccess
+                      ? 'Aktif — son test başarılı'
+                      : 'Aktif — test bekleniyor'
+                    : 'Pasif'}
+                </span>
+              </div>
+              {m365Config.lastTestAt && (
+                <p className="mt-2 text-xs text-slate-400">
+                  Son test: {new Date(m365Config.lastTestAt).toLocaleString('tr-TR')}
+                </p>
+              )}
+              {m365Config.lastTestMessage && (
+                <p className="mt-2 text-xs text-slate-500">{m365Config.lastTestMessage}</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-slate-700">Azure Bilgileri Nereden?</h3>
+              <p className="text-xs leading-relaxed text-slate-500">
+                Azure Portal → Uygulama kayıtları → Meridyen Gelen Kutusu → Genel bakış ve Sertifikalar
+                sekmesinden Tenant ID, Client ID ve Client Secret alın. Mail.Read (Uygulama) izni okuma için;
+                gelen kutusundan yanıt göndermek için ek olarak Mail.Send (Uygulama) izni ve yönetici onayı gerekir.
+              </p>
+              <Link
+                href="/panel/operasyon/gelen-kutusu"
+                className="mt-3 inline-block text-xs font-medium text-blue-600 hover:underline"
+              >
+                Operasyon Gelen Kutusuna Git →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'logo-wings' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
@@ -605,6 +997,88 @@ export default function EntegrasyonlarPage() {
             <p className="text-xs leading-relaxed text-slate-500">
               Logo Wings ERP bağlantı bilgilerini Logo yetkilisinden veya IT ekibinizden alın. Entegrasyon pasifken
               dış sistem çağrıları yapılmaz.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'google-places' && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between border-b border-slate-50 pb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">Google Places API</h3>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    Tedarikçiler sayfasındaki dış kaynak arama için Places API (New) Text Search
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGooglePlacesConfig((prev) => ({ ...prev, active: !prev.active }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    googlePlacesConfig.active ? 'bg-blue-600' : 'bg-slate-200'
+                  }`}
+                  role="switch"
+                  aria-checked={googlePlacesConfig.active}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      googlePlacesConfig.active ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="grid gap-4">
+                <div>
+                  <label className={labelCls}>API Key</label>
+                  <input
+                    type="password"
+                    className={inputCls}
+                    placeholder={googlePlacesKeyConfigured ? 'Kayıtlı key mevcut — değiştirmek için yeni key girin' : 'GCP Places API key'}
+                    value={googlePlacesConfig.apiKey}
+                    onChange={(e) => setGooglePlacesConfig((prev) => ({ ...prev, apiKey: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    Key yalnızca sunucuda kullanılır. Ortam değişkeni <code className="text-slate-500">GOOGLE_PLACES_API_KEY</code> ayarlıysa ve burada aktif değilse env değeri kullanılır.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-50 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSaveGooglePlaces}
+                  disabled={saving}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Kaydediliyor...' : 'Google Places Ayarlarını Kaydet'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestGooglePlaces}
+                  disabled={googlePlacesTesting}
+                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {googlePlacesTesting ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
+                </button>
+                {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+              </div>
+              {(googlePlacesTestMsg || googlePlacesTestError) && (
+                <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${googlePlacesTestMsg ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  {googlePlacesTestMsg || googlePlacesTestError}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-1">
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">Google Places</h3>
+            <p className="text-xs leading-relaxed text-slate-500">
+              GCP konsolunda Places API (New) etkinleştirin ve sunucu tarafı kısıtlaması uygulayın.
+              Entegrasyon pasifken veya key yoksa tedarikçi araması mock sonuç döner.
             </p>
           </div>
         </div>

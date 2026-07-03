@@ -28,6 +28,14 @@ export class UserLocationsController {
     return { success: true, data };
   }
 
+  @Get('field-map')
+  @RequirePermissions('location.view')
+  @ApiOperation({ summary: 'Saha haritası: personel + aktif tedarikçiler (hasar/acil)' })
+  async getFieldMap() {
+    const data = await this.service.getFieldMap();
+    return { success: true, data };
+  }
+
   @Get(':userId/latest')
   @RequirePermissions('location.view')
   @ApiOperation({ summary: 'Tek kullanıcının son konumu' })

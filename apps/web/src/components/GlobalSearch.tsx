@@ -228,7 +228,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             {/* Recent searches (empty state) */}
             {!query && recentSearches.length > 0 && (
               <div className="px-4 py-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Son Aramalar</p>
+                <p className="text-[10px] font-bold text-slate-400 mb-2">Son Aramalar</p>
                 <div className="flex flex-wrap gap-1.5">
                   {recentSearches.map((s) => (
                     <button
@@ -284,7 +284,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               if (!items.length) return null;
               return (
                 <div key={cat} className="py-2">
-                  <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
                     <span>{CATEGORY_ICONS[cat]}</span>
                     {CATEGORY_LABELS[cat]}
                     <span className="ml-auto font-normal text-slate-300 normal-case tracking-normal">{items.length}</span>

@@ -37,6 +37,16 @@ export class FileDocumentsController {
     return this.service.findByEntity(entityType, entityId);
   }
 
+  @Get('claim-file/:claimFileId/closure-conditions')
+  checkClaimClosure(@Param('claimFileId') claimFileId: string) {
+    return this.service.checkClaimFileClosureConditions(claimFileId);
+  }
+
+  @Get('emergency-case/:emergencyCaseId/closure-conditions')
+  checkEmergencyClosure(@Param('emergencyCaseId') emergencyCaseId: string) {
+    return this.service.checkEmergencyCaseClosureConditions(emergencyCaseId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
@@ -60,15 +70,5 @@ export class FileDocumentsController {
       file.mimetype,
     );
     return this.service.uploadPhysical(id, result.key, req.user.id);
-  }
-
-  @Get('claim-file/:claimFileId/closure-conditions')
-  checkClaimClosure(@Param('claimFileId') claimFileId: string) {
-    return this.service.checkClaimFileClosureConditions(claimFileId);
-  }
-
-  @Get('emergency-case/:emergencyCaseId/closure-conditions')
-  checkEmergencyClosure(@Param('emergencyCaseId') emergencyCaseId: string) {
-    return this.service.checkEmergencyCaseClosureConditions(emergencyCaseId);
   }
 }

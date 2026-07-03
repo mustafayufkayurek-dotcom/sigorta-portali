@@ -2,17 +2,41 @@
  * Türkçe karakter destekli Title Case dönüştürücü.
  * "mustafa yufkayürek" → "Mustafa Yufkayürek"
  * "MUSTAFA YUFKAYÜREK" → "Mustafa Yufkayürek"
+ * "tic. a.ş." → "Tic. A.Ş." (nokta sonrası harf büyük)
  *
  * Idempotent: Zaten düzgün biçimlendirilmiş metni yeniden işlese de aynı çıktıyı üretir.
  */
 export function toTitleCaseTR(str: string): string {
   if (!str) return str;
+
   const lowerMap: Record<string, string> = {
-    'I': 'ı', 'İ': 'i', 'Ğ': 'ğ', 'Ü': 'ü', 'Ş': 'ş', 'Ö': 'ö', 'Ç': 'ç',
+    I: 'ı', İ: 'i', Ğ: 'ğ', Ü: 'ü', Ş: 'ş', Ö: 'ö', Ç: 'ç',
   };
   const upperMap: Record<string, string> = {
-    'ı': 'I', 'i': 'İ', 'ğ': 'Ğ', 'ü': 'Ü', 'ş': 'Ş', 'ö': 'Ö', 'ç': 'Ç',
+    ı: 'I', i: 'İ', ğ: 'Ğ', ü: 'Ü', ş: 'Ş', ö: 'Ö', ç: 'Ç',
   };
+
+  const titleCaseToken = (token: string): string => {
+    let result = '';
+    let capitalizeNext = true;
+
+    for (const c of token) {
+      if (/[\p{L}]/u.test(c)) {
+        result += capitalizeNext
+          ? (upperMap[c] ?? c.toUpperCase())
+          : (lowerMap[c] ?? c.toLowerCase());
+        capitalizeNext = false;
+      } else if (c === '.') {
+        result += c;
+        capitalizeNext = true;
+      } else {
+        result += c;
+      }
+    }
+
+    return result;
+  };
+
   return str
     .split(/(\s+)/)
     .map((part) => {
@@ -21,14 +45,7 @@ export function toTitleCaseTR(str: string): string {
         .split(/(-+)/)
         .map((segment) => {
           if (/^-+$/.test(segment) || !segment) return segment;
-          const first = segment.charAt(0);
-          const rest = segment.slice(1);
-          const upperFirst = upperMap[first] ?? first.toUpperCase();
-          const lowerRest = rest
-            .split('')
-            .map((c) => lowerMap[c] ?? c.toLowerCase())
-            .join('');
-          return upperFirst + lowerRest;
+          return titleCaseToken(segment);
         })
         .join('');
     })
@@ -85,4 +102,24 @@ export function sortCompareTR(a: string, b: string): number {
 
 export function sortByNameTR<T extends { name: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => sortCompareTR(a.name, b.name));
+}
+
+/** Fatura/mailden yapıştırılan tamamen büyük harf metinleri tespit eder */
+export function looksAllCapsTR(s: string): boolean {
+  const t = s.trim();
+  if (t.length < 2) return false;
+  return t === t.toLocaleUpperCase('tr-TR') && /[\p{L}]/u.test(t);
+}
+
+/** Serbest metin alanı — yapıştırma sonrası otomatik Title Case */
+export function normalizeFreeTextInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  return looksAllCapsTR(trimmed) ? toTitleCaseTR(trimmed) : value;
+}
+
+/** Form serbest metin — blur ve kayıt öncesi Title Case (boşsa boş döner) */
+export function normalizeFormFreeText(value: string): string {
+  const trimmed = value.trim();
+  return trimmed ? toTitleCaseTR(trimmed) : trimmed;
 }

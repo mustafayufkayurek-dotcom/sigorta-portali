@@ -1,3 +1,5 @@
+import { toTitleCaseTR } from './text-helpers';
+
 /** Türkçe metinden URL/kod slug üretir; kullanıcıya kod yazdırmamak için */
 export function slugifyCode(input: string, maxLen = 48): string {
   const tr: Record<string, string> = {
@@ -34,6 +36,22 @@ export function applyNameWithAutoCode<T extends { name: string; code: string }>(
   editing: boolean,
   prefix: string,
 ): T {
+  return {
+    ...prev,
+    name,
+    code: editing ? prev.code : suggestAutoCode(prefix, name),
+  };
+}
+
+/** Ad alanı blur — Title Case + yeni kayıtta otomatik kod */
+export function blurNameWithAutoCode<T extends { name: string; code: string }>(
+  prev: T,
+  editing: boolean,
+  prefix: string,
+): T {
+  const trimmed = prev.name.trim();
+  if (!trimmed) return { ...prev, name: '' };
+  const name = toTitleCaseTR(trimmed);
   return {
     ...prev,
     name,

@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { buildAppPath } from '@/common/utils/app-url';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ReportPdfService } from '../repair-reports/pdf/report-pdf.service';
@@ -324,8 +325,7 @@ export class ExternalApprovalsService {
   // ── Yardımcılar ───────────────────────────────────────────────────────────
 
   private buildPublicUrl(token: string): string {
-    const base = this.config.get<string>('APP_URL') ?? 'http://localhost:3001';
-    return `${base}/onay/${token}`;
+    return buildAppPath(this.config, `/onay/${token}`);
   }
 
   private buildWhatsAppUrl(token: string, reportNo: string, phone?: string): string {

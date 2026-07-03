@@ -1,29 +1,26 @@
 'use client';
 
-import { RunningLightsText, type RunningLightsVariant } from './RunningLightsText';
+import { LoadingScreen } from './LoadingIndicator';
 
 export interface PageLoadingStateProps {
+  /** Boş bırakılırsa yalnızca spinner gösterilir */
   text?: string;
   className?: string;
-  variant?: RunningLightsVariant;
   compact?: boolean;
 }
 
-/** Sayfa / tablo / modal ortası — yanıp sönen harfli bekleme göstergesi */
+/** Sayfa / tablo / modal gövdesi — içerik alanının ortası */
 export function PageLoadingState({
-  text = 'Yükleniyor',
+  text,
   className,
-  variant = 'blue',
   compact = false,
 }: PageLoadingStateProps) {
-  const spacing = compact ? 'gap-2 py-8' : 'gap-4 py-16';
-  const rootClass = ['flex flex-col items-center justify-center text-center', spacing, className]
-    .filter(Boolean)
-    .join(' ');
+  const spacing = compact ? 'py-8' : 'py-16';
 
   return (
-    <div className={rootClass}>
-      <RunningLightsText text={text} size={compact ? 'sm' : 'md'} variant={variant} />
-    </div>
+    <LoadingScreen
+      label={text}
+      className={[spacing, className].filter(Boolean).join(' ')}
+    />
   );
 }

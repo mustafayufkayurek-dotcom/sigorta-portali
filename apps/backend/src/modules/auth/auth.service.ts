@@ -20,16 +20,22 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
+  private async findActiveUserByEmail(normalizedEmail: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        email: { equals: normalizedEmail, mode: 'insensitive' },
+      },
+      include: { role: true },
+    });
+  }
+
   async validateUser(email: string, password: string): Promise<any> {
     const normalizedEmail = normalizeAuthEmail(email);
     if (!normalizedEmail) {
       return null;
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: { role: true },
-    });
+    const user = await this.findActiveUserByEmail(normalizedEmail);
 
     if (!user) {
       return null;
@@ -42,6 +48,14 @@ export class AuthService {
 
     if (user.status !== 'active') {
       throw new UnauthorizedException('Hesabınız aktif değil');
+    }
+
+    if (user.email !== normalizedEmail) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { email: normalizedEmail },
+      });
+      user.email = normalizedEmail;
     }
 
     const { passwordHash, ...result } = user;
@@ -220,7 +234,7 @@ export class AuthService {
 
   async forgotPassword(email: string): Promise<{ requested: true }> {
     const normalizedEmail = normalizeAuthEmail(email);
-    const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const user = await this.findActiveUserByEmail(normalizedEmail);
 
     if (!user) {
       return { requested: true };

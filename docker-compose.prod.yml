@@ -2,7 +2,9 @@ version: '3.8'
 
 # ─── Production Docker Compose ────────────────────────────────────────────────
 # Kullanım: bash scripts/deploy.sh
-# Elle başlatmak için: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+# Elle başlatmak için:
+#   docker compose -p sigorta-hasar-sistemi -f docker-compose.prod.yml --env-file .env.production up -d
+# Web restart: bash scripts/restart-web-production.sh  (502 önleme)
 
 networks:
   sigorta-net:
@@ -94,6 +96,7 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: ${S3_BUCKET}
       WEB_URL: ${WEB_URL}
+      APP_URL: ${APP_URL}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}

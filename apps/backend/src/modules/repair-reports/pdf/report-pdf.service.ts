@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolveAppUrl } from '@/common/utils/app-url';
 import * as puppeteer from 'puppeteer';
 
 interface ReportItem {
@@ -134,10 +135,7 @@ export class ReportPdfService {
 
   private buildHtml(report: ReportData, viewType: 'internal' | 'external'): string {
     // Dynamic base URL — falls back to APP_BASE_URL then APP_URL
-    const appUrl =
-      this.config.get<string>('APP_URL') ??
-      this.config.get<string>('APP_BASE_URL') ??
-      'http://localhost:3001';
+    const appUrl = resolveAppUrl(this.config);
 
     // Backend URL for serving local files
     const backendUrl =

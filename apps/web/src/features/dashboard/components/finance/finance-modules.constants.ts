@@ -7,6 +7,18 @@ export type FinanceModuleItem = {
 
 export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
+    title: 'Satış Fatura Talepleri',
+    href: '/panel/finans/faturalar?tab=talepler',
+    purpose: 'Kapanan hasar, acil yardım ve özel müşteri dosyalarından gelen kesilecek satış fatura taleplerini toplar.',
+    action: 'Onay bekleyen ve kesime hazır talepleri inceleyin; faturayı kesince durumu güncelleyin.',
+  },
+  {
+    title: 'Tedarikçi Ödeme Kuyruğu',
+    href: '/panel/finans/tahsilatlar?queue=payable',
+    purpose: 'Hakediş onayı, avans ve kapanan dosya tedarikçi ödemelerinin biriktiği giden ödeme kuyruğu.',
+    action: 'Bekleyen ve vadesi gelen ödemeleri dosya bazında takip edin.',
+  },
+  {
     title: 'Tahsilatlar ve Ödemeler',
     href: '/panel/finans/tahsilatlar',
     purpose: 'Gelir ve gider kuyruklarını takip eder; tahsilat dosyada, tedarikçi ödemeleri hakediş onayından düşer.',

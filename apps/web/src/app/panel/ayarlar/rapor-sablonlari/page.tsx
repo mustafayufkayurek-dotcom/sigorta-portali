@@ -20,15 +20,8 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Şablon Adı', defaultWidth: 200, minWidth: 120 },
-  { id: 'type', label: 'Tür', defaultWidth: 120, minWidth: 90 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const TEMPLATE_TYPES = [
   { value: 'tespit', label: 'Tespit Raporu', color: 'bg-blue-50 text-blue-700' },
@@ -135,22 +128,25 @@ export default function RaporSablonlariPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setModalError('Şablon adı zorunludur.'); return; }
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
+    if (!name) { setModalError('Şablon adı zorunludur.'); return; }
     if (!form.type) { setModalError('Şablon türü zorunludur.'); return; }
     if (!form.content.trim()) { setModalError('Şablon içeriği zorunludur.'); return; }
     const dup = templates.find(
-      (t) => t.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+      (t) => t.name.trim().toLowerCase() === name.toLowerCase()
         && t.type === form.type
         && (!editing || t.id !== editing.id)
     );
     if (dup) { setModalError('Bu ad ve türde bir şablon zaten mevcut.'); return; }
+    const payload = { ...form, name, description };
     setSaving(true);
     setModalError('');
     try {
       if (editing) {
-        await axios.put(`${API}/system-settings/document-report-templates/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/system-settings/document-report-templates/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/system-settings/document-report-templates`, form, { headers: authHeader() });
+        await axios.post(`${API}/system-settings/document-report-templates`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       loadTemplates();
@@ -189,14 +185,11 @@ export default function RaporSablonlariPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Rapor Şablonları"
       description="Tespit, Maliyet, Keşif ve Hasar raporları için belge şablonlarını yönetin."
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <SettingsTable
@@ -205,10 +198,10 @@ export default function RaporSablonlariPage() {
         emptyText="Henüz rapor şablonu tanımlanmamış."
       >
         <SettingsTableHead>
-          <SettingsTableTh colId="name">Şablon Adı</SettingsTableTh>
-          <SettingsTableTh colId="type">Tür</SettingsTableTh>
-          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
-          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+          <SettingsTableTh>Şablon Adı</SettingsTableTh>
+          <SettingsTableTh>Tür</SettingsTableTh>
+          <SettingsTableTh>Açıklama</SettingsTableTh>
+          <SettingsTableTh>Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
@@ -216,18 +209,18 @@ export default function RaporSablonlariPage() {
             const badge = typeBadge(t.type);
             return (
               <SettingsTableRow key={t.id}>
-                <SettingsTableTd colId="name">
+                <SettingsTableTd>
                   <p className="font-medium text-slate-800">{t.name}</p>
                 </SettingsTableTd>
-                <SettingsTableTd colId="type">
+                <SettingsTableTd>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                     {badge.label}
                   </span>
                 </SettingsTableTd>
-                <SettingsTableTd colId="description">
+                <SettingsTableTd>
                   <p className="text-xs text-slate-500 truncate max-w-xs">{t.description || '—'}</p>
                 </SettingsTableTd>
-                <SettingsTableTd colId="status">
+                <SettingsTableTd>
                   <button type="button" onClick={() => handleToggleActive(t)}>
                     <StatusBadge active={t.isActive} />
                   </button>
@@ -284,6 +277,10 @@ export default function RaporSablonlariPage() {
                   placeholder="ör. Standart Tespit Raporu"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onBlur={(e) => {
+                    const v = normalizeFormFreeText(e.target.value);
+                    if (v !== e.target.value.trim()) setForm((f) => ({ ...f, name: v }));
+                  }}
                 />
               </div>
               <div>
@@ -308,6 +305,10 @@ export default function RaporSablonlariPage() {
                 placeholder="Opsiyonel"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onBlur={(e) => {
+                  const v = normalizeFormFreeText(e.target.value);
+                  if (v !== e.target.value.trim()) setForm((f) => ({ ...f, description: v }));
+                }}
               />
             </div>
 
@@ -379,7 +380,5 @@ export default function RaporSablonlariPage() {
         description={`"${deleteTarget?.name}" şablonunu silmek istediğinize emin misiniz?`}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

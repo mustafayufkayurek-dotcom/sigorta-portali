@@ -1,3 +1,5 @@
+import { toTitleCaseTR } from '@/utils/text-helpers';
+
 export type CustomerType = 'individual' | 'corporate';
 
 export type CustomerSubType =
@@ -24,23 +26,63 @@ export type CustomerSubTypeDef = {
 
 export const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubTypeDef[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
+  { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
   { value: 'asistan_firmasi', label: 'Asistan Firması', forType: 'corporate', color: 'orange' },
-  { value: 'eksper', label: 'Eksper', forType: 'individual', color: 'purple' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
   { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
   { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
 ];
 
-const SUB_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  DEFAULT_CUSTOMER_SUB_TYPES.map((t) => [t.value, t.label]),
-);
+/** Eski kayıtlar için — yeni kayıtta seçilemez */
+const LEGACY_SUB_TYPE_LABELS: Record<string, string> = {
+  eksper: 'Eksper',
+};
+
+const SUB_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(DEFAULT_CUSTOMER_SUB_TYPES.map((t) => [t.value, t.label])),
+  ...LEGACY_SUB_TYPE_LABELS,
+};
+
+const CORPORATE_ONLY_SUB_TYPES = new Set([
+  'sigorta_sirketi',
+  'broker_firmasi',
+  'asistan_firmasi',
+  'eksper_firmasi',
+]);
+
+/** Prod'daki eski system_settings listesine eksik tipleri ekler, forType günceller */
+export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSubTypeDef[] {
+  const byValue = new Map(stored.map((row) => [row.value, { ...row }]));
+  for (const def of DEFAULT_CUSTOMER_SUB_TYPES) {
+    const existing = byValue.get(def.value);
+    if (!existing) {
+      byValue.set(def.value, { ...def });
+    } else {
+      byValue.set(def.value, { ...existing, label: def.label, forType: def.forType, color: def.color });
+    }
+  }
+  byValue.delete('eksper');
+  return DEFAULT_CUSTOMER_SUB_TYPES.map((def) => byValue.get(def.value)).filter(Boolean) as CustomerSubTypeDef[];
+}
+
+export function customerSubTypesForPicker(
+  subTypes: CustomerSubTypeDef[],
+  customerType: CustomerType,
+): CustomerSubTypeDef[] {
+  return subTypes.filter((t) => {
+    if (t.value === 'eksper') return false;
+    if (customerType === 'individual' && CORPORATE_ONLY_SUB_TYPES.has(t.value)) return false;
+    return t.forType === customerType || t.forType === 'both';
+  });
+}
 
 /** Alt tip seçildiğinde form altında gösterilen kısa yönlendirme metni */
 const SUB_TYPE_HINTS: Record<string, string> = {
   sigorta_sirketi: 'Sigorta şirketi bilgilerini giriniz. Branş seçimini aşağıdan tamamlayın.',
+  broker_firmasi: 'Broker firması bilgilerini giriniz.',
   asistan_firmasi: 'Asistan firması bilgilerini giriniz.',
   eksper_firmasi: 'Eksper firması bilgilerini giriniz.',
-  eksper: 'Eksper bilgilerini giriniz.',
+  eksper: 'Eski eksper kaydı — yeni tanımlar için Eksper Firması kullanın.',
   insured: 'Sigortalı müşteri bilgilerini giriniz.',
   private_customer: 'Özel müşteri bilgilerini giriniz.',
 };
@@ -53,6 +95,55 @@ export function customerSubTypeLabel(subType: string | null | undefined): string
 export function customerSubTypeHint(subType: string | null | undefined): string | null {
   if (!subType) return null;
   return SUB_TYPE_HINTS[subType] ?? null;
+}
+
+/** API entityType ↔ UI customerType */
+export function resolveCustomerType(c: {
+  customerType?: string | null;
+  entityType?: string | null;
+  type?: string | null;
+  companyName?: string | null;
+  taxNumber?: string | null;
+}): CustomerType {
+  const entity = String(c.entityType ?? '').toLowerCase();
+  if (entity === 'corporate' || entity === 'individual') {
+    return entity;
+  }
+  const customerType = String(c.customerType ?? '').toLowerCase();
+  if (customerType === 'corporate' || customerType === 'individual') {
+    return customerType;
+  }
+  const legacyType = String(c.type ?? '').toLowerCase();
+  if (legacyType === 'corporate' || legacyType === 'individual') {
+    return legacyType;
+  }
+  if (c.companyName?.trim() || c.taxNumber?.trim()) return 'corporate';
+  return 'individual';
+}
+
+export function customerDisplayName(c: {
+  companyName?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}): string {
+  const company = c.companyName?.trim();
+  if (company) return company;
+  const personal =
+    c.fullName?.trim()
+    || `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+  return personal || '—';
+}
+
+export function normalizeCustomerRow<T extends Record<string, unknown>>(
+  c: T,
+): T & { customerType: CustomerType; entityType: CustomerType } {
+  const customerType = resolveCustomerType(c as Parameters<typeof resolveCustomerType>[0]);
+  return { ...c, customerType, entityType: customerType };
+}
+
+export function customerTypeBadgeLabel(customerType: CustomerType): string {
+  return customerType === 'corporate' ? 'Kurumsal' : 'Bireysel';
 }
 
 export function subTypeActiveClass(color: CustomerSubTypeDef['color']): string {
@@ -100,3 +191,17 @@ export const CUSTOMER_RELATION_SECTION_TITLE = 'İlişki Özeti';
 
 export const CUSTOMER_RELATION_SECTION_HINT =
   'Kayıt anında temel ilişki alanlarıdır. Görüşme notları, takip kayıtları ve durum geçmişi için sol menüdeki CRM modülünü kullanın.';
+
+/** Adres serbest metin alanları — Title Case (blur beklemeden özet/kayıt/geocode için) */
+export function normalizeCustomerAddressFields(form: {
+  neighborhood?: string;
+  streetName?: string;
+  address?: string;
+}): { neighborhood: string; streetName: string; address: string } {
+  const norm = (v?: string) => (v?.trim() ? toTitleCaseTR(v.trim()) : (v ?? ''));
+  return {
+    neighborhood: norm(form.neighborhood),
+    streetName: norm(form.streetName),
+    address: norm(form.address),
+  };
+}

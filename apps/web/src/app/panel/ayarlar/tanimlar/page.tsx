@@ -9,7 +9,7 @@ import { API, authHeader } from '@/utils/api';
 type MetricKey =
   | 'departments'
   | 'relationshipTypes'
-  | 'meridyenServiceBranches'
+  | 'customerSubTypes'
   | 'vendorServiceBranches'
   | 'locations'
   | 'workGroups'
@@ -58,19 +58,19 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         href: '/panel/ayarlar/iliski-turleri',
         tone: 'blue',
       },
+      {
+        key: 'customerSubTypes',
+        title: 'Müşteri Tipleri',
+        purpose: 'Müşteri kartında önce seçilen alt tip sözlüğü (sigorta, broker, eksper, asistans…).',
+        href: '/panel/ayarlar/musteri-tipleri',
+        tone: 'blue',
+      },
     ],
   },
   {
     title: 'Operasyonel Tanımlar',
     description: 'Saha ve hizmet sözlükleri.',
     items: [
-      {
-        key: 'meridyenServiceBranches',
-        title: 'Meridyen Hizmet Branşları',
-        purpose: 'Meridyen operasyon branşları (hasar / acil). Müşteri, sigorta ve saha formlarında kullanılır. Tedarikçi kartı ile karışmaz.',
-        href: '/panel/ayarlar/hizmet-turleri',
-        tone: 'emerald',
-      },
       {
         key: 'vendorServiceBranches',
         title: 'Tedarikçi Hizmet Kolları',
@@ -101,7 +101,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       {
         key: 'claimSubjects',
         title: 'Dosya Konuları',
-        purpose: 'Departman bazlı dosya konuları (ihbar konuları birleşik ekran).',
+        purpose: 'Departman bazlı dosya konuları; hasar/acil branş listeleri ve ihbar konuları bu ekrandan yönetilir.',
         href: '/panel/ayarlar/dosya-konulari',
         tone: 'violet',
       },
@@ -185,7 +185,7 @@ export default function TanimlarPage() {
   const [metrics, setMetrics] = useState<Record<MetricKey, DefinitionMetric>>({
     departments: emptyMetric(),
     relationshipTypes: emptyMetric(),
-    meridyenServiceBranches: emptyMetric(),
+    customerSubTypes: emptyMetric(),
     vendorServiceBranches: emptyMetric(),
     locations: emptyMetric(),
     workGroups: emptyMetric(),
@@ -201,7 +201,7 @@ export default function TanimlarPage() {
       const [
         departments,
         relationshipTypes,
-        meridyenServiceBranches,
+        customerSubTypes,
         vendorServiceBranches,
         locations,
         workGroups,
@@ -216,9 +216,9 @@ export default function TanimlarPage() {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
         }),
-        safeMetric(axios.get(`${API}/service-branches/admin`, { headers, params: { scope: 'meridyen' } }), (raw) => {
+        safeMetric(axios.get(`${API}/system-settings/customer-sub-types`, { headers }), (raw) => {
           const items = extractArray(raw);
-          return { total: items.length, active: countActive(items) };
+          return { total: items.length, active: items.length };
         }),
         safeMetric(axios.get(`${API}/service-branches/admin`, { headers, params: { scope: 'vendor', type: 'acil_yardim' } }), (raw) => {
           const items = extractArray(raw);
@@ -264,7 +264,7 @@ export default function TanimlarPage() {
       setMetrics({
         departments,
         relationshipTypes,
-        meridyenServiceBranches,
+        customerSubTypes,
         vendorServiceBranches,
         locations,
         workGroups,
@@ -299,7 +299,7 @@ export default function TanimlarPage() {
           </section>
         ))}
         <p className="text-xs text-slate-400">
-          Müşteri tipleri, sigorta şirketleri ve tedarikçiler Ayarlar dışında — sırasıyla Müşteriler ve Tedarikçiler modüllerinde yönetilir.
+          Cari kayıtlar sol menüdeki Müşteriler ekranından açılır; burada yalnızca tip ve sözlük tanımları yönetilir.
         </p>
       </div>
     </SettingsPageLayout>

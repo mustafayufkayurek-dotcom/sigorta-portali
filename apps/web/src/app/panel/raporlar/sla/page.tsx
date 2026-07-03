@@ -13,6 +13,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
 const DEPT_SLA_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'dept', label: 'Departman', defaultWidth: 180, minWidth: 120 },
@@ -168,9 +169,14 @@ export default function SlaRaporPage() {
   };
 
   const handleCreateRule = async () => {
+    const name = normalizeFormFreeText(form.name);
+    if (!name) {
+      setRulesError('Kural adı zorunludur.');
+      return;
+    }
     try {
       await axios.post(`${API}/sla-rules`, {
-        name: form.name,
+        name,
         claimType: form.claimType || undefined,
         productBranch: form.productBranch || undefined,
         targetDays: Number(form.targetDays),
@@ -497,7 +503,7 @@ export default function SlaRaporPage() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
                   <label className="text-xs text-slate-600 dark:text-slate-400">Kural Adı *</label>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 text-sm" placeholder="Örn: Yangın Hasarı 30 Gün" />
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm((p) => ({ ...p, name: v })); }} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 text-sm" placeholder="Örn: Yangın Hasarı 30 Gün" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-slate-600 dark:text-slate-400">Hasar Tipi</label>

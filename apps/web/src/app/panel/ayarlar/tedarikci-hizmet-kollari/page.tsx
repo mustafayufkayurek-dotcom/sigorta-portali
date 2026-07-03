@@ -22,15 +22,10 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { DepartmentTabSelector, DepartmentDefinitionToolbar } from '@/components/settings/DepartmentTabSelector';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 import { suggestAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { persistAlphabeticSortOrders, sortByNameTR } from '@/utils/definition-sort-order';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'sort', label: 'Sıra', defaultWidth: 64, minWidth: 48 },
-  { id: 'name', label: 'Hizmet Kolu', defaultWidth: 220, minWidth: 140 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const HIZMET_TABS = [
   { id: 'hasar', name: 'Hasar Onarım Kolları', color: '#3B82F6' },
@@ -55,8 +50,8 @@ type WorkGroupRow = {
   isSystem?: boolean;
 };
 
-const emptyAcilForm = () => ({ name: '', sortOrder: 0 });
-const emptyHasarForm = () => ({ name: '', sortOrder: 0 });
+const emptyAcilForm = () => ({ name: '' });
+const emptyHasarForm = () => ({ name: '' });
 
 export default function TedarikciHizmetKollariPage() {
   const [activeTab, setActiveTab] = useState<'hasar' | 'acil'>('hasar');
@@ -75,20 +70,42 @@ export default function TedarikciHizmetKollariPage() {
   const [deleteAcilTarget, setDeleteAcilTarget] = useState<VendorAcilBranch | null>(null);
   const [deleteHasarTarget, setDeleteHasarTarget] = useState<WorkGroupRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [seedError, setSeedError] = useState('');
+
+  const syncAcilSortOrders = useCallback(async (list: VendorAcilBranch[]) => {
+    await persistAlphabeticSortOrders(list, (id, sortOrder) =>
+      axios.patch(`${API}/service-branches/${id}`, { sortOrder }, { headers: authHeader() }),
+    );
+  }, []);
+
+  const syncHasarSortOrders = useCallback(async (list: WorkGroupRow[]) => {
+    await persistAlphabeticSortOrders(list, (id, sortOrder) =>
+      axios.put(`${API}/work-groups/${id}`, { sortOrder }, { headers: authHeader() }),
+    );
+  }, []);
 
   const loadAcil = useCallback(async () => {
     const r = await axios.get(`${API}/service-branches/admin`, {
       headers: authHeader(),
       params: { type: 'acil_yardim', scope: 'vendor' },
     });
-    setAcilItems(r.data.data ?? []);
-  }, []);
+    const data: VendorAcilBranch[] = r.data.data ?? [];
+    await syncAcilSortOrders(data);
+    const r2 = await axios.get(`${API}/service-branches/admin`, {
+      headers: authHeader(),
+      params: { type: 'acil_yardim', scope: 'vendor' },
+    });
+    setAcilItems(r2.data.data ?? data);
+  }, [syncAcilSortOrders]);
 
   const loadWorkGroups = useCallback(async () => {
     const r = await axios.get(`${API}/work-groups`, { headers: authHeader() });
-    setWorkGroups(r.data.data ?? []);
-  }, []);
+    const data: WorkGroupRow[] = r.data.data ?? [];
+    await syncHasarSortOrders(data);
+    const r2 = await axios.get(`${API}/work-groups`, { headers: authHeader() });
+    setWorkGroups(r2.data.data ?? data);
+  }, [syncHasarSortOrders]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -151,7 +168,7 @@ export default function TedarikciHizmetKollariPage() {
   const openEditAcil = (item: VendorAcilBranch) => {
     setEditingAcil(item);
     setEditingHasar(null);
-    setAcilForm({ name: item.name, sortOrder: item.sortOrder });
+    setAcilForm({ name: item.name });
     setError('');
     setShowModal(true);
   };
@@ -159,7 +176,7 @@ export default function TedarikciHizmetKollariPage() {
   const openEditHasar = (item: WorkGroupRow) => {
     setEditingHasar(item);
     setEditingAcil(null);
-    setHasarForm({ name: item.name, sortOrder: item.sortOrder });
+    setHasarForm({ name: item.name });
     setError('');
     setShowModal(true);
   };
@@ -169,12 +186,12 @@ export default function TedarikciHizmetKollariPage() {
     setError('');
     try {
       if (activeTab === 'acil' || editingAcil) {
-        if (!acilForm.name.trim()) { setError('Hizmet kolu adı zorunludur'); setSaving(false); return; }
+        const name = normalizeFormFreeText(acilForm.name);
+        if (!name) { setError('Hizmet kolu adı zorunludur'); setSaving(false); return; }
         const payload = {
-          name: acilForm.name.trim(),
+          name,
           type: 'acil_yardim',
           scope: 'vendor',
-          sortOrder: acilForm.sortOrder,
         };
         if (editingAcil) {
           await axios.patch(`${API}/service-branches/${editingAcil.id}`, payload, { headers: authHeader() });
@@ -183,17 +200,16 @@ export default function TedarikciHizmetKollariPage() {
         }
         await loadAcil();
       } else {
-        if (!hasarForm.name.trim()) { setError('Hizmet kolu adı zorunludur'); setSaving(false); return; }
+        const name = normalizeFormFreeText(hasarForm.name);
+        if (!name) { setError('Hizmet kolu adı zorunludur'); setSaving(false); return; }
         if (editingHasar) {
           await axios.put(`${API}/work-groups/${editingHasar.id}`, {
-            name: hasarForm.name.trim(),
-            sortOrder: hasarForm.sortOrder,
+            name,
           }, { headers: authHeader() });
         } else {
           await axios.post(`${API}/work-groups`, {
-            code: suggestAutoCode('WG', hasarForm.name.trim()),
-            name: hasarForm.name.trim(),
-            sortOrder: hasarForm.sortOrder,
+            code: suggestAutoCode('WG', name),
+            name,
           }, { headers: authHeader() });
         }
         await loadWorkGroups();
@@ -225,6 +241,7 @@ export default function TedarikciHizmetKollariPage() {
 
   const handleDelete = async () => {
     setDeleting(true);
+    setDeleteError('');
     try {
       if (deleteAcilTarget) {
         await axios.delete(`${API}/service-branches/${deleteAcilTarget.id}`, { headers: authHeader() });
@@ -236,16 +253,24 @@ export default function TedarikciHizmetKollariPage() {
         setDeleteHasarTarget(null);
         await loadWorkGroups();
       }
-    } catch { /* sessizce geç */ }
-    finally { setDeleting(false); }
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) ? (e.response?.data as { message?: string })?.message : null;
+      setDeleteError(msg ?? 'Silinemedi');
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const filteredAcil = acilItems
-    .filter((b) => b.type === 'acil_yardim')
-    .filter((b) => !search.trim() || b.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredAcil = sortByNameTR(
+    acilItems
+      .filter((b) => b.type === 'acil_yardim')
+      .filter((b) => !search.trim() || b.name.toLowerCase().includes(search.toLowerCase())),
+  );
 
-  const filteredHasar = workGroups.filter((g) =>
-    !search.trim() || g.name.toLowerCase().includes(search.toLowerCase()),
+  const filteredHasar = sortByNameTR(
+    workGroups.filter((g) =>
+      !search.trim() || g.name.toLowerCase().includes(search.toLowerCase()),
+    ),
   );
 
   const tabCounts = {
@@ -258,17 +283,14 @@ export default function TedarikciHizmetKollariPage() {
   const setModalForm = isAcilModal ? setAcilForm : setHasarForm;
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
-        <SettingsPageLayout
+    <SettingsPageLayout
           title="Tedarikçi Hizmet Kolları"
           description="Tedarikçi tanımlama kartında görünen uzmanlık alanları. Meridyen hizmet branşları ile karıştırılmaz."
           backHref={TANIMLAR_BACK_HREF}
           backText={TANIMLAR_BACK_TEXT}
           headerExtra={
             <div className="flex items-center gap-2">
-              <SettingsTableColumnPicker tableColumns={tableColumns} />
-              {activeTab === 'acil' && acilItems.length === 0 && (
+          {activeTab === 'acil' && acilItems.length === 0 && (
                 <button
                   type="button"
                   onClick={handleSeedAcil}
@@ -303,8 +325,8 @@ export default function TedarikciHizmetKollariPage() {
         >
           <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-xs text-amber-900 leading-relaxed">
             <strong>Ayrım:</strong> Bu ekran yalnızca <strong>tedarikçi kartı</strong> içindir (sıvacı, boyacı, çilingir vb.).
-            Meridyen operasyon branşları için{' '}
-            <Link href="/panel/ayarlar/hizmet-turleri" className="underline font-medium">Meridyen Hizmet Branşları</Link>
+            Dosya konuları (hasar / acil branş listeleri) için{' '}
+            <Link href="/panel/ayarlar/dosya-konulari" className="underline font-medium">Dosya Konuları</Link>
             {' '}sayfasını kullanın. Hasar kolları maliyet kalemleri için{' '}
             <Link href="/panel/ayarlar/is-gruplari" className="underline font-medium">İş Grupları</Link>
             {' '}ekranında alt grup fiyatlandırması yapılır.
@@ -335,35 +357,29 @@ export default function TedarikciHizmetKollariPage() {
           {activeTab === 'hasar' ? (
             <SettingsTable loading={loading} empty={filteredHasar.length === 0} emptyText="Henüz hasar hizmet kolu yok">
               <SettingsTableHead>
-                <SettingsTableTh colId="sort" className="w-16 text-center">Sıra</SettingsTableTh>
-                <SettingsTableTh colId="name">Tedarikçi Hasar Hizmet Kolu</SettingsTableTh>
-                <SettingsTableTh colId="status" className="text-center">Durum</SettingsTableTh>
+                <SettingsTableTh className="w-16 text-center">Sıra</SettingsTableTh>
+                <SettingsTableTh>Tedarikçi Hasar Hizmet Kolu</SettingsTableTh>
+                <SettingsTableTh className="text-center">Durum</SettingsTableTh>
                 <SettingsTableTh />
               </SettingsTableHead>
               <SettingsTableBody>
-                {filteredHasar
-                  .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'))
-                  .map((g, idx) => (
+                {filteredHasar.map((g, idx) => (
                     <SettingsTableRow key={g.id}>
-                      <SettingsTableTd colId="sort" className="text-center">{idx + 1}</SettingsTableTd>
-                      <SettingsTableTd colId="name">
+                      <SettingsTableTd className="text-center">{idx + 1}</SettingsTableTd>
+                      <SettingsTableTd>
                         <span className={`font-medium ${g.status === 'active' ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                           {g.name}
                         </span>
                       </SettingsTableTd>
-                      <SettingsTableTd colId="status" className="text-center">
+                      <SettingsTableTd className="text-center">
                         <button type="button" onClick={() => handleToggleHasar(g)}>
                           <StatusBadge active={g.status === 'active'} />
                         </button>
                       </SettingsTableTd>
-                      <SettingsTableTd>
-                        <SettingsTableActions>
+                      <SettingsTableActions>
                           <EditButton onClick={() => openEditHasar(g)} />
-                          {!g.isSystem && (
-                            <DeleteButton onClick={() => setDeleteHasarTarget(g)} />
-                          )}
+                          <DeleteButton onClick={() => { setDeleteHasarTarget(g); setDeleteError(''); }} />
                         </SettingsTableActions>
-                      </SettingsTableTd>
                     </SettingsTableRow>
                   ))}
               </SettingsTableBody>
@@ -371,33 +387,29 @@ export default function TedarikciHizmetKollariPage() {
           ) : (
             <SettingsTable loading={loading} empty={filteredAcil.length === 0} emptyText="Henüz tedarikçi acil hizmet kolu yok">
               <SettingsTableHead>
-                <SettingsTableTh colId="sort" className="w-16 text-center">Sıra</SettingsTableTh>
-                <SettingsTableTh colId="name">Tedarikçi Acil Hizmet Kolu</SettingsTableTh>
-                <SettingsTableTh colId="status" className="text-center">Durum</SettingsTableTh>
+                <SettingsTableTh className="w-16 text-center">Sıra</SettingsTableTh>
+                <SettingsTableTh>Tedarikçi Acil Hizmet Kolu</SettingsTableTh>
+                <SettingsTableTh className="text-center">Durum</SettingsTableTh>
                 <SettingsTableTh />
               </SettingsTableHead>
               <SettingsTableBody>
-                {filteredAcil
-                  .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'))
-                  .map((b, idx) => (
+                {filteredAcil.map((b, idx) => (
                     <SettingsTableRow key={b.id}>
-                      <SettingsTableTd colId="sort" className="text-center">{idx + 1}</SettingsTableTd>
-                      <SettingsTableTd colId="name">
+                      <SettingsTableTd className="text-center">{idx + 1}</SettingsTableTd>
+                      <SettingsTableTd>
                         <span className={`font-medium ${b.isActive ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                           {b.name}
                         </span>
                       </SettingsTableTd>
-                      <SettingsTableTd colId="status" className="text-center">
+                      <SettingsTableTd className="text-center">
                         <button type="button" onClick={() => handleToggleAcil(b)}>
                           <StatusBadge active={b.isActive} />
                         </button>
                       </SettingsTableTd>
-                      <SettingsTableTd>
-                        <SettingsTableActions>
+                      <SettingsTableActions>
                           <EditButton onClick={() => openEditAcil(b)} />
-                          <DeleteButton onClick={() => setDeleteAcilTarget(b)} />
+                          <DeleteButton onClick={() => { setDeleteAcilTarget(b); setDeleteError(''); }} />
                         </SettingsTableActions>
-                      </SettingsTableTd>
                     </SettingsTableRow>
                   ))}
               </SettingsTableBody>
@@ -424,15 +436,10 @@ export default function TedarikciHizmetKollariPage() {
                   placeholder={isAcilModal ? 'Örn: Elektrikçi, Su Tesisatçısı' : 'Örn: Sıva, Boya, Mobilya'}
                   value={modalForm.name}
                   onChange={(e) => setModalForm((p) => ({ ...p, name: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Sıra</label>
-                <input
-                  type="number"
-                  className={inputCls}
-                  value={modalForm.sortOrder}
-                  onChange={(e) => setModalForm((p) => ({ ...p, sortOrder: parseInt(e.target.value, 10) || 0 }))}
+                  onBlur={(e) => {
+                    const v = normalizeFormFreeText(e.target.value);
+                    if (v !== e.target.value.trim()) setModalForm((p) => ({ ...p, name: v }));
+                  }}
                 />
               </div>
             </div>
@@ -440,13 +447,12 @@ export default function TedarikciHizmetKollariPage() {
 
           <DeleteConfirmDialog
             isOpen={deleteAcilTarget !== null || deleteHasarTarget !== null}
-            onClose={() => { setDeleteAcilTarget(null); setDeleteHasarTarget(null); }}
+            onClose={() => { setDeleteAcilTarget(null); setDeleteHasarTarget(null); setDeleteError(''); }}
             onConfirm={handleDelete}
             deleting={deleting}
             itemName={deleteAcilTarget?.name ?? deleteHasarTarget?.name}
+            error={deleteError}
           />
         </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

@@ -1,10 +1,44 @@
 export interface EmailTemplateData {
   title: string;
   preheader?: string;
-  rows: Array<{ label: string; value: string }>;
+  rows: Array<{ label: string; value?: string; html?: string }>;
   actionUrl?: string;
   actionLabel?: string;
   footerNote?: string;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildTemporaryPasswordEmailBlock(temporaryPassword: string): string {
+  const safePassword = escapeHtml(temporaryPassword);
+
+  return `
+    <div style="background:#0f172a;border-radius:8px;padding:12px 14px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="vertical-align:middle;">
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:16px;font-weight:600;color:#ffffff;letter-spacing:0.04em;word-break:break-all;-webkit-user-select:all;user-select:all;">
+              ${safePassword}
+            </div>
+          </td>
+          <td align="right" valign="middle" style="padding-left:12px;white-space:nowrap;vertical-align:middle;">
+            <span style="display:inline-block;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:#ffffff;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;line-height:1;">
+              Kopyala
+            </span>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:8px 0 0;font-size:11px;color:#cbd5e1;line-height:1.45;">
+        Şifreyi seçmek için üzerine dokunun veya tıklayın, ardından kopyalayın.
+      </p>
+    </div>`;
 }
 
 export function buildEmailHtml(data: EmailTemplateData): string {
@@ -12,8 +46,8 @@ export function buildEmailHtml(data: EmailTemplateData): string {
     .map(
       (r) => `
       <tr>
-        <td style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;width:40%;white-space:nowrap;">${r.label}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#111827;">${r.value}</td>
+        <td style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:13px;color:#6b7280;width:40%;white-space:nowrap;vertical-align:top;">${escapeHtml(r.label)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#111827;">${r.html ?? escapeHtml(r.value ?? '—')}</td>
       </tr>`,
     )
     .join('');
@@ -92,14 +126,19 @@ export function buildWelcomeInviteEmailHtml(params: {
   temporaryPassword: string;
   loginUrl: string;
 }): string {
+  const safeLoginUrl = escapeHtml(params.loginUrl);
+
   return buildEmailHtml({
     title: 'Meridyen Assistance Hesabınız Hazır',
     preheader: 'Geçici şifrenizle giriş yapıp ilk oturumda şifrenizi güncelleyebilirsiniz.',
     rows: [
       { label: 'Ad Soyad', value: params.fullName || '—' },
       { label: 'Giriş E-postası', value: params.email },
-      { label: 'Geçici Şifre', value: params.temporaryPassword },
-      { label: 'Giriş Adresi', value: params.loginUrl },
+      { label: 'Geçici Şifre', html: buildTemporaryPasswordEmailBlock(params.temporaryPassword) },
+      {
+        label: 'Giriş Adresi',
+        html: `<a href="${safeLoginUrl}" style="color:#1852a0;text-decoration:underline;word-break:break-all;">${safeLoginUrl}</a>`,
+      },
     ],
     actionUrl: params.loginUrl,
     actionLabel: 'Giriş Yap ve Şifre Belirle',

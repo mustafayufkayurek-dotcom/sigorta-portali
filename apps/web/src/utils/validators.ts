@@ -26,15 +26,14 @@ export function validateVergiNo(vkn: string): boolean {
   const s = vkn.replace(/\s/g, '');
   if (!/^\d{10}$/.test(s)) return false;
 
-  const digits = s.split('').map(Number);
-  let total = 0;
+  let sum = 0;
   for (let i = 0; i < 9; i++) {
-    const step1 = (digits[i] + (10 - i)) % 10;
-    const step2 = step1 === 0 ? 9 : step1 % 9 === 0 ? 9 : step1 % 9;
-    total += step2 * Math.pow(2, 9 - i);
+    let tmp = (parseInt(s[i], 10) + (9 - i)) % 10;
+    let val = (tmp * Math.pow(2, 9 - i)) % 9;
+    if (tmp !== 0 && val === 0) val = 9;
+    sum += val;
   }
-  const checkDigit = total % 10 === 0 ? 0 : 10 - (total % 10);
-  return checkDigit === digits[9];
+  return (10 - (sum % 10)) % 10 === parseInt(s[9], 10);
 }
 
 // ─── IBAN ────────────────────────────────────────────────────────────────────

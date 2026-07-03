@@ -66,7 +66,25 @@ export class WorkGroupsService {
   async remove(id: string) {
     const wg = await this.prisma.workGroup.findUnique({ where: { id } });
     if (!wg) throw new NotFoundException('İş grubu bulunamadı');
-    if (wg.isSystem) throw new BadRequestException('Sistem iş grupları silinemez');
+
+    const [reportItemCount, statementItemCount, templateItemCount] = await Promise.all([
+      this.prisma.repairReportItem.count({ where: { workGroupId: id } }),
+      this.prisma.vendorStatementItem.count({ where: { workGroupId: id } }),
+      this.prisma.reportTemplateItem.count({ where: { workGroupId: id } }),
+    ]);
+
+    if (reportItemCount > 0) {
+      throw new BadRequestException(
+        'Bu hizmet kolu onarım raporlarında kullanılıyor; silinemez. Pasif yapmayı deneyin.',
+      );
+    }
+    if (statementItemCount > 0) {
+      throw new BadRequestException('Bu hizmet kolu tedarikçi ekstrelerinde kullanılıyor; silinemez.');
+    }
+    if (templateItemCount > 0) {
+      throw new BadRequestException('Bu hizmet kolu rapor şablonlarında kullanılıyor; silinemez.');
+    }
+
     await this.prisma.workGroup.delete({ where: { id } });
     return { message: 'İş grubu silindi' };
   }

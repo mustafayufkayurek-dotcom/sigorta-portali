@@ -17,6 +17,7 @@ import {
 } from '@/utils/service-area-helpers';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
+import { VendorDiscoveryPanel, type ExternalVendorCandidate, type VendorDiscoverySearchContext } from '@/components/vendor-discovery/VendorDiscoveryPanel';
 import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { relativeTime } from '@/utils/date-helpers';
@@ -798,6 +799,8 @@ export default function VendorsPage() {
   const wgFilterRef = useRef<HTMLDivElement>(null);
 
   const [showModal, setShowModal] = useState(false);
+  const [showDiscoveryPanel, setShowDiscoveryPanel] = useState(false);
+  const [pendingDiscoveryLink, setPendingDiscoveryLink] = useState<{ sessionId: string; externalId: string } | null>(null);
   const [editVendor, setEditVendor] = useState<any>(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
@@ -1008,6 +1011,7 @@ export default function VendorsPage() {
     setContacts([emptyContact()]); setContactInfos([emptyContactInfo()]);
     setTagInput(''); setActiveSection(0); setNumericErrors({}); setFieldErrors({}); setContactsOpen(false);
     setLocationCoords(null); setShowLocationPicker(false); setGeocodeMsg(null);
+    setPendingDiscoveryLink(null);
     setPendingDocs([]); setDocSelectedTypeId(''); setDocCustomType(''); setTypeCustom(''); setServiceBranches([]); setCustomHasarKol(''); setCustomAcilKol(''); setTypeActivityPicks([]); setTypeActivityCustom(''); setTypeActivityOtherOpen(false); setHizmetKollariOpen(false); setIbanError(null);
   };
 
@@ -1373,6 +1377,73 @@ export default function VendorsPage() {
   };
 
   const openCreate = () => { setEditVendor(null); resetForm(); setShowModal(true); };
+
+  const handleDiscoveryAddAsVendor = async (
+    candidate: ExternalVendorCandidate,
+    context: VendorDiscoverySearchContext,
+  ) => {
+    setShowDiscoveryPanel(false);
+    try {
+      const r = await axios.post(
+        `${API}/vendor-discovery/import`,
+        {
+          externalId: candidate.externalId,
+          sessionId: context.sessionId,
+          candidate,
+          city: context.city,
+          district: context.districts?.length ? context.districts.join(', ') : undefined,
+          serviceType: context.serviceType,
+          minRating: Number(context.minRating),
+        },
+        { headers: authHeader() },
+      );
+
+      const prefill = r.data.data?.prefill;
+      if (!prefill) {
+        showToast('error', 'Aday bilgileri alınamadı.');
+        return;
+      }
+
+      resetForm();
+      setEditVendor(null);
+
+      if (context.sessionId) {
+        setPendingDiscoveryLink({ sessionId: context.sessionId, externalId: candidate.externalId });
+      } else {
+        setPendingDiscoveryLink(null);
+      }
+
+      const matchedProv = STATIC_PROVINCES.find(
+        (p) => p.name.localeCompare(prefill.city ?? '', 'tr', { sensitivity: 'base' }) === 0,
+      );
+
+      setForm({
+        ...emptyForm(),
+        entityType: 'corporate',
+        name: prefill.name ?? '',
+        cityCode: matchedProv?.code ?? '',
+        city: prefill.city ?? '',
+        district: prefill.district ?? '',
+        address: prefill.address ?? '',
+        notes: prefill.notes ?? '',
+        category: 'hasar',
+      });
+
+      if (prefill.phone) {
+        setContactInfos([{ type: 'phone', value: prefill.phone, label: 'general' }]);
+      }
+
+      if (prefill.latitude != null && prefill.longitude != null) {
+        setLocationCoords({ lat: prefill.latitude, lng: prefill.longitude });
+      }
+
+      setShowModal(true);
+      showToast('success', `"${prefill.name}" tedarikçi formuna aktarıldı. Bilgileri kontrol edip kaydedin.`);
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Aday tedarikçi formuna aktarılamadı.');
+    }
+  };
+
   const openEdit = async (v: any) => {
     setEditVendor(v);
     const matchedProv = STATIC_PROVINCES.find((p) => p.name === v.city);
@@ -1569,6 +1640,19 @@ export default function VendorsPage() {
         }
       }
 
+      if (!wasEdit && savedVendorId && pendingDiscoveryLink) {
+        try {
+          await axios.post(
+            `${API}/vendor-discovery/link-import`,
+            { ...pendingDiscoveryLink, vendorId: savedVendorId },
+            { headers: authHeader() },
+          );
+        } catch {
+          /* bağlama başarısız — tedarikçi kaydı yine de oluştu */
+        }
+        setPendingDiscoveryLink(null);
+      }
+
       load();
       loadSummary();
 
@@ -1731,9 +1815,14 @@ export default function VendorsPage() {
             <p className="page-subtitle">Tedarikçi ve Alt Yüklenici Yönetimi</p>
           </div>
         </div>
-        <button type="button" onClick={openCreate} className="btn-primary">
-          {Icon.plus} Yeni Tedarikçi
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowDiscoveryPanel(true)} className="btn-secondary">
+            Dış Kaynakta Ara
+          </button>
+          <button type="button" onClick={openCreate} className="btn-primary">
+            {Icon.plus} Yeni Tedarikçi
+          </button>
+        </div>
       </div>
 
       {/* ── Sözleşme Uyarı Banner ── */}
@@ -3438,6 +3527,13 @@ export default function VendorsPage() {
           </div>
         </div>
       )}
+
+      <VendorDiscoveryPanel
+        open={showDiscoveryPanel}
+        onClose={() => setShowDiscoveryPanel(false)}
+        provinces={provinces}
+        onAddAsVendor={handleDiscoveryAddAsVendor}
+      />
     </div>
     </TableColumnsProvider>
   );

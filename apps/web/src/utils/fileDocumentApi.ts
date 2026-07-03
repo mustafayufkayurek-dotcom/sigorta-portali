@@ -1,5 +1,5 @@
 const _fBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API_BASE = _fBase.endsWith('/api/v1') ? _fBase.replace(/\/api\/v1$/, '') : _fBase;
+const API_BASE = _fBase.endsWith('/api/v1') ? _fBase : `${_fBase.replace(/\/$/, '')}/api/v1`;
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';

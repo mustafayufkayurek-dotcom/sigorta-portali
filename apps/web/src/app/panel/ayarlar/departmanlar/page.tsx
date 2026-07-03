@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
-import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
@@ -20,15 +21,7 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'department', label: 'Departman', defaultWidth: 220, minWidth: 140 },
-  { id: 'reportFormat', label: 'Rapor Formatı', defaultWidth: 140, minWidth: 100 },
-  { id: 'fileSubjects', label: 'Dosya Konuları', defaultWidth: 140, minWidth: 100 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const FORMAT_LABELS: Record<string, string> = {
   repair: 'Hasar Onarım',
@@ -94,19 +87,19 @@ export default function DepartmanlarPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Ad zorunludur'); return; }
-    const payload = {
-      ...form,
-      code: editing ? form.code : (form.code.trim() || suggestAutoCode('DEPT', form.name)),
-      name: form.name.trim(),
-    };
+    const name = normalizeFormFreeText(form.name);
+    if (!name) { setError('Ad zorunludur'); return; }
+    const description = form.description.trim()
+      ? normalizeFormFreeText(form.description)
+      : undefined;
     const dupName = departments.find((d) =>
-      d.name.trim().toLowerCase() === payload.name.toLowerCase() && (!editing || d.id !== editing.id)
+      d.name.trim().toLowerCase() === name.toLowerCase() && (!editing || d.id !== editing.id)
     );
     if (dupName) { setError('Bu isimde bir departman zaten mevcut!'); return; }
     if (!editing) {
+      const code = form.code.trim() || suggestAutoCode('DEPT', name);
       const dupCode = departments.find((d) =>
-        d.code.trim().toUpperCase() === payload.code.trim().toUpperCase()
+        d.code.trim().toUpperCase() === code.toUpperCase()
       );
       if (dupCode) { setError('Bu kodda bir departman zaten mevcut!'); return; }
     }
@@ -114,9 +107,30 @@ export default function DepartmanlarPage() {
     setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/departments/${editing.id}`, payload, { headers: authHeader() });
+        await axios.put(
+          `${API}/departments/${editing.id}`,
+          {
+            name,
+            description,
+            color: form.color,
+            reportFormat: form.reportFormat,
+            sortOrder: form.sortOrder,
+          },
+          { headers: authHeader() },
+        );
       } else {
-        await axios.post(`${API}/departments`, payload, { headers: authHeader() });
+        await axios.post(
+          `${API}/departments`,
+          {
+            code: form.code.trim() || suggestAutoCode('DEPT', name),
+            name,
+            description,
+            color: form.color,
+            reportFormat: form.reportFormat,
+            sortOrder: form.sortOrder,
+          },
+          { headers: authHeader() },
+        );
       }
       setShowModal(false);
       fetchDepartments();
@@ -148,8 +162,6 @@ export default function DepartmanlarPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Departman Yönetimi"
       description="Rapor Formatları ve Dosya Konularını Departman Bazlı Yönetin"
@@ -159,7 +171,6 @@ export default function DepartmanlarPage() {
       onAdd={openCreate}
       headerExtra={
         <div className="flex items-center gap-2">
-          <SettingsTableColumnPicker tableColumns={tableColumns} />
           {departments.length === 0 ? (
             <button
               type="button"
@@ -175,16 +186,16 @@ export default function DepartmanlarPage() {
     >
       <SettingsTable loading={loading} empty={departments.length === 0} emptyText="Henüz departman tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh colId="department">Departman</SettingsTableTh>
-          <SettingsTableTh colId="reportFormat">Rapor Formatı</SettingsTableTh>
-          <SettingsTableTh colId="fileSubjects">Dosya Konuları</SettingsTableTh>
-          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+          <SettingsTableTh>Departman</SettingsTableTh>
+          <SettingsTableTh>Rapor Formatı</SettingsTableTh>
+          <SettingsTableTh>Dosya Konuları</SettingsTableTh>
+          <SettingsTableTh>Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {departments.map((d) => (
             <SettingsTableRow key={d.id}>
-              <SettingsTableTd colId="department">
+              <SettingsTableTd>
                 <div className="flex items-center gap-3">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
                   <div>
@@ -194,13 +205,13 @@ export default function DepartmanlarPage() {
                   {d.isSystem && <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Sistem</span>}
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd colId="reportFormat">
+              <SettingsTableTd>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${FORMAT_COLORS[d.reportFormat] ?? 'bg-slate-100 text-slate-600'}`}>
                   {FORMAT_LABELS[d.reportFormat] ?? d.reportFormat}
                 </span>
               </SettingsTableTd>
-              <SettingsTableTd colId="fileSubjects">{d._count?.fileSubjects ?? 0} konu</SettingsTableTd>
-              <SettingsTableTd colId="status">
+              <SettingsTableTd>{d._count?.fileSubjects ?? 0} konu</SettingsTableTd>
+              <SettingsTableTd>
                 <StatusBadge active={d.status === 'active'} />
               </SettingsTableTd>
               <SettingsTableActions>
@@ -233,6 +244,7 @@ export default function DepartmanlarPage() {
           <input className={inputCls}
             value={form.name}
             onChange={(e) => setForm((p) => applyNameWithAutoCode(p, e.target.value, !!editing, 'DEPT'))}
+            onBlur={() => setForm((p) => blurNameWithAutoCode(p, !!editing, 'DEPT'))}
             placeholder="Departman Adı"
           />
         </div>
@@ -241,6 +253,10 @@ export default function DepartmanlarPage() {
           <input className={inputCls}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onBlur={(e) => {
+              const v = normalizeFormFreeText(e.target.value);
+              if (v !== e.target.value.trim()) setForm((p) => ({ ...p, description: v }));
+            }}
             placeholder="Opsiyonel Açıklama"
           />
         </div>
@@ -259,7 +275,7 @@ export default function DepartmanlarPage() {
             <div>
               <label className={labelCls}>Renk</label>
               <div className="flex items-center gap-2">
-                <input type="color"
+          <input type="color"
                   className="w-10 h-9 border border-slate-200 rounded-lg cursor-pointer p-0.5"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
@@ -275,7 +291,7 @@ export default function DepartmanlarPage() {
           <div>
             <label className={labelCls}>Renk</label>
             <div className="flex items-center gap-2">
-              <input type="color"
+          <input type="color"
                 className="w-10 h-9 border border-slate-200 rounded-lg cursor-pointer p-0.5"
                 value={form.color}
                 onChange={(e) => setForm({ ...form, color: e.target.value })}
@@ -299,7 +315,5 @@ export default function DepartmanlarPage() {
         error={deleteError}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

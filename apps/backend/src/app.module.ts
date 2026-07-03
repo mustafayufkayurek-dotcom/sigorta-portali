@@ -26,6 +26,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdjustersModule } from './modules/adjusters/adjusters.module';
 import { BudgetModule } from './modules/budget/budget.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
+import { VendorDiscoveryModule } from './modules/vendor-discovery/vendor-discovery.module';
 import { WorkGroupsModule } from './modules/work-groups/work-groups.module';
 import { RepairReportsModule } from './modules/repair-reports/repair-reports.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
@@ -81,6 +82,7 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { TestNotesModule } from './modules/test-notes/test-notes.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { OperationInboxModule } from './modules/operation-inbox/operation-inbox.module';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -153,6 +155,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     AdjustersModule,
     BudgetModule,
     VendorsModule,
+    VendorDiscoveryModule,
     WorkGroupsModule,
     RepairReportsModule,
     DepartmentsModule,
@@ -208,6 +211,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     TimelineModule,
     TestNotesModule,
     CrmModule,
+    OperationInboxModule,
     CacheModule,
   ],
   providers: [

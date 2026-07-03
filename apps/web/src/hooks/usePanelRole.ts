@@ -20,5 +20,32 @@ export function usePanelRoleCode(): string {
 }
 
 export function isOfficeStaffRole(roleCode: string): boolean {
-  return roleCode === 'office_staff' || roleCode === 'office staff';
+  const code = normalizeNavRoleCode(roleCode);
+  return code === 'office_staff';
+}
+
+export function isFieldStaffRole(roleCode: string): boolean {
+  const code = normalizeNavRoleCode(roleCode);
+  return code === 'field_staff';
+}
+
+const FINANCE_ROLE_CODES = new Set(['finance', 'finans', 'accountant']);
+
+export function isFinanceRole(roleCode: string): boolean {
+  return FINANCE_ROLE_CODES.has(normalizeNavRoleCode(roleCode));
+}
+
+function normalizeNavRoleCode(code: string): string {
+  return String(code ?? '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
+}
+
+/** Sidebar/route rol listesinde seed kodları ile legacy büyük harf eşleşmesi */
+export function roleAllowedForNav(roleCode: string, allowedRoles: string[]): boolean {
+  const normalized = normalizeNavRoleCode(roleCode);
+  return allowedRoles.some((allowed) => {
+    const entry = normalizeNavRoleCode(allowed);
+    if (entry === normalized) return true;
+    if (FINANCE_ROLE_CODES.has(entry) && FINANCE_ROLE_CODES.has(normalized)) return true;
+    return false;
+  });
 }

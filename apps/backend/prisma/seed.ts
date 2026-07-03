@@ -95,6 +95,11 @@ async function main() {
 
     // Location tracking
     { code: 'location.view', name: 'Konum Takibini Görüntüle', module: 'location', action: 'view' },
+
+    // Operasyon Gelen Kutusu (Microsoft 365)
+    { code: 'operation_inbox.view', name: 'Gelen Kutusunu Görüntüle', module: 'operation_inbox', action: 'view' },
+    { code: 'operation_inbox.manage', name: 'Gelen Kutusunu Yönet', module: 'operation_inbox', action: 'manage' },
+    { code: 'operation_inbox.settings', name: 'Gelen Kutusu Ayarları', module: 'operation_inbox', action: 'settings' },
   ];
 
   const createdPermissions = await Promise.all(
@@ -1093,8 +1098,9 @@ async function main() {
   }
   console.log(`✅ Created/updated ${departments.length} departments with file subjects`);
 
-  // ── Hizmet Branşları (ServiceBranch) ──────────────────────────────────────
-  const serviceBranches = [
+  // ── DEPRECATED: Meridyen Hizmet Branşları (ServiceBranch scope=meridyen) ──
+  // Okuma artık department_file_subjects üzerinden yapılır; yeni kayıt eklenmez.
+  const legacyMeridyenServiceBranches = [
     { name: 'Konut Yangın',         type: 'hasar',      sortOrder: 1 },
     { name: 'Dahili Su',            type: 'hasar',      sortOrder: 2 },
     { name: 'Endüstriyel Yangın',   type: 'hasar',      sortOrder: 3 },
@@ -1109,13 +1115,13 @@ async function main() {
     { name: 'Çilingir',             type: 'acil_yardim',sortOrder: 3 },
   ];
 
-  for (const sb of serviceBranches) {
+  for (const sb of legacyMeridyenServiceBranches) {
     const exists = await prisma.serviceBranch.findFirst({ where: { name: sb.name, type: sb.type } });
     if (!exists) {
       await prisma.serviceBranch.create({ data: { ...sb, isActive: true } });
     }
   }
-  console.log(`✅ Created/updated ${serviceBranches.length} service branches`);
+  console.log(`✅ Legacy meridyen service branches checked (${legacyMeridyenServiceBranches.length} defaults)`);
 
   // ── Hizmet Türleri (ServiceType) ──────────────────────────────────────────
   const serviceTypes = [

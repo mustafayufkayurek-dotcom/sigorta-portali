@@ -1,6 +1,5 @@
 'use client';
 
-import { useIsFetching } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { DashboardShell, DashboardHeader, DashboardGrid } from './_components';
 import { PrimaryKpiGroup } from '@/features/dashboard/components/kpi';
@@ -11,17 +10,16 @@ import { SlaRiskWidget } from '@/features/dashboard/components/sla';
 import { OwnershipLoadWidget } from '@/features/dashboard/components/ownership';
 import { FinanceBottleneckWidget, OverheadAllocationReminderWidget } from '@/features/dashboard/components/finance';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
-import { RunningLightsText } from '@/components/ui/RunningLightsText';
-import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 export default function PanelPage() {
   const router = useRouter();
-  const roleCode = usePanelRoleCode();
-  const isOfficeStaff = isOfficeStaffRole(roleCode);
-  const dashboardRequestCount = useIsFetching({
-    predicate: (query) => Array.isArray(query.queryKey) && String(query.queryKey[0]).startsWith('dashboard-'),
-  });
-  const showLoadingBar = dashboardRequestCount > 0;
+  const {
+    isOfficeStaff,
+    isFieldStaff,
+    showAcilYardim,
+    showFinanceWidgets,
+  } = usePanelAccess();
 
   const handleNavigate = (path: string) => {
     if (typeof window !== 'undefined') {
@@ -32,39 +30,35 @@ export default function PanelPage() {
     router.push(path);
   };
 
+  const title = isFieldStaff
+    ? 'Saha Operasyon Merkezi'
+    : isOfficeStaff
+      ? 'Dosya Sorumlusu Merkezi'
+      : 'Operasyon Merkezi';
+
+  const subtitle = isFieldStaff
+    ? 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+    : isOfficeStaff
+      ? showAcilYardim
+        ? 'Size atanan hasar ve acil yardım dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+        : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+      : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
+
+  const hideAcil = !showAcilYardim;
+
   return (
     <DashboardShell>
-      <div className="sticky top-0 z-20 flex h-8 items-center overflow-hidden rounded-full bg-slate-200/60 px-3 dark:bg-slate-800/60">
-        <div
-          className={`transition-all duration-300 ${
-            showLoadingBar ? 'opacity-100' : 'pointer-events-none opacity-0'
-          }`}
-        >
-          {showLoadingBar && (
-            <RunningLightsText
-              text={isOfficeStaff ? 'Dosyalarınız yükleniyor' : 'Dashboard güncelleniyor'}
-              size="sm"
-              variant="blue"
-              showLeds={false}
-            />
-          )}
-        </div>
-      </div>
-
       <DashboardHeader
-        title={isOfficeStaff ? 'Dosya Sorumlusu Merkezi' : 'Operasyon Merkezi'}
-        subtitle={
-          isOfficeStaff
-            ? 'Size atanan hasar ve acil yardım dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
-            : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar'
-        }
+        title={title}
+        subtitle={subtitle}
+        showAcilAction={showAcilYardim}
       />
 
-      <PrimaryKpiGroup staggerIndex={0} hideFinance={isOfficeStaff} />
+      <PrimaryKpiGroup staggerIndex={0} hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
 
-      <OperationFlowStrip hideFinance={isOfficeStaff} />
+      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
 
-      {!isOfficeStaff && <OverheadAllocationReminderWidget staggerIndex={2} />}
+      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={2} />}
 
       <CriticalAlertsWidget staggerIndex={3} />
 
@@ -72,17 +66,17 @@ export default function PanelPage() {
 
       <DashboardGrid>
         <SlaRiskWidget staggerIndex={5} />
-        {!isOfficeStaff && <OwnershipLoadWidget staggerIndex={6} />}
+        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={6} />}
       </DashboardGrid>
 
-      {!isOfficeStaff && (
+      {showFinanceWidgets && (
         <DashboardGrid>
           <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={7} />
           <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={8} />
         </DashboardGrid>
       )}
 
-      {isOfficeStaff && (
+      {!showFinanceWidgets && (
         <DashboardGrid>
           <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={5} />
         </DashboardGrid>

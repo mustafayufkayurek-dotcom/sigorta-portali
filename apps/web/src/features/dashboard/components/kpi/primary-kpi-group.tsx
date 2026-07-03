@@ -15,9 +15,10 @@ import { formatCurrency } from '../../utils/formatters';
 interface PrimaryKpiGroupProps {
   staggerIndex?: number;
   hideFinance?: boolean;
+  hideAcil?: boolean;
 }
 
-export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false }: PrimaryKpiGroupProps) {
+export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAcil = false }: PrimaryKpiGroupProps) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
 
@@ -31,14 +32,14 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false }: Prima
     <WidgetBoundary>
       <section
         className={`grid grid-cols-1 gap-3 transition-all duration-500 ease-out sm:grid-cols-2 lg:grid-cols-3 ${
-          hideFinance ? 'xl:grid-cols-5' : 'xl:grid-cols-6'
+          hideFinance ? (hideAcil ? 'xl:grid-cols-4' : 'xl:grid-cols-5') : (hideAcil ? 'xl:grid-cols-5' : 'xl:grid-cols-6')
         } ${
           isLoading ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
         }`}
         style={{ transitionDelay: `${staggerIndex * 100}ms` }}
       >
         {isLoading ? (
-          Array.from({ length: hideFinance ? 5 : 6 }).map((_, i) => (
+          Array.from({ length: hideFinance ? (hideAcil ? 4 : 5) : (hideAcil ? 5 : 6) }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           ))
         ) : isError ? (
@@ -71,6 +72,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false }: Prima
               emptyHint="Kayıtlı hasar dosyası yok."
               href="/panel/hasar-dosyalari"
             />
+            {!hideAcil && (
             <KpiCard
               icon={BellRing}
               label="Acil Yardım"
@@ -80,6 +82,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false }: Prima
               emptyHint="Kayıtlı acil yardım dosyası yok."
               href="/panel/acil-yardim"
             />
+            )}
             <KpiCard
               icon={AlertTriangle}
               label="SLA Riski"

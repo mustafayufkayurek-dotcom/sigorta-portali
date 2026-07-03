@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { WhatsAppService } from '@/modules/notifications/whatsapp/whatsapp.service';
 import { ConfigService } from '@nestjs/config';
+import { buildAppPath } from '@/common/utils/app-url';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { SubmitSurveyDto } from './dto/submit-survey.dto';
 
@@ -86,8 +87,7 @@ export class SurveysService {
       throw new BadRequestException('Sigortalı telefon numarası tanımlı değil');
     }
 
-    const webUrl = this.config.get<string>('WEB_URL', 'http://localhost:3001');
-    const surveyUrl = `${webUrl}/anket/${campaign.publicToken}`;
+    const surveyUrl = buildAppPath(this.config, `/anket/${campaign.publicToken}`);
 
     const insuredGreeting = campaign.insuredName ? `Sayın ${campaign.insuredName},\n\n` : '';
     const message =

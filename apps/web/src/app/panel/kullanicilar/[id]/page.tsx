@@ -11,6 +11,8 @@ import {
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
+import { formatPhoneDisplay } from '@/data/country-codes';
+import { toInternationalFormat } from '@/utils/validators';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -42,7 +44,7 @@ function ProfilTab({ user }: { user: any }) {
     { label: 'Ad', value: user.firstName },
     { label: 'Soyad', value: user.lastName },
     { label: 'E-posta', value: user.email },
-    { label: 'Telefon', value: user.phone ?? '—' },
+    { label: 'Telefon', value: user.phone ? formatPhoneDisplay(toInternationalFormat(user.phone)) : '—' },
     { label: 'Rol', value: user.role?.name ?? '—' },
     { label: 'Şube', value: user.branch?.name ?? '—' },
     { label: 'Durum', value: user.isActive ? 'Aktif' : 'Pasif' },

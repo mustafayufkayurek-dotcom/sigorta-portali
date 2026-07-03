@@ -135,7 +135,7 @@ function CurrentStageCard({ data }: { data: CurrentStageData }) {
       {/* Active Waitings */}
       {data.activeWaitings.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Aktif Beklemeler</p>
+          <p className="text-xs font-medium text-slate-500">Aktif Beklemeler</p>
           {data.activeWaitings.map((w) => (
             <div key={w.id} className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
               <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0 animate-pulse" />

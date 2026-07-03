@@ -16,6 +16,9 @@ describe('UsersService', () => {
       department: {
         findMany: jest.fn(),
       },
+      refreshToken: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       $transaction: jest.fn(),
     };
 
@@ -61,8 +64,11 @@ describe('UsersService', () => {
         userServiceArea: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
         userDepartmentMembership: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
         claimResponsibilityAssignment: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        userInsuranceCompanyScope: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
         user: {
           update: jest.fn().mockResolvedValue(updatedUser),
+          findUnique: jest.fn().mockResolvedValue(updatedUser),
           findUniqueOrThrow: jest.fn().mockResolvedValue(updatedUser),
         },
       };
@@ -76,14 +82,26 @@ describe('UsersService', () => {
       expect(tx.userServiceArea.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
       expect(tx.userDepartmentMembership.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
       expect(tx.claimResponsibilityAssignment.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+      expect(tx.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
       expect(auditLogsService.log).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'ROLE_SWITCH_CLEANUP',
           entityId: 'user-1',
         }),
       );
+      expect(auditLogsService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'TEMPORARY_PASSWORD_ISSUED',
+          entityId: 'user-1',
+        }),
+      );
       expect(result.roleId).toBe('role-new');
       expect((result as any).passwordHash).toBeUndefined();
+      expect(typeof (result as any).temporaryPassword).toBe('string');
+      expect((result as any).temporaryPassword.length).toBeGreaterThanOrEqual(12);
     });
 
     it('does not run cleanup when role stays the same', async () => {

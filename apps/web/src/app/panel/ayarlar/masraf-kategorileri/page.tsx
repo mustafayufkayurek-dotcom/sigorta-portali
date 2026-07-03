@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader, formatSettingsApiError } from '@/utils/settings-api';
-import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
@@ -21,15 +22,7 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'subGroup', label: 'Masraf Alt Grubu', defaultWidth: 200, minWidth: 140 },
-  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
-  { id: 'count', label: 'Kayıt', defaultWidth: 80, minWidth: 64 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 type ExpenseItem = {
   id: string;
@@ -148,13 +141,14 @@ export default function MasrafKategorileriPage() {
   };
 
   const saveGroup = async () => {
-    if (!groupForm.name.trim()) {
+    const name = normalizeFormFreeText(groupForm.name);
+    if (!name) {
       setGroupError('Masraf grubu adı zorunludur');
       return;
     }
-    const code = editGroup ? groupForm.code : suggestAutoCode('EXP', groupForm.name);
+    const code = editGroup ? groupForm.code : suggestAutoCode('EXP', name);
     const dupName = groups.find((g) =>
-      g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase() && (!editGroup || g.id !== editGroup.id),
+      g.name.trim().toLowerCase() === name.toLowerCase() && (!editGroup || g.id !== editGroup.id),
     );
     if (dupName) {
       setGroupError('Bu isimde bir masraf grubu zaten mevcut');
@@ -165,13 +159,13 @@ export default function MasrafKategorileriPage() {
     try {
       if (editGroup) {
         await axios.patch(`${API}/expense-categories/${editGroup.id}`, {
-          name: groupForm.name.trim(),
+          name,
           sortOrder: groupForm.sortOrder,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/expense-categories`, {
           code,
-          name: groupForm.name.trim(),
+          name,
           sortOrder: groupForm.sortOrder,
         }, { headers: authHeader() });
       }
@@ -227,7 +221,8 @@ export default function MasrafKategorileriPage() {
   };
 
   const saveItem = async () => {
-    if (!itemForm.name.trim()) {
+    const name = normalizeFormFreeText(itemForm.name);
+    if (!name) {
       setItemError('Masraf alt grubu adı zorunludur');
       return;
     }
@@ -236,10 +231,10 @@ export default function MasrafKategorileriPage() {
       return;
     }
     const parent = parentGroup(itemForm.parentId);
-    const code = editItem ? itemForm.code : suggestAutoCode(parent?.code ?? 'EXP', itemForm.name);
+    const code = editItem ? itemForm.code : suggestAutoCode(parent?.code ?? 'EXP', name);
     const siblings = parent?.children ?? [];
     const dupName = siblings.find((c) =>
-      c.name.trim().toLowerCase() === itemForm.name.trim().toLowerCase() && (!editItem || c.id !== editItem.id),
+      c.name.trim().toLowerCase() === name.toLowerCase() && (!editItem || c.id !== editItem.id),
     );
     if (dupName) {
       setItemError('Seçili masraf grubunda aynı isimde bir alt grup zaten mevcut');
@@ -250,14 +245,14 @@ export default function MasrafKategorileriPage() {
     try {
       if (editItem) {
         await axios.patch(`${API}/expense-categories/${editItem.id}`, {
-          name: itemForm.name.trim(),
+          name,
           sortOrder: itemForm.sortOrder,
           parentId: itemForm.parentId,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/expense-categories`, {
           code,
-          name: itemForm.name.trim(),
+          name,
           sortOrder: itemForm.sortOrder,
           parentId: itemForm.parentId,
         }, { headers: authHeader() });
@@ -297,8 +292,6 @@ export default function MasrafKategorileriPage() {
   const selectedParentForModal = parentGroup(itemForm.parentId || itemParentId);
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Masraf Kategorileri"
       description="Masraf grupları ve alt grupları hiyerarşik olarak yönetin. Her alt grup mutlaka bir masraf grubuna bağlanır."
@@ -306,7 +299,6 @@ export default function MasrafKategorileriPage() {
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
-          <SettingsTableColumnPicker tableColumns={tableColumns} />
           {groups.length === 0 && (
             <button
               type="button"
@@ -432,24 +424,24 @@ export default function MasrafKategorileriPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh colId="subGroup">Masraf Alt Grubu</SettingsTableTh>
-                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh colId="count" className="text-center">Kayıt</SettingsTableTh>
-                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+                          <SettingsTableTh>Masraf Alt Grubu</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Kayıt</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {group.children.map((item) => (
                             <SettingsTableRow key={item.id}>
-                              <SettingsTableTd colId="subGroup">
+                              <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{item.name}</span>
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{item.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd colId="count" className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
-                              <SettingsTableTd colId="status">
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
+                              <SettingsTableTd>
                                 <button type="button" onClick={() => toggleItemStatus(item)}>
                                   <StatusBadge active={item.isActive} />
                                 </button>
@@ -487,6 +479,7 @@ export default function MasrafKategorileriPage() {
             className={inputCls}
             value={groupForm.name}
             onChange={(e) => setGroupForm((f) => applyNameWithAutoCode(f, e.target.value, !!editGroup, 'EXP'))}
+            onBlur={() => setGroupForm((f) => blurNameWithAutoCode(f, !!editGroup, 'EXP'))}
             placeholder="Örn: Tedarikçi Hakediş, Malzeme Gideri"
           />
         </div>
@@ -559,6 +552,11 @@ export default function MasrafKategorileriPage() {
                 ),
               )
             }
+            onBlur={() =>
+              setItemForm((f) =>
+                blurNameWithAutoCode(f, !!editItem, selectedParentForModal?.code ?? 'EXP'),
+              )
+            }
             placeholder="Örn: Yedek Parça, Yakıt, Aidat"
           />
         </div>
@@ -605,7 +603,5 @@ export default function MasrafKategorileriPage() {
         }
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
+import { CreateTaskDto } from './dto/create-task.dto';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 
@@ -30,7 +31,7 @@ export class TasksController {
   @Post()
   @RequirePermissions('task.create')
   @ApiOperation({ summary: 'Yeni görev oluştur' })
-  async create(@Body() createDto: any) {
+  async create(@Body() createDto: CreateTaskDto) {
     const data = await this.tasksService.create(createDto);
     return { success: true, data };
   }

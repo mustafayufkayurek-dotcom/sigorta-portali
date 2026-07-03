@@ -7,6 +7,7 @@ import {
   matchesCustomerSubType,
   matchesEntityScope,
   matchesServiceBranchType,
+  parseServiceBranchTypes,
   parseStringList,
   scopesOverlap,
   sortCompareTR,
@@ -40,19 +41,14 @@ export class DocumentTypesService {
     customerSubTypes?: string[];
   }) {
     const scope = (dto.entityScope ?? 'vendor') as DocumentEntityScope;
-    const branchTypes = parseStringList(dto.serviceBranchTypes);
+    const branchTypes = parseServiceBranchTypes(dto.serviceBranchTypes);
     const subTypes = parseStringList(dto.customerSubTypes);
 
-    if (scope === 'vendor' && branchTypes.length === 0 && subTypes.length > 0) {
-      throw new BadRequestException('Tedarikçi evrakları için en az bir hizmet türü seçilmelidir');
+    if (scope === 'vendor' && branchTypes.length === 0) {
+      throw new BadRequestException('Tedarikçi evrakları için en az bir Meridyen hizmet türü seçilmelidir');
     }
     if (scope === 'customer' && subTypes.length === 0) {
       throw new BadRequestException('Müşteri evrakları için en az bir müşteri tipi seçilmelidir');
-    }
-    for (const t of branchTypes) {
-      if (t !== 'hasar' && t !== 'acil_yardim') {
-        throw new BadRequestException('Geçersiz hizmet türü');
-      }
     }
   }
 
@@ -140,7 +136,7 @@ export class DocumentTypesService {
 
   async create(dto: CreateDocumentTypeDto) {
     const entityScope = (dto.entityScope ?? 'vendor') as DocumentEntityScope;
-    const serviceBranchTypes = parseStringList(dto.serviceBranchTypes);
+    const serviceBranchTypes = parseServiceBranchTypes(dto.serviceBranchTypes);
     const customerSubTypes = parseStringList(dto.customerSubTypes);
     this.validateScopePayload({ entityScope, serviceBranchTypes, customerSubTypes });
 
@@ -196,7 +192,7 @@ export class DocumentTypesService {
     const nextScope = (dto.entityScope ?? current.entityScope ?? 'vendor') as DocumentEntityScope;
     const nextBranchTypes =
       dto.serviceBranchTypes !== undefined
-        ? parseStringList(dto.serviceBranchTypes)
+        ? parseServiceBranchTypes(dto.serviceBranchTypes)
         : deriveServiceBranchTypes(current.serviceBranchTypes, current.departmentIds, deptCodeById);
     const nextSubTypes =
       dto.customerSubTypes !== undefined
@@ -220,19 +216,34 @@ export class DocumentTypesService {
       );
     }
 
-    const data: Record<string, unknown> = { ...dto };
-    if (dto.departmentIds !== undefined) {
-      data.departmentIds = parseStringList(dto.departmentIds);
-    }
+    const data: {
+      code?: string;
+      name?: string;
+      description?: string | null;
+      isRequired?: boolean;
+      sortOrder?: number;
+      status?: string;
+      departmentIds?: string[];
+      serviceTypeIds?: string[];
+      serviceBranchTypes?: string[];
+      customerSubTypes?: string[];
+      entityScope?: string;
+    } = {};
+
+    if (dto.code !== undefined) data.code = dto.code;
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.isRequired !== undefined) data.isRequired = dto.isRequired;
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.departmentIds !== undefined) data.departmentIds = parseStringList(dto.departmentIds);
+    if (dto.serviceTypeIds !== undefined) data.serviceTypeIds = dto.serviceTypeIds;
     if (dto.serviceBranchTypes !== undefined) {
       data.serviceBranchTypes = nextBranchTypes;
+      data.departmentIds = [];
     }
-    if (dto.customerSubTypes !== undefined) {
-      data.customerSubTypes = nextSubTypes;
-    }
-    if (dto.entityScope !== undefined) {
-      data.entityScope = nextScope;
-    }
+    if (dto.customerSubTypes !== undefined) data.customerSubTypes = nextSubTypes;
+    if (dto.entityScope !== undefined) data.entityScope = nextScope;
 
     return this.prisma.documentType.update({
       where: { id },

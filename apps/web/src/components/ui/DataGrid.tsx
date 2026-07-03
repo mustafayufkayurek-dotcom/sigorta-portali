@@ -55,7 +55,7 @@ export function DataGrid<T extends Record<string, any>>({
           <thead className="bg-gray-50">
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th key={col.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500">
                   {col.label}
                 </th>
               ))}
@@ -105,7 +105,7 @@ export function DataGrid<T extends Record<string, any>>({
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 ${col.sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
+                  className={`px-4 py-3 text-left text-xs font-medium text-gray-500 ${col.sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
                   <div className="flex items-center gap-1">

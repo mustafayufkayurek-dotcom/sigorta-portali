@@ -19,16 +19,7 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'title', label: 'Başlık', defaultWidth: 220, minWidth: 140 },
-  { id: 'type', label: 'Tür', defaultWidth: 140, minWidth: 100 },
-  { id: 'version', label: 'Versiyon', defaultWidth: 90, minWidth: 70 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-  { id: 'date', label: 'Tarih', defaultWidth: 120, minWidth: 90 },
-];
 
 interface Agreement {
   id: string; title: string; type: string; version: string;
@@ -167,41 +158,38 @@ export default function SozlesmelerPage() {
   }
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Sözleşme Yönetimi"
       description="KVKK ve gizlilik belgelerini yönetin. Şirket bilgileri Ayarlar → Kurulum → Genel Bilgiler'den otomatik doldurulur."
       addButtonText="+ Yeni Sözleşme"
       onAdd={openNew}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <SettingsTable loading={loading} empty={agreements.length === 0} emptyText="Henüz sözleşme eklenmemiş.">
         <SettingsTableHead>
-          <SettingsTableTh colId="title">Başlık</SettingsTableTh>
-          <SettingsTableTh colId="type">Tür</SettingsTableTh>
-          <SettingsTableTh colId="version">Versiyon</SettingsTableTh>
-          <SettingsTableTh colId="status">Durum</SettingsTableTh>
-          <SettingsTableTh colId="date">Tarih</SettingsTableTh>
+          <SettingsTableTh>Başlık</SettingsTableTh>
+          <SettingsTableTh>Tür</SettingsTableTh>
+          <SettingsTableTh>Versiyon</SettingsTableTh>
+          <SettingsTableTh>Durum</SettingsTableTh>
+          <SettingsTableTh>Tarih</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {agreements.map((a) => (
             <SettingsTableRow key={a.id}>
-              <SettingsTableTd colId="title"><p className="text-sm font-medium text-slate-900">{a.title}</p></SettingsTableTd>
-              <SettingsTableTd colId="type">
+              <SettingsTableTd><p className="text-sm font-medium text-slate-900">{a.title}</p></SettingsTableTd>
+              <SettingsTableTd>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                   {typeLabels[a.type] ?? a.type}
                 </span>
               </SettingsTableTd>
-              <SettingsTableTd colId="version">v{a.version}</SettingsTableTd>
-              <SettingsTableTd colId="status">
+              <SettingsTableTd>v{a.version}</SettingsTableTd>
+              <SettingsTableTd>
                 <button type="button" onClick={() => toggleActive(a)}>
                   <StatusBadge active={a.isActive} />
                 </button>
               </SettingsTableTd>
-              <SettingsTableTd colId="date" className="text-xs text-slate-400">{fmtDate(a.updatedAt)}</SettingsTableTd>
+              <SettingsTableTd className="text-xs text-slate-400">{fmtDate(a.updatedAt)}</SettingsTableTd>
               <SettingsTableActions>
                 <button
                   type="button"
@@ -280,7 +268,7 @@ export default function SozlesmelerPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {acceptances.length > 0 && (
+          {acceptances.length > 0 && (
                   <button
                     type="button"
                     onClick={() => exportAcceptancesCsv(acceptancesTarget, acceptances)}
@@ -342,7 +330,5 @@ export default function SozlesmelerPage() {
       <DeleteConfirmDialog isOpen={deleteTarget !== null} onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm} deleting={deleting} itemName={deleteTarget?.title} />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

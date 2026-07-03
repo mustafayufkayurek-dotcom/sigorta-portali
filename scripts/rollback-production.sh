@@ -6,6 +6,10 @@
 #   bash scripts/rollback-production.sh custom TAG_BACKEND TAG_WEB
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/deploy-env.sh"
+
 APP_DIR="${APP_DIR:-/opt/app}"
 MODE="${1:-default}"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -52,13 +56,10 @@ services:
 EOF
 
 echo "[rollback] backend=$BACKEND_IMAGE web=$WEB_IMAGE"
-docker compose -p sigorta-hasar-sistemi \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  -f docker-compose.override.yml \
-  up -d --no-deps backend web
+compose_prod up -d --no-deps backend web
 
 sleep 40
+bash "$SCRIPT_DIR/verify-nginx-web-routing.sh"
 docker ps --format '{{.Names}} | {{.Status}} | {{.Image}}' | grep sigorta-
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health || true
 echo "[rollback] tamamlandı"

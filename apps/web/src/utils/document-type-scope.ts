@@ -25,6 +25,12 @@ export function parseStringList(raw: unknown): string[] {
   return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
 }
 
+export function parseServiceBranchTypes(raw: unknown): ServiceBranchTypeKey[] {
+  return parseStringList(raw).filter(
+    (t): t is ServiceBranchTypeKey => t === 'hasar' || t === 'acil_yardim',
+  );
+}
+
 export function sortCompareTR(a: string, b: string): number {
   return a.localeCompare(b, 'tr', { sensitivity: 'base' });
 }
@@ -38,9 +44,7 @@ export function deriveServiceBranchTypes(
   departmentIds: unknown,
   deptCodeById: Map<string, string> = new Map(),
 ): ServiceBranchTypeKey[] {
-  const explicit = parseStringList(serviceBranchTypes).filter(
-    (t): t is ServiceBranchTypeKey => t === 'hasar' || t === 'acil_yardim',
-  );
+  const explicit = parseServiceBranchTypes(serviceBranchTypes);
   if (explicit.length > 0) return explicit;
 
   const fromDepts = parseStringList(departmentIds)
@@ -178,6 +182,36 @@ export function filterDocumentTypesForCustomerSubType(
 
 export function serviceBranchTypeLabel(type: ServiceBranchTypeKey): string {
   return VENDOR_SERVICE_TABS.find((t) => t.id === type)?.label ?? type;
+}
+
+export function documentEntityScopeLabel(scope: DocumentEntityScope): string {
+  return scope === 'customer' ? 'Müşteri' : 'Tedarikçi';
+}
+
+/** Tablo kapsam baloncuğu: evrak sahibi + alt kapsam */
+export function vendorScopeBadgeLabel(branch: ServiceBranchTypeKey): string {
+  return `${documentEntityScopeLabel('vendor')} · ${serviceBranchTypeLabel(branch)}`;
+}
+
+export function customerScopeBadgeLabel(subType: string): string {
+  return `${documentEntityScopeLabel('customer')} · ${customerSubTypeScopeLabel(subType)}`;
+}
+
+export function documentTypeScopeBadges(
+  doc: DocumentTypeScopeRow,
+  deptCodeById: Map<string, string> = new Map(),
+): string[] {
+  const scope = (doc.entityScope ?? 'vendor') as DocumentEntityScope;
+  if (scope === 'customer') {
+    const subs = parseStringList(doc.customerSubTypes);
+    if (subs.length === 0) return [`${documentEntityScopeLabel('customer')} · Tüm Müşteri Tipleri`];
+    return subs.map(customerScopeBadgeLabel);
+  }
+  const branches = deriveServiceBranchTypes(doc.serviceBranchTypes, doc.departmentIds, deptCodeById);
+  if (branches.length === 0) {
+    return [`${documentEntityScopeLabel('vendor')} · Tüm Hizmet Türleri`];
+  }
+  return branches.map(vendorScopeBadgeLabel);
 }
 
 export function customerSubTypeScopeLabel(value: string): string {

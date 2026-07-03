@@ -22,7 +22,16 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface ClaimProps {
+interface SharedProps {
+  /** Kapama kontrol listesi (muvafakat, rapor, sözleşme). Evrak Özet'te zaten var; Finans'ta kapalı tutulabilir. */
+  showClosureChecklist?: boolean;
+  /** Fatura talebi oluşturma ve durum takibi */
+  showInvoiceRequest?: boolean;
+  /** Müşteri memnuniyet anketi (fatura kesildikten sonra) */
+  showSurvey?: boolean;
+}
+
+interface ClaimProps extends SharedProps {
   serviceType: 'claim';
   entityId: string;
   fileNo: string;
@@ -32,7 +41,7 @@ interface ClaimProps {
   workItemsSummary?: { description: string; amount: number; vatRate?: number }[];
 }
 
-interface EmergencyProps {
+interface EmergencyProps extends SharedProps {
   serviceType: 'emergency';
   entityId: string;
   fileNo: string;
@@ -100,7 +109,14 @@ function reqBadge(status: string) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function ClosureConditionsPanel(props: Props) {
-  const { serviceType, entityId, fileNo } = props;
+  const {
+    serviceType,
+    entityId,
+    fileNo,
+    showClosureChecklist = true,
+    showInvoiceRequest = true,
+    showSurvey = true,
+  } = props;
 
   const [conditions, setConditions] = useState<
     ClaimClosureConditions | EmergencyClosureConditions | null
@@ -117,34 +133,57 @@ export default function ClosureConditionsPanel(props: Props) {
   const [surveyDeepLink, setSurveyDeepLink] = useState<string | null>(null);
   const [surveyError, setSurveyError] = useState('');
 
-  const load = async () => {
-    setLoadingConds(true);
+  const loadConditions = async () => {
+    if (!showClosureChecklist && !showInvoiceRequest) return null;
     try {
-      const [conds, reqs] = await Promise.all([
+      const conds =
         serviceType === 'claim'
-          ? getClaimClosureConditions(entityId)
-          : getEmergencyClosureConditions(entityId),
-        serviceType === 'claim'
-          ? getInvoiceRequestsByClaimFile(entityId)
-          : getInvoiceRequestsByEmergencyCase(entityId),
-      ]);
+          ? await getClaimClosureConditions(entityId)
+          : await getEmergencyClosureConditions(entityId);
       setConditions(conds);
+      return conds;
+    } catch (e: unknown) {
+      if (showClosureChecklist || showInvoiceRequest) {
+        setError(e instanceof Error ? e.message : 'Kapanış durumu yüklenemedi');
+      }
+      setConditions(null);
+      return null;
+    }
+  };
+
+  const loadRequests = async () => {
+    if (!showInvoiceRequest && !showSurvey) return [];
+    try {
+      const reqs =
+        serviceType === 'claim'
+          ? await getInvoiceRequestsByClaimFile(entityId)
+          : await getInvoiceRequestsByEmergencyCase(entityId);
       setExistingRequests(reqs);
 
-      // Faturalanan talep varsa anket bilgisini yükle
       const invoicedReq = reqs.find((r) => r.status === 'invoiced');
-      if (invoicedReq) {
+      if (showSurvey && invoicedReq) {
         getSurveyByInvoiceRequest(invoicedReq.id)
           .then((s) => setSurvey(s))
           .catch(() => setSurvey(null));
       } else {
         setSurvey(null);
       }
-    } catch (e: any) {
-      setError(e.message ?? 'Yükleme hatası');
-    } finally {
-      setLoadingConds(false);
+      return reqs;
+    } catch (e: unknown) {
+      if (showInvoiceRequest) {
+        setError(e instanceof Error ? e.message : 'Fatura talepleri yüklenemedi');
+      }
+      setExistingRequests([]);
+      setSurvey(null);
+      return [];
     }
+  };
+
+  const load = async () => {
+    setLoadingConds(true);
+    setError('');
+    await Promise.all([loadConditions(), loadRequests()]);
+    setLoadingConds(false);
   };
 
   useEffect(() => {
@@ -203,7 +242,7 @@ export default function ClosureConditionsPanel(props: Props) {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
         <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        Koşullar kontrol ediliyor…
+        Yükleniyor…
       </div>
     );
   }
@@ -213,62 +252,62 @@ export default function ClosureConditionsPanel(props: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Koşullar Kartı */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800">Dosya Kapama Koşulları</h3>
-          {conditions?.canCreateInvoiceRequest && (
-            <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              Hazır
-            </span>
-          )}
+      {showClosureChecklist && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-800">Kapanış Kontrol Listesi</h3>
+            {conditions?.canCreateInvoiceRequest && (
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+                Hazır
+              </span>
+            )}
+          </div>
+          <div className="px-4 divide-y divide-gray-50">
+            {conditions && isClaimConds(conditions) ? (
+              <>
+                <ConditionRow
+                  met={conditions.muvafakatnameDigitallyApproved}
+                  label="Muvafakatname dijital onayı"
+                  help="Muvafakatname WhatsApp ile gönderilmeli ve onaylanmalı"
+                />
+                <ConditionRow
+                  met={conditions.muvafakatnamePhysicallyUploaded}
+                  label="Muvafakatname fiziki aslı yüklendi"
+                  help="Dijital onay sonrası taranmış orijinal yüklenmelidir"
+                />
+                <ConditionRow
+                  met={conditions.repairReportApproved}
+                  label="Onarım raporu onaylandı"
+                  help="Onarım raporu 'Onaylı' durumunda olmalı"
+                />
+                <ConditionRow
+                  met={conditions.vendorContractSigned}
+                  label="Tedarikçi sözleşmesi imzalı"
+                  help="Tedarikçi tarafından imzalanmış sözleşme olmalı"
+                />
+              </>
+            ) : conditions ? (
+              <>
+                <ConditionRow
+                  met={(conditions as EmergencyClosureConditions).matbuEvrakDigitallyApproved}
+                  label="Matbu evrak dijital onayı"
+                  help="Matbu evrak WhatsApp ile gönderilmeli ve onaylanmalı"
+                />
+                <ConditionRow
+                  met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
+                  label="Dosya tamamlandı (ÇÖZÜLDÜ)"
+                  help="Dosya durumu ÇÖZÜLDÜ olarak işaretlenmeli"
+                />
+              </>
+            ) : null}
+          </div>
         </div>
-        <div className="px-4 divide-y divide-gray-50">
-          {conditions && isClaimConds(conditions) ? (
-            <>
-              <ConditionRow
-                met={conditions.muvafakatnameDigitallyApproved}
-                label="Muvafakatname dijital onayı"
-                help="Muvafakatname WhatsApp ile gönderilmeli ve onaylanmalı"
-              />
-              <ConditionRow
-                met={conditions.muvafakatnamePhysicallyUploaded}
-                label="Muvafakatname fiziki aslı yüklendi"
-                help="Dijital onay sonrası taranmış orijinal yüklenmelidir"
-              />
-              <ConditionRow
-                met={conditions.repairReportApproved}
-                label="Onarım raporu onaylandı"
-                help="Onarım raporu 'Onaylı' durumunda olmalı"
-              />
-              <ConditionRow
-                met={conditions.vendorContractSigned}
-                label="Tedarikçi sözleşmesi imzalı"
-                help="Tedarikçi tarafından imzalanmış sözleşme olmalı"
-              />
-            </>
-          ) : conditions ? (
-            <>
-              <ConditionRow
-                met={(conditions as EmergencyClosureConditions).matbuEvrakDigitallyApproved}
-                label="Matbu evrak dijital onayı"
-                help="Matbu evrak WhatsApp ile gönderilmeli ve onaylanmalı"
-              />
-              <ConditionRow
-                met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
-                label="Dosya tamamlandı (ÇÖZÜLDÜ)"
-                help="Dosya durumu ÇÖZÜLDÜ olarak işaretlenmeli"
-              />
-            </>
-          ) : null}
-        </div>
-      </div>
+      )}
 
-      {/* Mevcut talep */}
-      {activeRequest && (
+      {showInvoiceRequest && activeRequest && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-blue-900">Fatura Talebi</p>
@@ -285,8 +324,7 @@ export default function ClosureConditionsPanel(props: Props) {
         </div>
       )}
 
-      {/* Tamamlananlar geçmişi */}
-      {existingRequests.filter((r) => ['invoiced', 'cancelled'].includes(r.status)).length > 0 && (
+      {showInvoiceRequest && existingRequests.filter((r) => ['invoiced', 'cancelled'].includes(r.status)).length > 0 && (
         <div className="space-y-2">
           {existingRequests
             .filter((r) => ['invoiced', 'cancelled'].includes(r.status))
@@ -314,8 +352,7 @@ export default function ClosureConditionsPanel(props: Props) {
         </div>
       )}
 
-      {/* Fatura Talebi Butonu */}
-      {!activeRequest && conditions?.canCreateInvoiceRequest && (
+      {showInvoiceRequest && !activeRequest && conditions?.canCreateInvoiceRequest && (
         <button
           onClick={handleCreateRequest}
           disabled={creating}
@@ -337,15 +374,13 @@ export default function ClosureConditionsPanel(props: Props) {
         </button>
       )}
 
-      {/* Koşullar tamamlanmadıysa bilgi */}
-      {!activeRequest && conditions && !conditions.canCreateInvoiceRequest && (
+      {showInvoiceRequest && !activeRequest && conditions && !conditions.canCreateInvoiceRequest && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-          Fatura talebi oluşturmak için tüm kapama koşullarının tamamlanması gerekiyor.
+          Fatura talebi için evrak ve onarım raporu koşulları tamamlanmalıdır. Durumu Evraklar → Özet sekmesinden kontrol edebilirsiniz.
         </div>
       )}
 
-      {/* ── Müşteri Memnuniyet Anketi ───────────────────────────────────── */}
-      {invoicedRequest && (
+      {showSurvey && invoicedRequest && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-800">Müşteri Memnuniyet Anketi</h3>

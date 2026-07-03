@@ -8,11 +8,12 @@
  * docs/product/UI_GUARDRAIL_CHECKLIST.md
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
 import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
+import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -32,9 +33,11 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
-import { validateEmail } from '@/utils/validators';
+import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
+import { toInternationalFormat, validateEmail } from '@/utils/validators';
 import {
   ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
   FIELD_OPERATION_AREA_OPTIONS,
@@ -43,8 +46,11 @@ import {
   departmentCodeMatchesArea,
   fieldOperationBranchOptions,
   findDepartmentForArea,
+  findRoleByCode,
   isAcilYardimAssistantCustomer,
+  normalizeRoleCode,
   operationAreaFromDepartmentCodes,
+  roleCodesMatch,
   sanitizeFieldOperationServiceBranches,
   showsAcilYardimCustomerScope,
   showsInsuranceCompanyScope,
@@ -240,8 +246,15 @@ interface User {
   createdAt: string;
 }
 
-function isProtectedSystemAdmin(user: Pick<User, 'role'>) {
-  return user.role?.code === 'admin';
+const PROTECTED_SYSTEM_EMAILS = new Set([
+  'admin@example.com',
+  'admin@meridyenassistance.com',
+]);
+
+function isProtectedSystemAdmin(user: Pick<User, 'email' | 'archivedEmail'>) {
+  const primary = (user.email ?? '').trim().toLowerCase();
+  const archived = (user.archivedEmail ?? '').trim().toLowerCase();
+  return PROTECTED_SYSTEM_EMAILS.has(primary) || PROTECTED_SYSTEM_EMAILS.has(archived);
 }
 
 type OperationArea = '' | 'hasar' | 'acil' | 'both';
@@ -348,18 +361,18 @@ function fmtDate(d?: string | null) {
 
 function displayRoleName(role?: Role | null) {
   if (!role) return '—';
-  if (role.code === 'admin') return 'Meridyen Yönetim';
-  if (role.code === 'manager') return 'Meridyen Yönetim';
-  if (role.code === 'office_staff') return 'Meridyen Dosya Sorumlusu';
-  if (role.code === 'field_staff') return 'Meridyen Saha Operasyonu';
-  if (role.code === 'expert' || role.code === 'adjuster') return 'Eksper';
-  if (role.code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
-  if (role.code === 'finance') return 'Finans';
+  const code = normalizeRoleCode(role.code);
+  if (code === 'admin' || code === 'manager') return 'Meridyen Yönetim';
+  if (code === 'office_staff') return 'Meridyen Dosya Sorumlusu';
+  if (code === 'field_staff') return 'Meridyen Saha Operasyonu';
+  if (code === 'expert' || code === 'adjuster') return 'Eksper';
+  if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
+  if (code === 'finance') return 'Finans';
   return role.name;
 }
 
 function isFieldStaffRole(role?: Role | null) {
-  return role?.code === 'field_staff';
+  return roleCodesMatch(role?.code, 'field_staff');
 }
 
 function operationAreaFromMemberships(memberships?: DepartmentMembership[]): OperationArea {
@@ -374,11 +387,16 @@ function operationAreaLabel(area: OperationArea) {
 }
 
 function displayRoleWithOperation(user: User) {
-  if (user.role?.code === 'admin') return 'Meridyen Yönetim · Yönetici';
-  if (user.role?.code === 'manager') return 'Meridyen Yönetim · Müdür';
-  if (!isFieldStaffRole(user.role)) return displayRoleName(user.role);
+  if (roleCodesMatch(user.role?.code, 'admin')) return { primary: 'Meridyen Yönetim', secondary: 'Yönetici' };
+  if (roleCodesMatch(user.role?.code, 'manager')) return { primary: 'Meridyen Yönetim', secondary: 'Müdür' };
+  if (!isFieldStaffRole(user.role)) {
+    return { primary: displayRoleName(user.role), secondary: null as string | null };
+  }
   const area = operationAreaFromMemberships(user.departmentMemberships);
-  return `${displayRoleName(user.role)} · Saha Tespit: ${operationAreaLabel(area)}`;
+  return {
+    primary: displayRoleName(user.role),
+    secondary: `Saha Tespit: ${operationAreaLabel(area)}`,
+  };
 }
 
 function isUserInviteSelectableInsuranceCompany(company: InsuranceCompany) {
@@ -486,7 +504,7 @@ const inputCls =
 
 function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null;
-  const token = localStorage.getItem('accessToken');
+  const token = getAccessToken();
   if (!token) return null;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
@@ -498,11 +516,45 @@ function getCurrentUserId(): string | null {
 
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Ad Soyad', defaultWidth: 200, minWidth: 140 },
-  { id: 'email', label: 'E-posta', defaultWidth: 200, minWidth: 140 },
-  { id: 'role', label: 'Görev', defaultWidth: 140, minWidth: 100 },
+  { id: 'email', label: 'E-posta', defaultWidth: 220, minWidth: 160 },
+  { id: 'role', label: 'Görev', defaultWidth: 220, minWidth: 160 },
   { id: 'status', label: 'Durum', defaultWidth: 110, minWidth: 88 },
   { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
 ];
+
+function RowIconButton({
+  title,
+  onClick,
+  disabled,
+  children,
+  tone = 'neutral',
+}: {
+  title: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+  tone?: 'neutral' | 'amber' | 'emerald' | 'red';
+}) {
+  const toneCls = {
+    neutral: 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+    amber: 'text-slate-500 hover:bg-amber-50 hover:text-amber-700',
+    emerald: 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700',
+    red: 'text-red-600 hover:bg-red-50 hover:text-red-700',
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${toneCls}`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function KullanicilarPage() {
   const tableColumns = usePanelTableColumns('table-cols:kullanicilar', TABLE_COLUMNS);
@@ -542,6 +594,7 @@ export default function KullanicilarPage() {
     mailMessage: string;
   } | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   // Şifre sıfırlama
   const [resetPwdError, setResetPwdError] = useState('');
@@ -557,7 +610,15 @@ export default function KullanicilarPage() {
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
+      const sessionOk = await ensureValidSession(API);
+      if (!sessionOk || !getAccessToken()) {
+        setLoadError('Oturum doğrulanamadı. Sayfayı yenileyin veya tekrar giriş yapın.');
+        setUsers([]);
+        return;
+      }
+
       const params: any = { limit: 200, includeInactive: 'true' };
       const r = await axios.get(`${API}/users`, {
         headers: authHeader(),
@@ -567,6 +628,13 @@ export default function KullanicilarPage() {
       setUsers(Array.isArray(list) ? list.map(normalizeUser) : []);
     } catch (err: any) {
       console.error('[Kullanicilar] loadUsers hata:', err?.response?.status, err?.response?.data ?? err?.message);
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setLoadError('Oturum süresi doldu. Çıkış yapıp tekrar giriş yapın.');
+      } else if (axios.isAxiosError(err) && err.response?.status === 403) {
+        setLoadError('Kullanıcı listesini görüntüleme yetkiniz yok.');
+      } else {
+        setLoadError('Kullanıcı listesi yüklenemedi. Tekrar deneyin.');
+      }
       setUsers([]);
     } finally {
       setLoading(false);
@@ -585,9 +653,15 @@ export default function KullanicilarPage() {
 
   const loadRoles = useCallback(async () => {
     try {
+      const sessionOk = await ensureValidSession(API);
+      if (!sessionOk || !getAccessToken()) {
+        setRoles([]);
+        return;
+      }
       const r = await axios.get(`${API}/roles`, { headers: authHeader() });
       setRoles(r.data.data ?? []);
-    } catch {
+    } catch (err) {
+      console.error('[Kullanicilar] loadRoles hata:', err);
       setRoles([]);
     }
   }, []);
@@ -646,21 +720,14 @@ export default function KullanicilarPage() {
 
   const loadServiceBranches = useCallback(async () => {
     try {
-      const [hasar, acil] = await Promise.all([
-        axios.get(`${API}/service-branches?type=hasar&scope=meridyen`, { headers: authHeader() }),
-        axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() }),
-      ]);
+      const acil = await axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() });
       const normalize = (response: any): ServiceBranch[] => {
         const list = response.data?.data ?? response.data ?? [];
         return Array.isArray(list) ? list : [];
       };
-      const hasarBranches = normalize(hasar);
       const acilBranches = normalize(acil);
       setServiceBranches(
-        [
-          ...sanitizeFieldOperationServiceBranches(hasarBranches, 'hasar'),
-          ...sanitizeFieldOperationServiceBranches(acilBranches, 'acil_yardim'),
-        ]
+        sanitizeFieldOperationServiceBranches(acilBranches, 'acil_yardim')
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'tr')),
       );
     } catch {
@@ -718,8 +785,10 @@ export default function KullanicilarPage() {
     return matchSearch && matchStatus && matchRole;
   });
 
-  const roleByCode = (code: string) => roles.find((role) => role.code === code);
-  const managementRoles = roles.filter((role) => role.code === 'admin' || role.code === 'manager');
+  const roleByCode = (code: string, ...aliases: string[]) => findRoleByCode(roles, code, ...aliases);
+  const managementRoles = roles.filter(
+    (role) => roleCodesMatch(role.code, 'admin') || roleCodesMatch(role.code, 'manager'),
+  );
   const hasMultipleManagementRoles = managementRoles.length > 1;
   const selectedRole = (() => {
     if (form.userTask === 'management') {
@@ -728,24 +797,28 @@ export default function KullanicilarPage() {
     }
     if (form.userTask === 'operations') return roleByCode('office_staff');
     if (form.userTask === 'field_operations') return roleByCode('field_staff');
-    if (form.userTask === 'expert') return roleByCode('expert') ?? roleByCode('adjuster');
+    if (form.userTask === 'expert') return roleByCode('expert', 'adjuster');
     if (form.userTask === 'insurance_company_user') return roleByCode('insurance_company_user');
     if (form.userTask === 'finance') return roleByCode('finance');
     return undefined;
   })();
   const selectedRoleIsFieldStaff = form.userTask === 'field_operations';
-  const selectedServiceBranches = form.operationArea === 'hasar' || form.operationArea === 'acil'
-    ? fieldOperationBranchOptions(serviceBranches, form.operationArea)
+  const selectedServiceBranches = form.operationArea === 'acil'
+    ? fieldOperationBranchOptions(serviceBranches, 'acil')
     : [];
 
   const taskFromRole = (role?: Role | null): { userTask: UserTaskCode; managementLevel: ManagementLevel } => {
-    if (role?.code === 'admin') return { userTask: 'management', managementLevel: 'admin' };
-    if (role?.code === 'manager') return { userTask: 'management', managementLevel: 'manager' };
-    if (role?.code === 'office_staff') return { userTask: 'operations', managementLevel: '' };
-    if (role?.code === 'field_staff') return { userTask: 'field_operations', managementLevel: '' };
-    if (role?.code === 'expert' || role?.code === 'adjuster') return { userTask: 'expert', managementLevel: '' };
-    if (role?.code === 'insurance_company_user') return { userTask: 'insurance_company_user', managementLevel: '' };
-    if (role?.code === 'finance') return { userTask: 'finance', managementLevel: '' };
+    if (roleCodesMatch(role?.code, 'admin')) return { userTask: 'management', managementLevel: 'admin' };
+    if (roleCodesMatch(role?.code, 'manager')) return { userTask: 'management', managementLevel: 'manager' };
+    if (roleCodesMatch(role?.code, 'office_staff')) return { userTask: 'operations', managementLevel: '' };
+    if (roleCodesMatch(role?.code, 'field_staff')) return { userTask: 'field_operations', managementLevel: '' };
+    if (roleCodesMatch(role?.code, 'expert') || roleCodesMatch(role?.code, 'adjuster')) {
+      return { userTask: 'expert', managementLevel: '' };
+    }
+    if (roleCodesMatch(role?.code, 'insurance_company_user')) {
+      return { userTask: 'insurance_company_user', managementLevel: '' };
+    }
+    if (roleCodesMatch(role?.code, 'finance')) return { userTask: 'finance', managementLevel: '' };
     return { userTask: '', managementLevel: '' };
   };
 
@@ -785,6 +858,11 @@ export default function KullanicilarPage() {
     const buildCoverageForDepartment = (departmentId: string) => {
       const department = departments.find((item) => item.id === departmentId);
       const coverageConfig: Record<string, unknown> = {};
+
+      if (area === 'hasar') {
+        return { coverageType: 'all', coverageConfig: {} };
+      }
+
       const branchSubjects = selectedSubjects.filter((item) => item !== FIELD_OTHER_SUBJECT_LABEL);
       if (branchSubjects.length > 0) {
         coverageConfig.ihbarSubjects = branchSubjects;
@@ -1088,7 +1166,7 @@ export default function KullanicilarPage() {
       firstName: u.firstName,
       lastName: u.lastName,
       email: u.email,
-      phone: u.phone ?? '',
+      phone: toInternationalFormat(u.phone ?? ''),
       userTask: task.userTask,
       managementLevel: task.managementLevel,
       operationArea: (isFieldStaffRole(u.role) || u.role?.code === 'office_staff') ? operationAreaFromMemberships(u.departmentMemberships) : '',
@@ -1138,20 +1216,18 @@ export default function KullanicilarPage() {
     if (form.userTask === 'management' && hasMultipleManagementRoles && !form.managementLevel) {
       nextErrors.managementLevel = 'Yetki seviyesi seçilmelidir.';
     }
-    if (form.userTask && !selectedRole) {
-      nextErrors.userTask = 'Seçilen görev için sistem rolü bulunamadı.';
+    if (form.userTask && roles.length === 0) {
+      nextErrors.userTask = 'Rol listesi yüklenemedi. Sayfayı yenileyip tekrar deneyin.';
+    } else if (form.userTask && !selectedRole) {
+      nextErrors.userTask =
+        'Seçilen görev için sistem rolü bulunamadı. Ayarlar → Roller bölümünden ilgili rol tanımını kontrol edin.';
     }
     if (selectedRoleIsFieldStaff && !form.operationArea) {
       nextErrors.operationArea = 'Hasar Onarım veya Acil Yardım seçilmelidir.';
     }
-    if (selectedRoleIsFieldStaff && form.operationArea) {
-      const hasBranch = form.selectedSubjects.some((item) => item !== FIELD_OTHER_SUBJECT_LABEL);
-      const hasOther = form.selectedSubjects.includes(FIELD_OTHER_SUBJECT_LABEL);
-      if (!hasBranch && !hasOther) {
-        nextErrors.selectedSubjects = 'En az bir hizmet türü seçilmelidir.';
-      }
-      if (hasOther && !form.otherSubjectNotes.trim()) {
-        nextErrors.otherSubjectNotes = 'Diğer seçildiğinde açıklama girilmelidir.';
+    if (selectedRoleIsFieldStaff && form.operationArea === 'acil') {
+      if (form.selectedSubjects.length === 0) {
+        nextErrors.selectedSubjects = 'En az bir hizmet kolu seçilmelidir.';
       }
     }
     if (form.userTask === 'operations' && !form.operationArea) {
@@ -1290,9 +1366,21 @@ export default function KullanicilarPage() {
           return;
         }
       } else if (modal === 'edit' && editingUser) {
-        await axios.patch(`${API}/users/${editingUser.id}`, payload, {
+        const response = await axios.patch(`${API}/users/${editingUser.id}`, payload, {
           headers: authHeader(),
         });
+        const updated = response.data?.data;
+        const oneTimePassword = updated?.temporaryPassword;
+        if (oneTimePassword) {
+          setCreatedCredential({
+            email: updated?.email ?? editingUser.email,
+            temporaryPassword: oneTimePassword,
+            mailMessage:
+              'Rol değişikliği nedeniyle yeni geçici şifre oluşturuldu. Kullanıcı bu şifreyle giriş yaptıktan sonra ilk girişte şifresini değiştirmek zorundadır.',
+          });
+          await loadUsers();
+          return;
+        }
       }
       closeModal();
       await loadUsers();
@@ -1519,9 +1607,9 @@ export default function KullanicilarPage() {
       )}
 
       {/* Filtreler */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px_180px_auto] sm:items-center">
+          <div className="relative min-w-0">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <Search className="h-4 w-4 text-slate-400" />
             </div>
@@ -1536,7 +1624,7 @@ export default function KullanicilarPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-10 min-w-[150px] rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:w-[150px]"
           >
             <option value="">Tümü</option>
             <option value="active">Aktif</option>
@@ -1546,7 +1634,7 @@ export default function KullanicilarPage() {
           <select
             value={filterRoleId}
             onChange={(e) => setFilterRoleId(e.target.value)}
-            className="h-10 min-w-[180px] rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:w-[180px]"
           >
             <option value="">Tüm Görevler</option>
             {roles.map((r) => (
@@ -1555,7 +1643,9 @@ export default function KullanicilarPage() {
               </option>
             ))}
           </select>
-          <PanelTableColumnPicker tableColumns={tableColumns} />
+          <div className="flex justify-start sm:justify-end">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
           Arşivlenen kullanıcılar veri hafızası korunarak saklanır ve Arşiv filtresinden yeniden aktifleştirilebilir.
@@ -1599,21 +1689,38 @@ export default function KullanicilarPage() {
         )}
       </div>
 
+      {loadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-red-800">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadUsers()}
+            className="text-xs font-semibold text-red-700 bg-white border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-100"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      )}
+
       {/* Tablo */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
-          <PageLoadingState text="Kullanıcılar yükleniyor" compact />
+          <PageLoadingState compact />
         ) : filtered.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-sm font-medium text-slate-700">
-              {search || filterStatus || filterRoleId
-                ? 'Filtrelere uyan kullanıcı bulunamadı.'
-                : 'Henüz kullanıcı yok.'}
+              {loadError
+                ? 'Kullanıcı listesi yüklenemedi.'
+                : search || filterStatus || filterRoleId
+                  ? 'Filtrelere uyan kullanıcı bulunamadı.'
+                  : 'Henüz kullanıcı yok.'}
             </p>
             <p className="mt-1 text-sm text-slate-500">
-              {search || filterStatus || filterRoleId
-                ? 'Arama veya filtreleri değiştirerek tekrar deneyin.'
-                : 'Yeni kullanıcı oluşturduğunuzda kayıtlar burada listelenir.'}
+              {loadError
+                ? 'Oturum sorunu olabilir; çıkış yapıp tekrar giriş yapmayı deneyin.'
+                : search || filterStatus || filterRoleId
+                  ? 'Arama veya filtreleri değiştirerek tekrar deneyin.'
+                  : 'Yeni kullanıcı oluşturduğunuzda kayıtlar burada listelenir.'}
             </p>
           </div>
         ) : (
@@ -1699,7 +1806,7 @@ export default function KullanicilarPage() {
                             {u.firstName} {u.lastName}
                           </p>
                           {u.phone && (
-                            <p className="text-xs text-slate-400">{u.phone}</p>
+                            <p className="text-xs text-slate-400">{formatPhoneDisplay(toInternationalFormat(u.phone))}</p>
                           )}
                         </div>
                       </div>
@@ -1711,12 +1818,18 @@ export default function KullanicilarPage() {
                     </PanelTableTd>
 
                     {/* Rol */}
-                    <PanelTableTd colId="role" className="px-4 py-3">
-                      {u.role ? (
-                        <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                          {displayRoleWithOperation(u)}
-                        </span>
-                      ) : (
+                    <PanelTableTd colId="role" className="px-4 py-3 align-middle">
+                      {u.role ? (() => {
+                        const roleLines = displayRoleWithOperation(u);
+                        return (
+                          <div className="min-w-[10rem]">
+                            <p className="text-xs font-medium text-blue-800 leading-snug">{roleLines.primary}</p>
+                            {roleLines.secondary && (
+                              <p className="mt-0.5 text-[11px] text-slate-500 leading-snug">{roleLines.secondary}</p>
+                            )}
+                          </div>
+                        );
+                      })() : (
                         <span className="text-slate-400 text-xs">—</span>
                       )}
                     </PanelTableTd>
@@ -1737,131 +1850,62 @@ export default function KullanicilarPage() {
                     <PanelTableTd colId="lastLogin" className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</PanelTableTd>
 
                     {/* İşlemler */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Düzenle */}
-                        {isProtectedSystemAdmin(u) ? (
-                          <div className="relative group">
-                            <button
-                              type="button"
-                              disabled
-                              title="Sistem yöneticisi düzenlenemez"
-                              className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-lg text-slate-200"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10">
-                              <div className="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                                Sistem yöneticisi düzenlenemez
-                                <div className="absolute top-full right-3 border-4 border-transparent border-t-gray-800" />
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openEdit(u)}
-                            title="Düzenle"
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                        )}
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex items-center justify-end gap-0.5 min-w-[9rem]">
+                        <RowIconButton
+                          title={isProtectedSystemAdmin(u) ? 'Sistem yöneticisi düzenlenemez' : 'Düzenle'}
+                          disabled={isProtectedSystemAdmin(u)}
+                          onClick={isProtectedSystemAdmin(u) ? undefined : () => openEdit(u)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </RowIconButton>
 
                         {!isProtectedSystemAdmin(u) && (
-                          <button
-                            type="button"
+                          <RowIconButton
+                            title="Geçici Şifre Üret"
+                            tone="amber"
                             onClick={() => {
                               setEditingUser(u);
                               setResetPwdError('');
                               setResetCredential(null);
                               setModal('resetPwd');
                             }}
-                            title="Geçici Şifre Üret"
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-amber-50 hover:text-amber-700"
                           >
                             <KeyRound className="h-4 w-4" />
-                          </button>
+                          </RowIconButton>
                         )}
 
-                        {(rowStatus === 'inactive' || rowStatus === 'archived') && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStatus(u)}
-                            className="inline-flex h-9 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                            title="Arşiv veya pasif kullanıcıyı yeniden aktif hale getirir."
-                          >
-                            Yeniden Aktifleştir
-                          </button>
-                        )}
+                        {(rowStatus === 'inactive' || rowStatus === 'archived') &&
+                          !isProtectedSystemAdmin(u) &&
+                          u.id !== currentUserId && (
+                            <RowIconButton
+                              title="Yeniden Aktifleştir"
+                              tone="emerald"
+                              onClick={() => handleToggleStatus(u)}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </RowIconButton>
+                          )}
 
                         {rowStatus === 'archived' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
-                          <button
-                            type="button"
+                          <RowIconButton
+                            title="Kalıcı Sil"
+                            tone="red"
                             onClick={() => handlePermanentDelete(u)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
-                            title="Arşivlenmiş kullanıcıyı veritabanından kalıcı olarak siler."
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Kalıcı Sil
-                          </button>
+                            <Trash2 className="h-4 w-4" />
+                          </RowIconButton>
                         )}
 
                         {rowStatus === 'active' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
-                          <button
-                            type="button"
+                          <RowIconButton
+                            title="Arşivle"
+                            tone="red"
                             onClick={() => handleToggleStatus(u)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
-                            title="Kullanıcıyı silmez; pilot ve operasyon güvenliği için pasif hale getirir."
                           >
-                            <Archive className="h-3.5 w-3.5" />
-                            Arşivle
-                          </button>
+                            <Archive className="h-4 w-4" />
+                          </RowIconButton>
                         )}
-
-                        {/* Aktif/Pasif Toggle */}
-                        {isProtectedSystemAdmin(u) ? (
-                          <div className="relative group">
-                            <button
-                              type="button"
-                              disabled
-                              className="relative inline-flex items-center h-5 w-9 shrink-0 rounded-full cursor-not-allowed opacity-40 bg-green-500"
-                            >
-                              <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 translate-x-4" />
-                            </button>
-                            <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10">
-                              <div className="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                                Sistem yöneticisi düzenlenemez
-                                <div className="absolute top-full right-3 border-4 border-transparent border-t-gray-800" />
-                              </div>
-                            </div>
-                          </div>
-                        ) : u.id === currentUserId ? (
-                          <div
-                            title="Kendi hesabınızı pasife alamazsınız"
-                            className="relative group"
-                          >
-                            <button
-                              type="button"
-                              disabled
-                              className={`relative inline-flex items-center h-5 w-9 shrink-0 rounded-full cursor-not-allowed opacity-40 ${
-                                rowStatus === 'active' ? 'bg-green-500' : 'bg-slate-300'
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                  rowStatus === 'active' ? 'translate-x-4' : 'translate-x-0.5'
-                                }`}
-                              />
-                            </button>
-                            <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-10">
-                              <div className="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                                Kendi hesabınızı pasife alamazsınız
-                                <div className="absolute top-full right-3 border-4 border-transparent border-t-gray-800" />
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1874,8 +1918,8 @@ export default function KullanicilarPage() {
 
         {/* Alt bilgi */}
         {!loading && (
-          <div className="px-4 py-3 border-t border-slate-50 flex items-center justify-between">
-            <p className="text-xs text-slate-400">
+          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-4 py-3.5">
+            <p className="text-xs text-slate-500">
               {filtered.length} kullanıcı gösteriliyor
               {(search || filterStatus || filterRoleId) && ` (${users.length} toplam)`}
             </p>
@@ -1886,15 +1930,31 @@ export default function KullanicilarPage() {
       {/* ── Kullanıcı Davet Et / Düzenle Modal ────────────────────────────── */}
       {(modal === 'add' || modal === 'edit') && (
         <Modal
-          title={createdCredential ? 'Davet Tamamlandı' : modal === 'add' ? 'Kullanıcı Davet Et' : 'Kullanıcıyı Düzenle'}
+          title={
+            createdCredential
+              ? modal === 'edit'
+                ? 'Rol Değişikliği Tamamlandı'
+                : 'Davet Tamamlandı'
+              : modal === 'add'
+                ? 'Kullanıcı Davet Et'
+                : 'Kullanıcıyı Düzenle'
+          }
           onClose={closeModal}
           variant={createdCredential ? 'success' : 'default'}
           size={modal === 'add' && !createdCredential ? 'lg' : 'md'}
         >
           {createdCredential ? (
             <CredentialSuccessPanel
-              title="Kullanıcı daveti tamamlandı."
-              description="Yeni kullanıcı oluşturuldu ve geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir."
+              title={
+                modal === 'edit'
+                  ? 'Rol değişikliği tamamlandı.'
+                  : 'Kullanıcı daveti tamamlandı.'
+              }
+              description={
+                modal === 'edit'
+                  ? 'Kullanıcının rolü güncellendi ve yeni geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir.'
+                  : 'Yeni kullanıcı oluşturuldu ve geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir.'
+              }
               email={createdCredential.email}
               temporaryPassword={createdCredential.temporaryPassword}
               mailMessage={createdCredential.mailMessage}
@@ -2273,7 +2333,7 @@ export default function KullanicilarPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Meridyen Saha Operasyonu Kapsamı</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Önce Hasar Onarım mı Acil Yardım mı çalışacağını seçin; ardından yaptığı işleri işaretleyin.
+                    Önce Hasar Onarım mı Acil Yardım mı çalışacağını seçin; ardından bölge kapsamını belirleyin.
                   </p>
                 </div>
 
@@ -2299,15 +2359,15 @@ export default function KullanicilarPage() {
                   </p>
                 </FormField>
 
-                {form.operationArea && (
+                {form.operationArea === 'acil' && (
                   <FormField
-                    label={form.operationArea === 'hasar' ? 'Hasar Onarım — Meridyen Branşları' : 'Acil Yardım — Meridyen Branşları'}
+                    label="Acil Yardım — Hizmet Kolları"
                     required
                     error={formErrors.selectedSubjects}
                   >
                     {selectedServiceBranches.length === 0 ? (
                       <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-                        Bu çalışma alanı için aktif Meridyen branşı bulunamadı. Liste Ayarlar → Meridyen Hizmet Branşları ekranından gelir.
+                        Bu çalışma alanı için aktif hizmet kolu bulunamadı.
                       </p>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -2331,24 +2391,8 @@ export default function KullanicilarPage() {
                         ))}
                       </div>
                     )}
-                    {form.operationArea === 'hasar' && form.selectedSubjects.includes(FIELD_OTHER_SUBJECT_LABEL) && (
-                      <div className="mt-3">
-                        <FormField label="Diğer — İlave Bilgiler ve Notlar" error={formErrors.otherSubjectNotes}>
-                          <textarea
-                            rows={3}
-                            value={form.otherSubjectNotes}
-                            onChange={(e) => {
-                              setForm((prev) => ({ ...prev, otherSubjectNotes: e.target.value }));
-                              setFormErrors((prev) => ({ ...prev, otherSubjectNotes: undefined, general: undefined }));
-                            }}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                            placeholder="Tanımlı iş kollarının dışında yaptığı işleri yazın..."
-                          />
-                        </FormField>
-                      </div>
-                    )}
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Liste Ayarlar → Meridyen Hizmet Branşları ekranındaki tanımlardan gelir.
+                      Acil yardım saha operasyonu için tanımlı hizmet kolları.
                     </p>
                   </FormField>
                 )}
@@ -2481,12 +2525,9 @@ export default function KullanicilarPage() {
                 </div>
                 <div className="order-3 col-span-2">
                   <FormField label="Telefon">
-                    <input
-                      type="tel"
+                    <PhoneInput
                       value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className={inputCls}
-                      placeholder="0532 123 45 67"
+                      onChange={(v) => setForm({ ...form, phone: v })}
                     />
                   </FormField>
                 </div>

@@ -11,6 +11,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaytrCallbackPayload, PaytrService } from './paytr.service';
 import { CreateCollectionLinkDto } from './dto/create-collection-link.dto';
+import { resolveAppUrl } from '@/common/utils/app-url';
 
 const LINK_TTL_DAYS = 14;
 const ACTIVE_LINK_STATUSES = ['draft', 'sent', 'opened', 'processing'] as const;
@@ -33,11 +34,7 @@ export class CollectionLinksService {
   }
 
   private appPublicUrl(): string {
-    return (
-      this.config.get<string>('APP_PUBLIC_URL') ??
-      this.config.get<string>('NEXT_PUBLIC_APP_URL') ??
-      'https://app.meridyen-tr.com'
-    ).replace(/\/$/, '');
+    return resolveAppUrl(this.config);
   }
 
   private buildMerchantOid(): string {

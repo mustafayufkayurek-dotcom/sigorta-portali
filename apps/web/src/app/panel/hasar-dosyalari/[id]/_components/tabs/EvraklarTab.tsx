@@ -2,18 +2,14 @@
 
 import { useState } from 'react';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
-import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { SectionCard } from '../claim-detail-ui';
 import { SubTabNav } from './sub-tab-nav';
-import { DokumanlarTab } from './DokumanlarTab';
 import { EvrakOzetPanel, type EvrakSubTab } from './EvrakOzetPanel';
 import { SozlesmelerSection } from './SozlesmelerSection';
 
 const EVRAK_SUB_TABS: { id: EvrakSubTab; label: string }[] = [
   { id: 'ozet', label: 'Özet' },
   { id: 'sozlesmeler', label: 'Sözleşmeler & Onaylar' },
-  { id: 'arsiv', label: 'Evrak Arşivi' },
-  { id: 'kapama', label: 'Kapama' },
 ];
 
 function YakindaPlaceholder({ title }: { title: string }) {
@@ -81,22 +77,6 @@ export function EvraklarTab({
 
       {subTab === 'sozlesmeler' && (
         <SozlesmelerOnaylarPanel claimId={claimId} claim={claim} />
-      )}
-
-      {subTab === 'arsiv' && <DokumanlarTab claimId={claimId} />}
-
-      {subTab === 'kapama' && (
-        <SectionCard title="Dosya Kapama & Fatura Talebi">
-          <ClosureConditionsPanel
-            serviceType="claim"
-            entityId={claimId}
-            fileNo={claim?.fileNo ?? ''}
-            insuranceCompanyId={claim?.insuranceCompanyId}
-            insuranceCompanyName={claim?.insuranceCompany?.name}
-            totalAmount={claim?.budget?.totalAmount ?? 0}
-            workItemsSummary={[]}
-          />
-        </SectionCard>
       )}
     </div>
   );

@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { SlidePanel } from '@/components/SlidePanel';
+import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
 import { getCases, updateCaseStatus, EmergencyCase, EmergencyStatus } from '@/utils/emergencyApi';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,13 +107,30 @@ function KanbanCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AcilYardimPage() {
+  return (
+    <Suspense fallback={(
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )}
+    >
+      <AcilYardimPageContent />
+    </Suspense>
+  );
+}
+
+function AcilYardimPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [cases, setCases] = useState<EmergencyCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [scopeUserId, setScopeUserId] = useState<string | undefined>(undefined);
+  const [showNewPanel, setShowNewPanel] = useState(false);
+  const [formSession, setFormSession] = useState(0);
+  const [createdNotice, setCreatedNotice] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -138,6 +157,13 @@ export default function AcilYardimPage() {
   }, [filterSearch, scopeUserId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (searchParams.get('yeni') !== '1') return;
+    setFormSession((s) => s + 1);
+    setShowNewPanel(true);
+    router.replace('/panel/acil-yardim', { scroll: false });
+  }, [searchParams, router]);
 
   // Debounce arama
   useEffect(() => {
@@ -168,6 +194,18 @@ export default function AcilYardimPage() {
 
   // Üst istatistik
   const overdueCount = cases.filter((c) => c.overdueLevel !== 'none').length;
+
+  function openNewPanel() {
+    setFormSession((s) => s + 1);
+    setShowNewPanel(true);
+  }
+
+  function handleCreateSuccess(_caseId: string) {
+    setShowNewPanel(false);
+    void load();
+    setCreatedNotice('Dosya oluşturuldu');
+    setTimeout(() => setCreatedNotice(''), 3000);
+  }
 
   return (
     <div className="space-y-5">
@@ -209,17 +247,34 @@ export default function AcilYardimPage() {
           <Link href="/panel/acil-yardim/finans" className="btn-secondary text-xs">
             Finans
           </Link>
-          <Link
-            href="/panel/acil-yardim/yeni"
-            className="btn-primary"
-          >
+          {createdNotice && (
+            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+              {createdNotice}
+            </span>
+          )}
+          <button type="button" onClick={openNewPanel} className="btn-primary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Yeni Dosya
-          </Link>
+          </button>
         </div>
       </div>
+
+      <SlidePanel
+        open={showNewPanel}
+        onClose={() => setShowNewPanel(false)}
+        title="Yeni Acil Yardım Dosyası"
+        width={600}
+        scrollContent={false}
+      >
+        <EmergencyCaseNewForm
+          key={formSession}
+          variant="panel"
+          onCancel={() => setShowNewPanel(false)}
+          onSuccess={handleCreateSuccess}
+        />
+      </SlidePanel>
 
       {/* Arama */}
       <div className="relative max-w-xs">

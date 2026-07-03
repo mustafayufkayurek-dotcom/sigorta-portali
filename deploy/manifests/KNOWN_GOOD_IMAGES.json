@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-03",
-  "label": "v162-finans-evrak-sade",
-  "description": "Finans özet konsolidasyonu, gelir/fatura/gider sadeleştirme, evraklar 4 alt sekme, raporlar revizyon UX",
+  "label": "v164-web-v154-backend-operasyon-finans-paket",
+  "description": "Web v164 Operasyon sekmesi, görev/hatırlatma UI, finans/evrak sadeleştirme; Backend v154 fatura talebi route + görev DTO",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v152-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v162-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v154-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v164-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v161-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v152-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v163-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v153-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

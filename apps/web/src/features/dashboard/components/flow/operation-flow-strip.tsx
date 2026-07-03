@@ -14,7 +14,7 @@ type FlowItem = {
   path: string;
 };
 
-export function OperationFlowStrip({ hideFinance = false }: { hideFinance?: boolean }) {
+export function OperationFlowStrip({ hideFinance = false, hideAcil = false }: { hideFinance?: boolean; hideAcil?: boolean }) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
   const ops = opsQuery.data;
@@ -30,14 +30,16 @@ export function OperationFlowStrip({ hideFinance = false }: { hideFinance?: bool
       iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
       path: '/panel/hasar-dosyalari',
     },
-    {
+    ...(hideAcil
+      ? []
+      : [{
       title: 'Acil Yardım',
       value: ops?.openEmergencyCases ?? '—',
       detail: ops ? `${ops.totalEmergencyCases} toplam dosya` : 'Veri bekleniyor',
       icon: Siren,
       iconClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
       path: '/panel/acil-yardim',
-    },
+    }]),
     {
       title: 'Bekleyen Aksiyon',
       value: pendingCount,
@@ -64,16 +66,14 @@ export function OperationFlowStrip({ hideFinance = false }: { hideFinance?: bool
         <div>
           <h2 className="text-base font-semibold text-slate-950 dark:text-white">Günün Akışı</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {hideFinance
-              ? 'Size atanan dosya ve aksiyon hareketlerini tek sırada izleyin.'
-              : 'Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.'}
+            {hideFinance ? (hideAcil ? 'Dosya ve aksiyon hareketlerini tek sırada izleyin.' : 'Size atanan dosya ve aksiyon hareketlerini tek sırada izleyin.') : (hideAcil ? 'Hasar dosyaları, aksiyon ve tahsilat hareketlerini tek sırada izleyin.' : 'Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.')}
           </p>
         </div>
         {(opsQuery.isFetching || pendingQuery.isFetching) && (
           <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>
         )}
       </div>
-      <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${hideFinance ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`}>
+      <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${hideFinance ? (hideAcil ? 'xl:grid-cols-2' : 'xl:grid-cols-3') : (hideAcil ? 'xl:grid-cols-3' : 'xl:grid-cols-4')}`}>
         {items.map((item) => {
           const Icon = item.icon;
           return (

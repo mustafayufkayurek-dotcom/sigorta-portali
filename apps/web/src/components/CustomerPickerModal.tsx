@@ -214,7 +214,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
                 <div className="border border-gray-100 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 text-xs text-gray-500 uppercase">
+                      <tr className="bg-gray-50 text-xs text-gray-500">
                         <th className="text-left px-4 py-2.5">Ad / Şirket</th>
                         <th className="text-left px-4 py-2.5">Tip</th>
                         <th className="text-left px-4 py-2.5">Kimlik / Vergi</th>

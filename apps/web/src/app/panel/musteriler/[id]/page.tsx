@@ -11,6 +11,7 @@ import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE } from '@/utils/customer-form-helpers';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -808,17 +809,22 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
   ].filter(Boolean).join(', ');
 
   const handleGeocodeAddress = async () => {
-    const query = addressLabel.trim();
-    if (!query) return;
+    if (!form.city?.trim()) return;
     setGeocoding(true);
     setGeocodeMsg(null);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tr&limit=1`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'SigortaHasarSistemi/1.0 (contact@example.com)' } });
-      const data = await res.json();
-      if (data?.length > 0) {
-        setLocationCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
-        setGeocodeMsg('Konum bulundu');
+      const result = await geocodeAddressCascade({
+        city: form.city,
+        district: form.district,
+        neighborhood: form.neighborhood,
+        streetName: form.streetName,
+        siteName: form.address,
+        buildingNo: form.buildingNo,
+      });
+      if (result) {
+        setLocationCoords({ lat: result.lat, lng: result.lng });
+        const shortName = result.displayName.split(',').slice(0, 2).join(',');
+        setGeocodeMsg(result.approximate ? `Yaklaşık konum: ${shortName}` : `Konum bulundu: ${shortName}`);
       } else {
         setGeocodeMsg('Konum bulunamadı. Haritadan veya GPS ile belirleyin.');
       }
@@ -966,10 +972,11 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.openAddress}</label>
-              <textarea className={`${inp} resize-none`}
-                rows={2} placeholder={ADDRESS_FIELD.openAddressPlaceholder}
-                value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
+              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.siteName}</label>
+              <input className={inp} placeholder={ADDRESS_FIELD.siteNamePlaceholder}
+                value={form.address}
+                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, address: v })); }} />
             </div>
 
             <div className="pt-1 border-t border-slate-100">

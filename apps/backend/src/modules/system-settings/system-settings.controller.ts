@@ -1,16 +1,21 @@
-import { Controller, Get, Put, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Put, Post, Body, Patch, Param, Delete, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig } from './system-settings.service';
+import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig, M365GraphConfig, FieldInspectionBranch, ExpertInsuranceLinksConfig } from './system-settings.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Public } from '@/common/decorators/public.decorator';
+import { GraphSubscriptionService } from '../operation-inbox/graph/graph-subscription.service';
 
 @ApiTags('system-settings')
 @ApiBearerAuth()
 @Controller('system-settings')
 @UseGuards(PermissionsGuard)
 export class SystemSettingsController {
-  constructor(private readonly service: SystemSettingsService) {}
+  constructor(
+    private readonly service: SystemSettingsService,
+    @Inject(forwardRef(() => GraphSubscriptionService))
+    private readonly graphSubscriptions: GraphSubscriptionService,
+  ) {}
 
   @Get('customer-fields')
   @RequirePermissions('settings.view')
@@ -302,6 +307,38 @@ export class SystemSettingsController {
     return { success: true, data };
   }
 
+  @Get('saha-tespit-kollari')
+  @RequirePermissions('settings.view', 'user.create', 'user.update')
+  @ApiOperation({ summary: 'Saha tespit kollarını getir' })
+  async getSahaTespitKollari() {
+    const data = await this.service.getSahaTespitKollari();
+    return { success: true, data };
+  }
+
+  @Put('saha-tespit-kollari')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Saha tespit kollarını güncelle' })
+  async setSahaTespitKollari(@Body() body: { values: FieldInspectionBranch[] }) {
+    const data = await this.service.setSahaTespitKollari(body.values ?? []);
+    return { success: true, data };
+  }
+
+  @Get('eksper-sigorta-baglantilari')
+  @RequirePermissions('settings.view')
+  @ApiOperation({ summary: 'Eksper–sigorta ilişkilerini getir' })
+  async getExpertInsuranceLinks() {
+    const data = await this.service.getExpertInsuranceLinks();
+    return { success: true, data };
+  }
+
+  @Put('eksper-sigorta-baglantilari')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Eksper–sigorta ilişkilerini güncelle' })
+  async setExpertInsuranceLinks(@Body() body: ExpertInsuranceLinksConfig) {
+    const data = await this.service.setExpertInsuranceLinks(body);
+    return { success: true, data };
+  }
+
   // ── Document Report Templates ────────────────────────────────────────────
 
   @Get('document-report-templates')
@@ -467,6 +504,10 @@ export class SystemSettingsController {
           apiKey: data.logoWings.apiKey ? '***' : '',
           password: data.logoWings.password ? '***' : '',
         },
+        googlePlaces: {
+          apiKey: data.googlePlaces?.apiKey ? '***' : '',
+          active: data.googlePlaces?.active ?? false,
+        },
       },
     };
   }
@@ -478,15 +519,82 @@ export class SystemSettingsController {
     const existing = await this.service.getIntegrationConfig();
     const config: IntegrationConfig = {
       logoWings: {
-        apiUrl: body.logoWings?.apiUrl ?? '',
-        apiKey: body.logoWings?.apiKey === '***' ? (existing.logoWings.apiKey ?? '') : (body.logoWings?.apiKey ?? ''),
-        username: body.logoWings?.username ?? '',
-        password: body.logoWings?.password === '***' ? (existing.logoWings.password ?? '') : (body.logoWings?.password ?? ''),
-        active: body.logoWings?.active ?? false,
+        apiUrl: body.logoWings?.apiUrl ?? existing.logoWings.apiUrl ?? '',
+        apiKey: body.logoWings?.apiKey === '***' ? (existing.logoWings.apiKey ?? '') : (body.logoWings?.apiKey ?? existing.logoWings.apiKey ?? ''),
+        username: body.logoWings?.username ?? existing.logoWings.username ?? '',
+        password: body.logoWings?.password === '***' ? (existing.logoWings.password ?? '') : (body.logoWings?.password ?? existing.logoWings.password ?? ''),
+        active: body.logoWings?.active ?? existing.logoWings.active ?? false,
+      },
+      googlePlaces: {
+        apiKey: body.googlePlaces?.apiKey === '***' ? (existing.googlePlaces?.apiKey ?? '') : (body.googlePlaces?.apiKey ?? existing.googlePlaces?.apiKey ?? ''),
+        active: body.googlePlaces?.active ?? existing.googlePlaces?.active ?? false,
       },
     };
     const data = await this.service.setIntegrationConfig(config);
-    return { success: true, data: { ...data, logoWings: { ...data.logoWings, apiKey: data.logoWings.apiKey ? '***' : '', password: data.logoWings.password ? '***' : '' } } };
+    return {
+      success: true,
+      data: {
+        ...data,
+        logoWings: { ...data.logoWings, apiKey: data.logoWings.apiKey ? '***' : '', password: data.logoWings.password ? '***' : '' },
+        googlePlaces: { apiKey: data.googlePlaces?.apiKey ? '***' : '', active: data.googlePlaces?.active ?? false },
+      },
+    };
+  }
+
+  // ── Microsoft 365 Graph Config ─────────────────────────────────────────
+
+  @Get('m365-graph-config')
+  @RequirePermissions('settings.view')
+  @ApiOperation({ summary: 'Microsoft 365 Graph yapılandırmasını getir' })
+  async getM365GraphConfig() {
+    const data = await this.service.getM365GraphConfig();
+    return {
+      success: true,
+      data: {
+        ...data,
+        clientSecret: '',
+        clientSecretConfigured: Boolean(data.clientSecret?.trim()),
+      },
+    };
+  }
+
+  @Put('m365-graph-config')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Microsoft 365 Graph yapılandırmasını güncelle' })
+  async setM365GraphConfig(@Body() body: M365GraphConfig) {
+    const existing = await this.service.getM365GraphConfig();
+    const incomingSecret = body.clientSecret?.trim() ?? '';
+    let resolvedSecret = existing.clientSecret ?? '';
+
+    if (incomingSecret && incomingSecret !== '***') {
+      if (incomingSecret.length < 20 || incomingSecret.includes('***')) {
+        throw new BadRequestException(
+          'Gizli anahtar geçersiz. Azure Portal → Değer sütununu eksiksiz kopyalayın (Secret ID değil).',
+        );
+      }
+      resolvedSecret = incomingSecret;
+    }
+
+    const config: M365GraphConfig = {
+      ...body,
+      clientSecret: resolvedSecret,
+      ihbarMailbox: body.ihbarMailbox?.trim() || 'ihbar@safranbh.com',
+      hasarMailbox: body.hasarMailbox?.trim() || 'hasar@safranbh.com',
+    };
+    const data = await this.service.setM365GraphConfig(config);
+
+    if (config.active) {
+      void this.graphSubscriptions.ensureSubscriptions().catch(() => undefined);
+    }
+
+    return {
+      success: true,
+      data: {
+        ...data,
+        clientSecret: '',
+        clientSecretConfigured: Boolean(data.clientSecret?.trim()),
+      },
+    };
   }
 
   // ── Theme Config ─────────────────────────────────────────────────────────

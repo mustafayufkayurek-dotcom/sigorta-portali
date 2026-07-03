@@ -10,8 +10,16 @@ import { clearAuth, getAccessToken, getRefreshToken, hasValidSessionScope, persi
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
-import { RunningLightsText } from '@/components/ui/RunningLightsText';
-import { isOfficeStaffRole } from '@/hooks/usePanelRole';
+import { LoadingScreen } from '@/components/ui/LoadingIndicator';
+import { SidebarNavTooltip } from '@/components/ui/SidebarNavTooltip';
+import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole, roleAllowedForNav } from '@/hooks/usePanelRole';
+import {
+  type OperationAreaCode,
+} from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import {
+  canAccessAcilYardim,
+  userOperationArea,
+} from '@/utils/panel-access';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
@@ -22,6 +30,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  FileText,
   GitBranch,
   MapPin,
   MonitorCheck,
@@ -65,18 +74,23 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
   { path: '/panel/harita', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/acil-yardim', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/operasyon', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
 ];
 
-function hasRouteAccess(pathname: string, roleCode: string): boolean {
+function hasRouteAccess(pathname: string, roleCode: string, operationArea: OperationAreaCode = ''): boolean {
+  if (pathname === '/panel/acil-yardim' || pathname.startsWith('/panel/acil-yardim/')) {
+    return canAccessAcilYardim(roleCode, operationArea);
+  }
+
   const matching = ROUTE_ACCESS
     .filter((r) => pathname === r.path || pathname.startsWith(r.path + '/'))
     .sort((a, b) => b.path.length - a.path.length);
   if (matching.length === 0) return true;
   const rule = matching[0];
   if (rule.roles.length === 0) return true;
-  return rule.roles.includes(roleCode);
+  return roleAllowedForNav(roleCode, rule.roles);
 }
 
 interface NavItemAccess {
@@ -103,6 +117,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
   { path: '/panel/harita', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/acil-yardim', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/operasyon', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
 ];
@@ -111,7 +126,7 @@ function canSeeNavItem(path: string, roleCode: string): boolean {
   const rule = NAV_ITEM_ACCESS.find((r) => path.startsWith(r.path));
   if (!rule) return true;
   if (rule.roles.length === 0) return true;
-  return rule.roles.includes(roleCode);
+  return roleAllowedForNav(roleCode, rule.roles);
 }
 
 // Ekran kodu → path eşlemesi (DB izin sistemi için)
@@ -197,6 +212,8 @@ interface NavigationLink {
   alertCount?: number;
   children?: NavigationLink[];
   icon?: LucideIcon;
+  /** Yalnızca tam path eşleşmesinde aktif (ör. Finans Özeti ana sayfa) */
+  exactMatch?: boolean;
 }
 
 interface PanelSidebarProps {
@@ -205,6 +222,9 @@ interface PanelSidebarProps {
   isPortalUser: boolean;
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
+  isFinance: boolean;
+  isFieldStaff: boolean;
+  showAcilYardim: boolean;
   pendingRevisionCount: number;
   allowedScreens: string[] | null;
   collapsed: boolean;
@@ -216,11 +236,17 @@ function getPanelMainLinks({
   isExpert,
   isInsuranceCompanyUser,
   isOfficeStaff,
+  isFinance,
+  isFieldStaff,
+  showAcilYardim,
   pendingRevisionCount,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
   isOfficeStaff: boolean;
+  isFinance: boolean;
+  isFieldStaff: boolean;
+  showAcilYardim: boolean;
   pendingRevisionCount: number;
 }): NavigationLink[] {
   return isExpert
@@ -243,7 +269,26 @@ function getPanelMainLinks({
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Eksperler', href: '/panel/eksperler', icon: UserCog },
-            { title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell },
+            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
+            { title: 'Harita', href: '/panel/harita', icon: MapPin },
+          ]
+      : isFieldStaff
+        ? [
+            { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
+            { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
+            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
+            { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
+          ]
+      : isFinance
+        ? [
+            { title: 'Finans Özeti', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
+            { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
+            { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
+            { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+            { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
+            { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
+            { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
+            { title: 'Raporlar', href: '/panel/raporlar', icon: ClipboardList },
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
@@ -283,6 +328,9 @@ interface NavbarProps {
   notifTypeBorder: (t: string) => string;
   notifTypeIcon: (t: string) => string;
   allowedScreens: string[] | null;
+  isFinance: boolean;
+  isFieldStaff: boolean;
+  showAcilYardim: boolean;
 }
 
 function Navbar({
@@ -291,6 +339,7 @@ function Navbar({
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
   allowedScreens, companyLogo, companyName,
+  isFinance, isFieldStaff, showAcilYardim,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
@@ -337,6 +386,9 @@ function Navbar({
     isExpert,
     isInsuranceCompanyUser,
     isOfficeStaff: isOfficeStaffRole(roleCode),
+    isFinance,
+    isFieldStaff,
+    showAcilYardim,
     pendingRevisionCount,
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -589,6 +641,9 @@ function PanelSidebar({
   isPortalUser,
   isExpert,
   isInsuranceCompanyUser,
+  isFinance,
+  isFieldStaff,
+  showAcilYardim,
   pendingRevisionCount,
   allowedScreens,
   collapsed,
@@ -602,8 +657,9 @@ function PanelSidebar({
       ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
       : canSeeNavItem(path, roleCode);
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, exactMatch?: boolean) => {
     const normalizedHref = href.split('?')[0];
+    if (exactMatch) return pathname === normalizedHref;
     return normalizedHref === '/panel'
       ? pathname === '/panel'
       : pathname === normalizedHref || pathname.startsWith(normalizedHref + '/');
@@ -613,18 +669,68 @@ function PanelSidebar({
     isExpert,
     isInsuranceCompanyUser,
     isOfficeStaff: isOfficeStaffRole(roleCode),
+    isFinance,
+    isFieldStaff,
+    showAcilYardim,
     pendingRevisionCount,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const linkClass = (href: string, compact = false, forceActive?: boolean) => {
-    const active = forceActive ?? isActive(href);
+  const linkClass = (href: string, compact = false, forceActive?: boolean, exactMatch?: boolean) => {
+    const active = forceActive ?? isActive(href, exactMatch);
     return `group flex items-center justify-between gap-2 rounded-lg px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-semibold transition ${
       active
         ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
     }`;
+  };
+
+  const getNavTooltipLabel = (link: NavigationLink) => {
+    if (link.alertCount && link.alertCount > 0) {
+      return `${link.title} (${link.alertCount})`;
+    }
+    return link.title;
+  };
+
+  const renderNavLink = (link: NavigationLink, compact = false) => {
+    const tooltipLabel = getNavTooltipLabel(link);
+    const linkNode = (
+      <Link
+        href={link.href}
+        className={`${linkClass(link.href, compact, undefined, link.exactMatch)}${collapsed ? ' relative' : ''}`}
+        aria-label={collapsed ? tooltipLabel : undefined}
+      >
+        <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
+          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
+          {!collapsed ? <span className="truncate">{link.title}</span> : null}
+        </span>
+        {!collapsed && link.alertCount && link.alertCount > 0 ? (
+          <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {link.alertCount > 99 ? '99+' : link.alertCount}
+          </span>
+        ) : null}
+        {collapsed && link.alertCount && link.alertCount > 0 ? (
+          <span
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500"
+            aria-hidden="true"
+          />
+        ) : null}
+      </Link>
+    );
+
+    return (
+      <div key={link.href} className="space-y-0.5">
+        <SidebarNavTooltip label={tooltipLabel} collapsed={collapsed}>
+          {linkNode}
+        </SidebarNavTooltip>
+        {link.children?.length ? (
+          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-800'}>
+            {link.children.map((child) => renderNavLink(child, true))}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   return (
@@ -650,24 +756,7 @@ function PanelSidebar({
         </div>
 
         <nav className="space-y-1">
-          {visibleMainLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={linkClass(link.href)}
-              title={collapsed ? link.title : undefined}
-            >
-              <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
-                {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
-                {!collapsed ? <span className="truncate">{link.title}</span> : null}
-              </span>
-              {!collapsed && link.alertCount && link.alertCount > 0 ? (
-                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {link.alertCount > 99 ? '99+' : link.alertCount}
-                </span>
-              ) : null}
-            </Link>
-          ))}
+          {visibleMainLinks.map((link) => renderNavLink(link))}
         </nav>
       </div>
     </aside>
@@ -1003,20 +1092,25 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   };
 
   const roleCode: string = user?.role?.code ?? '';
+  const operationArea = userOperationArea(user);
   const isExpert = roleCode === 'expert';
   const isInsuranceCompanyUser = roleCode === 'insurance_company_user';
   const isPortalUser = isExpert || isInsuranceCompanyUser;
+  const isFinance = isFinanceRole(roleCode);
+  const isFieldStaff = isFieldStaffRole(roleCode);
+  const showAcilYardim = canAccessAcilYardim(roleCode, operationArea);
 
   useEffect(() => {
     if (!loading && isExpert && pathname === '/panel') router.replace('/panel/eksper-portal');
     if (!loading && isInsuranceCompanyUser && pathname === '/panel') router.replace('/panel/sigorta-portal');
+    if (!loading && isFinance && pathname === '/panel') router.replace('/panel/finans');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, roleCode]);
 
   const isPublicPanelPath = pathname === '/panel/profil';
   const mustChangePassword = user?.mustChangePassword === true;
   const accessDenied =
-    !loading && !isPortalUser && !isPublicPanelPath && !mustChangePassword && roleCode !== '' && !hasRouteAccess(pathname, roleCode);
+    !loading && !isPortalUser && !isPublicPanelPath && !mustChangePassword && roleCode !== '' && !hasRouteAccess(pathname, roleCode, operationArea);
 
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
@@ -1043,6 +1137,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     notifications, onMarkRead: handleMarkRead, onMarkAllRead: handleMarkAllRead,
     onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
     allowedScreens, companyLogo, companyName,
+    isFinance, isFieldStaff, showAcilYardim,
   };
   const contextBackLink = isSettingsPath(pathname) ? null : getContextBackLink(pathname);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1070,7 +1165,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <RunningLightsText text="Oturum hazırlanıyor" size="lg" variant="emerald" />
+        <LoadingScreen />
       </div>
     );
   }
@@ -1110,6 +1205,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             isPortalUser={isPortalUser}
             isExpert={isExpert}
             isInsuranceCompanyUser={isInsuranceCompanyUser}
+            isFinance={isFinance}
+            isFieldStaff={isFieldStaff}
+            showAcilYardim={showAcilYardim}
             pendingRevisionCount={pendingRevisionCount}
             allowedScreens={allowedScreens}
             collapsed={sidebarCollapsed}
@@ -1163,7 +1261,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         )}
         <main className="flex-1">
-          <div className="mx-auto max-w-screen-2xl px-4 py-6">
+          <div className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-4 sm:py-6">
             <TopProgressBar />
             <GlobalActivityStrip />
             {contextBackLink && (

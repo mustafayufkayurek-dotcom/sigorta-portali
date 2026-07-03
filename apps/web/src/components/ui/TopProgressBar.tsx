@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { RunningLightsText } from './RunningLightsText';
 
+/** Rota değişiminde üst kenar — yalnızca ince çubuk, metin yok */
 export function TopProgressBar() {
   const pathname = usePathname();
   const [progress, setProgress] = useState(0);
@@ -33,15 +33,12 @@ export function TopProgressBar() {
   if (!visible) return null;
 
   return (
-    <>
-      <div
-        className="fixed top-0 left-0 z-[9999] h-[3px] bg-blue-500 transition-all duration-300 ease-out"
-        style={{ width: `${progress}%` }}
-      />
-      <div className="pointer-events-none fixed left-1/2 top-3 z-[9999] -translate-x-1/2">
-        <RunningLightsText text="Sayfa yükleniyor" size="sm" variant="blue" />
-      </div>
-    </>
+    <div
+      role="progressbar"
+      aria-hidden="true"
+      className="fixed top-0 left-0 z-[9999] h-[2px] bg-blue-600 transition-all duration-300 ease-out dark:bg-blue-500"
+      style={{ width: `${progress}%` }}
+    />
   );
 }
 

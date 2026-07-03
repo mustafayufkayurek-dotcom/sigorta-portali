@@ -41,6 +41,10 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
     'guvenlik', 'harita', 'personel_yonetimi',
     'test_notes_admin',
   ],
+  manager: [
+    'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon', 'eksperler',
+    'musteriler', 'tedarikciler', 'raporlar', 'harita', 'personel_yonetimi',
+  ],
   office_staff: [
     'hasar_dosyalari', 'musteriler', 'tedarikciler', 'eksperler',
     'operasyon', 'acil_yardim', 'harita',
@@ -50,6 +54,10 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
   ],
   accountant: [
     'finans', 'raporlar',
+  ],
+  finance: [
+    'finans', 'raporlar', 'operasyon',
+    'musteriler', 'tedarikciler', 'hasar_dosyalari',
   ],
   expert: [],
   insurance_company_user: [],

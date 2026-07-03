@@ -11,6 +11,7 @@ import {
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
+import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
@@ -925,6 +926,13 @@ export default function VakaDetayPage() {
           })()}
         </div>
       </div>
+
+      {/* E-posta Yazışmaları */}
+      {vaka && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} />
+        </div>
+      )}
 
       {/* Matbu Evrak */}
       {vaka && (

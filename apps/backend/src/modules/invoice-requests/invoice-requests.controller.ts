@@ -36,6 +36,16 @@ export class InvoiceRequestsController {
     return this.service.getDashboardSummary();
   }
 
+  @Get('claim-file/:claimFileId')
+  findByClaimFile(@Param('claimFileId') claimFileId: string) {
+    return this.service.findByClaimFile(claimFileId);
+  }
+
+  @Get('emergency-case/:emergencyCaseId')
+  findByEmergencyCase(@Param('emergencyCaseId') emergencyCaseId: string) {
+    return this.service.findByEmergencyCase(emergencyCaseId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
@@ -48,15 +58,5 @@ export class InvoiceRequestsController {
     @Request() req: any,
   ) {
     return this.service.updateStatus(id, dto, req.user.id);
-  }
-
-  @Get('claim-file/:claimFileId')
-  findByClaimFile(@Param('claimFileId') claimFileId: string) {
-    return this.service.findByClaimFile(claimFileId);
-  }
-
-  @Get('emergency-case/:emergencyCaseId')
-  findByEmergencyCase(@Param('emergencyCaseId') emergencyCaseId: string) {
-    return this.service.findByEmergencyCase(emergencyCaseId);
   }
 }

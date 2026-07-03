@@ -92,7 +92,8 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Admin role has all permissions
-    const roleCode = user.roleCode?.toUpperCase();
+    const rawRoleCode = user.roleCode?.toUpperCase() ?? '';
+    const roleCode = rawRoleCode === 'FINANCE' || rawRoleCode === 'FINANS' ? 'FINANS' : rawRoleCode;
     if (roleCode === 'ADMIN') {
       return true;
     }

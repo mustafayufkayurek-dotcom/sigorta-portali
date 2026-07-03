@@ -14,8 +14,10 @@ export const ADDRESS_FIELD = {
   buildingNoPlaceholder: 'Örn: 12',
   doorNo: 'Daire No (Opsiyonel)',
   doorNoPlaceholder: 'Örn: 3',
+  siteName: 'Bina / Plaza / Site Adı',
+  siteNamePlaceholder: 'Örn: Noramin İş Merkezi',
   openAddress: 'Açık Adres',
-  openAddressPlaceholder: 'Ek Adres Notu...',
+  openAddressPlaceholder: 'Ek Adres Notu (Kapı kodu, kat, tarif vb.)',
   /** Hizmet bölgeleri il arama kutusu */
   provinceSearchPlaceholder: 'İl Ara veya Seç...',
   provinceSearchEmpty: 'İl Bulunamadı',

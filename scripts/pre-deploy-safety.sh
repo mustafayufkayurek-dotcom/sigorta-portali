@@ -72,5 +72,22 @@ if [ ! -d "$APP_DIR/apps/web/src/app/panel" ]; then
   exit 1
 fi
 
+log "=== 7/7 nginx → web routing (502 önleme) ==="
+if docker ps --format '{{.Names}}' | grep -qx sigorta-web; then
+  if [ -f "$APP_DIR/scripts/verify-nginx-web-routing.sh" ]; then
+    if bash "$APP_DIR/scripts/verify-nginx-web-routing.sh"; then
+      log "Routing doğrulaması: PASS"
+    else
+      log "HATA: sigorta-web yanlış Docker ağında — deploy/restart öncesi düzelt:"
+      log "  bash scripts/restart-web-production.sh"
+      exit 1
+    fi
+  else
+    log "UYARI: verify-nginx-web-routing.sh yok — scripts/ sync edin"
+  fi
+else
+  log "sigorta-web yok — routing kontrolü atlandı"
+fi
+
 log "PRE-DEPLOY SAFETY: PASS (tag=$DEPLOY_TAG)"
 echo "$DEPLOY_TAG" > "$BACKUP_DIR/.last_pre_deploy_tag"

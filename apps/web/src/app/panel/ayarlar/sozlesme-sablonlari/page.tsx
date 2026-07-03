@@ -20,15 +20,8 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Şablon Adı', defaultWidth: 200, minWidth: 120 },
-  { id: 'type', label: 'Tür', defaultWidth: 120, minWidth: 90 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const CONTRACT_TYPES = [
   { value: 'tedarikci', label: 'Tedarikçi Sözleşmesi', color: 'bg-indigo-50 text-indigo-700' },
@@ -137,22 +130,25 @@ export default function SozlesmeSablonlariPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setModalError('Şablon adı zorunludur.'); return; }
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
+    if (!name) { setModalError('Şablon adı zorunludur.'); return; }
     if (!form.type) { setModalError('Sözleşme türü zorunludur.'); return; }
     if (!form.content.trim()) { setModalError('Şablon içeriği zorunludur.'); return; }
     const dup = templates.find(
-      (t) => t.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+      (t) => t.name.trim().toLowerCase() === name.toLowerCase()
         && t.type === form.type
         && (!editing || t.id !== editing.id)
     );
     if (dup) { setModalError('Bu ad ve türde bir şablon zaten mevcut.'); return; }
+    const payload = { ...form, name, description };
     setSaving(true);
     setModalError('');
     try {
       if (editing) {
-        await axios.put(`${API}/system-settings/contract-templates/${editing.id}`, form, { headers: authHeader() });
+        await axios.put(`${API}/system-settings/contract-templates/${editing.id}`, payload, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/system-settings/contract-templates`, form, { headers: authHeader() });
+        await axios.post(`${API}/system-settings/contract-templates`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       loadTemplates();
@@ -191,14 +187,11 @@ export default function SozlesmeSablonlariPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Sözleşme Şablonları"
       description="Tedarikçi, müşteri, gizlilik ve KVKK sözleşme şablonlarını yönetin."
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <SettingsTable
@@ -207,10 +200,10 @@ export default function SozlesmeSablonlariPage() {
         emptyText="Henüz sözleşme şablonu tanımlanmamış."
       >
         <SettingsTableHead>
-          <SettingsTableTh colId="name">Şablon Adı</SettingsTableTh>
-          <SettingsTableTh colId="type">Tür</SettingsTableTh>
-          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
-          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+          <SettingsTableTh>Şablon Adı</SettingsTableTh>
+          <SettingsTableTh>Tür</SettingsTableTh>
+          <SettingsTableTh>Açıklama</SettingsTableTh>
+          <SettingsTableTh>Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
@@ -218,18 +211,18 @@ export default function SozlesmeSablonlariPage() {
             const badge = typeBadge(t.type);
             return (
               <SettingsTableRow key={t.id}>
-                <SettingsTableTd colId="name">
+                <SettingsTableTd>
                   <p className="font-medium text-slate-800">{t.name}</p>
                 </SettingsTableTd>
-                <SettingsTableTd colId="type">
+                <SettingsTableTd>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                     {badge.label}
                   </span>
                 </SettingsTableTd>
-                <SettingsTableTd colId="description">
+                <SettingsTableTd>
                   <p className="text-xs text-slate-500 truncate max-w-xs">{t.description || '—'}</p>
                 </SettingsTableTd>
-                <SettingsTableTd colId="status">
+                <SettingsTableTd>
                   <button type="button" onClick={() => handleToggleActive(t)}>
                     <StatusBadge active={t.isActive} />
                   </button>
@@ -286,6 +279,10 @@ export default function SozlesmeSablonlariPage() {
                   placeholder="ör. Standart Tedarikçi Sözleşmesi"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onBlur={(e) => {
+                    const v = normalizeFormFreeText(e.target.value);
+                    if (v !== e.target.value.trim()) setForm((f) => ({ ...f, name: v }));
+                  }}
                 />
               </div>
               <div>
@@ -310,6 +307,10 @@ export default function SozlesmeSablonlariPage() {
                 placeholder="Opsiyonel"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onBlur={(e) => {
+                  const v = normalizeFormFreeText(e.target.value);
+                  if (v !== e.target.value.trim()) setForm((f) => ({ ...f, description: v }));
+                }}
               />
             </div>
 
@@ -317,7 +318,7 @@ export default function SozlesmeSablonlariPage() {
               <div className="flex items-center justify-between mb-1">
                 <label className={labelCls}>Şablon İçeriği (HTML) <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
                 <div className="flex items-center gap-2">
-                  <button
+          <button
                     type="button"
                     onClick={() => setShowPlaceholders((v) => !v)}
                     className="text-xs text-indigo-600 hover:underline"
@@ -393,7 +394,5 @@ export default function SozlesmeSablonlariPage() {
         description={`"${deleteTarget?.name}" şablonunu silmek istediğinize emin misiniz?`}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

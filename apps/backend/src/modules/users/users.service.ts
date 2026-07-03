@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import { buildAppPath } from '@/common/utils/app-url';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -333,7 +334,7 @@ export class UsersService {
     lastName: string;
     temporaryPassword: string;
   }): Promise<{ sent: boolean; message: string }> {
-    const loginUrl = `${this.config.get<string>('APP_URL', 'http://localhost:3001')}/giris`;
+    const loginUrl = buildAppPath(this.config, '/giris');
     const fullName = `${params.firstName} ${params.lastName}`.trim();
 
     const result = await this.emailService.sendWelcomeInviteEmail(params.email, {
@@ -393,6 +394,8 @@ export class UsersService {
       }
       updateData.email = normalizedEmail;
     }
+    let issuedTemporaryPassword: string | undefined;
+
     if (password) {
       if (oldPassword) {
         const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
@@ -410,6 +413,14 @@ export class UsersService {
     }
 
     const roleChanged = updateData.roleId !== undefined && updateData.roleId !== user.roleId;
+    if (roleChanged && !password) {
+      issuedTemporaryPassword = generateTemporaryPassword();
+      updateData.passwordHash = await bcrypt.hash(issuedTemporaryPassword, 10);
+      updateData.mustChangePassword = true;
+      updateData.temporaryPasswordIssuedAt = new Date();
+    }
+
+    const shouldRevokeSessions = Boolean(password) || roleChanged;
     const hasNestedUpdates =
       Array.isArray(departmentMemberships) ||
       Array.isArray(responsibilityAssignments) ||
@@ -478,6 +489,13 @@ export class UsersService {
             });
           }
 
+          if (shouldRevokeSessions) {
+            await tx.refreshToken.updateMany({
+              where: { userId: id, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+          }
+
           await tx.user.update(updateArgs);
 
           if (Array.isArray(departmentMemberships) && departmentMemberships.length > 0) {
@@ -533,9 +551,17 @@ export class UsersService {
 
           return tx.user.findUnique({ where: { id }, include });
         })
-      : await this.prisma.user.update(updateArgs);
+      : await this.prisma.$transaction(async (tx) => {
+          if (shouldRevokeSessions) {
+            await tx.refreshToken.updateMany({
+              where: { userId: id, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+          }
+          return tx.user.update(updateArgs);
+        });
 
-    const finalUpdated = updated ?? await this.prisma.user.findUnique({ where: { id } });
+    const finalUpdated = updated ?? await this.prisma.user.findUnique({ where: { id }, include });
     if (!finalUpdated) {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
@@ -552,8 +578,32 @@ export class UsersService {
       });
     }
 
+    if (issuedTemporaryPassword) {
+      const issuedRoleId = updateData.roleId ?? finalUpdated.roleId;
+      const issuedRole = issuedRoleId
+        ? await this.prisma.role.findUnique({
+            where: { id: issuedRoleId },
+            select: { code: true },
+          })
+        : null;
+      this.auditLogsService.log({
+        entityType: 'User',
+        entityId: id,
+        action: 'TEMPORARY_PASSWORD_ISSUED',
+        newValue: {
+          issuedForEmail: finalUpdated.email,
+          issuedForRole: issuedRole?.code ?? null,
+          reason: 'role_change',
+        },
+        userId: id,
+        userEmail: finalUpdated.email,
+      });
+    }
+
     const { passwordHash, ...result } = finalUpdated;
-    return result;
+    return issuedTemporaryPassword
+      ? { ...result, temporaryPassword: issuedTemporaryPassword }
+      : result;
   }
 
   private async validateNestedUserRelations(

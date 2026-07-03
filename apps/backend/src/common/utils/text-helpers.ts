@@ -1,12 +1,13 @@
 /**
  * Türkçe karakter destekli Title Case dönüştürücü (backend/Node.js versiyonu).
  * "mustafa yufkayürek" → "Mustafa Yufkayürek"
- * "MUSTAFA YUFKAYÜREK" → "Mustafa Yufkayürek"
+ * "tic. a.ş." → "Tic. A.Ş."
  *
  * Idempotent: Boş/null değerleri olduğu gibi döndürür.
  */
 export function toTitleCaseTR(str: string | null | undefined): string {
   if (!str) return str as string;
+
   const lowerMap: Record<string, string> = {
     I: 'ı',
     İ: 'i',
@@ -25,18 +26,39 @@ export function toTitleCaseTR(str: string | null | undefined): string {
     ö: 'Ö',
     ç: 'Ç',
   };
+
+  const titleCaseToken = (token: string): string => {
+    let result = '';
+    let capitalizeNext = true;
+
+    for (const c of token) {
+      if (/[\p{L}]/u.test(c)) {
+        result += capitalizeNext
+          ? (upperMap[c] ?? c.toUpperCase())
+          : (lowerMap[c] ?? c.toLowerCase());
+        capitalizeNext = false;
+      } else if (c === '.') {
+        result += c;
+        capitalizeNext = true;
+      } else {
+        result += c;
+      }
+    }
+
+    return result;
+  };
+
   return str
     .split(/(\s+)/)
     .map((part) => {
       if (/^\s+$/.test(part)) return part;
-      const first = part.charAt(0);
-      const rest = part.slice(1);
-      const upperFirst = upperMap[first] ?? first.toUpperCase();
-      const lowerRest = rest
-        .split('')
-        .map((c) => lowerMap[c] ?? c.toLowerCase())
+      return part
+        .split(/(-+)/)
+        .map((segment) => {
+          if (/^-+$/.test(segment) || !segment) return segment;
+          return titleCaseToken(segment);
+        })
         .join('');
-      return upperFirst + lowerRest;
     })
     .join('');
 }

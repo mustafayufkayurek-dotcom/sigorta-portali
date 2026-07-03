@@ -19,6 +19,8 @@ interface SearchableSelectProps {
   disabled?: boolean;
   className?: string;
   inputClassName?: string;
+  /** Tarayıcı adres/otomatik doldurma menüsünü kapatır */
+  disableBrowserAutocomplete?: boolean;
 }
 
 const normalizeSearchDigits = (s: string) => s.replace(/\D/g, '');
@@ -33,8 +35,10 @@ export function SearchableSelect({
   disabled = false,
   className = '',
   inputClassName = '',
+  disableBrowserAutocomplete = false,
 }: SearchableSelectProps) {
   const listId = useId();
+  const inputName = useId().replace(/:/g, '');
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -76,13 +80,21 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <input
-        type="text"
+        type="search"
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
         disabled={disabled}
         placeholder={placeholder}
         value={open ? query : (selected?.label ?? query)}
+        name={disableBrowserAutocomplete ? `meridyen-select-${inputName}` : undefined}
+        autoComplete={disableBrowserAutocomplete ? 'off' : undefined}
+        autoCorrect={disableBrowserAutocomplete ? 'off' : undefined}
+        autoCapitalize={disableBrowserAutocomplete ? 'off' : undefined}
+        spellCheck={disableBrowserAutocomplete ? false : undefined}
+        data-1p-ignore={disableBrowserAutocomplete ? true : undefined}
+        data-lpignore={disableBrowserAutocomplete ? 'true' : undefined}
+        data-form-type={disableBrowserAutocomplete ? 'other' : undefined}
         onChange={(e) => {
           const next = e.target.value;
           setQuery(next);

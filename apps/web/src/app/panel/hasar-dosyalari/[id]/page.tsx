@@ -14,7 +14,6 @@ import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { IletisimTab } from './_components/tabs/IletisimTab';
 import { TakipTab } from './_components/tabs/TakipTab';
-import { IsAkisiTab } from './_components/tabs/IsAkisiTab';
 import { RevizuonlarTab } from './_components/tabs/RevizyonlarTab';
 import { DosyaBilgileriDetay } from './_components/DosyaBilgileriDetay';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
@@ -85,7 +84,7 @@ function fmtCurrencyCompact(n: number | null | undefined) {
 }
 
 // ─── Gruplandırılmış Tab Yapısı ───────────────────────────────────────────────
-type GroupTab = 'genel-bilgiler' | 'raporlar' | 'evraklar' | 'finans' | 'iletisim' | 'takip' | 'revizyonlar' | 'is-akisi';
+type GroupTab = 'genel-bilgiler' | 'raporlar' | 'evraklar' | 'finans' | 'iletisim' | 'operasyon' | 'revizyonlar';
 
 const GROUP_TABS: { id: GroupTab; label: string; icon: string }[] = [
   { id: 'genel-bilgiler', label: 'Genel Bilgiler', icon: '📋' },
@@ -93,8 +92,7 @@ const GROUP_TABS: { id: GroupTab; label: string; icon: string }[] = [
   { id: 'evraklar',       label: 'Evraklar',        icon: '📁' },
   { id: 'finans',         label: 'Finans',           icon: '💰' },
   { id: 'iletisim',       label: 'İletişim',         icon: '💬' },
-  { id: 'takip',          label: 'Takip',            icon: '✅' },
-  { id: 'is-akisi',       label: 'İş Akışı',        icon: '🔄' },
+  { id: 'operasyon',      label: 'Operasyon',        icon: '⚙️' },
   { id: 'revizyonlar',    label: 'Revizyonlar',      icon: '↩' },
 ];
 
@@ -959,11 +957,8 @@ export default function ClaimFileDetailPage() {
       {activeGroup === 'iletisim' && (
         <IletisimTab claimId={id!} />
       )}
-      {activeGroup === 'takip' && (
+      {activeGroup === 'operasyon' && (
         <TakipTab claimId={id!} claim={claim} />
-      )}
-      {activeGroup === 'is-akisi' && (
-        <IsAkisiTab claimId={id!} />
       )}
       {activeGroup === 'revizyonlar' && <RevizuonlarTab claimId={id!} />}
     </div>

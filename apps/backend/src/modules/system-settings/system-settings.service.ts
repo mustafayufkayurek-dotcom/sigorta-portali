@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { departmentToMeridyenType } from '@/common/utils/file-subject-meridyen-branch';
 import * as nodemailer from 'nodemailer';
 
 export interface MailConfig {
@@ -137,11 +138,48 @@ export interface CustomerSubType {
 
 const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
   { value: 'sigorta_sirketi',  label: 'Sigorta Şirketi',  forType: 'corporate',  color: 'blue'   },
+  { value: 'broker_firmasi',   label: 'Broker Firması',   forType: 'corporate',  color: 'gray'   },
   { value: 'asistan_firmasi',  label: 'Asistan Firması',  forType: 'corporate',  color: 'orange' },
-  { value: 'eksper',           label: 'Eksper',           forType: 'individual', color: 'purple' },
   { value: 'eksper_firmasi',   label: 'Eksper Firması',   forType: 'corporate',  color: 'purple' },
   { value: 'insured',          label: 'Sigortalı',        forType: 'both',       color: 'orange' },
   { value: 'private_customer', label: 'Özel Müşteri',     forType: 'individual', color: 'green'  },
+];
+
+function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {
+  const byValue = new Map(stored.map((row) => [row.value, { ...row }]));
+  for (const def of DEFAULT_CUSTOMER_SUB_TYPES) {
+    const existing = byValue.get(def.value);
+    if (!existing) {
+      byValue.set(def.value, { ...def });
+    } else {
+      byValue.set(def.value, { ...existing, label: def.label, forType: def.forType, color: def.color });
+    }
+  }
+  byValue.delete('eksper');
+  return DEFAULT_CUSTOMER_SUB_TYPES.map((def) => byValue.get(def.value)).filter(Boolean) as CustomerSubType[];
+}
+
+export interface FieldInspectionBranch {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface ExpertInsuranceLink {
+  expertCustomerId: string;
+  insuranceCompanyId: string;
+}
+
+export interface ExpertInsuranceLinksConfig {
+  links: ExpertInsuranceLink[];
+}
+
+const DEFAULT_SAHA_TESPIT_KOLLARI: FieldInspectionBranch[] = [
+  { id: 'tespit-hasar', name: 'Hasar Tespiti', isActive: true, sortOrder: 10 },
+  { id: 'tespit-kesif', name: 'Saha Keşfi', isActive: true, sortOrder: 20 },
+  { id: 'tespit-ozel', name: 'Özel Talep Tespiti', isActive: true, sortOrder: 30 },
+  { id: 'tespit-on', name: 'Ön İnceleme', isActive: true, sortOrder: 40 },
 ];
 
 export interface FieldRequirementsConfig {
@@ -212,6 +250,22 @@ export interface IntegrationConfig {
     password: string;
     active: boolean;
   };
+  googlePlaces?: {
+    apiKey: string;
+    active: boolean;
+  };
+}
+
+export interface M365GraphConfig {
+  tenantId: string;
+  clientId: string;
+  clientSecret: string;
+  ihbarMailbox: string;
+  hasarMailbox: string;
+  active: boolean;
+  lastTestAt?: string;
+  lastTestSuccess?: boolean;
+  lastTestMessage?: string;
 }
 
 const DEFAULT_COMPANY_INFO: CompanyInfo = {
@@ -602,7 +656,9 @@ export class SystemSettingsService {
 
   async getCustomerSubTypes(): Promise<CustomerSubType[]> {
     const value = await this.get('customer_sub_types');
-    return (value as CustomerSubType[]) ?? DEFAULT_CUSTOMER_SUB_TYPES;
+    const stored = value as CustomerSubType[] | null | undefined;
+    if (!stored?.length) return DEFAULT_CUSTOMER_SUB_TYPES;
+    return mergeCustomerSubTypes(stored);
   }
 
   async setCustomerSubTypes(values: CustomerSubType[]): Promise<CustomerSubType[]> {
@@ -611,18 +667,36 @@ export class SystemSettingsService {
   }
 
   async getIhbarKonulari(): Promise<IhbarKonulari> {
-    const value = await this.get('ihbar_konulari');
-    if (!value) return DEFAULT_IHBAR_KONULARI;
-    const data = value as Partial<IhbarKonulari>;
+    const subjects = await this.prisma.departmentFileSubject.findMany({
+      where: {
+        department: { status: 'active' },
+        status: 'active',
+      },
+      include: { department: { select: { code: true, reportFormat: true } } },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    if (subjects.length === 0) {
+      return DEFAULT_IHBAR_KONULARI;
+    }
+
+    const hasar: string[] = [];
+    const acil: string[] = [];
+    for (const subject of subjects) {
+      const bucket = departmentToMeridyenType(subject.department) === 'acil_yardim' ? acil : hasar;
+      bucket.push(subject.name);
+    }
+
     return {
-      hasar: Array.isArray(data.hasar) ? data.hasar : DEFAULT_IHBAR_KONULARI.hasar,
-      acil: Array.isArray(data.acil) ? data.acil : DEFAULT_IHBAR_KONULARI.acil,
+      hasar: hasar.length > 0 ? hasar : DEFAULT_IHBAR_KONULARI.hasar,
+      acil: acil.length > 0 ? acil : DEFAULT_IHBAR_KONULARI.acil,
     };
   }
 
-  async setIhbarKonulari(values: IhbarKonulari): Promise<IhbarKonulari> {
-    await this.set('ihbar_konulari', values);
-    return values;
+  async setIhbarKonulari(_values: IhbarKonulari): Promise<IhbarKonulari> {
+    throw new BadRequestException(
+      'İhbar konuları artık Ayarlar → Dosya Konuları ekranından yönetilir.',
+    );
   }
 
   async getFieldRequirements(): Promise<FieldRequirementsConfig> {
@@ -874,8 +948,15 @@ export class SystemSettingsService {
     const value = await this.get('integration_config');
     const defaults: IntegrationConfig = {
       logoWings: { apiUrl: '', apiKey: '', username: '', password: '', active: false },
+      googlePlaces: { apiKey: '', active: false },
     };
-    return (value as IntegrationConfig) ?? defaults;
+    const stored = (value as IntegrationConfig) ?? defaults;
+    return {
+      ...defaults,
+      ...stored,
+      logoWings: { ...defaults.logoWings, ...stored.logoWings },
+      googlePlaces: { ...defaults.googlePlaces!, ...(stored.googlePlaces ?? {}) },
+    };
   }
 
   async setIntegrationConfig(config: IntegrationConfig): Promise<IntegrationConfig> {
@@ -896,6 +977,53 @@ export class SystemSettingsService {
       colorScheme: config.colorScheme || 'blue',
     } as const;
     await this.set('theme_config', normalized);
+    return normalized;
+  }
+
+  // ── Microsoft 365 Graph (Operasyon Gelen Kutusu) ───────────────────────
+
+  private readonly DEFAULT_M365_CONFIG: M365GraphConfig = {
+    tenantId: '',
+    clientId: '',
+    clientSecret: '',
+    ihbarMailbox: 'ihbar@safranbh.com',
+    hasarMailbox: 'hasar@safranbh.com',
+    active: false,
+  };
+
+  async getM365GraphConfig(): Promise<M365GraphConfig> {
+    const value = await this.get('m365_graph_config');
+    return { ...this.DEFAULT_M365_CONFIG, ...(value as Partial<M365GraphConfig> | null) };
+  }
+
+  async setM365GraphConfig(config: M365GraphConfig): Promise<M365GraphConfig> {
+    await this.set('m365_graph_config', config);
+    return config;
+  }
+
+  async getSahaTespitKollari(): Promise<FieldInspectionBranch[]> {
+    const value = await this.get('saha_tespit_kollari');
+    const list = (value as FieldInspectionBranch[] | null) ?? DEFAULT_SAHA_TESPIT_KOLLARI;
+    return [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'));
+  }
+
+  async setSahaTespitKollari(values: FieldInspectionBranch[]): Promise<FieldInspectionBranch[]> {
+    await this.set('saha_tespit_kollari', values);
+    return values;
+  }
+
+  async getExpertInsuranceLinks(): Promise<ExpertInsuranceLinksConfig> {
+    const value = await this.get('eksper_sigorta_baglantilari');
+    const raw = value as ExpertInsuranceLinksConfig | null;
+    return { links: Array.isArray(raw?.links) ? raw.links : [] };
+  }
+
+  async setExpertInsuranceLinks(config: ExpertInsuranceLinksConfig): Promise<ExpertInsuranceLinksConfig> {
+    const links = (config.links ?? []).filter(
+      (l) => typeof l.expertCustomerId === 'string' && typeof l.insuranceCompanyId === 'string',
+    );
+    const normalized = { links };
+    await this.set('eksper_sigorta_baglantilari', normalized);
     return normalized;
   }
 }

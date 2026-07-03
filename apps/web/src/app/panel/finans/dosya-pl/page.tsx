@@ -117,7 +117,7 @@ export default function DosyaPLPage() {
           <p className="text-sm font-semibold text-slate-700 mb-3">Tahsilat Kırılımı</p>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <p className="text-slate-500 mb-1">Sigortacıdan Tahsil</p>
+              <p className="text-slate-500 mb-1">Sigorta Şirketinden Tahsilat</p>
               <p className="font-bold text-green-700">{fmtCurrency(portfolioPL.totalCollected - (portfolioPL.collectedFromInsured ?? 0))}</p>
             </div>
             <div>

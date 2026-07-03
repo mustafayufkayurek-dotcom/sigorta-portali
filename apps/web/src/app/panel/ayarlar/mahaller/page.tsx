@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, type Dispatch, type SetStateAction } 
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
-import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { DepartmentContextBand } from '@/components/settings/DepartmentTabSelector';
 import {
@@ -22,15 +23,7 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'subRegion', label: 'Alt Bölge', defaultWidth: 200, minWidth: 140 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 100 },
-  { id: 'sort', label: 'Sıra', defaultWidth: 70, minWidth: 56 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 type ClaimLocation = {
   id: string;
@@ -93,6 +86,7 @@ function LocationFormFields({
           autoComplete="off"
           name="mahal-ad"
           onChange={(e) => setF((prev) => applyNameWithAutoCode(prev, e.target.value, !isNew, codePrefix))}
+          onBlur={() => setF((prev) => blurNameWithAutoCode(prev, !isNew, codePrefix))}
           placeholder={buildPlaceholder(fc, 'name')}
         />
       </div>
@@ -103,6 +97,10 @@ function LocationFormFields({
           value={f.description}
           autoComplete="off"
           onChange={(e) => setF((prev) => ({ ...prev, description: e.target.value }))}
+          onBlur={(e) => {
+            const v = normalizeFormFreeText(e.target.value);
+            if (v !== e.target.value.trim()) setF((prev) => ({ ...prev, description: v }));
+          }}
           placeholder={buildPlaceholder(fc, 'description')}
         />
       </div>
@@ -226,17 +224,19 @@ export default function MahallerPage() {
   };
 
   const handleSave = async () => {
+    const name = normalizeFormFreeText(form.name);
+    const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
     const missing: string[] = [];
-    if (isFieldRequired(fieldConfig, 'name') && !form.name.trim()) missing.push('Ad');
-    if (isFieldRequired(fieldConfig, 'description') && !form.description) missing.push('Açıklama');
+    if (isFieldRequired(fieldConfig, 'name') && !name) missing.push('Ad');
+    if (isFieldRequired(fieldConfig, 'description') && !description) missing.push('Açıklama');
     if (missing.length > 0) {
       setError(`${missing.join(', ')} zorunludur`);
       return;
     }
-    const code = editing ? form.code : form.code.trim() || suggestAutoCode('MAHAL', form.name);
-    if (form.name) {
+    const code = editing ? form.code : form.code.trim() || suggestAutoCode('MAHAL', name);
+    if (name) {
       const dupName = locations.find(
-        (l) => l.name.trim().toLowerCase() === form.name.trim().toLowerCase() && (!editing || l.id !== editing.id),
+        (l) => l.name.trim().toLowerCase() === name.toLowerCase() && (!editing || l.id !== editing.id),
       );
       if (dupName) {
         setError('Bu isimde bir mahal zaten mevcut!');
@@ -249,13 +249,13 @@ export default function MahallerPage() {
       if (editing) {
         await axios.put(
           `${API}/claim-locations/${editing.id}`,
-          { name: form.name, description: form.description || undefined, sortOrder: form.sortOrder },
+          { name, description: description || undefined, sortOrder: form.sortOrder },
           { headers: authHeader() },
         );
       } else {
         await axios.post(
           `${API}/claim-locations`,
-          { code, name: form.name.trim(), description: form.description || undefined, sortOrder: form.sortOrder },
+          { code, name, description: description || undefined, sortOrder: form.sortOrder },
           { headers: authHeader() },
         );
       }
@@ -323,27 +323,29 @@ export default function MahallerPage() {
       setSubError('Üst mahal seçimi zorunludur');
       return;
     }
+    const name = normalizeFormFreeText(subForm.name);
+    const description = subForm.description.trim() ? normalizeFormFreeText(subForm.description) : '';
     const missing: string[] = [];
-    if (isFieldRequired(fieldConfig, 'name') && !subForm.name.trim()) missing.push('Ad');
-    if (isFieldRequired(fieldConfig, 'description') && !subForm.description) missing.push('Açıklama');
+    if (isFieldRequired(fieldConfig, 'name') && !name) missing.push('Ad');
+    if (isFieldRequired(fieldConfig, 'description') && !description) missing.push('Açıklama');
     if (missing.length > 0) {
       setSubError(`${missing.join(', ')} zorunludur`);
       return;
     }
-    const code = editingSub ? subForm.code : subForm.code.trim() || suggestAutoCode('BOLGE', subForm.name);
+    const code = editingSub ? subForm.code : subForm.code.trim() || suggestAutoCode('BOLGE', name);
     setSubSaving(true);
     setSubError('');
     try {
       if (editingSub) {
         await axios.put(
           `${API}/claim-locations/${editingSub.id}`,
-          { name: subForm.name, description: subForm.description || undefined, sortOrder: subForm.sortOrder },
+          { name, description: description || undefined, sortOrder: subForm.sortOrder },
           { headers: authHeader() },
         );
       } else {
         await axios.post(
           `${API}/claim-locations/${subForm.parentId}/sub-locations`,
-          { code, name: subForm.name.trim(), description: subForm.description || undefined, sortOrder: subForm.sortOrder },
+          { code, name, description: description || undefined, sortOrder: subForm.sortOrder },
           { headers: authHeader() },
         );
       }
@@ -389,8 +391,6 @@ export default function MahallerPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Mahal ve Bölgeler"
       description="Hasar raporunda hangi bölgede ne iş yapılacağını tanımlayın (ör. Salon zemin, Çocuk odası tavan)."
@@ -398,7 +398,6 @@ export default function MahallerPage() {
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
         <div className="flex items-center gap-2">
-          <SettingsTableColumnPicker tableColumns={tableColumns} />
           <button
             type="button"
             onClick={openCreate}
@@ -527,26 +526,26 @@ export default function MahallerPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
-                          <SettingsTableTh colId="subRegion">Alt Bölge</SettingsTableTh>
-                          <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
-                          <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
-                          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+                          <SettingsTableTh>Alt Bölge</SettingsTableTh>
+                          <SettingsTableTh>Açıklama</SettingsTableTh>
+                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                          <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {visibleSubs.map((sub) => (
                             <SettingsTableRow key={sub.id}>
-                              <SettingsTableTd colId="subRegion">
+                              <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{sub.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="description">
+                              <SettingsTableTd>
                                 <span className="text-sm text-slate-500">{sub.description || '—'}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd colId="sort" className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
-                              <SettingsTableTd colId="status">
+                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
+                              <SettingsTableTd>
                                 <button type="button" onClick={() => handleToggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />
                                 </button>
@@ -642,7 +641,5 @@ export default function MahallerPage() {
         itemName={deleteSubTarget?.name}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

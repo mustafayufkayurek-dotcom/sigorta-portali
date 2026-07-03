@@ -11,6 +11,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CreateStatementDto, CreateStatementItemDto } from './dto/create-statement.dto';
+import { buildAppPath } from '@/common/utils/app-url';
 
 const STATEMENT_DEADLINE_DAYS = 14;
 const DISPUTE_THRESHOLD_COUNT = 5;
@@ -272,7 +273,7 @@ export class VendorStatementsService {
 
     // SMS gönderim kaydı
     if (stmt.vendor.phone) {
-      const message = `Meridyen Assistance: ${stmt.periodStart.toLocaleDateString('tr-TR')} - ${stmt.periodEnd.toLocaleDateString('tr-TR')} dönemine ait ödeme ekstreniz hazır. Lütfen ${STATEMENT_DEADLINE_DAYS} gün içinde inceleyin: ${process.env.APP_URL ?? 'https://app.meridyen.com'}/ekstre/${token}`;
+      const message = `Meridyen Assistance: ${stmt.periodStart.toLocaleDateString('tr-TR')} - ${stmt.periodEnd.toLocaleDateString('tr-TR')} dönemine ait ödeme ekstreniz hazır. Lütfen ${STATEMENT_DEADLINE_DAYS} gün içinde inceleyin: ${buildAppPath(process.env, `/ekstre/${token}`)}`;
       await this.prisma.smsLog.create({
         data: {
           to: stmt.vendor.phone,
@@ -876,7 +877,7 @@ export class VendorStatementsService {
         await this.prisma.smsLog.create({
           data: {
             to: stmt.vendor.phone,
-            message: `Meridyen Assistance: ${stmt.statementNo} no'lu ödeme ekstrenizin mutabakat süresi ${daysLeft} gün içinde dolacak. Lütfen inceleyin: ${process.env.APP_URL ?? 'https://app.meridyen.com'}/ekstre/${stmt.tokens[0].token}`,
+            message: `Meridyen Assistance: ${stmt.statementNo} no'lu ödeme ekstrenizin mutabakat süresi ${daysLeft} gün içinde dolacak. Lütfen inceleyin: ${buildAppPath(process.env, `/ekstre/${stmt.tokens[0].token}`)}`,
             status: 'queued',
             provider: 'console',
           },

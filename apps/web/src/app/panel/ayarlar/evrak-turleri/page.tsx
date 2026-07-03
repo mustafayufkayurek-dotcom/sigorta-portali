@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
-import { suggestAutoCode, applyNameWithAutoCode } from '@/utils/auto-code';
+import { SETTINGS_API as API, formatSettingsApiError, settingsAuthHeader as authHeader } from '@/utils/settings-api';
+import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { DepartmentDefinitionToolbar } from '@/components/settings/DepartmentTabSelector';
@@ -22,12 +23,15 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
 import {
   CUSTOMER_DOCUMENT_SUB_TYPES,
   VENDOR_SERVICE_TABS,
+  customerScopeBadgeLabel,
   customerSubTypeScopeLabel,
+  deriveServiceBranchTypes,
+  documentEntityScopeLabel,
+  documentTypeScopeBadges,
+  parseServiceBranchTypes,
   parseStringList,
   serviceBranchTypeLabel,
   sortByNameTR,
@@ -36,15 +40,6 @@ import {
 } from '@/utils/document-type-scope';
 import { normalizeSearchTR } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'sort', label: 'Sıra', defaultWidth: 56, minWidth: 48 },
-  { id: 'name', label: 'Ad', defaultWidth: 200, minWidth: 120 },
-  { id: 'scope', label: 'Kapsam', defaultWidth: 180, minWidth: 120 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 160, minWidth: 100 },
-  { id: 'required', label: 'Zorunlu', defaultWidth: 90, minWidth: 70 },
-  { id: 'count', label: 'Evrak Sayısı', defaultWidth: 100, minWidth: 80 },
-  { id: 'status', label: 'Durum', defaultWidth: 90, minWidth: 70 },
-];
 
 type DocumentType = {
   id: string;
@@ -57,8 +52,27 @@ type DocumentType = {
   entityScope?: string;
   serviceBranchTypes?: unknown;
   customerSubTypes?: unknown;
+  departmentIds?: unknown;
   _count?: { vendorDocuments: number; entityDocuments?: number };
 };
+
+function resolveEditServiceBranchTypes(
+  dt: DocumentType,
+  activeVendorTab: ServiceBranchTypeKey,
+  deptCodeById: Map<string, string>,
+): ServiceBranchTypeKey[] {
+  const derived = deriveServiceBranchTypes(dt.serviceBranchTypes, dt.departmentIds, deptCodeById);
+  if (derived.length > 0) return derived;
+  if ((dt.entityScope ?? 'vendor') === 'vendor') return ['hasar', 'acil_yardim'];
+  return [activeVendorTab];
+}
+
+function resolveEditCustomerSubTypes(dt: DocumentType, activeCustomerTab: string): string[] {
+  const explicit = parseStringList(dt.customerSubTypes);
+  if (explicit.length > 0) return explicit;
+  if ((dt.entityScope ?? 'vendor') === 'customer') return [activeCustomerTab];
+  return [];
+}
 
 const SCOPE_MODES: { id: DocumentEntityScope; label: string; hint: string }[] = [
   { id: 'vendor', label: 'Tedarikçi Evrakları', hint: 'Hasar Onarım / Acil Yardım hizmet kapsamı' },
@@ -114,16 +128,8 @@ function ScopeTabBar({
   );
 }
 
-function scopeBadges(dt: DocumentType): string[] {
-  const scope = (dt.entityScope ?? 'vendor') as DocumentEntityScope;
-  if (scope === 'customer') {
-    const subs = parseStringList(dt.customerSubTypes);
-    if (subs.length === 0) return ['Tüm müşteri tipleri'];
-    return subs.map(customerSubTypeScopeLabel);
-  }
-  const branches = parseStringList(dt.serviceBranchTypes) as ServiceBranchTypeKey[];
-  if (branches.length === 0) return ['Tüm hizmet türleri'];
-  return branches.map(serviceBranchTypeLabel);
+function scopeBadges(dt: DocumentType, deptCodeById: Map<string, string>): string[] {
+  return documentTypeScopeBadges(dt, deptCodeById);
 }
 
 export default function EvrakTurleriPage() {
@@ -141,6 +147,7 @@ export default function EvrakTurleriPage() {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<DocumentType | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deptCodeById, setDeptCodeById] = useState<Map<string, string>>(new Map());
 
   const customerTabs = useMemo(
     () =>
@@ -156,6 +163,19 @@ export default function EvrakTurleriPage() {
       })),
     [],
   );
+
+  useEffect(() => {
+    axios
+      .get(`${API}/departments`, { headers: authHeader() })
+      .then((res) => {
+        const map = new Map<string, string>();
+        for (const dept of res.data.data ?? []) {
+          if (dept?.id && dept?.code) map.set(dept.id, dept.code);
+        }
+        setDeptCodeById(map);
+      })
+      .catch(console.error);
+  }, []);
 
   const refreshCounts = useCallback(async () => {
     try {
@@ -227,8 +247,26 @@ export default function EvrakTurleriPage() {
 
   const activeTabLabel =
     scopeMode === 'vendor'
-      ? serviceBranchTypeLabel(vendorTab)
-      : customerSubTypeScopeLabel(customerTab);
+      ? `${documentEntityScopeLabel('vendor')} · ${serviceBranchTypeLabel(vendorTab)}`
+      : `${documentEntityScopeLabel('customer')} · ${customerSubTypeScopeLabel(customerTab)}`;
+
+  const vendorFilterTabs = useMemo(
+    () =>
+      VENDOR_SERVICE_TABS.map((tab) => ({
+        ...tab,
+        label: `${documentEntityScopeLabel('vendor')} · ${tab.label}`,
+      })),
+    [],
+  );
+
+  const customerFilterTabs = useMemo(
+    () =>
+      customerTabs.map((tab) => ({
+        ...tab,
+        label: `${documentEntityScopeLabel('customer')} · ${tab.label}`,
+      })),
+    [customerTabs],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -250,8 +288,8 @@ export default function EvrakTurleriPage() {
       description: dt.description ?? '',
       isRequired: dt.isRequired,
       entityScope: (dt.entityScope ?? 'vendor') as DocumentEntityScope,
-      serviceBranchTypes: parseStringList(dt.serviceBranchTypes) as ServiceBranchTypeKey[],
-      customerSubTypes: parseStringList(dt.customerSubTypes),
+      serviceBranchTypes: resolveEditServiceBranchTypes(dt, vendorTab, deptCodeById),
+      customerSubTypes: resolveEditCustomerSubTypes(dt, customerTab),
     });
     setError('');
     setShowModal(true);
@@ -262,12 +300,15 @@ export default function EvrakTurleriPage() {
   };
 
   const toggleBranch = (id: ServiceBranchTypeKey) => {
-    setForm((p) => ({
-      ...p,
-      serviceBranchTypes: p.serviceBranchTypes.includes(id)
-        ? p.serviceBranchTypes.filter((x) => x !== id)
-        : [...p.serviceBranchTypes, id],
-    }));
+    setForm((p) => {
+      const current = parseServiceBranchTypes(p.serviceBranchTypes);
+      return {
+        ...p,
+        serviceBranchTypes: current.includes(id)
+          ? current.filter((x) => x !== id)
+          : [...current, id],
+      };
+    });
   };
 
   const toggleCustomerSub = (value: string) => {
@@ -280,27 +321,40 @@ export default function EvrakTurleriPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Ad alanı zorunludur'); return; }
-    if (form.entityScope === 'vendor' && form.serviceBranchTypes.length === 0) {
+    const name = normalizeFormFreeText(form.name);
+    if (!name) { setError('Ad alanı zorunludur'); return; }
+    const branchTypes =
+      form.entityScope === 'vendor' ? parseServiceBranchTypes(form.serviceBranchTypes) : [];
+    if (form.entityScope === 'vendor' && branchTypes.length === 0) {
       setError('En az bir Meridyen hizmet türü seçin'); return;
     }
     if (form.entityScope === 'customer' && form.customerSubTypes.length === 0) {
       setError('En az bir müşteri tipi seçin'); return;
     }
-    const code = (editing ? form.code : suggestAutoCode('EVRAK', form.name)).trim();
+    const code = (editing ? form.code : suggestAutoCode('EVRAK', name)).trim();
     if (!code) { setError('Kod üretilemedi'); return; }
 
     setSaving(true);
     setError('');
-    const payload = {
-      code,
-      name: form.name,
-      description: form.description || undefined,
-      isRequired: form.isRequired,
+    const scopePayload = {
       entityScope: form.entityScope,
-      serviceBranchTypes: form.entityScope === 'vendor' ? form.serviceBranchTypes : [],
+      serviceBranchTypes: branchTypes,
       customerSubTypes: form.entityScope === 'customer' ? form.customerSubTypes : [],
     };
+    const payload = editing
+      ? {
+          name,
+          description: form.description.trim() ? normalizeFormFreeText(form.description) : null,
+          isRequired: form.isRequired,
+          ...scopePayload,
+        }
+      : {
+          code,
+          name,
+          description: form.description.trim() ? normalizeFormFreeText(form.description) : undefined,
+          isRequired: form.isRequired,
+          ...scopePayload,
+        };
     try {
       if (editing) {
         await axios.put(`${API}/document-types/${editing.id}`, payload, { headers: authHeader() });
@@ -311,8 +365,7 @@ export default function EvrakTurleriPage() {
       await fetchTypes();
       await refreshCounts();
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setError(err.response?.data?.message ?? 'Bir hata oluştu');
+      setError(formatSettingsApiError(e));
     } finally {
       setSaving(false);
     }
@@ -327,25 +380,21 @@ export default function EvrakTurleriPage() {
       await fetchTypes();
       await refreshCounts();
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      alert(formatSettingsApiError(e, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
-        <SettingsPageLayout
+    <SettingsPageLayout
           title="Evrak Türleri"
           description="Meridyen hizmet türleri ve müşteri tiplerine göre evrak tanımları. Liste alfabetik sıralanır; sıra numarası otomatik atanır."
           backHref={TANIMLAR_BACK_HREF}
           backText={TANIMLAR_BACK_TEXT}
           headerExtra={
             <div className="flex items-center gap-2">
-              <SettingsTableColumnPicker tableColumns={tableColumns} />
-              <button
+          <button
                 type="button"
                 onClick={openCreate}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
@@ -381,14 +430,14 @@ export default function EvrakTurleriPage() {
 
             {scopeMode === 'vendor' ? (
               <ScopeTabBar
-                tabs={VENDOR_SERVICE_TABS}
+                tabs={vendorFilterTabs}
                 selectedId={vendorTab}
                 onSelect={(id) => setVendorTab(id as ServiceBranchTypeKey)}
                 counts={tabCounts}
               />
             ) : (
               <ScopeTabBar
-                tabs={customerTabs}
+                tabs={customerFilterTabs}
                 selectedId={customerTab}
                 onSelect={setCustomerTab}
                 counts={tabCounts}
@@ -420,30 +469,30 @@ export default function EvrakTurleriPage() {
                 }
               >
                 <SettingsTableHead>
-                  <SettingsTableTh colId="sort" className="text-center">Sıra</SettingsTableTh>
-                  <SettingsTableTh colId="name">Ad</SettingsTableTh>
-                  <SettingsTableTh colId="scope">Kapsam</SettingsTableTh>
-                  <SettingsTableTh colId="description">Açıklama</SettingsTableTh>
-                  <SettingsTableTh colId="required" className="text-center">Zorunlu</SettingsTableTh>
-                  <SettingsTableTh colId="count" className="text-center">Evrak Sayısı</SettingsTableTh>
-                  <SettingsTableTh colId="status" className="text-center">Durum</SettingsTableTh>
+                  <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                  <SettingsTableTh>Ad</SettingsTableTh>
+                  <SettingsTableTh>Kapsam</SettingsTableTh>
+                  <SettingsTableTh>Açıklama</SettingsTableTh>
+                  <SettingsTableTh className="text-center">Zorunlu</SettingsTableTh>
+                  <SettingsTableTh className="text-center">Evrak Sayısı</SettingsTableTh>
+                  <SettingsTableTh className="text-center">Durum</SettingsTableTh>
                   <SettingsTableTh />
                 </SettingsTableHead>
                 <SettingsTableBody>
                   {filteredTypes.map((dt, index) => {
                     const docCount =
                       (dt._count?.vendorDocuments ?? 0) + (dt._count?.entityDocuments ?? 0);
-                    const badges = scopeBadges(dt);
+                    const badges = scopeBadges(dt, deptCodeById);
                     return (
                       <SettingsTableRow key={dt.id}>
-                        <SettingsTableTd colId="sort" className="text-center text-slate-500 tabular-nums">
+                        <SettingsTableTd className="text-center text-slate-500 tabular-nums">
                           {index + 1}
                         </SettingsTableTd>
-                        <SettingsTableTd colId="name">
+                        <SettingsTableTd>
                           <span className="font-medium text-slate-900">{dt.name}</span>
                           <p className="text-xs text-slate-400 mt-0.5 font-mono">{dt.code}</p>
                         </SettingsTableTd>
-                        <SettingsTableTd colId="scope">
+                        <SettingsTableTd>
                           <div className="flex flex-wrap gap-1">
                             {badges.map((b) => (
                               <span
@@ -455,18 +504,18 @@ export default function EvrakTurleriPage() {
                             ))}
                           </div>
                         </SettingsTableTd>
-                        <SettingsTableTd colId="description" className="max-w-xs truncate text-slate-500">
+                        <SettingsTableTd className="max-w-xs truncate text-slate-500">
                           {dt.description || '—'}
                         </SettingsTableTd>
-                        <SettingsTableTd colId="required" className="text-center">
+                        <SettingsTableTd className="text-center">
                           {dt.isRequired ? (
                             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Zorunlu</span>
                           ) : (
                             <span className="text-xs text-slate-400">—</span>
                           )}
                         </SettingsTableTd>
-                        <SettingsTableTd colId="count" className="text-center text-slate-600">{docCount}</SettingsTableTd>
-                        <SettingsTableTd colId="status" className="text-center">
+                        <SettingsTableTd className="text-center text-slate-600">{docCount}</SettingsTableTd>
+                        <SettingsTableTd className="text-center">
                           <StatusBadge active={dt.status === 'active'} />
                         </SettingsTableTd>
                         <SettingsTableActions>
@@ -546,7 +595,7 @@ export default function EvrakTurleriPage() {
               </div>
             ) : (
               <div>
-                <label className={labelCls}>Müşteri Tipleri *</label>
+                <label className={labelCls}>Müşteri Tipi Kapsamı *</label>
                 <div className="grid grid-cols-2 gap-2 mt-1.5">
                   {CUSTOMER_DOCUMENT_SUB_TYPES.map((t) => (
                     <label
@@ -563,7 +612,7 @@ export default function EvrakTurleriPage() {
                         checked={form.customerSubTypes.includes(t.value)}
                         onChange={() => toggleCustomerSub(t.value)}
                       />
-                      {t.label}
+                      {customerScopeBadgeLabel(t.value)}
                     </label>
                   ))}
                 </div>
@@ -578,6 +627,7 @@ export default function EvrakTurleriPage() {
                 value={form.name}
                 autoComplete="off"
                 onChange={(e) => handleNameChange(e.target.value)}
+                onBlur={() => setForm((p) => blurNameWithAutoCode(p, !!editing, 'EVRAK'))}
               />
             </div>
             {editing && (
@@ -593,6 +643,10 @@ export default function EvrakTurleriPage() {
                 placeholder="İsteğe bağlı açıklama"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                onBlur={(e) => {
+                  const v = normalizeFormFreeText(e.target.value);
+                  if (v !== e.target.value.trim()) setForm((p) => ({ ...p, description: v }));
+                }}
               />
             </div>
             <div>
@@ -624,7 +678,5 @@ export default function EvrakTurleriPage() {
             }
           />
         </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

@@ -1,4 +1,5 @@
 export { FinanceBottleneckWidget } from './finance-bottleneck-widget';
+export { FinanceQueuesStrip } from './finance-queues-strip';
 export { OverheadAllocationReminderWidget } from './overhead-allocation-reminder-widget';
 export { FinanceKpiGroup } from './finance-kpi-group';
 export { FinanceFlowStrip } from './finance-flow-strip';

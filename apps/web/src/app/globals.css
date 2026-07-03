@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobil / tablet: güvenli alan ve klavye kaydırma */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .safe-area-pb {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .scroll-input-safe {
+    scroll-margin-top: 5rem;
+    scroll-margin-bottom: 8rem;
+  }
+}
+
 @keyframes toastIn {
   from {
     opacity: 0;
@@ -271,111 +291,27 @@
   @apply border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300;
 }
 
-/* ── Running Lights (Cursor tarzı yanıp sönen harfler) ─────────────────── */
+/* ── Yükleme göstergeleri (kurumsal, sessiz) ───────────────────────────── */
 
-@keyframes running-lights-char {
-  0%, 100% {
-    color: rgb(148 163 184);
-    opacity: 0.35;
-    text-shadow: none;
-    transform: translateY(0);
-  }
-  40%, 55% {
-    color: var(--running-char-color);
-    opacity: 1;
-    transform: translateY(-1px);
-    text-shadow:
-      0 0 6px var(--running-glow-soft),
-      0 0 14px var(--running-glow-strong);
+@keyframes meridyen-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-@keyframes running-lights-led {
-  0%, 100% {
-    opacity: 0.25;
-    transform: scale(0.85);
-    box-shadow: none;
+.meridyen-spinner {
+  animation: meridyen-spin 0.75s linear infinite;
+}
+
+@keyframes meridyen-indeterminate {
+  0% {
+    transform: translateX(-100%);
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-    box-shadow: 0 0 8px var(--running-glow-strong);
+  100% {
+    transform: translateX(400%);
   }
 }
 
-.running-lights {
-  --running-glow-soft: rgba(59, 130, 246, 0.45);
-  --running-glow-strong: rgba(59, 130, 246, 0.85);
-  --running-char-color: rgb(59 130 246);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  user-select: none;
-}
-
-.running-lights--sm { font-size: 0.75rem; }
-.running-lights--md { font-size: 0.875rem; }
-.running-lights--lg { font-size: 1rem; }
-
-.running-lights--emerald {
-  --running-glow-soft: rgba(16, 185, 129, 0.45);
-  --running-glow-strong: rgba(52, 211, 153, 0.9);
-  --running-char-color: rgb(16 185 129);
-}
-
-.running-lights--slate {
-  --running-glow-soft: rgba(100, 116, 139, 0.35);
-  --running-glow-strong: rgba(148, 163, 184, 0.65);
-  --running-char-color: rgb(100 116 139);
-}
-
-.running-lights__leds {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-}
-
-.running-lights__led {
-  width: 0.38rem;
-  height: 0.38rem;
-  border-radius: 9999px;
-  background: var(--running-char-color);
-  animation: running-lights-led 1.4s ease-in-out infinite;
-}
-
-.running-lights__word {
-  display: inline-flex;
-  align-items: baseline;
-}
-
-.running-lights__char {
-  display: inline-block;
-  min-width: 0.05em;
-  color: rgb(148 163 184);
-  animation: running-lights-char 1.75s ease-in-out infinite;
-}
-
-.dark .running-lights__char {
-  color: rgb(100 116 139);
-  animation-name: running-lights-char-dark;
-}
-
-@keyframes running-lights-char-dark {
-  0%, 100% {
-    color: rgb(100 116 139);
-    opacity: 0.4;
-    text-shadow: none;
-    transform: translateY(0);
-  }
-  40%, 55% {
-    color: var(--running-char-color);
-    opacity: 1;
-    transform: translateY(-1px);
-    text-shadow:
-      0 0 8px var(--running-glow-soft),
-      0 0 16px var(--running-glow-strong);
-  }
+.meridyen-indeterminate-bar {
+  animation: meridyen-indeterminate 1.2s ease-in-out infinite;
 }

@@ -4,9 +4,33 @@ import { isFieldStaff } from '@/common/helpers/field-staff.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as ExcelJS from 'exceljs';
 
+type CustomerNameFields = {
+  entityType?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  fullName?: string | null;
+  companyName?: string | null;
+  authorizedPerson?: string | null;
+  taxNumber?: string | null;
+};
+
 @Injectable()
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
+
+  /** Çakışma uyarılarında gösterilecek okunaklı müşteri adı */
+  private resolveCustomerDisplayName(c: CustomerNameFields): string {
+    if (c.entityType === 'individual') {
+      const personal = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+      return personal || c.fullName?.trim() || c.companyName?.trim() || 'Kayıtlı Müşteri';
+    }
+    return (
+      c.companyName?.trim()
+      || c.fullName?.trim()
+      || c.authorizedPerson?.trim()
+      || (c.taxNumber ? `Kurumsal Müşteri (VKN: ${c.taxNumber})` : 'Kayıtlı Kurumsal Müşteri')
+    );
+  }
 
   /**
    * FIELD_STAFF için: kendi atandığı dosyalardaki müşterileri döner
@@ -133,7 +157,13 @@ export class CustomersService {
     const where: Record<string, unknown> = {};
     if (params?.type) where.type = params.type;
     if (params?.customerType) (where as any).entityType = params.customerType;
-    if (params?.subType) (where as any).subType = params.subType;
+    if (params?.subType) {
+      // Legacy kayıtlar sub_type=eksper; yeni kayıtlar eksper_firmasi
+      (where as any).subType =
+        params.subType === 'eksper_firmasi'
+          ? { in: ['eksper_firmasi', 'eksper'] }
+          : params.subType;
+    }
     if (params?.serviceType) {
       const normalized = params.serviceType.trim().toLowerCase().replace(/-/g, '_');
       if (normalized === 'acil_yardim') {
@@ -236,6 +266,7 @@ export class CustomersService {
 
   async create(data: any) {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
+    this.sanitizeCustomerWriteData(rest);
 
     // entityType / type eşleme
     if (customerType && !rest.entityType) {
@@ -311,6 +342,7 @@ export class CustomersService {
   async update(id: string, data: any) {
     await this.findOne(id);
     const { contacts, contactInfos, customerType, ...rest } = data as any;
+    this.sanitizeCustomerWriteData(rest);
     if (customerType && !rest.entityType) {
       rest.entityType = customerType;
     }
@@ -384,10 +416,10 @@ export class CustomersService {
   }
 
   async checkDuplicate(
-    params: { phone?: string; email?: string; tc?: string; firstName?: string; lastName?: string },
+    params: { phone?: string; email?: string; tc?: string; taxNumber?: string; firstName?: string; lastName?: string },
     excludeId?: string,
   ) {
-    const { phone, email, tc, firstName, lastName } = params;
+    const { phone, email, tc, taxNumber, firstName, lastName } = params;
 
     // ── TC Kimlik No kontrolü ──────────────────────────────────────────────
     if (tc) {
@@ -398,10 +430,25 @@ export class CustomersService {
         select: { id: true, fullName: true, firstName: true, lastName: true, companyName: true, entityType: true },
       });
       if (match) {
-        const name = match.entityType === 'individual'
-          ? `${match.firstName ?? ''} ${match.lastName ?? ''}`.trim() || match.fullName || '—'
-          : match.companyName || '—';
+        const name = this.resolveCustomerDisplayName(match);
         return { exists: true, field: 'tc' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const } };
+      }
+    }
+
+    // ── Vergi No kontrolü ────────────────────────────────────────────────
+    if (taxNumber) {
+      const where: any = { taxNumber };
+      if (excludeId) where.id = { not: excludeId };
+      const match = await this.prisma.customer.findFirst({
+        where,
+        select: {
+          id: true, fullName: true, firstName: true, lastName: true, companyName: true,
+          entityType: true, authorizedPerson: true, taxNumber: true,
+        },
+      });
+      if (match) {
+        const name = this.resolveCustomerDisplayName(match);
+        return { exists: true, field: 'taxNumber' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const } };
       }
     }
 
@@ -616,6 +663,15 @@ export class CustomersService {
 
     const buf = await workbook.xlsx.writeBuffer();
     return Buffer.from(buf);
+  }
+
+  /** Prisma Customer modelinde olmayan alanları ayıklar; privateServiceType → serviceType eşlemesi. */
+  private sanitizeCustomerWriteData(rest: Record<string, unknown>): void {
+    if (rest.privateServiceType && !rest.serviceType) {
+      rest.serviceType = rest.privateServiceType;
+    }
+    delete rest.privateServiceType;
+    delete rest.customerType;
   }
 
   private parseDate(value: any): string | null {

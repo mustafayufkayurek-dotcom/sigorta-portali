@@ -229,7 +229,8 @@ export function isRememberMeExpired(): boolean {
   return Number.isFinite(expiry) && Date.now() > expiry;
 }
 
-async function validateOrRefreshSession(apiBase: string): Promise<boolean> {
+/** Oturum geçerli mi kontrol eder; 401 ise refresh dener. */
+export async function ensureValidSession(apiBase: string): Promise<boolean> {
   const token = getAccessToken();
   if (!token) return false;
 
@@ -281,7 +282,7 @@ export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
     return false;
   }
 
-  const ok = await validateOrRefreshSession(apiBase);
+  const ok = await ensureValidSession(apiBase);
   if (!ok) {
     clearSessionTokensOnly();
   }

@@ -12,6 +12,17 @@ export interface LocationPoint {
   timestamp: string;
 }
 
+export interface FieldMapPoint {
+  actorType: 'personel' | 'vendor_hasar' | 'vendor_acil';
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  timestamp?: string;
+  locationKind: 'live' | 'registered';
+  activeJob?: { label: string; fileNo?: string; href?: string };
+}
+
 @Injectable()
 export class UserLocationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -127,6 +138,132 @@ export class UserLocationsService {
     });
 
     return { user, locations };
+  }
+
+  async getFieldMap(): Promise<FieldMapPoint[]> {
+    const personnel = await this.getLatestAll();
+    const points: FieldMapPoint[] = personnel.map((p) => {
+      const ts = p.lastLocation.timestamp;
+      return {
+        actorType: 'personel',
+        id: p.userId,
+        name: `${p.firstName} ${p.lastName}`.trim(),
+        latitude: p.lastLocation.latitude,
+        longitude: p.lastLocation.longitude,
+        timestamp: ts instanceof Date ? ts.toISOString() : String(ts),
+        locationKind: 'live',
+        activeJob: p.activeAppointment
+          ? {
+              label: p.activeAppointment.type,
+              fileNo: p.activeAppointment.claimFile?.fileNo,
+            }
+          : undefined,
+      };
+    });
+
+    const [claimFiles, emergencyCases] = await Promise.all([
+      this.prisma.claimFile.findMany({
+        where: {
+          assignedSupplierId: { not: null },
+          currentStatus: { isClosedState: false },
+          assignedSupplier: {
+            latitude: { not: null },
+            longitude: { not: null },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          fileNo: true,
+          assignedSupplierId: true,
+          assignedSupplier: {
+            select: {
+              id: true,
+              name: true,
+              latitude: true,
+              longitude: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.emergencyCase.findMany({
+        where: {
+          assignedVendorId: { not: null },
+          status: { in: ['ATANDI', 'SAHADA'] },
+          assignedVendor: {
+            latitude: { not: null },
+            longitude: { not: null },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          caseNo: true,
+          fileNo: true,
+          assignedVendorId: true,
+          assignedVendor: {
+            select: {
+              id: true,
+              name: true,
+              latitude: true,
+              longitude: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const hasarByVendor = new Map<string, (typeof claimFiles)[0]>();
+    for (const cf of claimFiles) {
+      const vendorId = cf.assignedSupplierId!;
+      if (!hasarByVendor.has(vendorId)) hasarByVendor.set(vendorId, cf);
+    }
+
+    for (const [vendorId, cf] of hasarByVendor) {
+      const v = cf.assignedSupplier!;
+      points.push({
+        actorType: 'vendor_hasar',
+        id: `${vendorId}__hasar`,
+        name: v.name,
+        latitude: v.latitude!,
+        longitude: v.longitude!,
+        timestamp: v.updatedAt.toISOString(),
+        locationKind: 'registered',
+        activeJob: {
+          label: 'Onarım Dosyası',
+          fileNo: cf.fileNo,
+          href: `/panel/hasar-dosyalari/${cf.id}`,
+        },
+      });
+    }
+
+    const acilByVendor = new Map<string, (typeof emergencyCases)[0]>();
+    for (const ec of emergencyCases) {
+      const vendorId = ec.assignedVendorId!;
+      if (!acilByVendor.has(vendorId)) acilByVendor.set(vendorId, ec);
+    }
+
+    for (const [vendorId, ec] of acilByVendor) {
+      const v = ec.assignedVendor!;
+      points.push({
+        actorType: 'vendor_acil',
+        id: `${vendorId}__acil`,
+        name: v.name,
+        latitude: v.latitude!,
+        longitude: v.longitude!,
+        timestamp: v.updatedAt.toISOString(),
+        locationKind: 'registered',
+        activeJob: {
+          label: 'Acil Yardım Dosyası',
+          fileNo: ec.fileNo ?? ec.caseNo,
+          href: `/panel/acil-yardim/${ec.id}`,
+        },
+      });
+    }
+
+    return points;
   }
 
   async cleanOldLocations(): Promise<number> {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { customerDisplayName } from '@/utils/customer-form-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -25,9 +26,13 @@ type Props = {
   onSelect: (customer: Customer) => void;
   /** Called when user clicks "+ Yeni Müşteri Ekle" */
   onCreateNew?: () => void;
+  /** Müşteri alt tipi filtresi (ör. asistan_firmasi) */
+  subTypeFilter?: string;
+  /** Hasar dosyası gibi akışlarda bireysel/kurumsal sütununu gizle */
+  hideTypeColumn?: boolean;
 };
 
-export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Props) {
+export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subTypeFilter, hideTypeColumn }: Props) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -40,18 +45,24 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Pr
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (q.trim()) params.set('search', q.trim());
-      if (type) params.set('type', type);
+      if (type) params.set('customerType', type);
+      if (subTypeFilter) params.set('subType', subTypeFilter);
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
-      setCustomers(r.data.data || []);
+      const rows = (r.data.data || []).map((c: Customer & { entityType?: string; subType?: string | null }) => ({
+        ...c,
+        type: c.type ?? c.entityType ?? 'corporate',
+        subType: c.subType ?? null,
+      }));
+      setCustomers(rows);
       setTotal(r.data.meta?.total ?? 0);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, []);
+  }, [subTypeFilter]);
 
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(() => load(search, typeFilter), 250);
     return () => clearTimeout(timer);
-  }, [open, search, typeFilter, load]);
+  }, [open, search, typeFilter, subTypeFilter, load]);
 
   useEffect(() => {
     if (open) {
@@ -63,10 +74,16 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Pr
 
   if (!open) return null;
 
-  const displayName = (c: Customer) =>
-    c.type === 'individual'
-      ? (c.fullName ?? '—')
-      : (c.companyName ?? '—');
+  const modalTitle =
+    subTypeFilter === 'asistan_firmasi'
+      ? 'Asistans Firma Seç'
+      : subTypeFilter === 'eksper_firmasi'
+        ? 'Eksper Ofisi Seç'
+        : subTypeFilter
+          ? 'Müşteri Seç'
+          : 'Müşteri Seç';
+
+  const displayName = (c: Customer) => customerDisplayName(c);
 
   const idNo = (c: Customer) =>
     c.type === 'individual'
@@ -78,7 +95,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Pr
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-800">Müşteri Seç</h3>
+          <h3 className="text-base font-semibold text-gray-800">{modalTitle}</h3>
           <button type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl font-light leading-none"
@@ -118,9 +135,9 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Pr
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 z-10">
-                <tr className="text-xs text-gray-500 uppercase">
+                <tr className="text-xs text-gray-500">
                   <th className="text-left px-5 py-2.5">Ad / Ünvan</th>
-                  <th className="text-left px-4 py-2.5">Tip</th>
+                  {!hideTypeColumn && <th className="text-left px-4 py-2.5">Tip</th>}
                   <th className="text-left px-4 py-2.5">TC / Vergi No</th>
                   <th className="text-left px-4 py-2.5">Telefon</th>
                 </tr>
@@ -133,11 +150,13 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew }: Pr
                     onClick={() => { onSelect(c); onClose(); }}
                   >
                     <td className="px-5 py-3 font-medium text-gray-800">{displayName(c)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${c.type === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                        {c.type === 'individual' ? 'Bireysel' : 'Kurumsal'}
-                      </span>
-                    </td>
+                    {!hideTypeColumn && (
+                      <td className="px-4 py-3">
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${c.type === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
+                          {c.type === 'individual' ? 'Bireysel' : 'Kurumsal'}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{idNo(c)}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{c.phone ?? '—'}</td>
                   </tr>

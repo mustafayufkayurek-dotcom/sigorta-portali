@@ -30,18 +30,33 @@
 
 ---
 
-## Deploy sırası (standart)
+## Deploy sırası (standart — web-only)
+
+**502 önleme:** Her zaman `-p sigorta-hasar-sistemi` kullanın. `docker compose up` proje adı olmadan çalıştırılırsa web yanlış ağda kalır → nginx 502.
 
 ```bash
-# 1) Yerelden sunucuya — tercihen tam apps/web veya apps/backend klasörü
+# Önerilen (yerelden tek komut):
+bash scripts/deploy-web-production.sh v128-etiket
+
+# Manuel:
+# 1) Yerelden sunucuya
 rsync -avz apps/web/ root@94.138.216.18:/opt/app/apps/web/
 
 # 2) Sunucuda
 ssh root@94.138.216.18
 cd /opt/app
-bash scripts/pre-deploy-safety.sh v30-xxx
-docker build -f Dockerfile.web -t sigorta-web:TAG --build-arg NEXT_PUBLIC_API_URL=https://app.meridyen-tr.com/api/v1 .
-# override güncelle → compose up -d --no-deps web
+bash scripts/pre-deploy-safety.sh v128-xxx
+docker build -f Dockerfile.web -t sigorta-web:dalga2-agreement-hr-01-v128-amd64 \
+  --build-arg NEXT_PUBLIC_API_URL=https://app.meridyen-tr.com/api/v1 .
+# override güncelle → web image tag
+bash scripts/restart-web-production.sh   # compose -p sigorta-hasar-sistemi + routing doğrulama
+bash scripts/verify-nginx-web-routing.sh # zorunlu PASS
+```
+
+**Asla kullanmayın:**
+```bash
+docker compose -f docker-compose.prod.yml up -d web   # ❌ yanlış ağ → 502
+docker stop sigorta-web && docker rm sigorta-web && docker compose ...  # ❌ -p olmadan
 ```
 
 **Backend + migration:** pre-deploy-safety DB yedeği → build backend → `prisma migrate deploy` → smoke.
@@ -51,6 +66,7 @@ docker build -f Dockerfile.web -t sigorta-web:TAG --build-arg NEXT_PUBLIC_API_UR
 ## Deploy sonrası
 
 ```bash
+bash scripts/verify-nginx-web-routing.sh   # sunucuda — 502 önleme (ZORUNLU)
 bash scripts/post-deploy-smoke.sh
 bash scripts/verify-critical-paths.sh --remote
 ```

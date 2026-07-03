@@ -12,14 +12,18 @@ export function parseStringList(raw: unknown): string[] {
   return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
 }
 
+export function parseServiceBranchTypes(raw: unknown): ServiceBranchTypeKey[] {
+  return parseStringList(raw).filter(
+    (t): t is ServiceBranchTypeKey => t === 'hasar' || t === 'acil_yardim',
+  );
+}
+
 export function deriveServiceBranchTypes(
   serviceBranchTypes: unknown,
   departmentIds: unknown,
   deptCodeById: Map<string, string> = new Map(),
 ): ServiceBranchTypeKey[] {
-  const explicit = parseStringList(serviceBranchTypes).filter(
-    (t): t is ServiceBranchTypeKey => t === 'hasar' || t === 'acil_yardim',
-  );
+  const explicit = parseServiceBranchTypes(serviceBranchTypes);
   if (explicit.length > 0) return explicit;
 
   const fromDepts = parseStringList(departmentIds)

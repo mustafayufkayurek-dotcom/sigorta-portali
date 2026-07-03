@@ -17,19 +17,11 @@ import {
 } from '@/components/settings/SettingsUI';
 import { DeleteConfirmDialog, SettingsModal } from '@/components/settings/SettingsModal';
 import { ApiError, apiClient } from '@/lib/api-client';
-import { applyNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
+import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { persistAlphabeticSortOrders, sortByNameTR } from '@/utils/definition-sort-order';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'sortOrder', label: 'Sıra No', defaultWidth: 80, minWidth: 60 },
-  { id: 'name', label: 'Ad', defaultWidth: 200, minWidth: 120 },
-  { id: 'color', label: 'Renk', defaultWidth: 100, minWidth: 80 },
-  { id: 'isClosed', label: 'Kapalı Durumu', defaultWidth: 120, minWidth: 90 },
-  { id: 'isWaiting', label: 'Bekleme Durumu', defaultWidth: 120, minWidth: 90 },
-  { id: 'slaWarning', label: 'SLA Uyarı %', defaultWidth: 100, minWidth: 80 },
-];
 
 type ClaimStatus = {
   id: string;
@@ -47,7 +39,6 @@ type ClaimStatus = {
 type ClaimStatusForm = {
   name: string;
   code: string;
-  sortOrder: number;
   color: string;
   isClosed: boolean;
   isWaiting: boolean;
@@ -59,7 +50,6 @@ type ClaimStatusForm = {
 const emptyForm: ClaimStatusForm = {
   name: '',
   code: '',
-  sortOrder: 0,
   color: '#2563EB',
   isClosed: false,
   isWaiting: false,
@@ -85,9 +75,8 @@ function normalizeClaimStatus(item: Record<string, unknown>): ClaimStatus {
 
 function toPayload(form: ClaimStatusForm) {
   return {
-    name: form.name.trim(),
+    name: normalizeFormFreeText(form.name),
     code: form.code.trim().toUpperCase(),
-    sortOrder: Number(form.sortOrder),
     color: form.color,
     isClosed: form.isClosed,
     isWaiting: form.isWaiting,
@@ -109,16 +98,22 @@ export default function DurumlarPage() {
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const sortedStatuses = useMemo(
-    () => [...statuses].sort((first, second) => first.sortOrder - second.sortOrder || first.name.localeCompare(second.name, 'tr')),
-    [statuses],
-  );
+  const sortedStatuses = useMemo(() => sortByNameTR(statuses), [statuses]);
+
+  const syncStatusSortOrders = useCallback(async (list: ClaimStatus[]) => {
+    await persistAlphabeticSortOrders(list, (id, sortOrder) =>
+      apiClient.patch(`/claim-status/${id}`, { sortOrder }),
+    );
+  }, []);
 
   const fetchStatuses = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiClient.get<unknown[]>('/claim-status');
-      setStatuses(Array.isArray(data) ? data.map((item) => normalizeClaimStatus(item as Record<string, unknown>)) : []);
+      const normalized = Array.isArray(data) ? data.map((item) => normalizeClaimStatus(item as Record<string, unknown>)) : [];
+      await syncStatusSortOrders(normalized);
+      const refreshed = await apiClient.get<unknown[]>('/claim-status');
+      setStatuses(Array.isArray(refreshed) ? refreshed.map((item) => normalizeClaimStatus(item as Record<string, unknown>)) : normalized);
     } catch (requestError) {
       console.error(requestError);
       setError('Durum listesi alınamadı.');
@@ -147,7 +142,6 @@ export default function DurumlarPage() {
     setForm({
       name: status.name,
       code: status.code,
-      sortOrder: status.sortOrder,
       color: status.color,
       isClosed: status.isClosed,
       isWaiting: status.isWaiting,
@@ -222,17 +216,13 @@ export default function DurumlarPage() {
   };
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="Durumlar"
       description="Hasar ve operasyon dosyalarının ekranda hangi aşamada görüneceğini, kapanmış veya beklemede sayılıp sayılmayacağını ve takip sırasını yönetin."
       addButtonText="Yeni Durum"
       onAdd={openCreate}
       backHref={TANIMLAR_BACK_HREF}
-      backText={TANIMLAR_BACK_TEXT}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
-    >
+      backText={TANIMLAR_BACK_TEXT}    >
       <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
         Bu sayfa dosya akışındaki durum etiketlerini yönetir. Buradaki kayıtlar dashboard sayıları, dosya listesi filtreleri,
         bekleme/kapanış ayrımları ve süreç sıralaması üzerinde etkilidir.
@@ -246,33 +236,33 @@ export default function DurumlarPage() {
 
       <SettingsTable loading={loading} empty={sortedStatuses.length === 0} emptyText="Henüz durum tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh colId="sortOrder" className="w-20">Sıra No</SettingsTableTh>
-          <SettingsTableTh colId="name">Ad</SettingsTableTh>
-          <SettingsTableTh colId="color" className="w-24">Renk</SettingsTableTh>
-          <SettingsTableTh colId="isClosed" className="w-32">Kapalı Durumu</SettingsTableTh>
-          <SettingsTableTh colId="isWaiting" className="w-32">Bekleme Durumu</SettingsTableTh>
-          <SettingsTableTh colId="slaWarning" className="w-28">SLA Uyarı %</SettingsTableTh>
+          <SettingsTableTh className="w-20">Sıra No</SettingsTableTh>
+          <SettingsTableTh>Ad</SettingsTableTh>
+          <SettingsTableTh className="w-24">Renk</SettingsTableTh>
+          <SettingsTableTh className="w-32">Kapalı Durumu</SettingsTableTh>
+          <SettingsTableTh className="w-32">Bekleme Durumu</SettingsTableTh>
+          <SettingsTableTh className="w-28">SLA Uyarı %</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {sortedStatuses.map((status) => (
+          {sortedStatuses.map((status, index) => (
             <SettingsTableRow key={status.id}>
-              <SettingsTableTd colId="sortOrder" className="font-mono text-xs text-slate-500">{status.sortOrder}</SettingsTableTd>
-              <SettingsTableTd colId="name">
+              <SettingsTableTd className="text-center font-mono text-xs text-slate-500 tabular-nums">{index + 1}</SettingsTableTd>
+              <SettingsTableTd>
                 <div className="space-y-1">
                   <p className="font-medium text-slate-800">{status.name}</p>
                   <p className="text-xs text-slate-400">{status.code}</p>
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd colId="color">
+              <SettingsTableTd>
                 <div className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded border border-slate-200" style={{ backgroundColor: status.color }} />
+          <span className="h-5 w-5 rounded border border-slate-200" style={{ backgroundColor: status.color }} />
                   <span className="text-xs text-slate-500">{status.color}</span>
                 </div>
               </SettingsTableTd>
-              <SettingsTableTd colId="isClosed">{status.isClosed ? 'Evet' : 'Hayır'}</SettingsTableTd>
-              <SettingsTableTd colId="isWaiting">{status.isWaiting ? 'Evet' : 'Hayır'}</SettingsTableTd>
-              <SettingsTableTd colId="slaWarning">%{status.slaWarningPercent}</SettingsTableTd>
+              <SettingsTableTd>{status.isClosed ? 'Evet' : 'Hayır'}</SettingsTableTd>
+              <SettingsTableTd>{status.isWaiting ? 'Evet' : 'Hayır'}</SettingsTableTd>
+              <SettingsTableTd>%{status.slaWarningPercent}</SettingsTableTd>
               <SettingsTableActions>
                 <EditButton onClick={() => openEdit(status)} />
                 <DeleteButton onClick={() => { setDeleteTarget(status); setDeleteError(''); }} />
@@ -303,6 +293,7 @@ export default function DurumlarPage() {
               onChange={(event) =>
                 setForm((current) => applyNameWithAutoCode(current, event.target.value, !!editing, 'DURUM'))
               }
+              onBlur={() => setForm((current) => blurNameWithAutoCode(current, !!editing, 'DURUM'))}
               placeholder="Örn: İncelemede"
             />
           </div>
@@ -313,16 +304,6 @@ export default function DurumlarPage() {
               value={form.code}
               disabled
               placeholder={editing ? 'ORN: INCELEMEDE' : 'Ad yazınca otomatik üretilir'}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Sıra No</label>
-            <input
-              className={inputCls}
-              type="number"
-              value={form.sortOrder}
-              onChange={(event) => setForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))}
-              min={0}
             />
           </div>
           <div>
@@ -409,7 +390,5 @@ export default function DurumlarPage() {
         title="Durumu Sil"
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

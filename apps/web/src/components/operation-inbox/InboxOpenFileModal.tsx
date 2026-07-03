@@ -1,0 +1,466 @@
+'use client';
+
+import { toTitleCaseTR } from '@/utils/text-helpers';
+import type { InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+
+interface InsuranceCompany {
+  id: string;
+  name: string;
+}
+
+interface CustomerMatchCandidate {
+  id: string;
+  name: string;
+}
+
+interface RoutingSuggestion {
+  suggestedAssigneeId?: string | null;
+  suggestedAssigneeName?: string | null;
+  customerMatch: {
+    status: 'found' | 'ambiguous' | 'not_found';
+    customer?: CustomerMatchCandidate;
+    candidates?: CustomerMatchCandidate[];
+  };
+  warnings: string[];
+  insuranceCompanyId?: string | null;
+}
+
+interface PanelUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+function ReadonlyRow({ label, value }: { label: string; value?: string }) {
+  if (!value?.trim()) return null;
+  return (
+    <div>
+      <dt className="text-[11px] font-medium text-slate-500">{label}</dt>
+      <dd className="text-sm text-slate-800 mt-0.5">{value}</dd>
+    </div>
+  );
+}
+
+function FieldInput({
+  label,
+  value,
+  onChange,
+  onBlurTitleCase,
+  required,
+  disabled,
+  placeholder,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlurTitleCase?: boolean;
+  required?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  multiline?: boolean;
+}) {
+  const cls =
+    'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-60';
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={
+            onBlurTitleCase
+              ? (e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) onChange(v);
+                }
+              : undefined
+          }
+          rows={2}
+          disabled={disabled}
+          placeholder={placeholder}
+          className={`${cls} resize-none`}
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={
+            onBlurTitleCase
+              ? (e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) onChange(v);
+                }
+              : undefined
+          }
+          disabled={disabled}
+          placeholder={placeholder}
+          className={cls}
+        />
+      )}
+    </div>
+  );
+}
+
+export function InboxOpenFileModal({
+  open,
+  kind,
+  draft,
+  instruction,
+  onInstructionChange,
+  confirmLabel,
+  loading,
+  error,
+  routing,
+  users,
+  usersLoading,
+  selectedAssigneeId,
+  onAssigneeChange,
+  selectedCustomerId,
+  onCustomerChange,
+  createNewCustomer,
+  onCreateNewCustomerChange,
+  insuredName,
+  onInsuredNameChange,
+  insuredPhone,
+  onInsuredPhoneChange,
+  insuredAddress,
+  onInsuredAddressChange,
+  fileNo,
+  onFileNoChange,
+  policyNo,
+  onPolicyNoChange,
+  claimNo,
+  onClaimNoChange,
+  lossType,
+  onLossTypeChange,
+  insuranceCompanies,
+  insuranceCompanyId,
+  onInsuranceCompanyChange,
+  insuranceRequired,
+  contextLoading,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  kind: 'claim' | 'emergency';
+  draft: InboxFileOpenDraft | null;
+  contextLoading?: boolean;
+  instruction: string;
+  onInstructionChange: (v: string) => void;
+  confirmLabel: string;
+  loading: boolean;
+  error: string;
+  routing?: RoutingSuggestion | null;
+  users?: PanelUser[];
+  usersLoading?: boolean;
+  selectedAssigneeId?: string;
+  onAssigneeChange?: (v: string) => void;
+  selectedCustomerId?: string;
+  onCustomerChange?: (v: string) => void;
+  createNewCustomer?: boolean;
+  onCreateNewCustomerChange?: (v: boolean) => void;
+  insuredName: string;
+  onInsuredNameChange: (v: string) => void;
+  insuredPhone: string;
+  onInsuredPhoneChange: (v: string) => void;
+  insuredAddress: string;
+  onInsuredAddressChange: (v: string) => void;
+  fileNo: string;
+  onFileNoChange: (v: string) => void;
+  policyNo: string;
+  onPolicyNoChange: (v: string) => void;
+  claimNo: string;
+  onClaimNoChange: (v: string) => void;
+  lossType: string;
+  onLossTypeChange: (v: string) => void;
+  insuranceCompanies?: InsuranceCompany[];
+  insuranceCompanyId?: string;
+  onInsuranceCompanyChange?: (v: string) => void;
+  insuranceRequired?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open || !draft) return null;
+
+  const insuranceOk =
+    kind !== 'claim'
+    || !insuranceRequired
+    || !!insuranceCompanyId
+    || (insuranceCompanies?.length ?? 0) <= 1;
+  const insuredOk = !!insuredName.trim();
+  const canConfirm =
+    !loading && instruction.trim().length >= 3 && insuranceOk && insuredOk;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] flex flex-col">
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
+          <h3 className="text-lg font-bold text-slate-800">
+            {kind === 'claim' ? 'Hasar Dosyası Aç' : 'Acil Yardım Dosyası Aç'}
+          </h3>
+          <p className="text-sm text-slate-500 mt-1 line-clamp-2" title={draft.subject}>
+            {draft.subject}
+          </p>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+          {draft.manualFallback && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+              Mail içeriği otomatik okunamadı veya eksik. Tüm alanları manuel girebilirsiniz;
+              dosya sorumlusu eksper sisteme giremese bile dosyayı buradan tamamlayabilir.
+            </div>
+          )}
+
+          {contextLoading && (
+            <p className="text-xs text-slate-400 animate-pulse">Mail alanları güncelleniyor…</p>
+          )}
+
+          {routing && routing.warnings.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {routing.warnings.map((w) => (
+                <span key={w} className="badge badge-amber">{w}</span>
+              ))}
+            </div>
+          )}
+
+          {draft.aiSummary && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2.5">
+              <p className="text-xs font-medium text-blue-800 mb-1">AI Özeti</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{draft.aiSummary}</p>
+            </div>
+          )}
+
+          <section className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2 bg-slate-50/80 border-b border-slate-100">
+              <p className="text-xs font-medium text-slate-600">İhbar Bağlamı</p>
+            </div>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-3 py-3 text-sm">
+              <ReadonlyRow label="İhbar Konusu" value={draft.subject} />
+              <ReadonlyRow label="Form Türü" value={draft.formTitle} />
+              <ReadonlyRow label="Asistan Firma" value={draft.assistantFirm} />
+              <ReadonlyRow
+                label="Gönderen Personel"
+                value={
+                  draft.senderPerson
+                    ? `${draft.senderPerson} · ${draft.senderEmail}`
+                    : draft.senderEmail
+                }
+              />
+              <ReadonlyRow label="Sigorta Şirketi (Mail)" value={draft.insurer} />
+              <ReadonlyRow label="Hasar Açıklaması" value={draft.description} />
+            </dl>
+          </section>
+
+          <section className="rounded-xl border border-emerald-200 bg-emerald-50/30 overflow-hidden">
+            <div className="px-3 py-2 border-b border-emerald-100 bg-emerald-50/60">
+              <p className="text-xs font-medium text-emerald-800">Sigortalı Bilgileri</p>
+              <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                Mail formundan çıkarıldı — dosyaya bu bilgiler yazılır
+              </p>
+            </div>
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <FieldInput
+                  label="Sigortalı Adı Soyadı"
+                  value={insuredName}
+                  onChange={onInsuredNameChange}
+                  onBlurTitleCase
+                  required
+                  disabled={loading || usersLoading}
+                />
+              </div>
+              <FieldInput
+                label="Sigortalı Telefonu"
+                value={insuredPhone}
+                onChange={onInsuredPhoneChange}
+                disabled={loading || usersLoading}
+                placeholder="Mail formundan"
+              />
+              <FieldInput
+                label="Dosya No"
+                value={fileNo}
+                onChange={onFileNoChange}
+                disabled={loading || usersLoading}
+                placeholder="Mail / referans"
+              />
+              <div className="sm:col-span-2">
+                <FieldInput
+                  label="Sigortalı Adresi"
+                  value={insuredAddress}
+                  onChange={onInsuredAddressChange}
+                  onBlurTitleCase
+                  disabled={loading || usersLoading}
+                  multiline
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2 bg-slate-50/80 border-b border-slate-100">
+              <p className="text-xs font-medium text-slate-600">Dosya Detayları</p>
+            </div>
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FieldInput
+                label="Poliçe No"
+                value={policyNo}
+                onChange={onPolicyNoChange}
+                disabled={loading || usersLoading}
+              />
+              <FieldInput
+                label="Referans No"
+                value={claimNo}
+                onChange={onClaimNoChange}
+                disabled={loading || usersLoading}
+              />
+              <FieldInput
+                label="Hasar Şekli"
+                value={lossType}
+                onChange={onLossTypeChange}
+                onBlurTitleCase
+                disabled={loading || usersLoading}
+              />
+            </div>
+          </section>
+
+          {routing && onAssigneeChange && (
+            <>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Önerilen Sorumlu
+              </label>
+              <select
+                value={selectedAssigneeId ?? ''}
+                onChange={(e) => onAssigneeChange(e.target.value)}
+                disabled={loading || usersLoading}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              >
+                <option value="">Sorumlu seçin…</option>
+                {routing.suggestedAssigneeId && routing.suggestedAssigneeName && (
+                  <option value={routing.suggestedAssigneeId}>
+                    {routing.suggestedAssigneeName} (Önerilen)
+                  </option>
+                )}
+                {(users ?? [])
+                  .filter((u) => u.id !== routing.suggestedAssigneeId)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.firstName} {u.lastName}
+                    </option>
+                  ))}
+              </select>
+            </>
+          )}
+
+          {routing && onCustomerChange && (
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+              <p className="text-xs font-medium text-slate-600 mb-2">Müşteri</p>
+              {routing.customerMatch.status === 'found' && routing.customerMatch.customer && (
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    checked={!createNewCustomer}
+                    onChange={() => onCreateNewCustomerChange?.(false)}
+                  />
+                  Mevcut Müşteri: {routing.customerMatch.customer.name}
+                </label>
+              )}
+              {routing.customerMatch.status === 'ambiguous' && routing.customerMatch.candidates && (
+                <select
+                  value={selectedCustomerId ?? ''}
+                  onChange={(e) => {
+                    onCreateNewCustomerChange?.(false);
+                    onCustomerChange(e.target.value);
+                  }}
+                  disabled={loading || createNewCustomer}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white mb-2"
+                >
+                  <option value="">Müşteri seçin…</option>
+                  {routing.customerMatch.candidates.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+              {routing.customerMatch.status === 'not_found' && (
+                <p className="text-sm text-slate-600 mb-2">
+                  Yeni müşteri: {insuredName || 'Sigortalı adı girin'}
+                </p>
+              )}
+              {(routing.customerMatch.status === 'found' || routing.customerMatch.status === 'ambiguous') && (
+                <label className="flex items-center gap-2 text-sm text-slate-700 mt-2">
+                  <input
+                    type="radio"
+                    checked={!!createNewCustomer}
+                    onChange={() => onCreateNewCustomerChange?.(true)}
+                  />
+                  Yeni Müşteri Oluştur
+                </label>
+              )}
+            </div>
+          )}
+
+          {kind === 'claim' && insuranceCompanies && insuranceCompanies.length > 0 && (
+            <>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Sigorta Şirketi (Sistem)
+                {insuranceRequired && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <select
+                value={insuranceCompanyId ?? ''}
+                onChange={(e) => onInsuranceCompanyChange?.(e.target.value)}
+                disabled={loading}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              >
+                {insuranceCompanies.length > 1 && (
+                  <option value="">Sigorta şirketi seçin…</option>
+                )}
+                {insuranceCompanies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          <FieldInput
+            label="Talimat / Not"
+            value={instruction}
+            onChange={onInstructionChange}
+            disabled={loading}
+            multiline
+            placeholder="Dosya sorumlusuna iletilecek talimat…"
+          />
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-600 px-6 pb-2">{error}</p>
+        )}
+
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-xl"
+          >
+            İptal
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!canConfirm}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50"
+          >
+            {loading ? 'İşleniyor…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,3 +1,7 @@
+/**
+ * @deprecated Ayar/tanım sayfalarında sütun genişliği ayarı kullanılmıyor.
+ * Yalnızca çoklu veri listeleri (hasar-dosyalari vb.) PanelTableColumnPicker kullanır.
+ */
 'use client';
 
 import { usePathname } from 'next/navigation';

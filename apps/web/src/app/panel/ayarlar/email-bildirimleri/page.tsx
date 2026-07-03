@@ -20,15 +20,8 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
-import type { TableColumnDef } from '@/components/ui/TableColumnPicker';
-import { SettingsTableColumnsProvider, SettingsTableColumnPicker } from '@/components/settings/SettingsTableColumns';
+import { normalizeFormFreeText } from '@/utils/text-helpers';
 
-const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Şablon Adı', defaultWidth: 200, minWidth: 120 },
-  { id: 'trigger', label: 'Tetikleyici Olay', defaultWidth: 160, minWidth: 120 },
-  { id: 'subject', label: 'Konu', defaultWidth: 220, minWidth: 140 },
-  { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
-];
 
 const TRIGGER_EVENTS = [
   { value: 'file_opened', label: 'Dosya Açıldı' },
@@ -133,19 +126,21 @@ export default function EmailBildirimleriPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.subject.trim() || !form.body.trim()) {
+    const name = normalizeFormFreeText(form.name);
+    if (!name || !form.subject.trim() || !form.body.trim()) {
       setModalError('Şablon adı, konu ve içerik zorunludur.');
       return;
     }
+    const payload = { ...form, name };
     setSaving(true);
     setModalError('');
     try {
       if (!editing) {
-        const res = await axios.post(`${API}/notifications/email/templates`, form, { headers: authHeader() });
+        const res = await axios.post(`${API}/notifications/email/templates`, payload, { headers: authHeader() });
         const created: EmailTemplate = res.data?.data ?? res.data;
         setTemplates((prev) => [created, ...prev]);
       } else {
-        const res = await axios.patch(`${API}/notifications/email/templates/${editing.id}`, form, { headers: authHeader() });
+        const res = await axios.patch(`${API}/notifications/email/templates/${editing.id}`, payload, { headers: authHeader() });
         const updated: EmailTemplate = res.data?.data ?? res.data;
         setTemplates((prev) => prev.map((t) => t.id === updated.id ? updated : t));
       }
@@ -178,39 +173,36 @@ export default function EmailBildirimleriPage() {
   const triggerLabel = (val: string) => TRIGGER_EVENTS.find((e) => e.value === val)?.label ?? val;
 
   return (
-    <SettingsTableColumnsProvider columns={TABLE_COLUMNS}>
-      {(tableColumns) => (
     <SettingsPageLayout
       title="E-posta Bildirimleri"
       description="Sistem olaylarına bağlı e-posta şablonlarını yönetin."
       addButtonText="+ Yeni Şablon"
       onAdd={openCreate}
-      headerExtra={<SettingsTableColumnPicker tableColumns={tableColumns} />}
     >
 
       <SettingsTable loading={loading} empty={templates.length === 0} emptyText="Henüz e-posta şablonu eklenmemiş.">
         <SettingsTableHead>
-          <SettingsTableTh colId="name">Şablon Adı</SettingsTableTh>
-          <SettingsTableTh colId="trigger">Tetikleyici Olay</SettingsTableTh>
-          <SettingsTableTh colId="subject">Konu</SettingsTableTh>
-          <SettingsTableTh colId="status">Durum</SettingsTableTh>
+          <SettingsTableTh>Şablon Adı</SettingsTableTh>
+          <SettingsTableTh>Tetikleyici Olay</SettingsTableTh>
+          <SettingsTableTh>Konu</SettingsTableTh>
+          <SettingsTableTh>Durum</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
           {templates.map((t) => (
             <SettingsTableRow key={t.id}>
-              <SettingsTableTd colId="name">
+              <SettingsTableTd>
                 <p className="font-medium text-slate-800">{t.name}</p>
               </SettingsTableTd>
-              <SettingsTableTd colId="trigger">
+              <SettingsTableTd>
                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
                   {triggerLabel(t.triggerEvent)}
                 </span>
               </SettingsTableTd>
-              <SettingsTableTd colId="subject">
+              <SettingsTableTd>
                 <p className="text-xs text-slate-500 truncate max-w-xs">{t.subject}</p>
               </SettingsTableTd>
-              <SettingsTableTd colId="status">
+              <SettingsTableTd>
                 <StatusBadge active={t.isActive} />
               </SettingsTableTd>
               <SettingsTableActions>
@@ -266,6 +258,10 @@ export default function EmailBildirimleriPage() {
                   placeholder="ör: Dosya Açılış Bildirimi"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onBlur={(e) => {
+                    const v = normalizeFormFreeText(e.target.value);
+                    if (v !== e.target.value.trim()) setForm((f) => ({ ...f, name: v }));
+                  }}
                 />
               </div>
               <div>
@@ -342,7 +338,5 @@ export default function EmailBildirimleriPage() {
         itemName={deleteTarget?.name}
       />
     </SettingsPageLayout>
-      )}
-    </SettingsTableColumnsProvider>
   );
 }

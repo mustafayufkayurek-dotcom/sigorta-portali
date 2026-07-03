@@ -1,33 +1,24 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 
-interface PersonelKonum {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  role: { code: string; name: string };
-  lastLocation: {
-    id: string;
-    latitude: number;
-    longitude: number;
-    accuracy?: number;
-    speed?: number;
-    batteryLevel?: number;
-    timestamp: string;
-  };
-  activeAppointment: {
-    id: string;
-    type: string;
-    scheduledAt: string;
-    location?: string;
-    claimFile?: { fileNo: string };
-  } | null;
+type ActorType = 'personel' | 'vendor_hasar' | 'vendor_acil';
+type FilterTab = 'all' | 'personel' | 'vendor_hasar' | 'vendor_acil';
+
+interface FieldMapPoint {
+  actorType: ActorType;
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  timestamp?: string;
+  locationKind: 'live' | 'registered';
+  activeJob?: { label: string; fileNo?: string; href?: string };
 }
 
 interface RotaNoktasi {
@@ -36,7 +27,27 @@ interface RotaNoktasi {
   timestamp: string;
 }
 
-function markerColor(timestamp: string): 'green' | 'yellow' | 'gray' {
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: 'all', label: 'Tümü' },
+  { key: 'personel', label: 'Personel' },
+  { key: 'vendor_hasar', label: 'Onarım' },
+  { key: 'vendor_acil', label: 'Acil' },
+];
+
+const ACTOR_LABEL: Record<ActorType, string> = {
+  personel: 'Personel',
+  vendor_hasar: 'Onarım Tedarikçisi',
+  vendor_acil: 'Acil Tedarikçisi',
+};
+
+const APPOINTMENT_TYPE: Record<string, string> = {
+  expert_visit: 'Eksper Ziyareti',
+  inspection: 'Keşif',
+  customer_meeting: 'Müşteri Toplantısı',
+};
+
+function markerColor(timestamp?: string): 'green' | 'yellow' | 'gray' {
+  if (!timestamp) return 'gray';
   const mins = (Date.now() - new Date(timestamp).getTime()) / 60_000;
   if (mins < 15) return 'green';
   if (mins < 60) return 'yellow';
@@ -49,20 +60,78 @@ const COLOR_MAP = {
   gray: '#9CA3AF',
 };
 
-function formatRelative(ts: string): string {
+function formatRelative(ts?: string): string {
+  if (!ts) return '—';
   const mins = Math.floor((Date.now() - new Date(ts).getTime()) / 60_000);
-  if (mins < 1) return 'Az önce';
-  if (mins < 60) return `${mins} dk önce`;
+  if (mins < 1) return 'Az Önce';
+  if (mins < 60) return `${mins} Dk Önce`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} saat önce`;
+  if (hours < 24) return `${hours} Saat Önce`;
   return new Date(ts).toLocaleDateString('tr-TR');
 }
 
-const APPOINTMENT_TYPE: Record<string, string> = {
-  expert_visit: 'Eksper Ziyareti',
-  inspection: 'Keşif',
-  customer_meeting: 'Müşteri Toplantısı',
-};
+function personelInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function buildMarkerHtml(point: FieldMapPoint): string {
+  const label = point.name;
+
+  if (point.actorType === 'personel') {
+    const color = COLOR_MAP[markerColor(point.timestamp)];
+    const initials = personelInitials(point.name);
+    return `
+      <div class="relative flex flex-col items-center">
+        <div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;">${initials}</div>
+        <div class="mt-1 whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
+      </div>`;
+  }
+
+  if (point.actorType === 'vendor_hasar') {
+    return `
+      <div class="relative flex flex-col items-center">
+        <div style="width:36px;height:36px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">H</div>
+        <div class="mt-1 whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="relative flex flex-col items-center">
+      <div style="width:36px;height:36px;border-radius:50%;background:#EA580C;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">A</div>
+      <div class="mt-1 whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
+    </div>`;
+}
+
+function buildPopupHtml(point: FieldMapPoint): string {
+  const locationKindLabel = point.locationKind === 'live' ? 'Canlı' : 'Kayıtlı Konum';
+  const jobLabel =
+    point.activeJob?.label && APPOINTMENT_TYPE[point.activeJob.label]
+      ? APPOINTMENT_TYPE[point.activeJob.label]
+      : point.activeJob?.label;
+
+  return `
+    <div class="font-sans text-[13px] text-slate-800">
+      <strong>${point.name}</strong>
+      <div class="mt-1 text-slate-500">${ACTOR_LABEL[point.actorType]}</div>
+      <hr class="my-2 border-slate-100">
+      <div>Konum Türü: ${locationKindLabel}</div>
+      <div>Son Güncelleme: ${formatRelative(point.timestamp)}</div>
+      ${
+        point.activeJob?.fileNo
+          ? `<hr class="my-2 border-slate-100">
+             <div>Aktif Dosya No: ${point.activeJob.fileNo}</div>
+             ${jobLabel ? `<div class="text-slate-500">${jobLabel}</div>` : ''}
+             ${
+               point.activeJob.href
+                 ? `<a href="${point.activeJob.href}" class="mt-1 inline-block text-blue-600 underline">Dosyaya Git</a>`
+                 : ''
+             }`
+          : ''
+      }
+    </div>`;
+}
 
 export default function HaritaPage() {
   const mapRef = useRef<any>(null);
@@ -71,8 +140,9 @@ export default function HaritaPage() {
   const polylineRef = useRef<any>(null);
   const leafletRef = useRef<any>(null);
 
-  const [personeller, setPersoneller] = useState<PersonelKonum[]>([]);
-  const [seciliPersonel, setSeciliPersonel] = useState<string>('');
+  const [points, setPoints] = useState<FieldMapPoint[]>([]);
+  const [filter, setFilter] = useState<FilterTab>('all');
+  const [seciliPersonel, setSeciliPersonel] = useState('');
   const [rotaBaslangic, setRotaBaslangic] = useState('');
   const [rotaBitis, setRotaBitis] = useState('');
   const [rota, setRota] = useState<RotaNoktasi[]>([]);
@@ -81,11 +151,54 @@ export default function HaritaPage() {
   const token = () =>
     typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? '' : '';
 
-  // Leaflet'i yükle (SSR'dan korumak için useEffect içinde)
+  const filteredPoints = points.filter((p) => {
+    if (filter === 'all') return true;
+    return p.actorType === filter;
+  });
+
+  const personelPoints = points.filter((p) => p.actorType === 'personel');
+
+  const renderMarkers = useCallback((data: FieldMapPoint[]) => {
+    const L = leafletRef.current;
+    if (!mapRef.current || !L) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    data.forEach((point) => {
+      const icon = L.divIcon({
+        className: '',
+        html: buildMarkerHtml(point),
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      const popup = L.popup({ maxWidth: 280 }).setContent(buildPopupHtml(point));
+      const marker = L.marker([point.latitude, point.longitude], { icon })
+        .bindPopup(popup)
+        .addTo(mapRef.current);
+      markersRef.current.push(marker);
+    });
+  }, []);
+
+  const fetchFieldMap = useCallback(async () => {
+    setYukleniyor(true);
+    try {
+      const res = await axios.get(`${API}/user-locations/field-map`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const data: FieldMapPoint[] = res.data.data ?? [];
+      setPoints(data);
+    } catch (e) {
+      console.error('Harita verileri yüklenemedi', e);
+    } finally {
+      setYukleniyor(false);
+    }
+  }, []);
+
   useEffect(() => {
     import('leaflet').then((L) => {
       leafletRef.current = L.default ?? L;
-      // Leaflet CSS
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -93,109 +206,38 @@ export default function HaritaPage() {
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
       }
-      initMap();
+      if (!mapRef.current && mapContainerRef.current) {
+        const leaflet = leafletRef.current;
+        mapRef.current = leaflet.map(mapContainerRef.current).setView([39.0, 35.0], 6);
+        leaflet
+          .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap Katkıda Bulunanları',
+          })
+          .addTo(mapRef.current);
+        fetchFieldMap();
+      }
     });
+  }, [fetchFieldMap]);
+
+  useEffect(() => {
+    renderMarkers(filteredPoints);
+  }, [filteredPoints, renderMarkers]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchFieldMap, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchFieldMap]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setRotaBaslangic(today);
+    setRotaBitis(today);
   }, []);
-
-  function initMap() {
-    if (mapRef.current || !mapContainerRef.current || !leafletRef.current) return;
-    const L = leafletRef.current;
-
-    mapRef.current = L.map(mapContainerRef.current).setView([39.0, 35.0], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap katkıda bulunanları',
-    }).addTo(mapRef.current);
-
-    fetchPersoneller();
-  }
-
-  const fetchPersoneller = async () => {
-    setYukleniyor(true);
-    try {
-      const res = await axios.get(`${API}/user-locations/latest`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      const data: PersonelKonum[] = res.data.data ?? [];
-      setPersoneller(data);
-      renderMarkers(data);
-    } catch (e) {
-      console.error('Personel konumları yüklenemedi', e);
-    } finally {
-      setYukleniyor(false);
-    }
-  };
-
-  function renderMarkers(data: PersonelKonum[]) {
-    const L = leafletRef.current;
-    if (!mapRef.current || !L) return;
-
-    // Mevcut marker'ları temizle
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    data.forEach((p) => {
-      const color = COLOR_MAP[markerColor(p.lastLocation.timestamp)];
-      const icon = L.divIcon({
-        className: '',
-        html: `
-          <div style="
-            width:36px;height:36px;border-radius:50%;
-            background:${color};border:3px solid white;
-            box-shadow:0 2px 6px rgba(0,0,0,0.3);
-            display:flex;align-items:center;justify-content:center;
-            color:white;font-weight:700;font-size:12px;
-          ">${p.firstName[0]}${p.lastName[0]}</div>
-          <div style="
-            position:absolute;top:40px;left:50%;transform:translateX(-50%);
-            white-space:nowrap;background:white;padding:2px 6px;border-radius:4px;
-            font-size:11px;font-weight:600;color:#111;
-            box-shadow:0 1px 4px rgba(0,0,0,0.2);
-          ">${p.firstName} ${p.lastName}</div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-      });
-
-      const popup = L.popup({ maxWidth: 260 }).setContent(`
-        <div style="font-family:sans-serif;font-size:13px;">
-          <strong>${p.firstName} ${p.lastName}</strong>
-          <div style="color:#6B7280;margin-top:4px;">${p.role.name}</div>
-          <hr style="margin:8px 0;border-color:#F3F4F6;">
-          <div>🕐 ${formatRelative(p.lastLocation.timestamp)}</div>
-          ${p.lastLocation.batteryLevel != null
-            ? `<div>🔋 Batarya: %${Math.round(p.lastLocation.batteryLevel * 100)}</div>`
-            : ''
-          }
-          ${p.lastLocation.speed != null
-            ? `<div>🚗 Hız: ${Math.round((p.lastLocation.speed ?? 0) * 3.6)} km/h</div>`
-            : ''
-          }
-          ${p.activeAppointment
-            ? `<hr style="margin:8px 0;border-color:#F3F4F6;">
-               <div>📋 ${APPOINTMENT_TYPE[p.activeAppointment.type] ?? p.activeAppointment.type}</div>
-               ${p.activeAppointment.claimFile
-                 ? `<div>Dosya: ${p.activeAppointment.claimFile.fileNo}</div>`
-                 : ''
-               }
-               <div>${p.activeAppointment.location ?? ''}</div>`
-            : ''
-          }
-        </div>
-      `);
-
-      const marker = L.marker(
-        [p.lastLocation.latitude, p.lastLocation.longitude],
-        { icon },
-      ).bindPopup(popup).addTo(mapRef.current);
-
-      markersRef.current.push(marker);
-    });
-  }
 
   const fetchRota = async () => {
     if (!seciliPersonel) return;
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (rotaBaslangic) params.from = new Date(rotaBaslangic).toISOString();
       if (rotaBitis) params.to = new Date(rotaBitis + 'T23:59:59').toISOString();
 
@@ -232,150 +274,122 @@ export default function HaritaPage() {
     mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
   }
 
-  // Bugünü varsayılan olarak ayarla
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setRotaBaslangic(today);
-    setRotaBitis(today);
-  }, []);
-
-  const activeCount = personeller.filter(
-    (p) => markerColor(p.lastLocation.timestamp) === 'green',
+  const activePersonelCount = personelPoints.filter(
+    (p) => markerColor(p.timestamp) === 'green',
   ).length;
 
+  const counts = {
+    personel: points.filter((p) => p.actorType === 'personel').length,
+    vendor_hasar: points.filter((p) => p.actorType === 'vendor_hasar').length,
+    vendor_acil: points.filter((p) => p.actorType === 'vendor_acil').length,
+  };
+
+  const seciliPersonelAdi = personelPoints.find((p) => p.id === seciliPersonel)?.name;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)', gap: 12 }}>
-      {/* Üst araç çubuğu */}
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #E5E7EB',
-          borderRadius: 10,
-          padding: '12px 16px',
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Personel:</span>
+    <div className="flex min-h-[360px] flex-col gap-3 h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-130px)]">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap gap-2">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setFilter(tab.key)}
+              className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+                filter === tab.key
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {tab.label}
+              {tab.key !== 'all' && (
+                <span className="ml-1 opacity-70">
+                  ({counts[tab.key as keyof typeof counts] ?? 0})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-l border-slate-200 pl-3">
+          <span className="text-sm font-semibold text-slate-900">Personel Rota:</span>
           <select
             value={seciliPersonel}
             onChange={(e) => setSeciliPersonel(e.target.value)}
-            style={{
-              border: '1px solid #D1D5DB',
-              borderRadius: 6,
-              padding: '5px 10px',
-              fontSize: 13,
-              color: '#374151',
-            }}
+            className="rounded-md border border-slate-300 px-2 py-1 text-[13px] text-slate-700"
           >
-            <option value="">Tüm Personel</option>
-            {personeller.map((p) => (
-              <option key={p.userId} value={p.userId}>
-                {p.firstName} {p.lastName}
+            <option value="">Personel Seç</option>
+            {personelPoints.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
               </option>
             ))}
           </select>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Başlangıç:</span>
           <TrDateInput
             value={rotaBaslangic}
             onChange={setRotaBaslangic}
-            className="border border-slate-300 rounded-md px-2 py-1 text-[13px] w-[7.5rem]"
+            className="w-[7.5rem] rounded-md border border-slate-300 px-2 py-1 text-[13px]"
           />
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Bitiş:</span>
           <TrDateInput
             value={rotaBitis}
             onChange={setRotaBitis}
-            className="border border-slate-300 rounded-md px-2 py-1 text-[13px] w-[7.5rem]"
+            className="w-[7.5rem] rounded-md border border-slate-300 px-2 py-1 text-[13px]"
           />
+          <button
+            type="button"
+            onClick={fetchRota}
+            disabled={!seciliPersonel}
+            className={`rounded-md px-3 py-1 text-[13px] font-semibold text-white ${
+              seciliPersonel ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-default bg-slate-300'
+            }`}
+          >
+            Rotayı Göster
+          </button>
+          <button
+            type="button"
+            onClick={fetchFieldMap}
+            className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-[13px] text-slate-700 hover:bg-slate-100"
+          >
+            Yenile
+          </button>
         </div>
 
-        <button type="button"
-          onClick={fetchRota}
-          disabled={!seciliPersonel}
-          style={{
-            background: seciliPersonel ? '#3B82F6' : '#D1D5DB',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '6px 14px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: seciliPersonel ? 'pointer' : 'default',
-          }}
-        >
-          Rotayı Göster
-        </button>
-
-        <button type="button"
-          onClick={fetchPersoneller}
-          style={{
-            background: '#F3F4F6',
-            color: '#374151',
-            border: '1px solid #D1D5DB',
-            borderRadius: 6,
-            padding: '6px 14px',
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
-          Yenile
-        </button>
-
-        {/* Durum göstergesi */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, fontSize: 12 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-            Aktif (&lt;15dk) · {activeCount}
+        <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-slate-600">
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            Personel Aktif · {activePersonelCount}
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
-            Beklemede (15–60dk)
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600" />
+            Onarım · {counts.vendor_hasar}
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#9CA3AF', display: 'inline-block' }} />
-            Pasif (&gt;60dk)
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-orange-600" />
+            Acil · {counts.vendor_acil}
           </span>
-          {yukleniyor && (
-            <span style={{ color: '#6B7280' }}>Yükleniyor...</span>
-          )}
+          {yukleniyor && <span className="text-slate-400">Yükleniyor...</span>}
         </div>
       </div>
 
-      {/* Harita */}
-      <div
-        ref={mapContainerRef}
-        style={{
-          flex: 1,
-          borderRadius: 10,
-          border: '1px solid #E5E7EB',
-          overflow: 'hidden',
-          minHeight: 400,
-        }}
-      />
+      <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-lg border border-slate-200">
+        <div ref={mapContainerRef} className="h-full w-full" />
+        {!yukleniyor && filteredPoints.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/70">
+            <div className="rounded-lg border border-slate-200 bg-white px-6 py-4 text-center shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">Haritada Gösterilecek Konum Yok</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Seçili filtre için aktif personel veya tedarikçi bulunamadı.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Rota bilgisi */}
       {rota.length > 0 && (
-        <div
-          style={{
-            background: '#EFF6FF',
-            border: '1px solid #BFDBFE',
-            borderRadius: 8,
-            padding: '8px 14px',
-            fontSize: 13,
-            color: '#1E40AF',
-          }}
-        >
-          {seciliPersonel && personeller.find((p) => p.userId === seciliPersonel)
-            ? `${personeller.find((p) => p.userId === seciliPersonel)!.firstName} ${personeller.find((p) => p.userId === seciliPersonel)!.lastName}`
-            : 'Personel'}{' '}
-          — {rota.length} Konum Noktası Gösteriliyor
-          <button type="button"
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-[13px] text-blue-900">
+          {seciliPersonelAdi ?? 'Personel'} — {rota.length} Konum Noktası Gösteriliyor
+          <button
+            type="button"
             onClick={() => {
               setRota([]);
               if (polylineRef.current) {
@@ -383,15 +397,7 @@ export default function HaritaPage() {
                 polylineRef.current = null;
               }
             }}
-            style={{
-              marginLeft: 12,
-              background: 'none',
-              border: 'none',
-              color: '#3B82F6',
-              cursor: 'pointer',
-              fontSize: 12,
-              textDecoration: 'underline',
-            }}
+            className="ml-3 text-xs text-blue-700 underline"
           >
             Temizle
           </button>
