@@ -116,9 +116,12 @@ export class ClaimFilesController {
 
   @Get(':id/suggest-responsible')
   @RequirePermissions('claim_file.view')
-  @ApiOperation({ summary: 'Bölge ve iş yüküne göre dosya sorumlusu önerisi' })
-  async suggestResponsible(@Param('id') id: string) {
-    const data = await this.claimFilesService.suggestResponsible(id);
+  @ApiOperation({ summary: 'Bölge ve iş yüküne göre dosya sorumlusu veya saha tespitçisi önerisi' })
+  async suggestResponsible(
+    @Param('id') id: string,
+    @Query('role') role?: 'office_staff' | 'field_staff',
+  ) {
+    const data = await this.claimFilesService.suggestResponsible(id, role ?? 'office_staff');
     return { success: true, data };
   }
 

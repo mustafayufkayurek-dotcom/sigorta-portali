@@ -10,6 +10,79 @@ import { CacheService } from '@/cache/cache.service';
 
 const ACCESS_EXPIRY_HOURS = 48;
 
+const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
+
+const LATEST_REPAIR_REPORT_SELECT = {
+  id: true,
+  claimFileId: true,
+  reportNo: true,
+  status: true,
+  totalSalesAmount: true,
+  totalSupplierCost: true,
+  grossProfit: true,
+  grossMarginPct: true,
+  updatedAt: true,
+} as const;
+
+function formatLatestRepairReport(report: {
+  id: string;
+  reportNo: string;
+  status: string;
+  totalSalesAmount: number;
+  totalSupplierCost: number;
+  grossProfit: number;
+  grossMarginPct: number;
+  updatedAt: Date;
+}) {
+  return {
+    id: report.id,
+    reportNo: report.reportNo,
+    status: report.status,
+    totalSalesAmount: report.totalSalesAmount,
+    totalSupplierCost: report.totalSupplierCost,
+    grossProfit: report.grossProfit,
+    grossMarginPct: report.grossMarginPct,
+    updatedAt: report.updatedAt,
+  };
+}
+
+type LatestRepairReportRow = {
+  id: string;
+  claimFileId: string;
+  reportNo: string;
+  status: string;
+  totalSalesAmount: number;
+  totalSupplierCost: number;
+  grossProfit: number;
+  grossMarginPct: number;
+  updatedAt: Date;
+};
+
+function pickPreferredRepairReport(reports: LatestRepairReportRow[]): LatestRepairReportRow | null {
+  if (!reports.length) return null;
+  const approved = reports.find((r) =>
+    (APPROVED_REPAIR_REPORT_STATUSES as readonly string[]).includes(r.status),
+  );
+  return approved ?? reports[0];
+}
+
+function pickPreferredRepairReportsByClaim(
+  reports: LatestRepairReportRow[],
+): Map<string, LatestRepairReportRow> {
+  const byClaim = new Map<string, LatestRepairReportRow[]>();
+  for (const report of reports) {
+    const list = byClaim.get(report.claimFileId) ?? [];
+    list.push(report);
+    byClaim.set(report.claimFileId, list);
+  }
+  const result = new Map<string, LatestRepairReportRow>();
+  for (const [claimId, claimReports] of byClaim) {
+    const picked = pickPreferredRepairReport(claimReports);
+    if (picked) result.set(claimId, picked);
+  }
+  return result;
+}
+
 // Valid forward transitions for each status code
 const STATUS_TRANSITIONS: Record<string, string[]> = {
   new: ['in_progress', 'cancelled'],
@@ -89,6 +162,7 @@ export class ClaimFilesService {
     assignedAdjusterId?: string;
     insuranceCompanyIds?: string[];
     invoiceStatus?: string;
+    repairReportStatus?: string;
   }, requestingUser?: { id: string; roleCode: string }) {
     const page = Number(params?.page) || 1;
     const limit = Number(params?.limit) || 20;
@@ -109,6 +183,9 @@ export class ClaimFilesService {
       } else {
         where.invoices = { some: { status: params.invoiceStatus } };
       }
+    }
+    if (params?.repairReportStatus) {
+      where.repairReports = { some: { status: params.repairReportStatus } };
     }
 
     // Saha personeli sadece kendine atanmış dosyaları görür
@@ -149,10 +226,30 @@ export class ClaimFilesService {
       this.prisma.claimFile.count({ where }),
     ]);
 
+    const dataWithReports = await this.attachLatestRepairReports(data);
+
     return {
-      data,
+      data: dataWithReports,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  private async attachLatestRepairReports<T extends { id: string }>(claims: T[]) {
+    if (!claims.length) return claims;
+    const ids = claims.map((c) => c.id);
+    const reports = await this.prisma.repairReport.findMany({
+      where: { claimFileId: { in: ids } },
+      orderBy: { updatedAt: 'desc' },
+      select: LATEST_REPAIR_REPORT_SELECT,
+    });
+    const latestByClaim = pickPreferredRepairReportsByClaim(reports);
+    return claims.map((claim) => {
+      const latest = latestByClaim.get(claim.id);
+      return {
+        ...claim,
+        latestRepairReport: latest ? formatLatestRepairReport(latest) : null,
+      };
+    });
   }
 
   async findOne(id: string, requestingUser?: { id: string; roleCode: string }) {
@@ -166,6 +263,7 @@ export class ClaimFilesService {
         assignedBranch: true,
         assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+        assignedSupplier: { select: { id: true, name: true, city: true, district: true, type: true } },
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         statusHistory: {
@@ -199,8 +297,16 @@ export class ClaimFilesService {
       }
     }
 
+    const reports = await this.prisma.repairReport.findMany({
+      where: { claimFileId: id },
+      orderBy: { updatedAt: 'desc' },
+      select: LATEST_REPAIR_REPORT_SELECT,
+    });
+    const latestReport = pickPreferredRepairReport(reports);
+
     return {
       ...claimFile,
+      latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
       canViewFinancials: requestingUser
         ? canViewFileFinancials(requestingUser, claimFile)
@@ -657,31 +763,16 @@ export class ClaimFilesService {
     return history;
   }
 
-  async suggestResponsible(claimFileId: string) {
-    const claimFile = await this.prisma.claimFile.findUnique({
-      where: { id: claimFileId },
-      include: {
-        propertyAddress: true,
-      },
-    });
-
-    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
-
-    if (!claimFile.propertyAddress) {
-      return [];
-    }
-
-    const city = claimFile.propertyAddress.city;
-    const district = claimFile.propertyAddress.district;
-
-    // İl eşleşmesi
+  async suggestAssigneesByRegion(
+    city: string,
+    district?: string,
+    roleCode: 'office_staff' | 'field_staff' = 'office_staff',
+  ) {
     const province = await this.prisma.province.findFirst({
       where: { name: { equals: city, mode: 'insensitive' } },
     });
-
     if (!province) return [];
 
-    // İlçe eşleşmesi (varsa)
     let districtRecord: { id: string } | null = null;
     if (district) {
       districtRecord = await this.prisma.district.findFirst({
@@ -692,19 +783,14 @@ export class ClaimFilesService {
       });
     }
 
-    // Bölgeye atanmış kullanıcıları bul (ilçe eşleşmesi öncelikli, sonra il)
-    const serviceAreaWhere: any = {
-      provinceId: province.id,
-    };
-
+    const serviceAreaWhere: any = { provinceId: province.id };
     if (districtRecord) {
-      serviceAreaWhere.OR = [
-        { districtId: districtRecord.id },
-        { districtId: null },
-      ];
+      serviceAreaWhere.OR = [{ districtId: districtRecord.id }, { districtId: null }];
     } else {
       serviceAreaWhere.districtId = null;
     }
+
+    const countKey = roleCode === 'field_staff' ? 'assignedFieldClaimFiles' : 'assignedOfficeClaimFiles';
 
     const serviceAreas = await this.prisma.userServiceArea.findMany({
       where: serviceAreaWhere,
@@ -719,12 +805,11 @@ export class ClaimFilesService {
             role: { select: { id: true, name: true, code: true } },
             _count: {
               select: {
+                assignedFieldClaimFiles: {
+                  where: { currentStatus: { isClosedState: false } },
+                },
                 assignedOfficeClaimFiles: {
-                  where: {
-                    currentStatus: {
-                      isClosedState: false,
-                    },
-                  },
+                  where: { currentStatus: { isClosedState: false } },
                 },
               },
             },
@@ -735,11 +820,11 @@ export class ClaimFilesService {
       },
     });
 
-    // Kullanıcı bazında tekilleştir ve iş yüküne göre sırala
-    const userMap = new Map<string, any>();
+    const userMap = new Map<string, typeof serviceAreas[number]>();
     for (const sa of serviceAreas) {
+      const userRole = (sa.user.role?.code ?? '').toLowerCase().replace(/-/g, '_');
+      if (userRole !== roleCode) continue;
       const existing = userMap.get(sa.userId);
-      // İlçe eşleşmesi varsa önceliklendir
       if (!existing || (sa.districtId !== null && existing.districtId === null)) {
         userMap.set(sa.userId, sa);
       }
@@ -747,17 +832,84 @@ export class ClaimFilesService {
 
     return Array.from(userMap.values())
       .sort((a, b) => {
-        const aLoad = a.user._count?.assignedOfficeClaimFiles ?? 0;
-        const bLoad = b.user._count?.assignedOfficeClaimFiles ?? 0;
+        const aLoad = a.user._count?.[countKey] ?? 0;
+        const bLoad = b.user._count?.[countKey] ?? 0;
         return aLoad - bLoad;
       })
-      .slice(0, 3)
+      .slice(0, 5)
       .map((sa) => ({
         user: sa.user,
         province: sa.province,
         district: sa.district,
-        activeFileCount: sa.user._count?.assignedOfficeClaimFiles ?? 0,
+        activeFileCount: sa.user._count?.[countKey] ?? 0,
       }));
+  }
+
+  private async suggestAssigneesFallback(roleCode: 'office_staff' | 'field_staff', limit = 5) {
+    const countKey = roleCode === 'field_staff' ? 'assignedFieldClaimFiles' : 'assignedOfficeClaimFiles';
+    const roleCodes =
+      roleCode === 'field_staff'
+        ? ['field_staff', 'FIELD_STAFF']
+        : ['office_staff', 'OFFICE_STAFF'];
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
+        role: { code: { in: roleCodes } },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: { select: { id: true, name: true, code: true } },
+        _count: {
+          select: {
+            assignedFieldClaimFiles: {
+              where: { currentStatus: { isClosedState: false } },
+            },
+            assignedOfficeClaimFiles: {
+              where: { currentStatus: { isClosedState: false } },
+            },
+          },
+        },
+      },
+      take: 50,
+    });
+
+    return users
+      .sort((a, b) => (a._count[countKey] ?? 0) - (b._count[countKey] ?? 0))
+      .slice(0, limit)
+      .map((user) => ({
+        user,
+        province: null,
+        district: null,
+        activeFileCount: user._count[countKey] ?? 0,
+      }));
+  }
+
+  async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      include: {
+        propertyAddress: true,
+      },
+    });
+
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+    let suggestions: Awaited<ReturnType<typeof this.suggestAssigneesByRegion>> = [];
+    if (claimFile.propertyAddress) {
+      suggestions = await this.suggestAssigneesByRegion(
+        claimFile.propertyAddress.city,
+        claimFile.propertyAddress.district ?? undefined,
+        role,
+      );
+    }
+
+    if (suggestions.length > 0) return suggestions.slice(0, 3);
+    return this.suggestAssigneesFallback(role, 5);
   }
 
   async getInsuranceScopes(userId: string): Promise<string[]> {

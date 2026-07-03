@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SlidePanel } from '@/components/SlidePanel';
+import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -14,6 +16,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair-report-status';
 
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
@@ -115,11 +118,26 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
+  { id: 'reportStatus', label: 'Rapor Akıbeti', defaultWidth: 130, minWidth: 100 },
+  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
   { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
   { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
 ];
 
 export default function ClaimFilesPage() {
+  return (
+    <Suspense fallback={(
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )}
+    >
+      <ClaimFilesPageContent />
+    </Suspense>
+  );
+}
+
+function ClaimFilesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlStatusCode = searchParams.get('status');
@@ -137,6 +155,9 @@ export default function ClaimFilesPage() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [pendingRevisionFilter, setPendingRevisionFilter] = useState(false);
+  const [pendingReportFilter, setPendingReportFilter] = useState(false);
+  const [showNewPanel, setShowNewPanel] = useState(false);
+  const [formSession, setFormSession] = useState(0);
   const limit = 20;
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari', TABLE_COLUMNS);
 
@@ -174,6 +195,13 @@ export default function ClaimFilesPage() {
     }
   }, [urlStatusCode, claimStatuses, statusFilter]);
 
+  useEffect(() => {
+    if (searchParams.get('yeni') !== '1') return;
+    setFormSession((s) => s + 1);
+    setShowNewPanel(true);
+    router.replace('/panel/hasar-dosyalari', { scroll: false });
+  }, [searchParams, router]);
+
   // --- TanStack Query: Claim Files (main list) ---
   const queryParams = useMemo(() => {
     const params = new URLSearchParams({ limit: String(limit), page: String(page) });
@@ -186,21 +214,30 @@ export default function ClaimFilesPage() {
     if (dateTo) params.set('dateTo', dateTo);
     if (invoiceStatusFilter) params.set('invoiceStatus', invoiceStatusFilter);
     if (officeStaffUserId) params.set('assignedOfficeUserId', officeStaffUserId);
+    if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
     return params.toString();
-  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId]);
+  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId, pendingReportFilter]);
 
   const {
     data: claimsResponse,
     isLoading: loading,
     isError,
     refetch,
-  } = useApiQuery<unknown>(
+  } = useApiQuery<{ data?: unknown; meta?: { total?: number } }>(
     ['claim-files', queryParams],
     `/claim-files?${queryParams}`,
   );
 
   const claims = useMemo(() => asList<any>(claimsResponse), [claimsResponse]);
-  const total = claims.length;
+  const total = useMemo(() => {
+    const meta = (claimsResponse as { meta?: { total?: number } } | undefined)?.meta;
+    return meta?.total ?? claims.length;
+  }, [claimsResponse, claims.length]);
+
+  const pendingReportCount = useMemo(
+    () => claims.filter((c) => c.latestRepairReport?.status === 'pending_approval').length,
+    [claims],
+  );
 
   // --- TanStack Query: Pending Revisions ---
   const { data: revisionsResponse } = useApiQuery<unknown>(
@@ -217,7 +254,7 @@ export default function ClaimFilesPage() {
   }, [revisionsData]);
 
   // Derived
-  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter);
+  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter);
   const visibleClaims = pendingRevisionFilter
     ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
     : claims;
@@ -227,7 +264,18 @@ export default function ClaimFilesPage() {
     setInsuranceFilter(''); setDateFrom(''); setDateTo('');
     setInvoiceStatusFilter(''); setPage(1);
     setPendingRevisionFilter(false);
+    setPendingReportFilter(false);
   };
+
+  function openNewPanel() {
+    setFormSession((s) => s + 1);
+    setShowNewPanel(true);
+  }
+
+  function handleCreateSuccess(claimId: string) {
+    setShowNewPanel(false);
+    router.push(`/panel/hasar-dosyalari/${claimId}`);
+  }
 
   return (
     <TableColumnsProvider value={tableColumns}>
@@ -285,17 +333,42 @@ export default function ClaimFilesPage() {
               </span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => { setPendingReportFilter((v) => !v); setPage(1); }}
+            className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${pendingReportFilter ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+          >
+            <span className="inline-block w-2 h-2 rounded-full bg-orange-400" />
+            Rapor Onay Bekleyen
+            {pendingReportFilter && pendingReportCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-orange-100 text-orange-800 text-xs font-bold">
+                {pendingReportCount}
+              </span>
+            )}
+          </button>
           {!isFieldStaff && (
-            <button type="button"
-              onClick={() => router.push('/panel/hasar-dosyalari/yeni')}
-              className="btn-primary"
-            >
+            <button type="button" onClick={openNewPanel} className="btn-primary">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Yeni Dosya
             </button>
           )}
         </div>
       </div>
+
+      <SlidePanel
+        open={showNewPanel}
+        onClose={() => setShowNewPanel(false)}
+        title="Yeni Hasar Dosyası"
+        width={600}
+        scrollContent={false}
+      >
+        <ClaimNewForm
+          key={formSession}
+          variant="panel"
+          onCancel={() => setShowNewPanel(false)}
+          onSuccess={handleCreateSuccess}
+        />
+      </SlidePanel>
 
       {/* Filter Bar */}
       <div className="filter-bar">
@@ -397,6 +470,8 @@ export default function ClaimFilesPage() {
                   <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
                   <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
+                  <PanelTableTh colId="reportStatus" className="table-th">Rapor Akıbeti</PanelTableTh>
+                  <PanelTableTh colId="reportSales" className="table-th">Beklenen Ciro</PanelTableTh>
                   <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
                 </tr>
@@ -432,7 +507,7 @@ export default function ClaimFilesPage() {
             {hasFilters ? (
               <button type="button" onClick={clearFilters} className="btn-secondary mt-4">Filtreleri Temizle</button>
             ) : !isFieldStaff ? (
-              <button type="button" onClick={() => router.push('/panel/hasar-dosyalari/yeni')} className="btn-primary mt-4">
+              <button type="button" onClick={openNewPanel} className="btn-primary mt-4">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Yeni Dosya Oluştur
               </button>
@@ -451,6 +526,7 @@ export default function ClaimFilesPage() {
               const revCount = pendingRevisionMap[claim.id] ?? 0;
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
               const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
+              const rapor = claim.latestRepairReport;
               return (
                 <button
                   key={claim.id}
@@ -484,6 +560,16 @@ export default function ClaimFilesPage() {
                       <p className="text-slate-400">Tutar</p>
                       <p className="mt-0.5 font-semibold text-slate-700">{fmtAmount(totalAmount)}</p>
                     </div>
+                    <div>
+                      <p className="text-slate-400">Rapor</p>
+                      {rapor ? (
+                        <span className={`inline-flex mt-0.5 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${repairReportStatusBadge(rapor.status)}`}>
+                          {repairReportStatusLabel(rapor.status)}
+                        </span>
+                      ) : (
+                        <p className="mt-0.5 text-slate-300">—</p>
+                      )}
+                    </div>
                   </div>
                   {revCount > 0 && (
                     <div className="mt-3">
@@ -507,6 +593,8 @@ export default function ClaimFilesPage() {
                   <PanelTableTh colId="supplier" className="table-th">Tedarikçi</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
                   <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
+                  <PanelTableTh colId="reportStatus" className="table-th">Rapor Akıbeti</PanelTableTh>
+                  <PanelTableTh colId="reportSales" className="table-th">Beklenen Ciro</PanelTableTh>
                   <PanelTableTh colId="priority" className="table-th">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th">Revizyon</PanelTableTh>
                 </tr>
@@ -521,13 +609,19 @@ export default function ClaimFilesPage() {
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
                   const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
+                  const rapor = claim.latestRepairReport;
                   const supplierName = claim.assignedAdjuster?.adjuster?.company
                     ?? (claim.assignedAdjuster ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim() : null);
+                  const rowAccent = revCount > 0
+                    ? 'border-l-4 border-amber-300'
+                    : rapor?.status === 'pending_approval'
+                      ? 'border-l-4 border-orange-400'
+                      : '';
 
                   return (
                     <tr
                       key={claim.id}
-                      className={`table-row cursor-pointer ${revCount > 0 ? 'border-l-4 border-amber-300' : ''}`}
+                      className={`table-row cursor-pointer ${rowAccent}`}
                       onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
                     >
                       <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claim.fileNo ?? claim.claimNo ?? '—'}</PanelTableTd>
@@ -550,6 +644,18 @@ export default function ClaimFilesPage() {
                       </PanelTableTd>
                       <PanelTableTd colId="amount" className="table-td text-xs whitespace-nowrap font-semibold">
                         {fmtAmount(totalAmount)}
+                      </PanelTableTd>
+                      <PanelTableTd colId="reportStatus" className="table-td whitespace-nowrap">
+                        {rapor ? (
+                          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${repairReportStatusBadge(rapor.status)}`}>
+                            {repairReportStatusLabel(rapor.status)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">Rapor Yok</span>
+                        )}
+                      </PanelTableTd>
+                      <PanelTableTd colId="reportSales" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                        {rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}
                       </PanelTableTd>
                       <PanelTableTd colId="priority" className="table-td whitespace-nowrap">
                         {claim.priority && (

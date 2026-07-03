@@ -1,23 +1,32 @@
 {
-  "updatedAt": "2026-06-29",
-  "label": "yazim-panel-v98-v47",
-  "description": "Panel geneli Title Case (uppercase CSS kaldırıldı), evrak türü DB scope düzeltmesi, evrak yükle buton v97.",
+  "updatedAt": "2026-07-03",
+  "label": "v162-finans-evrak-sade",
+  "description": "Finans özet konsolidasyonu, gelir/fatura/gider sadeleştirme, evraklar 4 alt sekme, raporlar revizyon UX",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v47-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v98-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v152-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v162-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v97-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v45-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v161-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v152-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
     "/panel/musteriler",
+    "/panel/kullanicilar",
     "/panel/tedarikciler",
+    "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/musteri-tipleri",
+    "/panel/ayarlar/eksper-sigorta-iliskileri",
+    "/panel/ayarlar/saha-tespit-kollari",
     "/panel/ayarlar/tedarikci-hizmet-kollari",
-    "/api/v1/vendors/summary"
+    "/panel/ayarlar/entegrasyonlar",
+    "/panel/operasyon/gelen-kutusu",
+    "/panel/harita",
+    "/api/v1/vendors/summary",
+    "/api/v1/user-locations/field-map"
   ]
 }

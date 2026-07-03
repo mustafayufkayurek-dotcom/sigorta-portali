@@ -48,3 +48,114 @@ Aşağıdaki dosyalarda API hatası durumunda sessizce state boşaltan veya 0/nu
 2. **Orta risk** (#5-6, #10-11, #17-19, #21, #23): Listeleme/dropdown veri kaybı — toast notification + retry butonu eklenebilir.
 3. **Düşük risk** (#1-4, #12-14, #20, #22, #24): Form validasyon, auth helper, badge — mevcut davranış kabul edilebilir.
 4. **4012 satır dosya** (`hasar-dosyalari/[id]/page.tsx`): Faz 3'te refactor edilecek (ertelendi).
+
+---
+
+## Operasyon Gelen Kutusu (Microsoft 365)
+
+Tarih: 2026-06-29 | Plan: `docs/project-governance/inbox/OPERASYON_GELEN_KUTUSU.md`
+
+| Faz | Madde | Durum |
+|-----|-------|-------|
+| F1-çekirdek | Prisma schema + migration | ✅ iskelet |
+| F1-çekirdek | `operation-inbox` modül + Bull kuyruk | ✅ iskelet |
+| F1-çekirdek | Graph auth + delta sync | ⬜ |
+| F2 | AI sınıflandırma + ihbar kartları | ⬜ |
+| F2 | Talimatlı hasar/acil dosya açma | ⬜ |
+| F2 | M365 ayar sihirbazı (Entegrasyonlar) | ⬜ |
+| F3 | Dosya E-posta Yazışmaları sekmesi | ⬜ |
+| F3 | Otomatik dosya eşleştirme + yanıt | ⬜ |
+
+---
+
+## Tedarikçi Dış Kaynak Arama (Google / Sosyal Medya)
+
+Tarih: 2026-07-02 | Plan: [`docs/features/TEDARIKCI_DIS_ARAMA_HAZIRLIK.md`](docs/features/TEDARIKCI_DIS_ARAMA_HAZIRLIK.md)
+
+| Faz | Madde | Durum |
+|-----|-------|-------|
+| F1-hazırlık | Teknik plan dokümanı | ✅ |
+| F1-hazırlık | `vendor-discovery` backend mock (`GET /search`) | ✅ iskelet |
+| F1-hazırlık | Tedarikçiler sayfası — Dış Kaynakta Ara paneli | ✅ iskelet |
+| F2 | Google Places API canlı entegrasyon | ⬜ |
+| F2 | Aday → tedarikçi formu import akışı | ⬜ |
+| F2 | Prisma: VendorDiscoverySession + Candidate | ⬜ |
+| F2 | Entegrasyonlar ayarı (API key, kota) | ⬜ |
+
+---
+
+## Harita Modülü (v125 / v61)
+
+Tarih: 2026-07-02 | Canlı: `/panel/harita`
+
+| Madde | Durum |
+|-------|-------|
+| Personel + onarım/acil tedarikçi pinleri (v125) | ✅ canlı |
+| Mustafa manuel test (filtreler, pinler, Cmd+Shift+R) | ⬜ bekliyor |
+| Tedarikçi canlı GPS (mobil uygulama) | ⬜ sonraki faz |
+
+---
+
+## Mobil / Tablet UX (v126)
+
+Tarih: 2026-07-02 | Canlı: web **v126**
+
+| Madde | Durum |
+|-------|-------|
+| Giriş sayfası — mobilde kaydırma / şifre alanı (overflow, login önce) | ✅ canlı |
+| Viewport meta + safe-area | ✅ canlı |
+| Panel içerik padding (küçük ekran) | ✅ canlı |
+| Harita sayfası yüksekliği (`100dvh`) | ✅ canlı |
+| Canlı deploy (web-only) | ✅ v127 (loading UI) — rollback v126 |
+
+**Mustafa test listesi (telefon + tablet, Cmd+Shift+R):**
+- [ ] `/giris` — form en üstte; e-posta/şifre alanına inilebiliyor; klavye açılınca alan görünür kalıyor
+- [ ] `/giris` — dikey + yatay (landscape) mod
+- [ ] Panel — kenar boşlukları, üst menü / hamburger, tablo taşması yok
+- [ ] `/panel/harita` — filtreler ve harita yüksekliği mobilde düzgün
+
+---
+
+## Test Edilecekler (Mustafa)
+
+| Öncelik | Konu | URL / Not | Durum |
+|---------|------|-----------|-------|
+| 1 | Harita modülü | `/panel/harita` — Tümü/Personel/Onarım/Acil filtreleri, pinler | ⬜ |
+| 2 | Mobil giriş | `/giris` — şifre alanı, kaydırma, tablet | ⬜ |
+| 3 | Mobil panel | Panel sayfaları genel (padding, menü) | ⬜ |
+| 4 | Tedarikçi dış arama | `/panel/tedarikciler` → Dış Kaynakta Ara → Tedarikçi Olarak Ekle | ⬜ (Google key sonra) |
+| 5 | Acil ihbar panel | `/panel/acil-yardim` → Yeni Dosya; asistans firma arama/liste/yeni kayıt (`subType=asistan_firmasi`) | ⬜ |
+| 6 | Hasar ihbar panel | `/panel/hasar-dosyalari` → Yeni Dosya; eksper ofisi + sigorta şirketi alanları | ⬜ |
+| 7 | Rol — ofis personeli | `office_staff`: her iki liste + yeni dosya paneli; hasar listesi kendi atamalarına filtreli | ⬜ |
+| 8 | Rol — saha personeli | `field_staff`: hasar listesi görünür, **Yeni Dosya** gizli; acil sayfası menüde yok | ⬜ |
+| 9 | Rol — finans | `accountant`: yalnız finans/rapor; ihbar paneli erişimi yok | ⬜ |
+| 10 | Rol — eksper portal | `expert`: `/panel/eksper-portal`; operasyon ihbar paneli entegrasyonu **beklenmiyor** | ⬜ |
+| 11 | Rol — sigorta portal | `insurance_company_user`: `/panel/sigorta-portal`; ihbar paneli entegrasyonu **beklenmiyor** | ⬜ |
+| 12 | Deep link | `/panel/acil-yardim?yeni=1` ve `/panel/hasar-dosyalari?yeni=1` → sağ panel açılır; `/yeni` rotaları redirect | ⬜ |
+| 13 | Gelen kutusu | Operasyon gelen kutusu (`InboxOpenFileModal`) ayrı akış — yeni panel formlarıyla karıştırma | ⬜ |
+
+**Hasar ihbar paneli — rol bazlı test adımları (Mustafa):**
+
+- [ ] Ofis personeli ile `/panel/hasar-dosyalari` → Yeni Dosya → eksper ofisi ara/liste yalnız `eksper_firmasi` müşterileri
+- [ ] Yeni eksper ofisi kaydı → `subType=eksper_firmasi`, `serviceType=hasar`
+- [ ] Sigorta şirketi zorunlu; broker ayrı bölüm yok (sigorta şirketi = dosya kaydı alanı)
+- [ ] Saha personeli ile aynı sayfada Yeni Dosya butonu görünmemeli
+- [ ] `?yeni=1` deep link paneli açmalı
+
+**Acil ihbar paneli — rol bazlı test adımları (Mustafa):**
+
+- [ ] `/panel/acil-yardim` → Yeni Dosya → asistans firma zorunlu; arama `subType=asistan_firmasi`
+- [ ] Yeni asistans firması → `serviceType=acil_yardim`
+- [ ] Saha personeli acil sayfasına erişememeli (403 veya menüde yok)
+- [ ] Operasyon hub → `?yeni=1` linkleri panel açmalı
+
+**Not:** Eksper portal ve sigorta portal kullanıcıları için yeni ihbar formu bu entegrasyon kapsamında değil; onay/dosya listesi kendi portal rotalarında kalır. Gelen kutusundan acil dosya açılışında asistan firma bağlanmıyor (bilinen gap — madde 13).
+
+
+---
+
+## Deploy — Web v162 / Backend v153 gap (2026-07-03)
+
+- [ ] **v153 backend (hazırlık, deploy yok):** Canlı backend **v152**; workspace’te `claim-files.service.ts` — `latestRepairReport` yalnız onaylı rapor (`approved`, `externally_approved`); `CreateClaimFileRevenueDto` — gelir **açıklama** (`description`) zorunlu. Web v162 bu sözleşmeyi UI’da varsayabilir; backend deploy onayı sonrası **backend-only**, migration beklenmiyor.
+- [ ] **Mustafa canlı test (v162):** Hasar dosyası detay — Finans özet, gelir/fatura, gider/bütçe alt sekmeleri; Evraklar 4 alt sekme + sözleşmeler; Onarım raporu / revizyon UX.
+

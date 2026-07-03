@@ -22,9 +22,9 @@ export class CreateClaimFileRevenueDto {
   @IsIn(['insurance_company', 'insured'])
   collectionSource!: string;
 
-  @IsOptional()
   @IsString()
-  description?: string;
+  @IsNotEmpty()
+  description!: string;
 
   @IsNumber()
   @IsPositive()
