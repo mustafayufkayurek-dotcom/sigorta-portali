@@ -301,7 +301,7 @@ export default function FaturalarPage() {
                   <PanelTableTh colId="fileNo" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Dosya No</PanelTableTh>
                   <PanelTableTh colId="invoiceType" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Tip</PanelTableTh>
                   <SortablePanelTableTh colId="invoiceDate" sortKey="invoiceDate" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Tarih</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Tutar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Tutar</SortablePanelTableTh>
                   <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Durum</SortablePanelTableTh>
                   <th className="text-center px-4 py-3">İşlem</th>
                 </tr>

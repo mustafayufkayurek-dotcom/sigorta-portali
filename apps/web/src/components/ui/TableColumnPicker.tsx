@@ -405,7 +405,6 @@ interface SortablePanelTableThProps extends PanelTableThProps {
   activeSortKey: string | null;
   sortDir: 'asc' | 'desc';
   onSort: (key: string) => void;
-  right?: boolean;
 }
 
 export function SortablePanelTableTh({
@@ -416,7 +415,6 @@ export function SortablePanelTableTh({
   activeSortKey,
   sortDir,
   onSort,
-  right,
   resizable = true,
 }: SortablePanelTableThProps) {
   const active = activeSortKey === sortKey;

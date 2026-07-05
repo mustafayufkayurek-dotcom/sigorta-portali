@@ -201,11 +201,11 @@ export default function KarlilikPage() {
                 <tr>
                   <th className="text-center px-4 py-3 w-8">#</th>
                   <SortablePanelTableTh colId="label" sortKey="label" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium">{groupLabel}</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="count" sortKey="count" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs font-medium text-center">Dosya</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs font-medium text-center">Gelir</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="cost" sortKey="cost" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs font-medium text-center">Gider</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="profit" sortKey="profit" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs font-medium text-center">Net Kar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="margin" sortKey="margin" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} right className="px-4 py-3 text-xs font-medium text-center">Marj %</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="count" sortKey="count" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium text-center">Dosya</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium text-center">Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="cost" sortKey="cost" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium text-center">Gider</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="profit" sortKey="profit" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium text-center">Net Kar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="margin" sortKey="margin" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs font-medium text-center">Marj %</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
