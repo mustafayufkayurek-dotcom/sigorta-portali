@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v200-portal-live-readiness",
-  "description": "eksper ihbar operasyon ataması + mail; sigorta dosya akışı; commit 83ec5e5; rollback v199",
+  "label": "v201-panel-polish-staj-hasar",
+  "description": "Staj→Sovtaj birleştirme, hasar nedenleri API, yazım kuralları, tablo başlık ortalama; rollback v200",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v200-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v200-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v201-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v201-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v199-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v199-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v200-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v200-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
