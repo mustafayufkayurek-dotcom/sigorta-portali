@@ -5,6 +5,8 @@ DO $$
 DECLARE
   staj_id UUID;
   sovtaj_id UUID;
+  staj_id_text TEXT;
+  sovtaj_id_text TEXT;
 BEGIN
   SELECT id INTO staj_id
   FROM departments
@@ -37,40 +39,43 @@ BEGIN
     RETURN;
   END IF;
 
-  UPDATE claim_files SET department_id = sovtaj_id WHERE department_id = staj_id;
-  UPDATE repair_reports SET department_id = sovtaj_id WHERE department_id = staj_id;
-  UPDATE hr_employee_profiles SET department_id = sovtaj_id WHERE department_id = staj_id;
+  staj_id_text := staj_id::text;
+  sovtaj_id_text := sovtaj_id::text;
+
+  UPDATE claim_files SET department_id = sovtaj_id_text WHERE department_id = staj_id_text;
+  UPDATE repair_reports SET department_id = sovtaj_id_text WHERE department_id = staj_id_text;
+  UPDATE hr_employee_profiles SET department_id = sovtaj_id_text WHERE department_id = staj_id_text;
 
   UPDATE user_department_memberships udm
-  SET department_id = sovtaj_id
-  WHERE department_id = staj_id
+  SET department_id = sovtaj_id_text
+  WHERE department_id = staj_id_text
     AND NOT EXISTS (
       SELECT 1 FROM user_department_memberships x
-      WHERE x.user_id = udm.user_id AND x.department_id = sovtaj_id
+      WHERE x.user_id = udm.user_id AND x.department_id = sovtaj_id_text
     );
-  DELETE FROM user_department_memberships WHERE department_id = staj_id;
+  DELETE FROM user_department_memberships WHERE department_id = staj_id_text;
 
-  UPDATE claim_responsibility_assignments SET department_id = sovtaj_id WHERE department_id = staj_id;
+  UPDATE claim_responsibility_assignments SET department_id = sovtaj_id_text WHERE department_id = staj_id_text;
 
   UPDATE department_file_subjects dfs
-  SET department_id = sovtaj_id
-  WHERE department_id = staj_id
+  SET department_id = sovtaj_id_text
+  WHERE department_id = staj_id_text
     AND NOT EXISTS (
       SELECT 1 FROM department_file_subjects x
-      WHERE x.department_id = sovtaj_id AND x.code = dfs.code
+      WHERE x.department_id = sovtaj_id_text AND x.code = dfs.code
     );
-  DELETE FROM department_file_subjects WHERE department_id = staj_id;
+  DELETE FROM department_file_subjects WHERE department_id = staj_id_text;
 
   UPDATE report_field_configs rfc
-  SET department_id = sovtaj_id
-  WHERE department_id = staj_id
+  SET department_id = sovtaj_id_text
+  WHERE department_id = staj_id_text
     AND NOT EXISTS (
       SELECT 1 FROM report_field_configs x
-      WHERE x.department_id = sovtaj_id
+      WHERE x.department_id = sovtaj_id_text
         AND x.report_format = rfc.report_format
         AND x.field_key = rfc.field_key
     );
-  DELETE FROM report_field_configs WHERE department_id = staj_id;
+  DELETE FROM report_field_configs WHERE department_id = staj_id_text;
 
   UPDATE document_types dt
   SET department_ids = sub.next_ids
@@ -78,12 +83,12 @@ BEGIN
     SELECT
       dt2.id,
       COALESCE(
-        jsonb_agg(DISTINCT CASE WHEN elem = staj_id::text THEN sovtaj_id::text ELSE elem END),
+        jsonb_agg(DISTINCT CASE WHEN elem = staj_id_text THEN sovtaj_id_text ELSE elem END),
         '[]'::jsonb
       ) AS next_ids
     FROM document_types dt2
     CROSS JOIN LATERAL jsonb_array_elements_text(dt2.department_ids) elem
-    WHERE dt2.department_ids @> to_jsonb(staj_id::text)
+    WHERE dt2.department_ids @> to_jsonb(staj_id_text)
     GROUP BY dt2.id
   ) sub
   WHERE dt.id = sub.id;
