@@ -27,6 +27,8 @@ export function fmtDateTime(
   const dt = parseDate(d);
   return dt ? dt.toLocaleString('tr-TR', options) : '—';
 }
+
+export function relativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -51,7 +53,8 @@ export function activityColor(dateStr: string | null | undefined): string {
   return 'text-gray-600';
 }
 
-export function relativeTime(dateStr: string | null | undefined): string {
+/**
+ * Telefon numarasını WhatsApp wa.me linkine dönüştürür.
  * Türkiye numaraları için 0 ile başlıyorsa 90 ekler.
  * Numara zaten + veya 90 ile başlıyorsa aynen kullanır.
  */
