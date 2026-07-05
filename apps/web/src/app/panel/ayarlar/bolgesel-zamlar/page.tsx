@@ -12,6 +12,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -291,14 +293,16 @@ export default function BolgeselZamlarPage() {
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <SettingsTable>
               <SettingsTableHead>
+                <SettingsRowIndexTh />
                 <SettingsTableTh>Bölge</SettingsTableTh>
                 <SettingsTableTh>Mevcut Zam Oranı</SettingsTableTh>
                 <SettingsTableTh>Son Geçerlilik Tarihi</SettingsTableTh>
                 <SettingsTableTh>İşlemler</SettingsTableTh>
               </SettingsTableHead>
               <SettingsTableBody>
-                {regions.map((r) => (
+                {regions.map((r, index) => (
                   <SettingsTableRow key={r.id}>
+                    <SettingsRowIndexTd index={index} />
                     <SettingsTableTd>
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${REGION_COLORS[r.code] ?? 'bg-slate-100 text-slate-700'}`}>
                         {r.name}

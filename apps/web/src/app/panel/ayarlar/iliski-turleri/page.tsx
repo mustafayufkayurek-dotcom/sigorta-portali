@@ -15,6 +15,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -182,7 +184,7 @@ export default function IliskiTurleriPage() {
 
       <SettingsTable loading={loading} empty={types.length === 0} emptyText="Henüz ilişki türü tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh className="w-10 text-center">Sıra</SettingsTableTh>
+          <SettingsRowIndexTh className="w-10" />
           <SettingsTableTh>İlişki Türü</SettingsTableTh>
           <SettingsTableTh>Kullanım Alanı</SettingsTableTh>
           <SettingsTableTh className="w-28 text-center">Durum</SettingsTableTh>
@@ -192,7 +194,7 @@ export default function IliskiTurleriPage() {
         <SettingsTableBody>
           {types.map((type, idx) => (
             <SettingsTableRow key={idx}>
-              <SettingsTableTd className="text-center text-xs text-slate-400 font-mono">{idx + 1}</SettingsTableTd>
+              <SettingsRowIndexTd index={idx} className="text-xs" />
               <SettingsTableTd>
                 <span className={`font-medium ${type.active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                   {type.label}

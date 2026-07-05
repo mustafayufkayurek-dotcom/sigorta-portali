@@ -18,10 +18,13 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 
 
 type ExpenseItem = {
@@ -45,8 +48,8 @@ type ExpenseGroup = {
   _count?: { costEntries: number };
 };
 
-const emptyGroupForm = { code: '', name: '', sortOrder: 0 };
-const emptyItemForm = { code: '', name: '', sortOrder: 0, parentId: '' };
+const emptyGroupForm = { code: '', name: '' };
+const emptyItemForm = { code: '', name: '', parentId: '' };
 
 export default function MasrafKategorileriPage() {
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
@@ -135,7 +138,7 @@ export default function MasrafKategorileriPage() {
 
   const openEditGroup = (g: ExpenseGroup) => {
     setEditGroup(g);
-    setGroupForm({ code: g.code, name: g.name, sortOrder: g.sortOrder });
+    setGroupForm({ code: g.code, name: g.name });
     setGroupError('');
     setGroupModal(true);
   };
@@ -156,17 +159,18 @@ export default function MasrafKategorileriPage() {
     }
     setGroupSaving(true);
     setGroupError('');
+    const sortOrder = computeAlphabeticSortOrder(name, groups, editGroup?.id);
     try {
       if (editGroup) {
         await axios.patch(`${API}/expense-categories/${editGroup.id}`, {
           name,
-          sortOrder: groupForm.sortOrder,
+          sortOrder,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/expense-categories`, {
           code,
           name,
-          sortOrder: groupForm.sortOrder,
+          sortOrder,
         }, { headers: authHeader() });
       }
       setGroupModal(false);
@@ -215,7 +219,7 @@ export default function MasrafKategorileriPage() {
   const openEditItem = (item: ExpenseItem, parentId: string) => {
     setEditItem(item);
     setItemParentId(parentId);
-    setItemForm({ code: item.code, name: item.name, sortOrder: item.sortOrder, parentId });
+    setItemForm({ code: item.code, name: item.name, parentId });
     setItemError('');
     setItemModal(true);
   };
@@ -242,18 +246,19 @@ export default function MasrafKategorileriPage() {
     }
     setItemSaving(true);
     setItemError('');
+    const sortOrder = computeAlphabeticSortOrder(name, siblings, editItem?.id);
     try {
       if (editItem) {
         await axios.patch(`${API}/expense-categories/${editItem.id}`, {
           name,
-          sortOrder: itemForm.sortOrder,
+          sortOrder,
           parentId: itemForm.parentId,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/expense-categories`, {
           code,
           name,
-          sortOrder: itemForm.sortOrder,
+          sortOrder,
           parentId: itemForm.parentId,
         }, { headers: authHeader() });
       }
@@ -424,22 +429,22 @@ export default function MasrafKategorileriPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
+                          <SettingsRowIndexTh />
                           <SettingsTableTh>Masraf Alt Grubu</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
                           <SettingsTableTh className="text-center">Kayıt</SettingsTableTh>
                           <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
-                          {group.children.map((item) => (
+                          {group.children.map((item, itemIndex) => (
                             <SettingsTableRow key={item.id}>
+                              <SettingsRowIndexTd index={itemIndex} />
                               <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{item.name}</span>
                                   <p className="text-xs text-slate-400 mt-0.5 font-mono">{item.code}</p>
                                 </div>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{item.sortOrder}</SettingsTableTd>
                               <SettingsTableTd className="text-center text-sm text-slate-600">{item._count?.costEntries ?? 0}</SettingsTableTd>
                               <SettingsTableTd>
                                 <button type="button" onClick={() => toggleItemStatus(item)}>
@@ -489,16 +494,6 @@ export default function MasrafKategorileriPage() {
             <input className={`${inputCls} disabled:bg-slate-50`} value={groupForm.code} disabled />
           </div>
         )}
-        <div>
-          <label className={labelCls}>Sıra No</label>
-          <input
-            type="number"
-            className={inputCls}
-            value={groupForm.sortOrder}
-            onChange={(e) => setGroupForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
-            min={0}
-          />
-        </div>
       </SettingsModal>
 
       <SettingsModal
@@ -566,16 +561,6 @@ export default function MasrafKategorileriPage() {
             <input className={`${inputCls} disabled:bg-slate-50`} value={itemForm.code} disabled />
           </div>
         )}
-        <div>
-          <label className={labelCls}>Sıra No</label>
-          <input
-            type="number"
-            className={inputCls}
-            value={itemForm.sortOrder}
-            onChange={(e) => setItemForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
-            min={0}
-          />
-        </div>
       </SettingsModal>
 
       <DeleteConfirmDialog

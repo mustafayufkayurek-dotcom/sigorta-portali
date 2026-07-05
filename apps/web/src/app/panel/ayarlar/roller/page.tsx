@@ -14,6 +14,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -114,6 +116,7 @@ export default function RollerPage() {
       <SettingsTable loading={loading} empty={filtered.length === 0}
         emptyText={search ? 'Arama kriterlerine uyan rol bulunamadı.' : 'Henüz rol tanımlanmamış.'}>
         <SettingsTableHead>
+          <SettingsRowIndexTh />
           <SettingsTableTh>Rol Adı</SettingsTableTh>
           <SettingsTableTh>Kod</SettingsTableTh>
           <SettingsTableTh>Açıklama</SettingsTableTh>
@@ -121,8 +124,9 @@ export default function RollerPage() {
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {filtered.map((r) => (
+          {filtered.map((r, index) => (
             <SettingsTableRow key={r.id}>
+              <SettingsRowIndexTd index={index} />
               <SettingsTableTd><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
               <SettingsTableTd>
                 <code className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{r.code}</code>

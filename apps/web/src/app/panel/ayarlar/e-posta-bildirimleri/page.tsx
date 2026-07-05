@@ -80,6 +80,8 @@ export default function EPostaBildirimleriPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('smtp');
   const [mailConfig, setMailConfig] = useState<MailConfig>(defaultMailConfig);
+  const [passwordConfigured, setPasswordConfigured] = useState(false);
+  const [showMailPassword, setShowMailPassword] = useState(false);
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(defaultNotificationSettings);
   const [loading, setLoading] = useState(true);
   const [showSmtpGuide, setShowSmtpGuide] = useState(false);
@@ -108,11 +110,13 @@ export default function EPostaBildirimleriPage() {
 
         if (mailRes?.data?.data) {
           const d = mailRes.data.data;
+          const legacyMasked = d.password === '***' || d.password === '••••••••';
+          setPasswordConfigured(Boolean(d.passwordConfigured) || legacyMasked);
           setMailConfig({
             host: d.host ?? '',
             port: String(d.port ?? '587'),
             username: d.username ?? '',
-            password: d.password ?? '',
+            password: legacyMasked ? '' : (d.password ?? ''),
             security: d.security ?? 'TLS',
             fromName: d.fromName ?? '',
             fromEmail: d.fromEmail ?? '',
@@ -143,16 +147,29 @@ export default function EPostaBildirimleriPage() {
   const handleSaveMail = async () => {
     if (!mailConfig.host) { setMailError('SMTP sunucu adresi zorunludur.'); return; }
     if (!mailConfig.username) { setMailError('Kullanıcı adı zorunludur.'); return; }
+    if (!passwordConfigured && !mailConfig.password.trim()) {
+      setMailError('İlk kurulumda SMTP şifresi zorunludur.');
+      return;
+    }
     setSavingMail(true);
     setMailSuccess('');
     setMailError('');
     try {
       await axios.put(
         `${API}/system-settings/mail-config`,
-        { ...mailConfig, port: Number(mailConfig.port) || 587 },
+        {
+          ...mailConfig,
+          port: Number(mailConfig.port) || 587,
+          password: mailConfig.password.trim(),
+        },
         { headers: authHeader() },
       );
-      redirectAfterSettingsSave(router, 'e-posta-bildirimleri-smtp');
+      if (mailConfig.password.trim()) {
+        setPasswordConfigured(true);
+      }
+      setMailConfig((prev) => ({ ...prev, password: '' }));
+      setShowMailPassword(false);
+      setMailSuccess('SMTP ayarları kaydedildi.');
     } catch (e: any) {
       setMailError(e.response?.data?.message ?? 'Kaydedilemedi.');
     } finally {
@@ -320,7 +337,36 @@ export default function EPostaBildirimleriPage() {
               </div>
               <div>
                 <label className={labelCls}>Şifre</label>
-                <input type="password" className={inputCls} placeholder="••••••••" value={mailConfig.password} onChange={(e) => handleMailChange('password', e.target.value)} autoComplete="new-password" />
+                <div className="relative">
+                  <input
+                    type={showMailPassword ? 'text' : 'password'}
+                    className={`${inputCls} pr-10`}
+                    placeholder={passwordConfigured ? 'Kayıtlı — değiştirmek için yazın' : 'SMTP şifresi'}
+                    value={mailConfig.password}
+                    onChange={(e) => handleMailChange('password', e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowMailPassword((value) => !value)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600"
+                    aria-label={showMailPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  >
+                    {showMailPassword ? (
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {passwordConfigured && !mailConfig.password && (
+                  <p className="mt-1 text-xs text-emerald-700">Kayıtlı SMTP şifresi korunuyor. Yalnızca değiştirmek istediğinizde yeni şifre girin.</p>
+                )}
               </div>
               <div>
                 <label className={labelCls}>Gönderen Adı</label>

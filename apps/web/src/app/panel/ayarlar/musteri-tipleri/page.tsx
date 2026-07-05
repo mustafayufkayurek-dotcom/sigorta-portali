@@ -15,6 +15,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -185,7 +187,7 @@ export default function MusteriTipleriPage() {
 
         <SettingsTable loading={loading} empty={rows.length === 0} emptyText="Henüz müşteri tipi tanımlanmamış.">
           <SettingsTableHead>
-            <SettingsTableTh className="text-center w-16">Sıra</SettingsTableTh>
+            <SettingsRowIndexTh />
             <SettingsTableTh>Tip Adı</SettingsTableTh>
             <SettingsTableTh>Kod</SettingsTableTh>
             <SettingsTableTh>Cari Tipi</SettingsTableTh>
@@ -195,7 +197,7 @@ export default function MusteriTipleriPage() {
           <SettingsTableBody>
             {rows.map((row, index) => (
               <SettingsTableRow key={row.value}>
-                <SettingsTableTd className="text-center text-slate-500 tabular-nums">{index + 1}</SettingsTableTd>
+                <SettingsRowIndexTd index={index} />
                 <SettingsTableTd>
                   <span className="font-medium text-slate-900">{row.label}</span>
                 </SettingsTableTd>

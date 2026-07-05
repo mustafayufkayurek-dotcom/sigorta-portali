@@ -13,6 +13,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -22,6 +24,7 @@ import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definit
 import { API, authHeader } from '@/utils/api';
 import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
@@ -57,8 +60,8 @@ const UNIT_LABELS: Record<string, string> = {
   ton: 'Ton',
 };
 
-const emptyWG = { code: '', name: '', description: '', sortOrder: 0 };
-const emptySG = { code: '', name: '', description: '', unitType: 'adet', unitPrice: '', sortOrder: 0, workGroupId: '' };
+const emptyWG = { code: '', name: '', description: '' };
+const emptySG = { code: '', name: '', description: '', unitType: 'adet', unitPrice: '', workGroupId: '' };
 
 // ─── Sayfa ────────────────────────────────────────────────────────────────────
 export default function FiyatListesiPage() {
@@ -114,7 +117,7 @@ export default function FiyatListesiPage() {
 
   // ─── İş Grubu CRUD ─────────────────────────────────────────────────────────
   const openAddWG = () => { setEditWG(null); setWgForm(emptyWG); setWgError(''); setWgModal(true); };
-  const openEditWG = (wg: WorkGroup) => { setEditWG(wg); setWgForm({ code: wg.code, name: wg.name, description: wg.description ?? '', sortOrder: wg.sortOrder }); setWgError(''); setWgModal(true); };
+  const openEditWG = (wg: WorkGroup) => { setEditWG(wg); setWgForm({ code: wg.code, name: wg.name, description: wg.description ?? '' }); setWgError(''); setWgModal(true); };
 
   const saveWG = async () => {
     const name = normalizeFormFreeText(wgForm.name);
@@ -123,13 +126,14 @@ export default function FiyatListesiPage() {
     const code = editWG ? wgForm.code : (wgForm.code.trim() || suggestAutoCode('WG', name));
     if (!code.trim() && !editWG) { setWgError('Kod üretilemedi'); return; }
     setWgSaving(true); setWgError('');
+    const sortOrder = computeAlphabeticSortOrder(name, groups, editWG?.id);
     try {
       const url = editWG ? `${API}/work-groups/${editWG.id}` : `${API}/work-groups`;
       const method = editWG ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...wgForm, name, description, code, sortOrder: Number(wgForm.sortOrder) }),
+        body: JSON.stringify({ ...wgForm, name, description, code, sortOrder }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? 'Hata oluştu');
@@ -153,7 +157,7 @@ export default function FiyatListesiPage() {
 
   // ─── Alt Grup CRUD ─────────────────────────────────────────────────────────
   const openAddSG = (parentId: string) => { setSgParentId(parentId); setEditSG(null); setSgForm({ ...emptySG, workGroupId: parentId }); setSgError(''); setSgModal(true); };
-  const openEditSG = (sg: WorkSubGroup, parentId: string) => { setSgParentId(parentId); setEditSG(sg); setSgForm({ code: sg.code, name: sg.name, description: sg.description ?? '', unitType: sg.unitType, unitPrice: sg.unitPrice != null ? String(sg.unitPrice) : '', sortOrder: sg.sortOrder, workGroupId: parentId }); setSgError(''); setSgModal(true); };
+  const openEditSG = (sg: WorkSubGroup, parentId: string) => { setSgParentId(parentId); setEditSG(sg); setSgForm({ code: sg.code, name: sg.name, description: sg.description ?? '', unitType: sg.unitType, unitPrice: sg.unitPrice != null ? String(sg.unitPrice) : '', workGroupId: parentId }); setSgError(''); setSgModal(true); };
 
   const saveSG = async () => {
     const name = normalizeFormFreeText(sgForm.name);
@@ -165,6 +169,8 @@ export default function FiyatListesiPage() {
     const code = editSG ? sgForm.code : (sgForm.code.trim() || suggestAutoCode(parentCode, name));
     if (!code.trim() && !editSG) { setSgError('Kod üretilemedi'); return; }
     setSgSaving(true); setSgError('');
+    const siblings = groups.find((g) => g.id === targetGroupId)?.workSubGroups ?? [];
+    const sortOrder = computeAlphabeticSortOrder(name, siblings, editSG?.id);
     try {
       const url = editSG ? `${API}/work-groups/sub-groups/${editSG.id}` : `${API}/work-groups/${targetGroupId}/sub-groups`;
       const method = editSG ? 'PUT' : 'POST';
@@ -173,7 +179,7 @@ export default function FiyatListesiPage() {
         name,
         description,
         code,
-        sortOrder: Number(sgForm.sortOrder),
+        sortOrder,
         unitPrice: sgForm.unitPrice !== '' ? Number(sgForm.unitPrice) : undefined,
         workGroupId: targetGroupId,
       };
@@ -348,6 +354,7 @@ export default function FiyatListesiPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
+                          <SettingsRowIndexTh />
                           <SettingsTableTh>Alt Grup Adı</SettingsTableTh>
                           <SettingsTableTh>Birim</SettingsTableTh>
                           <SettingsTableTh>Birim Fiyat</SettingsTableTh>
@@ -355,8 +362,9 @@ export default function FiyatListesiPage() {
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
-                          {wg.workSubGroups.map((sg) => (
+                          {wg.workSubGroups.map((sg, sgIndex) => (
                             <SettingsTableRow key={sg.id}>
+                              <SettingsRowIndexTd index={sgIndex} />
                               <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sg.name}</span>
@@ -418,10 +426,6 @@ export default function FiyatListesiPage() {
           <div>
             <label className={labelCls}>Açıklama</label>
             <input className={inputCls} value={wgForm.description} onChange={(e) => setWgForm((f) => ({ ...f, description: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setWgForm((f) => ({ ...f, description: v })); }} placeholder="İsteğe bağlı açıklama" />
-          </div>
-          <div>
-            <label className={labelCls}>Sıra No</label>
-            <input type="number" className={inputCls} value={wgForm.sortOrder} onChange={(e) => setWgForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} min={0} />
           </div>
         </div>
       </SettingsModal>
@@ -509,10 +513,6 @@ export default function FiyatListesiPage() {
               <label className={labelCls}>Birim Fiyat (TL)</label>
               <input type="number" className={inputCls} value={sgForm.unitPrice} onChange={(e) => setSgForm((f) => ({ ...f, unitPrice: e.target.value }))} placeholder="0.00" min={0} step="0.01" />
             </div>
-          </div>
-          <div>
-            <label className={labelCls}>Sıra No</label>
-            <input type="number" className={inputCls} value={sgForm.sortOrder} onChange={(e) => setSgForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} min={0} />
           </div>
         </div>
       </SettingsModal>

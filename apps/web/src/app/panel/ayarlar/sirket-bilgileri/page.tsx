@@ -29,6 +29,7 @@ interface CompanyInfo {
   payrollEmployerTradeRegistryNo?: string;
   payrollEmployerPhone?: string;
   payrollEmployerEmail?: string;
+  accountantEmail?: string;
 }
 
 const emptyForm: CompanyInfo = {
@@ -37,6 +38,7 @@ const emptyForm: CompanyInfo = {
   payrollEmployerEnabled: false,
   payrollEmployerName: '', payrollEmployerAddress: '', payrollEmployerTaxNumber: '',
   payrollEmployerTradeRegistryNo: '', payrollEmployerPhone: '', payrollEmployerEmail: '',
+  accountantEmail: '',
 };
 
 export default function SirketBilgileriPage() {
@@ -69,6 +71,7 @@ export default function SirketBilgileriPage() {
           payrollEmployerTradeRegistryNo: d.payrollEmployerTradeRegistryNo ?? '',
           payrollEmployerPhone: d.payrollEmployerPhone ?? '',
           payrollEmployerEmail: d.payrollEmployerEmail ?? '',
+          accountantEmail: d.accountantEmail ?? '',
         });
       })
       .catch(() => setError('Şirket bilgileri yüklenemedi.'))
@@ -101,6 +104,11 @@ export default function SirketBilgileriPage() {
 
     if (form.payrollEmployerEnabled && !form.payrollEmployerName?.trim()) {
       next.payrollEmployerName = 'Bordro işvereni unvanı zorunludur.';
+    }
+
+    const accountantEmail = form.accountantEmail?.trim() ?? '';
+    if (accountantEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountantEmail)) {
+      next.accountantEmail = 'Geçerli bir e-posta adresi girin.';
     }
 
     setFieldErrors(next);
@@ -311,6 +319,30 @@ export default function SirketBilgileriPage() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 mt-6">
+        <h2 className="text-sm font-semibold text-slate-900">Mali Müşavir</h2>
+        <p className="text-xs text-slate-500">
+          Puantaj gönderiminde varsayılan alıcı e-posta adresi olarak kullanılır.
+        </p>
+        <div className="max-w-md">
+          <label className={labelCls}>Mali Müşavir E-posta</label>
+          <input
+            className={`${inputCls}${fieldErrors.accountantEmail ? ' border-red-300 focus:ring-red-400' : ''}`}
+            type="email"
+            value={form.accountantEmail ?? ''}
+            onChange={(e) => { setForm({ ...form, accountantEmail: e.target.value }); clearFieldError('accountantEmail'); }}
+            onBlur={() => {
+              const value = form.accountantEmail?.trim() ?? '';
+              if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                setFieldErrors((prev) => ({ ...prev, accountantEmail: 'Geçerli bir e-posta adresi girin.' }));
+              }
+            }}
+            placeholder="muhasebe@ornek.com"
+          />
+          {fieldErrors.accountantEmail && <p className="mt-1 text-xs text-red-600">{fieldErrors.accountantEmail}</p>}
+        </div>
       </section>
 
       <div className="mt-6 flex justify-end">

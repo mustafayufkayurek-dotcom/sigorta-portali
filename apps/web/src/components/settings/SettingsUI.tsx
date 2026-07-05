@@ -154,6 +154,37 @@ export function SettingsTableTh({
   );
 }
 
+/** Tablo satır sırası (1..n); sayfalı listelerde pageOffset kullanın. */
+export function settingsRowIndexValue(index: number, pageOffset = 0): number {
+  return pageOffset + index + 1;
+}
+
+export function SettingsRowIndexTh({ className = '' }: { className?: string }) {
+  return (
+    <SettingsTableTh className={`w-16 text-center ${className}`.trim()}>
+      Sıra
+    </SettingsTableTh>
+  );
+}
+
+export function SettingsRowIndexTd({
+  index,
+  pageOffset = 0,
+  className = '',
+}: {
+  index: number;
+  pageOffset?: number;
+  className?: string;
+}) {
+  return (
+    <SettingsTableTd
+      className={`text-center text-slate-500 tabular-nums text-sm ${className}`.trim()}
+    >
+      {settingsRowIndexValue(index, pageOffset)}
+    </SettingsTableTd>
+  );
+}
+
 export function SettingsTableBody({ children }: { children: React.ReactNode }) {
   return <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">{children}</tbody>;
 }

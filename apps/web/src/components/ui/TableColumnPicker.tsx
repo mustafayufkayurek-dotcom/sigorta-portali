@@ -168,10 +168,10 @@ export function ResizableTh({
 
   return (
     <th
-      style={{ width, minWidth: width, maxWidth: width }}
-      className={`group relative select-none ${className}`}
+      style={{ width, minWidth: width }}
+      className={`group relative box-border select-none overflow-hidden ${className}`}
     >
-      <span className="block truncate pr-3">{children}</span>
+      <span className="block min-w-0 truncate pr-3">{children}</span>
       {resizable && (
         <span
           role="separator"
@@ -264,7 +264,7 @@ export function TableColumnPicker({
 }
 
 export function tableCellStyle(width: number) {
-  return { width, minWidth: width, maxWidth: width };
+  return { width, minWidth: width };
 }
 
 // ── Panel tablo context (sütun göster/gizle + genişlik) ─────────────────────
@@ -364,12 +364,39 @@ export function PanelTableTd({ colId, className = '', children, title }: PanelTa
   const width = ctx?.widths.getWidth(colId);
   return (
     <td
-      className={`${className.includes('table-td-center') ? '' : 'truncate'} ${className}`}
+      className={`max-w-0 overflow-hidden align-top ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >
-      {children}
+      <div className="min-w-0">{children}</div>
     </td>
+  );
+}
+
+interface PanelTableColGroupProps {
+  /** Checkbox vb. — soldaki sabit sütun genişlikleri (px) */
+  leadingWidths?: number[];
+  /** İşlemler vb. — sağdaki sabit sütun genişlikleri (px) */
+  trailingWidths?: number[];
+}
+
+/** thead/tbody hizası için sütun genişliklerini colgroup ile kilitle */
+export function PanelTableColGroup({ leadingWidths = [], trailingWidths = [] }: PanelTableColGroupProps) {
+  const ctx = useTableColumnsCtx();
+  if (!ctx) return null;
+  const visible = ctx.columns.filter((col) => ctx.prefs.isVisible(col.id));
+  return (
+    <colgroup>
+      {leadingWidths.map((width, index) => (
+        <col key={`leading-${index}`} style={{ width }} />
+      ))}
+      {visible.map((col) => (
+        <col key={col.id} style={{ width: ctx.widths.getWidth(col.id) }} />
+      ))}
+      {trailingWidths.map((width, index) => (
+        <col key={`trailing-${index}`} style={{ width }} />
+      ))}
+    </colgroup>
   );
 }
 
@@ -419,12 +446,18 @@ export function SortablePanelTableTh({
   );
 }
 
-export function panelTableLayoutStyle(tableColumns: PanelTableColumnsValue) {
-  const total = tableColumns.prefs.visibleIds.reduce(
-    (sum, id) => sum + tableColumns.widths.getWidth(id),
-    72,
-  );
-  return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${total}px` };
+export function panelTableLayoutStyle(
+  tableColumns: PanelTableColumnsValue,
+  options?: { leadingWidths?: number[]; trailingWidths?: number[] },
+) {
+  const leading = (options?.leadingWidths ?? []).reduce((sum, w) => sum + w, 0);
+  const trailing = (options?.trailingWidths ?? []).reduce((sum, w) => sum + w, 0);
+  const total =
+    tableColumns.prefs.visibleIds.reduce(
+      (sum, id) => sum + tableColumns.widths.getWidth(id),
+      0,
+    ) + leading + trailing;
+  return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${Math.max(total, 720)}px` };
 }
 
 interface PanelTableSummaryFootProps {
@@ -476,7 +509,7 @@ export function PanelTableSummaryFoot({
           return <td key={col.id} style={style} className="px-5 py-3" />;
         })}
         <td
-          style={{ width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth }}
+          style={{ width: actionColWidth, minWidth: actionColWidth }}
           className="px-5 py-3"
         />
       </tr>

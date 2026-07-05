@@ -14,6 +14,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -22,6 +24,7 @@ import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definit
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 
 
 const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
@@ -74,7 +77,7 @@ type WorkGroup = {
   _count?: { workSubGroups: number };
 };
 
-const emptyGroupForm = { code: '', name: '', description: '', sortOrder: 0 };
+const emptyGroupForm = { code: '', name: '', description: '' };
 
 function makeEmptySubForm(unitOpts: string[]) {
   return {
@@ -83,7 +86,6 @@ function makeEmptySubForm(unitOpts: string[]) {
     description: '',
     unitType: unitOpts[0] ?? 'm²',
     unitPrice: '',
-    sortOrder: 0,
     workGroupId: '',
   };
 }
@@ -193,7 +195,6 @@ export default function IsGruplariPage() {
       code: g.code,
       name: g.name,
       description: g.description ?? '',
-      sortOrder: g.sortOrder,
     });
     setGroupError('');
     setGroupModal(true);
@@ -219,19 +220,20 @@ export default function IsGruplariPage() {
     setGroupSaving(true);
     setGroupError('');
     const code = editGroup ? groupForm.code : (groupForm.code.trim() || suggestAutoCode('WG', name));
+    const sortOrder = computeAlphabeticSortOrder(name, groups, editGroup?.id);
     try {
       if (editGroup) {
         await axios.put(`${API}/work-groups/${editGroup.id}`, {
           name,
           description: description || undefined,
-          sortOrder: groupForm.sortOrder,
+          sortOrder,
         }, { headers: authHeader() });
       } else {
         await axios.post(`${API}/work-groups`, {
           code,
           name,
           description: description || undefined,
-          sortOrder: groupForm.sortOrder,
+          sortOrder,
         }, { headers: authHeader() });
       }
       setGroupModal(false);
@@ -289,7 +291,6 @@ export default function IsGruplariPage() {
       description: sub.description ?? '',
       unitType: sub.unitType,
       unitPrice: sub.unitPrice != null ? String(sub.unitPrice) : '',
-      sortOrder: sub.sortOrder,
       workGroupId: sub.workGroupId,
     });
     setSubError('');
@@ -319,13 +320,14 @@ export default function IsGruplariPage() {
     }
     setSubSaving(true);
     setSubError('');
+    const sortOrder = computeAlphabeticSortOrder(name, siblings, editSub?.id);
     const payload = {
       code: subForm.code.trim() || suggestAutoCode(parent?.code ?? 'WSG', name),
       name,
       description: description || undefined,
       unitType: subForm.unitType,
       unitPrice: subForm.unitPrice ? parseFloat(subForm.unitPrice) : undefined,
-      sortOrder: subForm.sortOrder,
+      sortOrder,
       workGroupId: subForm.workGroupId,
     };
     try {
@@ -510,16 +512,17 @@ export default function IsGruplariPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
+                          <SettingsRowIndexTh />
                           <SettingsTableTh>Alt Grup</SettingsTableTh>
                           <SettingsTableTh>Birim</SettingsTableTh>
                           <SettingsTableTh>Birim Fiyat</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
                           <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
-                          {subs.map((sub) => (
+                          {subs.map((sub, subIndex) => (
                             <SettingsTableRow key={sub.id}>
+                              <SettingsRowIndexTd index={subIndex} />
                               <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
@@ -537,7 +540,6 @@ export default function IsGruplariPage() {
                               <SettingsTableTd>
                                 <span className="text-sm font-semibold text-slate-900">{fmt(sub.unitPrice)}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
                               <SettingsTableTd>
                                 <button type="button" onClick={() => toggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />
@@ -597,16 +599,6 @@ export default function IsGruplariPage() {
               if (v !== e.target.value.trim()) setGroupForm((f) => ({ ...f, description: v }));
             }}
             placeholder={buildPlaceholder(groupFieldConfig, 'description')}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>{buildLabel(groupFieldConfig, 'Sıra No', 'sortOrder')}</label>
-          <input
-            type="number"
-            min={0}
-            className={inputCls}
-            value={groupForm.sortOrder}
-            onChange={(e) => setGroupForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
           />
         </div>
       </SettingsModal>
@@ -714,16 +706,6 @@ export default function IsGruplariPage() {
               placeholder={buildPlaceholder(subFieldConfig, 'unitPrice')}
             />
           </div>
-        </div>
-        <div>
-          <label className={labelCls}>{buildLabel(subFieldConfig, 'Sıra No', 'sortOrder')}</label>
-          <input
-            type="number"
-            min={0}
-            className={inputCls}
-            value={subForm.sortOrder}
-            onChange={(e) => setSubForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))}
-          />
         </div>
       </SettingsModal>
 

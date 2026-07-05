@@ -26,6 +26,7 @@ import {
 } from '@/utils/service-area-helpers';
 import {
   PanelTableColumnPicker,
+  PanelTableColGroup,
   PanelTableTd,
   PanelTableTh,
   TableColumnsProvider,
@@ -514,10 +515,13 @@ function getCurrentUserId(): string | null {
   }
 }
 
+const TABLE_LEADING_COL_WIDTH = 52;
+const TABLE_ACTIONS_COL_WIDTH = 136;
+
 const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Ad Soyad', defaultWidth: 200, minWidth: 140 },
-  { id: 'email', label: 'E-posta', defaultWidth: 220, minWidth: 160 },
-  { id: 'role', label: 'Görev', defaultWidth: 220, minWidth: 160 },
+  { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
+  { id: 'email', label: 'E-posta', defaultWidth: 240, minWidth: 180 },
+  { id: 'role', label: 'Görev', defaultWidth: 240, minWidth: 180 },
   { id: 'status', label: 'Durum', defaultWidth: 110, minWidth: 88 },
   { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
 ];
@@ -1725,10 +1729,20 @@ export default function KullanicilarPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <table
+              className="w-full text-sm"
+              style={panelTableLayoutStyle(tableColumns, {
+                leadingWidths: [TABLE_LEADING_COL_WIDTH],
+                trailingWidths: [TABLE_ACTIONS_COL_WIDTH],
+              })}
+            >
+              <PanelTableColGroup
+                leadingWidths={[TABLE_LEADING_COL_WIDTH]}
+                trailingWidths={[TABLE_ACTIONS_COL_WIDTH]}
+              />
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-4 py-3 text-left">
+                  <th className="box-border px-4 py-3 text-left" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                     <button
                       type="button"
                       onClick={selectAll}
@@ -1759,7 +1773,10 @@ export default function KullanicilarPage() {
                   <PanelTableTh colId="lastLogin" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
                     Son Giriş
                   </PanelTableTh>
-                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500">
+                  <th
+                    className="box-border px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500"
+                    style={{ width: TABLE_ACTIONS_COL_WIDTH, minWidth: TABLE_ACTIONS_COL_WIDTH }}
+                  >
                     İşlemler
                   </th>
                 </tr>
@@ -1773,7 +1790,7 @@ export default function KullanicilarPage() {
                     className={`transition-colors hover:bg-slate-50 ${selected.has(u.id) ? 'bg-blue-50/50' : ''} ${rowStatus !== 'active' ? 'opacity-70' : ''}`}
                   >
                     {/* Checkbox */}
-                    <td className="px-4 py-3">
+                    <td className="box-border px-4 py-3" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                       {isProtectedSystemAdmin(u) || u.id === currentUserId ? (
                         <span
                           className="inline-flex h-4 w-4 rounded border border-slate-200 bg-slate-100"
@@ -1796,25 +1813,31 @@ export default function KullanicilarPage() {
                     </td>
 
                     {/* Ad Soyad */}
-                    <PanelTableTd colId="name" className="px-4 py-3">
-                      <div className="flex items-center gap-3">
+                    <PanelTableTd
+                      colId="name"
+                      className="px-4 py-3"
+                      title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(toInternationalFormat(u.phone))}` : ''}`}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
                           {u.firstName[0]}{u.lastName[0]}
                         </div>
-                        <div>
-                          <p className="font-medium text-slate-950">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-950">
                             {u.firstName} {u.lastName}
                           </p>
                           {u.phone && (
-                            <p className="text-xs text-slate-400">{formatPhoneDisplay(toInternationalFormat(u.phone))}</p>
+                            <p className="truncate text-xs text-slate-400">
+                              {formatPhoneDisplay(toInternationalFormat(u.phone))}
+                            </p>
                           )}
                         </div>
                       </div>
                     </PanelTableTd>
 
                     {/* E-posta */}
-                    <PanelTableTd colId="email" className="px-4 py-3 text-slate-600">
-                      <span className="break-all">{u.email}</span>
+                    <PanelTableTd colId="email" className="px-4 py-3 text-slate-600" title={u.email}>
+                      <span className="block truncate">{u.email}</span>
                     </PanelTableTd>
 
                     {/* Rol */}
@@ -1822,10 +1845,14 @@ export default function KullanicilarPage() {
                       {u.role ? (() => {
                         const roleLines = displayRoleWithOperation(u);
                         return (
-                          <div className="min-w-[10rem]">
-                            <p className="text-xs font-medium text-blue-800 leading-snug">{roleLines.primary}</p>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium leading-snug text-blue-800" title={roleLines.primary}>
+                              {roleLines.primary}
+                            </p>
                             {roleLines.secondary && (
-                              <p className="mt-0.5 text-[11px] text-slate-500 leading-snug">{roleLines.secondary}</p>
+                              <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500" title={roleLines.secondary}>
+                                {roleLines.secondary}
+                              </p>
                             )}
                           </div>
                         );
@@ -1850,8 +1877,11 @@ export default function KullanicilarPage() {
                     <PanelTableTd colId="lastLogin" className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</PanelTableTd>
 
                     {/* İşlemler */}
-                    <td className="px-4 py-3 align-middle">
-                      <div className="flex items-center justify-end gap-0.5 min-w-[9rem]">
+                    <td
+                      className="box-border px-4 py-3 align-middle"
+                      style={{ width: TABLE_ACTIONS_COL_WIDTH, minWidth: TABLE_ACTIONS_COL_WIDTH }}
+                    >
+                      <div className="flex items-center justify-end gap-0.5">
                         <RowIconButton
                           title={isProtectedSystemAdmin(u) ? 'Sistem yöneticisi düzenlenemez' : 'Düzenle'}
                           disabled={isProtectedSystemAdmin(u)}

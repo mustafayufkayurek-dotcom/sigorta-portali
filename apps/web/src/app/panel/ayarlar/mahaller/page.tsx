@@ -19,10 +19,13 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 
 
 type ClaimLocation = {
@@ -51,7 +54,7 @@ function buildPlaceholder(fields: FieldsConfig, key: string) {
   return isFieldRequired(fields, key) ? 'Zorunlu Alan' : 'Opsiyonel';
 }
 
-const emptyForm = { code: '', name: '', description: '', sortOrder: 0 };
+const emptyForm = { code: '', name: '', description: '' };
 type LocationFormData = typeof emptyForm;
 
 function LocationFormFields({
@@ -102,17 +105,6 @@ function LocationFormFields({
             if (v !== e.target.value.trim()) setF((prev) => ({ ...prev, description: v }));
           }}
           placeholder={buildPlaceholder(fc, 'description')}
-        />
-      </div>
-      <div>
-        <label className={labelCls}>{buildLabel(fc, 'Sıra', 'sortOrder')}</label>
-        <input
-          type="number"
-          min={0}
-          className={inputCls}
-          value={f.sortOrder}
-          onChange={(e) => setF((prev) => ({ ...prev, sortOrder: parseInt(e.target.value, 10) || 0 }))}
-          placeholder={buildPlaceholder(fc, 'sortOrder')}
         />
       </div>
     </>
@@ -218,7 +210,7 @@ export default function MahallerPage() {
 
   const openEdit = (loc: ClaimLocation) => {
     setEditing(loc);
-    setForm({ code: loc.code, name: loc.name, description: loc.description ?? '', sortOrder: loc.sortOrder });
+    setForm({ code: loc.code, name: loc.name, description: loc.description ?? '' });
     setError('');
     setShowModal(true);
   };
@@ -245,17 +237,18 @@ export default function MahallerPage() {
     }
     setSaving(true);
     setError('');
+    const sortOrder = computeAlphabeticSortOrder(name, locations, editing?.id);
     try {
       if (editing) {
         await axios.put(
           `${API}/claim-locations/${editing.id}`,
-          { name, description: description || undefined, sortOrder: form.sortOrder },
+          { name, description: description || undefined, sortOrder },
           { headers: authHeader() },
         );
       } else {
         await axios.post(
           `${API}/claim-locations`,
-          { code, name, description: description || undefined, sortOrder: form.sortOrder },
+          { code, name, description: description || undefined, sortOrder },
           { headers: authHeader() },
         );
       }
@@ -311,7 +304,6 @@ export default function MahallerPage() {
       code: sub.code,
       name: sub.name,
       description: sub.description ?? '',
-      sortOrder: sub.sortOrder,
       parentId: sub.parentId ?? '',
     });
     setSubError('');
@@ -335,17 +327,19 @@ export default function MahallerPage() {
     const code = editingSub ? subForm.code : subForm.code.trim() || suggestAutoCode('BOLGE', name);
     setSubSaving(true);
     setSubError('');
+    const siblings = subLocations[subForm.parentId] ?? [];
+    const sortOrder = computeAlphabeticSortOrder(name, siblings, editingSub?.id);
     try {
       if (editingSub) {
         await axios.put(
           `${API}/claim-locations/${editingSub.id}`,
-          { name, description: description || undefined, sortOrder: subForm.sortOrder },
+          { name, description: description || undefined, sortOrder },
           { headers: authHeader() },
         );
       } else {
         await axios.post(
           `${API}/claim-locations/${subForm.parentId}/sub-locations`,
-          { code, name, description: description || undefined, sortOrder: subForm.sortOrder },
+          { code, name, description: description || undefined, sortOrder },
           { headers: authHeader() },
         );
       }
@@ -526,15 +520,16 @@ export default function MahallerPage() {
                     ) : (
                       <SettingsTable>
                         <SettingsTableHead>
+                          <SettingsRowIndexTh />
                           <SettingsTableTh>Alt Bölge</SettingsTableTh>
                           <SettingsTableTh>Açıklama</SettingsTableTh>
-                          <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
                           <SettingsTableTh>Durum</SettingsTableTh>
                           <SettingsTableTh>İşlemler</SettingsTableTh>
                         </SettingsTableHead>
                         <SettingsTableBody>
-                          {visibleSubs.map((sub) => (
+                          {visibleSubs.map((sub, subIndex) => (
                             <SettingsTableRow key={sub.id}>
+                              <SettingsRowIndexTd index={subIndex} />
                               <SettingsTableTd>
                                 <div>
                                   <span className="text-sm font-medium text-slate-900">{sub.name}</span>
@@ -544,7 +539,6 @@ export default function MahallerPage() {
                               <SettingsTableTd>
                                 <span className="text-sm text-slate-500">{sub.description || '—'}</span>
                               </SettingsTableTd>
-                              <SettingsTableTd className="text-center text-sm text-slate-600">{sub.sortOrder}</SettingsTableTd>
                               <SettingsTableTd>
                                 <button type="button" onClick={() => handleToggleSubStatus(sub)}>
                                   <StatusBadge active={sub.status === 'active'} />

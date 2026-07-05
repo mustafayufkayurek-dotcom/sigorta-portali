@@ -12,6 +12,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableTh,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -19,7 +21,7 @@ import { DeleteConfirmDialog, SettingsModal } from '@/components/settings/Settin
 import { ApiError, apiClient } from '@/lib/api-client';
 import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
-import { persistAlphabeticSortOrders, sortByNameTR } from '@/utils/definition-sort-order';
+import { persistAlphabeticSortOrders, sortByNameTR, computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 
 
@@ -63,26 +65,25 @@ function normalizeClaimStatus(item: Record<string, unknown>): ClaimStatus {
     id: String(item.id ?? ''),
     name: String(item.name ?? item.ad ?? ''),
     code: String(item.code ?? item.kod ?? ''),
-    sortOrder: Number(item.sortOrder ?? item.order ?? item.siraNo ?? 0),
+    sortOrder: Number(item.sortOrder ?? item.sequenceNo ?? item.order ?? item.siraNo ?? 0),
     color: String(item.color ?? item.renk ?? '#2563EB'),
-    isClosed: Boolean(item.isClosed ?? item.closed ?? item.kapaliDurumu ?? false),
-    isWaiting: Boolean(item.isWaiting ?? item.waiting ?? item.beklemeDurumu ?? false),
+    isClosed: Boolean(item.isClosed ?? item.isClosedState ?? item.closed ?? item.kapaliDurumu ?? false),
+    isWaiting: Boolean(item.isWaiting ?? item.isWaitingState ?? item.waiting ?? item.beklemeDurumu ?? false),
     slaWarningPercent: Number(item.slaWarningPercent ?? item.slaWarningPercentage ?? item.slaUyariYuzdesi ?? 0),
     slaEnabled: Boolean(item.slaEnabled ?? item.slaAktif ?? true),
     sendNotification: Boolean(item.sendNotification ?? item.bildirimGonder ?? false),
   };
 }
 
-function toPayload(form: ClaimStatusForm) {
+function toPayload(form: ClaimStatusForm, sequenceNo?: number) {
   return {
     name: normalizeFormFreeText(form.name),
     code: form.code.trim().toUpperCase(),
     color: form.color,
-    isClosed: form.isClosed,
-    isWaiting: form.isWaiting,
+    isClosedState: form.isClosed,
+    isWaitingState: form.isWaiting,
     slaWarningPercent: Number(form.slaWarningPercent),
-    slaEnabled: form.slaEnabled,
-    sendNotification: form.sendNotification,
+    ...(sequenceNo !== undefined ? { sequenceNo } : {}),
   };
 }
 
@@ -102,25 +103,35 @@ export default function DurumlarPage() {
 
   const syncStatusSortOrders = useCallback(async (list: ClaimStatus[]) => {
     await persistAlphabeticSortOrders(list, (id, sortOrder) =>
-      apiClient.patch(`/claim-status/${id}`, { sortOrder }),
+      apiClient.put(`/claim-status/${id}`, { sequenceNo: sortOrder }),
     );
   }, []);
 
   const fetchStatuses = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await apiClient.get<unknown[]>('/claim-status');
       const normalized = Array.isArray(data) ? data.map((item) => normalizeClaimStatus(item as Record<string, unknown>)) : [];
-      await syncStatusSortOrders(normalized);
-      const refreshed = await apiClient.get<unknown[]>('/claim-status');
-      setStatuses(Array.isArray(refreshed) ? refreshed.map((item) => normalizeClaimStatus(item as Record<string, unknown>)) : normalized);
+      try {
+        await syncStatusSortOrders(normalized);
+        const refreshed = await apiClient.get<unknown[]>('/claim-status');
+        setStatuses(
+          Array.isArray(refreshed)
+            ? refreshed.map((item) => normalizeClaimStatus(item as Record<string, unknown>))
+            : normalized,
+        );
+      } catch (syncError) {
+        console.warn('Durum sıra senkronizasyonu atlandı:', syncError);
+        setStatuses(normalized);
+      }
     } catch (requestError) {
       console.error(requestError);
       setError('Durum listesi alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [syncStatusSortOrders]);
 
   useEffect(() => {
     fetchStatuses();
@@ -174,9 +185,14 @@ export default function DurumlarPage() {
     setError('');
 
     try {
-      const payload = toPayload({ ...form, code });
+      const payload = toPayload(
+        { ...form, code },
+        editing
+          ? undefined
+          : computeAlphabeticSortOrder(normalizeFormFreeText(form.name), statuses),
+      );
       if (editing) {
-        await apiClient.put?.<ClaimStatus>(`/claim-status/${editing.id}`, payload);
+        await apiClient.put<ClaimStatus>(`/claim-status/${editing.id}`, payload);
       } else {
         await apiClient.post<ClaimStatus>('/claim-status', payload);
       }
@@ -236,7 +252,7 @@ export default function DurumlarPage() {
 
       <SettingsTable loading={loading} empty={sortedStatuses.length === 0} emptyText="Henüz durum tanımlanmamış.">
         <SettingsTableHead>
-          <SettingsTableTh className="w-20">Sıra No</SettingsTableTh>
+          <SettingsRowIndexTh className="w-20" />
           <SettingsTableTh>Ad</SettingsTableTh>
           <SettingsTableTh className="w-24">Renk</SettingsTableTh>
           <SettingsTableTh className="w-32">Kapalı Durumu</SettingsTableTh>
@@ -247,7 +263,7 @@ export default function DurumlarPage() {
         <SettingsTableBody>
           {sortedStatuses.map((status, index) => (
             <SettingsTableRow key={status.id}>
-              <SettingsTableTd className="text-center font-mono text-xs text-slate-500 tabular-nums">{index + 1}</SettingsTableTd>
+              <SettingsRowIndexTd index={index} className="font-mono text-xs" />
               <SettingsTableTd>
                 <div className="space-y-1">
                   <p className="font-medium text-slate-800">{status.name}</p>

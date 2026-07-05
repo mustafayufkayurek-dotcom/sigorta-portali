@@ -232,6 +232,8 @@ export interface CompanyInfo {
   payrollEmployerTradeRegistryNo?: string;
   payrollEmployerPhone?: string;
   payrollEmployerEmail?: string;
+  /** Puantaj mali müşavir gönderiminde varsayılan alıcı */
+  accountantEmail?: string;
 }
 
 export interface SmsConfig {
@@ -286,6 +288,7 @@ const DEFAULT_COMPANY_INFO: CompanyInfo = {
   payrollEmployerTradeRegistryNo: '',
   payrollEmployerPhone: '',
   payrollEmployerEmail: '',
+  accountantEmail: '',
 };
 
 export interface SystemConfig {
@@ -383,6 +386,17 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
       targetRoles: ['Finans', 'Sistem Yöneticisi'],
       channels: { inApp: true, telegram: false, email: false },
       repeatPolicy: 'Günlük özet ve finans ekranı üzerinde',
+      active: true,
+    },
+    {
+      key: 'hr_attendance_month_close',
+      name: 'Puantaj ay kapanış hatırlatması',
+      area: 'operasyon',
+      level: 'uyari',
+      trigger: 'Ayın son 6 günü ve takip eden ayın ilk 5 günü',
+      targetRoles: ['İK', 'Finans Süreç Sorumlusu', 'Sistem Yöneticisi'],
+      channels: { inApp: true, telegram: false, email: true },
+      repeatPolicy: 'Günde bir kez; eksik onay/kilit varsa tekrarlar',
       active: true,
     },
     {

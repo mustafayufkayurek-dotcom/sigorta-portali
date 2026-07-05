@@ -41,6 +41,12 @@ export class DepartmentsController {
     return { data, message: 'Seed tamamlandı' };
   }
 
+  @Post('departments/ensure-konu-tabs')
+  async ensureKonuTabs() {
+    const data = await this.service.ensureKonuTabDepartments();
+    return { data, message: 'Konu sekmesi departmanları hazır' };
+  }
+
   @Get('departments/:id')
   async findOne(@Param('id') id: string) {
     const data = await this.service.findOne(id);

@@ -15,6 +15,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -167,6 +169,7 @@ export default function SozlesmelerPage() {
 
       <SettingsTable loading={loading} empty={agreements.length === 0} emptyText="Henüz sözleşme eklenmemiş.">
         <SettingsTableHead>
+          <SettingsRowIndexTh />
           <SettingsTableTh>Başlık</SettingsTableTh>
           <SettingsTableTh>Tür</SettingsTableTh>
           <SettingsTableTh>Versiyon</SettingsTableTh>
@@ -175,8 +178,9 @@ export default function SozlesmelerPage() {
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {agreements.map((a) => (
+          {agreements.map((a, index) => (
             <SettingsTableRow key={a.id}>
+              <SettingsRowIndexTd index={index} />
               <SettingsTableTd><p className="text-sm font-medium text-slate-900">{a.title}</p></SettingsTableTd>
               <SettingsTableTd>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">

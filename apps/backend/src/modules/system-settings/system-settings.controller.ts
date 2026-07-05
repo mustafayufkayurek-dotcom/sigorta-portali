@@ -57,8 +57,14 @@ export class SystemSettingsController {
     return {
       success: true,
       data: {
-        ...data,
-        password: data.password ? '***' : '',
+        host: data.host ?? '',
+        port: data.port ?? 587,
+        username: data.username ?? '',
+        security: data.security ?? 'TLS',
+        fromName: data.fromName ?? '',
+        fromEmail: data.fromEmail ?? '',
+        password: '',
+        passwordConfigured: Boolean(data.password),
       },
     };
   }
@@ -66,17 +72,26 @@ export class SystemSettingsController {
   @Put('mail-config')
   @RequirePermissions('settings.manage')
   @ApiOperation({ summary: 'Mail yapılandırmasını güncelle' })
-  async setMailConfig(@Body() body: MailConfig) {
+  async setMailConfig(@Body() body: MailConfig & { passwordConfigured?: boolean }) {
     const existing = await this.service.getMailConfig();
+    const incomingPassword = typeof body.password === 'string' ? body.password.trim() : '';
+    const keepExistingPassword =
+      !incomingPassword || incomingPassword === '***' || incomingPassword === '••••••••';
     const data = await this.service.setMailConfig({
       ...body,
-      password: body.password === '***' ? (existing?.password ?? '') : (body.password ?? ''),
+      password: keepExistingPassword ? (existing?.password ?? '') : incomingPassword,
     });
     return {
       success: true,
       data: {
-        ...data,
-        password: data.password ? '***' : '',
+        host: data.host ?? '',
+        port: data.port ?? 587,
+        username: data.username ?? '',
+        security: data.security ?? 'TLS',
+        fromName: data.fromName ?? '',
+        fromEmail: data.fromEmail ?? '',
+        password: '',
+        passwordConfigured: Boolean(data.password),
       },
     };
   }

@@ -16,6 +16,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -182,6 +184,7 @@ export default function EmailBildirimleriPage() {
 
       <SettingsTable loading={loading} empty={templates.length === 0} emptyText="Henüz e-posta şablonu eklenmemiş.">
         <SettingsTableHead>
+          <SettingsRowIndexTh />
           <SettingsTableTh>Şablon Adı</SettingsTableTh>
           <SettingsTableTh>Tetikleyici Olay</SettingsTableTh>
           <SettingsTableTh>Konu</SettingsTableTh>
@@ -189,8 +192,9 @@ export default function EmailBildirimleriPage() {
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {templates.map((t) => (
+          {templates.map((t, index) => (
             <SettingsTableRow key={t.id}>
+              <SettingsRowIndexTd index={index} />
               <SettingsTableTd>
                 <p className="font-medium text-slate-800">{t.name}</p>
               </SettingsTableTd>

@@ -17,6 +17,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -357,7 +359,7 @@ export default function TedarikciHizmetKollariPage() {
           {activeTab === 'hasar' ? (
             <SettingsTable loading={loading} empty={filteredHasar.length === 0} emptyText="Henüz hasar hizmet kolu yok">
               <SettingsTableHead>
-                <SettingsTableTh className="w-16 text-center">Sıra</SettingsTableTh>
+                <SettingsRowIndexTh className="w-16" />
                 <SettingsTableTh>Tedarikçi Hasar Hizmet Kolu</SettingsTableTh>
                 <SettingsTableTh className="text-center">Durum</SettingsTableTh>
                 <SettingsTableTh />
@@ -365,7 +367,7 @@ export default function TedarikciHizmetKollariPage() {
               <SettingsTableBody>
                 {filteredHasar.map((g, idx) => (
                     <SettingsTableRow key={g.id}>
-                      <SettingsTableTd className="text-center">{idx + 1}</SettingsTableTd>
+                      <SettingsRowIndexTd index={idx} />
                       <SettingsTableTd>
                         <span className={`font-medium ${g.status === 'active' ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                           {g.name}
@@ -387,7 +389,7 @@ export default function TedarikciHizmetKollariPage() {
           ) : (
             <SettingsTable loading={loading} empty={filteredAcil.length === 0} emptyText="Henüz tedarikçi acil hizmet kolu yok">
               <SettingsTableHead>
-                <SettingsTableTh className="w-16 text-center">Sıra</SettingsTableTh>
+                <SettingsRowIndexTh className="w-16" />
                 <SettingsTableTh>Tedarikçi Acil Hizmet Kolu</SettingsTableTh>
                 <SettingsTableTh className="text-center">Durum</SettingsTableTh>
                 <SettingsTableTh />
@@ -395,7 +397,7 @@ export default function TedarikciHizmetKollariPage() {
               <SettingsTableBody>
                 {filteredAcil.map((b, idx) => (
                     <SettingsTableRow key={b.id}>
-                      <SettingsTableTd className="text-center">{idx + 1}</SettingsTableTd>
+                      <SettingsRowIndexTd index={idx} />
                       <SettingsTableTd>
                         <span className={`font-medium ${b.isActive ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                           {b.name}

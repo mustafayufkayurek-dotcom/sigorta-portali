@@ -5,6 +5,7 @@ import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   EditButton,
@@ -17,6 +18,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -46,7 +49,7 @@ type Department = {
   _count?: { fileSubjects: number; claimFiles: number };
 };
 
-const emptyForm = { code: '', name: '', description: '', color: '#6366F1', reportFormat: 'repair', sortOrder: 0 };
+const emptyForm = { code: '', name: '', description: '', color: '#6366F1', reportFormat: 'repair' };
 
 export default function DepartmanlarPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -81,7 +84,7 @@ export default function DepartmanlarPage() {
 
   const openEdit = (d: Department) => {
     setEditing(d);
-    setForm({ code: d.code, name: d.name, description: d.description ?? '', color: d.color, reportFormat: d.reportFormat, sortOrder: d.sortOrder });
+    setForm({ code: d.code, name: d.name, description: d.description ?? '', color: d.color, reportFormat: d.reportFormat });
     setError('');
     setShowModal(true);
   };
@@ -105,6 +108,7 @@ export default function DepartmanlarPage() {
     }
     setSaving(true);
     setError('');
+    const sortOrder = computeAlphabeticSortOrder(name, departments, editing?.id);
     try {
       if (editing) {
         await axios.put(
@@ -114,7 +118,7 @@ export default function DepartmanlarPage() {
             description,
             color: form.color,
             reportFormat: form.reportFormat,
-            sortOrder: form.sortOrder,
+            sortOrder,
           },
           { headers: authHeader() },
         );
@@ -127,7 +131,7 @@ export default function DepartmanlarPage() {
             description,
             color: form.color,
             reportFormat: form.reportFormat,
-            sortOrder: form.sortOrder,
+            sortOrder,
           },
           { headers: authHeader() },
         );
@@ -186,6 +190,7 @@ export default function DepartmanlarPage() {
     >
       <SettingsTable loading={loading} empty={departments.length === 0} emptyText="Henüz departman tanımlanmamış.">
         <SettingsTableHead>
+          <SettingsRowIndexTh />
           <SettingsTableTh>Departman</SettingsTableTh>
           <SettingsTableTh>Rapor Formatı</SettingsTableTh>
           <SettingsTableTh>Dosya Konuları</SettingsTableTh>
@@ -193,8 +198,9 @@ export default function DepartmanlarPage() {
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {departments.map((d) => (
+          {departments.map((d, index) => (
             <SettingsTableRow key={d.id}>
+              <SettingsRowIndexTd index={index} />
               <SettingsTableTd>
                 <div className="flex items-center gap-3">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />

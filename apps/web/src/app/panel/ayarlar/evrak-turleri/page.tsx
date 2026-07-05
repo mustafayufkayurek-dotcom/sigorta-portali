@@ -19,6 +19,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -469,7 +471,7 @@ export default function EvrakTurleriPage() {
                 }
               >
                 <SettingsTableHead>
-                  <SettingsTableTh className="text-center">Sıra</SettingsTableTh>
+                  <SettingsRowIndexTh />
                   <SettingsTableTh>Ad</SettingsTableTh>
                   <SettingsTableTh>Kapsam</SettingsTableTh>
                   <SettingsTableTh>Açıklama</SettingsTableTh>
@@ -485,9 +487,7 @@ export default function EvrakTurleriPage() {
                     const badges = scopeBadges(dt, deptCodeById);
                     return (
                       <SettingsTableRow key={dt.id}>
-                        <SettingsTableTd className="text-center text-slate-500 tabular-nums">
-                          {index + 1}
-                        </SettingsTableTd>
+                        <SettingsRowIndexTd index={index} />
                         <SettingsTableTd>
                           <span className="font-medium text-slate-900">{dt.name}</span>
                           <p className="text-xs text-slate-400 mt-0.5 font-mono">{dt.code}</p>

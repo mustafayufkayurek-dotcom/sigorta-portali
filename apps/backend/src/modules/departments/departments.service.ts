@@ -282,4 +282,52 @@ export class DepartmentsService {
 
     return { hasarOnarim, acilYardim };
   }
+
+  /** Dosya Konuları sekmeleri için ek departman hatları */
+  async ensureKonuTabDepartments() {
+    const extras = [
+      {
+        code: 'ozel-musteri',
+        name: 'Özel Müşteri',
+        description: 'Özel müşteri dosya konuları',
+        color: '#10B981',
+        reportFormat: 'repair',
+        sortOrder: 4,
+      },
+      {
+        code: 'danismanlik',
+        name: 'Danışmanlık',
+        description: 'Danışmanlık hizmet dosya konuları',
+        color: '#8B5CF6',
+        reportFormat: 'repair',
+        sortOrder: 5,
+      },
+      {
+        code: 'staj',
+        name: 'Staj',
+        description: 'Staj programı dosya konuları',
+        color: '#F59E0B',
+        reportFormat: 'repair',
+        sortOrder: 6,
+      },
+    ];
+
+    const created = [];
+    for (const dept of extras) {
+      const byName = await this.prisma.department.findFirst({
+        where: { name: dept.name, status: 'active' },
+      });
+      if (byName && byName.code !== dept.code) {
+        created.push(byName);
+        continue;
+      }
+      const row = await this.prisma.department.upsert({
+        where: { code: dept.code },
+        create: { ...dept, isSystem: true, status: 'active' },
+        update: { name: dept.name, description: dept.description, color: dept.color, status: 'active' },
+      });
+      created.push(row);
+    }
+    return created;
+  }
 }

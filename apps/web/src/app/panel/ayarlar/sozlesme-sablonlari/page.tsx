@@ -16,6 +16,8 @@ import {
   SettingsTableRow,
   SettingsTableTd,
   SettingsTableActions,
+  SettingsRowIndexTh,
+  SettingsRowIndexTd,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -141,7 +143,8 @@ export default function SozlesmeSablonlariPage() {
         && (!editing || t.id !== editing.id)
     );
     if (dup) { setModalError('Bu ad ve türde bir şablon zaten mevcut.'); return; }
-    const payload = { ...form, name, description };
+    const sortOrder = editing ? editing.sortOrder : templates.length + 1;
+    const payload = { ...form, name, description, sortOrder };
     setSaving(true);
     setModalError('');
     try {
@@ -200,6 +203,7 @@ export default function SozlesmeSablonlariPage() {
         emptyText="Henüz sözleşme şablonu tanımlanmamış."
       >
         <SettingsTableHead>
+          <SettingsRowIndexTh />
           <SettingsTableTh>Şablon Adı</SettingsTableTh>
           <SettingsTableTh>Tür</SettingsTableTh>
           <SettingsTableTh>Açıklama</SettingsTableTh>
@@ -207,10 +211,11 @@ export default function SozlesmeSablonlariPage() {
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {templates.map((t) => {
+          {templates.map((t, index) => {
             const badge = typeBadge(t.type);
             return (
               <SettingsTableRow key={t.id}>
+                <SettingsRowIndexTd index={index} />
                 <SettingsTableTd>
                   <p className="font-medium text-slate-800">{t.name}</p>
                 </SettingsTableTd>
@@ -357,18 +362,7 @@ export default function SozlesmeSablonlariPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Sıra</label>
-                <input
-                  type="number"
-                  min={0}
-                  className={inputCls}
-                  value={form.sortOrder}
-                  onChange={(e) => setForm((f) => ({ ...f, sortOrder: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="flex items-end pb-1">
+            <div className="flex items-end pb-1">
                 <button
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
@@ -380,7 +374,6 @@ export default function SozlesmeSablonlariPage() {
                   <span className="text-sm text-slate-700">{form.isActive ? 'Aktif' : 'Pasif'}</span>
                 </button>
               </div>
-            </div>
           </>
         )}
       </SettingsModal>
