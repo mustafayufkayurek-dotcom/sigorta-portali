@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
-import { fmtDate, fmtDateTime } from '@/utils/date-helpers';
+import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
