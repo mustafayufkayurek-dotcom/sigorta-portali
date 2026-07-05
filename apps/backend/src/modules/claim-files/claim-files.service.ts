@@ -7,6 +7,7 @@ import { SmsService } from '@/modules/notifications/sms/sms.service';
 import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/sms/message-template.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { CacheService } from '@/cache/cache.service';
+import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
 
 const ACCESS_EXPIRY_HOURS = 48;
 
@@ -119,7 +120,69 @@ export class ClaimFilesService {
     @Optional() private readonly claimEventEmail?: ClaimEventEmailService,
     @Optional() private readonly smsService?: SmsService,
     @Optional() private readonly templateService?: MessageTemplateService,
+    @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
   ) {}
+
+  private async resolveHasarDepartmentId(): Promise<string | null> {
+    const dept = await this.prisma.department.findFirst({
+      where: { code: 'hasar-onarim', status: 'active' },
+      select: { id: true },
+    });
+    return dept?.id ?? null;
+  }
+
+  private async fallbackHasarOfficeUserId(): Promise<string | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: { equals: 'hasar@safranbh.com', mode: 'insensitive' },
+        status: 'active',
+      },
+      select: { id: true },
+    });
+    return user?.id ?? null;
+  }
+
+  private async userMatchesInsuranceScope(userId: string, insuranceCompanyId: string): Promise<boolean> {
+    const scopes = await this.getInsuranceScopes(userId);
+    if (scopes.length === 0) return true;
+    return scopes.includes(insuranceCompanyId);
+  }
+
+  /** Eksper portal ihbarında ofis sorumlusu: önce sorumluluk kuralı, yoksa hasar@ yedeği. */
+  private async resolveExpertPortalOfficeUserId(params: {
+    insuranceCompanyId: string;
+    city?: string;
+    district?: string;
+    departmentId?: string | null;
+    claimSubjectId?: string | null;
+  }): Promise<{ officeUserId: string | null; departmentId: string | null }> {
+    let departmentId = params.departmentId ?? null;
+    if (!departmentId) {
+      departmentId = await this.resolveHasarDepartmentId();
+    }
+
+    const city = params.city?.trim() || 'Belirtilmemiş';
+    const district = params.district?.trim() || undefined;
+
+    if (departmentId && this.claimResponsibilities) {
+      const responsible = await this.claimResponsibilities.findResponsibleUser({
+        departmentId,
+        city,
+        district,
+        claimSubjectId: params.claimSubjectId ?? undefined,
+      });
+      if (responsible?.id && await this.userMatchesInsuranceScope(responsible.id, params.insuranceCompanyId)) {
+        return { officeUserId: responsible.id, departmentId };
+      }
+    }
+
+    const fallbackId = await this.fallbackHasarOfficeUserId();
+    if (fallbackId && await this.userMatchesInsuranceScope(fallbackId, params.insuranceCompanyId)) {
+      return { officeUserId: fallbackId, departmentId };
+    }
+
+    return { officeUserId: null, departmentId };
+  }
 
   private async createInAppNotification(params: {
     userId: string;
@@ -423,10 +486,34 @@ export class ClaimFilesService {
           ? expertUserId
           : rest.assignedAdjusterId ?? null;
 
+      let assignedOfficeUserId = rest.assignedOfficeUserId ?? null;
+      let resolvedDepartmentId = departmentId ?? null;
+
+      if (
+        sourceChannel === 'expert_portal'
+        && !assignedOfficeUserId
+        && !rest.assignedFieldUserId
+      ) {
+        const city = typeof data.city === 'string' ? data.city.trim() : '';
+        const district = typeof data.district === 'string' ? data.district.trim() : undefined;
+        const resolved = await this.resolveExpertPortalOfficeUserId({
+          insuranceCompanyId,
+          city,
+          district,
+          departmentId: resolvedDepartmentId,
+          claimSubjectId,
+        });
+        assignedOfficeUserId = resolved.officeUserId;
+        if (!resolvedDepartmentId && resolved.departmentId) {
+          resolvedDepartmentId = resolved.departmentId;
+        }
+      }
+
       const created = await this.prisma.claimFile.create({
         data: {
           ...rest,
           assignedAdjusterId,
+          assignedOfficeUserId,
           insuranceCompanyId,
           policyNo,
           claimNo,
@@ -437,7 +524,7 @@ export class ClaimFilesService {
           currentStatusId,
           claimSubjectId,
           departmentFileSubjectId,
-          departmentId,
+          departmentId: resolvedDepartmentId,
         },
         include: {
           insuranceCompany: true,
@@ -455,7 +542,12 @@ export class ClaimFilesService {
         (created.customer as any)?.companyName ??
         'Bilinmiyor';
       const addressText = (created as any)?.propertyAddress?.addressLine ?? '';
-      const notifBody = `Yeni dosya atandı: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`;
+      const notifTitle =
+        sourceChannel === 'expert_portal' ? 'Eksper Portal İhbarı' : 'Yeni Dosya Atandı';
+      const notifBody =
+        sourceChannel === 'expert_portal'
+          ? `Eksper portalından yeni ihbar: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`
+          : `Yeni dosya atandı: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`;
 
       const notifTargets: Array<{ id: string }> = [];
       if (created.assignedFieldUserId) notifTargets.push({ id: created.assignedFieldUserId });
@@ -466,7 +558,7 @@ export class ClaimFilesService {
         void this.createInAppNotification({
           userId: t.id,
           type: 'file_assignment',
-          title: 'Yeni Dosya Atandı',
+          title: notifTitle,
           body: notifBody,
           relatedEntityId: created.id,
         });

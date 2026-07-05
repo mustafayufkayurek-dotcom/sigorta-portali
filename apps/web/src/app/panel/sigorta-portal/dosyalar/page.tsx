@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -18,6 +20,7 @@ const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
   { id: 'assignedUser', label: 'Atanan Personel', defaultWidth: 140, minWidth: 100 },
   { id: 'createdAt', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
+  { id: 'flow', label: 'Akış', defaultWidth: 72, minWidth: 64 },
 ];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
@@ -30,11 +33,16 @@ function getHeaders() {
 interface ClaimFile {
   id: string;
   fileNumber: string;
+  fileNo?: string;
   createdAt: string;
   subject?: string;
   currentStatus?: { name: string; colorCode?: string };
   insuranceCompany?: { name: string };
   assignedFieldUser?: { firstName: string; lastName: string };
+}
+
+function fileNoOf(f: ClaimFile) {
+  return f.fileNo ?? f.fileNumber ?? '—';
 }
 
 export default function SigortaDosyalarPage() {
@@ -50,7 +58,7 @@ export default function SigortaDosyalarPage() {
     const u = JSON.parse(raw);
     if (u?.role?.code !== 'insurance_company_user') { router.push('/panel'); return; }
 
-    const scopes: any[] = u.insuranceCompanyScopes ?? [];
+    const scopes: { id: string }[] = u.insuranceCompanyScopes ?? [];
     if (scopes.length === 0) { setLoading(false); return; }
 
     const companyQuery = scopes.map((s) => `insuranceCompanyIds[]=${s.id}`).join('&');
@@ -67,18 +75,23 @@ export default function SigortaDosyalarPage() {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <a href="/panel/sigorta-portal" className="hover:text-blue-600 transition-colors">Sigorta Portal</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Dosyalar</span>
-      </nav>
+      <PortalBreadcrumb
+        portalHomeHref="/panel/sigorta-portal"
+        portalHomeLabel="Sigorta Portal"
+        currentLabel="Dosyalar"
+      />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-2xl font-bold text-slate-900">Dosyalar</h2>
-        <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{total} dosya</span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/panel/sigorta-portal/dosya-akisi"
+            className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Dosya Akışı
+          </Link>
+          <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{total} dosya</span>
+        </div>
       </div>
 
       {files.length === 0 ? (
@@ -99,12 +112,17 @@ export default function SigortaDosyalarPage() {
                 <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Durum</PanelTableTh>
                 <PanelTableTh colId="assignedUser" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Atanan Personel</PanelTableTh>
                 <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tarih</PanelTableTh>
+                <PanelTableTh colId="flow" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Akış</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {files.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50 transition-colors">
-                  <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{f.fileNumber}</PanelTableTd>
+                <tr
+                  key={f.id}
+                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`)}
+                >
+                  <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
                   <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{f.subject ?? '—'}</PanelTableTd>
                   <PanelTableTd colId="status" className="px-4 py-3">
                     <span
@@ -118,6 +136,15 @@ export default function SigortaDosyalarPage() {
                     {f.assignedFieldUser ? `${f.assignedFieldUser.firstName} ${f.assignedFieldUser.lastName}` : '—'}
                   </PanelTableTd>
                   <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmt(f.createdAt)}</PanelTableTd>
+                  <PanelTableTd colId="flow" className="px-4 py-3">
+                    <Link
+                      href={`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      Akış
+                    </Link>
+                  </PanelTableTd>
                 </tr>
               ))}
             </tbody>

@@ -266,6 +266,7 @@ function getPanelMainLinks({
           { title: 'Sigorta Paneli', href: '/panel/sigorta-portal', icon: Building2 },
           { title: 'Bekleyen Onaylar', href: '/panel/sigorta-portal/onaylar', icon: ShieldCheck },
           { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
+          { title: 'Dosya Akışı', href: '/panel/sigorta-portal/dosya-akisi', icon: GitBranch },
         ]
       : isOfficeStaff
         ? [
