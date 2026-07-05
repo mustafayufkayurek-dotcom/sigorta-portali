@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { useToast } from '@/contexts/ToastContext';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
@@ -276,7 +277,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
               { label: 'Toplam Dosya', value: customer._count?.claimFiles ?? 0, color: 'text-emerald-600' },
               { label: 'Durum', value: (
                 <Badge variant={customer.status === 'active' ? 'green' : customer.status === 'blacklisted' ? 'red' : 'gray'}>
-                  {customer.status === 'active' ? '● Aktif' : customer.status === 'blacklisted' ? '⛔ Kara Liste' : '● Pasif'}
+                  {customer.status === 'active' ? '● Aktif' : customer.status === 'blacklisted' ? '⛔ Kara Liste' : '● Arşiv'}
                 </Badge>
               ), color: '' },
             ].map((stat, i) => (
@@ -1041,11 +1042,15 @@ function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onCl
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { showToast } = useToast();
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<CustomerTab>('profil');
   const [showEditModal, setShowEditModal] = useState(false);
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
+  const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [reactivateLoading, setReactivateLoading] = useState(false);
 
   useEffect(() => {
     setUserRoleCode(getCurrentUserRole());
@@ -1062,6 +1067,33 @@ export default function CustomerDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleArchive = async () => {
+    setArchiveLoading(true);
+    try {
+      await axios.post(`${API}/customers/${id}/archive`, {}, { headers: authHeader() });
+      setArchiveConfirm(false);
+      showToast('success', 'Müşteri Arşivlendi');
+      await load();
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Arşivleme başarısız');
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setReactivateLoading(true);
+    try {
+      await axios.post(`${API}/customers/${id}/reactivate`, {}, { headers: authHeader() });
+      showToast('success', 'Müşteri Yeniden Aktifleştirildi');
+      await load();
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Aktifleştirme başarısız');
+    } finally {
+      setReactivateLoading(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-64">
@@ -1124,6 +1156,28 @@ export default function CustomerDetailPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {!isFieldStaff && customer.status !== 'passive' && (
+                  <button
+                    type="button"
+                    onClick={() => setArchiveConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Arşivle
+                  </button>
+                )}
+                {!isFieldStaff && customer.status === 'passive' && (
+                  <button
+                    type="button"
+                    onClick={handleReactivate}
+                    disabled={reactivateLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-emerald-200 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                  >
+                    {reactivateLoading ? 'Aktifleştiriliyor...' : 'Yeniden Aktifleştir'}
+                  </button>
+                )}
                 {/* Fix #6: Düzenle butonu */}
                 {!isFieldStaff && (
                   <button
@@ -1143,9 +1197,9 @@ export default function CustomerDetailPage() {
                 {customer.status === 'blacklisted' && (
                   <Badge variant="red">⛔ Kara Liste</Badge>
                 )}
-                <Badge variant={customer.status === 'active' ? 'green' : 'gray'}>
-                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${customer.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
-                  {customer.status === 'active' ? 'Aktif' : 'Pasif'}
+                <Badge variant={customer.status === 'active' ? 'green' : customer.status === 'blacklisted' ? 'red' : 'gray'}>
+                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${customer.status === 'active' ? 'bg-green-500' : customer.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
+                  {customer.status === 'active' ? 'Aktif' : customer.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
                 </Badge>
               </div>
             </div>
@@ -1230,6 +1284,26 @@ export default function CustomerDetailPage() {
       {/* Edit Modal */}
       {showEditModal && (
         <EditCustomerModal customer={customer} onClose={() => setShowEditModal(false)} onSaved={load} />
+      )}
+
+      {/* Arşivle Onay Modalı */}
+      {archiveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">Müşteriyi Arşivle</h3>
+            <p className="text-xs text-slate-500 mb-5">
+              <span className="font-medium text-slate-700">{displayName}</span> arşive alınacak. Açık dosya veya aktif portal bağlantısı varsa işlem reddedilir. Emin misiniz?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setArchiveConfirm(false)} disabled={archiveLoading}
+                className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">İptal</button>
+              <button type="button" onClick={handleArchive} disabled={archiveLoading}
+                className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                {archiveLoading ? 'Arşivleniyor...' : 'Arşivle'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

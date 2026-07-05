@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v196-welcome-docs",
-  "description": "Rol bazlı hoş geldin maili, kullanım kılavuzları v2.1 PDF; rollback: v195-f5b-puantaj",
+  "label": "v197-portal-invite-org",
+  "description": "Portal davet org adı, hoş geldin mail logo HTTPS, e-posta İ normalize; commit bf97827; rollback: v196-welcome-docs",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v196-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v196-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v197-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v197-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v195-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v195-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v196-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v196-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -31,6 +31,7 @@
     "/docs/02-sigorta-portal-kilavuzu.pdf",
     "/docs/03-eksper-portal-tanitim.pdf",
     "/docs/04-broker-portal-kilavuzu.pdf",
+    "/docs/meridyen-assistance-logo.jpeg",
     "/api/v1/vendors/summary",
     "/api/v1/user-locations/field-map"
   ]

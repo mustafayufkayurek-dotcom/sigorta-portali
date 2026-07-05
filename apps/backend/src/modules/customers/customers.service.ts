@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
@@ -411,8 +412,87 @@ export class CustomersService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.customer.delete({ where: { id } });
-    return { message: 'Müşteri silindi' };
+    throw new BadRequestException(
+      'Müşteri kalıcı olarak silinemez. Arşivlemek için arşivle işlemini kullanın.',
+    );
+  }
+
+  private async assertCanArchiveCustomer(id: string, customer?: Awaited<ReturnType<typeof this.findOne>>): Promise<void> {
+    const c = customer ?? (await this.findOne(id));
+
+    const openClaimsCount = await this.prisma.claimFile.count({
+      where: {
+        customerId: id,
+        currentStatus: { isClosedState: false },
+      },
+    });
+    if (openClaimsCount > 0) {
+      throw new BadRequestException(
+        `Müşterinin ${openClaimsCount} açık hasar dosyası var. Arşivlemeden önce dosyaları kapatın.`,
+      );
+    }
+
+    const openEmergencyCount = await this.prisma.emergencyCase.count({
+      where: {
+        customerId: id,
+        status: { notIn: [EmergencyStatus.COZULDU, EmergencyStatus.FATURALANDILDI] },
+      },
+    });
+    if (openEmergencyCount > 0) {
+      throw new BadRequestException(
+        `Müşterinin ${openEmergencyCount} açık acil yardım kaydı var. Arşivlemeden önce kayıtları kapatın.`,
+      );
+    }
+
+    const companyName = (c.companyName ?? c.fullName ?? '').trim();
+    if (companyName) {
+      const activePortalUsers = await this.prisma.user.count({
+        where: {
+          status: 'active',
+          adjuster: {
+            status: 'active',
+            company: companyName,
+          },
+        },
+      });
+      if (activePortalUsers > 0) {
+        throw new BadRequestException(
+          `Bu firmaya bağlı ${activePortalUsers} aktif portal kullanıcısı var. Önce kullanıcıları pasifleştirin.`,
+        );
+      }
+    }
+
+    const expertLinkCount = await this.countExpertInsuranceLinksForCustomer(id);
+    if (expertLinkCount > 0) {
+      throw new BadRequestException(
+        'Bu müşteri eksper-sigorta bağlantı ayarlarında kullanılıyor. Önce ayarlardan bağlantıyı kaldırın.',
+      );
+    }
+  }
+
+  private async countExpertInsuranceLinksForCustomer(customerId: string): Promise<number> {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'eksper_sigorta_baglantilari' },
+    });
+    const raw = setting?.value as { links?: { expertCustomerId?: string }[] } | null;
+    const links = Array.isArray(raw?.links) ? raw.links : [];
+    return links.filter((l) => l.expertCustomerId === customerId).length;
+  }
+
+  async archive(id: string) {
+    const customer = await this.findOne(id);
+    if (customer.status === 'passive') {
+      return { message: 'Müşteri zaten arşivde' };
+    }
+    await this.assertCanArchiveCustomer(id, customer);
+    await this.prisma.customer.update({ where: { id }, data: { status: 'passive' } });
+    return { message: 'Müşteri arşivlendi' };
+  }
+
+  async reactivate(id: string) {
+    await this.findOne(id);
+    await this.prisma.customer.update({ where: { id }, data: { status: 'active' } });
+    return { message: 'Müşteri yeniden aktifleştirildi' };
   }
 
   async checkDuplicate(
@@ -561,6 +641,16 @@ export class CustomersService {
   }
 
   async bulkUpdateStatus(ids: string[], status: string) {
+    if (status === 'passive') {
+      const customers = await this.prisma.customer.findMany({
+        where: { id: { in: ids } },
+      });
+      for (const customer of customers) {
+        if (customer.status !== 'passive') {
+          await this.assertCanArchiveCustomer(customer.id, customer as any);
+        }
+      }
+    }
     await this.prisma.customer.updateMany({
       where: { id: { in: ids } },
       data: { status } as any,
@@ -624,7 +714,7 @@ export class CustomersService {
 
     const statusLabel: Record<string, string> = {
       active: 'Aktif',
-      passive: 'Pasif',
+      passive: 'Arşiv',
       blacklisted: 'Kara Liste',
     };
     const typeLabel: Record<string, string> = {

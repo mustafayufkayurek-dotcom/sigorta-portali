@@ -161,6 +161,22 @@ export class CustomersController {
     return { success: true, data: { callUrl: `tel:${customer.phone ?? ''}` } };
   }
 
+  @Post(':id/archive')
+  @RequirePermissions('customer.update')
+  @ApiOperation({ summary: 'Müşteriyi arşivle (pasif)' })
+  async archive(@Param('id') id: string) {
+    const data = await this.customersService.archive(id);
+    return { success: true, data };
+  }
+
+  @Post(':id/reactivate')
+  @RequirePermissions('customer.update')
+  @ApiOperation({ summary: 'Arşivlenmiş müşteriyi yeniden aktifleştir' })
+  async reactivate(@Param('id') id: string) {
+    const data = await this.customersService.reactivate(id);
+    return { success: true, data };
+  }
+
   @Post()
   @RequirePermissions('customer.create')
   @ApiOperation({ summary: 'Yeni müşteri oluştur' })

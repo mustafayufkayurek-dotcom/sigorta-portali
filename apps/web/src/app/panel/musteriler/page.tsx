@@ -70,6 +70,13 @@ const STATUS_COLOR: Record<string, string> = {
   blacklisted: 'bg-red-50 text-red-700 border-red-100',
 };
 
+const DEFAULT_STATUS_FILTER = 'active';
+const CUSTOMER_STATUS_LABEL: Record<string, string> = {
+  active: 'Aktif',
+  passive: 'Arşiv',
+  blacklisted: 'Kara Liste',
+};
+
 type ContactPerson = {
   id?: string;
   firstName: string;
@@ -218,11 +225,7 @@ const CLAIM_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'İptal', cls: 'bg-red-50 text-red-700 border-red-100' },
 };
 
-const DRAWER_STATUS_LABEL: Record<string, string> = {
-  active: 'Aktif',
-  passive: 'Pasif',
-  blacklisted: 'Kara Liste',
-};
+const DRAWER_STATUS_LABEL: Record<string, string> = CUSTOMER_STATUS_LABEL;
 
 function fmtDate(d: string | null | undefined) {
   return d ? new Date(d).toLocaleDateString('tr-TR') : '—';
@@ -703,7 +706,7 @@ export default function MusterilerPage() {
   const [cityFilter, setCityFilter] = useState('');
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '');
-  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') ?? '');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') ?? DEFAULT_STATUS_FILTER);
   const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     const t = searchParams.get('tags');
@@ -813,7 +816,10 @@ export default function MusterilerPage() {
   // ── Toplu işlem confirm modal state ──────────────────────────────────────
   type BulkAction = 'status' | 'tags' | 'export';
   type BulkStatusValue = 'active' | 'passive' | 'blacklisted';
-  const STATUS_LABELS: Record<BulkStatusValue, string> = { active: 'Aktif', passive: 'Pasif', blacklisted: 'Kara Liste' };
+  const STATUS_LABELS: Record<BulkStatusValue, string> = CUSTOMER_STATUS_LABEL;
+
+  const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   const [bulkConfirm, setBulkConfirm] = useState<{
     action: BulkAction;
@@ -855,6 +861,25 @@ export default function MusterilerPage() {
         clearSelection(); load();
       },
     });
+  };
+
+  const handleArchiveCustomer = (id: string, name: string) => {
+    setArchiveConfirm({ id, name });
+  };
+
+  const runArchiveConfirm = async () => {
+    if (!archiveConfirm) return;
+    setArchiveLoading(true);
+    try {
+      await axios.post(`${API}/customers/${archiveConfirm.id}/archive`, {}, { headers: authHeader() });
+      showToast('success', 'Müşteri Arşivlendi');
+      setArchiveConfirm(null);
+      load();
+    } catch (e: any) {
+      showToast('error', `Arşivleme Başarısız: ${e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen Hata'}`);
+    } finally {
+      setArchiveLoading(false);
+    }
   };
 
   const handleBulkTagsConfirm = () => {
@@ -1581,7 +1606,11 @@ export default function MusterilerPage() {
     } finally { setSaving(false); }
   };
 
-  const hasActiveFilters = !!(search || typeFilter || subTypeFilter || cityFilter || statusFilter || sourceFilter || selectedTags.length);
+  const hasActiveFilters = !!(
+    search || typeFilter || subTypeFilter || cityFilter
+    || (statusFilter && statusFilter !== DEFAULT_STATUS_FILTER)
+    || sourceFilter || selectedTags.length
+  );
 
   // Finans istatistikleri henüz API'den gelmiyor; widget kaldırıldı
 
@@ -1590,17 +1619,17 @@ export default function MusterilerPage() {
   const clearAllFilters = () => {
     setSearchInput(''); setSearch('');
     setTypeFilter(''); setSubTypeFilter(''); setCityFilter('');
-    setStatusFilter(''); setSourceFilter(''); setSelectedTags([]);
+    setStatusFilter(DEFAULT_STATUS_FILTER); setSourceFilter(''); setSelectedTags([]);
     setPage(1);
   };
+
+  const statusLabel = CUSTOMER_STATUS_LABEL;
+  const typeLabel: Record<string, string> = { individual: 'Bireysel', corporate: 'Kurumsal' };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
     setPage(1);
   };
-
-  const statusLabel: Record<string, string> = { active: 'Aktif', passive: 'Pasif', blacklisted: 'Kara Liste' };
-  const typeLabel: Record<string, string> = { individual: 'Bireysel', corporate: 'Kurumsal' };
 
   return (
     <TableColumnsProvider value={tableColumns}>
@@ -1761,9 +1790,9 @@ export default function MusterilerPage() {
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           >
-            <option value="">Tüm Durumlar</option>
+            <option value="">Tümü</option>
             <option value="active">Aktif</option>
-            <option value="passive">Pasif</option>
+            <option value="passive">Arşiv</option>
             <option value="blacklisted">Kara Liste</option>
           </select>
           {customerSources.length > 0 && (
@@ -1824,7 +1853,12 @@ export default function MusterilerPage() {
             {typeFilter && <FilterChip label={`Tip: ${typeLabel[typeFilter] ?? typeFilter}`} onRemove={() => { setTypeFilter(''); setPage(1); }} />}
             {subTypeFilter && <FilterChip label={`Alt Tip: ${customerSubTypes.find((t) => t.value === subTypeFilter)?.label ?? subTypeFilter}`} onRemove={() => { setSubTypeFilter(''); setPage(1); }} />}
             {cityFilter && <FilterChip label={`Bölge: ${cityFilter}`} onRemove={() => { setCityFilter(''); setPage(1); }} />}
-            {statusFilter && <FilterChip label={`Durum: ${statusLabel[statusFilter] ?? statusFilter}`} onRemove={() => { setStatusFilter(''); setPage(1); }} />}
+            {statusFilter && statusFilter !== DEFAULT_STATUS_FILTER && (
+              <FilterChip
+                label={`Durum: ${statusLabel[statusFilter] ?? statusFilter}`}
+                onRemove={() => { setStatusFilter(DEFAULT_STATUS_FILTER); setPage(1); }}
+              />
+            )}
             {sourceFilter && <FilterChip label={`Kaynak: ${sourceFilter}`} onRemove={() => { setSourceFilter(''); setPage(1); }} />}
             {selectedTags.map((tag) => (
               <FilterChip key={tag} label={`Etiket: ${tag}`} onRemove={() => toggleTag(tag)} />
@@ -1857,7 +1891,7 @@ export default function MusterilerPage() {
                   <button key={val} type="button" onClick={() => handleBulkStatus(val)}
                     className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${val === 'active' ? 'bg-green-500' : val === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
-                    {val === 'active' ? 'Aktif' : val === 'passive' ? 'Pasif' : 'Kara Liste'}
+                    {val === 'active' ? 'Aktif' : val === 'passive' ? 'Arşiv' : 'Kara Liste'}
                   </button>
                 ))}
               </div>
@@ -1911,6 +1945,34 @@ export default function MusterilerPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Arşivle Onay Modalı ── */}
+      {archiveConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-xl">
+                📦
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800 mb-1">Müşteriyi Arşivle</h4>
+                <p className="text-xs text-slate-500">
+                  <span className="font-medium text-slate-700">{archiveConfirm.name}</span> arşive alınacak. Açık dosya veya aktif portal bağlantısı varsa işlem reddedilir. Emin misiniz?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-2">
+              <button type="button" onClick={() => setArchiveConfirm(null)} disabled={archiveLoading}
+                className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">İptal</button>
+              <button type="button" onClick={runArchiveConfirm} disabled={archiveLoading}
+                className="px-5 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 font-medium disabled:opacity-50 flex items-center gap-2">
+                {archiveLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+                Arşivle
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2128,15 +2190,26 @@ export default function MusterilerPage() {
                       <PanelTableTd colId="status" className="table-td text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
-                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara' : 'Pasif'}
+                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara' : 'Arşiv'}
                         </span>
                       </PanelTableTd>
                       {/* Operasyon */}
-                      <td className="table-td text-right">
-                        <Link href={`/panel/musteriler/${c.id}`}
-                          className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                          Detay
-                        </Link>
+                      <td className="table-td text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {c.status !== 'passive' && (
+                            <button
+                              type="button"
+                              onClick={() => handleArchiveCustomer(c.id, name || '—')}
+                              className="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg transition-colors font-medium"
+                            >
+                              Arşivle
+                            </button>
+                          )}
+                          <Link href={`/panel/musteriler/${c.id}`}
+                            className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
+                            Detay
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
