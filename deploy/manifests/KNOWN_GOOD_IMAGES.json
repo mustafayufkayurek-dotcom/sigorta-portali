@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v190-eksper-portal-ui",
-  "description": "Eksper portal UI (layout, ana sayfa, panel navigasyon)",
+  "label": "v191-eksper-ihbar-police-no",
+  "description": "Eksper ihbar poliçe no düzeltmesi (web-only)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v189-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v190-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v191-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v189-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v190-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v188-amd64"
   },
   "mustPassSmokeRoutes": [
