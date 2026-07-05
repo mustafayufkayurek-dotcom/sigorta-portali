@@ -199,6 +199,27 @@ export class ClaimFilesService {
       ];
     }
 
+    // Eksper: kendine atanan dosyalar + portal üzerinden ihbar ettiği dosyalar
+    if (requestingUser?.roleCode === 'expert') {
+      delete where.assignedAdjusterId;
+      const expertFileScope = {
+        OR: [
+          { assignedAdjusterId: requestingUser.id },
+          {
+            sourceChannel: 'expert_portal',
+            repairReports: { some: { createdByUserId: requestingUser.id } },
+          },
+        ],
+      };
+      if (Object.keys(where).length > 0) {
+        const filters = { ...where };
+        for (const key of Object.keys(where)) delete where[key];
+        where.AND = [filters, expertFileScope];
+      } else {
+        Object.assign(where, expertFileScope);
+      }
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.claimFile.findMany({
         where,
@@ -326,7 +347,10 @@ export class ClaimFilesService {
     };
   }
 
-  async create(data: any) {
+  async create(
+    data: any,
+    requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
     const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
     const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : '';
 
@@ -392,9 +416,17 @@ export class ClaimFilesService {
     }
 
     try {
+      const expertUserId = requestingUser?.id ?? requestingUser?.userId;
+      const roleCode = requestingUser?.roleCode ?? requestingUser?.role?.code;
+      const assignedAdjusterId =
+        sourceChannel === 'expert_portal' && roleCode === 'expert' && expertUserId
+          ? expertUserId
+          : rest.assignedAdjusterId ?? null;
+
       const created = await this.prisma.claimFile.create({
         data: {
           ...rest,
+          assignedAdjusterId,
           insuranceCompanyId,
           policyNo,
           claimNo,

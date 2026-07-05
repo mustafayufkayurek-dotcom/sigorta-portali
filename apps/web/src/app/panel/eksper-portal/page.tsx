@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/contexts/ToastContext';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -148,6 +149,17 @@ function normalizeApiMessage(body: any, fallback: string) {
   return body?.message ?? body?.error?.message ?? fallback;
 }
 
+function normalizeIhbarTextFields(data: IhbarFormData): IhbarFormData {
+  return {
+    ...data,
+    sigortaliAdi: toTitleCaseTR(data.sigortaliAdi.trim()),
+    ticariUnvan: toTitleCaseTR(data.ticariUnvan.trim()),
+    vergiDairesi: toTitleCaseTR(data.vergiDairesi.trim()),
+    adresDetay: toTitleCaseTR(data.adresDetay.trim()),
+    aciklama: toTitleCaseTR(data.aciklama.trim()),
+  };
+}
+
 function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const { showToast } = useToast();
   const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
@@ -229,20 +241,25 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     if (errors[key]) setErrors((prev) => { const e = { ...prev }; delete e[key]; return e; });
   };
 
-  const validate = () => {
+  const blurTitleCase = (key: keyof IhbarFormData) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const v = toTitleCaseTR(e.target.value.trim());
+    if (v) set(key, v);
+  };
+
+  const validate = (data: IhbarFormData) => {
     const e: Partial<Record<keyof IhbarFormData, string>> = {};
-    if (!form.policeTuru) e.policeTuru = 'Zorunlu alan';
-    if (!form.konu) e.konu = 'Zorunlu alan';
-    if (!form.sigortaSirketi || !isUuid(form.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
-    if (!form.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
-    if (!form.sigortaliTelefon || form.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
-    if (!form.il) e.il = 'Zorunlu alan';
-    if (form.il && !form.ilce) e.ilce = 'Zorunlu alan';
-    if (form.hasarTarihi && !toIsoDate(form.hasarTarihi)) e.hasarTarihi = 'Geçerli tarih giriniz';
-    if (form.policeTuru === 'ticari') {
-      if (!form.ticariUnvan.trim()) e.ticariUnvan = 'Zorunlu alan';
-      if (!form.vergiDairesi.trim()) e.vergiDairesi = 'Zorunlu alan';
-      if (!form.vergiNo.trim()) e.vergiNo = 'Zorunlu alan';
+    if (!data.policeTuru) e.policeTuru = 'Zorunlu alan';
+    if (!data.konu) e.konu = 'Zorunlu alan';
+    if (!data.sigortaSirketi || !isUuid(data.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
+    if (!data.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
+    if (!data.sigortaliTelefon || data.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
+    if (!data.il) e.il = 'Zorunlu alan';
+    if (data.il && !data.ilce) e.ilce = 'Zorunlu alan';
+    if (data.hasarTarihi && !toIsoDate(data.hasarTarihi)) e.hasarTarihi = 'Geçerli tarih giriniz';
+    if (data.policeTuru === 'ticari') {
+      if (!data.ticariUnvan.trim()) e.ticariUnvan = 'Zorunlu alan';
+      if (!data.vergiDairesi.trim()) e.vergiDairesi = 'Zorunlu alan';
+      if (!data.vergiNo.trim()) e.vergiNo = 'Zorunlu alan';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -267,7 +284,9 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
 
   const handleSubmit = async () => {
     if (saving || loadingLookups || loadingDistricts) return;
-    if (!validate()) {
+    const normalizedForm = normalizeIhbarTextFields(form);
+    setForm(normalizedForm);
+    if (!validate(normalizedForm)) {
       showToast('error', 'Lütfen zorunlu alanları kontrol edin.');
       return;
     }
@@ -277,28 +296,29 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       if (!token) {
         throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
       }
-      const provinceName = provinces.find((province) => province.id === form.il)?.name ?? '';
+      const provinceName = provinces.find((province) => province.id === normalizedForm.il)?.name ?? '';
+      const generatedFileNo = normalizedForm.dosyaNo.trim() || `EXP-${Date.now().toString(36).toUpperCase()}`;
       const payload = {
-        fileNo: form.dosyaNo.trim() || undefined,
-        productBranch: form.konu,
-        insuranceCompanyId: form.sigortaSirketi,
+        fileNo: generatedFileNo,
+        productBranch: normalizedForm.konu,
+        insuranceCompanyId: normalizedForm.sigortaSirketi,
         policyNo: 'Belirtilmedi',
         claimNo: `EXP-${Date.now().toString(36).toUpperCase()}`,
-        lossType: form.konu,
-        description: form.aciklama.trim() || undefined,
-        incidentDate: toIsoDate(form.hasarTarihi) ?? new Date().toISOString(),
+        lossType: normalizedForm.konu,
+        description: normalizedForm.aciklama.trim() || undefined,
+        incidentDate: toIsoDate(normalizedForm.hasarTarihi) ?? new Date().toISOString(),
         notificationDate: new Date().toISOString(),
         priority: 'normal',
         sourceChannel: 'expert_portal',
-        insuredName: form.sigortaliAdi.trim(),
-        insuredPhone: form.sigortaliTelefon.replace(/\D/g, ''),
-        propertyAddress: [form.adresDetay.trim(), form.ilce.trim(), provinceName].filter(Boolean).join(', '),
+        insuredName: normalizedForm.sigortaliAdi.trim(),
+        insuredPhone: normalizedForm.sigortaliTelefon.replace(/\D/g, ''),
+        propertyAddress: [normalizedForm.adresDetay.trim(), normalizedForm.ilce.trim(), provinceName].filter(Boolean).join(', '),
         city: provinceName || undefined,
-        district: form.ilce.trim() || undefined,
-        policyType: form.policeTuru,
-        commercialTitle: form.ticariUnvan.trim() || undefined,
-        taxOffice: form.vergiDairesi.trim() || undefined,
-        taxNumber: form.vergiNo.trim() || undefined,
+        district: normalizedForm.ilce.trim() || undefined,
+        policyType: normalizedForm.policeTuru,
+        commercialTitle: normalizedForm.ticariUnvan.trim() || undefined,
+        taxOffice: normalizedForm.vergiDairesi.trim() || undefined,
+        taxNumber: normalizedForm.vergiNo.trim() || undefined,
       };
       const res = await fetch(`${API_V1}/claim-files`, {
         method: 'POST',
@@ -315,7 +335,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             body: JSON.stringify({
               reportType: 'single',
               reportDate: new Date().toISOString(),
-              findingsText: form.aciklama.trim() || 'Eksper portalı ihbar fotoğrafları',
+              findingsText: normalizedForm.aciklama.trim() || 'Eksper portalı ihbar fotoğrafları',
             }),
           });
           const reportBody = await reportResponse.json().catch(() => null);
@@ -459,6 +479,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                   placeholder="Şirket ünvanı"
                   value={form.ticariUnvan}
                   onChange={(e) => set('ticariUnvan', e.target.value)}
+                  onBlur={blurTitleCase('ticariUnvan')}
                 />
                 {errors.ticariUnvan && <p className="text-xs text-red-500 mt-1">{errors.ticariUnvan}</p>}
               </div>
@@ -470,6 +491,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                     placeholder="Vergi dairesi"
                     value={form.vergiDairesi}
                     onChange={(e) => set('vergiDairesi', e.target.value)}
+                    onBlur={blurTitleCase('vergiDairesi')}
                   />
                   {errors.vergiDairesi && <p className="text-xs text-red-500 mt-1">{errors.vergiDairesi}</p>}
                 </div>
@@ -498,6 +520,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 placeholder="Ad Soyad"
                 value={form.sigortaliAdi}
                 onChange={(e) => set('sigortaliAdi', e.target.value)}
+                onBlur={blurTitleCase('sigortaliAdi')}
               />
               {errors.sigortaliAdi && <p className="text-xs text-red-500 mt-1">{errors.sigortaliAdi}</p>}
             </div>
@@ -568,12 +591,13 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               placeholder="Adres detayı (opsiyonel)"
               value={form.adresDetay}
               onChange={(e) => set('adresDetay', e.target.value)}
+              onBlur={blurTitleCase('adresDetay')}
             />
           </div>
 
-          {/* Hasar Tarihi */}
+          {/* İhbar Tarihi */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Hasar Tarihi</label>
+            <label className="text-xs font-medium text-slate-600 block mb-1.5">İhbar Tarihi</label>
             <TrDateInput
               className={`input-base-sm w-full ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.hasarTarihi}
@@ -591,6 +615,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               placeholder="Hasara dair kısa açıklama..."
               value={form.aciklama}
               onChange={(e) => set('aciklama', e.target.value)}
+              onBlur={blurTitleCase('aciklama')}
             />
           </div>
 
@@ -873,6 +898,7 @@ export default function EksperPortalPage() {
   const [assignedFiles, setAssignedFiles] = useState<ExpertClaimFile[]>([]);
   const [recentApprovals, setRecentApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [showIhbarModal, setShowIhbarModal] = useState(false);
   const [successFileNo, setSuccessFileNo] = useState<string | null>(null);
@@ -880,6 +906,26 @@ export default function EksperPortalPage() {
   const handleIhbarSuccess = useCallback((fileNo: string) => {
     setShowIhbarModal(false);
     setSuccessFileNo(fileNo);
+    const raw = localStorage.getItem('user');
+    if (!raw) return;
+    const u = JSON.parse(raw);
+    const expertUserId = u?.id;
+    if (!expertUserId) return;
+    Promise.all([
+      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}&includeExpired=true`, { headers: getHeaders() }).then((r) => r.json()),
+      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then((r) => r.json()),
+    ])
+      .then(([approvals, files]) => {
+        const list: ApprovalItem[] = approvals?.data ?? [];
+        const pending = list.filter((item) => item.status === 'pending');
+        const expired = list.filter((item) => item.status === 'expired');
+        setPendingCount(pending.length);
+        setExpiredCount(expired.length);
+        setRecentApprovals(list.slice(0, 5));
+        setAssignedCount(files?.meta?.total ?? 0);
+        setAssignedFiles((files?.data ?? []).slice(0, 5));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -896,12 +942,19 @@ export default function EksperPortalPage() {
     if (u?.role?.code !== 'expert') { setLoading(false); setAccessDenied(true); return; }
     setUser(u);
 
-    const adjusterId = u.adjusterId;
-    if (!adjusterId) { setLoading(false); return; }
+    const expertUserId = u.id;
+    if (!expertUserId) { setLoading(false); setLoadError('Kullanıcı oturumu geçersiz. Lütfen tekrar giriş yapın.'); return; }
 
+    setLoadError(null);
     Promise.all([
-      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${adjusterId}&includeExpired=true`, { headers: getHeaders() }).then((r) => r.json()),
-      fetch(`${API}/claim-files?assignedAdjusterId=${adjusterId}&limit=5`, { headers: getHeaders() }).then((r) => r.json()),
+      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}&includeExpired=true`, { headers: getHeaders() }).then((r) => {
+        if (!r.ok) throw new Error('Onay listesi yüklenemedi');
+        return r.json();
+      }),
+      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then((r) => {
+        if (!r.ok) throw new Error('Dosya listesi yüklenemedi');
+        return r.json();
+      }),
     ])
       .then(([approvals, files]) => {
         const list: ApprovalItem[] = approvals?.data ?? [];
@@ -913,7 +966,7 @@ export default function EksperPortalPage() {
         setAssignedCount(files?.meta?.total ?? 0);
         setAssignedFiles((files?.data ?? []).slice(0, 5));
       })
-      .catch(() => {})
+      .catch((err: Error) => setLoadError(err?.message ?? 'Dashboard verileri yüklenemedi'))
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -948,12 +1001,17 @@ export default function EksperPortalPage() {
   const approvalPendingCount = pendingCount;
   const approvalExpiredCount = expiredCount;
   const activeFileGaugeMax = Math.max(10, assignedCount, approvalPendingCount + approvalExpiredCount);
-  const onTimeRatio = assignedCount === 0 ? 100 : Math.max(0, Math.round(((assignedCount - approvalExpiredCount) / assignedCount) * 100));
 
   return (
     <div className="min-h-screen bg-slate-50 -mx-3 px-0 sm:-mx-4">
 
       <div className="px-4 py-4 pb-10 space-y-4">
+
+        {loadError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
 
         {/* ── Hero: Hoş Geldin + Saat + Hava ─────────────────────────────────── */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg">
@@ -999,9 +1057,8 @@ export default function EksperPortalPage() {
                   )}
                 </div>
 
-                {/* Hızlı Aksiyon Butonları */}
+                {/* Hızlı Aksiyon Butonları — beyaz zemin, mavi metin (band üzerinde belirgin) */}
                 <div className="flex flex-wrap items-center gap-2 mt-4">
-                  {/* Yeni İhbar */}
                   <button
                     type="button"
                     onClick={() => setShowIhbarModal(true)}
@@ -1012,22 +1069,21 @@ export default function EksperPortalPage() {
                   </button>
                   <Link
                     href="/panel/eksper-portal/dosyalar"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-all duration-150"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-blue-700 text-xs font-semibold transition-all duration-150 shadow hover:bg-blue-50"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>
                     Dosyalarım
                   </Link>
                   <Link
                     href="/panel/eksper-portal/randevular"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-all duration-150"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-blue-700 text-xs font-semibold transition-all duration-150 shadow hover:bg-blue-50"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    Randevularım
+                    Dosya Akışı
                   </Link>
-                  {/* Onay Bekleyen Dosyalar */}
                   <Link
                     href="/panel/eksper-portal/onaylar"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-400/20 hover:bg-amber-400/30 text-amber-100 border border-amber-400/40 text-xs font-semibold transition-all duration-150"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-blue-700 text-xs font-semibold transition-all duration-150 shadow hover:bg-blue-50"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     Onay Bekleyen
@@ -1035,10 +1091,9 @@ export default function EksperPortalPage() {
                       {approvalPendingCount}
                     </span>
                   </Link>
-                  {/* Onay Süresi Geçmiş */}
                   <Link
                     href="/panel/eksper-portal/onaylar?filter=expired"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-400/20 hover:bg-red-400/30 text-red-100 border border-red-400/40 text-xs font-semibold transition-all duration-150"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-blue-700 text-xs font-semibold transition-all duration-150 shadow hover:bg-blue-50"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
                     Süresi Geçmiş
@@ -1094,7 +1149,7 @@ export default function EksperPortalPage() {
         {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-xl bg-white border border-slate-200 p-3 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
-            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Aktif Dosya Sayısı" unit="" size={100} />
+            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Atanmış Dosya Sayısı" unit="" size={100} />
             <p className="text-[10px] text-slate-400 text-center mt-0.5">{`Toplam: ${assignedCount}`}</p>
           </div>
           <Link href="/panel/eksper-portal/onaylar" className="rounded-xl bg-white border border-amber-200 p-3 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
@@ -1102,8 +1157,10 @@ export default function EksperPortalPage() {
             <p className="text-[10px] text-amber-600 text-center mt-0.5">İnceleme bekleyen dış onaylar</p>
           </Link>
           <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-xl bg-white border border-red-200 p-3 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
-            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Dosyalar" unit="" size={100} />
-            <p className="text-[10px] text-red-600 text-center mt-0.5">{onTimeRatio}% zamanında takip oranı</p>
+            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Onaylar" unit="" size={100} />
+            <p className="text-[10px] text-red-600 text-center mt-0.5">
+              {approvalExpiredCount === 0 ? 'Süresi dolmuş onay yok' : 'Acil inceleme gerektirir'}
+            </p>
           </Link>
         </div>
 

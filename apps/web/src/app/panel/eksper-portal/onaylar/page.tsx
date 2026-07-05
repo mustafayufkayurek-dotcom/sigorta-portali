@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toTitleCaseTR } from '@/utils/text-helpers';
+import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+
+const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
+const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -37,9 +42,9 @@ export default function EksperOnaylarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const loadApprovals = (adjusterId: string) => {
+  const loadApprovals = (expertUserId: string) => {
     setError(null);
-    fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${adjusterId}`, {
+    fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}`, {
       headers: getHeaders(),
     })
       .then((r) => {
@@ -56,19 +61,20 @@ export default function EksperOnaylarPage() {
     if (!raw) { router.push('/giris'); return; }
     const u = JSON.parse(raw);
     if (u?.role?.code !== 'expert') { router.push('/panel'); return; }
-    if (u?.adjusterId) loadApprovals(u.adjusterId);
+    if (u?.id) loadApprovals(u.id);
     else setLoading(false);
   }, [router]);
 
   const handleRespond = async () => {
     if (!selected || !action) return;
-    if (action === 'rejected' && !comment.trim()) { alert('Red için yorum zorunludur.'); return; }
+    const normalizedComment = toTitleCaseTR(comment.trim());
+    if (action === 'rejected' && !normalizedComment) { alert('Red için yorum zorunludur.'); return; }
     setSubmitting(true);
     try {
       const res = await fetch(`${API}/external-approvals/${selected.id}/respond-auth`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ action, comments: comment }),
+        body: JSON.stringify({ action, comments: normalizedComment }),
       });
       if (!res.ok) throw new Error('İstek başarısız');
       setToast(action === 'approved' ? 'Onay verildi.' : 'Red bildirildi.');
@@ -92,14 +98,11 @@ export default function EksperOnaylarPage() {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <a href="/panel/eksper-portal" className="hover:text-blue-600 transition-colors">Eksper Portal</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Onaylar</span>
-      </nav>
+      <PortalBreadcrumb
+        portalHomeHref={EKSPER_PORTAL_HOME}
+        portalHomeLabel={EKSPER_PORTAL_LABEL}
+        currentLabel="Bekleyen Onaylar"
+      />
 
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900">Bekleyen Onaylar</h2>
@@ -188,6 +191,10 @@ export default function EksperOnaylarPage() {
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
+                onBlur={(e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) setComment(v);
+                }}
                 rows={3}
                 placeholder={action === 'rejected' ? 'Red Gerekçesi (Zorunlu)...' : 'İsteğe Bağlı Yorum...'}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

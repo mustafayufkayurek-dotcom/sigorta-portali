@@ -19,14 +19,14 @@ export class ClaimFilesController {
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Hasar dosyalarını listele' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
-    // Portal kullanıcıları için otomatik veri scoping
-    if (user?.role?.code === 'expert' && user?.adjusterId) {
-      query.assignedAdjusterId = user.adjusterId;
-    } else if (user?.role?.code === 'insurance_company_user') {
+    if (user?.role?.code === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
       query.insuranceCompanyIds = companyIds;
     }
-    const result = await this.claimFilesService.findAll(query, user);
+    const result = await this.claimFilesService.findAll(query, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data: result.data, meta: result.meta };
   }
 
@@ -62,8 +62,13 @@ export class ClaimFilesController {
   @Post()
   @RequirePermissions('claim_file.create')
   @ApiOperation({ summary: 'Yeni hasar dosyası oluştur' })
-  async create(@Body() createDto: any) {
-    const data = await this.claimFilesService.create(createDto);
+  async create(@Body() createDto: any, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.create(createDto, {
+      id: user?.id ?? user?.userId,
+      userId: user?.userId ?? user?.id,
+      roleCode: user?.roleCode ?? user?.role?.code,
+      role: user?.role,
+    });
     return { success: true, data };
   }
 

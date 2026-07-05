@@ -65,7 +65,7 @@ const SLA_CONFIG = {
 };
 
 // ─── Current Stage Card ───────────────────────────────────────────────────────
-function CurrentStageCard({ data }: { data: CurrentStageData }) {
+export function CurrentStageCard({ data }: { data: CurrentStageData }) {
   const sla = SLA_CONFIG[data.slaStatus];
   const progress = data.maxMinutes ? Math.min((data.elapsedMinutes / data.maxMinutes) * 100, 100) : null;
 
@@ -300,7 +300,17 @@ function AddNoteForm({ claimFileId, onNoteAdded }: { claimFileId: string; onNote
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function ProcessTimeline({ claimFileId }: { claimFileId: string }) {
+interface ProcessTimelineProps {
+  claimFileId: string;
+  readOnly?: boolean;
+  hiddenNoteTypes?: string[];
+}
+
+export default function ProcessTimeline({
+  claimFileId,
+  readOnly = false,
+  hiddenNoteTypes = [],
+}: ProcessTimelineProps) {
   const [currentStage, setCurrentStage] = useState<CurrentStageData | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,13 +326,22 @@ export default function ProcessTimeline({ claimFileId }: { claimFileId: string }
       ]);
       setCurrentStage(stageRes.data.data ?? stageRes.data);
       const tl = timelineRes.data.data ?? timelineRes.data;
-      setTimeline(Array.isArray(tl) ? tl : []);
+      const entries = Array.isArray(tl) ? tl : [];
+      const hidden = new Set(hiddenNoteTypes);
+      setTimeline(
+        hidden.size === 0
+          ? entries
+          : entries.filter(
+              (entry) =>
+                entry.type !== 'note' || !hidden.has(entry.data?.noteType),
+            ),
+      );
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Veri yüklenemedi');
     } finally {
       setLoading(false);
     }
-  }, [claimFileId]);
+  }, [claimFileId, hiddenNoteTypes]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -351,7 +370,7 @@ export default function ProcessTimeline({ claimFileId }: { claimFileId: string }
       {currentStage && <CurrentStageCard data={currentStage} />}
 
       {/* Add Note */}
-      <AddNoteForm claimFileId={claimFileId} onNoteAdded={loadData} />
+      {!readOnly && <AddNoteForm claimFileId={claimFileId} onNoteAdded={loadData} />}
 
       {/* Timeline */}
       <div className="space-y-1">

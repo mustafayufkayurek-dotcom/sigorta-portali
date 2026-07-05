@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalProcessTimeline from '@/components/timeline/PortalProcessTimeline';
+
+const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
+const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -10,102 +16,198 @@ function getHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }
 
-interface Appointment {
+interface ClaimFile {
   id: string;
-  scheduledAt: string;
-  location?: string;
-  notes?: string;
-  status?: string;
-  claimFile?: { fileNumber?: string };
+  fileNo?: string;
+  fileNumber?: string;
+  createdAt: string;
+  insuranceCompany?: { name: string };
+  currentStatus?: { name: string; colorCode?: string };
 }
 
-export default function EksperRandevularPage() {
+function fileNoOf(f: ClaimFile) {
+  return f.fileNo ?? f.fileNumber ?? '—';
+}
+
+export default function EksperDosyaAkisiPage() {
   const router = useRouter();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const searchParams = useSearchParams();
+  const fileIdFromQuery = searchParams.get('fileId');
+
+  const [files, setFiles] = useState<ClaimFile[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const selectFile = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('fileId', id);
+      router.replace(url.pathname + url.search, { scroll: false });
+    },
+    [router],
+  );
+
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/giris'); return; }
+    if (!raw) {
+      router.push('/giris');
+      return;
+    }
     const u = JSON.parse(raw);
-    if (u?.role?.code !== 'expert') { router.push('/panel'); return; }
-
-    const adjusterId = u.adjusterId;
-    if (!adjusterId) { setLoading(false); return; }
+    if (u?.role?.code !== 'expert') {
+      router.push('/panel');
+      return;
+    }
 
     setError(null);
-    fetch(`${API}/adjusters/appointments?adjusterId=${adjusterId}`, { headers: getHeaders() })
+    fetch(`${API}/claim-files?limit=50`, { headers: getHeaders() })
       .then((r) => {
         if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
         return r.json();
       })
-      .then((res) => setAppointments(res?.data ?? res ?? []))
-      .catch((err: Error) => setError(err.message ?? 'Randevular yüklenemedi.'))
+      .then((res) => {
+        setFiles(res?.data ?? []);
+      })
+      .catch((err: Error) => setError(err.message ?? 'Dosyalar yüklenemedi.'))
       .finally(() => setLoading(false));
   }, [router]);
 
-  const statusLabel = (s?: string) => {
-    const map: Record<string, string> = { scheduled: 'Planlandı', completed: 'Tamamlandı', cancelled: 'İptal' };
-    return s ? (map[s] ?? s) : '—';
-  };
-  const statusColor = (s?: string) => {
-    const map: Record<string, string> = {
-      scheduled: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-    };
-    return s ? (map[s] ?? 'bg-slate-100 text-slate-600') : 'bg-slate-100 text-slate-600';
-  };
+  useEffect(() => {
+    if (files.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (fileIdFromQuery && files.some((f) => f.id === fileIdFromQuery)) {
+      setSelectedId(fileIdFromQuery);
+      return;
+    }
+    setSelectedId((prev) => (prev && files.some((f) => f.id === prev) ? prev : files[0].id));
+  }, [files, fileIdFromQuery]);
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
+  const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR');
+  const selectedFile = files.find((f) => f.id === selectedId);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
+  }
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <a href="/panel/eksper-portal" className="hover:text-blue-600 transition-colors">Eksper Portal</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Randevular</span>
-      </nav>
+      <PortalBreadcrumb
+        portalHomeHref={EKSPER_PORTAL_HOME}
+        portalHomeLabel={EKSPER_PORTAL_LABEL}
+        currentLabel="Dosya Akışı"
+      />
 
-      <h2 className="text-2xl font-bold text-slate-900">Randevularım</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="text-2xl font-bold text-slate-900">Dosya Akışı İzleme</h2>
+        <Link
+          href="/panel/eksper-portal/dosyalar"
+          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          Dosyalarım
+        </Link>
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-red-700 hover:text-red-900 ml-4 font-bold">&times;</button>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-red-700 hover:text-red-900 ml-4 font-bold"
+          >
+            &times;
+          </button>
         </div>
       )}
 
-      {!error && appointments.length === 0 ? (
+      {!error && files.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
           <svg className="mx-auto h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
           </svg>
-          <p className="text-slate-500 font-medium">Planlanmış randevu bulunmuyor.</p>
-          <p className="text-slate-400 text-sm mt-1">Henüz bir randevunuz yok.</p>
+          <p className="text-slate-500 font-medium">Henüz dosya bulunmuyor.</p>
+          <p className="text-slate-400 text-sm mt-1">
+            Size atanan veya ihbar ettiğiniz dosyalar burada listelenir.
+          </p>
+          <Link
+            href="/panel/eksper-portal/dosyalar"
+            className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800"
+          >
+            Dosyalarım
+          </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {appointments.map((a) => (
-            <div key={a.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
-              <div className="flex-shrink-0 text-center bg-blue-50 rounded-lg px-3 py-2 min-w-[60px]">
-                <p className="text-xs text-blue-500 font-medium">{new Date(a.scheduledAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}</p>
-                <p className="text-sm font-bold text-blue-700">{new Date(a.scheduledAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-slate-900">{a.claimFile?.fileNumber ?? '—'}</span>
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(a.status)}`}>{statusLabel(a.status)}</span>
-                </div>
-                {a.location && <p className="text-sm text-slate-500 mt-0.5">{a.location}</p>}
-                {a.notes && <p className="text-sm text-slate-400 mt-0.5 italic">{a.notes}</p>}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* File list */}
+          <div className="lg:col-span-4 space-y-2">
+            <p className="text-xs font-medium text-slate-500 px-1">Dosyalarınız</p>
+            <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+              {files.map((f) => {
+                const active = f.id === selectedId;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => selectFile(f.id)}
+                    className={`w-full text-left px-4 py-3 transition-colors ${
+                      active ? 'bg-blue-50 border-l-2 border-l-blue-600' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-900">{fileNoOf(f)}</span>
+                      <span
+                        className="inline-block rounded-full px-2 py-0.5 text-xs font-medium shrink-0"
+                        style={{
+                          background: f.currentStatus?.colorCode
+                            ? `${f.currentStatus.colorCode}20`
+                            : '#f3f4f6',
+                          color: f.currentStatus?.colorCode ?? '#374151',
+                        }}
+                      >
+                        {f.currentStatus?.name ?? '—'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">
+                      {f.insuranceCompany?.name ?? '—'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{fmt(f.createdAt)}</p>
+                  </button>
+                );
+              })}
             </div>
-          ))}
+          </div>
+
+          {/* Timeline */}
+          <div className="lg:col-span-8">
+            {selectedId && selectedFile ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h3 className="text-base font-semibold text-slate-800">
+                    {fileNoOf(selectedFile)}
+                    {selectedFile.insuranceCompany?.name && (
+                      <span className="text-sm font-normal text-slate-500 ml-2">
+                        · {selectedFile.insuranceCompany.name}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                <PortalProcessTimeline claimFileId={selectedId} />
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 py-12 text-center text-slate-500 text-sm">
+                Görüntülemek için bir dosya seçin.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

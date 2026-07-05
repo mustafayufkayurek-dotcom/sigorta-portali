@@ -259,7 +259,7 @@ function getPanelMainLinks({
         { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: Users },
         { title: 'Bekleyen Onaylar', href: '/panel/eksper-portal/onaylar', icon: ShieldCheck },
         { title: 'Atanmış Dosyalar', href: '/panel/eksper-portal/dosyalar', icon: ClipboardList },
-        { title: 'Randevular', href: '/panel/eksper-portal/randevular', icon: Bell },
+        { title: 'Dosya Akışı', href: '/panel/eksper-portal/randevular', icon: GitBranch },
       ]
     : isInsuranceCompanyUser
       ? [
@@ -439,14 +439,14 @@ function Navbar({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
+              className="hidden md:flex items-center gap-2 min-w-[220px] lg:min-w-[260px] px-3 py-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
               title="Ara (Ctrl+K)"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="text-xs text-slate-400">Ara...</span>
-              <kbd className="hidden lg:flex items-center gap-0.5 ml-1 px-1 py-0.5 text-[9px] font-medium text-slate-300 bg-slate-100 rounded border border-slate-200">
+              <span className="flex-1 text-left text-xs text-slate-400">Ara...</span>
+              <kbd className="hidden lg:flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium text-slate-300 bg-slate-100 rounded border border-slate-200">
                 ⌘K
               </kbd>
             </button>
