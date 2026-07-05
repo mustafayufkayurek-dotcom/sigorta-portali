@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v198-customer-archive",
-  "description": "müşteri arşivleme; commit f412950; rollback v197",
+  "label": "v199-eksper-portal",
+  "description": "eksper dosya akışı, dashboard/ihbar UX, claim scoping; commit f28555b; rollback v198",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v198-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v198-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v199-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v199-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v197-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v197-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v198-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v198-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -27,6 +27,9 @@
     "/panel/operasyon/gelen-kutusu",
     "/panel/harita",
     "/panel/personel-ozluk",
+    "/panel/eksper-portal",
+    "/panel/eksper-portal/dosyalar",
+    "/panel/eksper-portal/randevular",
     "/docs/01-personel-kullanim-kilavuzu.pdf",
     "/docs/02-sigorta-portal-kilavuzu.pdf",
     "/docs/03-eksper-portal-tanitim.pdf",
