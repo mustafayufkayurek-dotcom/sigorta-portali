@@ -6,10 +6,11 @@ import * as https from 'https';
 import * as querystring from 'querystring';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
+import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { AuthTokens, RegisterDto } from '@sigorta/shared';
 
 function normalizeAuthEmail(email: string): string {
-  return String(email ?? '').trim().toLowerCase();
+  return normalizeEmailAddress(email);
 }
 
 @Injectable()

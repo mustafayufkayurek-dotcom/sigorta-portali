@@ -57,6 +57,18 @@ export class CreateUserDto {
   @IsOptional()
   @IsBoolean()
   isWebUser?: boolean;
+
+  /** Eksper daveti — müşteri kaydı (eksper_firmasi) */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  expertCustomerId?: string;
+
+  /** Broker daveti — müşteri kaydı (broker_firmasi); mail kurum adı için */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  brokerCustomerId?: string;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {

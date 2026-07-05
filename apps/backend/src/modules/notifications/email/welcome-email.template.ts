@@ -1,5 +1,4 @@
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { resolveWelcomeEmailLogoUrl } from './email-brand.util';
 
 export type WelcomeEmailRole = 'EXPERT' | 'INSURANCE_COMPANY' | 'BROKER' | 'MERIDYEN_STAFF';
 
@@ -43,9 +42,6 @@ interface RoleTemplateContent {
   }>;
   guideFileName: string;
 }
-
-const LOGO_CID = 'meridyen-assistance-logo';
-const LOGO_FILENAME = 'meridyen-assistance-logo.jpeg';
 
 const DEFAULT_PORTAL_URL = 'https://app.meridyen-tr.com/giris';
 const DEFAULT_SUPPORT_EMAIL = 'destek@meridyen-tr.com';
@@ -216,38 +212,6 @@ function buildGreetingLine(recipientName?: string): string {
   return `Sayın ${name},`;
 }
 
-function resolveWelcomeLogoPath(): string | null {
-  const candidates = [
-    join(process.cwd(), 'assets', LOGO_FILENAME),
-    join(process.cwd(), 'apps', 'backend', 'assets', LOGO_FILENAME),
-    join(__dirname, '..', '..', '..', 'assets', LOGO_FILENAME),
-    join(__dirname, '..', '..', '..', '..', 'assets', LOGO_FILENAME),
-  ];
-
-  for (const filePath of candidates) {
-    if (existsSync(filePath)) {
-      return filePath;
-    }
-  }
-
-  return null;
-}
-
-function buildLogoAttachments(): WelcomeEmailAttachment[] {
-  const logoPath = resolveWelcomeLogoPath();
-  if (!logoPath) {
-    return [];
-  }
-
-  return [
-    {
-      filename: LOGO_FILENAME,
-      path: logoPath,
-      cid: LOGO_CID,
-    },
-  ];
-}
-
 function miniActionCard(action: RoleTemplateContent['actions'][number], index: number): string {
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${COLORS.border};border-radius:10px;background:#ffffff;height:100%;">
@@ -339,7 +303,8 @@ export function generateWelcomeEmail(
   const escapedPortalUrl = escapeHtml(portalUrl);
   const escapedSupportEmail = escapeHtml(supportEmail);
   const escapedGuideFile = escapeHtml(content.guideFileName);
-  const attachments = buildLogoAttachments();
+  const logoUrl = resolveWelcomeEmailLogoUrl(portalUrl);
+  const escapedLogoUrl = escapeHtml(logoUrl);
 
   const guideButton = guideUrl
     ? `<a href="${escapeHtml(guideUrl)}" style="display:inline-block;border:1px solid ${COLORS.blue};background:#ffffff;color:${COLORS.blue};text-decoration:none;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:700;" title="${escapedGuideFile}">Kullanım Kılavuzunu İndir veya İncele</a>`
@@ -430,7 +395,7 @@ export function generateWelcomeEmail(
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="right" style="vertical-align:top;">
-                    <img src="cid:${LOGO_CID}" alt="Meridyen Assistance" width="120" style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"/>
+                    <img src="${escapedLogoUrl}" alt="Meridyen Asistans" width="120" style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"/>
                   </td>
                 </tr>
               </table>
@@ -567,6 +532,6 @@ export function generateWelcomeEmail(
     text,
     role,
     guideFileName: content.guideFileName,
-    attachments,
+    attachments: [],
   };
 }

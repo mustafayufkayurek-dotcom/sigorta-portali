@@ -1,17 +1,19 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { WelcomeEmailRole } from '@/modules/notifications/email/welcome-email.template';
 import { buildAppPath } from '@/common/utils/app-url';
+import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { ALL_SCREEN_CODES, SCREEN_LABELS, getDefaultScreensForRole } from './screen-permissions.defaults';
 
 function normalizeUserEmail(email: string): string {
-  return String(email ?? '').trim().toLowerCase();
+  return normalizeEmailAddress(email);
 }
 
 function isInactiveUserStatus(status: string | null | undefined): boolean {
@@ -53,6 +55,24 @@ const PROTECTED_SYSTEM_EMAILS = new Set([
   'admin@example.com',
   'admin@meridyenassistance.com',
 ]);
+
+const HASAR_EXPERT_CUSTOMER_SUB_TYPES = new Set(['eksper_firmasi', 'eksper']);
+const BROKER_CUSTOMER_SUB_TYPE = 'broker_firmasi';
+
+type WelcomeOrgParams = {
+  roleCode?: string | null;
+  branchName?: string | null;
+  adjusterCompany?: string | null;
+  adjusterName?: string | null;
+  insuranceCompanyName?: string | null;
+  brokerOrganizationName?: string | null;
+};
+
+type InvitePortalContext = {
+  expertCustomerId?: string | null;
+  brokerCustomerId?: string | null;
+  insuranceCompanyIds?: string[] | null;
+};
 
 @Injectable()
 export class UsersService {
@@ -172,27 +192,55 @@ export class UsersService {
 
     applyTitleCase(data, ['firstName', 'lastName']);
 
-    const { password, departmentMemberships, responsibilityAssignments, serviceAreas, insuranceCompanyIds, ...rest } = data;
+    const {
+      password,
+      departmentMemberships,
+      responsibilityAssignments,
+      serviceAreas,
+      insuranceCompanyIds,
+      expertCustomerId,
+      brokerCustomerId,
+      ...rest
+    } = data;
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
+    await this.validatePortalInviteContext(rest.roleId, { expertCustomerId, brokerCustomerId, insuranceCompanyIds });
+
     const temporaryPassword = typeof password === 'string' && password.trim().length > 0
       ? password.trim()
       : generateTemporaryPassword();
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     const user = await this.prisma.$transaction(async (tx) => {
+      const adjusterId = await this.resolveExpertAdjusterIdForInvite(tx, {
+        roleId: rest.roleId,
+        adjusterId: rest.adjusterId,
+        expertCustomerId,
+        firstName: rest.firstName,
+        lastName: rest.lastName,
+        email: normalizedEmail,
+        phone: rest.phone,
+      });
+
+      const { expertCustomerId: _expertCustomerId, brokerCustomerId: _brokerCustomerId, ...userData } = rest;
+
       const createdUser = await tx.user.create({
         data: {
-          ...rest,
+          ...userData,
+          adjusterId,
           email: normalizedEmail,
           passwordHash: hashedPassword,
           mustChangePassword: true,
           temporaryPasswordIssuedAt: new Date(),
-          status: rest.status ?? 'active',
+          status: userData.status ?? 'active',
         },
         include: {
           role: true,
           branch: true,
           adjuster: true,
+          userInsuranceCompanyScopes: {
+            include: { insuranceCompany: { select: { id: true, name: true } } },
+            take: 1,
+          },
         },
       });
 
@@ -249,18 +297,17 @@ export class UsersService {
     });
 
     const { passwordHash, ...result } = user;
+    const organizationName = await this.resolveWelcomeOrganizationNameForUser(result, {
+      brokerCustomerId,
+      insuranceCompanyIds,
+    });
     const welcomeEmail = await this.sendWelcomeInviteEmail({
       email: normalizedEmail,
       firstName: result.firstName,
       lastName: result.lastName,
       temporaryPassword,
       roleCode: result.role?.code,
-      branchName: this.resolveWelcomeOrganizationName({
-        roleCode: result.role?.code,
-        branchName: result.branch?.name,
-        adjusterCompany: result.adjuster?.company,
-        adjusterName: result.adjuster?.name,
-      }),
+      organizationName,
     });
 
     return {
@@ -287,6 +334,8 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      expertCustomerId,
+      brokerCustomerId,
       ...rest
     } = data;
 
@@ -299,6 +348,8 @@ export class UsersService {
       throw new BadRequestException('Bu e-posta adresi başka bir aktif kullanıcıda kayıtlı');
     }
 
+    await this.validatePortalInviteContext(rest.roleId, { expertCustomerId, brokerCustomerId, insuranceCompanyIds });
+
     const reactivated = await this.update(existingUser.id, {
       ...rest,
       email: restoreEmail,
@@ -310,6 +361,8 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      expertCustomerId,
+      brokerCustomerId,
     });
 
     this.auditLogsService.log({
@@ -326,7 +379,13 @@ export class UsersService {
       role?: { code?: string | null } | null;
       branch?: { name?: string | null } | null;
       adjuster?: { company?: string | null; name?: string | null } | null;
+      userInsuranceCompanyScopes?: Array<{ insuranceCompany?: { name?: string | null } | null }>;
     };
+
+    const organizationName = await this.resolveWelcomeOrganizationNameForUser(reactivatedUser, {
+      brokerCustomerId,
+      insuranceCompanyIds,
+    });
 
     const welcomeEmail = await this.sendWelcomeInviteEmail({
       email: restoreEmail,
@@ -334,12 +393,7 @@ export class UsersService {
       lastName: reactivated.lastName,
       temporaryPassword,
       roleCode: reactivatedUser.role?.code,
-      branchName: this.resolveWelcomeOrganizationName({
-        roleCode: reactivatedUser.role?.code,
-        branchName: reactivatedUser.branch?.name,
-        adjusterCompany: reactivatedUser.adjuster?.company,
-        adjusterName: reactivatedUser.adjuster?.name,
-      }),
+      organizationName,
     });
 
     return {
@@ -370,12 +424,7 @@ export class UsersService {
     }
   }
 
-  private resolveWelcomeOrganizationName(params: {
-    roleCode?: string | null;
-    branchName?: string | null;
-    adjusterCompany?: string | null;
-    adjusterName?: string | null;
-  }): string | undefined {
+  private resolveWelcomeOrganizationName(params: WelcomeOrgParams): string | undefined {
     const role = this.roleCodeToWelcomeRole(params.roleCode);
     if (role === 'EXPERT') {
       return (
@@ -385,7 +434,205 @@ export class UsersService {
         undefined
       );
     }
+    if (role === 'INSURANCE_COMPANY') {
+      return params.insuranceCompanyName?.trim() || params.branchName?.trim() || undefined;
+    }
+    if (role === 'BROKER') {
+      return params.brokerOrganizationName?.trim() || params.branchName?.trim() || undefined;
+    }
     return params.branchName?.trim() || undefined;
+  }
+
+  private async resolveWelcomeOrganizationNameForUser(
+    user: {
+      role?: { code?: string | null } | null;
+      branch?: { name?: string | null } | null;
+      adjuster?: { company?: string | null; name?: string | null } | null;
+      userInsuranceCompanyScopes?: Array<{ insuranceCompany?: { name?: string | null } | null }>;
+    },
+    context: InvitePortalContext,
+  ): Promise<string | undefined> {
+    const insuranceFromUser = user.userInsuranceCompanyScopes?.[0]?.insuranceCompany?.name;
+    const insuranceCompanyName = insuranceFromUser
+      ?? (context.insuranceCompanyIds?.[0]
+        ? (await this.prisma.insuranceCompany.findUnique({
+            where: { id: context.insuranceCompanyIds[0] },
+            select: { name: true },
+          }))?.name
+        : undefined);
+
+    return this.resolveWelcomeOrganizationName({
+      roleCode: user.role?.code,
+      branchName: user.branch?.name,
+      adjusterCompany: user.adjuster?.company,
+      adjusterName: user.adjuster?.name,
+      insuranceCompanyName: insuranceCompanyName ?? undefined,
+      brokerOrganizationName: await this.resolveBrokerOrganizationName(context.brokerCustomerId),
+    });
+  }
+
+  private async resolveBrokerOrganizationName(brokerCustomerId?: string | null): Promise<string | undefined> {
+    if (!brokerCustomerId) return undefined;
+    const customer = await this.prisma.customer.findUnique({ where: { id: brokerCustomerId } });
+    if (!customer || customer.status !== 'active') return undefined;
+    if (customer.entityType !== 'corporate' || customer.subType !== BROKER_CUSTOMER_SUB_TYPE) {
+      return undefined;
+    }
+    return (customer.companyName ?? customer.fullName ?? '').trim() || undefined;
+  }
+
+  private async validatePortalInviteContext(
+    roleId: string | undefined,
+    context: InvitePortalContext,
+    mode: 'create' | 'update' = 'create',
+    options?: { existingAdjusterId?: string | null },
+  ): Promise<void> {
+    if (!roleId) return;
+    const role = await this.prisma.role.findUnique({ where: { id: roleId }, select: { code: true } });
+    if (!role) return;
+
+    if (mode === 'create') {
+      if (role.code === 'expert' && !context.expertCustomerId) {
+        throw new BadRequestException('Ekspertiz firması seçilmelidir');
+      }
+      if (role.code === 'broker_user' && !context.brokerCustomerId) {
+        throw new BadRequestException('Broker firması seçilmelidir');
+      }
+      if (role.code === 'insurance_company_user' && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
+        throw new BadRequestException('Sigorta şirketi seçilmelidir');
+      }
+    }
+
+    if (mode === 'update' && role.code === 'expert' && !context.expertCustomerId && !options?.existingAdjusterId) {
+      throw new BadRequestException('Ekspertiz firması seçilmelidir');
+    }
+
+    if (mode === 'update' && role.code === 'broker_user' && !context.brokerCustomerId) {
+      // Broker firması yalnızca davet sırasında zorunlu; düzenlemede kalıcı bağ henüz yok.
+    }
+
+    if (context.expertCustomerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: context.expertCustomerId } });
+      if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
+        throw new BadRequestException('Geçerli bir ekspertiz firması seçilmelidir');
+      }
+      if (!customer.subType || !HASAR_EXPERT_CUSTOMER_SUB_TYPES.has(customer.subType)) {
+        throw new BadRequestException('Seçilen kayıt ekspertiz firması değil');
+      }
+    }
+
+    if (context.brokerCustomerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: context.brokerCustomerId } });
+      if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
+        throw new BadRequestException('Geçerli bir broker firması seçilmelidir');
+      }
+      if (customer.subType !== BROKER_CUSTOMER_SUB_TYPE) {
+        throw new BadRequestException('Seçilen kayıt broker firması değil');
+      }
+    }
+  }
+
+  private async resolveExpertAdjusterIdForInvite(
+    tx: Prisma.TransactionClient,
+    params: {
+      roleId?: string;
+      adjusterId?: string | null;
+      expertCustomerId?: string | null;
+      firstName?: string;
+      lastName?: string;
+      email: string;
+      phone?: string | null;
+    },
+  ): Promise<string | undefined> {
+    if (!params.roleId) return params.adjusterId ?? undefined;
+
+    const role = await tx.role.findUnique({ where: { id: params.roleId }, select: { code: true } });
+    if (role?.code !== 'expert') {
+      return params.adjusterId ?? undefined;
+    }
+
+    if (params.adjusterId) {
+      return params.adjusterId;
+    }
+
+    if (!params.expertCustomerId) {
+      throw new BadRequestException('Ekspertiz firması seçilmelidir');
+    }
+
+    return this.ensureExpertAdjusterForInvite(tx, {
+      expertCustomerId: params.expertCustomerId,
+      firstName: params.firstName ?? '',
+      lastName: params.lastName ?? '',
+      email: params.email,
+      phone: params.phone,
+    });
+  }
+
+  private async ensureExpertAdjusterForInvite(
+    tx: Prisma.TransactionClient,
+    params: {
+      expertCustomerId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string | null;
+    },
+  ): Promise<string> {
+    const customer = await tx.customer.findUnique({ where: { id: params.expertCustomerId } });
+    if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
+      throw new BadRequestException('Geçerli bir ekspertiz firması seçilmelidir');
+    }
+    if (!customer.subType || !HASAR_EXPERT_CUSTOMER_SUB_TYPES.has(customer.subType)) {
+      throw new BadRequestException('Seçilen kayıt ekspertiz firması değil');
+    }
+
+    const companyName = (customer.companyName ?? customer.fullName ?? '').trim();
+    if (!companyName) {
+      throw new BadRequestException('Seçilen ekspertiz firmasının unvanı eksik');
+    }
+
+    const personName = [params.firstName, params.lastName].map((part) => part?.trim()).filter(Boolean).join(' ');
+    const normalizedEmail = normalizeUserEmail(params.email);
+
+    const linkedUser = await tx.user.findFirst({
+      where: { email: normalizedEmail },
+      select: { adjusterId: true },
+    });
+    if (linkedUser?.adjusterId) {
+      const existingAdjuster = await tx.adjuster.findUnique({ where: { id: linkedUser.adjusterId } });
+      if (existingAdjuster) {
+        return existingAdjuster.id;
+      }
+    }
+
+    const existingAdjuster = await tx.adjuster.findFirst({
+      where: {
+        email: normalizedEmail,
+        company: companyName,
+        status: 'active',
+      },
+    });
+    if (existingAdjuster) {
+      const adjusterInUse = await tx.user.findFirst({
+        where: { adjusterId: existingAdjuster.id },
+        select: { id: true },
+      });
+      if (!adjusterInUse) {
+        return existingAdjuster.id;
+      }
+    }
+
+    const adjuster = await tx.adjuster.create({
+      data: {
+        name: personName || companyName,
+        company: companyName,
+        email: normalizedEmail,
+        phone: params.phone?.trim() || customer.phone || undefined,
+        city: customer.city || undefined,
+        status: 'active',
+      },
+    });
+    return adjuster.id;
   }
 
   private async sendWelcomeInviteEmail(params: {
@@ -394,7 +641,7 @@ export class UsersService {
     lastName: string;
     temporaryPassword: string;
     roleCode?: string | null;
-    branchName?: string | null;
+    organizationName?: string | null;
   }): Promise<{ sent: boolean; message: string }> {
     const loginUrl = buildAppPath(this.config, '/giris');
     const role = this.roleCodeToWelcomeRole(params.roleCode);
@@ -406,7 +653,7 @@ export class UsersService {
 
     const result = await this.emailService.sendWelcomeEmail(params.email, role, {
       recipientName: recipientName || undefined,
-      organizationName: params.branchName?.trim() || undefined,
+      organizationName: params.organizationName?.trim() || undefined,
       portalUrl: loginUrl,
       guideUrl: buildAppPath(this.config, this.guidePathForWelcomeRole(role)),
       accountEmail: params.email,
@@ -448,6 +695,8 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      expertCustomerId,
+      brokerCustomerId,
       ...rest
     } = data;
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
@@ -500,6 +749,7 @@ export class UsersService {
     const include = {
       role: true,
       branch: true,
+      adjuster: true,
       departmentMemberships: {
         where: { isActive: true },
         include: {
@@ -529,8 +779,28 @@ export class UsersService {
       include,
     };
 
+    const roleIdForInvite = updateData.roleId ?? user.roleId;
+    await this.validatePortalInviteContext(roleIdForInvite, {
+      expertCustomerId,
+      brokerCustomerId,
+      insuranceCompanyIds,
+    }, 'update', { existingAdjusterId: user.adjusterId });
+
     const updated = roleChanged || hasNestedUpdates
       ? await this.prisma.$transaction(async (tx) => {
+          const resolvedAdjusterId = await this.resolveExpertAdjusterIdForInvite(tx, {
+            roleId: roleIdForInvite,
+            adjusterId: updateData.adjusterId ?? user.adjusterId,
+            expertCustomerId,
+            firstName: updateData.firstName ?? user.firstName,
+            lastName: updateData.lastName ?? user.lastName,
+            email: updateData.email ?? user.email,
+            phone: updateData.phone ?? user.phone,
+          });
+          if (resolvedAdjusterId) {
+            updateData.adjusterId = resolvedAdjusterId;
+          }
+
           if (roleChanged) {
             await tx.screenPermission.deleteMany({ where: { userId: id } });
           }

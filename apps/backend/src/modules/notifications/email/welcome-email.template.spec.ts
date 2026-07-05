@@ -30,14 +30,8 @@ describe('generateWelcomeEmail', () => {
     expect(rendered.html).not.toContain('Hızlı ve Şeffaf');
     expect(rendered.html).not.toContain('Rapor Gönder');
     expect(rendered.html).not.toContain('Size atanmış dosyalar');
-    expect(rendered.attachments).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          cid: 'meridyen-assistance-logo',
-          filename: 'meridyen-assistance-logo.jpeg',
-        }),
-      ]),
-    );
+    expect(rendered.html).toContain('https://app.meridyen-tr.com/docs/meridyen-assistance-logo.jpeg');
+    expect(rendered.attachments).toEqual([]);
   });
 
   it('uses staff welcome title for Meridyen personnel', () => {

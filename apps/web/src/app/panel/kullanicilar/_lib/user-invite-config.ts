@@ -125,6 +125,28 @@ export function isHasarExpertCustomer(customer: HasarExpertCustomerRecord) {
   return customer.subType === HASAR_EXPERT_CUSTOMER_SUB_TYPE || customer.subType === 'eksper';
 }
 
+/** Müşteriler → kurumsal → alt tip Broker Firması */
+export const BROKER_CUSTOMER_SUB_TYPE = 'broker_firmasi';
+
+export interface BrokerCustomerRecord {
+  id: string;
+  entityType?: string;
+  subType?: string | null;
+  status?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+}
+
+export function brokerCustomerName(customer: BrokerCustomerRecord) {
+  return (customer.companyName ?? customer.fullName ?? '').trim();
+}
+
+export function isBrokerCustomer(customer: BrokerCustomerRecord) {
+  if (customer.status && customer.status !== 'active') return false;
+  if (customer.entityType && customer.entityType !== 'corporate') return false;
+  return customer.subType === BROKER_CUSTOMER_SUB_TYPE;
+}
+
 /** Saha operasyonu — tanımlı iş kolu dışı açıklama (Acil Yardım) */
 export const FIELD_OTHER_SUBJECT_LABEL = 'Diğer';
 

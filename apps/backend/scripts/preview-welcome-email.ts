@@ -30,7 +30,7 @@ function writeRolePreview(
     forcePasswordChange: true,
   });
 
-  const html = rendered.html.replace('cid:meridyen-assistance-logo', './meridyen-assistance-logo.jpeg');
+  const html = rendered.html;
   const cardMatch = html.match(/<table width="640"[\s\S]*<\/table>\s*<\/td>\s*<\/tr>\s*<\/table>\s*<\/body>/i);
   const cardHtml = cardMatch?.[0].replace(/\s*<\/body>$/, '') ?? html;
 

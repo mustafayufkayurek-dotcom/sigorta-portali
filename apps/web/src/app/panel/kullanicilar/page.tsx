@@ -36,19 +36,26 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { normalizeEmailAddress } from '@/utils/normalize-email';
 import { API, authHeader } from '@/utils/api';
 import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
 import { toInternationalFormat, validateEmail } from '@/utils/validators';
 import {
   ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
+  BROKER_CUSTOMER_SUB_TYPE,
   FIELD_OPERATION_AREA_OPTIONS,
   FIELD_OTHER_SUBJECT_LABEL,
+  HASAR_EXPERT_CUSTOMER_SUB_TYPE,
   acilYardimAssistantCustomerName,
+  brokerCustomerName,
   departmentCodeMatchesArea,
   fieldOperationBranchOptions,
   findDepartmentForArea,
   findRoleByCode,
+  hasarExpertCustomerName,
   isAcilYardimAssistantCustomer,
+  isBrokerCustomer,
+  isHasarExpertCustomer,
   normalizeRoleCode,
   operationAreaFromDepartmentCodes,
   roleCodesMatch,
@@ -202,6 +209,11 @@ interface AcilYardimCustomer {
   name: string;
 }
 
+interface PortalOrganizationOption {
+  id: string;
+  name: string;
+}
+
 interface ServiceBranch {
   id: string;
   name: string;
@@ -259,7 +271,7 @@ function isProtectedSystemAdmin(user: Pick<User, 'email' | 'archivedEmail'>) {
 }
 
 type OperationArea = '' | 'hasar' | 'acil' | 'both';
-type UserTaskCode = '' | 'management' | 'operations' | 'field_operations' | 'expert' | 'insurance_company_user' | 'finance';
+type UserTaskCode = '' | 'management' | 'operations' | 'field_operations' | 'expert' | 'insurance_company_user' | 'broker' | 'finance';
 type ManagementLevel = '' | 'admin' | 'manager';
 type FormErrors = Partial<Record<keyof UserFormState, string>> & { general?: string };
 type ConfirmAction = {
@@ -279,6 +291,8 @@ interface UserFormState {
   managementLevel: ManagementLevel;
   operationArea: OperationArea;
   insuranceCompanyIds: string[];
+  expertCustomerId: string;
+  brokerCustomerId: string;
   acilYardimCustomerIds: string[];
   countrywide: boolean;
   serviceAreas: ServiceAreaSelection[];
@@ -295,6 +309,8 @@ const DEFAULT_FORM: UserFormState = {
   managementLevel: '',
   operationArea: '',
   insuranceCompanyIds: [],
+  expertCustomerId: '',
+  brokerCustomerId: '',
   acilYardimCustomerIds: [],
   countrywide: true,
   serviceAreas: [],
@@ -308,6 +324,7 @@ const USER_TASK_OPTIONS: Array<{ value: UserTaskCode; label: string; description
   { value: 'field_operations', label: 'Meridyen Saha Operasyonu', description: 'Meridyen bünyesinde sahada tespit veya operasyon takibi yapan iç kullanıcı.' },
   { value: 'expert', label: 'Eksper', description: 'Eksper portalı ve eksper iş akışları için kullanıcı.' },
   { value: 'insurance_company_user', label: 'Sigorta Şirketi Kullanıcısı', description: 'Sigorta şirketi kapsamındaki portal kullanıcısı.' },
+  { value: 'broker', label: 'Broker Kullanıcısı', description: 'Broker firması kapsamındaki portal kullanıcısı.' },
   { value: 'finance', label: 'Finans', description: 'Finans ve mali operasyon ekranlarını kullanan ekip üyesi.' },
 ];
 
@@ -332,7 +349,7 @@ function canReinviteByEmail(status: UserStatus): boolean {
 }
 
 function userMailbox(user: Pick<User, 'email' | 'archivedEmail'>): string {
-  return (user.archivedEmail ?? user.email).trim().toLowerCase();
+  return normalizeEmailAddress(user.archivedEmail ?? user.email);
 }
 
 function normalizeUser(user: User): User {
@@ -368,6 +385,7 @@ function displayRoleName(role?: Role | null) {
   if (code === 'field_staff') return 'Meridyen Saha Operasyonu';
   if (code === 'expert' || code === 'adjuster') return 'Eksper';
   if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
+  if (code === 'broker_user') return 'Broker Kullanıcısı';
   if (code === 'finance') return 'Finans';
   return role.name;
 }
@@ -567,6 +585,8 @@ export default function KullanicilarPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
   const [acilYardimCustomers, setAcilYardimCustomers] = useState<AcilYardimCustomer[]>([]);
+  const [hasarExpertCustomers, setHasarExpertCustomers] = useState<PortalOrganizationOption[]>([]);
+  const [brokerCustomers, setBrokerCustomers] = useState<PortalOrganizationOption[]>([]);
   const [serviceBranches, setServiceBranches] = useState<ServiceBranch[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -722,6 +742,64 @@ export default function KullanicilarPage() {
     }
   }, []);
 
+  const loadHasarExpertCustomers = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/customers`, {
+        headers: authHeader(),
+        params: {
+          limit: 200,
+          status: 'active',
+          customerType: 'corporate',
+          subType: HASAR_EXPERT_CUSTOMER_SUB_TYPE,
+        },
+      });
+      const list = r.data?.data ?? r.data ?? [];
+      setHasarExpertCustomers(
+        Array.isArray(list)
+          ? list
+              .filter(isHasarExpertCustomer)
+              .map((customer: any) => ({
+                id: customer.id,
+                name: hasarExpertCustomerName(customer),
+              }))
+              .filter((customer: PortalOrganizationOption) => Boolean(customer.name))
+              .sort((a: PortalOrganizationOption, b: PortalOrganizationOption) => a.name.localeCompare(b.name, 'tr'))
+          : [],
+      );
+    } catch {
+      setHasarExpertCustomers([]);
+    }
+  }, []);
+
+  const loadBrokerCustomers = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/customers`, {
+        headers: authHeader(),
+        params: {
+          limit: 200,
+          status: 'active',
+          customerType: 'corporate',
+          subType: BROKER_CUSTOMER_SUB_TYPE,
+        },
+      });
+      const list = r.data?.data ?? r.data ?? [];
+      setBrokerCustomers(
+        Array.isArray(list)
+          ? list
+              .filter(isBrokerCustomer)
+              .map((customer: any) => ({
+                id: customer.id,
+                name: brokerCustomerName(customer),
+              }))
+              .filter((customer: PortalOrganizationOption) => Boolean(customer.name))
+              .sort((a: PortalOrganizationOption, b: PortalOrganizationOption) => a.name.localeCompare(b.name, 'tr'))
+          : [],
+      );
+    } catch {
+      setBrokerCustomers([]);
+    }
+  }, []);
+
   const loadServiceBranches = useCallback(async () => {
     try {
       const acil = await axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() });
@@ -770,9 +848,11 @@ export default function KullanicilarPage() {
     loadDepartments();
     loadInsuranceCompanies();
     loadAcilYardimCustomers();
+    loadHasarExpertCustomers();
+    loadBrokerCustomers();
     loadServiceBranches();
     loadProvinces();
-  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadServiceBranches, loadProvinces]);
+  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadBrokerCustomers, loadServiceBranches, loadProvinces]);
 
   // ── Filtreli liste ────────────────────────────────────────────────────────
 
@@ -803,6 +883,7 @@ export default function KullanicilarPage() {
     if (form.userTask === 'field_operations') return roleByCode('field_staff');
     if (form.userTask === 'expert') return roleByCode('expert', 'adjuster');
     if (form.userTask === 'insurance_company_user') return roleByCode('insurance_company_user');
+    if (form.userTask === 'broker') return roleByCode('broker_user');
     if (form.userTask === 'finance') return roleByCode('finance');
     return undefined;
   })();
@@ -821,6 +902,9 @@ export default function KullanicilarPage() {
     }
     if (roleCodesMatch(role?.code, 'insurance_company_user')) {
       return { userTask: 'insurance_company_user', managementLevel: '' };
+    }
+    if (roleCodesMatch(role?.code, 'broker_user')) {
+      return { userTask: 'broker', managementLevel: '' };
     }
     if (roleCodesMatch(role?.code, 'finance')) return { userTask: 'finance', managementLevel: '' };
     return { userTask: '', managementLevel: '' };
@@ -993,6 +1077,8 @@ export default function KullanicilarPage() {
         ? prev.insuranceCompanyIds.slice(0, value === 'insurance_company_user' ? 1 : undefined)
         : [],
       acilYardimCustomerIds: value === 'operations' ? prev.acilYardimCustomerIds : [],
+      expertCustomerId: value === 'expert' ? prev.expertCustomerId : '',
+      brokerCustomerId: value === 'broker' ? prev.brokerCustomerId : '',
       countrywide: value === 'operations' || value === 'field_operations' || value === 'expert' ? prev.countrywide : true,
       serviceAreas: value === 'operations' || value === 'field_operations' || value === 'expert' ? prev.serviceAreas : [],
       selectedSubjects: value === 'field_operations' ? prev.selectedSubjects : [],
@@ -1002,6 +1088,8 @@ export default function KullanicilarPage() {
       userTask: undefined,
       managementLevel: undefined,
       insuranceCompanyIds: undefined,
+      expertCustomerId: undefined,
+      brokerCustomerId: undefined,
       acilYardimCustomerIds: undefined,
       operationArea: undefined,
       selectedSubjects: undefined,
@@ -1177,6 +1265,8 @@ export default function KullanicilarPage() {
       insuranceCompanyIds: task.userTask === 'insurance_company_user'
         ? (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean).slice(0, 1)
         : (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean),
+      expertCustomerId: '',
+      brokerCustomerId: '',
       acilYardimCustomerIds: [],
       countrywide: (u.serviceAreas ?? []).length === 0,
       serviceAreas: (u.serviceAreas ?? []).map((area: any) => ({
@@ -1240,6 +1330,12 @@ export default function KullanicilarPage() {
     if (form.userTask === 'insurance_company_user' && form.insuranceCompanyIds.length !== 1) {
       nextErrors.insuranceCompanyIds = 'Sigorta şirketi seçilmelidir.';
     }
+    if (form.userTask === 'expert' && !form.expertCustomerId) {
+      nextErrors.expertCustomerId = 'Ekspertiz firması seçilmelidir.';
+    }
+    if (form.userTask === 'broker' && !form.brokerCustomerId) {
+      nextErrors.brokerCustomerId = 'Broker firması seçilmelidir.';
+    }
     if (form.userTask === 'operations' && showsInsuranceCompanyScope(form.operationArea) && form.insuranceCompanyIds.length === 0) {
       nextErrors.insuranceCompanyIds = 'Sigorta şirketi seçilmelidir.';
     }
@@ -1291,6 +1387,14 @@ export default function KullanicilarPage() {
         payload.insuranceCompanyIds = form.insuranceCompanyIds.slice(0, 1);
       }
 
+      if (form.userTask === 'expert' && form.expertCustomerId) {
+        payload.expertCustomerId = form.expertCustomerId;
+      }
+
+      if (form.userTask === 'broker' && form.brokerCustomerId) {
+        payload.brokerCustomerId = form.brokerCustomerId;
+      }
+
       if (form.userTask === 'operations' || selectedRoleIsFieldStaff || form.userTask === 'expert') {
         const includeServiceAreas = form.userTask === 'expert'
           || selectedRoleIsFieldStaff
@@ -1328,7 +1432,7 @@ export default function KullanicilarPage() {
       }
 
       if (modal === 'add') {
-        const normalizedEmail = form.email.trim().toLowerCase();
+        const normalizedEmail = normalizeEmailAddress(form.email);
         const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
         const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
 
@@ -2120,6 +2224,80 @@ export default function KullanicilarPage() {
                   Sigorta Şirketi Kullanıcısı yalnız bir sigorta şirketine bağlıdır. Çoklu şirket kapsamı Meridyen Dosya Sorumlusu için kullanılır.
                 </p>
               </FormField>
+              </div>
+            )}
+
+            {form.userTask === 'expert' && (
+              <div className="order-2 col-span-2">
+                <FormField label="Ekspertiz Firması" required error={formErrors.expertCustomerId}>
+                  {hasarExpertCustomers.length === 0 ? (
+                    <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      Aktif ekspertiz firması bulunamadı. Önce{' '}
+                      <Link href="/panel/musteriler?openAdd=1&subType=eksper_firmasi&entityType=corporate" className="font-semibold underline">
+                        Müşteriler
+                      </Link>
+                      {' '}üzerinden ekspertiz firması kaydı oluşturun.
+                    </p>
+                  ) : (
+                    <div className="grid max-h-48 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                      {hasarExpertCustomers.map((company) => (
+                        <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="radio"
+                            name="expert-firm"
+                            checked={form.expertCustomerId === company.id}
+                            onChange={() => {
+                              setForm((prev) => ({ ...prev, expertCustomerId: company.id }));
+                              setFormErrors((prev) => ({ ...prev, expertCustomerId: undefined, general: undefined }));
+                            }}
+                            className="border-slate-300 text-blue-600"
+                          />
+                          {company.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
+                    Portal kullanıcısı seçilen ekspertiz firmasına bağlanır; hoş geldin mailinde firma adı bu kayıttan gelir.
+                  </p>
+                </FormField>
+              </div>
+            )}
+
+            {form.userTask === 'broker' && (
+              <div className="order-2 col-span-2">
+                <FormField label="Broker Firması" required error={formErrors.brokerCustomerId}>
+                  {brokerCustomers.length === 0 ? (
+                    <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      Aktif broker firması bulunamadı. Önce{' '}
+                      <Link href="/panel/musteriler?openAdd=1&subType=broker_firmasi&entityType=corporate" className="font-semibold underline">
+                        Müşteriler
+                      </Link>
+                      {' '}üzerinden broker firması kaydı oluşturun.
+                    </p>
+                  ) : (
+                    <div className="grid max-h-48 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                      {brokerCustomers.map((company) => (
+                        <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="radio"
+                            name="broker-firm"
+                            checked={form.brokerCustomerId === company.id}
+                            onChange={() => {
+                              setForm((prev) => ({ ...prev, brokerCustomerId: company.id }));
+                              setFormErrors((prev) => ({ ...prev, brokerCustomerId: undefined, general: undefined }));
+                            }}
+                            className="border-slate-300 text-blue-600"
+                          />
+                          {company.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
+                    Broker portal kullanıcısı seçilen broker firması ile eşleştirilir; hoş geldin mailinde firma adı bu kayıttan gelir.
+                  </p>
+                </FormField>
               </div>
             )}
 
