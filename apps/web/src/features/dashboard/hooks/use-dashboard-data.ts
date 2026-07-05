@@ -85,6 +85,33 @@ export function useOverheadPeriodStatus(year: number, month: number) {
   );
 }
 
+export type HrAttendanceMonthCloseRemindersResponse = {
+  reminders: Array<{
+    year: number;
+    month: number;
+    periodLabel: string;
+    urgency: 'month_end' | 'overdue';
+    audience: 'employee' | 'finance';
+    message: string;
+    checklist: string[];
+    stats?: {
+      totalEmployees: number;
+      pendingDailyConfirmEmployees: number;
+      missingMonthlyConfirm: number;
+      missingLock: number;
+    };
+  }>;
+  hasPending: boolean;
+  criticalCount: number;
+};
+
+export function useHrAttendanceMonthCloseReminders() {
+  return useApiQuery<HrAttendanceMonthCloseRemindersResponse>(
+    ['hr-attendance-month-close-reminders'],
+    'hr/attendance/month-close-reminders',
+  );
+}
+
 export function useActivityFeed(limit: number = 20) {
   return useApiQuery<ActivityFeedResponse>(['dashboard-activity-feed', limit], `/dashboard/activity-feed?limit=${limit}`);
 }
