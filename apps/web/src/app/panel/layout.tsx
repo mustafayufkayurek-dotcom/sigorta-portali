@@ -25,6 +25,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { useActivityHeartbeat } from '@/hooks/useActivityHeartbeat';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -43,6 +44,7 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -61,6 +63,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
+  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -103,6 +106,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
+  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -147,6 +151,7 @@ const SCREEN_TO_PATH: Record<string, string> = {
   guvenlik:          '/panel/guvenlik',
   harita:            '/panel/harita',
   personel_yonetimi: '/panel/personel-yonetimi',
+  personel_ozluk: '/panel/personel-ozluk',
   test_notes_admin: '/panel/ayarlar/test-notlari-gorev-takip',
 };
 
@@ -251,6 +256,7 @@ function getPanelMainLinks({
 }): NavigationLink[] {
   return isExpert
     ? [
+        { title: 'Yeni İhbar', href: '/panel/eksper-portal?openIhbar=1', icon: Plus },
         { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: Users },
         { title: 'Bekleyen Onaylar', href: '/panel/eksper-portal/onaylar', icon: ShieldCheck },
         { title: 'Atanmış Dosyalar', href: '/panel/eksper-portal/dosyalar', icon: ClipboardList },
@@ -277,6 +283,7 @@ function getPanelMainLinks({
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
             ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
+            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
           ]
       : isFinance
@@ -294,6 +301,7 @@ function getPanelMainLinks({
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
           { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
           { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog },
+          { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
           { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
           { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -805,6 +813,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [agreementModalDismissed, setAgreementModalDismissed] = useState(false);
   const [allowedScreens, setAllowedScreens] = useState<string[] | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+
+  useActivityHeartbeat(authChecked && !!user);
 
   // Tema localStorage'dan oku — SSR safe + canlı güncelleme
   useEffect(() => {

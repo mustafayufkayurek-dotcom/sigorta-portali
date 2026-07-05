@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/contexts/ToastContext';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -842,8 +842,8 @@ function LiveClock() {
   const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   return (
     <div className="text-right">
-      <p className="text-blue-200 text-xs">{dateStr}</p>
-      <p className="text-white text-2xl font-bold tabular-nums tracking-wider">{timeStr}</p>
+      <p className="text-blue-200 text-[10px] leading-tight">{dateStr}</p>
+      <p className="text-white text-lg font-bold tabular-nums tracking-wide">{timeStr}</p>
     </div>
   );
 }
@@ -879,6 +879,7 @@ function fileNumberOf(file?: Pick<ExpertClaimFile, 'fileNo' | 'fileNumber'> | nu
 
 export default function EksperPortalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [expiredCount, setExpiredCount] = useState<number>(0);
@@ -894,6 +895,13 @@ export default function EksperPortalPage() {
     setShowIhbarModal(false);
     setSuccessFileNo(fileNo);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('openIhbar') === '1') {
+      setShowIhbarModal(true);
+      router.replace('/panel/eksper-portal', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -957,24 +965,24 @@ export default function EksperPortalPage() {
   const onTimeRatio = assignedCount === 0 ? 100 : Math.max(0, Math.round(((assignedCount - approvalExpiredCount) / assignedCount) * 100));
 
   return (
-    <div className="min-h-screen bg-slate-50 -m-6 px-0">
+    <div className="min-h-screen bg-slate-50 -mx-3 px-0 sm:-mx-4">
 
-      <div className="px-6 py-6 pb-16 space-y-6">
+      <div className="px-4 py-4 pb-10 space-y-4">
 
         {/* ── Hero: Hoş Geldin + Saat + Hava ─────────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg">
           {/* Subtle dekoratif arka plan */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute -top-16 -left-16 w-56 h-56 bg-white/5 rounded-full blur-3xl" />
-            <div className="absolute -bottom-16 -right-8 w-64 h-64 bg-indigo-900/30 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -right-6 w-44 h-44 bg-indigo-900/30 rounded-full blur-2xl" />
           </div>
 
-          <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             {/* Sol: Logo + Hoş geldin */}
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3">
               {/* Meridyen Logo */}
-              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shadow-lg">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
@@ -984,7 +992,7 @@ export default function EksperPortalPage() {
                   <span className="w-1 h-1 rounded-full bg-blue-300" />
                   <span className="text-[10px] text-blue-300">Eksper Portalı</span>
                 </div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-white leading-tight">
+                <h1 className="text-xl lg:text-2xl font-bold text-white leading-tight">
                   Hoş Geldiniz,{' '}
                   <span className="text-blue-100">
                     {userName}
@@ -1059,10 +1067,10 @@ export default function EksperPortalPage() {
             </div>
 
             {/* Sağ: Saat + Hızlı İletişim */}
-            <div className="flex flex-col items-end gap-4 flex-shrink-0">
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <LiveClock />
-              {/* Hızlı İletişim — kompakt pill bandı */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Hızlı İletişim — yalnızca geniş ekranda */}
+              <div className="hidden xl:flex flex-wrap items-center justify-end gap-2">
                 <a
                   href="tel:+908508852555"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
@@ -1098,27 +1106,27 @@ export default function EksperPortalPage() {
         </div>
 
         {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
-            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Aktif Dosya Sayısı" unit="" size={140} />
-            <p className="text-[10px] text-slate-400 text-center mt-1">{`Toplam: ${assignedCount}`}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl bg-white border border-slate-200 p-3 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
+            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Aktif Dosya Sayısı" unit="" size={100} />
+            <p className="text-[10px] text-slate-400 text-center mt-0.5">{`Toplam: ${assignedCount}`}</p>
           </div>
-          <Link href="/panel/eksper-portal/onaylar" className="rounded-2xl bg-white border border-amber-200 p-4 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
-            <GaugeChart value={approvalPendingCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Onay Bekleyen Dosyalar" unit="" size={140} />
-            <p className="text-[10px] text-amber-600 text-center mt-1">İnceleme bekleyen dış onaylar</p>
+          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl bg-white border border-amber-200 p-3 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
+            <GaugeChart value={approvalPendingCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Onay Bekleyen Dosyalar" unit="" size={100} />
+            <p className="text-[10px] text-amber-600 text-center mt-0.5">İnceleme bekleyen dış onaylar</p>
           </Link>
-          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-2xl bg-white border border-red-200 p-4 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
-            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Dosyalar" unit="" size={140} />
-            <p className="text-[10px] text-red-600 text-center mt-1">{onTimeRatio}% zamanında takip oranı</p>
+          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-xl bg-white border border-red-200 p-3 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
+            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Dosyalar" unit="" size={100} />
+            <p className="text-[10px] text-red-600 text-center mt-0.5">{onTimeRatio}% zamanında takip oranı</p>
           </Link>
         </div>
 
         {/* ── Alt Grid: Aktiviteler + İstatistikler ────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
           {/* Son Aktiviteler */}
-          <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
+          <div className="lg:col-span-2 rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="h-4 w-1 rounded-full bg-emerald-500" />
                 <h3 className="text-sm font-semibold text-slate-800">Son Dosya Aktiviteleri</h3>
@@ -1128,7 +1136,7 @@ export default function EksperPortalPage() {
               </Link>
             </div>
             {recentApprovals.length === 0 && assignedFiles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
                   <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1217,7 +1225,7 @@ export default function EksperPortalPage() {
           </div>
 
           {/* Sağ: Özet KPI'lar + Tanıtım */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* KPI Cards */}
             {[
               {
@@ -1257,15 +1265,15 @@ export default function EksperPortalPage() {
               <Link
                 key={kpi.label}
                 href={kpi.href}
-                className="flex items-center gap-4 rounded-xl bg-white border border-slate-200 p-4 hover:border-slate-300 hover:shadow-sm transition-all duration-150 group"
+                className="flex items-center gap-3 rounded-xl bg-white border border-slate-200 p-3 hover:border-slate-300 hover:shadow-sm transition-all duration-150 group"
               >
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white flex-shrink-0 shadow-md`}>
+                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white flex-shrink-0 shadow-md`}>
                   {kpi.icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-slate-500">{kpi.label}</p>
                   <div className="flex items-center gap-2">
-                    <p className={`text-2xl font-bold tabular-nums ${kpi.textColor}`}>{kpi.value}</p>
+                    <p className={`text-xl font-bold tabular-nums ${kpi.textColor}`}>{kpi.value}</p>
                     {kpi.pulse && <span className={`w-2 h-2 rounded-full animate-pulse ${kpi.label.includes('Geçmiş') ? 'bg-red-500' : 'bg-amber-400'}`} />}
                   </div>
                 </div>
@@ -1276,15 +1284,15 @@ export default function EksperPortalPage() {
             ))}
 
             {/* Meridyen Tanıtım Kartı */}
-            <div className="rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 p-5 relative shadow-md">
+            <div className="rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 p-4 relative shadow-md">
               <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-                <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-black/10 rounded-full blur-xl" />
+                <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full blur-lg" />
+                <div className="absolute -bottom-3 -left-3 w-14 h-14 bg-black/10 rounded-full blur-lg" />
               </div>
               <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
@@ -1293,13 +1301,13 @@ export default function EksperPortalPage() {
                 <p className="text-blue-100 text-xs leading-relaxed">
                   Türkiye&apos;nin önde gelen 10 sigorta şirketiyle çalışan, güvenilir hasar yönetimi partneri.
                 </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="bg-white/10 rounded-lg p-2 text-center">
-                    <p className="text-white font-bold text-lg tabular-nums">1.030+</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="bg-white/10 rounded-lg p-1.5 text-center">
+                    <p className="text-white font-bold text-base tabular-nums">1.030+</p>
                     <p className="text-blue-200 text-[10px]">Toplam Dosya</p>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-2 text-center">
-                    <p className="text-white font-bold text-lg tabular-nums">%94</p>
+                  <div className="bg-white/10 rounded-lg p-1.5 text-center">
+                    <p className="text-white font-bold text-base tabular-nums">%94</p>
                     <p className="text-blue-200 text-[10px]">Memnuniyet</p>
                   </div>
                 </div>
@@ -1312,10 +1320,10 @@ export default function EksperPortalPage() {
 
       {/* ── Sigorta Şirketleri — Fixed Bottom Bandı ──────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center h-10 overflow-hidden">
-          <div className="flex-shrink-0 flex items-center gap-2 px-4 h-full bg-slate-800 text-white text-[11px] font-bold tracking-wider whitespace-nowrap">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            PARTNERLER
+        <div className="flex items-center h-8 overflow-hidden">
+          <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-slate-800 text-white text-[11px] font-semibold whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Partnerler
           </div>
           <div className="flex-1 overflow-hidden">
             <div
