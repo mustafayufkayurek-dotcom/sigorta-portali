@@ -58,7 +58,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     description: 'Dosya, konu, durum ve evrak tanımları.',
     icon: BookOpenText,
     links: [
-      { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Departman, ilişki türü, dosya konusu, evrak türü, iş grubu, mahal ve diğer tanım aileleri.' },
+      { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Tüm tanım sözlükleri: departman, ilişki türü, dosya konusu, evrak, iş grubu, mahal, tedarikçi hizmet kolu, müşteri tipi.' },
       { title: 'Eksper–Sigorta İlişkileri', href: '/panel/ayarlar/eksper-sigorta-iliskileri', icon: GitBranch, description: 'Eksper firması ↔ sigorta şirketi dosya kapsam matrisi.' },
       { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch, description: 'Dosya durumları ve süreç sırası.' },
       { title: 'Eskalasyon Kuralları', href: '/panel/ayarlar/eskalasyon-kurallari', icon: Bell, description: 'SLA ve eskalasyon bildirim kuralları.' },
@@ -69,7 +69,6 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     description: 'Saha hizmetleri, fiyat ve maliyet kırılımları.',
     icon: Layers3,
     links: [
-      { title: 'Tedarikçi Hizmet Kolları', href: '/panel/ayarlar/tedarikci-hizmet-kollari', icon: Layers3, description: 'Tedarikçi kartı uzmanlık alanları — sıvacı, çilingir, elektrikçi vb.' },
       { title: 'Fiyat Listesi', href: '/panel/ayarlar/fiyat-listesi', icon: Receipt, description: 'Birim fiyat ve iş kalemleri.' },
       { title: 'Masraf Kategorileri', href: '/panel/ayarlar/masraf-kategorileri', icon: Tags, description: 'Masraf grubu ve alt grup hiyerarşisi.' },
       { title: 'Bölgesel Zamlar', href: '/panel/ayarlar/bolgesel-zamlar', icon: Landmark, description: 'Bölge bazlı fiyat etkileri.' },
