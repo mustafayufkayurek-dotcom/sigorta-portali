@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import { WelcomeEmailRole } from '@/modules/notifications/email/welcome-email.template';
 import { buildAppPath } from '@/common/utils/app-url';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as bcrypt from 'bcrypt';
@@ -191,6 +192,7 @@ export class UsersService {
         include: {
           role: true,
           branch: true,
+          adjuster: true,
         },
       });
 
@@ -252,6 +254,13 @@ export class UsersService {
       firstName: result.firstName,
       lastName: result.lastName,
       temporaryPassword,
+      roleCode: result.role?.code,
+      branchName: this.resolveWelcomeOrganizationName({
+        roleCode: result.role?.code,
+        branchName: result.branch?.name,
+        adjusterCompany: result.adjuster?.company,
+        adjusterName: result.adjuster?.name,
+      }),
     });
 
     return {
@@ -313,11 +322,24 @@ export class UsersService {
       userEmail: restoreEmail,
     });
 
+    const reactivatedUser = reactivated as typeof reactivated & {
+      role?: { code?: string | null } | null;
+      branch?: { name?: string | null } | null;
+      adjuster?: { company?: string | null; name?: string | null } | null;
+    };
+
     const welcomeEmail = await this.sendWelcomeInviteEmail({
       email: restoreEmail,
       firstName: reactivated.firstName,
       lastName: reactivated.lastName,
       temporaryPassword,
+      roleCode: reactivatedUser.role?.code,
+      branchName: this.resolveWelcomeOrganizationName({
+        roleCode: reactivatedUser.role?.code,
+        branchName: reactivatedUser.branch?.name,
+        adjusterCompany: reactivatedUser.adjuster?.company,
+        adjusterName: reactivatedUser.adjuster?.name,
+      }),
     });
 
     return {
@@ -328,20 +350,68 @@ export class UsersService {
     };
   }
 
+  private roleCodeToWelcomeRole(roleCode?: string | null): WelcomeEmailRole {
+    if (roleCode === 'expert') return 'EXPERT';
+    if (roleCode === 'insurance_company_user') return 'INSURANCE_COMPANY';
+    if (roleCode === 'broker_user') return 'BROKER';
+    return 'MERIDYEN_STAFF';
+  }
+
+  private guidePathForWelcomeRole(role: WelcomeEmailRole): string {
+    switch (role) {
+      case 'EXPERT':
+        return '/docs/03-eksper-portal-tanitim.pdf';
+      case 'INSURANCE_COMPANY':
+        return '/docs/02-sigorta-portal-kilavuzu.pdf';
+      case 'BROKER':
+        return '/docs/04-broker-portal-kilavuzu.pdf';
+      default:
+        return '/docs/01-personel-kullanim-kilavuzu.pdf';
+    }
+  }
+
+  private resolveWelcomeOrganizationName(params: {
+    roleCode?: string | null;
+    branchName?: string | null;
+    adjusterCompany?: string | null;
+    adjusterName?: string | null;
+  }): string | undefined {
+    const role = this.roleCodeToWelcomeRole(params.roleCode);
+    if (role === 'EXPERT') {
+      return (
+        params.adjusterCompany?.trim() ||
+        params.adjusterName?.trim() ||
+        params.branchName?.trim() ||
+        undefined
+      );
+    }
+    return params.branchName?.trim() || undefined;
+  }
+
   private async sendWelcomeInviteEmail(params: {
     email: string;
     firstName: string;
     lastName: string;
     temporaryPassword: string;
+    roleCode?: string | null;
+    branchName?: string | null;
   }): Promise<{ sent: boolean; message: string }> {
     const loginUrl = buildAppPath(this.config, '/giris');
-    const fullName = `${params.firstName} ${params.lastName}`.trim();
+    const role = this.roleCodeToWelcomeRole(params.roleCode);
 
-    const result = await this.emailService.sendWelcomeInviteEmail(params.email, {
-      fullName,
-      email: params.email,
+    const recipientName = [params.firstName, params.lastName]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(' ');
+
+    const result = await this.emailService.sendWelcomeEmail(params.email, role, {
+      recipientName: recipientName || undefined,
+      organizationName: params.branchName?.trim() || undefined,
+      portalUrl: loginUrl,
+      guideUrl: buildAppPath(this.config, this.guidePathForWelcomeRole(role)),
+      accountEmail: params.email,
       temporaryPassword: params.temporaryPassword,
-      loginUrl: loginUrl,
+      forcePasswordChange: true,
     });
 
     if (!result.sent) {

@@ -21,7 +21,17 @@ const DOCS = [
   {
     html: path.join(DOCS_DIR, '01-personel-kullanim-kilavuzu.html'),
     pdf:  path.join(DOCS_DIR, '01-personel-kullanim-kilavuzu.pdf'),
-    name: 'Personel Kullanım Kılavuzu',
+    name: 'Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu (Personel)',
+  },
+  {
+    html: path.join(DOCS_DIR, '02-sigorta-portal-kilavuzu.html'),
+    pdf:  path.join(DOCS_DIR, '02-sigorta-portal-kilavuzu.pdf'),
+    name: 'Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu (Sigorta Şirketi)',
+  },
+  {
+    html: path.join(DOCS_DIR, '04-broker-portal-kilavuzu.html'),
+    pdf:  path.join(DOCS_DIR, '04-broker-portal-kilavuzu.pdf'),
+    name: 'Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu (Broker)',
   },
   {
     html: path.join(DOCS_DIR, '02-satis-pazarlama.html'),
@@ -31,7 +41,7 @@ const DOCS = [
   {
     html: path.join(DOCS_DIR, '03-eksper-portal-tanitim.html'),
     pdf:  path.join(DOCS_DIR, '03-eksper-portal-tanitim.pdf'),
-    name: 'Eksper Portal Tanıtım Rehberi',
+    name: 'Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu (Eksper)',
   },
 ];
 
@@ -57,10 +67,26 @@ const DOCS = [
 
   const pptr = require(puppeteerPath);
 
+  const chromeCandidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.CHROME_PATH,
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  ].filter(Boolean);
+
+  let executablePath;
+  for (const candidate of chromeCandidates) {
+    if (fs.existsSync(candidate)) {
+      executablePath = candidate;
+      break;
+    }
+  }
+
   console.log('PDF üretimi başlıyor...\n');
 
   const browser = await pptr.launch({
     headless: true,
+    ...(executablePath ? { executablePath } : {}),
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',

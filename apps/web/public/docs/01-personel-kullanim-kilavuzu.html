@@ -3,30 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Meridyen Assistance — Personel Kullanım Kılavuzu</title>
+  <title>Meridyen Hasar Yönetim Platformu — Kullanım Kılavuzu</title>
   <style>
-    /* ─── Reset & Base ─── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
       font-size: 10pt;
-      color: #1a1a2e;
+      color: #0F172A;
       background: #fff;
-      line-height: 1.6;
+      line-height: 1.65;
     }
-
-    /* ─── Variables ─── */
     :root {
-      --navy: #0F2040;
-      --navy-mid: #1E3A6E;
-      --blue-accent: #4A6FA5;
-      --gold: #F0B830;
-      --gold-dark: #D4870A;
-      --light-bg: #F8FAFF;
-      --border: #D1DCF0;
+      --navy: #123A63;
+      --blue: #1E5AA8;
+      --blue-light: #EFF6FF;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --light-bg: #F8FAFC;
     }
 
-    /* ─── Page Layout ─── */
     .page {
       width: 210mm;
       min-height: 297mm;
@@ -34,8 +29,8 @@
       background: #fff;
       position: relative;
     }
+    .page-break { page-break-before: always; }
 
-    /* ─── Header ─── */
     .doc-header {
       background: var(--navy);
       color: #fff;
@@ -47,14 +42,43 @@
       print-color-adjust: exact;
     }
     .doc-header .logo-area { display: flex; align-items: center; gap: 12px; }
-    .doc-header .doc-title-small { font-size: 8pt; color: #a0b4d0; letter-spacing: 1px; text-transform: uppercase; }
-    .doc-header .doc-meta { font-size: 7.5pt; color: #a0b4d0; text-align: right; }
+    .doc-header .doc-title-small { font-size: 8pt; color: #BFDBFE; letter-spacing: 0.5px; }
+    .doc-header .doc-meta { font-size: 7.5pt; color: #BFDBFE; text-align: right; }
 
-    /* ─── Cover Page ─── */
+    /* Logo — tüm sayfalarda aynı yuvarlatılmış kutu */
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.14);
+      flex-shrink: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .brand-logo img {
+      height: 38px;
+      width: auto;
+      display: block;
+      border-radius: 6px;
+    }
+    .brand-logo--cover {
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+    }
+    .brand-logo--cover img {
+      height: 92px;
+      border-radius: 8px;
+    }
+
     .cover-page {
       width: 210mm;
       height: 297mm;
-      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 60%, #1a4080 100%);
+      background: linear-gradient(160deg, #0b2847 0%, var(--navy) 55%, var(--blue) 100%);
       color: #fff;
       display: flex;
       flex-direction: column;
@@ -67,53 +91,40 @@
     }
     .cover-page::before {
       content: '';
-      position: absolute;
-      top: -80px; right: -80px;
-      width: 320px; height: 320px;
-      border-radius: 50%;
-      background: rgba(240,184,48,0.08);
+      position: absolute; top: -80px; right: -80px;
+      width: 320px; height: 320px; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
     }
-    .cover-page::after {
-      content: '';
-      position: absolute;
-      bottom: -60px; left: -60px;
-      width: 240px; height: 240px;
-      border-radius: 50%;
-      background: rgba(74,111,165,0.15);
+    .cover-logo {
+      margin-bottom: 0;
     }
-    .cover-logo { margin-bottom: 32px; }
     .cover-divider {
-      width: 80px; height: 3px;
-      background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+      width: 72px; height: 3px;
+      background: #93C5FD;
       border-radius: 2px;
-      margin: 24px auto;
+      margin: 20px auto;
     }
     .cover-title {
-      font-size: 26pt;
+      font-size: 24pt;
       font-weight: 800;
       text-align: center;
-      letter-spacing: 1px;
       line-height: 1.25;
       max-width: 160mm;
     }
     .cover-subtitle {
       font-size: 11pt;
-      color: #a0c4e8;
+      color: #DBEAFE;
       text-align: center;
       margin-top: 12px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
     }
     .cover-badge {
-      margin-top: 32px;
-      background: rgba(240,184,48,0.15);
-      border: 1px solid var(--gold);
-      border-radius: 4px;
-      padding: 8px 24px;
+      margin-top: 28px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 8px;
+      padding: 8px 22px;
       font-size: 9pt;
-      color: var(--gold);
-      letter-spacing: 1px;
-      text-transform: uppercase;
+      color: #EFF6FF;
     }
     .cover-footer {
       position: absolute;
@@ -121,8 +132,7 @@
       left: 0; right: 0;
       text-align: center;
       font-size: 8pt;
-      color: rgba(255,255,255,0.4);
-      letter-spacing: 1px;
+      color: rgba(255,255,255,0.55);
     }
     .cover-version {
       position: absolute;
@@ -132,721 +142,770 @@
       color: rgba(255,255,255,0.5);
     }
 
-    /* ─── Content Area ─── */
-    .content { padding: 20px 24px 24px 24px; }
+    .content { padding: 20px 24px 28px; }
 
-    /* ─── Section Title ─── */
     .section-title {
-      background: var(--navy-mid);
+      background: var(--navy);
       color: #fff;
       padding: 8px 16px;
       font-size: 11pt;
       font-weight: 700;
-      letter-spacing: 0.5px;
-      margin: 24px -24px 16px -24px;
-      border-left: 4px solid var(--gold);
+      margin: 20px -24px 16px;
+      border-left: 4px solid var(--blue);
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .section-number {
-      background: var(--gold);
-      color: var(--navy);
+    .section-title .num {
+      display: inline-block;
+      background: var(--blue);
+      color: #fff;
       width: 22px; height: 22px;
       border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      text-align: center;
+      line-height: 22px;
       font-size: 9pt;
-      font-weight: 800;
       margin-right: 8px;
-      vertical-align: middle;
+    }
+
+    p { margin-bottom: 8px; }
+    ul, ol { margin: 8px 0 12px 18px; }
+    li { margin-bottom: 5px; font-size: 9.5pt; color: #334155; }
+
+    .highlight-box {
+      background: var(--blue-light);
+      border: 1px solid #93C5FD;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-
-    /* ─── Subsection ─── */
-    .subsection-title {
-      color: var(--navy-mid);
-      font-size: 10pt;
-      font-weight: 700;
-      margin: 14px 0 8px 0;
-      padding-bottom: 4px;
-      border-bottom: 1.5px solid var(--border);
+    .highlight-box .label {
+      font-size: 9pt;
+      font-weight: 800;
+      color: var(--blue);
+      margin-bottom: 4px;
     }
+    .highlight-box p { font-size: 9.5pt; color: var(--navy); margin: 0; font-weight: 600; }
 
-    /* ─── Step List ─── */
-    .step-list { list-style: none; padding: 0; margin: 10px 0; }
-    .step-list li {
+    .info-box {
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 9pt;
+      color: var(--muted);
+    }
+    .info-box strong { color: var(--navy); }
+
+    .steps { margin-top: 10px; }
+    .step {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 8px;
-      font-size: 9.5pt;
+      gap: 12px;
+      margin-bottom: 12px;
     }
     .step-num {
-      min-width: 22px; height: 22px;
-      background: var(--navy-mid);
+      min-width: 28px; height: 28px;
+      background: var(--blue);
       color: #fff;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 8pt; font-weight: 700;
+      font-size: 10pt; font-weight: 800;
       flex-shrink: 0;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .step-body strong { display: block; color: var(--navy); font-size: 10pt; margin-bottom: 2px; }
+    .step-body p { font-size: 9pt; color: var(--muted); margin: 0; }
 
-    /* ─── Info / Warning Boxes ─── */
-    .info-box {
-      background: #EFF6FF;
-      border-left: 3px solid var(--blue-accent);
-      border-radius: 0 4px 4px 0;
-      padding: 10px 14px;
-      margin: 12px 0;
-      font-size: 9pt;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
     }
-    .info-box .box-label {
-      font-weight: 700;
-      color: var(--navy-mid);
-      font-size: 8.5pt;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .feature-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+    .feature-card h4 {
+      font-size: 9.5pt;
+      color: var(--navy);
       margin-bottom: 4px;
     }
-    .warning-box {
-      background: #FEF3C7;
-      border-left: 3px solid #F59E0B;
-      border-radius: 0 4px 4px 0;
-      padding: 10px 14px;
-      margin: 12px 0;
-      font-size: 9pt;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .warning-box .box-label { font-weight: 700; color: #92400E; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .error-box {
-      background: #FEF2F2;
-      border-left: 3px solid #EF4444;
-      border-radius: 0 4px 4px 0;
-      padding: 10px 14px;
-      margin: 12px 0;
-      font-size: 9pt;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .error-box .box-label { font-weight: 700; color: #991B1B; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-
-    /* ─── Tables ─── */
-    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 9pt; }
-    th {
-      background: var(--navy);
-      color: #fff;
-      padding: 7px 10px;
-      text-align: left;
-      font-weight: 600;
+    .feature-card p {
       font-size: 8.5pt;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.5;
     }
-    td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    tr:nth-child(even) td { background: var(--light-bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    tr:last-child td { border-bottom: none; }
 
-    /* ─── Comparison Table ─── */
-    .compare-header-admin { background: #1E3A6E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .compare-header-user { background: #4A6FA5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-    /* ─── Bullet List ─── */
-    ul.doc-list { padding-left: 18px; margin: 8px 0; }
-    ul.doc-list li { margin-bottom: 5px; font-size: 9.5pt; }
-    ul.doc-list li::marker { color: var(--gold-dark); }
-
-    /* ─── Field Grid ─── */
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
-    .field-item {
-      background: var(--light-bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 8px 12px;
+    .field-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
       font-size: 9pt;
     }
-    .field-item .field-label { font-weight: 700; color: var(--navy-mid); font-size: 8pt; margin-bottom: 2px; }
+    .field-table th {
+      background: var(--light-bg);
+      color: var(--navy);
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      font-weight: 700;
+    }
+    .field-table td {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      color: #334155;
+      vertical-align: top;
+    }
+    .req { color: #DC2626; font-weight: 700; }
 
-    /* ─── TOC ─── */
+    .benefit-list { list-style: none; margin-left: 0; padding: 0; }
+    .benefit-list li {
+      padding: 6px 0 6px 22px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .benefit-list li:last-child { border-bottom: 0; }
+    .benefit-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--blue);
+      font-weight: 800;
+    }
+
     .toc-item {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       padding: 5px 0;
       border-bottom: 1px dotted var(--border);
       font-size: 9.5pt;
     }
-    .toc-item .toc-num { color: var(--gold-dark); font-weight: 700; min-width: 26px; }
-    .toc-item .toc-title { flex: 1; }
-    .toc-item .toc-page { color: var(--blue-accent); font-size: 8.5pt; }
-    .toc-section { margin-bottom: 2px; }
-    .toc-section-header {
-      background: var(--light-bg);
-      padding: 6px 10px;
+    .toc-num { width: 24px; color: var(--blue); font-weight: 700; }
+    .toc-title { flex: 1; color: var(--navy); }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .contact-card {
+      background: var(--navy);
+      color: #fff;
+      border-radius: 8px;
+      padding: 14px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .contact-card h4 {
+      font-size: 8.5pt;
+      color: #BFDBFE;
+      margin-bottom: 6px;
       font-weight: 700;
-      font-size: 9pt;
-      color: var(--navy-mid);
-      margin: 8px 0 4px;
-      border-radius: 4px;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
+    .contact-card p { font-size: 9pt; color: #fff; margin: 0 0 4px; }
 
-    /* ─── Pill / Badge ─── */
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 8pt;
-      font-weight: 600;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .badge-green { background: #D1FAE5; color: #065F46; }
-    .badge-blue  { background: #DBEAFE; color: #1E40AF; }
-    .badge-gold  { background: #FEF3C7; color: #92400E; }
-    .badge-red   { background: #FEE2E2; color: #991B1B; }
-
-    /* ─── Error Table ─── */
-    .err-cause { color: #6B7280; font-size: 8.5pt; }
-    .err-fix { color: #065F46; font-size: 8.5pt; font-weight: 600; }
-
-    /* ─── Print ─── */
-    @media print {
-      @page { size: A4; margin: 18mm 15mm 20mm 15mm; }
-      body { font-size: 9.5pt; }
-      .cover-page { page-break-after: always; }
-      .page-break { page-break-before: always; }
-      a { text-decoration: none; color: inherit; }
-    }
-
-    /* ─── Footer ─── */
     .doc-footer {
       background: var(--light-bg);
       border-top: 1px solid var(--border);
-      padding: 6px 24px;
+      padding: 12px 24px;
       font-size: 7.5pt;
-      color: #6B7280;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      color: var(--muted);
+      text-align: center;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .doc-footer strong { color: var(--navy); display: block; margin-bottom: 2px; }
 
-    p { margin-bottom: 8px; font-size: 9.5pt; }
-    strong { color: var(--navy); }
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { font-size: 9.5pt; }
+    }
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════
-     KAPAK SAYFASI
-═══════════════════════════════════════════ -->
+<!-- KAPAK -->
 <div class="cover-page">
-  <div class="cover-logo">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="240" height="62" role="img" aria-label="Meridyen Assistance">
-      <defs>
-        <linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient>
-        <linearGradient id="gg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient>
-      </defs>
-      <path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg1)"/>
-      <path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg1)" opacity="0.9"/>
-      <path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
-      <path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
-      <line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-      <line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-      <text x="78" y="36" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text>
-      <rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg1)"/>
-      <text x="78" y="56" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text>
-    </svg>
+  <div class="brand-logo brand-logo--cover cover-logo">
+    <img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" />
   </div>
   <div class="cover-divider"></div>
-  <div class="cover-title">Personel Kullanım Kılavuzu</div>
-  <div class="cover-subtitle">Meridyen Assistance Hasar Yönetim Sistemi</div>
-  <div class="cover-badge">GİZLİ — YALNIZCA YETKİLİ PERSONEL</div>
-  <div class="cover-version">Versiyon 1.0 — Mayıs 2025</div>
-  <div class="cover-footer">Safran Birleşik Hizmetler &nbsp;|&nbsp; www.safranbh.com &nbsp;|&nbsp; 0 850 885 25 55</div>
+  <div class="cover-title">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+  
+  <div class="cover-badge">Meridyen Personeli İçin</div>
+  <div class="cover-version">Versiyon 2.1 — Temmuz 2026</div>
+  <div class="cover-footer">Meridyen Asistans — Safran Birleşik Hizmetler Alt Kuruluşudur.</div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SAYFA 2 — İÇİNDEKİLER
-═══════════════════════════════════════════ -->
+<!-- İÇİNDEKİLER -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31">
-        <defs>
-          <linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient>
-          <linearGradient id="gg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient>
-        </defs>
-        <path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg2)"/>
-        <path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg2)" opacity="0.9"/>
-        <path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-        <line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-        <text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text>
-        <rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg2)"/>
-        <text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text>
-      </svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Versiyon 2.1 &nbsp;|&nbsp; Temmuz 2026</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">i</span> İçindekiler</div>
-
-    <div class="toc-section-header">Sistem Temelleri</div>
-    <div class="toc-item"><span class="toc-num">1.</span><span class="toc-title">Sisteme Giriş ve İlk Kurulum</span><span class="toc-page">3</span></div>
-    <div class="toc-item"><span class="toc-num">2.</span><span class="toc-title">Dashboard Kullanımı</span><span class="toc-page">3</span></div>
-
-    <div class="toc-section-header">Hasar Dosyası İşlemleri</div>
-    <div class="toc-item"><span class="toc-num">3.</span><span class="toc-title">Hasar Dosyası Açma ve Yönetme</span><span class="toc-page">4</span></div>
-    <div class="toc-item"><span class="toc-num">4.</span><span class="toc-title">Acil Yardım Dosyası Açma</span><span class="toc-page">4</span></div>
-    <div class="toc-item"><span class="toc-num">5.</span><span class="toc-title">Müşteri Ekleme / Düzenleme</span><span class="toc-page">5</span></div>
-
-    <div class="toc-section-header">Tedarik & Eksper Yönetimi</div>
-    <div class="toc-item"><span class="toc-num">6.</span><span class="toc-title">Tedarikçi Yönetimi ve Sözleşme</span><span class="toc-page">5</span></div>
-    <div class="toc-item"><span class="toc-num">7.</span><span class="toc-title">Eksper Atama ve Takip</span><span class="toc-page">6</span></div>
-
-    <div class="toc-section-header">Raporlama & Evrak</div>
-    <div class="toc-item"><span class="toc-num">8.</span><span class="toc-title">Rapor Oluşturma ve PDF</span><span class="toc-page">6</span></div>
-    <div class="toc-item"><span class="toc-num">9.</span><span class="toc-title">Evrak Yönetimi (Dijital Onay)</span><span class="toc-page">7</span></div>
-
-    <div class="toc-section-header">Finans & İletişim</div>
-    <div class="toc-item"><span class="toc-num">10.</span><span class="toc-title">Fatura Talebi Oluşturma</span><span class="toc-page">7</span></div>
-    <div class="toc-item"><span class="toc-num">11.</span><span class="toc-title">Anket Gönderimi</span><span class="toc-page">8</span></div>
-    <div class="toc-item"><span class="toc-num">12.</span><span class="toc-title">Dosya Kapama Koşulları</span><span class="toc-page">8</span></div>
-    <div class="toc-item"><span class="toc-num">13.</span><span class="toc-title">Finans Dashboard</span><span class="toc-page">9</span></div>
-
-    <div class="toc-section-header">Ayarlar & Destek</div>
-    <div class="toc-item"><span class="toc-num">14.</span><span class="toc-title">Ayarlar — Sözleşme Şablonu</span><span class="toc-page">9</span></div>
-    <div class="toc-item"><span class="toc-num">15.</span><span class="toc-title">Sık Yapılan Hatalar ve Çözümleri</span><span class="toc-page">10</span></div>
-
-    <div class="info-box" style="margin-top:24px;">
-      <div class="box-label">Bu Kılavuz Hakkında</div>
-      Bu doküman Meridyen Assistance Hasar Yönetim Sistemi'nin tüm modüllerini kapsamaktadır. Ofis personeli ve saha ekibi için hazırlanmıştır. Sisteme ilişkin her türlü sorunuz için teknik destek hattını arayabilirsiniz.
-    </div>
+    <div class="section-title"><span class="num">i</span> İçindekiler</div>
+    <div class="toc-item"><span class="toc-num">1.</span><span class="toc-title">Platforma Giriş ve Operasyon Merkezi</span></div>
+    <div class="toc-item"><span class="toc-num">2.</span><span class="toc-title">Dashboard ve Menü Yapısı</span></div>
+    <div class="toc-item"><span class="toc-num">3.</span><span class="toc-title">Hasar Dosyası Açma ve Yönetme</span></div>
+    <div class="toc-item"><span class="toc-num">4.</span><span class="toc-title">Acil Yardım Dosyaları</span></div>
+    <div class="toc-item"><span class="toc-num">5.</span><span class="toc-title">Müşteri ve Tedarikçi Yönetimi</span></div>
+    <div class="toc-item"><span class="toc-num">6.</span><span class="toc-title">Dosya Sorumlusu ve Atamalar</span></div>
+    <div class="toc-item"><span class="toc-num">7.</span><span class="toc-title">Evrak ve Dijital Onay</span></div>
+    <div class="toc-item"><span class="toc-num">8.</span><span class="toc-title">Finans Modülleri</span></div>
+    <div class="toc-item"><span class="toc-num">9.</span><span class="toc-title">Meridyen ile Neler Kazanırsınız? ve Destek</span></div>
   </div>
-
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>www.safranbh.com | 0 850 885 25 55</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BÖLÜM 1 — GİRİŞ & KURULUM
-═══════════════════════════════════════════ -->
+<!-- 1. GİRİŞ -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31"><defs><linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient><linearGradient id="gg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient></defs><path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg3)"/><path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg3)" opacity="0.9"/><path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text><rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg3)"/><text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text></svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Bölüm 1</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">1</span> Sisteme Giriş ve İlk Kurulum</div>
+    <div class="section-title"><span class="num">1</span> Platforma Giriş ve Operasyon Merkezi</div>
 
-    <p>Meridyen Assistance sistemine erişim web tarayıcısı üzerinden gerçekleştirilir. Herhangi bir kurulum gerektirmez.</p>
+    <p>Meridyen Hasar Yönetim Platformu, ofis personelinin hasar dosyalarını açması, acil yardım süreçlerini yönetmesi, müşteri ve tedarikçi kayıtlarını güncellemesi ve operasyon ekibiyle kayıt altında iletişim kurması için tasarlanmıştır.</p>
 
-    <div class="subsection-title">Sisteme Erişim</div>
-    <div class="field-grid">
-      <div class="field-item"><div class="field-label">Sistem Adresi</div>Tarayıcı adres çubuğuna girilecek URL</div>
-      <div class="field-item"><div class="field-label">Desteklenen Tarayıcılar</div>Chrome 100+, Edge 100+, Firefox 100+</div>
-      <div class="field-item"><div class="field-label">Kullanıcı Adı</div>Şirket e-posta adresiniz</div>
-      <div class="field-item"><div class="field-label">Şifre</div>Yöneticiniz tarafından iletilen geçici şifre</div>
+    <div class="highlight-box">
+      <div class="label">Önemli — Operasyon Merkezi</div>
+      <p>Günlük önceliklerinizi <strong>Operasyon Merkezi</strong> ekranından takip edin. Bekleyen aksiyonlar, revizyon talepleri ve dosya akışı burada birleşir; gününüze buradan başlamanız önerilir.</p>
     </div>
 
-    <div class="subsection-title">İlk Giriş Adımları</div>
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Tarayıcıya sistem adresini yazın ve Enter'a basın.</li>
-      <li><span class="step-num">2</span> Giriş sayfasına e-posta adresinizi ve geçici şifrenizi girin.</li>
-      <li><span class="step-num">3</span> İlk girişte sistem sizden şifrenizi değiştirmenizi isteyecektir.</li>
-      <li><span class="step-num">4</span> Yeni şifrenizi belirleyin (min. 8 karakter, büyük harf + rakam içermeli).</li>
-      <li><span class="step-num">5</span> Profil sayfanızdan ad-soyad ve iletişim bilgilerinizi güncelleyin.</li>
-    </ol>
+    <p><strong>Giriş adresi:</strong> <span style="color:var(--blue);">https://app.meridyen-tr.com/giris</span></p>
 
-    <div class="warning-box">
-      <div class="box-label">Şifre Politikası</div>
-      Şifreniz en az 8 karakter, en az 1 büyük harf ve en az 1 rakam içermelidir. Şifrenizi kimseyle paylaşmayın. Unutulan şifreler için giriş sayfasındaki "Şifremi Unuttum" bağlantısını kullanın.
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Davet E-postanızdaki Bilgilerle Giriş Yapın</strong>
+          <p>Size iletilen e-posta adresi ve geçici şifre ile platforma giriş yapın.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>İlk Girişte Şifrenizi Değiştirin</strong>
+          <p>Güvenlik gereği ilk girişte kişisel şifrenizi belirlemeniz zorunludur.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Operasyon Merkezine Geçin</strong>
+          <p>Giriş sonrası sol menüden <strong>Operasyon</strong> bağlantısına gidin veya dashboard üzerinden günlük önceliklerinizi inceleyin.</p>
+        </div>
+      </div>
     </div>
 
-    <!-- BÖLÜM 2 -->
-    <div class="section-title"><span class="section-number">2</span> Dashboard Kullanımı</div>
+    <div class="info-box">
+      <strong>Operasyon ekranı:</strong> Hasar ve acil yardım dosyalarının birleşik listesi, fatura durumu ve günlük öncelikler burada görüntülenir.
+    </div>
 
-    <p>Sisteme giriş yaptıktan sonra karşınıza gelen ana ekran (dashboard) kullanıcı rolünüze göre farklı içerik sunar.</p>
+    <div class="info-box">
+      <strong>Şifremi unuttum:</strong> Giriş ekranındaki bağlantı ile e-posta adresinize şifre sıfırlama talebi gönderebilirsiniz.
+    </div>
 
-    <table>
+    <div class="info-box">
+      <strong>Güvenlik notu:</strong> Giriş bilgilerinizi kimseyle paylaşmayın. Şüpheli bir durum görürseniz Meridyen destek ekibiyle iletişime geçin.
+    </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
+
+<!-- 2. DASHBOARD -->
+<div class="page page-break">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 2</div>
+  </div>
+  <div class="content">
+    <div class="section-title"><span class="num">2</span> Dashboard ve Menü Yapısı</div>
+
+    <p>Dashboard ve sol menü, kullanıcı rolünüze göre farklılaşır. Her personel yalnızca yetkili olduğu ekranları görür.</p>
+
+    <table class="field-table">
       <thead>
         <tr>
-          <th style="width:40%">Özellik</th>
-          <th class="compare-header-admin" style="width:30%">Admin</th>
-          <th class="compare-header-user" style="width:30%">Dosya Sorumlusu</th>
+          <th style="width:28%;">Rol</th>
+          <th>Menü Özeti</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td>Tüm dosyaları görüntüleme</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-gold">Sadece atanan dosyalar</span></td></tr>
-        <tr><td>Kullanıcı yönetimi</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-red">Hayır</span></td></tr>
-        <tr><td>Finans dashboard erişimi</td><td><span class="badge badge-green">Tam erişim</span></td><td><span class="badge badge-blue">Sınırlı görünüm</span></td></tr>
-        <tr><td>Tedarikçi sözleşme oluşturma</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-green">Evet</span></td></tr>
-        <tr><td>Sistem ayarları</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-red">Hayır</span></td></tr>
-        <tr><td>Raporları dışa aktarma</td><td><span class="badge badge-green">Tüm raporlar</span></td><td><span class="badge badge-gold">Yalnızca kendi dosyaları</span></td></tr>
-        <tr><td>Anket gönderimi</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-green">Evet</span></td></tr>
-        <tr><td>Eksper atama</td><td><span class="badge badge-green">Evet</span></td><td><span class="badge badge-gold">Sınırlı</span></td></tr>
+        <tr>
+          <td>Ofis Personeli</td>
+          <td>Dosya Merkezi · Operasyon · Hasar Dosyaları · Müşteriler · Tedarikçiler · Acil Yardım · Harita</td>
+        </tr>
+        <tr>
+          <td>Saha Personeli</td>
+          <td>Saha Merkezi · Hasar Dosyaları · Acil Yardım · Carilerim</td>
+        </tr>
+        <tr>
+          <td>Yönetici / Admin</td>
+          <td>Dashboard · Operasyon · Personel · Sahiplik · Müşteriler · Tedarikçiler · CRM · Finans · Harita · Ayarlar</td>
+        </tr>
+        <tr>
+          <td>Finans</td>
+          <td>Finans Özeti · Fatura Talepleri · Ödeme Kuyruğu · Operasyon · Müşteriler · Tedarikçiler · Raporlar</td>
+        </tr>
       </tbody>
     </table>
 
-    <div class="info-box">
-      <div class="box-label">Dashboard Bileşenleri</div>
-      Ana dashboard; bekleyen dosya sayısı, açık dosyalar, bu haftaki kapanan dosyalar, SLA durumu, eksper iş yükü ve gelir özeti gibi göstergeleri içerir. Kartlara tıklayarak ilgili bölüme geçiş yapabilirsiniz.
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Dashboard</h4>
+        <p>Rolünüze göre KPI kartları, SLA riskleri, bekleyen aksiyonlar ve son aktiviteler. Ofis personeli için <strong>Dosya Sorumlusu Merkezi</strong>, yöneticiler için <strong>Operasyon Merkezi</strong> başlığı görünür.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Operasyon</h4>
+        <p>Hasar ve acil yardım dosyalarının birleşik listesi; günlük öncelikler ve revizyon uyarıları.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Hasar Dosyaları</h4>
+        <p>Tüm hasar dosyalarını listeleme, filtreleme, yeni dosya açma ve detay yönetimi.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Ayarlar</h4>
+        <p>Yalnızca yönetici rolünde: kurulum, tanımlar, fiyat listesi ve şablon yönetimi.</p>
+      </div>
+    </div>
+
+    <div class="info-box" style="margin-top:14px;">
+      Sol menüde görünen bağlantılar rol ve ekran yetkilerinize göre filtrelenir. Erişemediğiniz bir modül için yöneticinize veya destek ekibine başvurun.
     </div>
   </div>
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>Sayfa 3</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BÖLÜM 3–4: HASAR DOSYASI
-═══════════════════════════════════════════ -->
+<!-- 3. HASAR DOSYASI -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31"><defs><linearGradient id="sg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient><linearGradient id="gg4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient></defs><path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg4)"/><path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg4)" opacity="0.9"/><path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text><rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg4)"/><text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text></svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Bölüm 3</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">3</span> Hasar Dosyası Açma ve Yönetme</div>
+    <div class="section-title"><span class="num">3</span> Hasar Dosyası Açma ve Yönetme</div>
 
-    <p>Hasar dosyası, sistemin temel işlem birimidir. Her dosya, bir sigortalıya ait hasar olayını başından kapanışına kadar takip eder.</p>
+    <p>Hasar dosyaları <strong>Hasar Dosyaları</strong> ekranından oluşturulur ve yönetilir.</p>
 
-    <div class="subsection-title">Yeni Dosya Açma</div>
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Sol menüden <strong>Hasar Dosyaları</strong> bölümüne gidin.</li>
-      <li><span class="step-num">2</span> Sağ üst köşedeki <strong>+ Yeni Dosya</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> <strong>Sigorta Şirketi</strong> seçin (açılır listeden).</li>
-      <li><span class="step-num">4</span> <strong>Hasar Türü</strong> belirleyin (Yangın, Su Baskını, Deprem vb.).</li>
-      <li><span class="step-num">5</span> <strong>Müşteri</strong> seçin veya "Yeni Müşteri Ekle" ile kayıt oluşturun.</li>
-      <li><span class="step-num">6</span> <strong>Hasar Adresi</strong> ve <strong>İhbar Tarihi</strong> bilgilerini girin.</li>
-      <li><span class="step-num">7</span> Eksper bilgisini atayın (opsiyonel, sonradan da atanabilir).</li>
-      <li><span class="step-num">8</span> <strong>Kaydet</strong> butonuna basın — sistem otomatik dosya numarası oluşturur.</li>
-    </ol>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Yeni Dosya Formunu Açın</strong>
+          <p>Hasar Dosyaları listesinde <strong>Yeni Dosya</strong> butonuna tıklayın.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Temel Bilgileri Girin</strong>
+          <p>Sigorta şirketi, dosya konusu, poliçe türü, sigortalı bilgileri ve hasar lokasyonunu eksiksiz doldurun.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Dosyayı Kaydedin</strong>
+          <p>Kayıt sonrası sistem dosya numarası üretir. Bu numara ile dosyayı arayabilir ve süreci takip edebilirsiniz.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Detay Ekranından Yönetin</strong>
+          <p>Dosya detayında sekmeler üzerinden görevler, randevular, evraklar, finans ve iletişim günlüğüne erişin.</p>
+        </div>
+      </div>
+    </div>
 
-    <div class="subsection-title">Dosya Durumları</div>
-    <table>
-      <thead><tr><th>Durum</th><th>Açıklama</th><th>Sonraki Adım</th></tr></thead>
+    <table class="field-table">
+      <thead>
+        <tr>
+          <th style="width:32%;">Alan</th>
+          <th>Açıklama</th>
+        </tr>
+      </thead>
       <tbody>
-        <tr><td><span class="badge badge-gold">Açık</span></td><td>Yeni açılmış, işlem bekliyor</td><td>Eksper ata, inceleme başlat</td></tr>
-        <tr><td><span class="badge badge-blue">İncelemede</span></td><td>Eksper sahada, rapor bekleniyor</td><td>Rapor onayı, tedarikçi ata</td></tr>
-        <tr><td><span class="badge badge-gold">Onarım Sürecinde</span></td><td>Tedarikçi iş başlamış</td><td>İş takibi, fatura talebi</td></tr>
-        <tr><td><span class="badge badge-green">Kapatıldı</span></td><td>Tüm koşullar karşılandı</td><td>Anket gönder</td></tr>
+        <tr>
+          <td>Sigorta Şirketi <span class="req">*</span></td>
+          <td>Yetkili sigorta şirketi listesinden seçim yapılır.</td>
+        </tr>
+        <tr>
+          <td>Dosya Konusu <span class="req">*</span></td>
+          <td>Hasar konusu; tanımlar merkezindeki konu listesinden seçilir.</td>
+        </tr>
+        <tr>
+          <td>Poliçe Türü <span class="req">*</span></td>
+          <td>Bireysel veya Ticari. Ticari seçildiğinde kurumsal alanlar açılır.</td>
+        </tr>
+        <tr>
+          <td>Sigortalı Adı / Telefon <span class="req">*</span></td>
+          <td>Sigortalı iletişim bilgileri; evrak ve onay süreçlerinde kullanılır.</td>
+        </tr>
+        <tr>
+          <td>İl / İlçe / Adres <span class="req">*</span></td>
+          <td>Hasar lokasyonu bilgisi.</td>
+        </tr>
+        <tr>
+          <td>Dosya No</td>
+          <td>İsteğe bağlıdır. Boş bırakılırsa sistem otomatik numara üretir.</td>
+        </tr>
       </tbody>
     </table>
 
-    <div class="section-title"><span class="section-number">4</span> Acil Yardım Dosyası Açma</div>
-
-    <div class="warning-box">
-      <div class="box-label">Acil Durum</div>
-      Acil yardım dosyaları standart hasar dosyalarından farklı bir öncelik akışına tabidir. <strong>48 saat içinde müdahale</strong> zorunludur; sistem bu dosyaları kırmızı bayrakla işaretler.
-    </div>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Sol menüde <strong>Acil Yardım</strong> sekmesine tıklayın.</li>
-      <li><span class="step-num">2</span> <strong>+ Acil Dosya Aç</strong> butonuna basın.</li>
-      <li><span class="step-num">3</span> Müşteri bilgilerini ve hasar adresini girin.</li>
-      <li><span class="step-num">4</span> <strong>Aciliyet Düzeyi</strong> seçin: Yüksek / Kritik.</li>
-      <li><span class="step-num">5</span> En yakın müsait eksper otomatik önerilir; onaylayın veya manuel seçin.</li>
-      <li><span class="step-num">6</span> Sisteme kaydedin — ilgili eksper anlık bildirim alır.</li>
-    </ol>
-
     <div class="info-box">
-      <div class="box-label">Otomatik Bildirim</div>
-      Acil dosya oluşturulduğunda atanan eksper SMS ve sistem bildirimi alır. Eksper 30 dakika içinde yanıt vermezse yönetici otomatik olarak uyarılır.
+      Dosya listesinde durum, sigorta şirketi, konu ve tarih sütunlarıyla filtreleme yapabilirsiniz. Durum değişiklikleri platform üzerinden anlık yansır.
     </div>
   </div>
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>Sayfa 4</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BÖLÜM 5–7: MÜŞTERİ, TEDARİKÇİ, EKSPER
-═══════════════════════════════════════════ -->
+<!-- 4. ACİL YARDIM -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31"><defs><linearGradient id="sg5" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient><linearGradient id="gg5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient></defs><path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg5)"/><path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg5)" opacity="0.9"/><path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text><rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg5)"/><text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text></svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Bölüm 4</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">5</span> Müşteri Ekleme ve Düzenleme</div>
+    <div class="section-title"><span class="num">4</span> Acil Yardım Dosyaları</div>
 
-    <div class="subsection-title">Yeni Müşteri Kaydı</div>
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Sol menüden <strong>Müşteriler</strong> bölümüne gidin.</li>
-      <li><span class="step-num">2</span> <strong>+ Müşteri Ekle</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Müşteri türünü seçin: <strong>Bireysel</strong> veya <strong>Kurumsal</strong>.</li>
-      <li><span class="step-num">4</span> Ad-Soyad / Şirket Adı, TC Kimlik / Vergi No girin.</li>
-      <li><span class="step-num">5</span> İletişim bilgilerini (telefon, e-posta) ekleyin.</li>
-      <li><span class="step-num">6</span> Adres bilgilerini il/ilçe seçimi ile tamamlayın.</li>
-      <li><span class="step-num">7</span> Kaydedin — müşteri artık dosya atama ekranında görünür.</li>
-    </ol>
+    <p>Acil yardım dosyaları <strong>Acil Yardım</strong> modülünden yönetilir. Bu modül, hasar dosyalarından ayrı bir akışa sahiptir.</p>
 
-    <div class="subsection-title">Müşteri Düzenleme</div>
-    <p>Mevcut müşteri kaydını güncellemek için Müşteriler listesinden ilgili kaydı bulun, sağdaki <strong>Düzenle</strong> ikonuna tıklayın. Değişiklikler kayıt geçmişine işlenir.</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Dosya Listesi</h4>
+        <p>Tüm acil yardım dosyalarını durum, müşteri ve tarih bilgisiyle listeler. Operasyon Merkezi'nde hasar dosyalarıyla birlikte görüntülenebilir.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Durum Takibi</h4>
+        <p>Gelen · Atandı · Sahada · Çözüldü · Faturalandı durumları renkli rozetlerle gösterilir.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Maliyet ve Evrak</h4>
+        <p>Dosya detayında maliyet kalemleri ve evrak akışı ayrı sekmelerde yönetilir.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Operasyon Birleşimi</h4>
+        <p>Operasyon Merkezi ekranında hasar ve acil yardım dosyaları tek tabloda birleşik takip edilir.</p>
+      </div>
+    </div>
 
-    <div class="section-title"><span class="section-number">6</span> Tedarikçi Yönetimi ve Sözleşme</div>
-
-    <div class="subsection-title">Tedarikçi Ekleme</div>
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Sol menüden <strong>Tedarikçiler</strong> bölümüne gidin.</li>
-      <li><span class="step-num">2</span> <strong>+ Tedarikçi Ekle</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Firma adı, vergi numarası ve iletişim bilgilerini girin.</li>
-      <li><span class="step-num">4</span> Tedarikçinin <strong>Hizmet Kategorileri</strong>ni seçin (inşaat, elektrik, boya vb.).</li>
-      <li><span class="step-num">5</span> Çalışma bölgelerini (şehir/ilçe) işaretleyin.</li>
-      <li><span class="step-num">6</span> Kaydedin.</li>
-    </ol>
-
-    <div class="subsection-title">Sözleşme Oluşturma</div>
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Hasar dosyası içinden <strong>Tedarikçi Ata</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">2</span> Listeden uygun tedarikçiyi seçin.</li>
-      <li><span class="step-num">3</span> Sistem, kayıtlı sözleşme şablonunu otomatik doldurur.</li>
-      <li><span class="step-num">4</span> Sözleşmeyi önizleyin ve gerekli düzeltmeleri yapın.</li>
-      <li><span class="step-num">5</span> <strong>Dijital İmza İste</strong> butonuna basın; tedarikçiye SMS/e-posta ile bağlantı gönderilir.</li>
-      <li><span class="step-num">6</span> Tedarikçi imzaladığında dosya durumu otomatik güncellenir.</li>
-    </ol>
-
-    <div class="section-title"><span class="section-number">7</span> Eksper Atama ve Takip</div>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Hasar dosyası detay sayfasını açın.</li>
-      <li><span class="step-num">2</span> <strong>Eksper</strong> kartındaki <strong>Ata</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Bölge ve uzmanlık alanına göre filtreleme yapın.</li>
-      <li><span class="step-num">4</span> Uygun eksperi seçin; mevcut iş yükü gösterilir.</li>
-      <li><span class="step-num">5</span> Atama onaylandığında eksper otomatik bildirim alır.</li>
-    </ol>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Yeni Acil Yardım Dosyası Oluşturun</strong>
+          <p>Acil Yardım listesinden yeni kayıt açın; müşteri ve hizmet bilgilerini girin.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Atama ve Saha Takibi</strong>
+          <p>İlgili saha personeline atama yapın; durumu Gelen → Atandı → Sahada → Çözüldü akışında güncelleyin.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Faturalandırma</strong>
+          <p>Çözülen dosyalar faturalandırma aşamasına geçer; finans modülüyle entegre takip edilir.</p>
+        </div>
+      </div>
+    </div>
 
     <div class="info-box">
-      <div class="box-label">Eksper Takibi</div>
-      Dosya sayfasında eksperin son güncellemelerini, raporlarını ve sahaya çıkış zamanını takip edebilirsiniz. Eksper kendi portalından dosyayı güncelledikçe sistem sizi bilgilendirir.
+      Acil Yardım modülü rol ve ekran yetkisine bağlıdır. Menünüzde görünmüyorsa yöneticinize başvurun.
     </div>
   </div>
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>Sayfa 5</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BÖLÜM 8–11: RAPOR, EVRAK, FATURA, ANKET
-═══════════════════════════════════════════ -->
+<!-- 5. MÜŞTERİ VE TEDARİKÇİ -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31"><defs><linearGradient id="sg6" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient><linearGradient id="gg6" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient></defs><path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg6)"/><path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg6)" opacity="0.9"/><path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text><rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg6)"/><text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text></svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Bölüm 5</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">8</span> Rapor Oluşturma ve PDF</div>
+    <div class="section-title"><span class="num">5</span> Müşteri ve Tedarikçi Yönetimi</div>
 
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Hasar dosyasının <strong>Raporlar</strong> sekmesine gidin.</li>
-      <li><span class="step-num">2</span> <strong>+ Yeni Rapor</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Rapor türünü seçin: İç Rapor veya Dış Rapor (sigorta şirketi için).</li>
-      <li><span class="step-num">4</span> Hasar kalemlerini, miktarları ve birim fiyatları girin.</li>
-      <li><span class="step-num">5</span> Fotoğraf ekleyin (sürükle-bırak desteklenir).</li>
-      <li><span class="step-num">6</span> Tespitler ve yasal notlar bölümünü doldurun.</li>
-      <li><span class="step-num">7</span> <strong>Ön İzleme</strong> ile raporu kontrol edin.</li>
-      <li><span class="step-num">8</span> <strong>PDF İndir</strong> butonu ile A4 formatında PDF alın.</li>
-    </ol>
+    <p>Müşteri ve tedarikçi kayıtları operasyon süreçlerinin temel referans verileridir.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Müşteriler</h4>
+        <p>Sigortalı ve kurumsal müşteri kayıtları. İletişim bilgileri, adres ve müşteri tipi burada yönetilir. Hasar dosyası açarken müşteri seçimi bu kayıtlardan yapılır.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Tedarikçiler</h4>
+        <p>Saha hizmeti veren tedarikçi firmalar. Hizmet kolu, iletişim ve sözleşme bilgileri burada tutulur.</p>
+      </div>
+      <div class="feature-card">
+        <h4>CRM</h4>
+        <p>Yönetici ve ofis rollerinde müşteri, ekspertiz ve tedarikçi adaylarının takip notları ve görüşme kayıtları.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Carilerim</h4>
+        <p>Saha personeli ve finans rollerinde kişisel cari hesap özeti görüntülenir.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Kayıt Oluşturun veya Güncelleyin</strong>
+          <p>İlgili modülde yeni kayıt ekleyin; zorunlu alanları eksiksiz doldurun.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Dosya Sürecine Bağlayın</strong>
+          <p>Hasar veya acil yardım dosyası açarken müşteri kaydını seçin; tedarikçi atamasını dosya detayından yapın.</p>
+        </div>
+      </div>
+    </div>
 
     <div class="info-box">
-      <div class="box-label">İç vs. Dış Rapor</div>
-      İç rapor maliyet ve kar marjı bilgilerini içerir; yalnızca sisteme kayıtlı personel görebilir. Dış rapor yalnızca satış tutarlarını gösterir ve sigorta şirketine/sigortalıya iletilebilir.
-    </div>
-
-    <div class="section-title"><span class="section-number">9</span> Evrak Yönetimi (Dijital Onay)</div>
-
-    <p>Sistem, evrakların elektronik ortamda imzalanmasını ve onaylanmasını sağlar. Fiziksel belge gerekmez.</p>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Dosya içindeki <strong>Evraklar</strong> sekmesine gidin.</li>
-      <li><span class="step-num">2</span> <strong>+ Evrak Yükle</strong> ile belgeyi sisteme ekleyin.</li>
-      <li><span class="step-num">3</span> Onay gerekiyorsa <strong>Onay İste</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">4</span> Onaylayacak kişiyi seçin (tedarikçi, eksper veya dahili personel).</li>
-      <li><span class="step-num">5</span> Kişiye onay bağlantısı SMS/e-posta ile iletilir.</li>
-      <li><span class="step-num">6</span> Onay tamamlandığında evrak durumu <span class="badge badge-green">Onaylandı</span> olarak güncellenir.</li>
-    </ol>
-
-    <div class="section-title"><span class="section-number">10</span> Fatura Talebi Oluşturma</div>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Hasar dosyasında <strong>Finans &gt; Fatura Talebi</strong> sekmesine gidin.</li>
-      <li><span class="step-num">2</span> <strong>+ Yeni Talep</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Fatura türünü seçin: Tedarikçi Faturası / Hizmet Faturası.</li>
-      <li><span class="step-num">4</span> Tutar, KDV oranı ve açıklama bilgilerini girin.</li>
-      <li><span class="step-num">5</span> Fatura PDF'ini sisteme yükleyin.</li>
-      <li><span class="step-num">6</span> Onay için yöneticiye iletin veya direk kaydedin.</li>
-    </ol>
-
-    <div class="section-title"><span class="section-number">11</span> Anket Gönderimi</div>
-
-    <p>Dosya kapatıldıktan sonra müşteri memnuniyetini ölçmek için anket gönderilebilir.</p>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Kapatılan dosyayı açın.</li>
-      <li><span class="step-num">2</span> <strong>Anket Gönder</strong> butonuna tıklayın.</li>
-      <li><span class="step-num">3</span> Gönderim kanalını seçin: SMS veya E-posta.</li>
-      <li><span class="step-num">4</span> Müşterinin kayıtlı iletişim bilgisini onaylayın.</li>
-      <li><span class="step-num">5</span> Gönder butonuna basın; anket bağlantısı müşteriye iletilir.</li>
-    </ol>
-
-    <div class="warning-box">
-      <div class="box-label">Önemli Not</div>
-      Anket yalnızca dosya kapatıldıktan sonra gönderilebilir. Müşteri yanıtları analizleri Finans Dashboard'da görüntülenir.
+      Müşteri tipi, hizmet kolu ve diğer tanımlar <strong>Ayarlar → Tanımlar Merkezi</strong> üzerinden yönetilir.
     </div>
   </div>
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>Sayfa 6</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BÖLÜM 12–15: KAPAMA, FİNANS, AYARLAR, HATALAR
-═══════════════════════════════════════════ -->
+<!-- 6-7. EKSPER + EVRAK -->
 <div class="page page-break">
   <div class="doc-header">
     <div class="logo-area">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="120" height="31"><defs><linearGradient id="sg7" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient><linearGradient id="gg7" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient></defs><path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#sg7)"/><path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#gg7)" opacity="0.9"/><path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/><text x="78" y="36" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text><rect x="78" y="40" width="168" height="2" rx="1" fill="url(#gg7)"/><text x="78" y="56" font-family="Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text></svg>
-      <div class="doc-title-small">Personel Kullanım Kılavuzu</div>
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 1.0 &nbsp;|&nbsp; Mayıs 2025</div>
+    <div class="doc-meta">Bölüm 6–7</div>
   </div>
-
   <div class="content">
-    <div class="section-title"><span class="section-number">12</span> Dosya Kapama Koşulları</div>
+    <div class="section-title"><span class="num">6</span> Dosya Sorumlusu ve Atamalar</div>
 
-    <p>Bir hasar dosyası aşağıdaki koşulların <strong>tamamı</strong> sağlandığında kapatılabilir:</p>
+    <p>Hasar dosyasında sorumlu kişiler, dosya detay ekranındaki <strong>Bu Dosyada Kimler Var</strong> bölümünden yönetilir. Atama yetkisi rolünüze ve ekran izinlerinize bağlıdır.</p>
 
-    <table>
-      <thead><tr><th>Koşul</th><th>Kontrol Yöntemi</th><th>Durum</th></tr></thead>
-      <tbody>
-        <tr><td>Hasar raporu oluşturulmuş ve onaylanmış</td><td>Raporlar sekmesi</td><td><span class="badge badge-green">Zorunlu</span></td></tr>
-        <tr><td>Tüm tedarikçi sözleşmeleri imzalanmış</td><td>Tedarikçiler sekmesi</td><td><span class="badge badge-green">Zorunlu</span></td></tr>
-        <tr><td>Faturalar sisteme yüklenmiş</td><td>Finans sekmesi</td><td><span class="badge badge-green">Zorunlu</span></td></tr>
-        <tr><td>Onarım tamamlanmış ve onaylanmış</td><td>Dosya durumu</td><td><span class="badge badge-green">Zorunlu</span></td></tr>
-        <tr><td>Müşteri memnuniyet notu alınmış</td><td>Anket bölümü</td><td><span class="badge badge-gold">Önerilen</span></td></tr>
-      </tbody>
-    </table>
-
-    <div class="warning-box">
-      <div class="box-label">Dikkat</div>
-      Eksik koşul varken dosya kapatılmaya çalışıldığında sistem uyarı mesajı gösterir ve hangi koşulun eksik olduğunu belirtir.
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Dosya Sorumlusu</h4>
+        <p>Ofis personeli ataması. Bölge ve iş yüküne göre önerilen personel listesinden veya manuel seçimle atanır.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Saha Tespitçisi</h4>
+        <p>Saha personeli ataması. Dosyanın saha takibi bu kişi üzerinden yürütülür.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Tedarikçi</h4>
+        <p>Dosya kapsamında hizmet verecek tedarikçi firması seçilir ve atama notu ile kaydedilir.</p>
+      </div>
     </div>
 
-    <div class="section-title"><span class="section-number">13</span> Finans Dashboard</div>
+    <div class="info-box">
+      Harici eksper portalı kullanıcılarına dosya atama bu ekrandan yapılmaz. Ekspertiz süreçleri ayrı iş akışları ve iletişim kanalları üzerinden yürütülür.
+    </div>
 
-    <p>Sol menüden <strong>Finans</strong> bölümüne girdiğinizde aşağıdaki göstergelere ulaşırsınız:</p>
+    <div class="section-title"><span class="num">7</span> Evrak ve Dijital Onay</div>
 
-    <ul class="doc-list">
-      <li><strong>Aylık Gelir Özeti:</strong> Toplam faturalanan tutar, tahsil edilen, bekleyen</li>
-      <li><strong>Dosya Başına Ortalama Maliyet:</strong> Tedarikçi maliyetleri analizi</li>
-      <li><strong>SLA Uyum Oranı:</strong> 48 saatlik müdahale hedefine uyum yüzdesi</li>
-      <li><strong>Tedarikçi Performansı:</strong> İş tamamlama süreleri ve memnuniyet puanları</li>
-      <li><strong>Sigorta Şirketi Bazlı Dağılım:</strong> Hangi şirketten kaç dosya geldiği</li>
-      <li><strong>Kar Marjı Takibi:</strong> Dosya bazlı brüt kar ve marjlar</li>
+    <p>Hasar dosyalarında evrak süreci <strong>Evraklar</strong> sekmesinden yönetilir. Dijital onay, sigortalıya iletilen bağlantı üzerinden gerçekleştirilir.</p>
+
+    <ul>
+      <li><strong>Muvafakatname</strong> — Dijital onay bağlantısı ile sigortalıdan onay alınır.</li>
+      <li><strong>Matbu Evrak</strong> — WhatsApp veya e-posta ile iletilen evrak için dijital onay takibi yapılır.</li>
+      <li><strong>Evrak Özet</strong> — Kapama koşulları (muvafakatname onayı, rapor, sözleşme) tek ekranda kontrol edilir.</li>
+      <li><strong>Dış Onay Bağlantısı</strong> — Sigortalıya iletilen güvenli bağlantı üzerinden evrakı görüntüleyip onaylayabilir.</li>
     </ul>
 
-    <div class="info-box">
-      <div class="box-label">Dışa Aktarım</div>
-      Finans raporlarını Excel formatında dışa aktarmak için sayfanın sağ üst köşesindeki <strong>Excel İndir</strong> butonunu kullanın. Tarih aralığı filtresi uygulanabilir.
-    </div>
-
-    <div class="section-title"><span class="section-number">14</span> Ayarlar — Sözleşme Şablonu</div>
-
-    <ol class="step-list">
-      <li><span class="step-num">1</span> Sol menü altında <strong>Ayarlar</strong> bölümüne gidin (yalnızca Admin).</li>
-      <li><span class="step-num">2</span> <strong>Sözleşme Şablonları</strong> sekmesine tıklayın.</li>
-      <li><span class="step-num">3</span> Mevcut şablonu düzenlemek için <strong>Düzenle</strong> butonuna basın.</li>
-      <li><span class="step-num">4</span> Şablon içinde <code>&#123;&#123;firma_adi&#125;&#125;</code>, <code>&#123;&#123;hasar_adresi&#125;&#125;</code> gibi değişkenler kullanılabilir.</li>
-      <li><span class="step-num">5</span> Değişikliklerinizi kaydedin; yeni sözleşmelerde otomatik uygulanır.</li>
-    </ol>
-
-    <div class="section-title"><span class="section-number">15</span> Sık Yapılan Hatalar ve Çözümleri</div>
-
-    <table>
-      <thead><tr><th style="width:30%">Hata</th><th style="width:35%">Olası Neden</th><th style="width:35%">Çözüm</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>Dosya kapatılamıyor</td>
-          <td class="err-cause">Zorunlu koşullardan biri eksik</td>
-          <td class="err-fix">Uyarı mesajındaki eksik koşulu tamamlayın</td>
-        </tr>
-        <tr>
-          <td>PDF oluşturulmuyor</td>
-          <td class="err-cause">Zorunlu alan boş bırakılmış veya fotoğraf yüklenemedi</td>
-          <td class="err-fix">Tüm zorunlu alanları doldurun, fotoğrafı yeniden yükleyin</td>
-        </tr>
-        <tr>
-          <td>Eksper atanamıyor</td>
-          <td class="err-cause">Seçilen eksperin aktif başka dosyası var veya bölge uyumsuzluğu</td>
-          <td class="err-fix">Farklı eksper seçin veya admin ile iletişime geçin</td>
-        </tr>
-        <tr>
-          <td>Dijital imza bağlantısı çalışmıyor</td>
-          <td class="err-cause">Bağlantı süresi dolmuş (24 saat geçerli)</td>
-          <td class="err-fix">Sözleşme sayfasından imza bağlantısını yeniden gönderin</td>
-        </tr>
-        <tr>
-          <td>Anket gönderilemiyor</td>
-          <td class="err-cause">Dosya henüz kapatılmamış</td>
-          <td class="err-fix">Önce dosyayı kapatın, sonra anket gönderin</td>
-        </tr>
-        <tr>
-          <td>Sisteme giriş yapılamıyor</td>
-          <td class="err-cause">Şifre hatalı veya hesap kilitlenmiş</td>
-          <td class="err-fix">"Şifremi Unuttum" bağlantısını kullanın veya admin arayın</td>
-        </tr>
-        <tr>
-          <td>Rapor tutarları hatalı</td>
-          <td class="err-cause">Birim veya miktar girişi yanlış</td>
-          <td class="err-fix">Raporu düzenleme moduna alın, kalemleri kontrol edin</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="info-box" style="margin-top:20px;">
-      <div class="box-label">Teknik Destek</div>
-      Çözüm bulunamayan sorunlar için:<br>
-      <strong>Telefon:</strong> 0 850 885 25 55 &nbsp;|&nbsp; <strong>GSM:</strong> 0533 633 07 13 &nbsp;|&nbsp; <strong>E-posta:</strong> info@meridyenassistance.com
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Evrak Oluşturun</strong>
+          <p>Dosya detayında Evraklar sekmesinden muvafakatname veya matbu evrak oluşturun.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Sigortalıya İletin</strong>
+          <p>Oluşturulan bağlantıyı WhatsApp veya e-posta ile sigortalıya gönderin.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Onay Durumunu Takip Edin</strong>
+          <p>Evrak Özet sekmesinden dijital onay durumunu kontrol edin. Fatura talebi için gerekli evrak koşulları burada görünür.</p>
+        </div>
+      </div>
     </div>
   </div>
   <div class="doc-footer">
-    <span>Safran Birleşik Hizmetler — Gizli Belge</span>
-    <span>Sayfa 7–10 | www.safranbh.com</span>
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
+
+<!-- 8. FİNANS -->
+<div class="page page-break">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 8</div>
+  </div>
+  <div class="content">
+    <div class="section-title"><span class="num">8</span> Finans Modülleri</div>
+
+    <p>Finans modülleri <strong>Finans</strong> menüsü altında toplanır. Erişim finans, muhasebe ve yönetici rollerine özeldir; ofis personeli finans ekranlarını görmez.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Finans Özeti</h4>
+        <p>Gelir-gider özeti, dönem seçici, tahsilat kuyruğu ve operasyon göstergeleri tek dashboard'da.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Faturalar</h4>
+        <p>Satış ve alış faturaları, fatura talepleri ve durum takibi.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Masraflar</h4>
+        <p>Dosya ve operasyon masrafları, masraf kategorileriyle eşleştirme.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Tahsilatlar</h4>
+        <p>Ödeme kuyruğu, tahsilat kayıtları ve gecikmiş faturalar.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Banka Hesapları</h4>
+        <p>Şirket banka hesapları ve hareket eşleştirmesi.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Raporlar</h4>
+        <p>Karlılık, KDV raporu, dosya P&amp;L ve portföy analizleri.</p>
+      </div>
+    </div>
+
+    <div class="info-box">
+      Finans modüllerine erişim rol bazlıdır. Fatura talebi oluşturmak için dosyada gerekli evrak koşullarının tamamlanmış olması gerekir; durumu dosya detayında Evraklar → Özet sekmesinden kontrol edebilirsiniz.
+    </div>
+
+    <div class="info-box">
+      Yönetici dashboard'unda finans widget'ları (tahsilat darboğazları, gider dağıtımı hatırlatmaları) görüntülenir; finans rolü olmayan personel bu alanları görmez.
+    </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
+
+<!-- 9. KAZANIM + DESTEK -->
+<div class="page page-break">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-assistance-logo.jpeg" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 9</div>
+  </div>
+  <div class="content">
+    <div class="section-title"><span class="num">9</span> Meridyen ile Neler Kazanırsınız?</div>
+
+    <ul class="benefit-list">
+      <li>Hasar ve acil yardım dosyalarını tek platformdan açma ve yönetme</li>
+      <li>Operasyon Merkezi ile günlük öncelikleri ve bekleyen aksiyonları tek ekranda görme</li>
+      <li>Müşteri ve tedarikçi kayıtlarının merkezi yönetimi</li>
+      <li>Dosya sorumlusu, saha tespitçisi ve tedarikçi ataması</li>
+      <li>Dosya bazlı evrak ve dijital onay süreci — kayıt altında iletişim</li>
+      <li>Rol bazlı dashboard ve menü — her personel yalnızca yetkili ekranları görür</li>
+      <li>Finans modülleri ile fatura, masraf ve tahsilat entegrasyonu</li>
+      <li>Ayarlar menüsü ile tanım, fiyat ve şablon yönetimi (yönetici rolü)</li>
+      <li>Masaüstü ve mobil tarayıcıdan erişim</li>
+    </ul>
+
+    <div class="section-title" style="margin-top:24px;"><span class="num">✉</span> Destek ve İletişim</div>
+
+    <p>Platform kullanımında sorun yaşarsanız veya teknik destek gerekiyorsa aşağıdaki kanallardan bize ulaşabilirsiniz.</p>
+
+    <div class="contact-grid">
+      <div class="contact-card">
+        <h4>Sabit Hat</h4>
+        <p>0 850 885 25 55</p>
+        <p style="font-size:8pt;color:#BFDBFE;">Hafta içi 08:00–18:00</p>
+      </div>
+      <div class="contact-card">
+        <h4>GSM / WhatsApp</h4>
+        <p>0533 633 07 13</p>
+        <p style="font-size:8pt;color:#BFDBFE;">Acil durumlar ve hızlı iletişim</p>
+      </div>
+      <div class="contact-card">
+        <h4>E-posta</h4>
+        <p>destek@meridyen-tr.com</p>
+        <p style="font-size:8pt;color:#BFDBFE;">Teknik destek</p>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:18px;">
+      <div class="label">Giriş Adresi</div>
+      <p style="font-weight:600;color:var(--blue);">https://app.meridyen-tr.com/giris</p>
+    </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur. &nbsp;|&nbsp; www.safranbh.com
   </div>
 </div>
 

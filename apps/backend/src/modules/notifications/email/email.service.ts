@@ -4,10 +4,17 @@ import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailConfig } from '@/modules/system-settings/system-settings.service';
 import { buildEmailHtml, buildWelcomeInviteEmailHtml, EmailTemplateData } from './email.template';
+import { WelcomeEmailService } from './welcome-email.service';
+import { WelcomeEmailData, WelcomeEmailRole } from './welcome-email.template';
 
 export type EmailSendResult = {
   sent: boolean;
   errorMsg?: string;
+};
+
+export type EmailSendOptions = {
+  text?: string;
+  attachments?: nodemailer.SendMailOptions['attachments'];
 };
 
 @Injectable()
@@ -19,6 +26,7 @@ export class EmailService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly welcomeEmailService: WelcomeEmailService,
   ) {
     if (this.isUsableSmtpConfig(
       this.config.get<string>('SMTP_HOST'),
@@ -97,7 +105,12 @@ export class EmailService {
   }
 
   /** Ham HTML ile email gönder */
-  async sendEmail(to: string, subject: string, html: string): Promise<EmailSendResult> {
+  async sendEmail(
+    to: string,
+    subject: string,
+    html: string,
+    options?: EmailSendOptions,
+  ): Promise<EmailSendResult> {
     const logEntry = await this.prisma.emailLog.create({
       data: { to, subject, status: 'queued' },
     });
@@ -119,6 +132,8 @@ export class EmailService {
         to,
         subject,
         html,
+        text: options?.text,
+        attachments: options?.attachments,
       });
       await this.prisma.emailLog.update({
         where: { id: logEntry.id },
@@ -137,7 +152,7 @@ export class EmailService {
     }
   }
 
-  /** Hoş geldin / davet e-postası */
+  /** Hoş geldin / davet e-postası (eski basit şablon — geriye uyumluluk) */
   async sendWelcomeInviteEmail(
     to: string,
     params: { fullName: string; email: string; temporaryPassword: string; loginUrl: string },
@@ -149,6 +164,19 @@ export class EmailService {
       loginUrl: params.loginUrl,
     });
     return this.sendEmail(to, 'Meridyen Assistance — Hesap Davetiniz', html);
+  }
+
+  /** Rol bazlı kurumsal hoş geldin e-postası */
+  async sendWelcomeEmail(
+    to: string,
+    role: WelcomeEmailRole,
+    params: WelcomeEmailData,
+  ): Promise<EmailSendResult> {
+    const rendered = this.welcomeEmailService.generateWelcomeEmail(role, params);
+    return this.sendEmail(to, rendered.subject, rendered.html, {
+      text: rendered.text,
+      attachments: rendered.attachments,
+    });
   }
 
   /** Template tabanlı email gönder */

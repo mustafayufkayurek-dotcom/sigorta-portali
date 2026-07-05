@@ -100,6 +100,12 @@ async function main() {
     { code: 'operation_inbox.view', name: 'Gelen Kutusunu Görüntüle', module: 'operation_inbox', action: 'view' },
     { code: 'operation_inbox.manage', name: 'Gelen Kutusunu Yönet', module: 'operation_inbox', action: 'manage' },
     { code: 'operation_inbox.settings', name: 'Gelen Kutusu Ayarları', module: 'operation_inbox', action: 'settings' },
+
+    // Personel Özlük (HR)
+    { code: 'hr.view', name: 'Personel Özlük Görüntüle', module: 'hr', action: 'view' },
+    { code: 'hr.leave.request', name: 'İzin Talebi Oluştur', module: 'hr', action: 'leave_request' },
+    { code: 'hr.leave.approve', name: 'İzin Onayla', module: 'hr', action: 'leave_approve' },
+    { code: 'hr.attendance.manage', name: 'Puantaj Düzenle', module: 'hr', action: 'attendance_manage' },
   ];
 
   const createdPermissions = await Promise.all(
@@ -162,7 +168,13 @@ async function main() {
     create: { code: 'insurance_company_user', name: 'Sigorta Şirketi', description: 'Sigorta şirketi portal kullanıcısı' },
   });
 
-  console.log('✅ Created 8 roles');
+  const brokerUserRole = await prisma.role.upsert({
+    where: { code: 'broker_user' },
+    update: { name: 'Broker', description: 'Broker portal kullanıcısı' },
+    create: { code: 'broker_user', name: 'Broker', description: 'Broker portal kullanıcısı' },
+  });
+
+  console.log('✅ Created 9 roles');
 
   // Assign all permissions to admin
   await Promise.all(
@@ -190,6 +202,7 @@ async function main() {
     'bank_account.view', 'bank_account.create', 'bank_account.update', 'bank_account.delete',
     'report.view',
     'location.view',
+    'hr.view', 'hr.leave.approve', 'hr.attendance.manage',
   ];
   await assignPermissions(managerRole.id, managerPermCodes, createdPermissions);
 
@@ -205,6 +218,7 @@ async function main() {
     'bank_account.view',
     'dashboard.view',
     'location.view',
+    'hr.view', 'hr.leave.request',
   ];
   await assignPermissions(officeStaffRole.id, officePermCodes, createdPermissions);
 
@@ -1181,6 +1195,20 @@ async function main() {
     });
   }
   console.log(`✅ Created/updated ${vendorDocumentTypes.length} vendor document types`);
+
+  await prisma.platformModule.upsert({
+    where: { code: 'personnel' },
+    update: { isEnabled: true, name: 'Personel Modülü', description: 'Puantaj, izin, hizmet kayıtları, dijital evrak arşivi' },
+    create: {
+      id: 'pod-personnel-v1',
+      code: 'personnel',
+      name: 'Personel Modülü',
+      description: 'Puantaj, izin, hizmet kayıtları, dijital evrak arşivi',
+      isEnabled: true,
+      sortOrder: 10,
+    },
+  });
+  console.log('✅ Personel modülü etkinleştirildi');
 
   console.log('🎉 Seeding completed!');
 }
