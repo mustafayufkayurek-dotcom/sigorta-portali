@@ -195,12 +195,17 @@ model User {
   createdFileAppointments    FileAppointment[]         @relation("FileAppointmentCreatedBy")
   assignedInboundMessages  InboundMessage[]          @relation("InboundMessageAssignee")
   vendorDiscoverySessions  VendorDiscoverySession[]
+  activitySessions         ActivitySession[]
 
   // Personel modülü (pod — ileride bağlanacak)
   hrEmployeeProfile          HrEmployeeProfile?
   hrManagedEmployees         HrEmployeeProfile[]       @relation("HrEmployeeManager")
   hrDocumentsSigned          HrDocument[]              @relation("HrDocumentSignedBy")
   hrDocumentsUploaded        HrDocument[]              @relation("HrDocumentUploadedBy")
+  hrLeaveRequestsApproved    HrLeaveRequest[]          @relation("HrLeaveApprovedBy")
+  hrLeaveRequestsRejected    HrLeaveRequest[]          @relation("HrLeaveRejectedBy")
+  hrAttendanceConfirmations  HrAttendanceEntry[]       @relation("HrAttendanceConfirmedBy")
+  hrAttendancePeriodLocks    HrAttendancePeriodLock[]  @relation("HrAttendancePeriodLockedBy")
 
   @@index([email])
   @@index([roleId])
@@ -1642,6 +1647,24 @@ model UserLocation {
 
   @@index([userId, timestamp])
   @@map("user_locations")
+}
+
+model ActivitySession {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  sessionDate DateTime @map("session_date") @db.Date
+  startedAt   DateTime @map("started_at")
+  lastBeatAt  DateTime @map("last_beat_at")
+  activeMs    Int      @default(0) @map("active_ms")
+  idleMs      Int      @default(0) @map("idle_ms")
+  beatCount   Int      @default(0) @map("beat_count")
+  lastRoute   String?  @map("last_route")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sessionDate])
+  @@index([sessionDate])
+  @@map("activity_sessions")
 }
 
 // ─── Müşteri Erişim Güvenlik Altyapısı ───────────────────────────────────────
@@ -3392,7 +3415,9 @@ model HrEmployeeProfile {
   department        Department?       @relation(fields: [departmentId], references: [id])
   manager           User?             @relation("HrEmployeeManager", fields: [managerUserId], references: [id])
   attendanceEntries HrAttendanceEntry[]
+  attendancePeriodLocks HrAttendancePeriodLock[]
   leaveRequests     HrLeaveRequest[]
+  leaveBalances     HrLeaveBalance[]
   documents         HrDocument[]
   assignedAssets    FixedAsset[]      @relation("AssetAssignee")
 
@@ -3408,16 +3433,47 @@ model HrAttendanceEntry {
   minutesWorked     Int?     @map("minutes_worked")
   entryType         String   @map("entry_type")
   source            String   @default("manual")
+  attendanceStatus  String   @default("present") @map("attendance_status")
+  suggestedMinutes  Int?     @map("suggested_minutes")
+  clockInAt         DateTime? @map("clock_in_at")
+  clockOutAt        DateTime? @map("clock_out_at")
   notes             String?
+  employeeConfirmedAt       DateTime? @map("employee_confirmed_at")
+  employeeConfirmedByUserId String?   @map("employee_confirmed_by_user_id")
   createdByUserId   String?  @map("created_by_user_id")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  employeeProfile       HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  employeeConfirmedBy   User?             @relation("HrAttendanceConfirmedBy", fields: [employeeConfirmedByUserId], references: [id])
 
   @@unique([employeeProfileId, workDate, entryType])
   @@index([workDate])
   @@map("hr_attendance_entries")
+}
+
+model HrAttendancePeriodLock {
+  id                  String    @id @default(uuid())
+  employeeProfileId   String    @map("employee_profile_id")
+  year                Int
+  month               Int
+  employeeConfirmedAt   DateTime? @map("employee_confirmed_at")
+  employeeSignature   String?   @map("employee_signature")
+  employeeSignatureAt DateTime? @map("employee_signature_at")
+  managerConfirmedAt    DateTime? @map("manager_confirmed_at")
+  managerSignature    String?   @map("manager_signature")
+  managerSignatureAt  DateTime? @map("manager_signature_at")
+  lockedAt              DateTime? @map("locked_at")
+  lockedByUserId        String?   @map("locked_by_user_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  lockedBy        User?             @relation("HrAttendancePeriodLockedBy", fields: [lockedByUserId], references: [id])
+
+  @@unique([employeeProfileId, year, month])
+  @@index([year, month])
+  @@map("hr_attendance_period_locks")
 }
 
 model HrLeaveRequest {
@@ -3426,18 +3482,43 @@ model HrLeaveRequest {
   leaveType         String    @map("leave_type")
   startDate         DateTime  @map("start_date") @db.Date
   endDate           DateTime  @map("end_date") @db.Date
-  status            String    @default("pending")
+  dayCount          Int?      @map("day_count")
+  status            String    @default("draft")
   reason            String?
+  submittedAt       DateTime? @map("submitted_at")
   approvedByUserId  String?   @map("approved_by_user_id")
   approvedAt        DateTime? @map("approved_at")
+  rejectedByUserId  String?   @map("rejected_by_user_id")
+  rejectedAt        DateTime? @map("rejected_at")
+  rejectionReason   String?   @map("rejection_reason")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
   employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  approvedBy      User?             @relation("HrLeaveApprovedBy", fields: [approvedByUserId], references: [id])
+  rejectedBy      User?             @relation("HrLeaveRejectedBy", fields: [rejectedByUserId], references: [id])
 
   @@index([employeeProfileId])
   @@index([status])
   @@map("hr_leave_requests")
+}
+
+model HrLeaveBalance {
+  id                String   @id @default(uuid())
+  employeeProfileId String   @map("employee_profile_id")
+  leaveType         String   @map("leave_type")
+  year              Int
+  totalDays         Decimal  @default(14) @map("total_days") @db.Decimal(5, 1)
+  usedDays          Decimal  @default(0) @map("used_days") @db.Decimal(5, 1)
+  pendingDays       Decimal  @default(0) @map("pending_days") @db.Decimal(5, 1)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  employeeProfile HrEmployeeProfile @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeProfileId, leaveType, year])
+  @@index([year])
+  @@map("hr_leave_balances")
 }
 
 model HrDocument {
