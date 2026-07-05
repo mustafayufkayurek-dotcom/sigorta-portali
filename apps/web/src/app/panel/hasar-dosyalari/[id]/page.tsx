@@ -20,7 +20,7 @@ import {
   FinVisConfig,
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -206,7 +206,7 @@ function DosyaSayfaUstu({
             )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            {[claim.insuranceCompany?.name, claim.claimNo && `Hasar ${claim.claimNo}`, claim.lossType && toTitleCaseTR(String(claim.lossType))].filter(Boolean).join(' · ')}
+            {[claim.insuranceCompany?.name, claim.claimNo && `Hasar ${claim.claimNo}`, claim.lossType && formatDisplayLabel(String(claim.lossType))].filter(Boolean).join(' · ')}
           </p>
         </div>
       </div>

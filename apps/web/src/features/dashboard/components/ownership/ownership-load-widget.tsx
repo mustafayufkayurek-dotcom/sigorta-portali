@@ -36,7 +36,7 @@ export function OwnershipLoadWidget({ staggerIndex = 0 }: OwnershipLoadWidgetPro
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="py-2 text-left font-medium text-slate-500">Kullanıcı</th>
+                <th className="py-2 text-center font-medium text-slate-500">Kullanıcı</th>
                 <th className="py-2 text-right font-medium text-slate-500">Aktif</th>
                 <th className="py-2 text-right font-medium text-slate-500">Kritik</th>
                 <th className="py-2 text-right font-medium text-slate-500">Ort. Gün</th>

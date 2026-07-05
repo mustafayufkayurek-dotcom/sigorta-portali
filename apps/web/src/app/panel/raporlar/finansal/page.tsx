@@ -254,10 +254,10 @@ export default function FinansalRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="invoiceNo" className="px-4 py-2 text-left">Fatura No</PanelTableTh>
-                    <PanelTableTh colId="fileNo" className="px-4 py-2 text-left">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="amount" className="px-4 py-2 text-right">Tutar</PanelTableTh>
-                    <PanelTableTh colId="daysOverdue" className="px-4 py-2 text-right">Gecikme (gün)</PanelTableTh>
+                    <PanelTableTh colId="invoiceNo" className="px-4 py-2 text-center">Fatura No</PanelTableTh>
+                    <PanelTableTh colId="fileNo" className="px-4 py-2 text-center">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="amount" className="px-4 py-2 text-center">Tutar</PanelTableTh>
+                    <PanelTableTh colId="daysOverdue" className="px-4 py-2 text-center">Gecikme (gün)</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -290,11 +290,11 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(trendTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="month" className="px-3 py-2 text-left">Ay</PanelTableTh>
-                  <PanelTableTh colId="revenue" className="px-3 py-2 text-right">Gelir</PanelTableTh>
-                  <PanelTableTh colId="cost" className="px-3 py-2 text-right">Gider</PanelTableTh>
-                  <PanelTableTh colId="profit" className="px-3 py-2 text-right">Kâr / Zarar</PanelTableTh>
-                  <PanelTableTh colId="margin" className="px-3 py-2 text-right">Marj</PanelTableTh>
+                  <PanelTableTh colId="month" className="px-3 py-2 text-center">Ay</PanelTableTh>
+                  <PanelTableTh colId="revenue" className="px-3 py-2 text-center">Gelir</PanelTableTh>
+                  <PanelTableTh colId="cost" className="px-3 py-2 text-center">Gider</PanelTableTh>
+                  <PanelTableTh colId="profit" className="px-3 py-2 text-center">Kâr / Zarar</PanelTableTh>
+                  <PanelTableTh colId="margin" className="px-3 py-2 text-center">Marj</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -384,11 +384,11 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(collectionsTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-left">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="count" className="px-4 py-3 text-right">Dosya Sayısı</PanelTableTh>
-                  <PanelTableTh colId="revenue" className="px-4 py-3 text-right">Toplam Gelir</PanelTableTh>
-                  <PanelTableTh colId="collected" className="px-4 py-3 text-right">Tahsilat</PanelTableTh>
-                  <PanelTableTh colId="collectionRate" className="px-4 py-3 text-right">Tahsilat Oranı</PanelTableTh>
+                  <PanelTableTh colId="name" className="px-4 py-3 text-center">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="count" className="px-4 py-3 text-center">Dosya Sayısı</PanelTableTh>
+                  <PanelTableTh colId="revenue" className="px-4 py-3 text-center">Toplam Gelir</PanelTableTh>
+                  <PanelTableTh colId="collected" className="px-4 py-3 text-center">Tahsilat</PanelTableTh>
+                  <PanelTableTh colId="collectionRate" className="px-4 py-3 text-center">Tahsilat Oranı</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -428,11 +428,11 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(profitabilityTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-left">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="actualRevenue" className="px-4 py-3 text-right">Fiili Gelir</PanelTableTh>
-                  <PanelTableTh colId="actualCost" className="px-4 py-3 text-right">Fiili Gider</PanelTableTh>
-                  <PanelTableTh colId="grossProfit" className="px-4 py-3 text-right">Brüt Kâr</PanelTableTh>
-                  <PanelTableTh colId="grossMarginPct" className="px-4 py-3 text-right">Marj</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="actualRevenue" className="px-4 py-3 text-center">Fiili Gelir</PanelTableTh>
+                  <PanelTableTh colId="actualCost" className="px-4 py-3 text-center">Fiili Gider</PanelTableTh>
+                  <PanelTableTh colId="grossProfit" className="px-4 py-3 text-center">Brüt Kâr</PanelTableTh>
+                  <PanelTableTh colId="grossMarginPct" className="px-4 py-3 text-center">Marj</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">

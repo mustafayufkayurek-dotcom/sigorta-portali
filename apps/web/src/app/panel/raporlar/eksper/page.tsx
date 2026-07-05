@@ -166,16 +166,16 @@ export default function EksperPerformansPage() {
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <PanelTableTh colId="rank" className="px-4 py-3 text-center">#</PanelTableTh>
-                    <PanelTableTh colId="name" className="px-4 py-3 text-left">Eksper</PanelTableTh>
-                    <PanelTableTh colId="company" className="px-4 py-3 text-left">Şirket</PanelTableTh>
-                    <PanelTableTh colId="city" className="px-4 py-3 text-left">Şehir</PanelTableTh>
-                    <PanelTableTh colId="total" className="px-4 py-3 text-right">Toplam</PanelTableTh>
-                    <PanelTableTh colId="completed" className="px-4 py-3 text-right">Tamamlanan</PanelTableTh>
-                    <PanelTableTh colId="pending" className="px-4 py-3 text-right">Bekleyen</PanelTableTh>
-                    <PanelTableTh colId="avgReportDays" className="px-4 py-3 text-right">Ort. Süre (gün)</PanelTableTh>
-                    <PanelTableTh colId="revisionRate" className="px-4 py-3 text-right">Revizyon %</PanelTableTh>
-                    <PanelTableTh colId="completionRate" className="px-4 py-3 text-right">Tamamlama %</PanelTableTh>
-                    <PanelTableTh colId="performanceScore" className="px-4 py-3 text-right">Puan</PanelTableTh>
+                    <PanelTableTh colId="name" className="px-4 py-3 text-center">Eksper</PanelTableTh>
+                    <PanelTableTh colId="company" className="px-4 py-3 text-center">Şirket</PanelTableTh>
+                    <PanelTableTh colId="city" className="px-4 py-3 text-center">Şehir</PanelTableTh>
+                    <PanelTableTh colId="total" className="px-4 py-3 text-center">Toplam</PanelTableTh>
+                    <PanelTableTh colId="completed" className="px-4 py-3 text-center">Tamamlanan</PanelTableTh>
+                    <PanelTableTh colId="pending" className="px-4 py-3 text-center">Bekleyen</PanelTableTh>
+                    <PanelTableTh colId="avgReportDays" className="px-4 py-3 text-center">Ort. Süre (gün)</PanelTableTh>
+                    <PanelTableTh colId="revisionRate" className="px-4 py-3 text-center">Revizyon %</PanelTableTh>
+                    <PanelTableTh colId="completionRate" className="px-4 py-3 text-center">Tamamlama %</PanelTableTh>
+                    <PanelTableTh colId="performanceScore" className="px-4 py-3 text-center">Puan</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">

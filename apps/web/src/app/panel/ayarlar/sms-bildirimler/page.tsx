@@ -307,11 +307,11 @@ export default function SmsBildirimleriPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-50">
-                      <th className="text-left font-medium text-slate-500 pb-2 pr-3">Tarih</th>
-                      <th className="text-left font-medium text-slate-500 pb-2 pr-3">Numara</th>
-                      <th className="text-left font-medium text-slate-500 pb-2 pr-3">Durum</th>
-                      <th className="text-left font-medium text-slate-500 pb-2 pr-3">Provider</th>
-                      <th className="text-left font-medium text-slate-500 pb-2">Mesaj</th>
+                      <th className="text-center font-medium text-slate-500 pb-2 pr-3">Tarih</th>
+                      <th className="text-center font-medium text-slate-500 pb-2 pr-3">Numara</th>
+                      <th className="text-center font-medium text-slate-500 pb-2 pr-3">Durum</th>
+                      <th className="text-center font-medium text-slate-500 pb-2 pr-3">Provider</th>
+                      <th className="text-center font-medium text-slate-500 pb-2">Mesaj</th>
                     </tr>
                   </thead>
                   <tbody>

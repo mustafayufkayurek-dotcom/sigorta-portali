@@ -3,7 +3,30 @@
  * Müşteriler ve Tedarikçiler sayfalarında kullanılır.
  */
 
-export function relativeTime(dateStr: string | null | undefined): string {
+export function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+export function fmtDate(d: string | null | undefined): string {
+  const dt = parseDate(d);
+  return dt ? dt.toLocaleDateString('tr-TR') : '—';
+}
+
+export function fmtDateTime(
+  d: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
+): string {
+  const dt = parseDate(d);
+  return dt ? dt.toLocaleString('tr-TR', options) : '—';
+}
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -28,12 +51,7 @@ export function activityColor(dateStr: string | null | undefined): string {
   return 'text-gray-600';
 }
 
-export function fmtDate(d: string | null | undefined): string {
-  return d ? new Date(d).toLocaleDateString('tr-TR') : '—';
-}
-
-/**
- * Telefon numarasını WhatsApp wa.me linkine dönüştürür.
+export function relativeTime(dateStr: string | null | undefined): string {
  * Türkiye numaraları için 0 ile başlıyorsa 90 ekler.
  * Numara zaten + veya 90 ile başlıyorsa aynen kullanır.
  */

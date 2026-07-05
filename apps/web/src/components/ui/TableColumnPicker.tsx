@@ -169,9 +169,9 @@ export function ResizableTh({
   return (
     <th
       style={{ width, minWidth: width }}
-      className={`group relative box-border select-none overflow-hidden ${className}`}
+      className={`group relative box-border select-none overflow-hidden !text-center ${className}`}
     >
-      <span className="block min-w-0 truncate pr-3">{children}</span>
+      <span className="flex min-w-0 items-center justify-center truncate px-1 pr-3">{children}</span>
       {resizable && (
         <span
           role="separator"
@@ -333,7 +333,7 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   if (!ctx) {
-    return <th className={className}>{children}</th>;
+    return <th className={`text-center ${className}`}>{children}</th>;
   }
   const meta = colMeta(ctx, colId);
   return (
@@ -424,7 +424,7 @@ export function SortablePanelTableTh({
     <span
       role="button"
       tabIndex={0}
-      className={`inline-flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 ${right ? 'justify-end w-full' : ''}`}
+      className="inline-flex w-full cursor-pointer items-center justify-center gap-1 hover:text-slate-700 dark:hover:text-slate-200"
       onClick={() => onSort(sortKey)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

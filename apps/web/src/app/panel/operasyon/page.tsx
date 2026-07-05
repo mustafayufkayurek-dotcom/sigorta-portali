@@ -14,10 +14,8 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
-
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('tr-TR');
-}
+import { fmtDate } from '@/utils/date-helpers';
+import { formatClaimSubjectLabel, formatDisplayLabel } from '@/utils/text-helpers';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -197,7 +195,11 @@ export default function OperasyonPage() {
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
     const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
-    const subject = claim.lossType ?? claim.departmentFileSubject?.name ?? claim.productBranch ?? '—';
+    const subject = formatClaimSubjectLabel(
+      claim.lossType,
+      claim.productBranch,
+      claim.departmentFileSubject?.name,
+    );
     return {
       kind: 'hasar', id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
@@ -210,7 +212,7 @@ export default function OperasyonPage() {
 
   const acilRows: UnifiedRow[] = cases.map((c) => ({
     kind: 'acil', id: c.id, fileNo: c.caseNo, customerName: c.customerName,
-    date: c.createdAt, subject: c.issueType ?? c.notes ?? '—',
+    date: c.createdAt, subject: formatDisplayLabel(c.issueType ?? c.notes),
     statusCode: c.status,
     invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
     amount: null,

@@ -177,14 +177,14 @@ export default function CarilerimPage() {
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
                     <th className="w-8 px-2 py-3" aria-label="Genişlet" />
-                    <PanelTableTh colId="name" className="px-4 py-3 text-left">Müşteri</PanelTableTh>
-                    <PanelTableTh colId="phone" className="px-4 py-3 text-left">Telefon</PanelTableTh>
-                    <PanelTableTh colId="totalFiles" className="px-4 py-3 text-right">Dosya</PanelTableTh>
-                    <PanelTableTh colId="openFiles" className="px-4 py-3 text-right">Açık</PanelTableTh>
-                    <PanelTableTh colId="closedFiles" className="px-4 py-3 text-right">Kapalı</PanelTableTh>
-                    <PanelTableTh colId="lastActivity" className="px-4 py-3 text-left">Son hareket</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-left">Durum</PanelTableTh>
-                    <th className="px-4 py-3 text-left">İşlem</th>
+                    <PanelTableTh colId="name" className="px-4 py-3 text-center">Müşteri</PanelTableTh>
+                    <PanelTableTh colId="phone" className="px-4 py-3 text-center">Telefon</PanelTableTh>
+                    <PanelTableTh colId="totalFiles" className="px-4 py-3 text-center">Dosya</PanelTableTh>
+                    <PanelTableTh colId="openFiles" className="px-4 py-3 text-center">Açık</PanelTableTh>
+                    <PanelTableTh colId="closedFiles" className="px-4 py-3 text-center">Kapalı</PanelTableTh>
+                    <PanelTableTh colId="lastActivity" className="px-4 py-3 text-center">Son hareket</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
+                    <th className="px-4 py-3 text-center">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">

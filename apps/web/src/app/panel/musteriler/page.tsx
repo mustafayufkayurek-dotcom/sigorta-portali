@@ -2079,7 +2079,7 @@ export default function MusterilerPage() {
                   <PanelTableTh colId="phone" className="table-th">Telefon</PanelTableTh>
                   <PanelTableTh colId="type" className="table-th text-center">Tip</PanelTableTh>
                   <PanelTableTh colId="service" className="table-th">Hizmet</PanelTableTh>
-                  <PanelTableTh colId="files" className="table-th text-right">Dosya</PanelTableTh>
+                  <PanelTableTh colId="files" className="table-th text-center">Dosya</PanelTableTh>
                   <PanelTableTh colId="activity" className="table-th">Aktivite</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
                   <th className="table-th text-right">İşlem</th>

@@ -13,15 +13,24 @@ import {
   FinansPanelCard,
 } from '@/components/finance/FinansPanelUI';
 import { API, authAxios } from '../claim-detail-utils';
+import { filterLegacyStajDepartments } from '@/utils/department-helpers';
+import { fmtDateTime } from '@/utils/date-helpers';
+import { resolveDamageReasonOptions as loadDamageReasonOptions } from '@/utils/damage-reason-options';
 import { RevizyonTalepleriPanel } from './RevizyonlarTab';
-
-const DAMAGE_CODES = [
-  'Dahili Su', 'Yangın', 'Deprem', 'Sel-Seylap', 'Fırtına',
-  'Heyelan', 'İnfilak', 'Taşıt Çarpması', 'Gemi-Tekne', 'İnşaat', 'Cam Kırılması',
-];
 
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
+type FileSubjectOption = { code: string; name: string };
+type ClaimContext = { lossType?: string | null; claimSubjectId?: string | null };
+
+const ORG_DEPARTMENT_CODES = new Set([
+  'hasar-onarim',
+  'acil-yardim',
+  'sovtaj',
+  'ozel-musteri',
+  'danismanlik',
+]);
+
 type StatusFilter = 'all' | 'pending' | 'draft' | 'approved' | 'rejected' | 'revision';
 
 type RepairReportListItem = {
@@ -127,13 +136,7 @@ function groupReportsIntoChains(reports: RepairReportListItem[]): ReportChain[] 
 }
 
 function formatReportDate(report: RepairReportListItem): string {
-  return new Date(report.reportDate ?? report.createdAt).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return fmtDateTime(report.reportDate ?? report.createdAt);
 }
 
 function ReportChainRow({
@@ -267,6 +270,9 @@ function YeniRaporWizard({
 }) {
   const [step, setStep] = useState<WizardStep>('department');
   const [departments, setDepartments] = useState<DeptOption[]>([]);
+  const [claimContext, setClaimContext] = useState<ClaimContext | null>(null);
+  const [damageReasons, setDamageReasons] = useState<FileSubjectOption[]>([]);
+  const [loadingReasons, setLoadingReasons] = useState(false);
   const [selectedDept, setSelectedDept] = useState<DeptOption | null>(null);
   const [reportType, setReportType] = useState<'single' | 'multi' | 'emergency' | null>(null);
   const [singleDamageCode, setSingleDamageCode] = useState('');
@@ -279,6 +285,56 @@ function YeniRaporWizard({
       .then((r) => setDepartments(r.data.data ?? []))
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    void authAxios<{ data: ClaimContext }>({ method: 'GET', url: `${API}/claim-files/${claimId}` })
+      .then((r) => {
+        const claim = r.data.data;
+        setClaimContext({
+          lossType: claim?.lossType ?? null,
+          claimSubjectId: claim?.claimSubjectId ?? null,
+        });
+      })
+      .catch(console.error);
+  }, [claimId]);
+
+  useEffect(() => {
+    if (!selectedDept) {
+      setDamageReasons([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingReasons(true);
+    void loadDamageReasonOptions(selectedDept.id, claimContext)
+      .then((options) => {
+        if (!cancelled) setDamageReasons(options);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setDamageReasons([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingReasons(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDept, claimContext]);
+
+  const wizardDepartments = useMemo(
+    () =>
+      filterLegacyStajDepartments(
+        departments.filter((dept) => ORG_DEPARTMENT_CODES.has(dept.code)),
+      ),
+    [departments],
+  );
+
+  const damageReasonByCode = useMemo(
+    () => new Map(damageReasons.map((reason) => [reason.code, reason])),
+    [damageReasons],
+  );
 
   const toggleMultiCode = (code: string) => {
     setMultiDamageCodes((prev) =>
@@ -330,20 +386,30 @@ function YeniRaporWizard({
       if (!created?.id) throw new Error('Rapor oluşturulamadı');
 
       if (reportType === 'single' && singleDamageCode) {
+        const reason = damageReasonByCode.get(singleDamageCode);
         await authAxios({
           method: 'POST',
           url: `${API}/repair-reports/${created.id}/damage-types`,
-          data: { damageTypeCode: singleDamageCode, damageTypeName: singleDamageCode, sortOrder: 0 },
+          data: {
+            damageTypeCode: singleDamageCode,
+            damageTypeName: reason?.name ?? singleDamageCode,
+            sortOrder: 0,
+          },
         });
       } else if (reportType === 'multi') {
         await Promise.all(
-          multiDamageCodes.map((code, idx) =>
-            authAxios({
+          multiDamageCodes.map((code, idx) => {
+            const reason = damageReasonByCode.get(code);
+            return authAxios({
               method: 'POST',
               url: `${API}/repair-reports/${created.id}/damage-types`,
-              data: { damageTypeCode: code, damageTypeName: code, sortOrder: idx },
-            }),
-          ),
+              data: {
+                damageTypeCode: code,
+                damageTypeName: reason?.name ?? code,
+                sortOrder: idx,
+              },
+            });
+          }),
         );
       }
       onCreated(created.id);
@@ -364,14 +430,14 @@ function YeniRaporWizard({
           </div>
           <p className="text-sm text-slate-500 mb-5">Hangi departman için rapor oluşturuyorsunuz?</p>
 
-          {departments.length === 0 ? (
+          {wizardDepartments.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">
               <p>Henüz departman tanımlanmamış.</p>
               <a href="/panel/ayarlar/departmanlar" className="text-blue-600 hover:underline mt-1 block">Departman oluşturmak için tıklayın</a>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {departments.filter((d) => d.reportFormat === 'repair').map((d) => (
+              {wizardDepartments.filter((d) => d.reportFormat === 'repair').map((d) => (
                 <button type="button"
                   key={d.id}
                   onClick={() => handleDeptSelect(d)}
@@ -388,7 +454,7 @@ function YeniRaporWizard({
                   <p className="text-xs text-slate-400 mt-0.5">Hasar onarım raporu</p>
                 </button>
               ))}
-              {departments.filter((d) => d.reportFormat === 'emergency').map((d) => (
+              {wizardDepartments.filter((d) => d.reportFormat === 'emergency').map((d) => (
                 <button type="button"
                   key={d.id}
                   onClick={() => handleDeptSelect(d)}
@@ -505,21 +571,32 @@ function YeniRaporWizard({
           <div className="space-y-4 mt-4">
             <div>
               <label className="text-xs font-medium text-slate-600 block mb-2">Hasar Nedeni *</label>
-              <div className="grid grid-cols-2 gap-2">
-                {DAMAGE_CODES.map((code) => (
-                  <button type="button"
-                    key={code}
-                    onClick={() => setSingleDamageCode(code)}
-                    className={`text-left px-3 py-2 rounded-lg text-xs border transition-all ${
-                      singleDamageCode === code
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
-                        : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    {code}
-                  </button>
-                ))}
-              </div>
+              {loadingReasons ? (
+                <p className="text-sm text-slate-400 py-4 text-center">Hasar nedenleri yükleniyor…</p>
+              ) : damageReasons.length === 0 ? (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Bu dosya ve departman için tanımlı hasar nedeni bulunamadı.
+                  <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
+                    Dosya konuları ayarlarından tanımlayın
+                  </a>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {damageReasons.map((reason) => (
+                    <button type="button"
+                      key={reason.code}
+                      onClick={() => setSingleDamageCode(reason.code)}
+                      className={`text-left px-3 py-2 rounded-lg text-xs border transition-all ${
+                        singleDamageCode === reason.code
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
+                          : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      {reason.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -529,27 +606,38 @@ function YeniRaporWizard({
                 Hasar nedenlerini seçin{' '}
                 <span className="text-slate-400 font-normal">(en az 2)</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {DAMAGE_CODES.map((code) => {
-                  const selected = multiDamageCodes.includes(code);
-                  return (
-                    <button type="button"
-                      key={code}
-                      onClick={() => toggleMultiCode(code)}
-                      className={`text-left px-3 py-2 rounded-lg text-xs border flex items-center gap-2 transition-all ${
-                        selected
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold'
-                          : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50'
-                      }`}
-                    >
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 text-xs ${selected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
-                        {selected ? '✓' : ''}
-                      </span>
-                      {code}
-                    </button>
-                  );
-                })}
-              </div>
+              {loadingReasons ? (
+                <p className="text-sm text-slate-400 py-4 text-center">Hasar nedenleri yükleniyor…</p>
+              ) : damageReasons.length === 0 ? (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Bu dosya ve departman için tanımlı hasar nedeni bulunamadı.
+                  <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
+                    Dosya konuları ayarlarından tanımlayın
+                  </a>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {damageReasons.map((reason) => {
+                    const selected = multiDamageCodes.includes(reason.code);
+                    return (
+                      <button type="button"
+                        key={reason.code}
+                        onClick={() => toggleMultiCode(reason.code)}
+                        className={`text-left px-3 py-2 rounded-lg text-xs border flex items-center gap-2 transition-all ${
+                          selected
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold'
+                            : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50'
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 text-xs ${selected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+                          {selected ? '✓' : ''}
+                        </span>
+                        {reason.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {multiDamageCodes.length > 0 && (
                 <p className="text-xs text-indigo-600 mt-2 font-medium">
                   {multiDamageCodes.length} hasar nedeni seçildi

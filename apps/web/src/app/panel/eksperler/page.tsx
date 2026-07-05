@@ -444,8 +444,8 @@ export default function AdjustersPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead>
               <tr className="bg-slate-50 text-xs text-slate-500">
-                <PanelTableTh colId="name" className="text-left px-4 py-3">Eksper</PanelTableTh>
-                <PanelTableTh colId="region" className="text-left px-4 py-3">Bölge</PanelTableTh>
+                <PanelTableTh colId="name" className="text-center px-4 py-3">Eksper</PanelTableTh>
+                <PanelTableTh colId="region" className="text-center px-4 py-3">Bölge</PanelTableTh>
                 <PanelTableTh colId="total" className="text-center px-4 py-3">Toplam İş</PanelTableTh>
                 <PanelTableTh colId="completed" className="text-center px-4 py-3">Tamamlanan</PanelTableTh>
                 <PanelTableTh colId="avgReportDays" className="text-center px-4 py-3">Ort. Rapor Süresi</PanelTableTh>

@@ -219,10 +219,10 @@ export function OnlineCollectionLinksPanel({ claimFileId }: { claimFileId: strin
         <FinansDataTable>
           <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
             <tr>
-              <th className="text-left px-3 py-2.5">Tutar</th>
-              <th className="text-left px-3 py-2.5">Durum</th>
-              <th className="text-left px-3 py-2.5">Sigortalı</th>
-              <th className="text-left px-3 py-2.5">Son Geçerlilik</th>
+              <th className="text-center px-3 py-2.5">Tutar</th>
+              <th className="text-center px-3 py-2.5">Durum</th>
+              <th className="text-center px-3 py-2.5">Sigortalı</th>
+              <th className="text-center px-3 py-2.5">Son Geçerlilik</th>
               <th className="text-right px-3 py-2.5">İşlem</th>
             </tr>
           </thead>

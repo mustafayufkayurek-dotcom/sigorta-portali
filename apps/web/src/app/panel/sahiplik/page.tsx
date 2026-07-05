@@ -126,12 +126,12 @@ export default function OwnershipPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(loadTableColumns)}>
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <PanelTableTh colId="staff" className="text-left px-5 py-3 text-xs font-semibold text-slate-500">Personel</PanelTableTh>
-                  <PanelTableTh colId="role" className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Rol</PanelTableTh>
+                  <PanelTableTh colId="staff" className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Personel</PanelTableTh>
+                  <PanelTableTh colId="role" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Rol</PanelTableTh>
                   <PanelTableTh colId="active" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Aktif</PanelTableTh>
                   <PanelTableTh colId="overdue" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">SLA Aşımı</PanelTableTh>
                   <PanelTableTh colId="avgDays" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Ort. Gün</PanelTableTh>
-                  <PanelTableTh colId="load" className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Yük</PanelTableTh>
+                  <PanelTableTh colId="load" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Yük</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -195,10 +195,10 @@ export default function OwnershipPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(pendingTableColumns)}>
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="text-left px-5 py-3 text-xs font-semibold text-slate-500">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="status" className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Durum</PanelTableTh>
-                  <PanelTableTh colId="assigned" className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Atanan</PanelTableTh>
-                  <PanelTableTh colId="action" className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Beklenen Aksiyon</PanelTableTh>
+                  <PanelTableTh colId="fileNo" className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Dosya No</PanelTableTh>
+                  <PanelTableTh colId="status" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Durum</PanelTableTh>
+                  <PanelTableTh colId="assigned" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Atanan</PanelTableTh>
+                  <PanelTableTh colId="action" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Beklenen Aksiyon</PanelTableTh>
                   <PanelTableTh colId="days" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Gün</PanelTableTh>
                 </tr>
               </thead>

@@ -147,7 +147,7 @@ export function SettingsTableTh({
 }) {
   return (
     <th
-      className={`px-5 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 ${className}`}
+      className={`px-5 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 ${className}`}
     >
       {children}
     </th>

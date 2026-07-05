@@ -66,10 +66,10 @@ export async function authAxios<T>(
   }
 }
 
+import { fmtDate as fmtDateSafe } from '@/utils/date-helpers';
+
 export function fmtDate(d: string | null | undefined) {
-  if (!d) return '—';
-  const dt = new Date(d);
-  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('tr-TR');
+  return fmtDateSafe(d);
 }
 
 export function fmtCurrency(n: number | null | undefined) {

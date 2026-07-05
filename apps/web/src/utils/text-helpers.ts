@@ -123,3 +123,24 @@ export function normalizeFormFreeText(value: string): string {
   const trimmed = value.trim();
   return trimmed ? toTitleCaseTR(trimmed) : trimmed;
 }
+
+/**
+ * API kod/slug alanlarını kullanıcıya gösterilecek Title Case metne çevirir.
+ * "endustriyel-yangin" → "Endustriyel Yangın", "HASAR_ONARIM" → "Hasar Onarım"
+ */
+export function formatDisplayLabel(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed) return '—';
+  const spaced = trimmed.replace(/[-_/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return toTitleCaseTR(spaced);
+}
+
+/** Hasar dosyası konu/branş etiketi — lossType öncelikli */
+export function formatClaimSubjectLabel(
+  lossType?: string | null,
+  productBranch?: string | null,
+  fallbackName?: string | null,
+): string {
+  const raw = lossType?.trim() || fallbackName?.trim() || productBranch?.trim();
+  return raw ? formatDisplayLabel(raw) : '—';
+}

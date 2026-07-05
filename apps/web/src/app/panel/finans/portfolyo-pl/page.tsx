@@ -224,13 +224,13 @@ export default function PortfolyoPLPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/50">
-                  <PanelTableTh colId="sigortaSirketi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-left">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="donem" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-left">Dönem</PanelTableTh>
-                  <PanelTableTh colId="dosyaSayisi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-right">Dosya Sayısı</PanelTableTh>
-                  <PanelTableTh colId="gelir" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-right">Gelir</PanelTableTh>
-                  <PanelTableTh colId="gider" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-right">Gider</PanelTableTh>
-                  <PanelTableTh colId="netKZ" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-right">Net KZ</PanelTableTh>
-                  <PanelTableTh colId="marjPct" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-right">Marj %</PanelTableTh>
+                  <PanelTableTh colId="sigortaSirketi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="donem" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dönem</PanelTableTh>
+                  <PanelTableTh colId="dosyaSayisi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dosya Sayısı</PanelTableTh>
+                  <PanelTableTh colId="gelir" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gelir</PanelTableTh>
+                  <PanelTableTh colId="gider" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gider</PanelTableTh>
+                  <PanelTableTh colId="netKZ" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Net KZ</PanelTableTh>
+                  <PanelTableTh colId="marjPct" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Marj %</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">

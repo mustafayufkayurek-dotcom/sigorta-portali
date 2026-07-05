@@ -261,13 +261,13 @@ export default function ErisimLoglariPage() {
             <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50">
                 <tr>
-                  <PanelTableTh colId="user" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
-                  <PanelTableTh colId="customer" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="file" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Dosya</PanelTableTh>
-                  <PanelTableTh colId="accessType" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
-                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Tarih</PanelTableTh>
-                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">IP</PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium tracking-wide text-slate-500">Durum</PanelTableTh>
+                  <PanelTableTh colId="user" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
+                  <PanelTableTh colId="customer" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="file" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Dosya</PanelTableTh>
+                  <PanelTableTh colId="accessType" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
+                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Tarih</PanelTableTh>
+                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">IP</PanelTableTh>
+                  <PanelTableTh colId="status" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Durum</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">

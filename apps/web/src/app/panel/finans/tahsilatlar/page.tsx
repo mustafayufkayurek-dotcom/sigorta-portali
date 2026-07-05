@@ -260,15 +260,15 @@ export default function TahsilatlarPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
-                    <PanelTableTh colId="paymentDate" className="px-4 py-3 text-left">Tarih / Vade</PanelTableTh>
-                    <PanelTableTh colId="fileCase" className="px-4 py-3 text-left">Dosya</PanelTableTh>
-                    <PanelTableTh colId="paymentType" className="px-4 py-3 text-left">Yön</PanelTableTh>
-                    <PanelTableTh colId="counterparty" className="px-4 py-3 text-left">Taraf / Kanal</PanelTableTh>
-                    <PanelTableTh colId="method" className="px-4 py-3 text-left">Yöntem</PanelTableTh>
-                    <PanelTableTh colId="amount" className="px-4 py-3 text-right">Tutar</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-left">Durum</PanelTableTh>
-                    <PanelTableTh colId="note" className="px-4 py-3 text-left">Not</PanelTableTh>
-                    <th className="px-4 py-3 text-left">İşlem</th>
+                    <PanelTableTh colId="paymentDate" className="px-4 py-3 text-center">Tarih / Vade</PanelTableTh>
+                    <PanelTableTh colId="fileCase" className="px-4 py-3 text-center">Dosya</PanelTableTh>
+                    <PanelTableTh colId="paymentType" className="px-4 py-3 text-center">Yön</PanelTableTh>
+                    <PanelTableTh colId="counterparty" className="px-4 py-3 text-center">Taraf / Kanal</PanelTableTh>
+                    <PanelTableTh colId="method" className="px-4 py-3 text-center">Yöntem</PanelTableTh>
+                    <PanelTableTh colId="amount" className="px-4 py-3 text-center">Tutar</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
+                    <PanelTableTh colId="note" className="px-4 py-3 text-center">Not</PanelTableTh>
+                    <th className="px-4 py-3 text-center">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">

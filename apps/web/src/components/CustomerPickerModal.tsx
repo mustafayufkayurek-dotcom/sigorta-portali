@@ -215,10 +215,10 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 text-xs text-gray-500">
-                        <th className="text-left px-4 py-2.5">Ad / Şirket</th>
-                        <th className="text-left px-4 py-2.5">Tip</th>
-                        <th className="text-left px-4 py-2.5">Kimlik / Vergi</th>
-                        <th className="text-left px-4 py-2.5">Telefon</th>
+                        <th className="text-center px-4 py-2.5">Ad / Şirket</th>
+                        <th className="text-center px-4 py-2.5">Tip</th>
+                        <th className="text-center px-4 py-2.5">Kimlik / Vergi</th>
+                        <th className="text-center px-4 py-2.5">Telefon</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">

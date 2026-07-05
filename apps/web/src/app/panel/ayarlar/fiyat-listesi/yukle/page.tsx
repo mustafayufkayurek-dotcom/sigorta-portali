@@ -81,10 +81,10 @@ export default function FiyatListesiYuklePage() {
             <table className="min-w-full text-xs">
               <thead>
                 <tr className="bg-blue-100 text-blue-800">
-                  <th className="px-3 py-1.5 text-left font-medium rounded-l-lg">Sütun A</th>
-                  <th className="px-3 py-1.5 text-left font-medium">Sütun B</th>
-                  <th className="px-3 py-1.5 text-left font-medium">Sütun C</th>
-                  <th className="px-3 py-1.5 text-left font-medium rounded-r-lg">Sütun D</th>
+                  <th className="px-3 py-1.5 text-center font-medium rounded-l-lg">Sütun A</th>
+                  <th className="px-3 py-1.5 text-center font-medium">Sütun B</th>
+                  <th className="px-3 py-1.5 text-center font-medium">Sütun C</th>
+                  <th className="px-3 py-1.5 text-center font-medium rounded-r-lg">Sütun D</th>
                 </tr>
               </thead>
               <tbody>

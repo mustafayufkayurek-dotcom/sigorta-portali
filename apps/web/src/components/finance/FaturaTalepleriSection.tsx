@@ -205,13 +205,13 @@ export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionP
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="tarih" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">Tarih</PanelTableTh>
-                    <PanelTableTh colId="dosyaNo" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="tedarikci" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">Sigorta / Kaynak</PanelTableTh>
-                    <PanelTableTh colId="aciklama" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">Açıklama</PanelTableTh>
-                    <PanelTableTh colId="tutar" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-right">Tutar</PanelTableTh>
-                    <PanelTableTh colId="durum" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">Durum</PanelTableTh>
-                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-left">İşlem</th>
+                    <PanelTableTh colId="tarih" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Tarih</PanelTableTh>
+                    <PanelTableTh colId="dosyaNo" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="tedarikci" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Sigorta / Kaynak</PanelTableTh>
+                    <PanelTableTh colId="aciklama" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Açıklama</PanelTableTh>
+                    <PanelTableTh colId="tutar" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Tutar</PanelTableTh>
+                    <PanelTableTh colId="durum" className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Durum</PanelTableTh>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">

@@ -7,6 +7,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
+import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -332,7 +333,7 @@ export default function AdjusterProfilePage() {
                     <a href={`/panel/hasar-dosyalari/${a.claimFile?.id}`} className="font-semibold text-blue-700 hover:underline">
                       {a.claimFile?.fileNo ?? '—'}
                     </a>
-                    <p className="text-xs text-slate-400">{a.claimFile?.productBranch} · {a.claimFile?.lossType}</p>
+                    <p className="text-xs text-slate-400">{formatClaimSubjectLabel(a.claimFile?.lossType, a.claimFile?.productBranch)}</p>
                     {a.claimFile?.insuranceCompany?.name && (
                       <span className="inline-block mt-1 text-[10px] leading-none bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full px-2 py-0.5 font-medium">
                         {a.claimFile.insuranceCompany.name}

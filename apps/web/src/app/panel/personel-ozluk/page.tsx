@@ -574,13 +574,13 @@ export default function PersonelOzlukPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50 border-b border-slate-100">
                         <tr>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Tarih</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Durum</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Mesai Giriş</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Mesai Bitiş</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Kayıtlı Süre</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Önerilen</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Onay</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Tarih</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Durum</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Mesai Giriş</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Mesai Bitiş</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Kayıtlı Süre</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Önerilen</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Onay</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">

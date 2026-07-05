@@ -241,8 +241,8 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
               <FinansDataTable>
                 <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
                   <tr>
-                    <th className="text-left px-3 py-2.5">Açıklama</th>
-                    <th className="text-left px-3 py-2.5">Kategori</th>
+                    <th className="text-center px-3 py-2.5">Açıklama</th>
+                    <th className="text-center px-3 py-2.5">Kategori</th>
                     <th className="text-right px-3 py-2.5">Miktar</th>
                     <th className="text-right px-3 py-2.5">Birim Fiyat</th>
                     <th className="text-right px-3 py-2.5">KDV</th>
@@ -392,10 +392,10 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-xs text-slate-500">
-                  <th className="text-left px-3 py-2">Tarih</th>
-                  <th className="text-left px-3 py-2">Açıklama</th>
-                  <th className="text-left px-3 py-2">Kategori</th>
-                  <th className="text-left px-3 py-2">Tedarikçi</th>
+                  <th className="text-center px-3 py-2">Tarih</th>
+                  <th className="text-center px-3 py-2">Açıklama</th>
+                  <th className="text-center px-3 py-2">Kategori</th>
+                  <th className="text-center px-3 py-2">Tedarikçi</th>
                   <th className="text-right px-3 py-2">Tutar</th>
                   <th className="px-3 py-2" />
                 </tr>
@@ -857,13 +857,13 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
           <FinansDataTable>
             <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="text-left px-3 py-2.5">Fatura No</th>
-                <th className="text-left px-3 py-2.5">Tip</th>
-                <th className="text-left px-3 py-2.5">Tarih</th>
+                <th className="text-center px-3 py-2.5">Fatura No</th>
+                <th className="text-center px-3 py-2.5">Tip</th>
+                <th className="text-center px-3 py-2.5">Tarih</th>
                 <th className="text-right px-3 py-2.5">Ara Toplam</th>
                 <th className="text-right px-3 py-2.5">Toplam</th>
-                <th className="text-left px-3 py-2.5">Durum</th>
-                <th className="text-left px-3 py-2.5">İşlem</th>
+                <th className="text-center px-3 py-2.5">Durum</th>
+                <th className="text-center px-3 py-2.5">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1204,14 +1204,14 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
           <FinansDataTable>
             <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="text-left px-3 py-2.5">Tarih</th>
-                <th className="text-left px-3 py-2.5">Yön</th>
-                <th className="text-left px-3 py-2.5">Yöntem</th>
-                <th className="text-left px-3 py-2.5">Bağlı Fatura</th>
+                <th className="text-center px-3 py-2.5">Tarih</th>
+                <th className="text-center px-3 py-2.5">Yön</th>
+                <th className="text-center px-3 py-2.5">Yöntem</th>
+                <th className="text-center px-3 py-2.5">Bağlı Fatura</th>
                 <th className="text-right px-3 py-2.5">Tutar</th>
-                <th className="text-left px-3 py-2.5">Ref No</th>
-                <th className="text-left px-3 py-2.5">Dekont</th>
-                <th className="text-left px-3 py-2.5">Not</th>
+                <th className="text-center px-3 py-2.5">Ref No</th>
+                <th className="text-center px-3 py-2.5">Dekont</th>
+                <th className="text-center px-3 py-2.5">Not</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1439,12 +1439,12 @@ export function GelirlerTab({ claimId }: { claimId: string }) {
         <FinansDataTable>
           <thead className="bg-slate-50 text-xs text-slate-500 border-b border-slate-200">
             <tr>
-              <th className="text-left px-3 py-2.5 w-8" />
-              <th className="text-left px-3 py-2.5">Tarih</th>
-              <th className="text-left px-3 py-2.5">Gelir Tipi</th>
-              <th className="text-left px-3 py-2.5">Tahsilat Kaynağı</th>
+              <th className="text-center px-3 py-2.5 w-8" />
+              <th className="text-center px-3 py-2.5">Tarih</th>
+              <th className="text-center px-3 py-2.5">Gelir Tipi</th>
+              <th className="text-center px-3 py-2.5">Tahsilat Kaynağı</th>
               <th className="text-right px-3 py-2.5">Tutar</th>
-              <th className="text-left px-3 py-2.5">Açıklama</th>
+              <th className="text-center px-3 py-2.5">Açıklama</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

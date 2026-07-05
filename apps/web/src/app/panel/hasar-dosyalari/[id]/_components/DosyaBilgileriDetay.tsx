@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -30,7 +30,10 @@ export function buildDosyaBilgileriFields(claim: any) {
     supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
   }
   if (claim.productBranch?.trim()) {
-    supplementary.push({ label: 'Ürün Branşı', value: toTitleCaseTR(claim.productBranch.trim()) });
+    supplementary.push({ label: 'Ürün Branşı', value: formatDisplayLabel(claim.productBranch.trim()) });
+  }
+  if (claim.lossType?.trim()) {
+    supplementary.push({ label: 'Hasar Konusu', value: formatDisplayLabel(claim.lossType.trim()) });
   }
   if (claim.sourceChannel?.trim()) {
     supplementary.push({ label: 'Kaynak Kanal', value: toTitleCaseTR(claim.sourceChannel.trim()) });

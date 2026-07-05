@@ -102,13 +102,13 @@ export function TestNotlariTab({ items, selectedId, onSelect, onEdit, onDelete, 
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Test No</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Modül</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Öncelik</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Durum</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Yapılan İşlem</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">Oluşturan</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-500">İşlem</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Test No</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Modül</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Öncelik</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Durum</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Yapılan İşlem</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">Oluşturan</th>
+              <th className="px-4 py-3 text-center font-semibold text-slate-500">İşlem</th>
             </tr>
           </thead>
           <tbody>

@@ -391,13 +391,13 @@ export default function SlaRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="dept" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman</PanelTableTh>
-                    <PanelTableTh colId="total" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
-                    <PanelTableTh colId="onTime" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Zamanında</PanelTableTh>
-                    <PanelTableTh colId="violated" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">İhlal</PanelTableTh>
-                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Yanıt</PanelTableTh>
-                    <PanelTableTh colId="compliance" className="px-5 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Uyum %</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Durum</PanelTableTh>
+                    <PanelTableTh colId="dept" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman</PanelTableTh>
+                    <PanelTableTh colId="total" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
+                    <PanelTableTh colId="onTime" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Zamanında</PanelTableTh>
+                    <PanelTableTh colId="violated" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">İhlal</PanelTableTh>
+                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Yanıt</PanelTableTh>
+                    <PanelTableTh colId="compliance" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Uyum %</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Durum</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -445,13 +445,13 @@ export default function SlaRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(violatedTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
-                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-left">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="claimNo" className="px-4 py-3 text-left">Hasar No</PanelTableTh>
-                    <PanelTableTh colId="branch" className="px-4 py-3 text-left">Branş</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-left">Durum</PanelTableTh>
-                    <PanelTableTh colId="officeUser" className="px-4 py-3 text-left">Sorumlu</PanelTableTh>
-                    <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-left">Sigorta Şirketi</PanelTableTh>
-                    <PanelTableTh colId="daysOverdue" className="px-4 py-3 text-right">Gecikme (gün)</PanelTableTh>
+                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="claimNo" className="px-4 py-3 text-center">Hasar No</PanelTableTh>
+                    <PanelTableTh colId="branch" className="px-4 py-3 text-center">Branş</PanelTableTh>
+                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
+                    <PanelTableTh colId="officeUser" className="px-4 py-3 text-center">Sorumlu</PanelTableTh>
+                    <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-center">Sigorta Şirketi</PanelTableTh>
+                    <PanelTableTh colId="daysOverdue" className="px-4 py-3 text-center">Gecikme (gün)</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -538,13 +538,13 @@ export default function SlaRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
               <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-left">Kural Adı</PanelTableTh>
-                  <PanelTableTh colId="claimType" className="px-4 py-3 text-left">Hasar Tipi</PanelTableTh>
-                  <PanelTableTh colId="productBranch" className="px-4 py-3 text-left">Branş</PanelTableTh>
-                  <PanelTableTh colId="targetDays" className="px-4 py-3 text-right">Hedef (gün)</PanelTableTh>
-                  <PanelTableTh colId="warningDays" className="px-4 py-3 text-right">Uyarı (gün)</PanelTableTh>
+                  <PanelTableTh colId="name" className="px-4 py-3 text-center">Kural Adı</PanelTableTh>
+                  <PanelTableTh colId="claimType" className="px-4 py-3 text-center">Hasar Tipi</PanelTableTh>
+                  <PanelTableTh colId="productBranch" className="px-4 py-3 text-center">Branş</PanelTableTh>
+                  <PanelTableTh colId="targetDays" className="px-4 py-3 text-center">Hedef (gün)</PanelTableTh>
+                  <PanelTableTh colId="warningDays" className="px-4 py-3 text-center">Uyarı (gün)</PanelTableTh>
                   <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
-                  <PanelTableTh colId="action" className="px-4 py-3 text-right">İşlem</PanelTableTh>
+                  <PanelTableTh colId="action" className="px-4 py-3 text-center">İşlem</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">

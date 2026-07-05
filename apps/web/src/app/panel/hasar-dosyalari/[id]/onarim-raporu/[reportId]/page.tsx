@@ -3,7 +3,9 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { fmtDate, fmtDateTime } from '@/utils/date-helpers';
+import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import RepairItemsModal, { DAMAGE_SIZE_OPTIONS, DAMAGE_TYPE_OPTIONS, SelectedRepairItem, damageSizeLabel, damageTypeLabel } from '@/components/damage-reports/RepairItemsModal';
@@ -89,12 +91,6 @@ function parseExpr(expr: string): number {
   return result;
 }
 
-const DAMAGE_TYPE_CODES = [
-  'Dahili Su', 'Yangın', 'Deprem', 'Sel-Seylap', 'Fırtına',
-  'Heyelan', 'İnfilak', 'Taşıt Çarpması', 'Gemi-Tekne', 'İnşaat',
-  'Cam Kırılması',
-];
-
 const UNITS = ['Adet', 'Maktuen', 'm²', 'm³', 'm/tül', 'Takım', 'Asgari', 'Tam Gün', '1/2 gün', 'Çuval', 'Servis', 'Günlük', 'Yevmiye', 'Saat', 'Kamyon', 'Torba', 'Metre', 'Kutu'];
 
 function Badge({ text, color }: { text: string; color: string }) {
@@ -146,7 +142,7 @@ function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }
   if (loading) return null;
   if (!items || items.length === 0) return null;
 
-  const fmtD = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtD = (d: string) => fmtDateTime(d, { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -321,7 +317,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 text-slate-400 text-[10px] tracking-wide">
-                  <th className="text-left px-3 py-2 rounded-l-lg">İş Grubu</th>
+                  <th className="text-center px-3 py-2 rounded-l-lg">İş Grubu</th>
                   <th className="text-right px-3 py-2">Tedarikçi (TDR)</th>
                   <th className="text-right px-3 py-2">Satış Fiyatı</th>
                   <th className="text-right px-3 py-2">Kar</th>
@@ -1493,13 +1489,13 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
             {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100">#</th>}
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 min-w-[140px]">Açıklama <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px]">Açıklama <span className="text-red-500">*</span></th>
             <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20">Miktar</th>
-            <th className="px-2 py-2 text-left text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
             <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">Satış Fiyatı</th>
             {viewMode === 'internal' && (
               <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">
@@ -2134,7 +2130,7 @@ function EmergencyReportEditor({
           <h2 className="text-lg font-bold text-slate-900">{report.reportNo}</h2>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">Acil Yardım</span>
-            <span className="text-xs text-slate-400">{new Date(report.reportDate ?? report.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="text-xs text-slate-400">{fmtDateTime(report.reportDate ?? report.createdAt)}</span>
           </div>
         </div>
         <Badge
@@ -2368,6 +2364,8 @@ export default function RepairReportPage() {
   const [damageFilter, setDamageFilter] = useState<string>('all');
   const [showDamageTypeModal, setShowDamageTypeModal] = useState(false);
   const [damageTypeForm, setDamageTypeForm] = useState({ code: '', name: '' });
+  const [damageReasonOptions, setDamageReasonOptions] = useState<DamageReasonOption[]>([]);
+  const [loadingDamageReasons, setLoadingDamageReasons] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [whatsAppPhone, setWhatsAppPhone] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -2463,6 +2461,29 @@ export default function RepairReportPage() {
   }, [reportId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!report?.departmentId) {
+      setDamageReasonOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingDamageReasons(true);
+    void resolveDamageReasonOptions(report.departmentId, {
+      lossType: report.claimFile?.lossType,
+      claimSubjectId: report.claimFile?.claimSubjectId,
+    })
+      .then((options) => {
+        if (!cancelled) setDamageReasonOptions(options);
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setLoadingDamageReasons(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [report?.departmentId, report?.claimFile?.lossType, report?.claimFile?.claimSubjectId]);
 
   const handleRevise = async () => {
     if (!confirm('Onaylı raporun revizyonunu oluşturmak istediğinizden emin misiniz?\nEski versiyon değişmeden saklanacak, yeni bir taslak açılacak.')) return;
@@ -2763,7 +2784,7 @@ export default function RepairReportPage() {
         <div>
           <h2 className="text-lg font-bold text-slate-900">{report.reportNo}</h2>
           <p className="text-xs text-slate-400">
-            {report.reportType === 'single' ? 'Tek Hasarlı' : 'Çok Hasarlı'} · {new Date(report.reportDate ?? report.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            {report.reportType === 'single' ? 'Tek Hasarlı' : 'Çok Hasarlı'} · {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
         </div>
         <Badge
@@ -2885,7 +2906,7 @@ export default function RepairReportPage() {
           {[
             { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
-            { label: 'Hasar Konusu', value: report.claimFile?.lossType },
+            { label: 'Hasar Konusu', value: formatDisplayLabel(report.claimFile?.lossType) },
             { label: 'Sigortalı', value: report.claimFile?.customer?.fullName ?? report.claimFile?.customer?.companyName },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
           ].map((f) => (
@@ -2903,7 +2924,7 @@ export default function RepairReportPage() {
           <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold flex-shrink-0">TH</span>
           <div>
             <p className="text-xs text-blue-500 font-medium">Hasar Nedeni</p>
-            <p className="text-sm font-semibold text-blue-800">{report.damageTypes[0]?.damageTypeName ?? '—'}</p>
+            <p className="text-sm font-semibold text-blue-800">{formatDisplayLabel(report.damageTypes[0]?.damageTypeName)}</p>
           </div>
         </div>
       )}
@@ -3118,7 +3139,7 @@ export default function RepairReportPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-slate-50 text-slate-400">
-                    <th className="text-left px-3 py-2">Hasar Nedeni</th>
+                    <th className="text-center px-3 py-2">Hasar Nedeni</th>
                     {effectiveViewMode === 'internal' && <th className="text-right px-3 py-2">Maliyet</th>}
                     <th className="text-right px-3 py-2">Satış</th>
                     {effectiveViewMode === 'internal' && <th className="text-right px-3 py-2">Kâr</th>}
@@ -3304,13 +3325,27 @@ export default function RepairReportPage() {
             <h3 className="text-base font-semibold text-slate-800 mb-4">Hasar Nedeni Ekle</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Hasar Konusu</label>
-                <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  value={damageTypeForm.code}
-                  onChange={(e) => setDamageTypeForm({ code: e.target.value, name: e.target.value })}>
-                  <option value="">Seçin...</option>
-                  {DAMAGE_TYPE_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label className="text-xs text-slate-500 block mb-1">Hasar Nedeni</label>
+                {loadingDamageReasons ? (
+                  <p className="text-sm text-slate-400 py-2">Hasar nedenleri yükleniyor…</p>
+                ) : damageReasonOptions.length === 0 ? (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    Bu dosya için tanımlı hasar nedeni bulunamadı.
+                  </p>
+                ) : (
+                  <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    value={damageTypeForm.code}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const reason = damageReasonOptions.find((row) => row.code === code);
+                      setDamageTypeForm({ code, name: reason?.name ?? code });
+                    }}>
+                    <option value="">Seçin...</option>
+                    {damageReasonOptions.map((reason) => (
+                      <option key={reason.code} value={reason.code}>{reason.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
             <div className="flex gap-2 mt-4">
@@ -3657,7 +3692,7 @@ export default function RepairReportPage() {
               <div>
                 <h3 className="text-base font-semibold text-slate-800">Önerilen İş Kalemleri</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {report?.claimFile?.lossType} türüne göre {templateSuggestions.flatMap((s: any) => s.items ?? []).length} kalem önerisi
+                  {formatDisplayLabel(report?.claimFile?.lossType)} türüne göre {templateSuggestions.flatMap((s: any) => s.items ?? []).length} kalem önerisi
                 </p>
               </div>
               <button type="button" onClick={() => setShowSuggestModal(false)} className="text-slate-400 hover:text-slate-600 text-xl font-light leading-none">×</button>

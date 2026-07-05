@@ -385,8 +385,8 @@ export default function SabitGiderlerPage() {
             <table className="w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-700/40 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left">Dosya</th>
-                  <th className="px-3 py-2 text-left">Tür</th>
+                  <th className="px-3 py-2 text-center">Dosya</th>
+                  <th className="px-3 py-2 text-center">Tür</th>
                   <th className="px-3 py-2 text-right">Pay (KDV hariç)</th>
                   <th className="px-3 py-2 text-right">Referans</th>
                 </tr>

@@ -434,12 +434,12 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(branchDetailTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
-                        <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</PanelTableTh>
-                        <PanelTableTh colId="open" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</PanelTableTh>
-                        <PanelTableTh colId="closed" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</PanelTableTh>
-                        <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
-                        <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
+                        <PanelTableTh colId="branch" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
+                        <PanelTableTh colId="total" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</PanelTableTh>
+                        <PanelTableTh colId="open" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</PanelTableTh>
+                        <PanelTableTh colId="closed" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</PanelTableTh>
+                        <PanelTableTh colId="avgCloseDays" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="lastFileDate" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -507,12 +507,12 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(customerPerfTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <PanelTableTh colId="customer" className="text-left px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</PanelTableTh>
-                        <PanelTableTh colId="service" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</PanelTableTh>
-                        <PanelTableTh colId="files" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</PanelTableTh>
+                        <PanelTableTh colId="customer" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</PanelTableTh>
+                        <PanelTableTh colId="service" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</PanelTableTh>
+                        <PanelTableTh colId="files" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</PanelTableTh>
                         <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Branş Dağılımı</PanelTableTh>
                         <PanelTableTh colId="trend" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Trend</PanelTableTh>
-                        <PanelTableTh colId="avgClose" className="text-right px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                        <PanelTableTh colId="avgClose" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
                         <PanelTableTh colId="action" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">İşlem</PanelTableTh>
                       </tr>
                     </thead>
@@ -627,10 +627,10 @@ export default function BransAnaliziPage() {
                     <table className="w-full text-sm" style={panelTableLayoutStyle(growthTableColumns)}>
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <PanelTableTh colId="branch" className="text-left pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
-                          <PanelTableTh colId="total" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</PanelTableTh>
-                          <PanelTableTh colId="avgCloseDays" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
-                          <PanelTableTh colId="lastFileDate" className="text-right pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
+                          <PanelTableTh colId="branch" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
+                          <PanelTableTh colId="total" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</PanelTableTh>
+                          <PanelTableTh colId="avgCloseDays" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
+                          <PanelTableTh colId="lastFileDate" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">

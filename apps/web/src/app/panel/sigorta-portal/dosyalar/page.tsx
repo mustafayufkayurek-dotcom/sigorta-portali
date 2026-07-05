@@ -13,6 +13,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { formatDisplayLabel } from '@/utils/text-helpers';
 
 const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNumber', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
@@ -107,12 +108,12 @@ export default function SigortaDosyalarPage() {
           <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50">
               <tr>
-                <PanelTableTh colId="fileNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Dosya No</PanelTableTh>
-                <PanelTableTh colId="subject" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Konu</PanelTableTh>
-                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Durum</PanelTableTh>
-                <PanelTableTh colId="assignedUser" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Atanan Personel</PanelTableTh>
-                <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tarih</PanelTableTh>
-                <PanelTableTh colId="flow" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Akış</PanelTableTh>
+                <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
+                <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
+                <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                <PanelTableTh colId="assignedUser" className="table-th-center">Atanan Personel</PanelTableTh>
+                <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
+                <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -123,7 +124,7 @@ export default function SigortaDosyalarPage() {
                   onClick={() => router.push(`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`)}
                 >
                   <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
-                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{f.subject ?? '—'}</PanelTableTd>
+                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatDisplayLabel(f.subject)}</PanelTableTd>
                   <PanelTableTd colId="status" className="px-4 py-3">
                     <span
                       className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"

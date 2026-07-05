@@ -42,6 +42,7 @@ export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
+    await this.mergeLegacyStajDepartment();
     return this.prisma.department.findMany({
       where: { status: 'active' },
       include: {
@@ -49,6 +50,140 @@ export class DepartmentsService {
       },
       orderBy: { sortOrder: 'asc' },
     });
+  }
+
+  /** Eski ensureKonuTabDepartments hatasıyla oluşan Staj kaydını Sovtaj ile birleştirir. */
+  async mergeLegacyStajDepartment(): Promise<{ merged: boolean; message?: string }> {
+    const legacy = await this.prisma.department.findFirst({
+      where: {
+        status: 'active',
+        OR: [
+          { code: { equals: 'staj', mode: 'insensitive' } },
+          { name: { equals: 'Staj', mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!legacy) return { merged: false };
+
+    let canonical = await this.prisma.department.findUnique({ where: { code: 'sovtaj' } });
+    if (!canonical) {
+      await this.prisma.department.update({
+        where: { id: legacy.id },
+        data: {
+          code: 'sovtaj',
+          name: 'Sovtaj',
+          description: 'Sovtaj operasyon departmanı',
+          color: '#10B981',
+          sortOrder: 3,
+          isSystem: true,
+          status: 'active',
+        },
+      });
+      return { merged: true, message: 'Staj departmanı Sovtaj olarak yeniden adlandırıldı' };
+    }
+
+    if (legacy.id === canonical.id) return { merged: false };
+
+    const sovtajId = canonical.id;
+    const stajId = legacy.id;
+    const sovtajDescription = canonical.description ?? 'Sovtaj operasyon departmanı';
+    const sovtajSortOrder = Math.min(canonical.sortOrder, 3);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.claimFile.updateMany({ where: { departmentId: stajId }, data: { departmentId: sovtajId } });
+      await tx.repairReport.updateMany({ where: { departmentId: stajId }, data: { departmentId: sovtajId } });
+      await tx.hrEmployeeProfile.updateMany({ where: { departmentId: stajId }, data: { departmentId: sovtajId } });
+      await tx.claimResponsibilityAssignment.updateMany({
+        where: { departmentId: stajId },
+        data: { departmentId: sovtajId },
+      });
+
+      const legacyMemberships = await tx.userDepartmentMembership.findMany({ where: { departmentId: stajId } });
+      for (const membership of legacyMemberships) {
+        const duplicate = await tx.userDepartmentMembership.findUnique({
+          where: { userId_departmentId: { userId: membership.userId, departmentId: sovtajId } },
+        });
+        if (duplicate) {
+          await tx.userDepartmentMembership.delete({ where: { id: membership.id } });
+        } else {
+          await tx.userDepartmentMembership.update({
+            where: { id: membership.id },
+            data: { departmentId: sovtajId },
+          });
+        }
+      }
+
+      const legacySubjects = await tx.departmentFileSubject.findMany({ where: { departmentId: stajId } });
+      for (const subject of legacySubjects) {
+        const duplicate = await tx.departmentFileSubject.findUnique({
+          where: { departmentId_code: { departmentId: sovtajId, code: subject.code } },
+        });
+        if (duplicate) {
+          await tx.departmentFileSubject.delete({ where: { id: subject.id } });
+        } else {
+          await tx.departmentFileSubject.update({
+            where: { id: subject.id },
+            data: { departmentId: sovtajId },
+          });
+        }
+      }
+
+      const legacyConfigs = await tx.reportFieldConfig.findMany({ where: { departmentId: stajId } });
+      for (const config of legacyConfigs) {
+        const duplicate = await tx.reportFieldConfig.findUnique({
+          where: {
+            departmentId_reportFormat_fieldKey: {
+              departmentId: sovtajId,
+              reportFormat: config.reportFormat,
+              fieldKey: config.fieldKey,
+            },
+          },
+        });
+        if (duplicate) {
+          await tx.reportFieldConfig.delete({ where: { id: config.id } });
+        } else {
+          await tx.reportFieldConfig.update({
+            where: { id: config.id },
+            data: { departmentId: sovtajId },
+          });
+        }
+      }
+
+      const allDocTypes = await tx.documentType.findMany();
+      for (const docType of allDocTypes) {
+        const raw = docType.departmentIds;
+        const ids = Array.isArray(raw) ? (raw as string[]) : [];
+        if (!ids.includes(stajId)) continue;
+        const next = [...new Set(ids.map((id) => (id === stajId ? sovtajId : id)))];
+        await tx.documentType.update({
+          where: { id: docType.id },
+          data: { departmentIds: next },
+        });
+      }
+
+      await tx.department.update({
+        where: { id: stajId },
+        data: {
+          status: 'inactive',
+          code: `staj-legacy-${stajId.slice(0, 8)}`,
+        },
+      });
+
+      await tx.department.update({
+        where: { id: sovtajId },
+        data: {
+          name: 'Sovtaj',
+          description: sovtajDescription,
+          color: '#10B981',
+          sortOrder: sovtajSortOrder,
+          isSystem: true,
+          status: 'active',
+        },
+      });
+    });
+
+    return { merged: true, message: 'Staj departmanı Sovtaj ile birleştirildi' };
   }
 
   async findOne(id: string) {
@@ -285,7 +420,17 @@ export class DepartmentsService {
 
   /** Dosya Konuları sekmeleri için ek departman hatları */
   async ensureKonuTabDepartments() {
+    await this.mergeLegacyStajDepartment();
+
     const extras = [
+      {
+        code: 'sovtaj',
+        name: 'Sovtaj',
+        description: 'Sovtaj operasyon departmanı',
+        color: '#10B981',
+        reportFormat: 'repair',
+        sortOrder: 3,
+      },
       {
         code: 'ozel-musteri',
         name: 'Özel Müşteri',

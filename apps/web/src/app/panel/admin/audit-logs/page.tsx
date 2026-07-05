@@ -100,11 +100,11 @@ export default function AuditLogsPage() {
         <table className="min-w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <thead>
             <tr className="bg-slate-50">
-              <PanelTableTh colId="createdAt" className="text-left p-2">Tarih</PanelTableTh>
-              <PanelTableTh colId="user" className="text-left p-2">Kullanici</PanelTableTh>
-              <PanelTableTh colId="entity" className="text-left p-2">Entity</PanelTableTh>
-              <PanelTableTh colId="action" className="text-left p-2">Action</PanelTableTh>
-              <PanelTableTh colId="changes" className="text-left p-2">Degisiklikler</PanelTableTh>
+              <PanelTableTh colId="createdAt" className="text-center p-2">Tarih</PanelTableTh>
+              <PanelTableTh colId="user" className="text-center p-2">Kullanici</PanelTableTh>
+              <PanelTableTh colId="entity" className="text-center p-2">Entity</PanelTableTh>
+              <PanelTableTh colId="action" className="text-center p-2">Action</PanelTableTh>
+              <PanelTableTh colId="changes" className="text-center p-2">Degisiklikler</PanelTableTh>
             </tr>
           </thead>
           <tbody>

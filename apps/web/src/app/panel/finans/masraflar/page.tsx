@@ -963,7 +963,7 @@ export default function MasraflarPage() {
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-700/40">
                       <tr className="border-b border-slate-100 dark:border-slate-700">
-                        <th className="px-3 py-1.5 text-left text-slate-500 font-medium">Dosya</th>
+                        <th className="px-3 py-1.5 text-center text-slate-500 font-medium">Dosya</th>
                         <th className="px-3 py-1.5 text-right text-slate-500 font-medium">Plan</th>
                         <th className="px-3 py-1.5 text-right text-blue-500 font-medium">Harcanan</th>
                         <th className="px-3 py-1.5 text-right text-emerald-600 font-medium">Kalan</th>
@@ -1554,7 +1554,7 @@ export default function MasraflarPage() {
                   <PanelTableTh colId="expenseGroupName" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Masraf Grubu</PanelTableTh>
                   <PanelTableTh colId="expenseSubgroupName" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Alt Grup</PanelTableTh>
                   <PanelTableTh colId="description" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</PanelTableTh>
-                  <PanelTableTh colId="amount" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right">Tutar</PanelTableTh>
+                  <PanelTableTh colId="amount" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center">Tutar</PanelTableTh>
                   <PanelTableTh colId="date" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Tarih</PanelTableTh>
                   <th className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right w-[72px]">
                     İşlem

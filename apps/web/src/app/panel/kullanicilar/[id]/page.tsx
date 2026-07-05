@@ -399,7 +399,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left text-xs font-semibold text-slate-500 pb-2 pr-4">Ekran</th>
+                <th className="text-center text-xs font-semibold text-slate-500 pb-2 pr-4">Ekran</th>
                 <th className="text-center text-xs font-semibold text-slate-500 pb-2 w-24">Görüntüle</th>
                 <th className="text-center text-xs font-semibold text-slate-500 pb-2 w-24">Düzenle</th>
                 <th className="text-center text-xs font-semibold text-slate-500 pb-2 w-24">Varsayılan</th>

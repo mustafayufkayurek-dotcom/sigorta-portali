@@ -129,12 +129,12 @@ export default function BankaHesaplariPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
-                <PanelTableTh colId="bankName" className="text-left px-4 py-3">Banka</PanelTableTh>
-                <PanelTableTh colId="branchName" className="text-left px-4 py-3">Şube</PanelTableTh>
-                <PanelTableTh colId="iban" className="text-left px-4 py-3">IBAN</PanelTableTh>
-                <PanelTableTh colId="currency" className="text-left px-4 py-3">Para Birimi</PanelTableTh>
-                <PanelTableTh colId="status" className="text-left px-4 py-3">Durum</PanelTableTh>
-                <th className="text-left px-4 py-3">İşlem</th>
+                <PanelTableTh colId="bankName" className="text-center px-4 py-3">Banka</PanelTableTh>
+                <PanelTableTh colId="branchName" className="text-center px-4 py-3">Şube</PanelTableTh>
+                <PanelTableTh colId="iban" className="text-center px-4 py-3">IBAN</PanelTableTh>
+                <PanelTableTh colId="currency" className="text-center px-4 py-3">Para Birimi</PanelTableTh>
+                <PanelTableTh colId="status" className="text-center px-4 py-3">Durum</PanelTableTh>
+                <th className="text-center px-4 py-3">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

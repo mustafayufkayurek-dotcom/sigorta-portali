@@ -17,9 +17,10 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair-report-status';
+import { fmtDate } from '@/utils/date-helpers';
+import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 
 
-const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
 const fmtAmount = (n: number | undefined | null) => {
   if (!n) return '—';
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ₺';
@@ -628,8 +629,8 @@ function ClaimFilesPageContent() {
                       <PanelTableTd colId="customer" className="table-td text-xs font-medium whitespace-nowrap max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
                       <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={insuredName}>{insuredName}</PanelTableTd>
                       <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={claim.lossType ?? claim.productBranch ?? '—'}>
-                        {claim.lossType ?? claim.productBranch ?? '—'}
+                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={formatClaimSubjectLabel(claim.lossType, claim.productBranch)}>
+                        {formatClaimSubjectLabel(claim.lossType, claim.productBranch)}
                       </PanelTableTd>
                       <PanelTableTd colId="status" className="table-td whitespace-nowrap">
                         <ClaimStatusBadge status={claim.currentStatus} />

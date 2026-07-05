@@ -145,7 +145,7 @@ export default function EksperSigortaIliskileriPage() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-left font-medium text-slate-600">
+                  <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-center font-medium text-slate-600">
                     Eksper Firması
                   </th>
                   {insurers.map((ins) => (

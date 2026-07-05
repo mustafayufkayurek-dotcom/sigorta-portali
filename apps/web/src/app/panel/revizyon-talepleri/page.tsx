@@ -305,14 +305,14 @@ export default function RevisionRequestsPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <PanelTableTh colId="reportNo" className="text-left px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Rapor No</PanelTableTh>
-                <PanelTableTh colId="requester" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Talep Eden</PanelTableTh>
-                <PanelTableTh colId="date" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Tarih</PanelTableTh>
-                <PanelTableTh colId="reason" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Sebep</PanelTableTh>
-                <PanelTableTh colId="priority" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
-                <PanelTableTh colId="status" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
-                <PanelTableTh colId="duration" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Süre</PanelTableTh>
-                <PanelTableTh colId="assignee" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Atanan</PanelTableTh>
+                <PanelTableTh colId="reportNo" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Rapor No</PanelTableTh>
+                <PanelTableTh colId="requester" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Talep Eden</PanelTableTh>
+                <PanelTableTh colId="date" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Tarih</PanelTableTh>
+                <PanelTableTh colId="reason" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Sebep</PanelTableTh>
+                <PanelTableTh colId="priority" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
+                <PanelTableTh colId="status" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
+                <PanelTableTh colId="duration" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Süre</PanelTableTh>
+                <PanelTableTh colId="assignee" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Atanan</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

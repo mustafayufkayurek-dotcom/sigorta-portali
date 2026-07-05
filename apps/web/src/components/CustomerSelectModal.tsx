@@ -136,10 +136,10 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 z-10">
                 <tr className="text-xs text-gray-500">
-                  <th className="text-left px-5 py-2.5">Ad / Ünvan</th>
-                  {!hideTypeColumn && <th className="text-left px-4 py-2.5">Tip</th>}
-                  <th className="text-left px-4 py-2.5">TC / Vergi No</th>
-                  <th className="text-left px-4 py-2.5">Telefon</th>
+                  <th className="text-center px-5 py-2.5">Ad / Ünvan</th>
+                  {!hideTypeColumn && <th className="text-center px-4 py-2.5">Tip</th>}
+                  <th className="text-center px-4 py-2.5">TC / Vergi No</th>
+                  <th className="text-center px-4 py-2.5">Telefon</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">

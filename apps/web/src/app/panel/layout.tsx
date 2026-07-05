@@ -257,9 +257,9 @@ function getPanelMainLinks({
     ? [
         { title: 'Yeni İhbar', href: '/panel/eksper-portal?openIhbar=1', icon: Plus },
         { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: Users },
+        { title: 'Dosya Akışı', href: '/panel/eksper-portal/randevular', icon: GitBranch },
         { title: 'Bekleyen Onaylar', href: '/panel/eksper-portal/onaylar', icon: ShieldCheck },
         { title: 'Atanmış Dosyalar', href: '/panel/eksper-portal/dosyalar', icon: ClipboardList },
-        { title: 'Dosya Akışı', href: '/panel/eksper-portal/randevular', icon: GitBranch },
       ]
     : isInsuranceCompanyUser
       ? [

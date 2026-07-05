@@ -13,6 +13,8 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { fmtDate } from '@/utils/date-helpers';
+import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
 const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
@@ -76,7 +78,7 @@ export default function EksperDosyalarPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR');
+  const fmt = (d: string) => fmtDate(d);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
@@ -117,12 +119,12 @@ export default function EksperDosyalarPage() {
           <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50">
               <tr>
-                <PanelTableTh colId="fileNumber" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Dosya No</PanelTableTh>
-                <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Sigorta Şirketi</PanelTableTh>
-                <PanelTableTh colId="subject" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Konu</PanelTableTh>
-                <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Durum</PanelTableTh>
-                <PanelTableTh colId="createdAt" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tarih</PanelTableTh>
-                <PanelTableTh colId="flow" className="px-4 py-3 text-left text-xs font-medium text-slate-500">Akış</PanelTableTh>
+                <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
+                <PanelTableTh colId="insuranceCompany" className="table-th-center">Sigorta Şirketi</PanelTableTh>
+                <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
+                <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
+                <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -134,7 +136,7 @@ export default function EksperDosyalarPage() {
                 >
                   <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
                   <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-sm text-slate-600">{f.insuranceCompany?.name ?? '—'}</PanelTableTd>
-                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{f.lossType ?? f.subject ?? '—'}</PanelTableTd>
+                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatClaimSubjectLabel(f.lossType, undefined, f.subject)}</PanelTableTd>
                   <PanelTableTd colId="status" className="px-4 py-3">
                     <span
                       className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"

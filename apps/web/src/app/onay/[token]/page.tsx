@@ -200,8 +200,8 @@ function ApprovalPageInner({ token }: { token: string }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-xs text-gray-500">
-                    <th className="text-left px-4 py-2 font-medium">İş Grubu</th>
-                    <th className="text-left px-4 py-2 font-medium">Tanım</th>
+                    <th className="text-center px-4 py-2 font-medium">İş Grubu</th>
+                    <th className="text-center px-4 py-2 font-medium">Tanım</th>
                     <th className="text-right px-4 py-2 font-medium">Miktar</th>
                     <th className="text-right px-4 py-2 font-medium">Birim Fiyat</th>
                     <th className="text-right px-4 py-2 font-medium">Toplam</th>

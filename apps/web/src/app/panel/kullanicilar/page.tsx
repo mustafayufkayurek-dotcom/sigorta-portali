@@ -1846,7 +1846,7 @@ export default function KullanicilarPage() {
               />
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="box-border px-4 py-3 text-left" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
+                  <th className="box-border px-4 py-3 text-center" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                     <button
                       type="button"
                       onClick={selectAll}
@@ -1862,19 +1862,19 @@ export default function KullanicilarPage() {
                       )}
                     </button>
                   </th>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
+                  <PanelTableTh colId="name" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Ad Soyad
                   </PanelTableTh>
-                  <PanelTableTh colId="email" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
+                  <PanelTableTh colId="email" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     E-posta
                   </PanelTableTh>
-                  <PanelTableTh colId="role" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
+                  <PanelTableTh colId="role" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Görev
                   </PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
+                  <PanelTableTh colId="status" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Durum
                   </PanelTableTh>
-                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-500">
+                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Son Giriş
                   </PanelTableTh>
                   <th

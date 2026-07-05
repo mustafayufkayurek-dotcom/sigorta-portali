@@ -185,13 +185,13 @@ export default function PersonelPerformansPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(staffTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <PanelTableTh colId="userName" className="px-4 py-3 text-left">Ad Soyad</PanelTableTh>
-                  <PanelTableTh colId="userType" className="px-4 py-3 text-left">Tip</PanelTableTh>
-                  <PanelTableTh colId="totalFiles" className="px-4 py-3 text-right">Toplam</PanelTableTh>
-                  <PanelTableTh colId="openFiles" className="px-4 py-3 text-right">Açık</PanelTableTh>
-                  <PanelTableTh colId="closedFiles" className="px-4 py-3 text-right">Kapanan</PanelTableTh>
-                  <PanelTableTh colId="slaViolations" className="px-4 py-3 text-right">SLA İhlali</PanelTableTh>
-                  <PanelTableTh colId="avgCloseDays" className="px-4 py-3 text-right">Ort. Kapanış (gün)</PanelTableTh>
+                  <PanelTableTh colId="userName" className="px-4 py-3 text-center">Ad Soyad</PanelTableTh>
+                  <PanelTableTh colId="userType" className="px-4 py-3 text-center">Tip</PanelTableTh>
+                  <PanelTableTh colId="totalFiles" className="px-4 py-3 text-center">Toplam</PanelTableTh>
+                  <PanelTableTh colId="openFiles" className="px-4 py-3 text-center">Açık</PanelTableTh>
+                  <PanelTableTh colId="closedFiles" className="px-4 py-3 text-center">Kapanan</PanelTableTh>
+                  <PanelTableTh colId="slaViolations" className="px-4 py-3 text-center">SLA İhlali</PanelTableTh>
+                  <PanelTableTh colId="avgCloseDays" className="px-4 py-3 text-center">Ort. Kapanış (gün)</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -238,10 +238,10 @@ export default function PersonelPerformansPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(vendorTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <PanelTableTh colId="vendorName" className="px-4 py-3 text-left">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="assignmentCount" className="px-4 py-3 text-right">Atama</PanelTableTh>
-                  <PanelTableTh colId="completedCount" className="px-4 py-3 text-right">Tamamlanan</PanelTableTh>
-                  <PanelTableTh colId="completionRate" className="px-4 py-3 text-right">Tamamlama Oranı</PanelTableTh>
+                  <PanelTableTh colId="vendorName" className="px-4 py-3 text-center">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="assignmentCount" className="px-4 py-3 text-center">Atama</PanelTableTh>
+                  <PanelTableTh colId="completedCount" className="px-4 py-3 text-center">Tamamlanan</PanelTableTh>
+                  <PanelTableTh colId="completionRate" className="px-4 py-3 text-center">Tamamlama Oranı</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">

@@ -11,7 +11,8 @@ import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { fmtDate } from '@/utils/date-helpers';
 import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE } from '@/utils/customer-form-helpers';
 import {
@@ -474,7 +475,7 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
                     <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-sm flex-shrink-0">📋</div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{f.claimNo ?? f.id.slice(0, 8).toUpperCase()}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">{f.subject ?? '—'} · {f.incidentDate ? new Date(f.incidentDate).toLocaleDateString('tr-TR') : '—'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">{formatDisplayLabel(f.subject)} · {fmtDate(f.incidentDate)}</p>
                     </div>
                   </a>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-3">
@@ -566,9 +567,9 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
             </div>
             <div className="p-5 space-y-3">
               {[
-                { label: 'Konu', value: previewFile.subject },
+                { label: 'Konu', value: formatDisplayLabel(previewFile.subject) },
                 { label: 'Durum', value: previewFile.currentStatus?.name ?? previewFile.status },
-                { label: 'Hasar Tarihi', value: previewFile.incidentDate ? new Date(previewFile.incidentDate).toLocaleDateString('tr-TR') : null },
+                { label: 'Hasar Tarihi', value: fmtDate(previewFile.incidentDate) },
                 { label: 'Oluşturulma', value: fmtDate(previewFile.createdAt) },
               ].map((row) => row.value ? (
                 <div key={row.label} className="flex justify-between text-sm">

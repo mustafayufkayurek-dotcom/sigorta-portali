@@ -935,9 +935,9 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(approvalsTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="fileNo" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
-                      <PanelTableTh colId="jobType" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</PanelTableTh>
+                      <PanelTableTh colId="fileNo" className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="jobType" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</PanelTableTh>
                       <PanelTableTh colId="waiting" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bekleme</PanelTableTh>
                       <PanelTableTh colId="timeout" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Timeout</PanelTableTh>
                       <th className="px-4 py-3.5 w-32" />
@@ -1046,9 +1046,9 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="jobGroup" className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Grubu</PanelTableTh>
-                      <PanelTableTh colId="region" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bölge</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
+                      <PanelTableTh colId="jobGroup" className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Grubu</PanelTableTh>
+                      <PanelTableTh colId="region" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bölge</PanelTableTh>
+                      <PanelTableTh colId="staff" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
                       <PanelTableTh colId="priority" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
                       <PanelTableTh colId="status" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
                       <th className="px-4 py-3.5 w-24" />

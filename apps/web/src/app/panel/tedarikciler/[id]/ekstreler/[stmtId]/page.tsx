@@ -137,8 +137,8 @@ export default function VendorStatementDetailPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <th className="text-left px-5 py-2.5 font-semibold">Açıklama</th>
-                  <th className="text-left px-5 py-2.5 font-semibold">Dosya</th>
+                  <th className="text-center px-5 py-2.5 font-semibold">Açıklama</th>
+                  <th className="text-center px-5 py-2.5 font-semibold">Dosya</th>
                   <th className="text-right px-5 py-2.5 font-semibold">Tutar</th>
                   <th className="text-center px-5 py-2.5 font-semibold">Durum</th>
                 </tr>

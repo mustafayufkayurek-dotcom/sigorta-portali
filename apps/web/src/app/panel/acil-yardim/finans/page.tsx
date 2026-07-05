@@ -246,7 +246,7 @@ function FinansPageInner() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-500">
-                <th className="px-4 py-3 text-left w-10">
+                <th className="px-4 py-3 text-center w-10">
                   <input
                     type="checkbox"
                     checked={selected.size === unfaturedCount && unfaturedCount > 0}
@@ -254,13 +254,13 @@ function FinansPageInner() {
                     className="rounded"
                   />
                 </th>
-                <PanelTableTh colId="date" className="px-4 py-3 text-left font-semibold">Tarih</PanelTableTh>
-                <PanelTableTh colId="customer" className="px-4 py-3 text-left font-semibold">Müşteri</PanelTableTh>
-                <PanelTableTh colId="issueType" className="px-4 py-3 text-left font-semibold">Konu</PanelTableTh>
-                <PanelTableTh colId="gelir" className="px-4 py-3 text-right font-semibold">Gelir</PanelTableTh>
-                <PanelTableTh colId="gider" className="px-4 py-3 text-right font-semibold">Gider</PanelTableTh>
-                <PanelTableTh colId="kar" className="px-4 py-3 text-right font-semibold">Kâr</PanelTableTh>
-                <PanelTableTh colId="invoice" className="px-4 py-3 text-left font-semibold">Fatura</PanelTableTh>
+                <PanelTableTh colId="date" className="px-4 py-3 text-center font-semibold">Tarih</PanelTableTh>
+                <PanelTableTh colId="customer" className="px-4 py-3 text-center font-semibold">Müşteri</PanelTableTh>
+                <PanelTableTh colId="issueType" className="px-4 py-3 text-center font-semibold">Konu</PanelTableTh>
+                <PanelTableTh colId="gelir" className="px-4 py-3 text-center font-semibold">Gelir</PanelTableTh>
+                <PanelTableTh colId="gider" className="px-4 py-3 text-center font-semibold">Gider</PanelTableTh>
+                <PanelTableTh colId="kar" className="px-4 py-3 text-center font-semibold">Kâr</PanelTableTh>
+                <PanelTableTh colId="invoice" className="px-4 py-3 text-center font-semibold">Fatura</PanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
