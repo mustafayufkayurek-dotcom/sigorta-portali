@@ -86,7 +86,6 @@ type IhbarFormData = {
   policeTuru: 'bireysel' | 'ticari' | '';
   konu: string;
   sigortaSirketi: string;
-  policeNo: string;
   ticariUnvan: string;
   vergiDairesi: string;
   vergiNo: string;
@@ -155,7 +154,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const [districts, setDistricts] = useState<DistrictOption[]>([]);
   const [ihbarKonulari, setIhbarKonulari] = useState<{ value: string; label: string }[]>([]);
   const [form, setForm] = useState<IhbarFormData>({
-    dosyaNo: '', policeTuru: '', konu: '', sigortaSirketi: '', policeNo: '',
+    dosyaNo: '', policeTuru: '', konu: '', sigortaSirketi: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
     sigortaliAdi: '', sigortaliTelefon: '', il: '', ilce: '', adresDetay: '',
     hasarTarihi: '', aciklama: '',
@@ -235,7 +234,6 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     if (!form.policeTuru) e.policeTuru = 'Zorunlu alan';
     if (!form.konu) e.konu = 'Zorunlu alan';
     if (!form.sigortaSirketi || !isUuid(form.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
-    if (!form.policeNo.trim()) e.policeNo = 'Zorunlu alan';
     if (!form.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
     if (!form.sigortaliTelefon || form.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
     if (!form.il) e.il = 'Zorunlu alan';
@@ -284,7 +282,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         fileNo: form.dosyaNo.trim() || undefined,
         productBranch: form.konu,
         insuranceCompanyId: form.sigortaSirketi,
-        policyNo: form.policeNo.trim(),
+        policyNo: 'Belirtilmedi',
         claimNo: `EXP-${Date.now().toString(36).toUpperCase()}`,
         lossType: form.konu,
         description: form.aciklama.trim() || undefined,
@@ -488,18 +486,6 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               </div>
             </div>
           )}
-
-          {/* Poliçe No */}
-          <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Poliçe No</label>
-            <input
-              className={`input-base-sm ${errors.policeNo ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
-              placeholder="Poliçe numarası"
-              value={form.policeNo}
-              onChange={(e) => set('policeNo', e.target.value)}
-            />
-            {errors.policeNo && <p className="text-xs text-red-500 mt-1">{errors.policeNo}</p>}
-          </div>
 
           {/* Sigortalı Adı + Telefon */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

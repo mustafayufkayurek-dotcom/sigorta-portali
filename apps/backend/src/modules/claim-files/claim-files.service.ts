@@ -353,7 +353,8 @@ export class ClaimFilesService {
     }
 
     const insuranceCompanyId = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
-    const policyNo = typeof rest.policyNo === 'string' ? rest.policyNo.trim() : '';
+    const sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
+    let policyNo = typeof rest.policyNo === 'string' ? rest.policyNo.trim() : '';
     const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
     const lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
@@ -364,7 +365,13 @@ export class ClaimFilesService {
     const departmentId = rest.departmentId ?? null;
 
     if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
-    if (!policyNo) throw new BadRequestException('Poliçe numarası zorunludur');
+    if (!policyNo) {
+      if (sourceChannel === 'expert_portal') {
+        policyNo = 'Belirtilmedi';
+      } else {
+        throw new BadRequestException('Poliçe numarası zorunludur');
+      }
+    }
     if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
     if (!productBranch) throw new BadRequestException('Ürün branşı zorunludur');
     if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
