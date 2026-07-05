@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-03",
-  "label": "v170-backend-v169-web-evrak-muvafakat",
-  "description": "Backend v170 muvafakatname logo+şablon; Web v169 dosya panel UX",
+  "updatedAt": "2026-07-05",
+  "label": "v189-puantaj-mesai-saatleri",
+  "description": "F5a puantaj mesai giriş/bitiş saatleri (activity_sessions), liste/takvim UI, Excel export sütunları",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v170-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v169-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v189-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v189-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v168-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v166-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v188-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v188-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
