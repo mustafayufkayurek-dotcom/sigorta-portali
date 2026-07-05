@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v195-f5b-puantaj",
-  "description": "F5b puantaj dijital imza, aylık onay/ay kilidi, HR modülü full deploy + migration",
+  "label": "v196-welcome-docs",
+  "description": "Rol bazlı hoş geldin maili, kullanım kılavuzları v2.1 PDF; rollback: v195-f5b-puantaj",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v195-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v195-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v196-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v196-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v194-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v194-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v195-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v195-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -27,6 +27,10 @@
     "/panel/operasyon/gelen-kutusu",
     "/panel/harita",
     "/panel/personel-ozluk",
+    "/docs/01-personel-kullanim-kilavuzu.pdf",
+    "/docs/02-sigorta-portal-kilavuzu.pdf",
+    "/docs/03-eksper-portal-tanitim.pdf",
+    "/docs/04-broker-portal-kilavuzu.pdf",
     "/api/v1/vendors/summary",
     "/api/v1/user-locations/field-map"
   ]
