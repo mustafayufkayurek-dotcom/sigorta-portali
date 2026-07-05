@@ -41,7 +41,7 @@ const KONU_TABS = [
   { id: 'acil-yardim', name: 'Acil Yardım', color: '#EF4444', departmentCode: 'acil-yardim' },
   { id: 'ozel-musteri', name: 'Özel Müşteri', color: '#10B981', departmentCode: 'ozel-musteri' },
   { id: 'danismanlik', name: 'Danışmanlık', color: '#8B5CF6', departmentCode: 'danismanlik' },
-  { id: 'staj', name: 'Staj', color: '#F59E0B', departmentCode: 'staj' },
+  { id: 'sovtaj', name: 'Sovtaj', color: '#10B981', departmentCode: 'sovtaj' },
 ] as const;
 
 type KonuTabId = (typeof KONU_TABS)[number]['id'];
@@ -243,8 +243,8 @@ export default function DosyaKonulariPage() {
       ? 'Özel müşteri dosyalarında seçilecek hizmet konuları'
       : activeTab === 'danismanlik'
         ? 'Danışmanlık hattı dosya konuları'
-        : activeTab === 'staj'
-          ? 'Staj programı dosya konuları'
+        : activeTab === 'sovtaj'
+          ? 'Sovtaj hattı dosya konuları'
           : activeTab === 'acil-yardim'
             ? 'Acil yardım ihbar ve dosya konuları'
             : 'Hasar onarım branş ve dosya konuları';
@@ -252,7 +252,7 @@ export default function DosyaKonulariPage() {
   return (
     <SettingsPageLayout
       title="Dosya Konuları"
-      description="Her operasyon hattının dosya konularını ayrı sekmelerde yönetin. Hasar, acil yardım, özel müşteri, danışmanlık ve staj hatları buradan beslenir."
+      description="Her operasyon hattının dosya konularını ayrı sekmelerde yönetin. Hasar, acil yardım, özel müşteri, danışmanlık ve sovtaj hatları buradan beslenir."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={

@@ -302,14 +302,6 @@ export class DepartmentsService {
         reportFormat: 'repair',
         sortOrder: 5,
       },
-      {
-        code: 'staj',
-        name: 'Staj',
-        description: 'Staj programı dosya konuları',
-        color: '#F59E0B',
-        reportFormat: 'repair',
-        sortOrder: 6,
-      },
     ];
 
     const created = [];
