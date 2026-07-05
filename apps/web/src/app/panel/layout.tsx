@@ -25,7 +25,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
-import { useActivityHeartbeat } from '@/hooks/useActivityHeartbeat';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -813,8 +812,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [agreementModalDismissed, setAgreementModalDismissed] = useState(false);
   const [allowedScreens, setAllowedScreens] = useState<string[] | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-
-  useActivityHeartbeat(authChecked && !!user);
 
   // Tema localStorage'dan oku — SSR safe + canlı güncelleme
   useEffect(() => {
