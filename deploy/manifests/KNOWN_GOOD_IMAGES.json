@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v192-ayarlar-tanim-tekrar",
-  "description": "Ayarlar hub operasyon tanımları tekrar kartları kaldırıldı (web-only); v191 eksper ihbar poliçe no dahil",
+  "label": "v193-ayarlar-tanim-tekrar",
+  "description": "Ayarlar hub tanım tekrarları temizlendi: iş grubu, mahal, tedarikçi hizmet kolu yalnızca Tanımlar Merkezi (web-only)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v189-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v192-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v193-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v191-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v192-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v188-amd64"
   },
   "mustPassSmokeRoutes": [
