@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-05",
-  "label": "v189-puantaj-mesai-saatleri",
-  "description": "F5a puantaj mesai giriş/bitiş saatleri (activity_sessions), liste/takvim UI, Excel export sütunları",
+  "label": "v190-eksper-portal-ui",
+  "description": "Eksper portal UI (layout, ana sayfa, panel navigasyon)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v189-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v189-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v190-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v188-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v189-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v188-amd64"
   },
   "mustPassSmokeRoutes": [
