@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, UseInterceptors, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  BadRequestException,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ClaimFilesService } from './claim-files.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
@@ -6,6 +20,8 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { PhoneMaskingInterceptor } from '@/common/interceptors/phone-masking.interceptor';
 import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.interceptor';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RECEIPT_IMAGE_VALIDATION_PIPE } from '@/common/pipes/file-validation.pipe';
+import { extractIntakeDocumentFieldsFromImage } from './document-intake-scan.util';
 
 @ApiTags('claim-files')
 @ApiBearerAuth()
@@ -19,7 +35,7 @@ export class ClaimFilesController {
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Hasar dosyalarını listele' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
-    if (user?.role?.code === 'insurance_company_user') {
+    if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
       if (companyIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
@@ -60,6 +76,20 @@ export class ClaimFilesController {
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.claimFilesService.findOne(id, user);
     return { success: true, data };
+  }
+
+  @Post('scan-intake-document')
+  @RequirePermissions('claim_file.create')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Hasar ihbar belgesinden alan çıkar (eksper portal)' })
+  async scanIntakeDocument(@UploadedFile(RECEIPT_IMAGE_VALIDATION_PIPE) file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Belge görseli bulunamadı');
+    const result = await extractIntakeDocumentFieldsFromImage(
+      file.buffer,
+      file.mimetype,
+      process.env.OPENAI_API_KEY,
+    );
+    return { success: true, data: result };
   }
 
   @Post()

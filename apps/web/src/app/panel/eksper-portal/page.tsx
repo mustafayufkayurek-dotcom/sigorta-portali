@@ -160,6 +160,32 @@ function normalizeIhbarTextFields(data: IhbarFormData): IhbarFormData {
   };
 }
 
+function matchInsuranceCompanyId(name: string | null | undefined, list: InsuranceCompanyOption[]): string {
+  if (!name?.trim() || list.length === 0) return '';
+  const normalized = name.trim().toLocaleLowerCase('tr-TR');
+  const exact = list.find((c) => c.name.trim().toLocaleLowerCase('tr-TR') === normalized);
+  if (exact) return exact.id;
+  const partial = list.find((c) => {
+    const cn = c.name.trim().toLocaleLowerCase('tr-TR');
+    return normalized.includes(cn) || cn.includes(normalized);
+  });
+  return partial?.id ?? '';
+}
+
+function matchProvinceId(cityName: string | null | undefined, list: ProvinceOption[]): string {
+  if (!cityName?.trim() || list.length === 0) return '';
+  const normalized = cityName.trim().toLocaleLowerCase('tr-TR');
+  const found = list.find((p) => p.name.trim().toLocaleLowerCase('tr-TR') === normalized);
+  return found?.id ?? '';
+}
+
+function matchDistrictName(districtName: string | null | undefined, list: DistrictOption[]): string {
+  if (!districtName?.trim() || list.length === 0) return '';
+  const normalized = districtName.trim().toLocaleLowerCase('tr-TR');
+  const found = list.find((d) => d.name.trim().toLocaleLowerCase('tr-TR') === normalized);
+  return found?.name ?? '';
+}
+
 function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const { showToast } = useToast();
   const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
@@ -178,6 +204,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompanyOption[]>([]);
   const [photos, setPhotos] = useState<UploadItem[]>([]);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -244,6 +271,94 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const blurTitleCase = (key: keyof IhbarFormData) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const v = toTitleCaseTR(e.target.value.trim());
     if (v) set(key, v);
+  };
+
+  const applyScannedFields = useCallback(async (fields: Record<string, unknown>) => {
+    const next: Partial<IhbarFormData> = {};
+    if (typeof fields.insuredName === 'string' && fields.insuredName.trim()) {
+      next.sigortaliAdi = toTitleCaseTR(fields.insuredName.trim());
+    }
+    if (typeof fields.insuredPhone === 'string' && fields.insuredPhone.trim()) {
+      const digits = fields.insuredPhone.replace(/\D/g, '').slice(-11);
+      next.sigortaliTelefon = digits;
+      setPhoneDisplay(maskPhoneSimple(digits));
+    }
+    if (fields.policyType === 'bireysel' || fields.policyType === 'ticari') {
+      next.policeTuru = fields.policyType;
+    }
+    if (typeof fields.commercialTitle === 'string' && fields.commercialTitle.trim()) {
+      next.ticariUnvan = toTitleCaseTR(fields.commercialTitle.trim());
+    }
+    if (typeof fields.taxOffice === 'string' && fields.taxOffice.trim()) {
+      next.vergiDairesi = toTitleCaseTR(fields.taxOffice.trim());
+    }
+    if (typeof fields.taxNumber === 'string' && fields.taxNumber.trim()) {
+      next.vergiNo = fields.taxNumber.trim();
+    }
+    if (typeof fields.incidentDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fields.incidentDate)) {
+      next.hasarTarihi = fields.incidentDate;
+    }
+    if (typeof fields.addressDetail === 'string' && fields.addressDetail.trim()) {
+      next.adresDetay = toTitleCaseTR(fields.addressDetail.trim());
+    }
+    if (typeof fields.description === 'string' && fields.description.trim()) {
+      next.aciklama = toTitleCaseTR(fields.description.trim());
+    }
+    const companyId = matchInsuranceCompanyId(
+      typeof fields.insuranceCompanyName === 'string' ? fields.insuranceCompanyName : null,
+      insuranceCompanies,
+    );
+    if (companyId) next.sigortaSirketi = companyId;
+
+    const provinceId = matchProvinceId(
+      typeof fields.cityName === 'string' ? fields.cityName : null,
+      provinces,
+    );
+    if (provinceId) {
+      next.il = provinceId;
+      await loadDistricts(provinceId);
+      const districtRows = await fetch(`${API_V1}/locations/provinces/${provinceId}/districts`, {
+        headers: authHeaders(),
+      }).then((r) => r.json()).then((b) => b?.data ?? []).catch(() => []);
+      const districtName = matchDistrictName(
+        typeof fields.districtName === 'string' ? fields.districtName : null,
+        districtRows,
+      );
+      if (districtName) next.ilce = districtName;
+    }
+
+    setForm((prev) => ({ ...prev, ...next }));
+  }, [insuranceCompanies, provinces, loadDistricts]);
+
+  const handleDocumentScan = async (file: File) => {
+    if (scanning) return;
+    setScanning(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${API_V1}/claim-files/scan-intake-document`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: formData,
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(normalizeApiMessage(body, 'Belge okunamadı'));
+      }
+      const fields = body?.data ?? {};
+      await applyScannedFields(fields);
+      const previewUrl = URL.createObjectURL(file);
+      setPhotos((prev) => [
+        { id: `scan-${Date.now()}`, file, previewUrl },
+        ...prev,
+      ].slice(0, MAX_IHBAR_PHOTO_COUNT));
+      showToast(fields.message?.includes('elle') ? 'info' : 'success', fields.message ?? 'Belge işlendi');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Belge okunamadı';
+      showToast('error', msg);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const validate = (data: IhbarFormData) => {
@@ -393,6 +508,38 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
 
         {/* Form alanları */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+          {/* Akıllı belge okuma */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800">Belgeden Oku</p>
+                <p className="text-xs text-slate-600 mt-1">
+                  Poliçe, ihbar formu veya hasar belgesinin fotoğrafını çekin; alanlar otomatik dolsun.
+                </p>
+                <label className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-blue-200 text-sm font-medium text-blue-700 cursor-pointer hover:bg-blue-50 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={scanning || loadingLookups}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleDocumentScan(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  {scanning ? 'Belge Okunuyor...' : 'Kamera / Galeri'}
+                </label>
+              </div>
+            </div>
+          </div>
 
           {/* İhbar Konusu */}
           <div>
@@ -899,6 +1046,7 @@ export default function EksperPortalPage() {
   const [recentApprovals, setRecentApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [approvalLoadWarning, setApprovalLoadWarning] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [showIhbarModal, setShowIhbarModal] = useState(false);
   const [successFileNo, setSuccessFileNo] = useState<string | null>(null);
@@ -946,27 +1094,48 @@ export default function EksperPortalPage() {
     if (!expertUserId) { setLoading(false); setLoadError('Kullanıcı oturumu geçersiz. Lütfen tekrar giriş yapın.'); return; }
 
     setLoadError(null);
-    Promise.all([
-      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}&includeExpired=true`, { headers: getHeaders() }).then((r) => {
-        if (!r.ok) throw new Error('Onay listesi yüklenemedi');
-        return r.json();
+    setApprovalLoadWarning(null);
+    Promise.allSettled([
+      fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}&includeExpired=true`, { headers: getHeaders() }).then(async (r) => {
+        const body = await r.json().catch(() => null);
+        if (!r.ok) {
+          const msg = body?.message ?? body?.code ?? 'Onay listesi yüklenemedi';
+          throw new Error(typeof msg === 'string' ? msg : 'Onay listesi yüklenemedi');
+        }
+        return body;
       }),
-      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then((r) => {
-        if (!r.ok) throw new Error('Dosya listesi yüklenemedi');
-        return r.json();
+      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then(async (r) => {
+        const body = await r.json().catch(() => null);
+        if (!r.ok) {
+          throw new Error(body?.message ?? 'Dosya listesi yüklenemedi');
+        }
+        return body;
       }),
     ])
-      .then(([approvals, files]) => {
-        const list: ApprovalItem[] = approvals?.data ?? [];
-        const pending = list.filter((item) => item.status === 'pending');
-        const expired = list.filter((item) => item.status === 'expired');
-        setPendingCount(pending.length);
-        setExpiredCount(expired.length);
-        setRecentApprovals(list.slice(0, 5));
-        setAssignedCount(files?.meta?.total ?? 0);
-        setAssignedFiles((files?.data ?? []).slice(0, 5));
+      .then(([approvalsResult, filesResult]) => {
+        if (approvalsResult.status === 'fulfilled') {
+          const list: ApprovalItem[] = approvalsResult.value?.data ?? [];
+          const pending = list.filter((item) => item.status === 'pending');
+          const expired = list.filter((item) => item.status === 'expired');
+          setPendingCount(pending.length);
+          setExpiredCount(expired.length);
+          setRecentApprovals(list.slice(0, 5));
+        } else {
+          setPendingCount(0);
+          setExpiredCount(0);
+          setRecentApprovals([]);
+          setApprovalLoadWarning(approvalsResult.reason?.message ?? 'Onay listesi yüklenemedi');
+        }
+
+        if (filesResult.status === 'fulfilled') {
+          setAssignedCount(filesResult.value?.meta?.total ?? 0);
+          setAssignedFiles((filesResult.value?.data ?? []).slice(0, 5));
+        } else {
+          setAssignedCount(0);
+          setAssignedFiles([]);
+          setLoadError(filesResult.reason?.message ?? 'Dosya listesi yüklenemedi');
+        }
       })
-      .catch((err: Error) => setLoadError(err?.message ?? 'Dashboard verileri yüklenemedi'))
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -1010,6 +1179,11 @@ export default function EksperPortalPage() {
         {loadError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {loadError}
+          </div>
+        )}
+        {approvalLoadWarning && !loadError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {approvalLoadWarning}
           </div>
         )}
 

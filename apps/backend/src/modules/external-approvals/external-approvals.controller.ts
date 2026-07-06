@@ -5,6 +5,7 @@ import {
   Param,
   Body,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ExternalApprovalsService } from './external-approvals.service';
 import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
@@ -36,11 +37,20 @@ export class ExternalApprovalsController {
   // ── Bekleyen onaylar listesi — altyapı (auth gerekir) ────────────────────
 
   @Get('external-approvals/pending')
-  async listPending(
+  listPending(
     @Query('approverType') approverType?: string,
     @Query('approverId') approverId?: string,
     @Query('includeExpired') includeExpired?: string,
+    @CurrentUser() user?: { id?: string; userId?: string; roleCode?: string },
   ) {
+    const role = user?.roleCode?.toLowerCase();
+    const userId = user?.id ?? user?.userId;
+    if ((role === 'expert' || role === 'insurance_company_user') && userId) {
+      if (approverId && approverId !== userId) {
+        throw new ForbiddenException('Yalnızca kendi onay listenize erişebilirsiniz');
+      }
+      return this.service.listPending(approverType, userId, includeExpired === 'true');
+    }
     return this.service.listPending(approverType, approverId, includeExpired === 'true');
   }
 
