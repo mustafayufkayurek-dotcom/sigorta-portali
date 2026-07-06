@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
-import PortalProcessTimeline from '@/components/timeline/PortalProcessTimeline';
+import PortalProcessTimeline from '@/components/portal/PortalProcessTimeline';
+import { fmtDate } from '@/utils/date-helpers';
+import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 
 function getHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
@@ -17,7 +19,7 @@ interface ClaimFile {
   fileNumber?: string;
   createdAt: string;
   insuranceCompany?: { name: string };
-  currentStatus?: { name: string; colorCode?: string };
+  currentStatus?: { name: string; code?: string; colorCode?: string; color?: string };
 }
 
 function fileNoOf(f: ClaimFile) {
@@ -102,7 +104,6 @@ export default function PortalFileFlowPage({
     setSelectedId((prev) => (prev && files.some((f) => f.id === prev) ? prev : files[0].id));
   }, [files, fileIdFromQuery]);
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR');
   const selectedFile = files.find((f) => f.id === selectedId);
 
   if (loading) {
@@ -186,13 +187,13 @@ export default function PortalFileFlowPage({
                           color: f.currentStatus?.colorCode ?? '#374151',
                         }}
                       >
-                        {f.currentStatus?.name ?? '—'}
+                        {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">
                       {f.insuranceCompany?.name ?? '—'}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{fmt(f.createdAt)}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{fmtDate(f.createdAt)}</p>
                   </button>
                 );
               })}
@@ -212,7 +213,15 @@ export default function PortalFileFlowPage({
                     )}
                   </h3>
                 </div>
-                <PortalProcessTimeline claimFileId={selectedId} />
+                <PortalProcessTimeline
+                  claimFileId={selectedId}
+                  fileCreatedAt={selectedFile.createdAt}
+                  initialStatusCode={selectedFile.currentStatus?.code}
+                  initialStatusName={portalStatusLabel(
+                    selectedFile.currentStatus?.code,
+                    selectedFile.currentStatus?.name,
+                  )}
+                />
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-slate-200 py-12 text-center text-slate-500 text-sm">

@@ -525,6 +525,10 @@ export class ClaimFilesService {
           claimSubjectId,
           departmentFileSubjectId,
           departmentId: resolvedDepartmentId,
+          currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,
+          currentResponsibleUserId: assignedOfficeUserId ?? null,
+          lastActivityAt: new Date(),
+          lastHumanActionAt: new Date(),
         },
         include: {
           insuranceCompany: true,
@@ -535,6 +539,31 @@ export class ClaimFilesService {
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
       });
+
+      const historyUserId =
+        expertUserId ?? created.assignedOfficeUserId ?? created.assignedFieldUserId ?? null;
+      if (historyUserId) {
+        await this.prisma.claimStatusHistory.create({
+          data: {
+            claimFileId: created.id,
+            toStatusId: currentStatusId,
+            changedByUserId: historyUserId,
+            note:
+              sourceChannel === 'expert_portal'
+                ? 'Eksper portal ihbarı ile açıldı'
+                : 'Dosya oluşturuldu',
+          },
+        });
+        if (sourceChannel === 'expert_portal' && expertUserId) {
+          await this.logActivity({
+            claimFileId: created.id,
+            action: 'STATUS_CHANGED',
+            actorId: expertUserId,
+            actorRole: roleCode ?? 'expert',
+            description: 'Eksper portalından yeni ihbar kaydı açıldı.',
+          });
+        }
+      }
 
       // In-app bildirim: Yeni dosya oluşturuldu, saha/ofis personeline bildir
       const customerName =
@@ -1080,6 +1109,56 @@ export class ClaimFilesService {
 
   // ── Ofis-Saha İş Akışı ────────────────────────────────────────────────────
 
+  private async applyWorkflowStatus(
+    fileId: string,
+    statusCode: string,
+    userId: string,
+    options?: { note?: string; responsibleRole?: string },
+  ) {
+    const file = await this.prisma.claimFile.findUnique({
+      where: { id: fileId },
+      select: { currentStatusId: true },
+    });
+    if (!file) return null;
+
+    const seedCodeMap: Record<string, string> = {
+      SUPPLIER_ASSIGNED: 'pre_review',
+      APPOINTMENT_SCHEDULED: 'site_visit_planned',
+      INSPECTION_DONE: 'site_visit_done',
+      COST_REPORT_SUBMITTED: 'budget_submitted',
+    };
+    const lookupCode = seedCodeMap[statusCode] ?? statusCode;
+    let status = await this.prisma.claimStatus.findFirst({ where: { code: lookupCode } });
+    if (!status) {
+      const dynamicId = await this.getOrCreateStatusByCode(statusCode);
+      if (!dynamicId) return null;
+      status = await this.prisma.claimStatus.findUnique({ where: { id: dynamicId } });
+    }
+    if (!status || file.currentStatusId === status.id) return status?.id ?? null;
+
+    await this.prisma.$transaction([
+      this.prisma.claimFile.update({
+        where: { id: fileId },
+        data: {
+          currentStatusId: status.id,
+          lastActivityAt: new Date(),
+          lastHumanActionAt: new Date(),
+          ...(options?.responsibleRole ? { currentResponsibleRole: options.responsibleRole } : {}),
+        },
+      }),
+      this.prisma.claimStatusHistory.create({
+        data: {
+          claimFileId: fileId,
+          fromStatusId: file.currentStatusId,
+          toStatusId: status.id,
+          changedByUserId: userId,
+          note: options?.note,
+        },
+      }),
+    ]);
+    return status.id;
+  }
+
   private async logActivity(params: {
     claimFileId: string;
     action: 'SUPPLIER_ASSIGNED' | 'APPOINTMENT_SCHEDULED' | 'APPOINTMENT_UPDATED' | 'INSPECTION_DONE' | 'COST_REPORT_SUBMITTED' | 'ATTACHMENT_ADDED' | 'STATUS_CHANGED' | 'NOTE_ADDED';
@@ -1125,17 +1204,24 @@ export class ClaimFilesService {
     const vendor = await this.prisma.vendor.findUnique({ where: { id: supplierId } });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı.');
 
-    const statusId = await this.getOrCreateStatusByCode('SUPPLIER_ASSIGNED');
-
-    const updated = await this.prisma.claimFile.update({
+    await this.prisma.claimFile.update({
       where: { id: fileId },
       data: {
         assignedSupplierId: supplierId,
         supplierAssignedAt: new Date(),
-        ...(statusId ? { currentStatusId: statusId } : {}),
       },
+    });
+
+    await this.applyWorkflowStatus(fileId, 'SUPPLIER_ASSIGNED', actor.id, {
+      note: `Tedarikçi atandı: ${vendor.name}`,
+      responsibleRole: 'saha_personeli',
+    });
+
+    const updated = await this.prisma.claimFile.findUnique({
+      where: { id: fileId },
       include: { assignedSupplier: true, currentStatus: true },
     });
+    if (!updated) throw new NotFoundException('Dosya bulunamadı.');
 
     await this.logActivity({
       claimFileId: fileId,
@@ -1183,7 +1269,10 @@ export class ClaimFilesService {
 
     const statusId = await this.getOrCreateStatusByCode('APPOINTMENT_SCHEDULED');
     if (statusId) {
-      await this.prisma.claimFile.update({ where: { id: fileId }, data: { currentStatusId: statusId } });
+      await this.applyWorkflowStatus(fileId, 'APPOINTMENT_SCHEDULED', actor.id, {
+        note: body.notes,
+        responsibleRole: 'saha_personeli',
+      });
     }
 
     await this.logActivity({
@@ -1230,10 +1319,16 @@ export class ClaimFilesService {
     });
 
     const statusId = await this.getOrCreateStatusByCode('INSPECTION_DONE');
-    const updateData: any = { ...(statusId ? { currentStatusId: statusId } : {}) };
+    const updateData: any = {};
     if (body.estimatedCost !== undefined) updateData.estimatedCostAmount = body.estimatedCost;
     if (Object.keys(updateData).length) {
       await this.prisma.claimFile.update({ where: { id: fileId }, data: updateData });
+    }
+    if (statusId) {
+      await this.applyWorkflowStatus(fileId, 'INSPECTION_DONE', actor.id, {
+        note: body.note,
+        responsibleRole: 'operasyon_sorumlusu',
+      });
     }
 
     await this.logActivity({
@@ -1257,9 +1352,14 @@ export class ClaimFilesService {
       where: { id: fileId },
       data: {
         estimatedCostAmount: body.totalCost,
-        ...(statusId ? { currentStatusId: statusId } : {}),
       },
     });
+    if (statusId) {
+      await this.applyWorkflowStatus(fileId, 'COST_REPORT_SUBMITTED', actor.id, {
+        note: body.description,
+        responsibleRole: 'operasyon_sorumlusu',
+      });
+    }
 
     await this.logActivity({
       claimFileId: fileId,
