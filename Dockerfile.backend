@@ -28,7 +28,10 @@ RUN pnpm run build
 
 # ─── Stage 4: Production image ────────────────────────────────────────────────
 FROM node:20-alpine AS production
-RUN apk add --no-cache wget dumb-init openssl openssl-dev
+RUN apk add --no-cache wget dumb-init openssl openssl-dev \
+  chromium nss freetype harfbuzz ca-certificates ttf-freefont
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 WORKDIR /app
 
 ENV NODE_ENV=production
