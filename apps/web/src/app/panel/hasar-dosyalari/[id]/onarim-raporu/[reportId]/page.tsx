@@ -1039,6 +1039,8 @@ function filterWorkGroupsByCategory(workGroups: any[], damageCategory: string): 
 
 export interface EditableItemsTableHandle {
   quickAddRow: () => Promise<void>;
+  saveAllDirtyRows: () => Promise<void>;
+  hasDirtyRows: () => boolean;
 }
 
 interface EditableItemsTableProps {
@@ -1051,6 +1053,7 @@ interface EditableItemsTableProps {
   onSave: (itemId: string, data: any) => Promise<void>;
   onDelete: (itemId: string) => void;
   onAdd: (data: any) => Promise<void>;
+  onDirtyChange?: (count: number) => void;
 }
 
 interface RowState {
@@ -1267,7 +1270,7 @@ function LocationSelector({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd },
+  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange },
   ref,
 ) {
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
@@ -1303,6 +1306,29 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   useEffect(() => {
     setRows(items.map((item) => ({ ...rowFromItem(item), _id: item.id, _isDirty: false, _savedFlash: false })));
   }, [items]);
+
+  useEffect(() => {
+    const dirtyCount = rows.filter((r) => r._isDirty).length + (addingDirty ? 1 : 0);
+    onDirtyChange?.(dirtyCount);
+  }, [rows, addingDirty, onDirtyChange]);
+
+  const buildRowPayload = (row: RowState) => {
+    const isLumpsum = row.pricingType === 'lumpsum';
+    return {
+      workGroupId: row.workGroupId || undefined,
+      location: row.location || undefined,
+      jobDescription: row.jobDescription,
+      description: row.description || undefined,
+      quantity: parseFloat(row.quantity) || 1,
+      unit: row.unit,
+      salesUnitPrice: parseFloat(row.salesUnitPrice) || 0,
+      supplierUnitPrice: parseFloat(row.supplierUnitPrice) || 0,
+      pricingType: row.pricingType,
+      lumpSumPrice: isLumpsum ? parseFloat(row.lumpSumPrice) || 0 : undefined,
+      damageCategory: row.damageCategory,
+      damageTypeId: row.damageTypeId || undefined,
+    };
+  };
 
   const getEmbeddedSubGroups = useCallback((workGroupId: string): any[] | null => {
     const wg = workGroups.find((w: any) => w.id === workGroupId);
@@ -1396,27 +1422,34 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const saveRow = async (id: string) => {
     const row = rows.find((r) => r._id === id);
     if (!row || !row._isDirty) return;
+    if (!row.workGroupId || !row.jobDescription.trim()) {
+      alert('Kaydetmek için İş Grubu ve İş Tanımı zorunludur.');
+      return;
+    }
     setSavingId(id);
     try {
-      const isLumpsum = row.pricingType === 'lumpsum';
-      await onSave(id, {
-        workGroupId: row.workGroupId || undefined,
-        location: row.location || undefined,
-        jobDescription: row.jobDescription,
-        description: row.description || undefined,
-        quantity: parseFloat(row.quantity) || 1,
-        unit: row.unit,
-        salesUnitPrice: parseFloat(row.salesUnitPrice) || 0,
-        supplierUnitPrice: parseFloat(row.supplierUnitPrice) || 0,
-        pricingType: row.pricingType,
-        lumpSumPrice: isLumpsum ? parseFloat(row.lumpSumPrice) || 0 : undefined,
-        damageCategory: row.damageCategory,
-        damageTypeId: row.damageTypeId || undefined,
-      });
+      await onSave(id, buildRowPayload(row));
       setRows((prev) => prev.map((r) => r._id === id ? { ...r, _isDirty: false, _savedFlash: true } : r));
       setTimeout(() => setRows((prev) => prev.map((r) => r._id === id ? { ...r, _savedFlash: false } : r)), 900);
     } finally { setSavingId(null); }
   };
+
+  const saveAllDirtyRows = useCallback(async () => {
+    const dirty = rows.filter((r) => r._isDirty);
+    for (const row of dirty) {
+      if (!row.workGroupId || !row.jobDescription.trim()) continue;
+      setSavingId(row._id);
+      try {
+        await onSave(row._id, buildRowPayload(row));
+      } finally {
+        setSavingId(null);
+      }
+    }
+    if (dirty.length > 0) {
+      setRows((prev) => prev.map((r) => r._isDirty ? { ...r, _isDirty: false, _savedFlash: true } : r));
+      setTimeout(() => setRows((prev) => prev.map((r) => ({ ...r, _savedFlash: false }))), 900);
+    }
+  }, [rows, onSave]);
 
   const saveAddingRow = async () => {
     if (!addingRow.workGroupId || !addingRow.jobDescription) return;
@@ -1489,7 +1522,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   }, [isEditable, quickAdding, rows, workGroups, onAdd]);
 
-  useImperativeHandle(ref, () => ({ quickAddRow }), [quickAddRow]);
+  useImperativeHandle(ref, () => ({
+    quickAddRow,
+    saveAllDirtyRows,
+    hasDirtyRows: () => rows.some((r) => r._isDirty),
+  }), [quickAddRow, saveAllDirtyRows, rows]);
 
   const addingMissingTooltip = !addingRow.workGroupId && !addingRow.jobDescription.trim()
     ? 'İş Grubu ve İş Tanımı gerekli'
@@ -1761,7 +1798,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </th>
             )}
             <th className="px-2 py-2 text-right text-slate-500 font-medium w-28">Toplam</th>
-            {isEditable && <th className="w-8 border-l border-slate-100"></th>}
+            {isEditable && <th className="w-24 px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -2016,17 +2053,53 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   )}
                 </td>
                 {isEditable && (
-                  <td className="w-8 border-l border-slate-100 text-center">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(row._id)}
-                      className="transition-opacity w-6 h-6 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center mx-auto"
-                    >
-                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
-                        <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
-                        <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                      </svg>
-                    </button>
+                  <td className="w-24 border-l border-slate-100 text-center px-1">
+                    <div className="flex items-center justify-center gap-1">
+                      {row._isDirty ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => saveRow(row._id)}
+                            className="h-6 px-1.5 rounded bg-emerald-600 text-white text-[10px] font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+                            title="Değişiklikleri kaydet"
+                          >
+                            {isSaving ? '...' : 'Kaydet'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => revertRow(row._id)}
+                            className="h-6 px-1 rounded border border-slate-200 text-slate-500 text-[10px] hover:bg-slate-50 transition-colors"
+                            title="Geri al"
+                          >
+                            ↩
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => focusCell(rowIdx, 'workGroup')}
+                            className="h-6 px-1.5 rounded border border-blue-200 text-blue-600 text-[10px] font-medium hover:bg-blue-50 transition-colors"
+                            title="Satırı düzenle"
+                          >
+                            Düzelt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(row._id)}
+                            className="h-6 w-6 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                            title="Sil"
+                          >
+                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                              <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
+                              <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
@@ -2673,6 +2746,7 @@ export default function RepairReportPage() {
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const bulgularTextareaRef = useRef<HTMLTextAreaElement>(null);
   const itemsTableRef = useRef<EditableItemsTableHandle>(null);
+  const [dirtyItemCount, setDirtyItemCount] = useState(0);
   // Önerilen kalemler (şablon önerileri)
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [templateSuggestions, setTemplateSuggestions] = useState<any[]>([]);
@@ -2973,18 +3047,23 @@ export default function RepairReportPage() {
   };
 
   const handleSaveReport = async () => {
-    if (Object.keys(pendingFields).length === 0) return;
     setFindingsError(null);
     setSaving(true);
     try {
-      await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
-      setPendingFields({});
+      await itemsTableRef.current?.saveAllDirtyRows();
+      if (Object.keys(pendingFields).length > 0) {
+        await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
+        setPendingFields({});
+      }
+      await load();
     } catch (e: any) {
       alert(e.response?.data?.message ?? 'Kayıt Başarısız');
     } finally {
       setSaving(false);
     }
   };
+
+  const hasUnsavedChanges = Object.keys(pendingFields).length > 0 || dirtyItemCount > 0;
 
   const handleCancelChanges = () => {
     if (Object.keys(pendingFields).length === 0) {
@@ -3492,7 +3571,7 @@ export default function RepairReportPage() {
       {/* Onarım Kalemleri */}
       <SectionCard title="Onarım Kalemleri" id="onarim-kalemleri-section" action={
         isEditable ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => itemsTableRef.current?.quickAddRow()}
@@ -3502,6 +3581,17 @@ export default function RepairReportPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               + Satır Ekle
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveReport}
+              disabled={saving}
+              className="flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
             </button>
             {templateSuggestions.length > 0 && (
               <button
@@ -3545,6 +3635,7 @@ export default function RepairReportPage() {
           onSave={handleUpdateItemMain}
           onDelete={handleRemoveItem}
           onAdd={handleAddItem}
+          onDirtyChange={setDirtyItemCount}
         />
         {itemsApprovalError && (
           <p className="text-xs text-red-500 mt-3">{itemsApprovalError}</p>
@@ -3564,17 +3655,17 @@ export default function RepairReportPage() {
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500 tracking-wide">Hasar Toplam Özeti</p>
-                {isEditable && Object.keys(pendingFields).length > 0 && (
+                {isEditable && (
                   <button
                     type="button"
                     onClick={handleSaveReport}
                     disabled={saving}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                   >
                     <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    {saving ? 'Kaydediliyor...' : `Kaydet (${Object.keys(pendingFields).length})`}
+                    {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
                   </button>
                 )}
               </div>
@@ -3712,13 +3803,12 @@ export default function RepairReportPage() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            {/* Taslak veya Reddedildi: Kaydet + İptal */}
-            {(report.status === 'draft' || report.status === 'rejected') && (
+            {isEditable && (
               <>
                 <button
                   type="button"
                   onClick={handleCancelChanges}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-500 text-slate-200 text-sm font-medium hover:bg-slate-800 transition-colors"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -3728,19 +3818,19 @@ export default function RepairReportPage() {
                 <button
                   type="button"
                   onClick={handleSaveReport}
-                  disabled={saving || Object.keys(pendingFields).length === 0}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  {saving ? 'Kaydediliyor...' : Object.keys(pendingFields).length > 0 ? `Kaydet (${Object.keys(pendingFields).length})` : 'Kaydet'}
+                  {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
                 </button>
               </>
             )}
 
             {/* Onaylanmış: Revize Et */}
-            {report.status === 'approved' && (
+            {!isEditable && report.status === 'approved' && (
               <button
                 type="button"
                 onClick={handleRevise}
@@ -3754,7 +3844,7 @@ export default function RepairReportPage() {
             )}
 
             {/* Externally approved: Revize Et */}
-            {report.status === 'externally_approved' && (
+            {!isEditable && report.status === 'externally_approved' && (
               <button
                 type="button"
                 onClick={handleRevise}
