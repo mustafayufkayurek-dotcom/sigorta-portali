@@ -28,7 +28,12 @@ find "$APP_DIR" -maxdepth 1 -name 'sigorta-web-*.tar' -mtime +14 -delete 2>/dev/
 
 # 30 günden eski yedekleri tutma (son 10 dosya kalır)
 if [ -d "$APP_DIR/backups" ]; then
-  ls -1t "$APP_DIR/backups/pre_*.sql.gz" 2>/dev/null | tail -n +11 | xargs -r rm -f
+  mapfile -t _pre_backups < <(ls -1t "$APP_DIR"/backups/pre_*.sql.gz 2>/dev/null || true)
+  if [ "${#_pre_backups[@]}" -gt 10 ]; then
+    for _old_backup in "${_pre_backups[@]:10}"; do
+      rm -f "$_old_backup"
+    done
+  fi
 fi
 
 log "=== Korunan Docker image'lar (manifest + çalışan container) ==="

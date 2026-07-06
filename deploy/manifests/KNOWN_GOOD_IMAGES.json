@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v223-finans-mobil-portal",
-  "description": "Finans rolleri (carilerim, tedarikçi, gelen kutusu, raporlar), portal mobil UX, CRM/personel özlük menü, login mobil, tedarikçi kayıt sahibi; rollback web v222 backend v220",
+  "label": "v224-gelen-kutusu-guvenlik",
+  "description": "Gelen kutusu permission kayıtları (operation_inbox DB fix), guard rol varsayılanları, deploy güvenlik scriptleri; web v223 sabit; rollback backend v223 web v222",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v223-amd64",
+    "backend": "app-backend:dalga2-agreement-hr-01-v224-amd64",
     "web": "sigorta-web:dalga2-agreement-hr-01-v223-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v222-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v220-amd64"
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v223-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
