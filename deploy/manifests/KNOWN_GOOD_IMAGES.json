@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v207-inbox-eksper-telefon",
-  "description": "Gelen kutusu 1 Temmuz kesim + geçmiş temizlik; eksper akıllı belge okuma; telefon format; rollback v204",
+  "label": "v208-sigorta-portal-harita",
+  "description": "Sigorta portal F1 harita vitrin dashboard; rollback web v207 / backend v207",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v207-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v207-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v208-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v204-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v204-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v207-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v207-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
