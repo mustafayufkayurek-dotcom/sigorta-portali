@@ -41,11 +41,22 @@ export class ExternalApprovalsController {
     @Query('approverType') approverType?: string,
     @Query('approverId') approverId?: string,
     @Query('includeExpired') includeExpired?: string,
-    @CurrentUser() user?: { id?: string; userId?: string; roleCode?: string },
+    @CurrentUser() user?: {
+      id?: string;
+      userId?: string;
+      roleCode?: string;
+      insuranceCompanyScopes?: string[];
+    },
   ) {
     const role = user?.roleCode?.toLowerCase();
     const userId = user?.id ?? user?.userId;
-    if ((role === 'expert' || role === 'insurance_company_user') && userId) {
+    if (role === 'insurance_company_user' && user?.insuranceCompanyScopes?.length) {
+      return this.service.listPendingForInsuranceCompanies(
+        user.insuranceCompanyScopes,
+        includeExpired === 'true',
+      );
+    }
+    if (role === 'expert' && userId) {
       if (approverId && approverId !== userId) {
         throw new ForbiddenException('Yalnızca kendi onay listenize erişebilirsiniz');
       }

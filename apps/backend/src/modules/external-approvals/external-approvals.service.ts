@@ -253,7 +253,94 @@ export class ExternalApprovalsService {
     return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
   }
 
+  // ── Sigorta portalı: iç onay sonrası otomatik kayıt ───────────────────────
+
+  async ensureInsurancePortalApproval(
+    reportId: string,
+    sentByUserId: string,
+    insuranceCompanyId: string,
+    insuranceCompanyName: string,
+  ) {
+    const existing = await this.prisma.externalApproval.findFirst({
+      where: {
+        reportId,
+        approverType: 'insurance_company',
+        channel: 'in_app',
+        status: 'pending',
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (existing) return existing;
+
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    const approval = await this.prisma.externalApproval.create({
+      data: {
+        reportId,
+        approverType: 'insurance_company',
+        approverName: insuranceCompanyName,
+        channel: 'in_app',
+        token,
+        expiresAt,
+        sentByUserId,
+      },
+    });
+
+    await this.prisma.reportApprovalHistory.create({
+      data: {
+        reportId,
+        userId: sentByUserId,
+        action: 'sent_for_external_approval',
+        reason: 'Sigorta portalına otomatik gönderildi (iç onay sonrası)',
+      },
+    });
+
+    this.logger.log(
+      `Sigorta portalı onay kaydı oluşturuldu: report=${reportId} company=${insuranceCompanyId}`,
+    );
+
+    return approval;
+  }
+
   // ── Listeleme ─────────────────────────────────────────────────────────────
+
+  async listPendingForInsuranceCompanies(companyIds: string[], includeExpired = false) {
+    if (!companyIds.length) return { data: [] };
+
+    await this.prisma.externalApproval.updateMany({
+      where: { status: 'pending', expiresAt: { lt: new Date() } },
+      data: { status: 'expired' },
+    });
+
+    const data = await this.prisma.externalApproval.findMany({
+      where: {
+        approverType: 'insurance_company',
+        status: includeExpired ? { in: ['pending', 'expired'] } : 'pending',
+        report: {
+          claimFile: {
+            insuranceCompanyId: { in: companyIds },
+          },
+        },
+      },
+      include: {
+        report: {
+          select: {
+            id: true,
+            reportNo: true,
+            status: true,
+            versionNo: true,
+            totalSalesAmount: true,
+            claimFile: { select: { fileNo: true, lossType: true, insuranceCompany: { select: { name: true } } } },
+          },
+        },
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { sentAt: 'desc' },
+    });
+
+    return { data };
+  }
 
   async listPending(approverType?: string, approverId?: string, includeExpired = false) {
     const baseWhere: Record<string, unknown> = {};

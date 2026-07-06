@@ -14,6 +14,7 @@ import { ClaimEventEmailService } from '@/modules/notifications/email/claim-even
 import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection.service';
 import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
+import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import {
   CreateRepairReportDto,
   UpdateRepairReportDto,
@@ -40,8 +41,11 @@ const REPORT_INCLUDE = {
   claimFile: {
     include: {
       insuranceCompany: true,
-      customer: true,
+      customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
       propertyAddress: true,
+      assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
     },
   },
   createdBy: { select: { id: true, firstName: true, lastName: true } },
@@ -81,6 +85,7 @@ export class RepairReportsService {
     private config: ConfigService,
     private pdfService: ReportPdfService,
     private emailService: ReportEmailService,
+    private readonly externalApprovals: ExternalApprovalsService,
     @Optional() private readonly claimEventEmail?: ClaimEventEmailService,
     @Optional() private readonly damageRepairTemplates?: DamageRepairTemplatesService,
     @Optional() private readonly anomalyDetection?: AnomalyDetectionService,
@@ -729,7 +734,14 @@ export class RepairReportsService {
       where: { id: reportId },
       include: {
         createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
-        claimFile: { select: { id: true, fileNo: true } },
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            insuranceCompanyId: true,
+            insuranceCompany: { select: { id: true, name: true } },
+          },
+        },
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
@@ -775,6 +787,19 @@ export class RepairReportsService {
 
     // Tedarikçi risk ve anomali analizi (async, non-blocking)
     void this.triggerRiskAnalysis(reportId, report.claimFileId);
+
+    if (report.claimFile?.insuranceCompanyId) {
+      try {
+        await this.externalApprovals.ensureInsurancePortalApproval(
+          reportId,
+          userId,
+          report.claimFile.insuranceCompanyId,
+          report.claimFile.insuranceCompany?.name ?? 'Sigorta Şirketi',
+        );
+      } catch (err) {
+        this.logger.warn(`Sigorta portalı otomatik onay kaydı oluşturulamadı: ${reportId}`, err);
+      }
+    }
 
     await this.syncClaimFromLatestReport(report.claimFileId);
 

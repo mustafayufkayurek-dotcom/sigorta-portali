@@ -1050,6 +1050,18 @@ export default function KullanicilarPage() {
     setFormErrors((prev) => ({ ...prev, insuranceCompanyIds: undefined, general: undefined }));
   };
 
+  const allInsuranceCompaniesSelected =
+    insuranceCompanies.length > 0
+    && insuranceCompanies.every((company) => form.insuranceCompanyIds.includes(company.id));
+
+  const toggleAllInsuranceCompanies = (checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      insuranceCompanyIds: checked ? insuranceCompanies.map((company) => company.id) : [],
+    }));
+    setFormErrors((prev) => ({ ...prev, insuranceCompanyIds: undefined, general: undefined }));
+  };
+
   const toggleAcilYardimCustomer = (customerId: string) => {
     setForm((prev) => ({
       ...prev,
@@ -2410,12 +2422,28 @@ export default function KullanicilarPage() {
 
 	                  {showsInsuranceCompanyScope(form.operationArea) && (
 	                  <div>
-	                    <p className="mb-2 text-sm font-medium text-slate-700">Sigorta Şirketleri</p>
+	                    <div className="mb-2 flex items-center justify-between gap-3">
+	                      <p className="text-sm font-medium text-slate-700">Sigorta Şirketleri</p>
+	                      {insuranceCompanies.length > 0 && (
+	                        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+	                          <input
+	                            type="checkbox"
+	                            checked={allInsuranceCompaniesSelected}
+	                            onChange={(e) => toggleAllInsuranceCompanies(e.target.checked)}
+	                            className="rounded border-slate-300 text-blue-600"
+	                          />
+	                          Tüm Sigorta Şirketleri
+	                        </label>
+	                      )}
+	                    </div>
+	                    {formErrors.insuranceCompanyIds && (
+	                      <p className="mb-2 text-xs text-red-600">{formErrors.insuranceCompanyIds}</p>
+	                    )}
 	                    {insuranceCompanies.length === 0 ? (
 	                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
 	                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
 	                      </p>
-	                    ) : (
+	                    ) : !allInsuranceCompaniesSelected ? (
 	                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
 	                        {insuranceCompanies.map((company) => (
 	                          <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
@@ -2429,6 +2457,10 @@ export default function KullanicilarPage() {
 	                          </label>
 	                        ))}
 	                      </div>
+	                    ) : (
+	                      <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+	                        Tüm aktif sigorta şirketleri kapsam dahilindedir. Bölge kapsamına göre görevlendirme yapabilirsiniz.
+	                      </p>
 	                    )}
 	                  </div>
 	                  )}
