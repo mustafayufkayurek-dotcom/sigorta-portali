@@ -20,12 +20,6 @@ type TrDateInputProps = {
   enablePicker?: boolean;
 };
 
-/** Mobil / dokunmatik: sayısal klavye yerine native tarih seçici */
-function prefersNativeDateOverlay(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(pointer: coarse), (max-width: 767px)').matches;
-}
-
 export function TrDateInput({
   value,
   onChange,
