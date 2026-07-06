@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v210-onarim-onay-teyit",
-  "description": "Onarım raporu onaya gönder teyit modalı ve onay tarihi özeti; rollback web v209 / backend v209",
+  "label": "v211-onarim-onay-sartlari",
+  "description": "Onarım raporu onaya gönderme ön şartları (bulgu, kalem, maliyet) ve resimsiz uyarı; rollback web v210 / backend v209",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v209-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v210-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v211-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v211-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v209-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v210-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v209-amd64"
   },
   "mustPassSmokeRoutes": [
