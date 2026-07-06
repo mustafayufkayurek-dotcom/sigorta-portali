@@ -291,6 +291,61 @@ function SectionCard({ title, children, action, id }: { title: string; children:
   );
 }
 
+function FinancialSummaryBar({
+  totalSupplierCost,
+  totalSalesAmount,
+  grossProfit,
+  grossMarginPct,
+}: {
+  totalSupplierCost?: number | null;
+  totalSalesAmount?: number | null;
+  grossProfit?: number | null;
+  grossMarginPct?: number | null;
+}) {
+  const margin = grossMarginPct ?? 0;
+  const profit = grossProfit ?? 0;
+  const marginValueClass = margin >= 20 ? 'text-emerald-300' : margin >= 10 ? 'text-amber-300' : 'text-rose-300';
+  const marginChipClass = margin >= 20
+    ? 'bg-emerald-500/15 border-emerald-400/30'
+    : margin >= 10
+      ? 'bg-amber-500/15 border-amber-400/30'
+      : 'bg-rose-500/15 border-rose-400/30';
+
+  const metrics = [
+    { label: 'Maliyet', value: fmtCurrency(totalSupplierCost), valueClass: 'text-white' },
+    { label: 'Satış', value: fmtCurrency(totalSalesAmount), valueClass: 'text-white' },
+    {
+      label: 'Kâr',
+      value: fmtCurrency(grossProfit),
+      valueClass: profit >= 0 ? 'text-emerald-300' : 'text-rose-300',
+    },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 sm:gap-3 flex-1 flex-wrap min-w-0">
+      <div className="hidden md:flex items-center gap-2 pr-1 flex-shrink-0">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
+        <span className="text-xs font-semibold text-slate-300 tracking-wide">Finansal Özet</span>
+      </div>
+      {metrics.map((metric) => (
+        <div
+          key={metric.label}
+          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem]"
+        >
+          <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">{metric.label}</p>
+          <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${metric.valueClass}`}>{metric.value}</p>
+        </div>
+      ))}
+      <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] ${marginChipClass}`}>
+        <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Marj</p>
+        <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${marginValueClass}`}>
+          %{margin.toFixed(1)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── İş Grubu Bazlı Kar Özeti ─────────────────────────────────────────────────
 interface WorkGroupProfitRow {
   workGroupId: string;
@@ -2200,7 +2255,7 @@ function EmergencyReportEditor({
   };
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5 pb-28">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button type="button" onClick={() => router.push(claimPath)} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
@@ -2953,7 +3008,7 @@ export default function RepairReportPage() {
   }
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5 pb-28">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button type="button" onClick={() => router.push(claimPath)} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
@@ -3488,16 +3543,16 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 flex-wrap">
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4 flex-wrap">
           {/* Kâr Özeti — sadece iç görünümde ve saha personeli değilse */}
           {effectiveViewMode === 'internal' && !isFieldStaff && (
-            <div className="flex items-center gap-4 flex-1 flex-wrap text-sm">
-              <span className="text-slate-500">Maliyet: <strong className="text-slate-800">{fmtCurrency(report.totalSupplierCost)}</strong></span>
-              <span className="text-slate-500">Satış: <strong className="text-slate-800">{fmtCurrency(report.totalSalesAmount)}</strong></span>
-              <span className="text-slate-500">Kâr: <strong className={report.grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{fmtCurrency(report.grossProfit)}</strong></span>
-              <span className="text-slate-500">Marj: <strong className={report.grossMarginPct >= 20 ? 'text-green-600' : report.grossMarginPct >= 10 ? 'text-yellow-600' : 'text-red-600'}>%{(report.grossMarginPct ?? 0).toFixed(1)}</strong></span>
-            </div>
+            <FinancialSummaryBar
+              totalSupplierCost={report.totalSupplierCost}
+              totalSalesAmount={report.totalSalesAmount}
+              grossProfit={report.grossProfit}
+              grossMarginPct={report.grossMarginPct}
+            />
           )}
           {effectiveViewMode === 'external' && <div className="flex-1" />}
 
