@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v212-onarim-finans-band",
-  "description": "Onarım raporu belirgin finansal özet bandı; rollback web v211 / backend v211",
+  "label": "v214-dosya-sorumlusu-paket",
+  "description": "Coğrafi bölge kapsamı, dosya sorumlusu merkezi, onay gecikmesi uyarıları, gelen kutusu yetkileri; rollback web v213 / backend v213",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v211-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v212-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v214-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v214-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v211-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v210-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v213-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v213-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
