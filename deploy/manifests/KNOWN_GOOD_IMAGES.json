@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v208-sigorta-portal-harita",
-  "description": "Sigorta portal F1 harita vitrin dashboard; rollback web v207 / backend v207",
+  "label": "v209-onarim-raporu-portal-kapsam",
+  "description": "Onarım raporu Paylaş UX, otomatik sigorta portalı, WhatsApp alıcı seçimi, dosya sorumlusu Tüm Sigorta Şirketleri; rollback web v208 / backend v208",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v207-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v208-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v209-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v209-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v207-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v208-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v207-amd64"
   },
   "mustPassSmokeRoutes": [

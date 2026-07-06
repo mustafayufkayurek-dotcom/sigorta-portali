@@ -9,7 +9,7 @@ Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka
 
 ## Zorunlu adımlar
 
-1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v208, backend v207 — rollback web v207)
+1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v209, backend v209 — rollback web v208 / backend v207)
 2. Deploy öncesi: `scripts/pre-deploy-safety.sh ETİKET` (sunucuda)
 3. Web restart: `scripts/restart-web-production.sh` veya `scripts/deploy-web-production.sh ETİKET` — **`-p sigorta-hasar-sistemi` zorunlu**
 4. Routing doğrulama: `scripts/verify-nginx-web-routing.sh` (sunucuda, PASS olmadan deploy bitmiş sayılmaz)
