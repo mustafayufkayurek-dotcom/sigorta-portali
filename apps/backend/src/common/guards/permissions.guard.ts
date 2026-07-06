@@ -39,6 +39,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'payment.view',
     'budget.view', 'budget.review',
     'report.view',
+    'operation_inbox.view',
   ],
   MANAGER: [
     'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
@@ -54,6 +55,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'task.complete', 'task.create', 'task.update', 'task.view',
     'user.create', 'user.update', 'user.view',
     'bank_account.create', 'bank_account.delete', 'bank_account.update', 'bank_account.view',
+    'operation_inbox.view', 'operation_inbox.manage',
   ],
   ADJUSTER: [
     'claim_file.view', 'claim_file.update', 'claim_file.status_change',
@@ -102,15 +104,24 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    let effectivePermissions = user.permissions || [];
+    const dbPermissions = user.permissions || [];
+    const roleDefaults = ROLE_DEFAULT_PERMISSIONS[roleCode] || [];
 
-    if (effectivePermissions.length === 0 && process.env.PERMISSION_FALLBACK_ENABLED === 'true') {
-      console.warn('FALLBACK_PERMISSION_USED', { userId: user.userId, roleCode });
-      effectivePermissions = ROLE_DEFAULT_PERMISSIONS[roleCode] || [];
+    let effectivePermissions = dbPermissions;
+    if (process.env.PERMISSION_FALLBACK_ENABLED === 'true') {
+      if (dbPermissions.length === 0) {
+        console.warn('FALLBACK_PERMISSION_USED', { userId: user.userId, roleCode });
+        effectivePermissions = roleDefaults;
+      } else {
+        effectivePermissions = [...new Set([...dbPermissions, ...roleDefaults])];
+      }
     }
 
     const hasPermission = requiredPermissions.some((permission) =>
-      effectivePermissions.includes(permission) || effectivePermissions.includes('*'),
+      effectivePermissions.includes(permission)
+      || effectivePermissions.includes('*')
+      || roleDefaults.includes(permission)
+      || roleDefaults.includes('*'),
     );
 
     if (!hasPermission) {

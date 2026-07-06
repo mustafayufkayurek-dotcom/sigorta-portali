@@ -3,8 +3,12 @@
 # Kullanım (sunucuda): bash scripts/pre-deploy-safety.sh [deploy-etiketi]
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/read-known-good-manifest.sh"
+
 DEPLOY_TAG="${1:-manual-$(date +%Y%m%d_%H%M%S)}"
-APP_DIR="${APP_DIR:-/opt/app}"
+APP_DIR="${APP_DIR:-${MANIFEST_REMOTE_APP_DIR:-/opt/app}}"
 BACKUP_DIR="$APP_DIR/backups"
 TS="$(date +%Y%m%d_%H%M%S)"
 LOG_TAG="[pre-deploy-safety]"
@@ -13,39 +17,36 @@ log() { echo "$LOG_TAG $*"; }
 
 cd "$APP_DIR"
 
-log "=== 1/6 Disk kontrolü ==="
+log "=== 1/7 Disk kontrolü ==="
 bash "$APP_DIR/scripts/pre-deploy-check.sh"
 
-log "=== 2/6 docker-compose.override yedeği ==="
+log "=== 2/7 docker-compose.override yedeği ==="
 mkdir -p "$BACKUP_DIR"
 cp docker-compose.override.yml "$BACKUP_DIR/override_${DEPLOY_TAG}_${TS}.yml"
 log "Yedek: $BACKUP_DIR/override_${DEPLOY_TAG}_${TS}.yml"
 
-log "=== 3/6 Çalışan image kaydı ==="
+log "=== 3/7 Çalışan image kaydı ==="
 {
   echo "# deploy=$DEPLOY_TAG ts=$TS"
   docker inspect sigorta-web --format 'web={{.Config.Image}}' 2>/dev/null || true
   docker inspect sigorta-backend --format 'backend={{.Config.Image}}' 2>/dev/null || true
 } >> "$BACKUP_DIR/image_history.log"
 
-log "=== 4/6 Bilinen iyi image'ların silinmesini engelle ==="
-KEEP_IMAGES=(
-  "app-backend:dalga2-agreement-hr-01-v43-amd64"
-  "app-backend:dalga2-agreement-hr-01-v29-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v76-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v77-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v78-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v79-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v80-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v81-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v31-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v32-amd64"
-  "app-backend:dalga2-agreement-hr-01-v1-amd64"
-  "sigorta-web:dalga2-agreement-hr-01-v1-amd64"
-)
-log "Korunan image'lar: ${KEEP_IMAGES[*]}"
+log "=== 4/7 Bilinen iyi image koruması (manifest) ==="
+log "Manifest: $MANIFEST"
+log "Bilinen iyi — backend: $MANIFEST_BACKEND_IMAGE web: $MANIFEST_WEB_IMAGE"
+log "Rollback — backend: $MANIFEST_ROLLBACK_BACKEND web: $MANIFEST_ROLLBACK_WEB"
+KEEP_IMAGES=()
+while IFS= read -r img; do
+  [ -n "$img" ] || continue
+  KEEP_IMAGES+=("$img")
+done < <(manifest_collect_protected_images)
+log "Korunan image'lar (${#KEEP_IMAGES[@]}): ${KEEP_IMAGES[*]}"
+if ! manifest_verify_protected_images "$LOG_TAG"; then
+  log "UYARI: Eksik korunan image — rollback zorlaşabilir; devam ediliyor"
+fi
 
-log "=== 5/6 DB yedeği (deploy öncesi) ==="
+log "=== 5/7 DB yedeği (deploy öncesi) ==="
 if [ -f "$APP_DIR/.env.production" ]; then
   # shellcheck disable=SC1091
   source "$APP_DIR/.env.production" 2>/dev/null || true
@@ -66,7 +67,7 @@ else
   log "UYARI: postgres container yok — backend deploy yapma"
 fi
 
-log "=== 6/6 Kaynak dizin doğrulama ==="
+log "=== 6/7 Kaynak dizin doğrulama ==="
 if [ ! -d "$APP_DIR/apps/web/src/app/panel" ]; then
   log "HATA: Build context yanlış — $APP_DIR/apps/ yok (source/ değil apps/ kullanılmalı)"
   exit 1

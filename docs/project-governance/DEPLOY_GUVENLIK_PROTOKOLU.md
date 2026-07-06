@@ -1,8 +1,10 @@
 # Deploy Güvenlik Protokolü
 
-**Amaç:** Sayfa kaybı, eski UI'ya dönüş, kısmi sync, yanlış build context ve migration felaketlerini önlemek.
+**Amaç:** Sayfa kaybı, eski UI'ya dönüş, kısmi sync, yanlış build context, migration felaketleri ve rollback image kaybını önlemek.
 
-**Son bilinen iyi sürüm:** Web `v78` + Backend `v43` (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Son bilinen iyi sürüm:** Web `v223` + Backend `v223` (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+
+**Rollback tag'leri:** Web `v222` + Backend `v220` (manifest `rollbackImages`)
 
 ---
 
@@ -13,8 +15,9 @@
 3. **Build context = `/opt/app/apps/`** — `source/` değil.
 4. **Backend deploy = DB yedeği zorunlu.**
 5. **Web-only deploy** açıkça etiketlenir; backend image değişmez.
-6. **Rollback image'ları silinmez** (v28 web, v27/v26 backend).
-7. **Deploy sonrası smoke test PASS olmadan "canlıya alındı" denmez.**
+6. **Rollback image'ları silinmez** — koruma listesi `KNOWN_GOOD_IMAGES.json` manifest'inden okunur (`scripts/read-known-good-manifest.sh`).
+7. **`docker image prune -af` yasak** — yalnızca dangling prune (`docker image prune -f`); tam prune rollback tag'lerini siler (v221 olayı).
+8. **Deploy sonrası smoke test PASS olmadan "canlıya alındı" denmez.**
 
 ---
 
@@ -23,10 +26,12 @@
 | # | Adım | Komut |
 |---|------|--------|
 | 1 | Disk + docker | `bash scripts/pre-deploy-check.sh` |
-| 2 | Güvenlik paketi | `bash scripts/pre-deploy-safety.sh v30-etiket` |
-| 3 | Kritik dosya uyumu | `bash scripts/verify-critical-paths.sh --remote` |
-| 4 | Baseline al | `bash scripts/capture-live-baseline.sh pre-v30` |
-| 5 | Scope netliği | Web-only mu, full mu? Migration var mı? |
+| 2 | Disk bakım (güvenli) | `bash scripts/server-disk-maintenance.sh` |
+| 3 | Yedek sağlığı | `bash scripts/verify-backup-health.sh` |
+| 4 | Güvenlik paketi | `bash scripts/pre-deploy-safety.sh v223-etiket` |
+| 5 | Kritik dosya uyumu | `bash scripts/verify-critical-paths.sh --remote` |
+| 6 | Baseline al | `bash scripts/capture-live-baseline.sh pre-v223` |
+| 7 | Scope netliği | Web-only mu, full mu? Migration var mı? |
 
 ---
 
@@ -36,7 +41,7 @@
 
 ```bash
 # Önerilen (yerelden tek komut):
-bash scripts/deploy-web-production.sh v128-etiket
+bash scripts/deploy-web-production.sh v223-etiket
 
 # Manuel:
 # 1) Yerelden sunucuya
@@ -45,8 +50,8 @@ rsync -avz apps/web/ root@94.138.216.18:/opt/app/apps/web/
 # 2) Sunucuda
 ssh root@94.138.216.18
 cd /opt/app
-bash scripts/pre-deploy-safety.sh v128-xxx
-docker build -f Dockerfile.web -t sigorta-web:dalga2-agreement-hr-01-v128-amd64 \
+bash scripts/pre-deploy-safety.sh v223-xxx
+docker build -f Dockerfile.web -t sigorta-web:dalga2-agreement-hr-01-v223-amd64 \
   --build-arg NEXT_PUBLIC_API_URL=https://app.meridyen-tr.com/api/v1 .
 # override güncelle → web image tag
 bash scripts/restart-web-production.sh   # compose -p sigorta-hasar-sistemi + routing doğrulama
@@ -57,6 +62,7 @@ bash scripts/verify-nginx-web-routing.sh # zorunlu PASS
 ```bash
 docker compose -f docker-compose.prod.yml up -d web   # ❌ yanlış ağ → 502
 docker stop sigorta-web && docker rm sigorta-web && docker compose ...  # ❌ -p olmadan
+docker image prune -af   # ❌ rollback image'larını siler
 ```
 
 **Backend + migration:** pre-deploy-safety DB yedeği → build backend → `prisma migrate deploy` → smoke.
@@ -80,14 +86,36 @@ Mustafa ekran kontrolü (Cmd+Shift+R) — özellikle:
 
 ## Rollback (≤5 dk)
 
+Tag'ler manifest'ten okunur (`scripts/rollback-production.sh`):
+
+| Mod | Backend | Web |
+|-----|---------|-----|
+| `default` | `rollbackImages.backendPrevious` (v220) | `rollbackImages.webPrevious` (v222) |
+| `web-only` | `images.backend` (v223) | `rollbackImages.webPrevious` (v222) |
+| `custom` | Manuel tag | Manuel tag |
+
 ```bash
 ssh root@94.138.216.18
 cd /opt/app
-bash scripts/rollback-production.sh              # v29/v27
-bash scripts/rollback-production.sh web-only     # web v28
+bash scripts/rollback-production.sh              # v220/v222
+bash scripts/rollback-production.sh web-only     # backend v223, web v222
 ```
 
 Override yedekleri: `/opt/app/backups/override_*`
+
+---
+
+## Disk bakım kuralları
+
+`scripts/server-disk-maintenance.sh`:
+
+- `MIN_FREE_GB` varsayılan **5 GB** (`pre-deploy-check.sh` ile aynı)
+- Korunan image'lar: manifest `images.*` + `rollbackImages.*` + çalışan container image'ları
+- Prune öncesi `docker image inspect` ile doğrulama (eksikse uyarı)
+- **Yalnızca** `docker image prune -f` (dangling) + `docker builder prune`
+- **`docker image prune -af` kullanılmaz**
+
+Korunan tag listesi tek kaynak: `deploy/manifests/KNOWN_GOOD_IMAGES.json`
 
 ---
 
@@ -95,6 +123,8 @@ Override yedekleri: `/opt/app/backups/override_*`
 
 | Konu | Tek kaynak dosya |
 |------|------------------|
+| Bilinen iyi / rollback image'lar | `deploy/manifests/KNOWN_GOOD_IMAGES.json` |
+| Image okuyucu | `scripts/read-known-good-manifest.sh` |
 | Ayarlar menü + hub kartları | `apps/web/src/config/settings-nav.ts` |
 | Tanımlar geri linki | `apps/web/src/utils/settings-definition-nav.ts` |
 | Sol menü | `apps/web/src/app/panel/layout.tsx` |
@@ -106,7 +136,7 @@ Yeni ayar sayfası eklerken **yalnızca `settings-nav.ts`** güncellenir; layout
 
 ## Git / repo güvenliği
 
-Canlı kod ile yerel disk uyumlu olsa bile **~80 dosya commit edilmemiş** durumda. Her büyük deploy öncesi:
+Canlı kod ile yerel disk uyumlu olsa bile **commit edilmemiş** değişiklikler olabilir. Her büyük deploy öncesi:
 
 ```bash
 git checkout -b safety/pre-deploy-YYYYMMDD

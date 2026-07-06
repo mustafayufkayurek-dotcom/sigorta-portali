@@ -8,8 +8,11 @@
 #
 # OTOMATİK YEDEK (Her gece 02:00'de):
 #   Sunucuda şu komutu çalıştırın: crontab -e
-#   Açılan editöre şu satırı ekleyin:
-#   0 2 * * * /opt/sigorta/scripts/backup.sh >> /var/log/sigorta-backup.log 2>&1
+#   Açılan editöre şu satırı ekleyin (manifest remoteAppDir = /opt/app):
+#   0 2 * * * /opt/app/scripts/backup.sh >> /var/log/meridyen-backup.log 2>&1
+#
+# NOT: Eski /opt/sigorta ve /var/backups/sigorta yolları kullanımdan kalktı.
+#      Tek kaynak: deploy/manifests/KNOWN_GOOD_IMAGES.json → remoteAppDir
 #
 # =============================================================================
 
@@ -25,8 +28,8 @@ if [ -f ".env.production" ]; then
     source .env.production 2>/dev/null || true
 fi
 
-# Yedek klasörü
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/sigorta}"
+# Yedek klasörü (pre-deploy-safety ile aynı: /opt/app/backups)
+BACKUP_DIR="${BACKUP_DIR:-/opt/app/backups}"
 
 # PostgreSQL container adı
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-sigorta-postgres}"
