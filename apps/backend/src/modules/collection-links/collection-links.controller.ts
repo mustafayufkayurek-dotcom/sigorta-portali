@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { Public } from '@/common/decorators/public.decorator';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
@@ -57,6 +58,7 @@ export class CollectionLinksPublicController {
 
   @Get('token/:token')
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: 'Public ödeme özeti' })
   async summary(@Param('token') token: string) {
     const data = await this.service.getPublicSummary(token);
@@ -65,6 +67,7 @@ export class CollectionLinksPublicController {
 
   @Post('token/:token/checkout')
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'PayTR checkout oturumu başlat' })
   async checkout(@Param('token') token: string, @Req() req: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
     const forwarded = req.headers['x-forwarded-for'];
@@ -84,6 +87,7 @@ export class PaymentWebhooksController {
 
   @Post('paytr')
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'PayTR bildirim URL (callback)' })
   async paytrCallback(@Body() body: PaytrCallbackPayload, @Res() res: Response) {
     await this.service.handlePaytrCallback(body);

@@ -6,6 +6,8 @@
 
 **Rollback tag'leri:** Web `v222` + Backend `v220` (manifest `rollbackImages`)
 
+**Siber güvenlik checklist:** [SECURITY_CHECKLIST.md](./SECURITY_CHECKLIST.md) — auth, firewall, yedek, PayTR, IDOR envanteri.
+
 ---
 
 ## Altın kurallar (asla ihlal edilmez)

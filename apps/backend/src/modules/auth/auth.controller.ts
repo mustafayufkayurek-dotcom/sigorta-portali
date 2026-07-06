@@ -82,6 +82,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 300000 } })
   @Post('refresh')
   @ApiOperation({ summary: 'Token yenileme' })
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
@@ -93,6 +94,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 300000 } })
   @Post('forgot-password')
   @ApiOperation({ summary: 'Şifre sıfırlama talebi' })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
@@ -105,6 +107,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 300000 } })
   @Post('reset-password')
   @ApiOperation({ summary: 'Şifre sıfırla' })
   async resetPassword(@Body() dto: ResetPasswordDto) {

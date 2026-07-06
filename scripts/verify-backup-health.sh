@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Son yedek dosyası sağlık kontrolü — cron/deploy öncesi hızlı doğrulama
 # Restore dry-run yapmaz; yalnızca dosya varlığı, boyut ve gzip bütünlüğü.
+#
+# OTOMATİK KONTROL (sunucuda crontab -e):
+#   30 6 * * * /opt/app/scripts/verify-backup-health.sh >> /var/log/meridyen-backup-health.log 2>&1
+# Deploy öncesi elle: bash scripts/verify-backup-health.sh
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
