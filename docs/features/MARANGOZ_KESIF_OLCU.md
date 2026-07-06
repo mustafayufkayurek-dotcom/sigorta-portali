@@ -1,4 +1,6 @@
-# Marangoz Keşif Ölçüsü — Teknik Plan
+# Saha Keşif Ölçüsü — Teknik Plan
+
+> **Not:** Dosya adı geçmiş uyumluluk için `MARANGOZ_KESIF_OLCU.md` kaldı; kapsam marangoz + boya + seramik + parke + tüm saha işleri.
 
 Tarih: 2026-07-06  
 Durum: **Faz 1 (iskelet)** — AI vision + kayıt + PDF + WhatsApp  
@@ -8,38 +10,41 @@ Durum: **Faz 1 (iskelet)** — AI vision + kayıt + PDF + WhatsApp
 
 ## 1. Kullanıcı Hikayesi
 
-**Saha / operasyon personeli olarak**, hasar yerinde çektiğim marangoz keşif fotoğrafından **tahmini ölçü modülleri** ve **malzeme listesi** çıkarmak, marangoza WhatsApp ile göndermek ve PDF olarak kaydetmek istiyorum.
+**Saha personeli / dosya sorumlusu olarak**, hasar yerinde lazer metre ile ölçtüğüm veya fotoğrafladığım alanlardan (marangoz, boya, seramik, parke, alçı…) **tahmini keşif özeti** oluşturmak, ilgili tedarikçi/ustaya WhatsApp ile göndermek ve PDF kaydetmek istiyorum.
 
-**İş sorunu:** Ölçüler elle not alınıyor, marangoza aktarım gecikiyor, dosya ile ilişkilendirilmiyor.
+**İş sorunu:** Defter + teknik çizim marangoz/boyacı/seramikçi için anlaşılmıyor; ölçüler dosyayla ilişkilendirilmiyor.
 
-**Meridyen prensibi:** Tüm ölçüler **tahmini** etiketli; kesin ölçü saha doğrulaması gerektirir.
+**Meridyen prensibi:** F1’de ölçüler **tahmini** veya elle girilen lazer değerleri; kesin üretim ölçüsü dosya onayı sonrası tedarikçi sahada alır.
 
 ---
 
-## 2. Faz Kapsamı
+## 2. Desteklenen iş kolları (F1)
+
+| Parça tipi | Örnek |
+|------------|--------|
+| Mutfak alt/üst modül, ada tezgah | Mobilya / marangoz |
+| Kapı, lavabo alt/üst | Dolap / joinery |
+| Parke / zemin | Zemin ustası |
+| Boya / duvar | Boyacı |
+| Seramik / fayans | Seramikçi |
+| Alçı / tavan | Alçı ustası |
+| Diğer | Serbest |
+
+---
+
+## 3. Faz Kapsamı
 
 | Faz | Kapsam | Durum |
 |-----|--------|-------|
 | **F1** | Prisma `FieldSurveyBrief`, AI vision scan, kayıt, PDF, WhatsApp share, modal UI | ✅ iskelet |
-| **F2** | Annotated foto (çizim overlay), marangoz telefon rehberi, gönderim geçmişi, liste sekmesi | ⬜ |
-| **F3** | Lazer / AR ölçüm entegrasyonu, kesin ölçü modu, mobil native kamera | ⬜ |
-
-### Faz 1 MVP
-
-- `FieldSurveyBrief` modeli + migration
-- `POST .../scan` — OpenAI vision (pattern: `receipt-scan.util.ts`)
-- `POST ...` — kaydet (`draft` | `sent`)
-- `GET ...` — dosyaya göre liste
-- `GET .../:id/pdf` — Puppeteer HTML→PDF
-- `GET .../:id/share` — `{ pdfUrl, whatsappUrl, summaryText }`
-- `FieldSurveyBriefModal` — kamera/foto, düzenlenebilir form, uyarı bandı
-- Hasar dosyası detay → **Keşif Ölçüsü** butonu
+| **F2** | Annotated foto, tedarikçi telefon rehberi, gönderim geçmişi, liste sekmesi | ⬜ |
+| **F3** | Bluetooth lazer / AR ölçüm entegrasyonu, kesin ölçü modu | ⬜ |
 
 ### Kapsam dışı (F1)
 
-- Lazer / AR cihaz entegrasyonu
-- Annotated foto üretimi
-- Otomatik marangoz ataması
+- Otomatik lazer okuma (F3)
+- Annotated foto üretimi (F2)
+- Otomatik tedarikçi ataması
 
 ---
 

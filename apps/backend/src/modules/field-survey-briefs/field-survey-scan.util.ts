@@ -1,26 +1,23 @@
 import { Logger } from '@nestjs/common';
 import {
+  FIELD_SURVEY_ITEM_TYPES,
+  type FieldSurveyItemType,
+} from './field-survey-item-types';
+import {
   FieldSurveyDimensionModule,
-  FieldSurveyItemType,
   FieldSurveyMaterial,
   ParsedFieldSurveyFields,
 } from './field-survey-scan.types';
 
 const logger = new Logger('FieldSurveyScan');
 
-const ITEM_TYPES: FieldSurveyItemType[] = [
-  'mutfak_alt_modul',
-  'kapi',
-  'lavabo_alt',
-  'ada_tezgah',
-  'parke',
-  'diger',
-];
+const ITEM_TYPE_JSON = FIELD_SURVEY_ITEM_TYPES.map((t) => `"${t}"`).join(' | ');
 
-const SYSTEM_PROMPT = `Sen Türkiye'deki marangoz / mobilya keşif ölçüsü fotoğraflarını analiz eden bir asistansın.
-Görselden tahmini ölçü ve malzeme bilgisi çıkar ve YALNIZCA geçerli JSON döndür:
+const SYSTEM_PROMPT = `Sen Türkiye'deki hasar/onarım saha keşif fotoğraflarını analiz eden bir asistansın.
+Marangoz, boya, seramik/fayans, parke, alçı, mutfak/banyo dolabı, kapı vb. işler için tahmini ölçü ve malzeme çıkar.
+Görselden YALNIZCA geçerli JSON döndür:
 {
-  "itemType": "mutfak_alt_modul" | "kapi" | "lavabo_alt" | "ada_tezgah" | "parke" | "diger",
+  "itemType": ${ITEM_TYPE_JSON},
   "title": string,
   "summaryText": string,
   "dimensions": [
@@ -33,16 +30,17 @@ Görselden tahmini ölçü ve malzeme bilgisi çıkar ve YALNIZCA geçerli JSON 
 }
 
 Kurallar:
-- Tüm ölçüler tahminidir; cm cinsinden
-- summaryText: marangoza yönelik kısa Türkçe özet (max 400 karakter)
-- title: kısa parça adı (max 80 karakter)
-- dimensions: en az 1 modül; mutfak/lavabo için alt dolap modülleri ayrı satır olabilir
+- Tüm ölçüler tahminidir; cm cinsinden (boya/seramik duvarlarında genişlik×yükseklik; parke odasında zemin alanı)
+- summaryText: tedarikçiye/ustaya yönelik kısa Türkçe keşif özeti (max 400 karakter); malzeme ve iş kapsamı belirt
+- title: kısa parça/alan adı (max 80 karakter)
+- dimensions: en az 1 satır; L form dolap, oda duvarları, seramik alanları ayrı satır olabilir
+- materials: boya rengi/kat, seramik ebat, mermerit, ayna, süpürgelik vb.
 - aiConfidence: 0-1 arası güven skoru
 - Okuyamazsan boş diziler ve null ölçüler kullan
 - Başka metin ekleme`;
 
 function normalizeItemType(raw: unknown): FieldSurveyItemType {
-  if (typeof raw === 'string' && ITEM_TYPES.includes(raw as FieldSurveyItemType)) {
+  if (typeof raw === 'string' && FIELD_SURVEY_ITEM_TYPES.includes(raw as FieldSurveyItemType)) {
     return raw as FieldSurveyItemType;
   }
   return 'diger';
@@ -63,7 +61,7 @@ function parseDimensions(raw: unknown): FieldSurveyDimensionModule[] {
     .map((item) => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Record<string, unknown>;
-      const label = typeof row.label === 'string' && row.label.trim() ? row.label.trim().slice(0, 60) : 'Modül';
+      const label = typeof row.label === 'string' && row.label.trim() ? row.label.trim().slice(0, 60) : 'Alan';
       return {
         label,
         genislikCm: parseNumber(row.genislikCm),
@@ -98,7 +96,7 @@ function parseJsonFromModel(text: string): ParsedFieldSurveyFields {
     itemType: 'diger',
     title: 'Keşif Ölçüsü',
     summaryText: '',
-    dimensions: [{ label: 'Modül 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
+    dimensions: [{ label: 'Alan 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
     materials: [],
     aiConfidence: null,
   };
@@ -141,7 +139,7 @@ export async function extractFieldSurveyFieldsFromImage(
       itemType: 'diger',
       title: 'Keşif Ölçüsü',
       summaryText: '',
-      dimensions: [{ label: 'Modül 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
+      dimensions: [{ label: 'Alan 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
       materials: [],
       aiConfidence: null,
       message:
@@ -167,7 +165,7 @@ export async function extractFieldSurveyFieldsFromImage(
           content: [
             {
               type: 'text',
-              text: 'Bu marangoz keşif fotoğrafından tahmini ölçü modülleri, malzeme listesi ve özet çıkar.',
+              text: 'Bu saha keşif fotoğrafından (marangoz, boya, seramik, parke vb.) tahmini ölçü alanları, malzeme listesi ve tedarikçi özeti çıkar.',
             },
             { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
           ],
@@ -196,7 +194,7 @@ export async function extractFieldSurveyFieldsFromImage(
       itemType: 'diger',
       title: 'Keşif Ölçüsü',
       summaryText: '',
-      dimensions: [{ label: 'Modül 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
+      dimensions: [{ label: 'Alan 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
       materials: [],
       aiConfidence: null,
       message: 'Fotoğraf kaydedildi fakat otomatik okuma başarısız oldu. Alanları elle doldurun.',

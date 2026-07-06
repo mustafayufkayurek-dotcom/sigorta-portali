@@ -21,14 +21,7 @@ interface BriefPdfData {
   createdAt: Date;
 }
 
-const ITEM_TYPE_LABELS: Record<string, string> = {
-  mutfak_alt_modul: 'Mutfak Alt Modül',
-  kapi: 'Kapı',
-  lavabo_alt: 'Lavabo Alt',
-  ada_tezgah: 'Ada Tezgah',
-  parke: 'Parke',
-  diger: 'Diğer',
-};
+import { FIELD_SURVEY_ITEM_TYPE_LABELS, type FieldSurveyItemType } from '../field-survey-item-types';
 
 function escHtml(s: string): string {
   return s
@@ -76,7 +69,7 @@ export class FieldSurveyPdfService {
   }
 
   private buildHtml(data: BriefPdfData): string {
-    const itemLabel = ITEM_TYPE_LABELS[data.itemType] ?? 'Diğer';
+    const itemLabel = FIELD_SURVEY_ITEM_TYPE_LABELS[data.itemType as FieldSurveyItemType] ?? 'Diğer';
     const dimsRows = data.dimensions
       .map(
         (d) => `
@@ -140,16 +133,16 @@ export class FieldSurveyPdfService {
   ${data.address ? `<div class="meta">Adres: ${escHtml(data.address)}</div>` : ''}
 
   <div class="section">
-    <h2>Marangoz Özeti</h2>
+    <h2>Keşif Özeti</h2>
     <div class="summary">${escHtml(data.summaryText || '—')}</div>
   </div>
 
   <div class="section">
-    <h2>Tahmini Ölçü Modülleri</h2>
+    <h2>Tahmini Ölçü Alanları</h2>
     <table>
       <thead>
         <tr>
-          <th>Modül</th>
+          <th>Alan / Parça</th>
           <th>Genişlik (Tahmini)</th>
           <th>Yükseklik (Tahmini)</th>
           <th>Derinlik (Tahmini)</th>
@@ -170,7 +163,7 @@ export class FieldSurveyPdfService {
   </div>
 
   <div class="footer">
-    Bu belge tahmini keşif ölçüsüdür; kesin ölçü saha doğrulaması gerektirir. Meridyen — ${escHtml(this.config.get('APP_NAME', 'Meridyen'))}
+    Bu belge tahmini saha keşif ölçüsüdür; kesin ölçü dosya onayı sonrası ilgili tedarikçi/usta tarafından sahada alınacaktır. Meridyen — ${escHtml(this.config.get('APP_NAME', 'Meridyen'))}
   </div>
 </body>
 </html>`;

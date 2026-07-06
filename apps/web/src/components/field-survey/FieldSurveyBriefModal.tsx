@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import {
+  FIELD_SURVEY_ITEM_TYPE_OPTIONS,
+  type FieldSurveyItemType,
+} from '@/components/field-survey/field-survey.constants';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -15,13 +19,7 @@ function authHeader() {
   return { Authorization: `Bearer ${getToken()}` };
 }
 
-export type FieldSurveyItemType =
-  | 'mutfak_alt_modul'
-  | 'kapi'
-  | 'lavabo_alt'
-  | 'ada_tezgah'
-  | 'parke'
-  | 'diger';
+export type { FieldSurveyItemType } from '@/components/field-survey/field-survey.constants';
 
 interface DimensionRow {
   label: string;
@@ -36,18 +34,11 @@ interface MaterialRow {
   note: string;
 }
 
-const ITEM_TYPE_OPTIONS: { value: FieldSurveyItemType; label: string }[] = [
-  { value: 'mutfak_alt_modul', label: 'Mutfak Alt Modül' },
-  { value: 'kapi', label: 'Kapı' },
-  { value: 'lavabo_alt', label: 'Lavabo Alt' },
-  { value: 'ada_tezgah', label: 'Ada Tezgah' },
-  { value: 'parke', label: 'Parke' },
-  { value: 'diger', label: 'Diğer' },
-];
+const ITEM_TYPE_OPTIONS = FIELD_SURVEY_ITEM_TYPE_OPTIONS;
 
 function emptyDimension(index: number): DimensionRow {
   return {
-    label: `Modül ${index}`,
+    label: `Alan ${index}`,
     genislikCm: null,
     yukseklikCm: null,
     derinlikCm: null,
@@ -298,9 +289,11 @@ export function FieldSurveyBriefModal({
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-700">
             <div>
               <h3 id="field-survey-title" className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                Keşif Ölçüsü
+                Saha Keşif Ölçüsü
               </h3>
-              <p className="text-xs text-slate-500">Dosya {claimFileNo}</p>
+              <p className="text-xs text-slate-500">
+                Dosya {claimFileNo} — marangoz, boya, seramik, parke ve diğer işler
+              </p>
             </div>
             <button
               type="button"
@@ -316,7 +309,8 @@ export function FieldSurveyBriefModal({
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <span className="font-semibold">Tahmini Keşif Ölçüsü</span>
               {' — '}
-              Bu ölçüler AI tahminidir; kesin ölçü için saha doğrulaması gereklidir.
+              Lazer metre ile aldığınız ölçüleri buraya girin; fotoğraftan AI tahmini destek olur.
+              Kesin ölçü dosya onayı sonrası tedarikçi/usta tarafından sahada alınır.
             </div>
 
             {message && (
@@ -358,7 +352,7 @@ export function FieldSurveyBriefModal({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-medium text-slate-600">
-                Parça Tipi
+                İş / Parça Tipi
                 <select
                   value={itemType}
                   onChange={(e) => setItemType(e.target.value as FieldSurveyItemType)}
@@ -384,7 +378,7 @@ export function FieldSurveyBriefModal({
             </div>
 
             <label className="block text-xs font-medium text-slate-600">
-              Marangoz Özeti
+              Keşif Özeti (Tedarikçi / Usta)
               <textarea
                 value={summaryText}
                 onChange={(e) => setSummaryText(e.target.value)}
@@ -400,13 +394,13 @@ export function FieldSurveyBriefModal({
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-600">Tahmini Ölçü Modülleri</span>
+                <span className="text-xs font-medium text-slate-600">Tahmini Ölçü Alanları</span>
                 <button
                   type="button"
                   className="text-xs text-blue-600 hover:underline"
                   onClick={() => setDimensions((d) => [...d, emptyDimension(d.length + 1)])}
                 >
-                  Modül Ekle
+                  Alan Ekle
                 </button>
               </div>
               <div className="space-y-2">
@@ -419,7 +413,7 @@ export function FieldSurveyBriefModal({
                         setDimensions((prev) => prev.map((r, i) => (i === idx ? { ...r, label: v } : r)));
                       }}
                       className="rounded border border-slate-200 px-2 py-1.5 text-xs sm:col-span-1"
-                      placeholder="Modül"
+                      placeholder="Alan adı"
                     />
                     <input
                       value={fmtCmInput(row.genislikCm)}
@@ -523,7 +517,7 @@ export function FieldSurveyBriefModal({
             </div>
 
             <label className="block text-xs font-medium text-slate-600">
-              WhatsApp Alıcı Telefon (Opsiyonel)
+              Tedarikçi WhatsApp (Opsiyonel)
               <input
                 value={sharePhone}
                 onChange={(e) => setSharePhone(e.target.value)}
@@ -565,7 +559,7 @@ export function FieldSurveyBriefModal({
               onClick={() => void handleWhatsApp()}
               className="btn-primary text-sm"
             >
-              WhatsApp Gönder
+              Tedarikçiye WhatsApp Gönder
             </button>
           </div>
         </div>

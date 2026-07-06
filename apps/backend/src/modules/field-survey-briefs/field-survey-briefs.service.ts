@@ -165,7 +165,7 @@ export class FieldSurveyBriefsService {
           d.yukseklikCm != null ? `Y:${d.yukseklikCm}` : null,
           d.derinlikCm != null ? `D:${d.derinlikCm}` : null,
         ].filter(Boolean);
-        return parts.length ? `${d.label ?? 'Modül'} (${parts.join(' ')} cm tahmini)` : null;
+        return parts.length ? `${d.label ?? 'Alan'} (${parts.join(' ')} cm tahmini)` : null;
       })
       .filter(Boolean)
       .join('; ');

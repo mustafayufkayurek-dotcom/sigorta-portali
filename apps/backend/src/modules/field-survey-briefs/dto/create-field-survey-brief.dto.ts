@@ -1,15 +1,9 @@
 import { IsArray, IsBoolean, IsIn, IsNumber, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { FieldSurveyItemType } from '../field-survey-scan.types';
+import type { FieldSurveyItemType } from '../field-survey-item-types';
+import { FIELD_SURVEY_ITEM_TYPES } from '../field-survey-item-types';
 
-const ITEM_TYPES: FieldSurveyItemType[] = [
-  'mutfak_alt_modul',
-  'kapi',
-  'lavabo_alt',
-  'ada_tezgah',
-  'parke',
-  'diger',
-];
+const ITEM_TYPES: FieldSurveyItemType[] = FIELD_SURVEY_ITEM_TYPES;
 
 class DimensionModuleDto {
   @IsString()

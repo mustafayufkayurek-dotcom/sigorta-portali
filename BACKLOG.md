@@ -154,19 +154,21 @@ Tarih: 2026-07-02 | Canlı: web **v126**
 
 ---
 
-## Marangoz Keşif Ölçüsü (AI Vision + PDF + WhatsApp)
+## Saha Keşif Ölçüsü — Defterden Dijital (AI + PDF + WhatsApp)
 
 Tarih: 2026-07-06 | Plan: [`docs/features/MARANGOZ_KESIF_OLCU.md`](docs/features/MARANGOZ_KESIF_OLCU.md)
 
+Marangoz, boya, seramik, parke, alçı… — lazer metre ölçüsü + fotoğraf; tedarikçiye WhatsApp/PDF.
+
 | Faz | Madde | Durum |
 |-----|-------|-------|
-| F1-iskelet | Teknik plan dokümanı | ✅ |
+| F1-iskelet | Teknik plan + çok iş kolu parça tipleri | ✅ |
 | F1-iskelet | Prisma `FieldSurveyBrief` + migration | ✅ iskelet |
 | F1-iskelet | `field-survey-briefs` backend (scan, CRUD, PDF, share) | ✅ iskelet |
 | F1-iskelet | `FieldSurveyBriefModal` + dosya detay girişi | ✅ iskelet |
 | F2 | Annotated foto, gönderim geçmişi, raporlar sekmesi listesi | ⬜ |
-| F2 | Marangoz telefon ön doldurma (`assignedSupplier`) | ⬜ |
-| F3 | Lazer / AR ölçüm entegrasyonu | ⬜ |
+| F2 | Atanan tedarikçi telefon ön doldurma | ⬜ |
+| F3 | Bluetooth lazer / AR ölçüm entegrasyonu (defter tamamen kalkar) | ⬜ |
 | F3 | Mobil native kamera + offline kuyruk | ⬜ |
 
 ---

@@ -1,10 +1,6 @@
-export type FieldSurveyItemType =
-  | 'mutfak_alt_modul'
-  | 'kapi'
-  | 'lavabo_alt'
-  | 'ada_tezgah'
-  | 'parke'
-  | 'diger';
+import type { FieldSurveyItemType } from './field-survey-item-types';
+
+export type { FieldSurveyItemType };
 
 export interface FieldSurveyDimensionModule {
   label: string;
