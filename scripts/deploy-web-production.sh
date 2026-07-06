@@ -38,6 +38,8 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
 
+  rsync -avz "$PROJECT_DIR/Dockerfile.web" "$REMOTE_HOST:$REMOTE_APP/"
+
   rsync -avz \
     "$SCRIPT_DIR/deploy-env.sh" \
     "$SCRIPT_DIR/verify-nginx-web-routing.sh" \

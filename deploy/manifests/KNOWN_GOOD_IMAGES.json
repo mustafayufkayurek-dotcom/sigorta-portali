@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v219-egitim-geri-bildirim",
-  "description": "Eğitim geri bildirimleri, test notları erişimi, office_staff yetkileri; rollback web/backend v218",
+  "label": "v220-pdf-chromium",
+  "description": "Backend imajına Chromium (PDF), disk bakımı; rollback web/backend v219",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v219-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v219-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v220-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v220-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v218-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v217-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v219-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v219-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

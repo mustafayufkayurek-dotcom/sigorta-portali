@@ -40,6 +40,11 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     "$PROJECT_DIR/apps/backend/" "$REMOTE_HOST:$REMOTE_APP/apps/backend/"
 
   rsync -avz \
+    "$PROJECT_DIR/Dockerfile.backend" \
+    "$PROJECT_DIR/Dockerfile.web" \
+    "$REMOTE_HOST:$REMOTE_APP/"
+
+  rsync -avz \
     "$SCRIPT_DIR/"*.sh \
     "$REMOTE_HOST:$REMOTE_APP/scripts/"
 fi
