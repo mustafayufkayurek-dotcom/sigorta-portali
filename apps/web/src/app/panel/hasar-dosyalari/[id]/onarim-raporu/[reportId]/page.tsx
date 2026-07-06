@@ -10,7 +10,13 @@ import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-re
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
-import RepairItemsModal, { type SelectedRepairItem } from '@/components/damage-reports/RepairItemsModal';
+import RepairItemsModal, {
+  type SelectedRepairItem,
+  DAMAGE_TYPE_OPTIONS,
+  DAMAGE_SIZE_OPTIONS,
+  damageTypeLabel,
+  damageSizeLabel,
+} from '@/components/damage-reports/RepairItemsModal';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
