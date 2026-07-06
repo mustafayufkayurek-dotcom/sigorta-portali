@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v222-eksper-portal-full",
-  "description": "Eksper mobil oturum, kur/WhatsApp, logo hizalama, layout, TrDateInput takvim, FileDropZone; rollback web v221",
+  "label": "v223-finans-mobil-portal",
+  "description": "Finans rolleri (carilerim, tedarikçi, gelen kutusu, raporlar), portal mobil UX, CRM/personel özlük menü, login mobil, tedarikçi kayıt sahibi; rollback web v222 backend v220",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v220-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v222-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v223-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v223-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v221-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v222-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v220-amd64"
   },
   "mustPassSmokeRoutes": [
@@ -18,6 +18,8 @@
     "/panel/musteriler",
     "/panel/kullanicilar",
     "/panel/tedarikciler",
+    "/panel/raporlar",
+    "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
     "/panel/ayarlar/musteri-tipleri",
     "/panel/ayarlar/eksper-sigorta-iliskileri",
