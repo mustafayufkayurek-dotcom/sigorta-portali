@@ -51,6 +51,40 @@ function approvalActorName(user: any) {
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || '—';
 }
 
+function getEffectiveFindingsText(
+  report: any,
+  pendingFields: Record<string, string>,
+  textareaEl: HTMLTextAreaElement | null,
+): string {
+  if (textareaEl?.value != null) return textareaEl.value.trim();
+  if (pendingFields.findingsText != null) return pendingFields.findingsText.trim();
+  return (report?.findingsText ?? '').trim();
+}
+
+function validateApprovalRequirements(report: any, findingsText: string): {
+  ok: boolean;
+  findingsError?: string;
+  itemsError?: string;
+} {
+  if (!findingsText) {
+    return { ok: false, findingsError: 'Tespit Bulguları doldurulmadan onaya gönderilemez.' };
+  }
+  const items = report?.items ?? [];
+  if (items.length === 0) {
+    return { ok: false, itemsError: 'En az bir onarım kalemi eklenmeden onaya gönderilemez.' };
+  }
+  const totalSales = items.reduce((sum: number, item: any) => sum + (Number(item.salesTotal) || 0), 0);
+  const totalCost = items.reduce((sum: number, item: any) => sum + (Number(item.supplierTotal) || 0), 0);
+  const totalLumpSum = items.reduce((sum: number, item: any) => {
+    if (item.pricingType === 'lumpsum') return sum + (Number(item.lumpSumPrice) || 0);
+    return sum;
+  }, 0);
+  if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
+    return { ok: false, itemsError: 'Maliyet veya satış tutarı girilmeden onaya gönderilemez.' };
+  }
+  return { ok: true };
+}
+
 // ─── Güvenli Matematiksel İfade Parser ──────────────────────────────────────
 function evaluateExpression(expr: string): number | null {
   const trimmed = expr.trim();
@@ -245,9 +279,9 @@ function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }
   );
 }
 
-function SectionCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+    <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
         <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
         {action}
@@ -2419,6 +2453,8 @@ export default function RepairReportPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
+  const [confirmSendWithoutImages, setConfirmSendWithoutImages] = useState(false);
+  const [itemsApprovalError, setItemsApprovalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -2670,13 +2706,51 @@ export default function RepairReportPage() {
   };
 
   const handleRequestApproval = async () => {
+    const findingsText = getEffectiveFindingsText(report, pendingFields, bulgularTextareaRef.current);
+    const validation = validateApprovalRequirements(report, findingsText);
+    if (!validation.ok) {
+      if (validation.findingsError) setFindingsError(validation.findingsError);
+      if (validation.itemsError) setItemsApprovalError(validation.itemsError);
+      return;
+    }
+    const hasImages = (report?.images?.length ?? 0) > 0;
+    if (!hasImages && !confirmSendWithoutImages) return;
+
     setRequestingApproval(true);
     try {
+      if (Object.keys(pendingFields).length > 0) {
+        await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
+        setPendingFields({});
+      }
       await axios.post(`${API}/repair-reports/${reportId}/request-approval`, {}, { headers: authHeader() });
       setShowRequestApprovalModal(false);
+      setConfirmSendWithoutImages(false);
+      setItemsApprovalError(null);
       await load();
     } catch (e: any) { alert(e.response?.data?.message ?? 'Hata Oluştu'); }
     finally { setRequestingApproval(false); }
+  };
+
+  const beginRequestApproval = () => {
+    const findingsText = getEffectiveFindingsText(report, pendingFields, bulgularTextareaRef.current);
+    const validation = validateApprovalRequirements(report, findingsText);
+
+    if (validation.findingsError) {
+      setFindingsError(validation.findingsError);
+      setItemsApprovalError(null);
+      document.getElementById('tespit-bulgulari-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setFindingsError(null);
+
+    if (validation.itemsError) {
+      setItemsApprovalError(validation.itemsError);
+      document.getElementById('onarim-kalemleri-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setItemsApprovalError(null);
+    setConfirmSendWithoutImages(false);
+    setShowRequestApprovalModal(true);
   };
 
   const handleApprove = async () => {
@@ -2929,7 +3003,7 @@ export default function RepairReportPage() {
           )}
           {(report.status === 'draft' || report.status === 'rejected') && (
             <button type="button"
-              onClick={() => setShowRequestApprovalModal(true)}
+              onClick={beginRequestApproval}
               className="text-xs bg-yellow-500 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-600"
             >
               Onaya Gönder
@@ -3178,7 +3252,7 @@ export default function RepairReportPage() {
       </SectionCard>
 
       {/* Tespit Bulguları */}
-      <SectionCard title="Tespit Bulguları *">
+      <SectionCard title="Tespit Bulguları *" id="tespit-bulgulari-section">
         <div className={`border rounded-lg overflow-hidden ${findingsError ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'}`}>
           <div className="px-3 pt-2.5 pb-0.5 bg-slate-50 border-b border-slate-100">
             <span className="text-base font-bold italic text-slate-800 select-none">
@@ -3220,7 +3294,7 @@ export default function RepairReportPage() {
       </SectionCard>
 
       {/* Onarım Kalemleri */}
-      <SectionCard title="Onarım Kalemleri" action={
+      <SectionCard title="Onarım Kalemleri" id="onarim-kalemleri-section" action={
         isEditable && templateSuggestions.length > 0 ? (
           <button
             type="button"
@@ -3261,6 +3335,9 @@ export default function RepairReportPage() {
           onDelete={handleRemoveItem}
           onAdd={handleAddItem}
         />
+        {itemsApprovalError && (
+          <p className="text-xs text-red-500 mt-3">{itemsApprovalError}</p>
+        )}
 
         {/* Toplamlar */}
         {(() => {
@@ -3727,6 +3804,23 @@ export default function RepairReportPage() {
                 </p>
               )}
 
+              {(report.images?.length ?? 0) === 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-2">
+                  <p className="text-xs text-amber-800 leading-5">
+                    Bu raporda henüz fotoğraf yok. Resim eklemeden onaya göndermek istediğinizden emin misiniz?
+                  </p>
+                  <label className="flex items-start gap-2 text-xs text-amber-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={confirmSendWithoutImages}
+                      onChange={(e) => setConfirmSendWithoutImages(e.target.checked)}
+                      className="mt-0.5 rounded border-amber-300 text-amber-600"
+                    />
+                    <span>Resim eklemeden onaya göndermeyi onaylıyorum</span>
+                  </label>
+                </div>
+              )}
+
               <p className="text-xs text-slate-500">
                 Onaya gönderme tarihi ve gönderen bilgisi rapor sayfasında kayıt altına alınır.
               </p>
@@ -3736,14 +3830,14 @@ export default function RepairReportPage() {
               <button
                 type="button"
                 onClick={handleRequestApproval}
-                disabled={requestingApproval}
+                disabled={requestingApproval || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)}
                 className="flex-1 bg-yellow-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-50"
               >
                 {requestingApproval ? 'Gönderiliyor…' : 'Onaya Gönder'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowRequestApprovalModal(false)}
+                onClick={() => { setShowRequestApprovalModal(false); setConfirmSendWithoutImages(false); }}
                 disabled={requestingApproval}
                 className="flex-1 border border-slate-200 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >

@@ -691,11 +691,30 @@ export class RepairReportsService {
   async requestApproval(reportId: string, userId: string) {
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
-      include: { createdBy: { select: { id: true, firstName: true, lastName: true } } },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        items: { select: { salesTotal: true, supplierTotal: true, lumpSumPrice: true, pricingType: true } },
+      },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
     if (report.status !== 'draft' && report.status !== 'rejected') {
       throw new BadRequestException('Yalnızca taslak veya reddedilmiş raporlar onaya gönderilebilir');
+    }
+
+    if (!report.findingsText?.trim()) {
+      throw new BadRequestException('Tespit Bulguları doldurulmadan onaya gönderilemez.');
+    }
+    if (report.items.length === 0) {
+      throw new BadRequestException('En az bir onarım kalemi eklenmeden onaya gönderilemez.');
+    }
+    const totalSales = report.items.reduce((sum, item) => sum + Number(item.salesTotal ?? 0), 0);
+    const totalCost = report.items.reduce((sum, item) => sum + Number(item.supplierTotal ?? 0), 0);
+    const totalLumpSum = report.items.reduce((sum, item) => {
+      if (item.pricingType === 'lumpsum') return sum + Number(item.lumpSumPrice ?? 0);
+      return sum;
+    }, 0);
+    if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
+      throw new BadRequestException('Maliyet veya satış tutarı girilmeden onaya gönderilemez.');
     }
 
     // Onaya gönderilmeden önce anomali analizi yap (non-blocking)
