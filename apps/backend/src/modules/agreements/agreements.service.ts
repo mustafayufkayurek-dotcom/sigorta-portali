@@ -7,7 +7,7 @@ import { CreateAgreementDto, UpdateAgreementDto, AcceptAgreementDto } from './dt
 import { resolveUserId } from '@/common/utils/resolve-user-id';
 import { hashAgreementContent } from './agreement-content-hash';
 import { companyInfoToAgreementVars } from './agreement-company-vars';
-import { isInternalPersonnelRole } from './agreement-audience.constants';
+import { userRequiresAgreementConsent, agreementTypesForRole } from './agreement-audience.constants';
 
 @Injectable()
 export class AgreementsService {
@@ -36,7 +36,24 @@ export class AgreementsService {
       where: { id: normalizedUserId },
       select: { role: { select: { code: true } } },
     });
-    return isInternalPersonnelRole(user?.role?.code);
+    return userRequiresAgreementConsent(user?.role?.code);
+  }
+
+  private async activeAgreementsForUser(userId: string) {
+    const normalizedUserId = resolveUserId({ id: userId });
+    const user = await this.prisma.user.findUnique({
+      where: { id: normalizedUserId },
+      select: { role: { select: { code: true } } },
+    });
+    const allowedTypes = agreementTypesForRole(user?.role?.code);
+    if (allowedTypes && allowedTypes.length === 0) return [];
+    return this.prisma.agreement.findMany({
+      where: {
+        isActive: true,
+        ...(allowedTypes ? { type: { in: [...allowedTypes] } } : {}),
+      },
+      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+    });
   }
 
   async findAll() {
@@ -110,10 +127,8 @@ export class AgreementsService {
   async getPendingForUser(userId: string) {
     if (!(await this.userRequiresAgreements(userId))) return [];
     const normalizedUserId = resolveUserId({ id: userId });
-    const activeAgreements = await this.prisma.agreement.findMany({
-      where: { isActive: true },
-      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
-    });
+    const activeAgreements = await this.activeAgreementsForUser(normalizedUserId);
+    if (activeAgreements.length === 0) return [];
 
     const acceptances = await this.prisma.agreementAcceptance.findMany({
       where: { userId: normalizedUserId },

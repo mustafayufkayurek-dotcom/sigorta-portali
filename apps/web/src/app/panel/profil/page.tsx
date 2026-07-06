@@ -357,9 +357,9 @@ export default function ProfilPage() {
           </div>
         )}
 
-        {acceptances.length === 0 ? (
+        {acceptances.length === 0 && pendingAgreements.length === 0 ? (
           <p className="text-sm text-slate-400">Henüz onaylanmış sözleşme yok.</p>
-        ) : (
+        ) : acceptances.length === 0 ? null : (
           <div className="space-y-3">
             {acceptances.map((acc) => {
               const stale = isStaleAcceptance(acc);
