@@ -22,7 +22,8 @@ import {
   INBOUND_CLASSIFY_QUEUE,
   INBOUND_INGEST_QUEUE,
   INGEST_JOB_SYNC_MAILBOX,
-  SYNC_INITIAL_DAYS,
+  INBOUND_SYNC_CUTOFF_ISO,
+  isInboundBeforeSyncCutoff,
   SYNC_JOB_OPTIONS,
   SYNC_MAX_PAGES_PER_JOB,
   SyncMailboxJobData,
@@ -66,7 +67,7 @@ export class InboundIngestProcessor {
       fetchUrl = storedDelta ?? this.graphSync.buildInitialDeltaUrl(mailboxAddress);
       if (!storedDelta) {
         this.logger.log(
-          `${mailbox}: ilk delta senkron (son ${SYNC_INITIAL_DAYS} gün, tur başına en fazla ${SYNC_MAX_PAGES_PER_JOB} sayfa)`,
+          `${mailbox}: ilk delta senkron (${INBOUND_SYNC_CUTOFF_ISO} sonrası, tur başına en fazla ${SYNC_MAX_PAGES_PER_JOB} sayfa)`,
         );
       }
     }
@@ -129,6 +130,13 @@ export class InboundIngestProcessor {
     const existing = await this.prisma.inboundMessage.findUnique({
       where: { graphMessageId: msg.id },
     });
+
+    if (isInboundBeforeSyncCutoff(mapped.receivedAt)) {
+      if (existing) {
+        await this.prisma.inboundMessage.delete({ where: { id: existing.id } });
+      }
+      return 'skipped';
+    }
 
     if (existing) {
       await this.prisma.inboundMessage.update({

@@ -14,8 +14,26 @@ export const DELTA_POLL_SUBSCRIPTION_PREFIX = 'delta-poll-';
 /** Graph change notification abonelikleri delta-poll kayıtlarından ayrı tutulur */
 export const WEBHOOK_SUBSCRIPTION_PREFIX = 'webhook-notify-';
 
-/** İlk senkron: son N gün (135k+ kutuda tam geçmiş çekilmez) */
+/** İlk senkron: son N gün (delta link sıfırlandığında yedek pencere) */
 export const SYNC_INITIAL_DAYS = 30;
+
+/**
+ * Canlı kullanım başlangıcı — bu tarihten önceki mailler çekilmez / saklanmaz.
+ * 1 Temmuz 2026 00:00 Europe/Istanbul = 2026-06-30T21:00:00.000Z
+ */
+export const INBOUND_SYNC_CUTOFF_ISO = '2026-06-30T21:00:00.000Z';
+export const INBOUND_SYNC_CUTOFF = new Date(INBOUND_SYNC_CUTOFF_ISO);
+
+export function isInboundBeforeSyncCutoff(receivedAt: Date): boolean {
+  return receivedAt.getTime() < INBOUND_SYNC_CUTOFF.getTime();
+}
+
+/** Graph delta ilk URL filtresi — kesim ile rolling pencereden geç olanı kullan */
+export function inboundSyncFilterCutoff(): Date {
+  const rolling = new Date();
+  rolling.setDate(rolling.getDate() - SYNC_INITIAL_DAYS);
+  return rolling.getTime() > INBOUND_SYNC_CUTOFF.getTime() ? rolling : INBOUND_SYNC_CUTOFF;
+}
 
 /** Delta sayfa boyutu (Graph $top) */
 export const SYNC_PAGE_SIZE = 50;

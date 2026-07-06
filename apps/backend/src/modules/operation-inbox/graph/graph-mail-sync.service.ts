@@ -7,8 +7,8 @@ import { M365GraphConfig } from '../../system-settings/system-settings.service';
 import {
   DELTA_POLL_SUBSCRIPTION_PREFIX,
   GRAPH_MESSAGE_SELECT,
-  SYNC_INITIAL_DAYS,
   SYNC_PAGE_SIZE,
+  inboundSyncFilterCutoff,
 } from '../operation-inbox.constants';
 
 export interface GraphEmailAddress {
@@ -101,8 +101,7 @@ export class GraphMailSyncService {
 
   buildInitialDeltaUrl(mailboxAddress: string): string {
     const encodedUser = encodeURIComponent(mailboxAddress);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - SYNC_INITIAL_DAYS);
+    const cutoff = inboundSyncFilterCutoff();
     const filter = encodeURIComponent(`receivedDateTime ge ${cutoff.toISOString()}`);
     const select = encodeURIComponent(GRAPH_MESSAGE_SELECT);
     return (
