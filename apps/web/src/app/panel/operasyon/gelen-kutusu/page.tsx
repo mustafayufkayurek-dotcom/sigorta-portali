@@ -720,8 +720,12 @@ export default function GelenKutusuPage() {
       ]);
       setItems(listRes.items ?? []);
       setStats(statsRes ?? null);
-    } catch {
-      setError('Gelen kutusu yüklenemedi. Yetkiniz veya Microsoft 365 bağlantısı kontrol edilmeli.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError('Gelen kutusunu görüntüleme yetkiniz yok. Sistem yöneticinize başvurun.');
+      } else {
+        setError('Gelen kutusu yüklenemedi. Yetkiniz veya Microsoft 365 bağlantısı kontrol edilmeli.');
+      }
       setItems([]);
     } finally {
       setLoading(false);

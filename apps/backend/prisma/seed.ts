@@ -203,6 +203,7 @@ async function main() {
     'report.view',
     'location.view',
     'hr.view', 'hr.leave.approve', 'hr.attendance.manage',
+    'operation_inbox.view', 'operation_inbox.manage',
   ];
   await assignPermissions(managerRole.id, managerPermCodes, createdPermissions);
 
@@ -219,6 +220,7 @@ async function main() {
     'dashboard.view',
     'location.view',
     'hr.view', 'hr.leave.request',
+    'operation_inbox.view', 'operation_inbox.manage',
   ];
   await assignPermissions(officeStaffRole.id, officePermCodes, createdPermissions);
 
