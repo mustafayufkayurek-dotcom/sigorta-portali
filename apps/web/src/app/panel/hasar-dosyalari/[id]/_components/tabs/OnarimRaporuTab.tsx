@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
@@ -14,6 +14,11 @@ import {
 } from '@/components/finance/FinansPanelUI';
 import { API, authAxios } from '../claim-detail-utils';
 import { filterLegacyStajDepartments } from '@/utils/department-helpers';
+import {
+  departmentReportLabel,
+  resolveClaimReportDepartment,
+  type ClaimReportDeptContext,
+} from '@/utils/claim-report-department';
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions as loadDamageReasonOptions } from '@/utils/damage-reason-options';
 import { RevizyonTalepleriPanel } from './RevizyonlarTab';
@@ -21,7 +26,10 @@ import { RevizyonTalepleriPanel } from './RevizyonlarTab';
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
 type FileSubjectOption = { code: string; name: string };
-type ClaimContext = { lossType?: string | null; claimSubjectId?: string | null };
+type ClaimContext = ClaimReportDeptContext & {
+  lossType?: string | null;
+  claimSubjectId?: string | null;
+};
 
 const ORG_DEPARTMENT_CODES = new Set([
   'hasar-onarim',
@@ -279,11 +287,17 @@ function YeniRaporWizard({
   const [multiDamageCodes, setMultiDamageCodes] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [deptResolveError, setDeptResolveError] = useState('');
+  const deptInitializedRef = useRef(false);
 
   useEffect(() => {
-    void authAxios<{ data: DeptOption[] }>({ method: 'GET', url: `${API}/departments` })
-      .then((r) => setDepartments(r.data.data ?? []))
-      .catch(console.error);
+    void authAxios({ method: 'POST', url: `${API}/departments/ensure-konu-tabs` })
+      .catch(() => undefined)
+      .finally(() => {
+        void authAxios<{ data: DeptOption[] }>({ method: 'GET', url: `${API}/departments` })
+          .then((r) => setDepartments(r.data.data ?? []))
+          .catch(console.error);
+      });
   }, []);
 
   useEffect(() => {
@@ -293,20 +307,59 @@ function YeniRaporWizard({
         setClaimContext({
           lossType: claim?.lossType ?? null,
           claimSubjectId: claim?.claimSubjectId ?? null,
+          departmentId: claim?.departmentId ?? claim?.department?.id ?? null,
+          fileType: claim?.fileType ?? null,
+          department: claim?.department ?? null,
+          customer: claim?.customer ?? null,
         });
       })
       .catch(console.error);
   }, [claimId]);
 
+  const wizardDepartments = useMemo(
+    () =>
+      filterLegacyStajDepartments(
+        departments.filter((dept) => ORG_DEPARTMENT_CODES.has(dept.code)),
+      ),
+    [departments],
+  );
+
+  const resolvedDept = useMemo(
+    () => (claimContext && wizardDepartments.length > 0
+      ? resolveClaimReportDepartment(wizardDepartments, claimContext)
+      : null),
+    [claimContext, wizardDepartments],
+  );
+
+  const activeDept = selectedDept ?? resolvedDept;
+
   useEffect(() => {
-    if (!selectedDept) {
+    if (!claimContext || wizardDepartments.length === 0 || deptInitializedRef.current) return;
+    deptInitializedRef.current = true;
+    if (resolvedDept) {
+      setSelectedDept(resolvedDept);
+      setDeptResolveError('');
+      if (resolvedDept.reportFormat === 'emergency') {
+        setReportType('emergency');
+        setStep('config');
+      } else {
+        setStep('type');
+      }
+      return;
+    }
+    setDeptResolveError('Bu dosyanın operasyon hattı belirlenemedi. Dosya bilgilerinden departman atamasını kontrol edin.');
+    setStep('department');
+  }, [claimContext, wizardDepartments, resolvedDept]);
+
+  useEffect(() => {
+    if (!activeDept) {
       setDamageReasons([]);
       return;
     }
 
     let cancelled = false;
     setLoadingReasons(true);
-    void loadDamageReasonOptions(selectedDept.id, claimContext)
+    void loadDamageReasonOptions(activeDept.id, claimContext)
       .then((options) => {
         if (!cancelled) setDamageReasons(options);
       })
@@ -321,15 +374,7 @@ function YeniRaporWizard({
     return () => {
       cancelled = true;
     };
-  }, [selectedDept, claimContext]);
-
-  const wizardDepartments = useMemo(
-    () =>
-      filterLegacyStajDepartments(
-        departments.filter((dept) => ORG_DEPARTMENT_CODES.has(dept.code)),
-      ),
-    [departments],
-  );
+  }, [activeDept, claimContext]);
 
   const damageReasonByCode = useMemo(
     () => new Map(damageReasons.map((reason) => [reason.code, reason])),
@@ -342,25 +387,8 @@ function YeniRaporWizard({
     );
   };
 
-  const handleDeptSelect = (dept: DeptOption) => {
-    setSelectedDept(dept);
-    setReportType(null);
-    setSingleDamageCode('');
-    setMultiDamageCodes([]);
-  };
-
-  const proceedFromDept = () => {
-    if (!selectedDept) return;
-    if (selectedDept.reportFormat === 'emergency') {
-      setReportType('emergency');
-      setStep('config');
-    } else {
-      setStep('type');
-    }
-  };
-
   const canProceed = () => {
-    if (step === 'department') return selectedDept !== null;
+    if (step === 'department') return activeDept !== null;
     if (step === 'type') return reportType !== null;
     if (reportType === 'emergency') return true;
     if (reportType === 'single') return singleDamageCode !== '';
@@ -369,7 +397,7 @@ function YeniRaporWizard({
   };
 
   const handleCreate = async () => {
-    if (!reportType || !selectedDept) return;
+    if (!reportType || !activeDept) return;
     setCreating(true);
     setError('');
     try {
@@ -379,7 +407,7 @@ function YeniRaporWizard({
         data: {
           reportType,
           reportDate: new Date().toISOString(),
-          departmentId: selectedDept.id,
+          departmentId: activeDept.id,
         },
       });
       const created = res.data.data;
@@ -425,65 +453,20 @@ function YeniRaporWizard({
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Adım 1</span>
-            <h3 className="text-base font-semibold text-slate-800">Departman Seçin</h3>
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Eksik Bilgi</span>
+            <h3 className="text-base font-semibold text-slate-800">Operasyon Hattı Belirlenemedi</h3>
           </div>
-          <p className="text-sm text-slate-500 mb-5">Hangi departman için rapor oluşturuyorsunuz?</p>
+          <p className="text-sm text-slate-500 mb-5">
+            Rapor adımları dosyanın operasyon hattına göre otomatik açılır. Bu dosyada hattın netleştirilmesi gerekiyor.
+          </p>
 
-          {wizardDepartments.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">
-              <p>Henüz departman tanımlanmamış.</p>
-              <a href="/panel/ayarlar/departmanlar" className="text-blue-600 hover:underline mt-1 block">Departman oluşturmak için tıklayın</a>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {wizardDepartments.filter((d) => d.reportFormat === 'repair').map((d) => (
-                <button type="button"
-                  key={d.id}
-                  onClick={() => handleDeptSelect(d)}
-                  className={`border-2 rounded-xl p-4 text-left transition-all ${
-                    selectedDept?.id === d.id
-                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                      : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/40'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-lg mb-2.5 flex items-center justify-center text-white text-xs font-bold" style={{ background: d.color }}>
-                    {d.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <p className="font-semibold text-slate-800 text-sm">{d.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Hasar onarım raporu</p>
-                </button>
-              ))}
-              {wizardDepartments.filter((d) => d.reportFormat === 'emergency').map((d) => (
-                <button type="button"
-                  key={d.id}
-                  onClick={() => handleDeptSelect(d)}
-                  className={`border-2 rounded-xl p-4 text-left transition-all ${
-                    selectedDept?.id === d.id
-                      ? 'border-red-500 bg-red-50 ring-2 ring-red-200'
-                      : 'border-slate-200 hover:border-red-300 hover:bg-red-50/40'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-lg mb-2.5 flex items-center justify-center text-white text-xs font-bold" style={{ background: d.color }}>
-                    {d.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <p className="font-semibold text-slate-800 text-sm">{d.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Acil yardım raporu</p>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-6">
+            {deptResolveError || 'Hasar Onarım, Acil Yardım, Sovtaj veya Özel Müşteri hattından biri dosyaya atanmalıdır.'}
+          </div>
 
           <div className="flex gap-2 mt-5">
-            <button type="button"
-              onClick={proceedFromDept}
-              disabled={!selectedDept}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Devam
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
-              İptal
+            <button type="button" onClick={onClose} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700">
+              Kapat
             </button>
           </div>
         </div>
@@ -491,15 +474,33 @@ function YeniRaporWizard({
     );
   }
 
+  const operationLineBanner = activeDept ? (
+    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+        style={{ background: activeDept.color }}
+      >
+        {activeDept.name.slice(0, 2).toUpperCase()}
+      </div>
+      <div>
+        <p className="text-[11px] font-medium text-slate-500">Dosya Operasyon Hattı</p>
+        <p className="text-sm font-semibold text-slate-800">{activeDept.name}</p>
+        <p className="text-xs text-slate-400">{departmentReportLabel(activeDept.code, activeDept.reportFormat)}</p>
+      </div>
+    </div>
+  ) : null;
+
   if (step === 'type') {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Adım 2/3</span>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              {activeDept?.reportFormat === 'emergency' ? 'Adım 1/1' : 'Adım 1/2'}
+            </span>
             <h3 className="text-base font-semibold text-slate-800">Rapor Türü Seçin</h3>
-            <button type="button" onClick={() => setStep('department')} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Geri</button>
           </div>
+          {operationLineBanner}
           <p className="text-sm text-slate-500 mb-5">Hasar dosyasının yapısına uygun türü seçin.</p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -548,7 +549,7 @@ function YeniRaporWizard({
   }
 
   const isEmergency = reportType === 'emergency';
-  const stepLabel = isEmergency ? 'Adım 2/2' : 'Adım 3/3';
+  const stepLabel = isEmergency ? 'Adım 1/1' : 'Adım 2/2';
   const stepTitle = isEmergency ? 'Acil Yardım Raporu Bilgileri' : (reportType === 'single' ? 'Hasar Nedeni & Bilgiler' : 'Hasar Nedenleri Seçin');
 
   return (
@@ -557,8 +558,11 @@ function YeniRaporWizard({
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{stepLabel}</span>
           <h3 className="text-base font-semibold text-slate-800">{stepTitle}</h3>
-          <button type="button" onClick={() => isEmergency ? setStep('department') : setStep('type')} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Geri</button>
+          {!isEmergency && (
+            <button type="button" onClick={() => setStep('type')} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Geri</button>
+          )}
         </div>
+        {operationLineBanner}
 
         {isEmergency ? (
           <div className="space-y-4 mt-4">

@@ -350,6 +350,7 @@ export class ClaimFilesService {
         assignedSupplier: { select: { id: true, name: true, city: true, district: true, type: true } },
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
+        department: { select: { id: true, code: true, name: true, reportFormat: true, color: true } },
         statusHistory: {
           include: {
             fromStatus: true,
