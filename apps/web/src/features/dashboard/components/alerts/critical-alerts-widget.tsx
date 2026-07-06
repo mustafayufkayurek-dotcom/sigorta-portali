@@ -2,6 +2,7 @@
 
 import { useCriticalAlerts } from '../../hooks/use-dashboard-data';
 import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
+import { formatWidgetErrorMessage } from '../../utils/widget-errors';
 import { ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,7 +23,7 @@ export function CriticalAlertsWidget({ staggerIndex = 0 }: CriticalAlertsWidgetP
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       error={isError}
-      errorMessage={error?.message || 'Kritik uyarılar alınamadı.'}
+      errorMessage={formatWidgetErrorMessage(error, 'Kritik uyarılar alınamadı.')}
       onRetry={() => void refetch()}
     >
       {isLoading || isFetching ? (

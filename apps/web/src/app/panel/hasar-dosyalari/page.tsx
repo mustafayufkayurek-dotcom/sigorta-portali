@@ -145,6 +145,7 @@ function ClaimFilesPageContent() {
   const urlSearch = searchParams.get('search') ?? '';
   const urlInvoiceStatus = searchParams.get('invoiceStatus') ?? '';
   const urlPriority = searchParams.get('priority') ?? '';
+  const urlRepairReportStatus = searchParams.get('repairReportStatus') ?? '';
 
   // Filters state
   const [search, setSearch] = useState(urlSearch);
@@ -156,7 +157,10 @@ function ClaimFilesPageContent() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [pendingRevisionFilter, setPendingRevisionFilter] = useState(false);
-  const [pendingReportFilter, setPendingReportFilter] = useState(false);
+  const [pendingReportFilter, setPendingReportFilter] = useState(
+    urlRepairReportStatus === 'pending_approval',
+  );
+  const [repairReportStatusFilter, setRepairReportStatusFilter] = useState(urlRepairReportStatus);
   const [showNewPanel, setShowNewPanel] = useState(false);
   const [formSession, setFormSession] = useState(0);
   const limit = 20;
@@ -215,9 +219,10 @@ function ClaimFilesPageContent() {
     if (dateTo) params.set('dateTo', dateTo);
     if (invoiceStatusFilter) params.set('invoiceStatus', invoiceStatusFilter);
     if (officeStaffUserId) params.set('assignedOfficeUserId', officeStaffUserId);
-    if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
+    if (repairReportStatusFilter) params.set('repairReportStatus', repairReportStatusFilter);
+    else if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
     return params.toString();
-  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId, pendingReportFilter]);
+  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
 
   const {
     data: claimsResponse,
@@ -255,7 +260,7 @@ function ClaimFilesPageContent() {
   }, [revisionsData]);
 
   // Derived
-  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter);
+  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter);
   const visibleClaims = pendingRevisionFilter
     ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
     : claims;
@@ -266,6 +271,7 @@ function ClaimFilesPageContent() {
     setInvoiceStatusFilter(''); setPage(1);
     setPendingRevisionFilter(false);
     setPendingReportFilter(false);
+    setRepairReportStatusFilter('');
   };
 
   function openNewPanel() {

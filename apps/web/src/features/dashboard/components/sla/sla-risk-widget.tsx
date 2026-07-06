@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import { AlertTriangle, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSlaSummary } from '../../hooks/use-dashboard-data';
 import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
+import { formatWidgetErrorMessage } from '../../utils/widget-errors';
 import { computeSlaOverall, mapSlaToCards } from '../../utils/kpi-mappers';
 
 interface SlaRiskWidgetProps {
@@ -28,7 +29,7 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       error={isError}
-      errorMessage={error?.message || 'SLA dağılımı yüklenemedi.'}
+      errorMessage={formatWidgetErrorMessage(error, 'SLA dağılımı yüklenemedi.')}
       onRetry={() => void refetch()}
     >
       {isLoading || isFetching ? (

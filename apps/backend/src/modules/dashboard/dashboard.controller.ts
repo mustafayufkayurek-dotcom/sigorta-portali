@@ -145,6 +145,25 @@ export class DashboardController {
     } catch { return { success: true, data: { slaEscalations: [], inactiveFiles: [], totalCritical: 0 } }; }
   }
 
+  @Get('dashboard/approval-delays')
+  @RequirePermissions('dashboard.view')
+  @ApiOperation({ summary: 'Onay gecikmesi uyarıları (onarım raporu)' })
+  async getApprovalDelays(@CurrentUser() user: any) {
+    try {
+      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
+      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      return { success: true, data: await this.dashboardService.getApprovalDelays(scopeUserId) };
+    } catch {
+      return {
+        success: true,
+        data: {
+          items: [],
+          summary: { pendingApproval: 0, externalApproval: 0, submitted: 0, warning: 0, critical: 0, total: 0 },
+        },
+      };
+    }
+  }
+
   @Get('dashboard/pending-actions')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Kullanıcı bazlı bekleyen aksiyonlar' })

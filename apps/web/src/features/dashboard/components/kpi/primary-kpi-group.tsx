@@ -11,6 +11,7 @@ import { WidgetBoundary } from '../widget-frame';
 import { KpiCard } from './kpi-card';
 import { useDashboardOperations, usePendingActions } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
+import { formatWidgetErrorMessage } from '../../utils/widget-errors';
 
 interface PrimaryKpiGroupProps {
   staggerIndex?: number;
@@ -26,7 +27,9 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
   const pendingItems = Array.isArray(pendingQuery.data?.items) ? pendingQuery.data.items : [];
   const pendingCount = pendingItems.length;
   const isLoading = opsQuery.isLoading || pendingQuery.isLoading || opsQuery.isFetching;
-  const isError = opsQuery.isError;
+  const opsFailed = opsQuery.isError;
+  const pendingFailed = pendingQuery.isError;
+  const showGlobalError = opsFailed && pendingFailed;
 
   return (
     <WidgetBoundary>
@@ -42,12 +45,15 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
           Array.from({ length: hideFinance ? (hideAcil ? 4 : 5) : (hideAcil ? 5 : 6) }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           ))
-        ) : isError ? (
+        ) : showGlobalError ? (
           <div className="col-span-full rounded-xl border border-red-200/70 bg-red-50/80 px-4 py-5 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-300">
-            KPI verileri yüklenemedi.
+            {formatWidgetErrorMessage(opsQuery.error, 'KPI verileri yüklenemedi.')}
             <button
               type="button"
-              onClick={() => void opsQuery.refetch()}
+              onClick={() => {
+                void opsQuery.refetch();
+                void pendingQuery.refetch();
+              }}
               className="ml-3 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
             >
               Tekrar Dene
@@ -55,20 +61,25 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
           </div>
         ) : (
           <>
+            {opsFailed && (
+              <div className="col-span-full rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
+                Operasyon özeti yüklenemedi; diğer kartlar güncel.
+              </div>
+            )}
             <KpiCard
               icon={FileText}
               label="Toplam Operasyon"
-              value={ops?.totalOperationalFiles ?? ops?.totalClaims ?? '—'}
+              value={opsFailed ? '—' : (ops?.totalOperationalFiles ?? ops?.totalClaims ?? '—')}
               color="bg-blue-600"
-              subtext={ops ? `${ops.openOperationalFiles} açık takip` : undefined}
+              subtext={ops && !opsFailed ? `${ops.openOperationalFiles} açık takip` : undefined}
               emptyHint="Henüz kayıtlı operasyon dosyası bulunmuyor."
             />
             <KpiCard
               icon={Clock}
               label="Hasar Dosyası"
-              value={ops?.totalClaims ?? '—'}
+              value={opsFailed ? '—' : (ops?.totalClaims ?? '—')}
               color="bg-indigo-600"
-              subtext={ops ? `${ops.openClaims} açık, ${ops.closedClaims} kapalı` : undefined}
+              subtext={ops && !opsFailed ? `${ops.openClaims} açık, ${ops.closedClaims} kapalı` : undefined}
               emptyHint="Kayıtlı hasar dosyası yok."
               href="/panel/hasar-dosyalari"
             />
@@ -76,9 +87,9 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
             <KpiCard
               icon={BellRing}
               label="Acil Yardım"
-              value={ops?.totalEmergencyCases ?? '—'}
+              value={opsFailed ? '—' : (ops?.totalEmergencyCases ?? '—')}
               color="bg-cyan-600"
-              subtext={ops ? `${ops.openEmergencyCases} açık, ${ops.closedEmergencyCases} kapalı` : undefined}
+              subtext={ops && !opsFailed ? `${ops.openEmergencyCases} açık, ${ops.closedEmergencyCases} kapalı` : undefined}
               emptyHint="Kayıtlı acil yardım dosyası yok."
               href="/panel/acil-yardim"
             />
@@ -86,24 +97,24 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
             <KpiCard
               icon={AlertTriangle}
               label="SLA Riski"
-              value={ops?.slaViolationCount ?? '—'}
-              color={ops && ops.slaViolationCount > 0 ? 'bg-red-600' : 'bg-emerald-600'}
+              value={opsFailed ? '—' : (ops?.slaViolationCount ?? '—')}
+              color={ops && !opsFailed && ops.slaViolationCount > 0 ? 'bg-red-600' : 'bg-emerald-600'}
               emptyHint="Riskte bekleyen SLA ihlali görünmüyor."
-              href={ops && ops.slaViolationCount > 0 ? '/panel/hasar-dosyalari?status=sla_exceeded' : undefined}
+              href={ops && !opsFailed && ops.slaViolationCount > 0 ? '/panel/hasar-dosyalari?status=sla_exceeded' : undefined}
             />
             <KpiCard
               icon={BellRing}
               label="Bekleyen Aksiyon"
-              value={pendingCount || '—'}
+              value={pendingFailed ? '—' : (pendingCount || '—')}
               color="bg-amber-600"
-              emptyHint="Şu anda işlem bekleyen aksiyon bulunmuyor."
-              href={pendingCount > 0 ? '/panel/hasar-dosyalari?status=open' : undefined}
+              emptyHint={pendingFailed ? 'Bekleyen aksiyon verisi alınamadı.' : 'Şu anda işlem bekleyen aksiyon bulunmuyor.'}
+              href={!pendingFailed && pendingCount > 0 ? '/panel/hasar-dosyalari?status=open' : undefined}
             />
             {!hideFinance && (
             <KpiCard
               icon={TrendingUp}
               label="Geciken Tahsilat"
-              value={ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
+              value={opsFailed ? '—' : (ops ? formatCurrency(ops.overdueCollectionAmount) : '—')}
               color="bg-rose-600"
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
               href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"

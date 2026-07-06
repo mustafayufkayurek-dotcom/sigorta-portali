@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { DashboardShell, DashboardHeader, DashboardGrid } from './_components';
 import { PrimaryKpiGroup } from '@/features/dashboard/components/kpi';
 import { OperationFlowStrip } from '@/features/dashboard/components/flow';
-import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
+import { CriticalAlertsWidget, ApprovalDelayWidget } from '@/features/dashboard/components/alerts';
 import { PendingActionsWidget } from '@/features/dashboard/components/queue';
 import { SlaRiskWidget } from '@/features/dashboard/components/sla';
 import { OwnershipLoadWidget } from '@/features/dashboard/components/ownership';
@@ -40,8 +40,8 @@ export default function PanelPage() {
     ? 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
     : isOfficeStaff
       ? showAcilYardim
-        ? 'Size atanan hasar ve acil yardım dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
-        : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+        ? 'Size atanan hasar ve acil yardım dosyalarınızı, onay bekleyen raporları ve SLA risklerini tek ekranda takip edin.'
+        : 'Size atanan hasar dosyalarınızı, onay bekleyen raporları ve SLA risklerini tek ekranda takip edin.'
       : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
   const hideAcil = !showAcilYardim;
@@ -56,29 +56,31 @@ export default function PanelPage() {
 
       <PrimaryKpiGroup staggerIndex={0} hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
 
-      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
+      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} isOfficeStaff={isOfficeStaff} />
 
-      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={2} />}
+      {isOfficeStaff && <ApprovalDelayWidget staggerIndex={2} />}
 
-      <CriticalAlertsWidget staggerIndex={3} />
+      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={isOfficeStaff ? 3 : 2} />}
 
-      <PendingActionsWidget staggerIndex={4} />
+      <CriticalAlertsWidget staggerIndex={isOfficeStaff ? 4 : 3} />
+
+      <PendingActionsWidget staggerIndex={isOfficeStaff ? 5 : 4} />
 
       <DashboardGrid>
-        <SlaRiskWidget staggerIndex={5} />
-        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={6} />}
+        <SlaRiskWidget staggerIndex={isOfficeStaff ? 6 : 5} />
+        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={7} />}
       </DashboardGrid>
 
       {showFinanceWidgets && (
         <DashboardGrid>
-          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={7} />
-          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={8} />
+          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={8} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={9} />
         </DashboardGrid>
       )}
 
       {!showFinanceWidgets && (
         <DashboardGrid>
-          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={5} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={isOfficeStaff ? 7 : 5} />
         </DashboardGrid>
       )}
     </DashboardShell>

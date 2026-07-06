@@ -3,6 +3,7 @@
 import { BellRing, Shield } from 'lucide-react';
 import { usePendingActions } from '../../hooks/use-dashboard-data';
 import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
+import { formatWidgetErrorMessage } from '../../utils/widget-errors';
 import { StatusBadge } from '@/components/ui';
 import { getDaysAgo } from '../../utils/formatters';
 import Link from 'next/link';
@@ -22,7 +23,7 @@ export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetP
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       error={isError}
-      errorMessage={error?.message || 'Bekleyen aksiyonlar yüklenemedi.'}
+      errorMessage={formatWidgetErrorMessage(error, 'Bekleyen aksiyonlar yüklenemedi.')}
       onRetry={() => void refetch()}
     >
       {isLoading || isFetching ? (

@@ -5,12 +5,16 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
 import {
+  DASHBOARD_APPROVAL_DELAYS_TTL_SEC,
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
   DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC,
   DASHBOARD_OWNERSHIP_LOAD_TTL_SEC,
   DASHBOARD_OPS_TTL_SEC,
   DASHBOARD_SLA_TTL_SEC,
 } from '@/cache/cache.constants';
+
+const APPROVAL_DELAY_WARNING_HOURS = 24;
+const APPROVAL_DELAY_CRITICAL_HOURS = 48;
 
 @Injectable()
 export class DashboardService {
@@ -19,17 +23,16 @@ export class DashboardService {
     private cache: CacheService,
   ) {}
 
+  /** office_staff scope: yalnızca atanmış dosya sorumlusu dosyaları */
+  private scopedOfficeStaffWhere(scopeUserId?: string) {
+    if (!scopeUserId) return {};
+    return { assignedOfficeUserId: scopeUserId };
+  }
+
   private scopedOpenClaimFileWhere(scopeUserId?: string) {
     const base = { currentStatus: { isClosedState: false } };
     if (!scopeUserId) return base;
-    return {
-      ...base,
-      OR: [
-        { assignedOfficeUserId: scopeUserId },
-        { assignedFieldUserId: scopeUserId },
-        { currentResponsibleUserId: scopeUserId },
-      ],
-    };
+    return { ...base, ...this.scopedOfficeStaffWhere(scopeUserId) };
   }
 
   async getOperationsKpis(scopeUserId?: string) {
@@ -55,9 +58,7 @@ export class DashboardService {
 
     const now = new Date();
 
-    const scopeWhere = scopeUserId
-      ? { OR: [{ assignedOfficeUserId: scopeUserId }, { assignedFieldUserId: scopeUserId }] }
-      : {};
+    const scopeWhere = this.scopedOfficeStaffWhere(scopeUserId);
     const emergencyScopeWhere = scopeUserId ? { assignedUserId: scopeUserId } : {};
     const closedEmergencyStatuses: EmergencyStatus[] = [
       EmergencyStatus.COZULDU,
@@ -121,7 +122,7 @@ export class DashboardService {
   }
 
   async getUserPerformance(filters: DashboardFiltersDto, scopeUserId?: string) {
-    const where = { ...this.buildWhereClause(filters), ...(scopeUserId ? { OR: [{ assignedOfficeUserId: scopeUserId }, { assignedFieldUserId: scopeUserId }] } : {}) };
+    const where = { ...this.buildWhereClause(filters), ...this.scopedOfficeStaffWhere(scopeUserId) };
     const now = new Date();
 
     const claimFiles = await this.prisma.claimFile.findMany({
@@ -1186,18 +1187,159 @@ export class DashboardService {
     return result;
   }
 
+  async getApprovalDelays(scopeUserId?: string) {
+    const cacheKey = this.cache.buildKey({
+      resource: 'dashboard:approval-delays',
+      role: scopeUserId ? 'office_staff' : 'shared',
+      userId: scopeUserId,
+    });
+    const cached = await this.cache.get<{
+      items: Array<{
+        id: string;
+        fileNo: string;
+        reportId: string;
+        reportNo: string;
+        status: string;
+        category: 'pending_approval' | 'external_approval' | 'submitted';
+        waitingSince: Date;
+        hoursWaiting: number;
+        severity: 'warning' | 'critical';
+      }>;
+      summary: {
+        pendingApproval: number;
+        externalApproval: number;
+        submitted: number;
+        warning: number;
+        critical: number;
+        total: number;
+      };
+    }>(cacheKey);
+    if (cached !== null) return cached;
+
+    const now = new Date();
+    const claimFileScope = scopeUserId
+      ? { ...this.scopedOfficeStaffWhere(scopeUserId), currentStatus: { isClosedState: false } }
+      : { currentStatus: { isClosedState: false } };
+
+    const reports = await this.prisma.repairReport.findMany({
+      where: {
+        status: { in: ['pending_approval', 'sent_for_external_approval', 'submitted'] },
+        claimFile: claimFileScope,
+      },
+      select: {
+        id: true,
+        reportNo: true,
+        status: true,
+        updatedAt: true,
+        claimFileId: true,
+        claimFile: { select: { id: true, fileNo: true } },
+        approvalHistory: {
+          where: { action: { in: ['pending_approval', 'sent_for_external_approval'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { createdAt: true, action: true },
+        },
+        externalApprovals: {
+          where: { status: 'pending' },
+          orderBy: { sentAt: 'desc' },
+          take: 1,
+          select: { sentAt: true },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    type DelayItem = {
+      id: string;
+      fileNo: string;
+      reportId: string;
+      reportNo: string;
+      status: string;
+      category: 'pending_approval' | 'external_approval' | 'submitted';
+      waitingSince: Date;
+      hoursWaiting: number;
+      severity: 'warning' | 'critical';
+    };
+
+    const byClaimFile = new Map<string, DelayItem>();
+
+    for (const report of reports) {
+      let waitingSince: Date;
+      let category: DelayItem['category'];
+
+      if (report.status === 'pending_approval') {
+        const hist = report.approvalHistory.find((h) => h.action === 'pending_approval');
+        waitingSince = hist?.createdAt ?? report.updatedAt;
+        category = 'pending_approval';
+      } else if (report.status === 'sent_for_external_approval') {
+        const ext = report.externalApprovals[0];
+        const hist = report.approvalHistory.find((h) => h.action === 'sent_for_external_approval');
+        waitingSince = ext?.sentAt ?? hist?.createdAt ?? report.updatedAt;
+        category = 'external_approval';
+      } else if (report.status === 'submitted') {
+        waitingSince = report.updatedAt;
+        category = 'submitted';
+      } else {
+        continue;
+      }
+
+      const hoursWaiting = (now.getTime() - waitingSince.getTime()) / (1000 * 60 * 60);
+      if (hoursWaiting < APPROVAL_DELAY_WARNING_HOURS) continue;
+
+      const item: DelayItem = {
+        id: report.claimFile.id,
+        fileNo: report.claimFile.fileNo,
+        reportId: report.id,
+        reportNo: report.reportNo,
+        status: report.status,
+        category,
+        waitingSince,
+        hoursWaiting: Math.round(hoursWaiting),
+        severity: hoursWaiting >= APPROVAL_DELAY_CRITICAL_HOURS ? 'critical' : 'warning',
+      };
+
+      const existing = byClaimFile.get(report.claimFileId);
+      if (!existing || item.hoursWaiting > existing.hoursWaiting) {
+        byClaimFile.set(report.claimFileId, item);
+      }
+    }
+
+    const all = Array.from(byClaimFile.values()).sort((a, b) => b.hoursWaiting - a.hoursWaiting);
+    const result = {
+      items: all.slice(0, 20),
+      summary: {
+        pendingApproval: all.filter((i) => i.category === 'pending_approval').length,
+        externalApproval: all.filter((i) => i.category === 'external_approval').length,
+        submitted: all.filter((i) => i.category === 'submitted').length,
+        warning: all.filter((i) => i.severity === 'warning').length,
+        critical: all.filter((i) => i.severity === 'critical').length,
+        total: all.length,
+      },
+    };
+    this.cache.set(cacheKey, result, DASHBOARD_APPROVAL_DELAYS_TTL_SEC).catch(() => {});
+    return result;
+  }
+
   async getPendingActions(user: any) {
     const userId = user?.id;
     if (!userId) return { items: [], total: 0 };
 
+    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
+    const isOfficeStaff = roleCode === 'office_staff';
+
+    const where: Record<string, unknown> = {
+      currentStatus: { isClosedState: false },
+      OR: [
+        { currentResponsibleUserId: userId },
+        { pendingActionOwner: roleCode },
+      ],
+    };
+    if (isOfficeStaff) {
+      Object.assign(where, this.scopedOfficeStaffWhere(userId));
+    }
+
     const files = await this.prisma.claimFile.findMany({
-      where: {
-        OR: [
-          { currentResponsibleUserId: userId },
-          { pendingActionOwner: user?.role?.code ?? user?.roleCode ?? '' },
-        ],
-        currentStatus: { isClosedState: false },
-      },
+      where,
       select: { id: true, fileNo: true, priority: true, updatedAt: true, currentStatus: { select: { name: true } } },
       orderBy: { updatedAt: 'asc' },
       take: 30,

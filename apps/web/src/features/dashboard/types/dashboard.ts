@@ -13,11 +13,35 @@ export type OperationsResponse = {
   overdueCollectionAmount: number;
 };
 
-export type CriticalItem = { fileNo: string };
+export type CriticalItem = { id?: string; fileNo: string };
 export type CriticalAlertsResponse = {
   slaEscalations: CriticalItem[];
   inactiveFiles: CriticalItem[];
   totalCritical: number;
+};
+
+export type ApprovalDelayItem = {
+  id: string;
+  fileNo: string;
+  reportId: string;
+  reportNo: string;
+  status: string;
+  category: 'pending_approval' | 'external_approval' | 'submitted';
+  waitingSince: string;
+  hoursWaiting: number;
+  severity: 'warning' | 'critical';
+};
+
+export type ApprovalDelaysResponse = {
+  items: ApprovalDelayItem[];
+  summary: {
+    pendingApproval: number;
+    externalApproval: number;
+    submitted: number;
+    warning: number;
+    critical: number;
+    total: number;
+  };
 };
 
 export type PendingActionItem = {

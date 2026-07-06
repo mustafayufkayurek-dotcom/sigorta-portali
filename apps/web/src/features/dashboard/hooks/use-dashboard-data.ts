@@ -4,6 +4,7 @@ import { useApiQuery } from '@/hooks/useApi';
 import {
   OperationsResponse,
   CriticalAlertsResponse,
+  ApprovalDelaysResponse,
   PendingActionsResponse,
   SlaSummaryResponse,
   OwnershipLoadResponse,
@@ -18,6 +19,10 @@ export function useDashboardOperations() {
 
 export function useCriticalAlerts() {
   return useApiQuery<CriticalAlertsResponse>(['dashboard-critical-alerts'], '/dashboard/critical-alerts');
+}
+
+export function useApprovalDelays() {
+  return useApiQuery<ApprovalDelaysResponse>(['dashboard-approval-delays'], '/dashboard/approval-delays');
 }
 
 export function usePendingActions() {

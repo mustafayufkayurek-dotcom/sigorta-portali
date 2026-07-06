@@ -1,8 +1,8 @@
 'use client';
 
-import { ArrowRight, Banknote, FileText, ListTodo, Siren } from 'lucide-react';
+import { ArrowRight, Banknote, ClipboardCheck, FileText, ListTodo, Siren } from 'lucide-react';
 import Link from 'next/link';
-import { useDashboardOperations, usePendingActions } from '../../hooks/use-dashboard-data';
+import { useDashboardOperations, usePendingActions, useApprovalDelays } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
 
 type FlowItem = {
@@ -14,16 +14,26 @@ type FlowItem = {
   path: string;
 };
 
-export function OperationFlowStrip({ hideFinance = false, hideAcil = false }: { hideFinance?: boolean; hideAcil?: boolean }) {
+export function OperationFlowStrip({
+  hideFinance = false,
+  hideAcil = false,
+  isOfficeStaff = false,
+}: {
+  hideFinance?: boolean;
+  hideAcil?: boolean;
+  isOfficeStaff?: boolean;
+}) {
   const opsQuery = useDashboardOperations();
   const pendingQuery = usePendingActions();
+  const approvalDelaysQuery = useApprovalDelays();
   const ops = opsQuery.data;
   const pendingItems = Array.isArray(pendingQuery.data?.items) ? pendingQuery.data.items : [];
   const pendingCount = pendingItems.length;
+  const approvalDelayTotal = approvalDelaysQuery.data?.summary?.total ?? 0;
 
   const items: FlowItem[] = [
     {
-      title: 'Hasar Dosyaları',
+      title: isOfficeStaff ? 'Açık Hasar Dosyalarım' : 'Hasar Dosyaları',
       value: ops?.openClaims ?? '—',
       detail: ops ? `${ops.totalClaims} toplam dosya` : 'Veri bekleniyor',
       icon: FileText,
@@ -40,8 +50,18 @@ export function OperationFlowStrip({ hideFinance = false, hideAcil = false }: { 
       iconClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
       path: '/panel/acil-yardim',
     }]),
+    ...(isOfficeStaff
+      ? [{
+      title: 'Onay Gecikmesi',
+      value: approvalDelayTotal,
+      detail: approvalDelayTotal > 0 ? '24 saat üzeri bekleyen rapor' : 'Geciken onay yok',
+      icon: ClipboardCheck,
+      iconClassName: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
+      path: '/panel/hasar-dosyalari?repairReportStatus=pending_approval',
+    }]
+      : []),
     {
-      title: 'Bekleyen Aksiyon',
+      title: isOfficeStaff ? 'Bekleyen Aksiyonlarım' : 'Bekleyen Aksiyon',
       value: pendingCount,
       detail: pendingCount > 0 ? 'İşlem bekleyen kayıtlar' : 'Bekleyen kayıt yok',
       icon: ListTodo,
@@ -66,14 +86,22 @@ export function OperationFlowStrip({ hideFinance = false, hideAcil = false }: { 
         <div>
           <h2 className="text-base font-semibold text-slate-950 dark:text-white">Günün Akışı</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {hideFinance ? (hideAcil ? 'Dosya ve aksiyon hareketlerini tek sırada izleyin.' : 'Size atanan dosya ve aksiyon hareketlerini tek sırada izleyin.') : (hideAcil ? 'Hasar dosyaları, aksiyon ve tahsilat hareketlerini tek sırada izleyin.' : 'Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.')}
+            {isOfficeStaff
+              ? 'Atanan dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar tek sırada.'
+              : hideFinance
+                ? (hideAcil ? 'Dosya ve aksiyon hareketlerini tek sırada izleyin.' : 'Size atanan dosya ve aksiyon hareketlerini tek sırada izleyin.')
+                : (hideAcil ? 'Hasar dosyaları, aksiyon ve tahsilat hareketlerini tek sırada izleyin.' : 'Dosya, aksiyon ve finans hareketlerini tek sırada izleyin.')}
           </p>
         </div>
-        {(opsQuery.isFetching || pendingQuery.isFetching) && (
+        {(opsQuery.isFetching || pendingQuery.isFetching || approvalDelaysQuery.isFetching) && (
           <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>
         )}
       </div>
-      <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${hideFinance ? (hideAcil ? 'xl:grid-cols-2' : 'xl:grid-cols-3') : (hideAcil ? 'xl:grid-cols-3' : 'xl:grid-cols-4')}`}>
+      <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${
+        hideFinance
+          ? (hideAcil ? (isOfficeStaff ? 'xl:grid-cols-3' : 'xl:grid-cols-2') : (isOfficeStaff ? 'xl:grid-cols-4' : 'xl:grid-cols-3'))
+          : (hideAcil ? 'xl:grid-cols-3' : 'xl:grid-cols-4')
+      }`}>
         {items.map((item) => {
           const Icon = item.icon;
           return (
