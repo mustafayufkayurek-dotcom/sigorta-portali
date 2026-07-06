@@ -49,17 +49,79 @@ export function findCountryByCode(code: string): CountryCode {
   return COUNTRY_CODES.find((c) => c.code === code) ?? DEFAULT_COUNTRY;
 }
 
+/** + ile başlayan veya ham rakam dizisinden ülke kodu + yerel numarayı ayırır */
+export function parseInternationalPhone(value: string): {
+  country: CountryCode;
+  localDigits: string;
+  international: string;
+} {
+  const raw = value?.trim() ?? '';
+  if (!raw) {
+    return { country: DEFAULT_COUNTRY, localDigits: '', international: '' };
+  }
+
+  const compact = raw.replace(/\s/g, '');
+
+  if (compact.startsWith('+')) {
+    const sorted = [...COUNTRY_CODES].sort((a, b) => b.dialCode.length - a.dialCode.length);
+    for (const country of sorted) {
+      if (compact.startsWith(country.dialCode)) {
+        const localDigits = compact
+          .slice(country.dialCode.length)
+          .replace(/\D/g, '')
+          .replace(/^0+/, '');
+        return {
+          country,
+          localDigits,
+          international: `${country.dialCode}${localDigits}`,
+        };
+      }
+    }
+  }
+
+  let digits = compact.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('90') && digits.length >= 12) {
+    const localDigits = digits.slice(2, 12);
+    return {
+      country: DEFAULT_COUNTRY,
+      localDigits,
+      international: `+90${localDigits}`,
+    };
+  }
+  if (digits.startsWith('0') && digits.length === 11) {
+    digits = digits.slice(1);
+  }
+  return {
+    country: DEFAULT_COUNTRY,
+    localDigits: digits,
+    international: toInternationalPhone(DEFAULT_COUNTRY.dialCode, digits),
+  };
+}
+
+function formatTrLocalDigits(digits: string): string {
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+  }
+  return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+}
+
+function formatLocalDigits(country: CountryCode, digits: string): string {
+  if (country.code === 'TR') return formatTrLocalDigits(digits);
+  const chunks = digits.match(/.{1,3}/g) ?? [digits];
+  return chunks.join(' ');
+}
+
 /** Telefon numarasını uluslararası formata çevirir: +905321234567 */
 export function toInternationalPhone(dialCode: string, localNumber: string): string {
   const digits = localNumber.replace(/\D/g, '').replace(/^0+/, '');
   return `${dialCode}${digits}`;
 }
 
-/** Uluslararası formatı görüntü formatına çevirir: +90 532 123 45 67 */
+/** Uluslararası formatı görüntü formatına çevirir: +90 533 417 44 77 */
 export function formatPhoneDisplay(international: string): string {
-  return international.replace(/(\+\d{1,3})(\d+)/, (_, code, num) => {
-    // Basit boşluklu format: her 3-4 rakamda bir boşluk
-    const chunks = num.match(/.{1,3}/g) ?? [num];
-    return `${code} ${chunks.join(' ')}`;
-  });
+  if (!international?.trim()) return '';
+  const { country, localDigits } = parseInternationalPhone(international);
+  if (!localDigits) return country.dialCode;
+  return `${country.dialCode} ${formatLocalDigits(country, localDigits)}`;
 }

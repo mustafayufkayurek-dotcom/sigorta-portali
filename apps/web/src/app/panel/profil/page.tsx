@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import { apiClient } from '@/lib/api-client';
+import { formatPhoneDisplay } from '@/data/country-codes';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -304,7 +305,7 @@ export default function ProfilPage() {
           {profile.phone && (
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1.5">Telefon</label>
-              <input type="text" value={profile.phone} className={inputCls} disabled readOnly />
+              <input type="text" value={formatPhoneDisplay(profile.phone)} className={inputCls} disabled readOnly />
             </div>
           )}
           <div>

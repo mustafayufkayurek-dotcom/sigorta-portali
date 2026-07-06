@@ -1920,7 +1920,7 @@ export default function KullanicilarPage() {
                     <PanelTableTd
                       colId="name"
                       className="px-4 py-3"
-                      title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(toInternationalFormat(u.phone))}` : ''}`}
+                      title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(u.phone)}` : ''}`}
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
@@ -1931,8 +1931,8 @@ export default function KullanicilarPage() {
                             {u.firstName} {u.lastName}
                           </p>
                           {u.phone && (
-                            <p className="truncate text-xs text-slate-400">
-                              {formatPhoneDisplay(toInternationalFormat(u.phone))}
+                            <p className="truncate text-xs text-slate-400 tabular-nums tracking-wide">
+                              {formatPhoneDisplay(u.phone)}
                             </p>
                           )}
                         </div>

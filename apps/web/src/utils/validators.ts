@@ -1,3 +1,5 @@
+import { formatPhoneDisplay, parseInternationalPhone } from '@/data/country-codes';
+
 // ─── TC Kimlik No ────────────────────────────────────────────────────────────
 
 export function validateTCKimlik(tc: string): boolean {
@@ -112,14 +114,16 @@ export function validatePhone(phone: string, dialCode?: string, phoneLength?: nu
 
   // Uluslararası format: + ile başlıyor
   if (phone.startsWith('+')) {
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 7) return { valid: false, error: 'Geçersiz telefon numarası' };
-    // Görüntü formatı: +90 532 123 45 67
-    const dc = dialCode ?? ('+' + digits.slice(0, 2));
-    const localPart = dialCode ? digits.slice(dialCode.replace('+', '').length) : digits.slice(2);
-    const chunks = localPart.match(/.{1,3}/g) ?? [localPart];
-    const formatted = `${dc} ${chunks.join(' ')}`;
-    return { valid: true, formatted, international: phone.replace(/\s/g, '') };
+    const { country, localDigits, international } = parseInternationalPhone(phone);
+    if (localDigits.length < 7) return { valid: false, error: 'Geçersiz telefon numarası' };
+    if (phoneLength && localDigits.length !== phoneLength) {
+      return { valid: false, error: `Numara ${phoneLength} hane olmalıdır` };
+    }
+    return {
+      valid: true,
+      formatted: formatPhoneDisplay(international),
+      international,
+    };
   }
 
   // Yerel format (Türkiye varsayımı)
@@ -170,19 +174,18 @@ export function formatPhone(phone: string): string {
   return result.formatted ?? phone;
 }
 
-/** Liste ve kartlarda okunaklı gösterim: 0555 123 45 67 (4-3-2-2) */
+/** Liste ve kartlarda okunaklı gösterim: 0533 417 44 77 (4-3-2-2) */
 export function formatPhoneGrouped(phone: string): string {
   if (!phone?.trim()) return '';
-  let digits = phone.replace(/\D/g, '');
+  const { country, localDigits, international } = parseInternationalPhone(phone);
 
-  if (digits.startsWith('90') && digits.length >= 12) {
-    digits = `0${digits.slice(2, 12)}`;
-  } else if (digits.length === 10 && !digits.startsWith('0')) {
-    digits = `0${digits}`;
+  if (country.code === 'TR' && localDigits.length === 10) {
+    const local = `0${localDigits}`;
+    return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7, 9)} ${local.slice(9, 11)}`;
   }
 
-  if (digits.length === 11 && digits.startsWith('0')) {
-    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
+  if (international.startsWith('+')) {
+    return formatPhoneDisplay(international);
   }
 
   const validated = validatePhone(phone);
@@ -195,9 +198,8 @@ export function formatPhoneGrouped(phone: string): string {
  */
 export function toInternationalFormat(phone: string, dialCode = '+90'): string {
   if (!phone) return '';
-  if (phone.startsWith('+')) return phone.replace(/\s/g, '');
-  const digits = phone.replace(/\D/g, '').replace(/^0+/, '');
-  return `${dialCode}${digits}`;
+  const { international } = parseInternationalPhone(phone.startsWith('+') ? phone : `${dialCode}${phone.replace(/\D/g, '').replace(/^0+/, '')}`);
+  return international || phone.replace(/\s/g, '');
 }
 
 // ─── E-posta ─────────────────────────────────────────────────────────────────
