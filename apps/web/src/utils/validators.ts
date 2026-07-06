@@ -114,7 +114,7 @@ export function validatePhone(phone: string, dialCode?: string, phoneLength?: nu
 
   // Uluslararası format: + ile başlıyor
   if (phone.startsWith('+')) {
-    const { country, localDigits, international } = parseInternationalPhone(phone);
+    const { localDigits, international } = parseInternationalPhone(phone);
     if (localDigits.length < 7) return { valid: false, error: 'Geçersiz telefon numarası' };
     if (phoneLength && localDigits.length !== phoneLength) {
       return { valid: false, error: `Numara ${phoneLength} hane olmalıdır` };

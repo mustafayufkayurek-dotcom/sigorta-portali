@@ -24,8 +24,9 @@ export const SYNC_INITIAL_DAYS = 30;
 export const INBOUND_SYNC_CUTOFF_ISO = '2026-06-30T21:00:00.000Z';
 export const INBOUND_SYNC_CUTOFF = new Date(INBOUND_SYNC_CUTOFF_ISO);
 
-export function isInboundBeforeSyncCutoff(receivedAt: Date): boolean {
-  return receivedAt.getTime() < INBOUND_SYNC_CUTOFF.getTime();
+export function isInboundBeforeSyncCutoff(receivedAt: Date | string): boolean {
+  const at = receivedAt instanceof Date ? receivedAt : new Date(receivedAt);
+  return at.getTime() < INBOUND_SYNC_CUTOFF.getTime();
 }
 
 /** Graph delta ilk URL filtresi — kesim ile rolling pencereden geç olanı kullan */
