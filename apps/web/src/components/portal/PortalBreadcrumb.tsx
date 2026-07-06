@@ -14,7 +14,7 @@ export default function PortalBreadcrumb({
   currentLabel,
 }: PortalBreadcrumbProps) {
   return (
-    <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+    <nav className="mb-2 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-400">
       <Link href="/panel" className="hover:text-blue-600 transition-colors">
         Dashboard
       </Link>
@@ -23,7 +23,7 @@ export default function PortalBreadcrumb({
         {portalHomeLabel}
       </Link>
       <span>/</span>
-      <span className="text-slate-600 font-medium">{currentLabel}</span>
+      <span className="truncate font-medium text-slate-600">{currentLabel}</span>
     </nav>
   );
 }

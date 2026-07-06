@@ -60,10 +60,19 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 
+import { getAccessToken } from '@/utils/auth-session';
+
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+function getToken() { return getAccessToken(); }
+function authHeader() { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
+
+function formatVendorRecordOwner(v: { createdByUser?: { firstName?: string; lastName?: string } | null }): string {
+  const user = v.createdByUser;
+  if (!user) return '—';
+  const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+  return name || '—';
+}
 
 // ── Doğum Tarihi mask helpers ──────────────────────────────────────────────────
 function maskBirthDate(input: string): string {
@@ -770,6 +779,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'lastJob', label: 'Son İş', defaultWidth: 96, minWidth: 88 },
   { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 128, minWidth: 112 },
   { id: 'status', label: 'Durum', defaultWidth: 96, minWidth: 88 },
+  { id: 'recordOwner', label: 'Kayıt Sahibi', defaultWidth: 140, minWidth: 108 },
 ];
 
 export default function VendorsPage() {
@@ -1794,7 +1804,7 @@ export default function VendorsPage() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className="space-y-5">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
@@ -1804,22 +1814,22 @@ export default function VendorsPage() {
 
       {/* ── Page Header ── */}
       <div className="page-header !mb-0">
-        <div className="flex items-center gap-3">
-          <div className="page-header-icon">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="page-header-icon shrink-0">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="page-title">Tedarikçiler</h2>
             <p className="page-subtitle">Tedarikçi ve Alt Yüklenici Yönetimi</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowDiscoveryPanel(true)} className="btn-secondary">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <button type="button" onClick={() => setShowDiscoveryPanel(true)} className="btn-secondary w-full justify-center sm:w-auto">
             Dış Kaynakta Ara
           </button>
-          <button type="button" onClick={openCreate} className="btn-primary">
+          <button type="button" onClick={openCreate} className="btn-primary w-full justify-center sm:w-auto">
             {Icon.plus} Yeni Tedarikçi
           </button>
         </div>
@@ -1875,41 +1885,41 @@ export default function VendorsPage() {
       )}
 
       {/* ── Stats ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-2.5 overflow-x-auto">
-        <div className="flex items-center gap-1 min-w-max">
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="rounded-2xl border border-slate-200/70 bg-white px-3 py-3 shadow-card sm:px-4 sm:py-2.5">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-1">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
               </svg>
             </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Toplam</p>
-              <p className="text-base font-bold text-slate-800 leading-tight tabular-nums">{summary.total}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium leading-none text-slate-400">Toplam</p>
+              <p className="text-base font-bold leading-tight tabular-nums text-slate-800">{summary.total}</p>
             </div>
           </div>
-          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="hidden w-px shrink-0 bg-slate-100 sm:block sm:h-7" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Aktif</p>
-              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{summary.activeCount}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium leading-none text-slate-400">Aktif</p>
+              <p className="text-base font-bold leading-tight tabular-nums text-emerald-700">{summary.activeCount}</p>
             </div>
           </div>
-          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="hidden w-px shrink-0 bg-slate-100 sm:block sm:h-7" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Kurumsal</p>
-              <p className="text-base font-bold text-indigo-700 leading-tight tabular-nums">{summary.corporateCount}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium leading-none text-slate-400">Kurumsal</p>
+              <p className="text-base font-bold leading-tight tabular-nums text-indigo-700">{summary.corporateCount}</p>
             </div>
           </div>
         </div>
@@ -2002,7 +2012,7 @@ export default function VendorsPage() {
             ))}
           </select>
 
-          <div className="flex-shrink-0 sm:ml-auto">
+          <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
         </div>
@@ -2151,7 +2161,113 @@ export default function VendorsPage() {
           </div>
         </div>
       ) : (
-        <div className="table-container">
+        <>
+          {/* Mobil kart listesi */}
+          <div className="space-y-2 md:hidden">
+            {vendors.map((v) => (
+              <div
+                key={v.id}
+                role="button"
+                tabIndex={0}
+                className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors active:bg-slate-50 ${selectedIds.has(v.id) ? 'border-indigo-300 bg-indigo-50/40' : ''}`}
+                onClick={() => {
+                  setDrawerVendorId(v.id);
+                  setDrawerOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setDrawerVendorId(v.id);
+                    setDrawerOpen(true);
+                  }
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${v.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}
+                  >
+                    {v.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{v.name}</p>
+                        {v.type ? (
+                          <p className="mt-0.5 truncate text-xs text-slate-500">{formatVendorTypeLabel(v.type)}</p>
+                        ) : null}
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${v.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}
+                      >
+                        {v.status === 'active' ? 'Aktif' : 'Pasif'}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}</span>
+                      {v.city ? (
+                        <span className="inline-flex items-center gap-1">
+                          {Icon.mapPin}
+                          {v.city}
+                          {v.district ? ` / ${v.district}` : ''}
+                        </span>
+                      ) : null}
+                      {(v._count?.costEntries ?? 0) > 0 ? (
+                        <span>{v._count.costEntries} iş</span>
+                      ) : null}
+                      <span>Kayıt: {formatVendorRecordOwner(v)}</span>
+                    </div>
+                    {v.phone ? (
+                      <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                        <PhoneContactActions phone={v.phone} variant="inline" accent="indigo" size="sm" />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                  <Link
+                    href={`/panel/tedarikciler/${v.id}`}
+                    className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-center text-xs font-semibold text-white"
+                  >
+                    Detay
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(v)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                  >
+                    Düzenle
+                  </button>
+                </div>
+              </div>
+            ))}
+            {total > limit && (
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <span className="text-xs text-slate-400">
+                  {(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    ← Önceki
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page * limit >= total}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    Sonraki →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="table-container hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
@@ -2173,6 +2289,7 @@ export default function VendorsPage() {
                   <PanelTableTh colId="lastJob" className="table-th-center">Son İş</PanelTableTh>
                   <PanelTableTh colId="contractEnd" className="table-th-center">Sözleşme Bitiş</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="recordOwner" className="table-th">Kayıt Sahibi</PanelTableTh>
                   <th className="table-th w-32" />
                 </tr>
               </thead>
@@ -2266,6 +2383,9 @@ export default function VendorsPage() {
                       {v.status === 'active' ? 'Aktif' : 'Pasif'}
                     </button>
                   </PanelTableTd>
+                  <PanelTableTd colId="recordOwner" className="table-td">
+                    <span className="text-xs text-slate-600">{formatVendorRecordOwner(v)}</span>
+                  </PanelTableTd>
                   <td className="table-td">
                     <div className="flex items-center gap-1.5 justify-end">
                       <Link
@@ -2300,6 +2420,7 @@ export default function VendorsPage() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* ── Vendor Drawer ── */}
@@ -2349,8 +2470,22 @@ export default function VendorsPage() {
               );
             })()}
 
-            {/* Section Tabs — 3+2 satır; yatay kaydırma gerekmez */}
-            <div className="grid grid-cols-6 border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
+            {/* Section Tabs — mobil: dikey; masaüstü: 3+2 grid */}
+            <div className="flex shrink-0 flex-col border-b border-slate-100 bg-slate-50/50 sm:hidden">
+              {MODAL_SECTIONS.map((sec, i) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setActiveSection(i)}
+                  className={`border-b border-slate-100 px-4 py-2.5 text-left text-xs font-medium transition-all last:border-b-0 ${
+                    activeSection === i ? 'bg-white text-indigo-700 ring-1 ring-inset ring-indigo-200' : 'text-slate-600'
+                  }`}
+                >
+                  {i + 1}. {sec}
+                </button>
+              ))}
+            </div>
+            <div className="hidden shrink-0 grid-cols-6 border-b border-slate-100 bg-slate-50/50 sm:grid">
               {MODAL_SECTIONS.map((sec, i) => (
                 <button
                   key={sec}
@@ -2366,13 +2501,13 @@ export default function VendorsPage() {
               ))}
             </div>
 
-            <div className="min-h-0 overflow-y-auto p-6">
+            <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
               {/* ── Section 0: Temel Bilgiler ── */}
               {activeSection === 0 && (
                 <div>
                   {/* Tip Toggle */}
                   <SectionDivider icon={Icon.building} title="Tedarikçi Tipi" />
-                  <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2">
                     {[
                       { val: 'corporate', label: 'Kurumsal', icon: Icon.building, color: 'indigo' },
                       { val: 'individual', label: 'Bireysel', icon: Icon.user, color: 'purple' },
@@ -2390,8 +2525,8 @@ export default function VendorsPage() {
 
                   {/* Tür */}
                   <SectionDivider icon={Icon.briefcase} title="Tedarikçi Türü" />
-                  <div className="flex gap-2 mb-3">
-                    <div className="flex-1">
+                  <div className="flex flex-col gap-2 mb-3 sm:flex-row">
+                    <div className="min-w-0 flex-1">
                       <select
                         className={inp}
                         value={form.type}
@@ -2435,7 +2570,7 @@ export default function VendorsPage() {
                       )}
                     </div>
                     <button type="button" onClick={() => setShowAddType(!showAddType)}
-                      className="flex items-center gap-1 text-xs bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-100 whitespace-nowrap">
+                      className="flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600 hover:bg-slate-100 sm:w-auto sm:justify-start sm:py-2">
                       {Icon.plus} Yeni Tür
                     </button>
                   </div>
@@ -2585,7 +2720,7 @@ export default function VendorsPage() {
                   )}
 
                   <SectionDivider icon={Icon.briefcase} title="Hizmet Kategorisi" />
-                  <div className="grid grid-cols-3 gap-2 mb-6">
+                  <div className="grid grid-cols-1 gap-2 mb-6 sm:grid-cols-3 sm:gap-2">
                     {VENDOR_CATEGORIES.map(({ value, label }) => (
                       <button
                         key={value}
@@ -2606,13 +2741,13 @@ export default function VendorsPage() {
                   {form.entityType === 'corporate' && (
                     <>
                       <SectionDivider icon={Icon.building} title="Kurumsal Bilgiler" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="col-span-1 sm:col-span-2">
                           <FormField label="Şirket Adı" required error={fieldErrors.name}>
                             <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, name: v })); }} />
                           </FormField>
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                         <FormField label="Vergi No">
                           <div className="flex gap-2">
                             <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
@@ -2645,7 +2780,7 @@ export default function VendorsPage() {
                   {form.entityType === 'individual' && (
                     <>
                       <SectionDivider icon={Icon.user} title="Bireysel Bilgiler" />
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField label="Ad" required error={fieldErrors.firstName}>
                           <input ref={nameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Ad" value={form.firstName} onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value, name: `${e.target.value} ${p.lastName}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.firstName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v, name: `${v} ${p.lastName}`.trim() })); }} />
                         </FormField>
@@ -2734,7 +2869,7 @@ export default function VendorsPage() {
                                       className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
                                   )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   <FormField label="Ad">
                                     <input className={inp} placeholder="Ad" value={c.firstName} onChange={(e) => upC(idx, 'firstName', e.target.value)} />
                                   </FormField>
@@ -2791,7 +2926,7 @@ export default function VendorsPage() {
                                       />
                                     )}
                                   </FormField>
-                                  <div className="col-span-2">
+                                  <div className="col-span-1 sm:col-span-2">
                                   <FormField label="Telefon">
                                     <ContactPhoneField
                                       phone={c.phone}
@@ -2846,7 +2981,7 @@ export default function VendorsPage() {
                                   className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <FormField label="Ad">
                                 <input className={inp} placeholder="Yetkili Kişinin Adı" value={c.firstName} onChange={(e) => upC(idx, 'firstName', e.target.value)} />
                               </FormField>
@@ -2903,7 +3038,7 @@ export default function VendorsPage() {
                                   />
                                 )}
                               </FormField>
-                              <div className="col-span-2">
+                              <div className="col-span-1 sm:col-span-2">
                               <FormField label="Telefon">
                                 <ContactPhoneField
                                   phone={c.phone}
@@ -2952,7 +3087,7 @@ export default function VendorsPage() {
                 <div>
                   <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
                   <SectionDivider icon={Icon.mapPin} title="Adres Bilgileri" />
-                  <div className="grid grid-cols-2 gap-4 mb-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-2">
                     <FormField label={ADDRESS_FIELD.province}>
                       <select className={inp} value={form.cityCode}
                         onChange={(e) => {
@@ -2974,7 +3109,7 @@ export default function VendorsPage() {
                         ))}
                       </select>
                     </FormField>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <FormField label={ADDRESS_FIELD.neighborhood}>
                         <NeighborhoodSelect
                           provinceName={form.city}
@@ -2994,7 +3129,7 @@ export default function VendorsPage() {
                           if (v) setForm((p) => ({ ...p, streetName: v }));
                         }} />
                     </FormField>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <FormField label={ADDRESS_FIELD.buildingNo}>
                         <input className={inp} placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
                           value={form.buildingNo}
@@ -3006,7 +3141,7 @@ export default function VendorsPage() {
                           onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))} />
                       </FormField>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <FormField label={ADDRESS_FIELD.openAddress}>
                         <textarea rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                           placeholder={ADDRESS_FIELD.openAddressPlaceholder} value={form.address}
@@ -3014,7 +3149,7 @@ export default function VendorsPage() {
                       </FormField>
                     </div>
                     {/* Konum araçları */}
-                    <div className="col-span-2 flex flex-wrap gap-2">
+                    <div className="col-span-1 sm:col-span-2 flex flex-wrap gap-2">
                         <button
                           type="button"
                           disabled={geocoding || !vendorAddressLabel}
@@ -3047,20 +3182,20 @@ export default function VendorsPage() {
                         </button>
                       </div>
                     {!vendorAddressLabel && (
-                      <p className="col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun.</p>
+                      <p className="col-span-1 sm:col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun.</p>
                     )}
                     {vendorAddressLabel && (
-                      <div className="col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
+                      <div className="col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
                         <span className="font-medium text-slate-500">Adres özeti: </span>{vendorAddressLabel}
                       </div>
                     )}
                     {geocodeMsg && (
-                      <div className={`col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <div className={`col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         {geocodeMsg}
                       </div>
                     )}
                     {locationCoords && (
-                      <div className="col-span-2">
+                      <div className="col-span-1 sm:col-span-2">
                         <LocationPreview
                           lat={locationCoords.lat}
                           lng={locationCoords.lng}
@@ -3159,7 +3294,7 @@ export default function VendorsPage() {
                   <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed">
                     {VENDOR_RELATION_SECTION_HINT}
                   </p>
-                  <div className="grid grid-cols-2 gap-4 mb-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-2">
                     <FormField label="Referans">
                       <input className={inp} placeholder="Bu Tedarikçiyi Kim Önerdi?" value={form.referral}
                         onChange={(e) => setForm((p) => ({ ...p, referral: e.target.value }))} />
@@ -3195,7 +3330,7 @@ export default function VendorsPage() {
 
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
                   <SectionDivider icon={Icon.bank} title="Finans & Banka" />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField label="IBAN" error={ibanError ?? undefined}>
                       <input
                         className={ibanError ? inpError : inp}
@@ -3226,7 +3361,7 @@ export default function VendorsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   } title="Sözleşme Bilgileri" />
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
                     <FormField label="Sözleşme Başlangıç Tarihi">
                       <input
                         type="text"
@@ -3419,7 +3554,7 @@ export default function VendorsPage() {
             </div>
 
             {/* Panel Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
+            <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex gap-1.5">
                 {MODAL_SECTIONS.map((_, i) => (
                   <button key={i} type="button" onClick={() => setActiveSection(i)}

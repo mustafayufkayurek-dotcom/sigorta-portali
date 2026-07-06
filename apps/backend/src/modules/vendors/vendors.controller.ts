@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
 @ApiTags('vendors')
 @ApiBearerAuth()
@@ -104,14 +105,15 @@ export class VendorsController {
   @Post()
   @RequirePermissions('vendor.create')
   @ApiOperation({ summary: 'Yeni tedarikçi ekle' })
-  async create(@Body() dto: any) {
+  async create(@Body() dto: any, @CurrentUser() user: any) {
     if (!dto?.name?.trim()) {
       throw new BadRequestException('Ad alanı zorunludur');
     }
     if (!dto?.phone?.trim()) {
       throw new BadRequestException('Telefon alanı zorunludur');
     }
-    const data = await this.vendorsService.create(dto);
+    const userId = user?.id ?? user?.userId;
+    const data = await this.vendorsService.create(dto, userId);
     return { success: true, data };
   }
 

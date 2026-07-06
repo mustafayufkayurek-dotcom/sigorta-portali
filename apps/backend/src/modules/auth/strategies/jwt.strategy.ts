@@ -30,13 +30,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             },
           },
         },
+        userInsuranceCompanyScopes: {
+          select: { insuranceCompanyId: true },
+        },
       },
     });
     return {
+      id: user?.id ?? payload.sub,
       userId: payload.sub,
       email: payload.email,
       roleCode: user?.role?.code || null,
       permissions: user?.role?.rolePermissions?.map((rp) => rp.permission.code) || [],
+      insuranceCompanyScopes:
+        user?.userInsuranceCompanyScopes?.map((s) => s.insuranceCompanyId) ?? [],
     };
   }
 }

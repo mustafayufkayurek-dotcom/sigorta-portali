@@ -25,11 +25,13 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ],
   FINANS: [
     'customer.view',
+    'vendor.view', 'vendor.create', 'vendor.update',
     'claim_file.view',
     'invoice.view', 'invoice.create', 'invoice.update',
     'budget.view', 'budget.create', 'budget.review',
     'payment.view', 'payment.create', 'payment.update',
     'report.view',
+    'operation_inbox.view', 'operation_inbox.manage',
   ],
   ACCOUNTANT: [
     'customer.view', 'claim_file.view',

@@ -8,14 +8,15 @@ import {
   portalNextStepHint,
   portalStatusLabel,
 } from '@/utils/portal-file-flow-labels';
+import { getAccessToken } from '@/utils/auth-session';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 const UPLOADS_ORIGIN = API.replace(/\/api\/v1$/, '');
 
 function authHeader() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-  return { Authorization: `Bearer ${token}` };
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 type FlowEntry = {

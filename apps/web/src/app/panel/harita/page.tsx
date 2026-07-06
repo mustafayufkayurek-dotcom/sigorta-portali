@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { getAccessToken } from '@/utils/auth-session';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -148,8 +149,7 @@ export default function HaritaPage() {
   const [rota, setRota] = useState<RotaNoktasi[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
 
-  const token = () =>
-    typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? '' : '';
+  const token = () => getAccessToken() ?? '';
 
   const filteredPoints = points.filter((p) => {
     if (filter === 'all') return true;
@@ -287,15 +287,16 @@ export default function HaritaPage() {
   const seciliPersonelAdi = personelPoints.find((p) => p.id === seciliPersonel)?.name;
 
   return (
-    <div className="flex min-h-[360px] flex-col gap-3 h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-130px)]">
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
-        <div className="flex flex-wrap gap-2">
+    <div className="flex h-[calc(100dvh-3.5rem-1rem)] min-h-[360px] flex-col gap-3 overflow-hidden sm:h-[calc(100vh-130px)]">
+      <div className="min-w-0 shrink-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        {/* Filtre sekmeleri — mobil: 2 sütun grid */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setFilter(tab.key)}
-              className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+              className={`rounded-full px-3 py-2 text-xs font-medium transition sm:py-1 sm:text-sm ${
                 filter === tab.key
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -311,12 +312,14 @@ export default function HaritaPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-l border-slate-200 pl-3">
-          <span className="text-sm font-semibold text-slate-900">Personel Rota:</span>
+        {/* Personel rota — mobil: dikey stack */}
+        <div className="space-y-2 border-t border-slate-100 pt-3 sm:flex sm:flex-wrap sm:items-end sm:gap-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+          <p className="text-xs font-semibold text-slate-800 sm:sr-only">Personel Rota</p>
+          <span className="hidden text-sm font-semibold text-slate-900 sm:inline">Personel Rota:</span>
           <select
             value={seciliPersonel}
             onChange={(e) => setSeciliPersonel(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-[13px] text-slate-700"
+            className="input-base-sm w-full min-w-0 sm:w-auto sm:min-w-[10rem]"
           >
             <option value="">Personel Seç</option>
             {personelPoints.map((p) => (
@@ -325,57 +328,62 @@ export default function HaritaPage() {
               </option>
             ))}
           </select>
-          <TrDateInput
-            value={rotaBaslangic}
-            onChange={setRotaBaslangic}
-            className="w-[7.5rem] rounded-md border border-slate-300 px-2 py-1 text-[13px]"
-          />
-          <TrDateInput
-            value={rotaBitis}
-            onChange={setRotaBitis}
-            className="w-[7.5rem] rounded-md border border-slate-300 px-2 py-1 text-[13px]"
-          />
-          <button
-            type="button"
-            onClick={fetchRota}
-            disabled={!seciliPersonel}
-            className={`rounded-md px-3 py-1 text-[13px] font-semibold text-white ${
-              seciliPersonel ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-default bg-slate-300'
-            }`}
-          >
-            Rotayı Göster
-          </button>
-          <button
-            type="button"
-            onClick={fetchFieldMap}
-            className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-[13px] text-slate-700 hover:bg-slate-100"
-          >
-            Yenile
-          </button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+            <TrDateInput
+              value={rotaBaslangic}
+              onChange={setRotaBaslangic}
+              className="input-base-sm w-full min-w-0 sm:w-[7.5rem]"
+            />
+            <TrDateInput
+              value={rotaBitis}
+              onChange={setRotaBitis}
+              className="input-base-sm w-full min-w-0 sm:w-[7.5rem]"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+            <button
+              type="button"
+              onClick={fetchRota}
+              disabled={!seciliPersonel}
+              className={`rounded-lg px-3 py-2.5 text-xs font-semibold text-white sm:py-1.5 sm:text-[13px] ${
+                seciliPersonel ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-default bg-slate-300'
+              }`}
+            >
+              Rotayı Göster
+            </button>
+            <button
+              type="button"
+              onClick={fetchFieldMap}
+              className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 hover:bg-slate-100 sm:py-1.5 sm:text-[13px]"
+            >
+              Yenile
+            </button>
+          </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-slate-600">
+        {/* Lejant */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:text-xs">
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
             Personel Aktif · {activePersonelCount}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600" />
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-blue-600" />
             Onarım · {counts.vendor_hasar}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-orange-600" />
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-orange-600" />
             Acil · {counts.vendor_acil}
           </span>
           {yukleniyor && <span className="text-slate-400">Yükleniyor...</span>}
         </div>
       </div>
 
-      <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-lg border border-slate-200">
-        <div ref={mapContainerRef} className="h-full w-full" />
+      <div className="relative min-h-[240px] flex-1 overflow-hidden rounded-xl border border-slate-200">
+        <div ref={mapContainerRef} className="h-full w-full min-h-[240px]" />
         {!yukleniyor && filteredPoints.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/70">
-            <div className="rounded-lg border border-slate-200 bg-white px-6 py-4 text-center shadow-sm">
+            <div className="mx-3 rounded-lg border border-slate-200 bg-white px-4 py-4 text-center shadow-sm sm:px-6">
               <p className="text-sm font-semibold text-slate-800">Haritada Gösterilecek Konum Yok</p>
               <p className="mt-1 text-xs text-slate-500">
                 Seçili filtre için aktif personel veya tedarikçi bulunamadı.
@@ -386,7 +394,7 @@ export default function HaritaPage() {
       </div>
 
       {rota.length > 0 && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-[13px] text-blue-900">
+        <div className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900 sm:text-[13px]">
           {seciliPersonelAdi ?? 'Personel'} — {rota.length} Konum Noktası Gösteriliyor
           <button
             type="button"
@@ -397,7 +405,7 @@ export default function HaritaPage() {
                 polylineRef.current = null;
               }
             }}
-            className="ml-3 text-xs text-blue-700 underline"
+            className="ml-2 text-xs text-blue-700 underline sm:ml-3"
           >
             Temizle
           </button>

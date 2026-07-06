@@ -25,6 +25,9 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
+import PortalBottomNav from '@/components/portal/PortalBottomNav';
+import { getExpertPortalNav, getInsurancePortalNav } from '@/config/portal-nav';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -62,7 +65,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF'] },
+  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -75,7 +78,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
   { path: '/panel/harita', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/acil-yardim', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
-  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/operasyon', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
 ];
@@ -104,7 +107,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF'] },
+  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -118,7 +121,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
   { path: '/panel/harita', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/acil-yardim', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
-  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
+  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/operasyon', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
 ];
@@ -255,28 +258,19 @@ function getPanelMainLinks({
   pendingRevisionCount: number;
 }): NavigationLink[] {
   return isExpert
-    ? [
-        { title: 'Yeni İhbar', href: '/panel/eksper-portal?openIhbar=1', icon: Plus },
-        { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: Users },
-        { title: 'Dosya Akışı', href: '/panel/eksper-portal/randevular', icon: GitBranch },
-        { title: 'Bekleyen Onaylar', href: '/panel/eksper-portal/onaylar', icon: ShieldCheck },
-        { title: 'Atanmış Dosyalar', href: '/panel/eksper-portal/dosyalar', icon: ClipboardList },
-      ]
+    ? getExpertPortalNav()
     : isInsuranceCompanyUser
-      ? [
-          { title: 'Sigorta Paneli', href: '/panel/sigorta-portal', icon: Building2 },
-          { title: 'Bekleyen Onaylar', href: '/panel/sigorta-portal/onaylar', icon: ShieldCheck },
-          { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
-          { title: 'Dosya Akışı', href: '/panel/sigorta-portal/dosya-akisi', icon: GitBranch },
-        ]
+      ? getInsurancePortalNav()
       : isOfficeStaff
         ? [
             { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
+            { title: 'CRM', href: '/panel/crm', icon: GitBranch },
             ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Harita', href: '/panel/harita', icon: MapPin },
+            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : isFieldStaff
@@ -297,6 +291,7 @@ function getPanelMainLinks({
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
             { title: 'Raporlar', href: '/panel/raporlar', icon: ClipboardList },
+            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : [
@@ -403,36 +398,41 @@ function Navbar({
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const displayLogo = companyLogo || CORPORATE_LOGO_LIGHT;
-  const logoContent = (
-    <img
-      src={displayLogo}
-      alt={companyName}
-      className="block max-h-[52px] w-auto max-w-[220px] object-contain object-left"
-      onError={(e) => {
-        if (e.currentTarget.src !== CORPORATE_LOGO_LIGHT) {
-          e.currentTarget.src = CORPORATE_LOGO_LIGHT;
-        }
-      }}
-    />
-  );
+  const isOfficeStaff = isOfficeStaffRole(roleCode);
+  const usePanelHomeLogo = isPortalUser || isFieldStaff || isOfficeStaff;
+  const displayLogo = isPortalUser || isFieldStaff || isOfficeStaff
+    ? CORPORATE_LOGO_LIGHT
+    : (companyLogo || CORPORATE_LOGO_LIGHT);
+  const portalHomeHref = isExpert
+    ? '/panel/eksper-portal'
+    : isInsuranceCompanyUser
+      ? '/panel/sigorta-portal'
+      : '/panel';
+  const panelLogoHref = isPortalUser ? portalHomeHref : '/panel';
 
   return (
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
-      <div className="mx-auto max-w-screen-2xl px-4">
-        <div className="flex h-[72px] items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-5 min-w-0">
-            <a
-              href="https://meridyenassistance.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-14 min-w-[176px] shrink-0 items-center justify-center gap-2.5 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-md transition hover:border-blue-200 dark:border-slate-700 dark:bg-slate-100"
-              title="Meridyen Assistance web sitesini yeni sekmede aç"
-            >
-              {logoContent}
-            </a>
-
+      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4">
+        <div className="flex h-14 sm:h-[60px] items-center justify-between gap-2">
+          {/* Logo — portal ve saha/ofis: panel ana sayfa; diğer: kurumsal site */}
+          <div className="flex min-w-0 flex-1 items-center">
+            {usePanelHomeLogo ? (
+              <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
+                <BrandLogoMark
+                  alt="Meridyen Assistance"
+                  src={displayLogo}
+                  variant="panel"
+                />
+              </Link>
+            ) : (
+              <BrandLogoMark
+                alt={companyName}
+                src={displayLogo}
+                variant="navbar"
+                href="https://meridyenassistance.com"
+                title="Meridyen Assistance web sitesini yeni sekmede aç"
+              />
+            )}
           </div>
 
           {/* Right side */}
@@ -590,11 +590,12 @@ function Navbar({
               )}
             </div>
 
-            {/* Mobil hamburger */}
+            {/* Mobil hamburger — portal kullanıcılarında alt menü var; yalnızca profil/çıkış */}
             <button
               type="button"
               className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
               onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label={isPortalUser ? 'Hesap menüsü' : 'Menü'}
             >
               {mobileMenuOpen ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -608,25 +609,38 @@ function Navbar({
         {/* Mobil menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-100 py-3 space-y-0.5">
-            {visibleMainLinks.map((link) => (
+            {!isPortalUser
+              ? visibleMainLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                      <span className="truncate">{link.title}</span>
+                    </span>
+                    {link.alertCount && link.alertCount > 0 ? (
+                      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {link.alertCount > 99 ? '99+' : link.alertCount}
+                      </span>
+                    ) : null}
+                  </Link>
+                ))
+              : (
+                  <p className="px-3 pb-2 text-xs text-slate-500">
+                    Sayfa geçişleri ekranın altındaki menüden yapılır.
+                  </p>
+                )}
+            <div className={`border-t border-slate-100 pt-2 ${isPortalUser ? '' : 'mt-2'}`}>
               <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
+                href="/panel/profil"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="inline-flex min-w-0 items-center gap-2">
-                  {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                  <span className="truncate">{link.title}</span>
-                </span>
-                {link.alertCount && link.alertCount > 0 ? (
-                  <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {link.alertCount > 99 ? '99+' : link.alertCount}
-                  </span>
-                ) : null}
+                Profilim
               </Link>
-            ))}
-            <div className="border-t border-slate-100 pt-2 mt-2">
               <button type="button"
                 onClick={() => { setMobileMenuOpen(false); onLogout(); }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -643,6 +657,15 @@ function Navbar({
 
 function isSettingsPath(pathname: string) {
   return pathname === '/panel/ayarlar' || pathname.startsWith('/panel/ayarlar/');
+}
+
+function isAdminContentPath(pathname: string) {
+  return (
+    isSettingsPath(pathname)
+    || pathname.startsWith('/panel/kullanicilar')
+    || pathname.startsWith('/panel/guvenlik')
+    || pathname.startsWith('/panel/admin')
+  );
 }
 
 function PanelSidebar({
@@ -749,7 +772,7 @@ function PanelSidebar({
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
-      <div className="sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto px-3 py-4">
+      <div className="sticky top-14 sm:top-[60px] h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-60px)] overflow-y-auto px-3 py-4">
         <div className={`mb-3 flex items-center ${collapsed ? 'justify-center px-0' : 'justify-between px-3'}`}>
           {!collapsed ? (
             <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">Menü</p>
@@ -1208,7 +1231,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 overflow-x-hidden">
           <PanelSidebar
             pathname={pathname}
             roleCode={roleCode}
@@ -1270,8 +1293,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         )}
-        <main className="flex-1">
-          <div className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-4 sm:py-6">
+        <main className={`min-w-0 flex-1 overflow-x-hidden ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
+          <div className="mx-auto min-w-0 max-w-screen-2xl px-3 py-4 sm:px-4 sm:py-6">
             <TopProgressBar />
             <GlobalActivityStrip />
             {contextBackLink && (
@@ -1283,9 +1306,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 {contextBackLink.label}
               </Link>
             )}
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-hidden' : undefined}>
+                {children}
+              </div>
+            </ToastProvider>
           </div>
         </main>
+        {isPortalUser && !mustChangePassword ? (
+          <PortalBottomNav variant={isExpert ? 'expert' : 'insurance'} />
+        ) : null}
           </div>
         </div>
         <SessionTimeoutBar />

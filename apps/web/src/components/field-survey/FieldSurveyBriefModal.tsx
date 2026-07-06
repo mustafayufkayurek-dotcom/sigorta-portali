@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { FileDropZone } from '@/components/ui/FileDropZone';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
@@ -317,38 +318,44 @@ export function FieldSurveyBriefModal({
               <p className="text-xs text-slate-600 dark:text-slate-300">{message}</p>
             )}
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handlePickFile}
-                disabled={scanning}
-                className="btn-secondary text-sm"
-              >
-                {scanning ? 'Okunuyor…' : 'Fotoğraf Çek / Seç'}
-              </button>
-              {photoUrl && (
-                <a
-                  href={photoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline self-center"
-                >
-                  Fotoğrafı Gör
-                </a>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
+            <FileDropZone
               accept="image/*"
               capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleScan(f);
-                e.target.value = '';
+              disabled={scanning}
+              clickToOpen={false}
+              inputRef={fileInputRef}
+              onFiles={(files) => {
+                if (files[0]) void handleScan(files[0]);
               }}
-            />
+              className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-4 transition-colors"
+              activeClassName="border-blue-400 bg-blue-50"
+            >
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePickFile();
+                  }}
+                  disabled={scanning}
+                  className="btn-secondary text-sm"
+                >
+                  {scanning ? 'Okunuyor…' : 'Fotoğraf Çek / Seç'}
+                </button>
+                {photoUrl && (
+                  <a
+                    href={photoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline self-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Fotoğrafı Gör
+                  </a>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">Fotoğrafı buraya sürükleyebilirsiniz</p>
+            </FileDropZone>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-medium text-slate-600">

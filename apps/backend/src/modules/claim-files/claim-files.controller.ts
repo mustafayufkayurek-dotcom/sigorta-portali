@@ -35,8 +35,9 @@ export class ClaimFilesController {
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Hasar dosyalarını listele' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
     if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
-      const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
+      const companyIds = await this.claimFilesService.getInsuranceScopes(userId);
       if (companyIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
       }

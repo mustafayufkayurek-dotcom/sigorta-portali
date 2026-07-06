@@ -89,6 +89,7 @@ export class VendorsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
+          createdByUser: { select: { id: true, firstName: true, lastName: true } },
           _count: { select: { serviceAreas: true, vendorWorkGroups: true, costEntries: true } },
           costEntries: {
             orderBy: { entryDate: 'desc' },
@@ -100,8 +101,9 @@ export class VendorsService {
       this.prisma.vendor.count({ where }),
     ]);
 
-    const data = rows.map(({ costEntries, ...v }) => ({
+    const data = rows.map(({ costEntries, createdByUser, ...v }) => ({
       ...v,
+      createdByUser,
       lastJobDate: costEntries[0]?.entryDate ?? null,
     }));
 
@@ -144,10 +146,15 @@ export class VendorsService {
     return vendor;
   }
 
-  async create(data: any) {
+  async create(data: any, createdByUserId?: string) {
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
     applyTitleCase(rest, ['name', 'firstName', 'lastName']);
-    const vendor = await this.prisma.vendor.create({ data: rest });
+    const vendor = await this.prisma.vendor.create({
+      data: {
+        ...rest,
+        ...(createdByUserId ? { createdByUserId } : {}),
+      },
+    });
 
     if (serviceAreas?.length) {
       await this.prisma.vendorServiceArea.createMany({

@@ -171,6 +171,7 @@ model User {
   emergencyInvoicesCreated   EmergencyInvoiceDraft[]   @relation("EmergencyInvoiceCreatedBy")
   // Tedarikçi Sözleşmeleri
   createdVendorContracts     VendorContract[]          @relation("CreatedVendorContracts")
+  createdVendors             Vendor[]                  @relation("CreatedVendors")
   // Dosya Evrak Sistemi
   createdFileDocuments       FileDocument[]            @relation("CreatedFileDocuments")
   physicalUploadedDocuments  FileDocument[]            @relation("PhysicalUploadedBy")
@@ -892,9 +893,11 @@ model Vendor {
   // Acil yardım hizmet kolları — Ayarlar → Meridyen Hizmet Branşları (acil_yardim)
   serviceBranches  Json     @default("[]") @map("service_branches")
   status           String   @default("active")
+  createdByUserId  String?  @map("created_by_user_id")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
+  createdByUser            User?                      @relation("CreatedVendors", fields: [createdByUserId], references: [id])
   budgetItems              BudgetItem[]
   costEntries              CostEntry[]
   serviceAreas             VendorServiceArea[]
@@ -920,6 +923,7 @@ model Vendor {
 
   @@index([status])
   @@index([category])
+  @@index([createdByUserId])
   @@map("vendors")
 }
 

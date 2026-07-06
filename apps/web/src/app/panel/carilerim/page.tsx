@@ -86,7 +86,11 @@ export default function CarilerimPage() {
         return;
       }
       const msg = axios.isAxiosError(err)
-        ? (typeof err.response?.data?.message === 'string' ? err.response.data.message : 'Veriler yüklenemedi.')
+        ? (typeof err.response?.data?.message === 'string'
+          ? err.response.data.message
+          : err.response?.status === 403
+            ? 'Bu sayfayı görüntülemek için yetkiniz yok. Yöneticinizle iletişime geçin.'
+            : 'Veriler yüklenemedi.')
         : 'Veriler yüklenemedi.';
       setError(msg);
       setCustomers([]);
@@ -349,7 +353,11 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
   return (
     <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 px-4 py-8 text-center">
       <p className="text-sm font-medium text-red-700 dark:text-red-400">{message}</p>
-      <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-1">API yanıt vermedi; sayfa şu an çalışmıyor.</p>
+      <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-1">
+        {message.includes('yetkiniz yok')
+          ? 'Oturumu kapatıp tekrar giriş yapmayı deneyin; sorun devam ederse yöneticinize bildirin.'
+          : 'Bağlantı kurulamadı; lütfen tekrar deneyin.'}
+      </p>
       <button type="button" onClick={onRetry} className="mt-4 px-4 py-2 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700">Tekrar yükle</button>
     </div>
   );

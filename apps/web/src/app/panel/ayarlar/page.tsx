@@ -35,7 +35,7 @@ export default function AyarlarPage() {
   }, [searchParams, router]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-w-0 space-y-8">
       <div className="mx-auto max-w-[1500px] space-y-8">
         {saveNotice && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -101,6 +101,6 @@ export default function AyarlarPage() {
           })}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/contexts/ToastContext';
+import SpeechToText from '@/components/SpeechToText';
+import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { getAccessToken } from '@/utils/auth-session';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -13,8 +16,19 @@ const _apiV1Base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api
 const API_V1 = _apiV1Base.endsWith('/api/v1') ? _apiV1Base : `${_apiV1Base}/api/v1`;
 
 function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+  const token = getAccessToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'Content-Type': 'application/json',
+  };
+}
+
+function authHeaders(extra?: Record<string, string>) {
+  const token = getAccessToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -122,18 +136,6 @@ function maskPhoneSimple(raw: string): string {
   return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
 }
 
-function getAccessToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? '' : '';
-}
-
-function authHeaders(extra?: Record<string, string>) {
-  const token = getAccessToken();
-  return {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
-  };
-}
-
 function isUuid(value: string) {
   return /^[0-9a-fA-F-]{36}$/.test(value);
 }
@@ -201,15 +203,21 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const [errors, setErrors] = useState<Partial<Record<keyof IhbarFormData, string>>>({});
   const [saving, setSaving] = useState(false);
   const [loadingLookups, setLoadingLookups] = useState(true);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompanyOption[]>([]);
   const [photos, setPhotos] = useState<UploadItem[]>([]);
   const [scanning, setScanning] = useState(false);
+  const documentScanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
+        if (!getAccessToken()) {
+          setLookupError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+          return;
+        }
         const [companyResponse, provinceResponse, konuResponse] = await Promise.all([
           fetch(`${API_V1}/insurance-companies?limit=200`, { headers: authHeaders() }),
           fetch(`${API_V1}/locations/provinces`, { headers: authHeaders() }),
@@ -226,7 +234,11 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         if (konuResponse.ok && konuBody?.data) {
           const subjects = konuBody.data ?? [];
           setIhbarKonulari(subjects.map((s: any) => ({ value: s.code, label: s.name })));
+        } else {
+          setLookupError(normalizeApiMessage(konuBody, 'İhbar konuları yüklenemedi'));
         }
+      } catch {
+        if (active) setLookupError('Form verileri yüklenemedi');
       } finally {
         if (active) setLoadingLookups(false);
       }
@@ -266,6 +278,15 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
   const set = (key: keyof IhbarFormData, val: string) => {
     setForm((prev) => ({ ...prev, [key]: val }));
     if (errors[key]) setErrors((prev) => { const e = { ...prev }; delete e[key]; return e; });
+  };
+
+  const appendSpeech = (key: keyof IhbarFormData) => (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key]?.trim() ? `${prev[key].trim()} ${trimmed}` : trimmed,
+    }));
   };
 
   const blurTitleCase = (key: keyof IhbarFormData) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -330,8 +351,37 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     setForm((prev) => ({ ...prev, ...next }));
   }, [insuranceCompanies, provinces, loadDistricts]);
 
+  const addPhotoFiles = useCallback((selectedFiles: File[]) => {
+    if (selectedFiles.length === 0) return;
+    const remaining = Math.max(0, MAX_IHBAR_PHOTO_COUNT - photos.length);
+    const nextFiles = selectedFiles.filter((f) => f.type.startsWith('image/')).slice(0, remaining);
+    if (nextFiles.length === 0) {
+      showToast('error', 'Yalnızca görsel dosyaları yükleyebilirsiniz.');
+      return;
+    }
+    const oversized = nextFiles.find((file) => file.size > MAX_IHBAR_PHOTO_SIZE);
+    if (oversized) {
+      showToast('error', 'Her fotoğraf en fazla 10 MB olabilir.');
+      return;
+    }
+    const mapped = nextFiles.map((file) => ({
+      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...mapped].slice(0, MAX_IHBAR_PHOTO_COUNT));
+    if (selectedFiles.length > remaining) {
+      showToast('error', `En fazla ${MAX_IHBAR_PHOTO_COUNT} fotoğraf yükleyebilirsiniz.`);
+    }
+  }, [photos.length, showToast]);
+
   const handleDocumentScan = async (file: File) => {
     if (scanning) return;
+    const token = getAccessToken();
+    if (!token) {
+      showToast('error', 'Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.');
+      return;
+    }
     setScanning(true);
     try {
       const formData = new FormData();
@@ -510,7 +560,18 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
 
           {/* Akıllı belge okuma */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4">
+          <FileDropZone
+            accept="image/*"
+            disabled={scanning || loadingLookups}
+            clickToOpen={false}
+            capture="environment"
+            inputRef={documentScanInputRef}
+            onFiles={(files) => {
+              if (files[0]) void handleDocumentScan(files[0]);
+            }}
+            className="rounded-xl border border-blue-100 bg-blue-50/80 p-4 transition-colors cursor-default"
+            activeClassName="border-blue-300 bg-blue-100/80"
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -522,24 +583,21 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 <p className="text-xs text-slate-600 mt-1">
                   Poliçe, ihbar formu veya hasar belgesinin fotoğrafını çekin; alanlar otomatik dolsun.
                 </p>
-                <label className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-blue-200 text-sm font-medium text-blue-700 cursor-pointer hover:bg-blue-50 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    disabled={scanning || loadingLookups}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleDocumentScan(file);
-                      e.target.value = '';
-                    }}
-                  />
+                <p className="text-[11px] text-slate-400 mt-1">Belgeyi buraya sürükleyebilirsiniz</p>
+                <button
+                  type="button"
+                  disabled={scanning || loadingLookups}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    documentScanInputRef.current?.click();
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-blue-200 text-sm font-medium text-blue-700 cursor-pointer hover:bg-blue-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
                   {scanning ? 'Belge Okunuyor...' : 'Kamera / Galeri'}
-                </label>
+                </button>
               </div>
             </div>
-          </div>
+          </FileDropZone>
 
           {/* İhbar Konusu */}
           <div>
@@ -547,13 +605,17 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               İhbar Konusu <span className="text-red-500">*</span>
             </label>
             <select
-              className={`input-base-sm ${errors.konu ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              className={`input-base-sm text-base sm:text-sm ${errors.konu ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.konu}
               onChange={(e) => set('konu', e.target.value)}
+              disabled={loadingLookups}
             >
-              <option value="">Seçiniz...</option>
+              <option value="">{loadingLookups ? 'Konular yükleniyor...' : 'Seçiniz...'}</option>
               {ihbarKonulari.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
             </select>
+            {lookupError && !loadingLookups && (
+              <p className="text-xs text-amber-600 mt-1">{lookupError}</p>
+            )}
             {errors.konu && <p className="text-xs text-red-500 mt-1">{errors.konu}</p>}
           </div>
 
@@ -697,10 +759,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             <label className="text-xs font-medium text-slate-600 block mb-1.5">
               Hasar Adresi <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-2">
               <div>
                 <select
-                  className={`input-base-sm ${errors.il ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                  className={`input-base-sm w-full ${errors.il ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                   value={form.il}
                   onChange={async (e) => {
                     const provinceId = e.target.value;
@@ -720,7 +782,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               </div>
               <div>
                 <select
-                  className={`input-base-sm ${errors.ilce ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                  className={`input-base-sm w-full ${errors.ilce ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
                   value={form.ilce}
                   onChange={(e) => set('ilce', e.target.value)}
                   disabled={!form.il || districts.length === 0 || loadingDistricts}
@@ -733,13 +795,19 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 {errors.ilce && <p className="text-xs text-red-500 mt-1">{errors.ilce}</p>}
               </div>
             </div>
-            <input
-              className="input-base-sm"
-              placeholder="Adres detayı (opsiyonel)"
-              value={form.adresDetay}
-              onChange={(e) => set('adresDetay', e.target.value)}
-              onBlur={blurTitleCase('adresDetay')}
-            />
+            <div className="relative">
+              <textarea
+                className="input-base-sm w-full min-h-[80px] resize-y pr-14 text-base sm:text-sm"
+                rows={3}
+                placeholder="Mahalle, sokak, bina no, daire…"
+                value={form.adresDetay}
+                onChange={(e) => set('adresDetay', e.target.value)}
+                onBlur={blurTitleCase('adresDetay')}
+              />
+              <div className="absolute bottom-2 right-2">
+                <SpeechToText size="sm" onTranscript={appendSpeech('adresDetay')} />
+              </div>
+            </div>
           </div>
 
           {/* İhbar Tarihi */}
@@ -749,6 +817,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               className={`input-base-sm w-full ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
               value={form.hasarTarihi}
               onChange={(hasarTarihi) => set('hasarTarihi', hasarTarihi)}
+              aria-label="İhbar tarihi"
             />
             {errors.hasarTarihi && <p className="text-xs text-red-500 mt-1">{errors.hasarTarihi}</p>}
           </div>
@@ -756,55 +825,38 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           {/* Açıklama */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Kısa Açıklama</label>
-            <textarea
-              className="input-base-sm resize-none"
-              rows={3}
-              placeholder="Hasara dair kısa açıklama..."
-              value={form.aciklama}
-              onChange={(e) => set('aciklama', e.target.value)}
-              onBlur={blurTitleCase('aciklama')}
-            />
+            <div className="relative">
+              <textarea
+                className="input-base-sm w-full resize-y pr-14 text-base sm:text-sm"
+                rows={4}
+                placeholder="Hasara dair kısa açıklama..."
+                value={form.aciklama}
+                onChange={(e) => set('aciklama', e.target.value)}
+                onBlur={blurTitleCase('aciklama')}
+              />
+              <div className="absolute bottom-2 right-2">
+                <SpeechToText size="sm" onTranscript={appendSpeech('aciklama')} />
+              </div>
+            </div>
           </div>
 
           {/* Fotoğraf */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Fotoğraf Yükle</label>
             <div className="space-y-3">
-              <label className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50 block cursor-pointer hover:border-blue-300 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(event) => {
-                    const selectedFiles = Array.from(event.target.files ?? []);
-                    if (selectedFiles.length === 0) return;
-                    const remaining = Math.max(0, MAX_IHBAR_PHOTO_COUNT - photos.length);
-                    const nextFiles = selectedFiles.slice(0, remaining);
-                    const oversized = nextFiles.find((file) => file.size > MAX_IHBAR_PHOTO_SIZE);
-                    if (oversized) {
-                      showToast('error', 'Her fotoğraf en fazla 10 MB olabilir.');
-                      event.target.value = '';
-                      return;
-                    }
-                    const mapped = nextFiles.map((file) => ({
-                      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-                      file,
-                      previewUrl: URL.createObjectURL(file),
-                    }));
-                    setPhotos((prev) => [...prev, ...mapped].slice(0, MAX_IHBAR_PHOTO_COUNT));
-                    if (selectedFiles.length > remaining) {
-                      showToast('error', `En fazla ${MAX_IHBAR_PHOTO_COUNT} fotoğraf yükleyebilirsiniz.`);
-                    }
-                    event.target.value = '';
-                  }}
-                />
+              <FileDropZone
+                accept="image/*"
+                multiple
+                onFiles={addPhotoFiles}
+                className="border-2 border-dashed border-slate-200 rounded-xl px-4 py-5 text-center bg-slate-50 cursor-pointer hover:border-blue-300 transition-colors"
+                activeClassName="border-blue-400 bg-blue-50"
+              >
                 <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className="text-xs text-slate-500">Fotoğrafları seçin</p>
+                <p className="text-xs text-slate-500">Fotoğrafları Sürükleyin veya Seçin</p>
                 <p className="text-[11px] text-slate-400 mt-1">Maksimum {MAX_IHBAR_PHOTO_COUNT} adet, dosya başına 10 MB</p>
-              </label>
+              </FileDropZone>
               {photos.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">
                   {photos.map((photo) => (
@@ -895,18 +947,23 @@ function IhbarSuccessToast({ fileNo, onClose }: { fileNo: string; onClose: () =>
 
 function GaugeChart({
   value,
+  displayValue,
   max = 100,
   label,
-  unit = '%',
-  size = 150,
+  subtitle,
+  unit = '',
+  size = 120,
 }: {
   value: number;
+  displayValue?: number;
   max?: number;
   label: string;
+  subtitle?: string;
   unit?: string;
   size?: number;
 }) {
   const [animated, setAnimated] = useState(0);
+  const shown = displayValue ?? value;
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimated(value), 400);
@@ -939,10 +996,13 @@ function GaugeChart({
 
   const needle = polarToXY(pct * 1.8, r * 0.72);
   const gaugeColor = pct >= 80 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
+  const valueTextClass =
+    pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : shown > 0 ? 'text-red-600' : 'text-slate-700';
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width={size} height={size * 0.72} viewBox={`0 0 ${size} ${size * 0.72}`}>
+    <div className="flex flex-col items-center w-full">
+      <p className="text-sm font-semibold text-slate-700 text-center leading-snug mb-1 px-1">{label}</p>
+      <svg width={size} height={size * 0.62} viewBox={`0 0 ${size} ${size * 0.62}`} className="flex-shrink-0">
         <path d={arcPath(0, 180)} fill="none" stroke="#e2e8f0" strokeWidth={strokeWidth} strokeLinecap="round" />
         {zones.map((z) => (
           <path
@@ -973,22 +1033,68 @@ function GaugeChart({
           style={{ transition: 'all 0.9s cubic-bezier(0.34,1.56,0.64,1)' }}
         />
         <circle cx={cx} cy={cy} r={size * 0.05} fill="#334155" />
-        <text
-          x={cx} y={cy + size * 0.16}
-          textAnchor="middle"
-          fontSize={size * 0.17}
-          fontWeight="700"
-          fill={gaugeColor}
-        >
-          {value}{unit}
-        </text>
       </svg>
-      <p className="text-xs font-medium text-slate-500 text-center mt-1 leading-tight px-2">{label}</p>
+      <p className={`text-3xl font-bold tabular-nums leading-none mt-1 ${valueTextClass}`}>
+        {shown}{unit}
+      </p>
+      {subtitle && (
+        <p className="text-xs text-slate-500 text-center mt-2 leading-snug px-2">{subtitle}</p>
+      )}
     </div>
   );
 }
 
-// ─── Clock ─────────────────────────────────────────────────────────────────────
+// ─── Clock & Hero widgets ──────────────────────────────────────────────────────
+
+function HeroExchangeRates() {
+  const [usd, setUsd] = useState<number | null>(null);
+  const [eur, setEur] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_V1}/widgets/exchange-rates`)
+      .then((r) => r.json())
+      .then((body) => {
+        if (!active) return;
+        const data = body?.data;
+        if (data?.usd) {
+          setUsd((data.usd.buyingRate + data.usd.sellingRate) / 2);
+        }
+        if (data?.eur) {
+          setEur((data.eur.buyingRate + data.eur.sellingRate) / 2);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="text-[11px] tabular-nums">
+        <span className="text-blue-200 font-medium">USD </span>
+        <span className="text-white font-semibold">{usd ? `₺${usd.toFixed(2)}` : '—'}</span>
+      </div>
+      <span className="text-blue-300/40 select-none">|</span>
+      <div className="text-[11px] tabular-nums">
+        <span className="text-blue-200 font-medium">EUR </span>
+        <span className="text-white font-semibold">{eur ? `₺${eur.toFixed(2)}` : '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+const WHATSAPP_SUPPORT_URL = 'https://wa.me/905336330713';
+const WHATSAPP_SUPPORT_PHONE = '0533 633 07 13';
 
 function LiveClock() {
   const [now, setNow] = useState(new Date());
@@ -1172,9 +1278,8 @@ export default function EksperPortalPage() {
   const activeFileGaugeMax = Math.max(10, assignedCount, approvalPendingCount + approvalExpiredCount);
 
   return (
-    <div className="min-h-screen bg-slate-50 -mx-3 px-0 sm:-mx-4">
-
-      <div className="px-4 py-4 pb-10 space-y-4">
+    <div className="min-w-0 max-w-full overflow-x-hidden bg-slate-50 -mx-3 sm:-mx-4 -mt-4 sm:-mt-6">
+      <div className="px-4 pb-4 space-y-3">
 
         {loadError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1188,7 +1293,7 @@ export default function EksperPortalPage() {
         )}
 
         {/* ── Hero: Hoş Geldin + Saat + Hava ─────────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-3 sm:p-4 shadow-lg">
           {/* Subtle dekoratif arka plan */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
@@ -1218,7 +1323,7 @@ export default function EksperPortalPage() {
                 </h1>
 
                 {/* Onay durumu özeti */}
-                <div className="flex flex-wrap items-center gap-3 mt-3">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/30 rounded-lg px-3 py-1.5">
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                     <span className="text-amber-200 text-xs font-semibold">{approvalPendingCount} onay bekliyor</span>
@@ -1232,7 +1337,7 @@ export default function EksperPortalPage() {
                 </div>
 
                 {/* Hızlı Aksiyon Butonları — beyaz zemin, mavi metin (band üzerinde belirgin) */}
-                <div className="flex flex-wrap items-center gap-2 mt-4">
+                <div className="flex flex-wrap items-center gap-2 mt-3">
                   <button
                     type="button"
                     onClick={() => setShowIhbarModal(true)}
@@ -1281,10 +1386,25 @@ export default function EksperPortalPage() {
               </div>
             </div>
 
-            {/* Sağ: Saat + Hızlı İletişim */}
+            {/* Sağ: Kur + WhatsApp + Saat + İletişim */}
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              <HeroExchangeRates />
+              <a
+                href={WHATSAPP_SUPPORT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/25 hover:bg-green-500/40 border border-green-400/40 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                <span className="text-[11px] text-white font-medium tabular-nums">
+                  <span className="hidden sm:inline">WhatsApp Destek · </span>
+                  {WHATSAPP_SUPPORT_PHONE}
+                </span>
+              </a>
               <LiveClock />
-              {/* Hızlı İletişim — yalnızca geniş ekranda */}
+              {/* Hızlı İletişim — geniş ekranda telefon ve e-posta */}
               <div className="hidden xl:flex flex-wrap items-center justify-end gap-2">
                 <a
                   href="tel:+908508852555"
@@ -1294,17 +1414,6 @@ export default function EksperPortalPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                   <span className="text-[11px] text-white font-medium tabular-nums">0 850 885 25 55</span>
-                </a>
-                <a
-                  href="https://wa.me/905336330713"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 hover:bg-green-500/35 border border-green-400/30 transition-colors"
-                >
-                  <svg className="w-3 h-3 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  <span className="text-[11px] text-white font-medium tabular-nums">0533 633 07 13</span>
                 </a>
                 <a
                   href="mailto:info@meridyenassistance.com"
@@ -1322,19 +1431,32 @@ export default function EksperPortalPage() {
 
         {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-white border border-slate-200 p-3 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
-            <GaugeChart value={Math.min(assignedCount, activeFileGaugeMax)} max={activeFileGaugeMax} label="Atanmış Dosya Sayısı" unit="" size={100} />
-            <p className="text-[10px] text-slate-400 text-center mt-0.5">{`Toplam: ${assignedCount}`}</p>
+          <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
+            <GaugeChart
+              value={Math.min(assignedCount, activeFileGaugeMax)}
+              displayValue={assignedCount}
+              max={activeFileGaugeMax}
+              label="Atanmış Dosya Sayısı"
+              subtitle={assignedCount === 1 ? '1 aktif dosya' : `${assignedCount} aktif dosya`}
+            />
           </div>
-          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl bg-white border border-amber-200 p-3 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
-            <GaugeChart value={approvalPendingCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Onay Bekleyen Dosyalar" unit="" size={100} />
-            <p className="text-[10px] text-amber-600 text-center mt-0.5">İnceleme bekleyen dış onaylar</p>
+          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl bg-white border border-amber-200 p-4 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
+            <GaugeChart
+              value={approvalPendingCount}
+              displayValue={approvalPendingCount}
+              max={Math.max(5, approvalPendingCount + approvalExpiredCount)}
+              label="Onay Bekleyen Dosyalar"
+              subtitle="İnceleme bekleyen dış onaylar"
+            />
           </Link>
-          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-xl bg-white border border-red-200 p-3 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
-            <GaugeChart value={approvalExpiredCount} max={Math.max(5, approvalPendingCount + approvalExpiredCount)} label="Süresi Geçmiş Onaylar" unit="" size={100} />
-            <p className="text-[10px] text-red-600 text-center mt-0.5">
-              {approvalExpiredCount === 0 ? 'Süresi dolmuş onay yok' : 'Acil inceleme gerektirir'}
-            </p>
+          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-xl bg-white border border-red-200 p-4 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
+            <GaugeChart
+              value={approvalExpiredCount}
+              displayValue={approvalExpiredCount}
+              max={Math.max(5, approvalPendingCount + approvalExpiredCount)}
+              label="Süresi Geçmiş Onaylar"
+              subtitle={approvalExpiredCount === 0 ? 'Süresi dolmuş onay yok' : 'Acil inceleme gerektirir'}
+            />
           </Link>
         </div>
 
@@ -1535,8 +1657,8 @@ export default function EksperPortalPage() {
 
       </div>
 
-      {/* ── Sigorta Şirketleri — Fixed Bottom Bandı ──────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
+      {/* ── Sigorta Şirketleri — Alt Partner Bandı ──────────────────────────── */}
+      <div className="sticky bottom-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center h-8 overflow-hidden">
           <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-slate-800 text-white text-[11px] font-semibold whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

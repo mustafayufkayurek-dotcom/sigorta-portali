@@ -55,11 +55,12 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { getAccessToken } from '@/utils/auth-session';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+function getToken() { return getAccessToken(); }
+function authHeader() { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
 
 async function turmobQuery(taxNumber: string, token: string | null) {
   const r = await axios.get(`${API}/tax-verification/turmob-query?taxNumber=${encodeURIComponent(taxNumber)}`, {
@@ -155,13 +156,13 @@ function CustomerSubTypePicker({
         Müşteri Tipi
         {required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(önce seçin)</span>}
       </p>
-      <div className="flex gap-2 flex-wrap">
+      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
         {filtered.map((t) => (
           <button
             key={t.value}
             type="button"
             onClick={() => onToggle(t.value)}
-            className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all min-w-[7rem] ${
+            className={`w-full py-2.5 rounded-xl text-xs font-medium border-2 transition-all sm:flex-1 sm:min-w-[7rem] sm:py-2 ${
               selectedSubType === t.value
                 ? subTypeActiveClass(t.color)
                 : hasError
@@ -2362,7 +2363,21 @@ export default function MusterilerPage() {
               );
             })()}
 
-            <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
+            <div className="flex shrink-0 flex-col border-b border-slate-100 bg-slate-50/50 sm:hidden">
+              {MODAL_SECTIONS.map((sec, i) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setActiveSection(i)}
+                  className={`border-b border-slate-100 px-4 py-2.5 text-left text-xs font-medium transition-all last:border-b-0 ${
+                    activeSection === i ? 'bg-white text-emerald-700 ring-1 ring-inset ring-emerald-200' : 'text-slate-600'
+                  }`}
+                >
+                  {i + 1}. {sec}
+                </button>
+              ))}
+            </div>
+            <div className="hidden shrink-0 overflow-x-auto border-b border-slate-100 bg-slate-50/50 sm:flex">
               {MODAL_SECTIONS.map((sec, i) => (
                 <button key={sec} type="button" onClick={() => setActiveSection(i)}
                   className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${activeSection === i ? 'border-emerald-600 text-emerald-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}>
@@ -2371,14 +2386,14 @@ export default function MusterilerPage() {
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
                   <p className="text-xs text-slate-500 mb-4 leading-relaxed">
                     Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.
                   </p>
-                  <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
                     {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
                       <button key={val} type="button"
                         onClick={() => { setForm((p) => ({ ...p, customerType: val, subType: '', serviceType: '', serviceBranches: [] })); setTcResult(null); setGibError(null); setTaxNoError(null); setFieldErrors({}); }}
@@ -2416,7 +2431,7 @@ export default function MusterilerPage() {
                   ) : form.customerType === 'individual' ? (
                     <>
                       <SectionDivider emoji="📋" title="Bireysel Bilgiler" />
-                      <div className="grid grid-cols-2 gap-4 items-start">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                         <FormField label="Ad" required error={fieldErrors.firstName}>
                           <input ref={firstNameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Örn: Ahmet" value={form.firstName}
                             onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.firstName; return n; }); }}
@@ -2427,7 +2442,7 @@ export default function MusterilerPage() {
                             onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.lastName; return n; }); }}
                             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
                         </FormField>
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                           <FormField label="TC Kimlik No" error={identityNoError ?? fieldErrors.identityNo ?? undefined}>
                             <div className="relative">
                               <input
@@ -2464,7 +2479,7 @@ export default function MusterilerPage() {
                             {!identityNoError && tcWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {tcWarn}</p>}
                           </FormField>
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                         <FormField label="Telefon" error={phoneError ?? undefined}>
                           <ContactPhoneField
                             phone={form.phone}
@@ -2495,8 +2510,8 @@ export default function MusterilerPage() {
                   ) : (
                     <>
                       <SectionDivider emoji="🏢" title="Kurumsal Bilgiler" />
-                      <div className="grid grid-cols-2 gap-4 items-start">
-                        <div className="col-span-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+                        <div className="col-span-1 sm:col-span-2">
                           <FormField label="Şirket Adı" required error={fieldErrors.companyName}>
                             <input ref={companyNameRef} className={fieldErrors.companyName ? inpError : inp} placeholder="Şirket Unvanı" value={form.companyName} onChange={(e) => { setForm((p) => ({ ...p, companyName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.companyName; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
                           </FormField>
@@ -2537,8 +2552,8 @@ export default function MusterilerPage() {
                         <FormField label="Vergi Dairesi">
                           <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} />
                         </FormField>
-                        <div className="col-span-2">
-                          <div className="grid grid-cols-2 gap-4 items-start">
+                        <div className="col-span-1 sm:col-span-2">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                             <FormField label="Yetkili Kişi Adı">
                               <input className={inp} placeholder="Ad" value={form.contactFirstName}
                                 onChange={(e) => setForm((p) => ({ ...p, contactFirstName: e.target.value }))}
@@ -2551,7 +2566,7 @@ export default function MusterilerPage() {
                             </FormField>
                           </div>
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                         <FormField label="Telefon" error={phoneError ?? undefined}>
                           <ContactPhoneField
                             phone={form.phone}
@@ -2623,9 +2638,9 @@ export default function MusterilerPage() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="col-span-2">
-                                    <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div className="col-span-1 sm:col-span-2">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <FormField label="Ad">
                                         <input className={inp} placeholder="Ad" value={c.firstName}
                                           onChange={(e) => upC(idx, 'firstName', e.target.value)}
@@ -2688,7 +2703,7 @@ export default function MusterilerPage() {
                                       />
                                     )}
                                   </FormField>
-                                  <div className="col-span-2 min-w-0">
+                                  <div className="col-span-1 sm:col-span-2 min-w-0">
                                     <FormField label="Telefon">
                                       <ContactPhoneField
                                         phone={c.phone}
@@ -2700,7 +2715,7 @@ export default function MusterilerPage() {
                                       />
                                     </FormField>
                                   </div>
-                                  <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
+                                  <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                                 </div>
                               </div>
                             ))}
@@ -2727,9 +2742,9 @@ export default function MusterilerPage() {
                                 </button>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="col-span-2">
-                                <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div className="col-span-1 sm:col-span-2">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   <FormField label="Ad">
                                     <input className={inp} placeholder="Ad" value={c.firstName}
                                       onChange={(e) => upC(idx, 'firstName', e.target.value)}
@@ -2767,7 +2782,7 @@ export default function MusterilerPage() {
                                   />
                                 )}
                               </FormField>
-                              <div className="col-span-2 min-w-0">
+                              <div className="col-span-1 sm:col-span-2 min-w-0">
                                 <FormField label="Telefon">
                                   <ContactPhoneField
                                     phone={c.phone}
@@ -2779,7 +2794,7 @@ export default function MusterilerPage() {
                                   />
                                 </FormField>
                               </div>
-                              <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
+                              <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                             </div>
                           </div>
                         ))}
@@ -2832,7 +2847,7 @@ export default function MusterilerPage() {
               {activeSection === 2 && (
                 <div>
                   <SectionDivider emoji="📍" title="Adres Bilgileri" />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {/* İl */}
                     <FormField label={ADDRESS_FIELD.province}>
                       <select className={inp} value={form.cityCode}
@@ -2857,7 +2872,7 @@ export default function MusterilerPage() {
                       </select>
                     </FormField>
                     {/* Mahalle */}
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <FormField label={ADDRESS_FIELD.neighborhood}>
                         <NeighborhoodSelect
                           provinceName={form.city}
@@ -2869,7 +2884,7 @@ export default function MusterilerPage() {
                       </FormField>
                     </div>
                     {/* Cadde / Sokak */}
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <FormField label={ADDRESS_FIELD.street}>
                         <input
                           type="text"
@@ -2917,7 +2932,7 @@ export default function MusterilerPage() {
                       />
                     </FormField>
                     {/* Konum araçları */}
-                    <div className="col-span-2 flex flex-wrap gap-2 pt-1">
+                    <div className="col-span-1 sm:col-span-2 flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
                         disabled={geocoding || !customerAddressLabel}
@@ -2950,20 +2965,20 @@ export default function MusterilerPage() {
                       </button>
                     </div>
                     {!customerAddressLabel && (
-                      <p className="col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun. Sahada ziyaret sırasında &quot;Haritadan Konum Seç&quot; ile GPS de kullanabilirsiniz.</p>
+                      <p className="col-span-1 sm:col-span-2 text-xs text-slate-400">Konum bulmak için il ve en az bir adres alanı doldurun. Sahada ziyaret sırasında &quot;Haritadan Konum Seç&quot; ile GPS de kullanabilirsiniz.</p>
                     )}
                     {customerAddressLabel && (
-                      <div className="col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
+                      <div className="col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-600">
                         <span className="font-medium text-slate-500">Adres özeti: </span>{customerAddressLabel}
                       </div>
                     )}
                     {geocodeMsg && (
-                      <div className={`col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <div className={`col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         {geocodeMsg.text}
                       </div>
                     )}
                     {locationCoords && (
-                      <div className="col-span-2">
+                      <div className="col-span-1 sm:col-span-2">
                         <LocationPreview
                           lat={locationCoords.lat}
                           lng={locationCoords.lng}
@@ -2984,7 +2999,7 @@ export default function MusterilerPage() {
                   <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed">
                     {CUSTOMER_RELATION_SECTION_HINT}
                   </p>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
                     <FormField label="Müşteri Kaynağı">
                       <select className={inp} value={form.source} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
                         <option value="">Seçin...</option>
@@ -3127,7 +3142,7 @@ export default function MusterilerPage() {
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
+            <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex gap-1.5">
                 {MODAL_SECTIONS.map((_, i) => (
                   <button key={i} type="button" onClick={() => setActiveSection(i)} className={`h-2 rounded-full transition-all ${activeSection === i ? 'bg-emerald-600 w-4' : 'w-2 bg-slate-300 hover:bg-slate-400'}`} />

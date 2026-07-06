@@ -23,7 +23,7 @@ export function TestNotlariTab({ items, selectedId, onSelect, onEdit, onDelete, 
   const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
       <div className="grid gap-3 p-3 md:hidden">
         {items.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">Kayıt bulunamadı.</div>

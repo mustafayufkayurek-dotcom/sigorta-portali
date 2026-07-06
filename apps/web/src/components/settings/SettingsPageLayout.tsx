@@ -39,8 +39,8 @@ export function SettingsPageLayout({
   const trail = breadcrumbs ?? getSettingsBreadcrumbs(pathname, title);
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+    <div className="min-w-0 overflow-x-hidden">
+      <div className="mb-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <SettingsBreadcrumbs items={trail} />
           {!breadcrumbs && backHref && backText && trail.length <= 1 ? (
@@ -56,13 +56,13 @@ export function SettingsPageLayout({
             <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           {headerExtra}
           {addButtonText && onAdd && (
             <button
               type="button"
               onClick={onAdd}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

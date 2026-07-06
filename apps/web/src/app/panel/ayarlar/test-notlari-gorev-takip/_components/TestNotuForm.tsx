@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
+import { FileDropZone } from '@/components/ui/FileDropZone';
 import { API, authHeader } from '@/utils/api';
 import { TEST_NOTE_PRIORITIES, TEST_NOTE_STATUSES, TestNote } from '../_lib/api';
 
@@ -116,7 +117,7 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
     <form
       onSubmit={(e) => { e.preventDefault(); submit(); }}
       encType="multipart/form-data"
-      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="min-w-0 space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5"
     >
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -130,17 +131,18 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
       </div>
       <div>
         <label className="mb-1 block text-xs font-semibold text-slate-500">Ekran Görüntüsü Yükle</label>
-        <input
-          type="file"
-          name="ekranGoruntusuFile"
+        <FileDropZone
           accept="image/*,.pdf"
           disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileUpload(file);
+          onFiles={(files) => {
+            if (files[0]) void handleFileUpload(files[0]);
           }}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-        />
+          className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center cursor-pointer hover:border-blue-300 transition-colors"
+          activeClassName="border-blue-400 bg-blue-50"
+        >
+          <p className="text-sm text-slate-600">Dosyayı Sürükleyin veya Seçin</p>
+          <p className="mt-1 text-[10px] text-slate-400">PNG, JPG veya PDF — Maks. 10 MB</p>
+        </FileDropZone>
         <div className="mt-1 text-[10px] text-slate-400">Seçilen dosya güvenli olarak yüklenecek ve storage key alanı otomatik doldurulacaktır.</div>
         {uploading && <div className="mt-1 text-xs text-blue-600">Yükleniyor...</div>}
         {uploadError && <div className="mt-1 text-xs text-red-600">{uploadError}</div>}
@@ -198,9 +200,9 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
           Arşivde
         </label>
       </div>
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} disabled={uploading} className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 disabled:opacity-50">İptal</button>
-        <button type="submit" disabled={!canSubmit} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onCancel} disabled={uploading} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 disabled:opacity-50 sm:w-auto sm:py-2">İptal</button>
+        <button type="submit" disabled={!canSubmit} className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto sm:py-2">
           {saving ? 'Kaydediliyor...' : uploading ? 'Yükleniyor...' : initial ? 'Güncelle' : 'Kaydet'}
         </button>
       </div>

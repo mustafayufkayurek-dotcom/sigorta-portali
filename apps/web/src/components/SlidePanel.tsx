@@ -36,11 +36,11 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
         aria-hidden="true"
       />
 
-      {/* Panel */}
+      {/* Panel — mobil: tam ekran; sm+: sabit genişlik */}
       <div
         ref={panelRef}
-        style={{ width: `${width}px` }}
-        className={`fixed top-0 right-0 h-full z-[210] bg-white shadow-2xl shadow-black/20 border-l border-gray-100 flex flex-col transition-transform duration-300 ease-in-out ${
+        style={{ ['--slide-panel-w' as string]: `${width}px` }}
+        className={`fixed top-0 right-0 z-[210] flex h-full w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
@@ -48,9 +48,9 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
       >
         {/* Header */}
         {title !== undefined && (
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 flex-shrink-0 bg-white">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 py-3.5 sm:px-5">
             <div className="min-w-0 pr-3">
-              <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+              <h3 className="text-base font-semibold text-slate-800 sm:text-sm">{title}</h3>
               {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>}
             </div>
             <button

@@ -229,6 +229,7 @@ async function main() {
   // Field staff permissions
   const fieldPermCodes = [
     'claim_file.view', 'claim_file.update',
+    'customer.view',
     'task.view', 'task.update', 'task.complete',
     'document.view', 'document.upload',
     'note.view', 'note.create',
@@ -247,6 +248,8 @@ async function main() {
   // Finance permissions
   const financePermCodes = [
     'claim_file.view', 'claim_file.update',
+    'customer.view',
+    'vendor.view', 'vendor.create', 'vendor.update',
     'document.view', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'dashboard.view',
@@ -254,6 +257,7 @@ async function main() {
     'payment.view', 'payment.create', 'payment.update',
     'bank_account.view', 'bank_account.create', 'bank_account.update', 'bank_account.delete',
     'report.view',
+    'operation_inbox.view', 'operation_inbox.manage',
   ];
   await assignPermissions(financeRole.id, financePermCodes, createdPermissions);
 

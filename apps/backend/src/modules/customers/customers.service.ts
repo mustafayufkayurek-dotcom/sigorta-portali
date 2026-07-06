@@ -34,16 +34,25 @@ export class CustomersService {
   }
 
   /**
-   * FIELD_STAFF için: kendi atandığı dosyalardaki müşterileri döner
+   * Atanmış dosyalardaki müşteriler: saha → saha sorumlusu; diğer roller → ofis veya saha ataması
    */
   async getMyCustomers(requestingUser: { id: string; roleCode: string }) {
+    const fileScope = isFieldStaff(requestingUser.roleCode)
+      ? { assignedFieldUserId: requestingUser.id }
+      : {
+          OR: [
+            { assignedFieldUserId: requestingUser.id },
+            { assignedOfficeUserId: requestingUser.id },
+          ],
+        };
+
     const customers = await this.prisma.customer.findMany({
       where: {
-        claimFiles: { some: { assignedFieldUserId: requestingUser.id } },
+        claimFiles: { some: fileScope },
       },
       include: {
         claimFiles: {
-          where: { assignedFieldUserId: requestingUser.id },
+          where: fileScope,
           include: {
             currentStatus: { select: { isClosedState: true, name: true } },
           },

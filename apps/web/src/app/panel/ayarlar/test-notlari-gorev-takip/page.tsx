@@ -201,33 +201,44 @@ export default function TestNotlariGorevTakipPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">Yükleniyor...</div>;
+    return <div className="px-3 py-4 text-sm text-slate-500 sm:p-6">Yükleniyor...</div>;
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden px-3 py-4 sm:space-y-6 sm:p-6">
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
           <a href="/panel/ayarlar" className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700">← Ayarlar</a>
           <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">Admin-only / Geçici Modül</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">Test Notları ve Geçici İş/Görev Takip</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">Kalıcı görev-haberleşme modülü devreye girene kadar kullanılacak geçici yönetim ekranı.</p>
+          <h1 className="mt-1 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">Test Notları ve Geçici İş/Görev Takip</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">Kalıcı görev-haberleşme modülü devreye girene kadar kullanılacak geçici yönetim ekranı.</p>
         </div>
-        <div className="grid min-w-[280px] gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs text-slate-400">Test Notları</p><p className="mt-1 text-2xl font-bold text-slate-900">{summary.notes}</p></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs text-slate-400">Açık İşler</p><p className="mt-1 text-2xl font-bold text-slate-900">{summary.openWorks}</p></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs text-slate-400">Üretilen Format</p><p className="mt-1 text-2xl font-bold text-slate-900">{summary.formats}</p></div>
+        <div className="grid w-full grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-4">
+            <p className="text-[10px] text-slate-400 sm:text-xs">Test Notları</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{summary.notes}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-4">
+            <p className="text-[10px] text-slate-400 sm:text-xs">Açık İşler</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{summary.openWorks}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-4">
+            <p className="text-[10px] text-slate-400 sm:text-xs">Üretilen Format</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{summary.formats}</p>
+          </div>
         </div>
       </div>
 
-      {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+      {error ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:rounded-2xl">{error}</div> : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
+            className={`rounded-xl px-3 py-2.5 text-xs font-semibold sm:px-4 sm:py-2 sm:text-sm ${
+              activeTab === tab.id ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-600'
+            }`}
           >
             {tab.label}
           </button>
@@ -235,12 +246,14 @@ export default function TestNotlariGorevTakipPage() {
       </div>
 
       {activeTab === 'test-notlari' ? (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button onClick={() => { setEditingNote(null); setShowNoteForm((value) => !value); }} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
-              {showNoteForm ? 'Formu Kapat' : 'Yeni Test Notu'}
-            </button>
-          </div>
+        <div className="min-w-0 space-y-4">
+          <button
+            type="button"
+            onClick={() => { setEditingNote(null); setShowNoteForm((value) => !value); }}
+            className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white sm:ml-auto sm:block sm:w-auto"
+          >
+            {showNoteForm ? 'Formu Kapat' : 'Yeni Test Notu'}
+          </button>
           {showNoteForm ? (
             <TestNotuForm
               initial={editingNote}
@@ -263,12 +276,14 @@ export default function TestNotlariGorevTakipPage() {
       ) : null}
 
       {activeTab === 'isler-kararlar' ? (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button onClick={() => { setEditingWorkItem(null); setShowWorkForm((value) => !value); }} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-              {showWorkForm ? 'Formu Kapat' : 'Yeni İş / Karar'}
-            </button>
-          </div>
+        <div className="min-w-0 space-y-4">
+          <button
+            type="button"
+            onClick={() => { setEditingWorkItem(null); setShowWorkForm((value) => !value); }}
+            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white sm:ml-auto sm:block sm:w-auto"
+          >
+            {showWorkForm ? 'Formu Kapat' : 'Yeni İş / Karar'}
+          </button>
           {showWorkForm ? (
             <WorkItemForm
               initial={editingWorkItem}

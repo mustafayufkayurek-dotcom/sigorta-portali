@@ -147,7 +147,7 @@ export function SettingsTableTh({
 }) {
   return (
     <th
-      className={`px-5 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 ${className}`}
+      className={`px-3 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 sm:px-5 ${className}`}
     >
       {children}
     </th>
@@ -217,7 +217,7 @@ export function SettingsTableTd({
 }) {
   return (
     <td
-      className={`px-5 py-3.5 text-sm text-slate-700 dark:text-slate-300 ${className}`}
+      className={`px-3 py-3.5 text-sm text-slate-700 dark:text-slate-300 sm:px-5 ${className}`}
       title={title}
     >
       {children}
@@ -229,7 +229,7 @@ export function SettingsTableTd({
 
 export function SettingsTableActions({ children }: { children: React.ReactNode }) {
   return (
-    <td className="whitespace-nowrap px-5 py-3.5 text-right">
+    <td className="whitespace-nowrap px-3 py-3.5 text-right sm:px-5">
       <div
         className="flex items-center justify-end gap-1"
         onClick={(e) => e.stopPropagation()}

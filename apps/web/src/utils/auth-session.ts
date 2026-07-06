@@ -34,12 +34,11 @@ export function initAuthStorage(): void {
   if (!tabActive) {
     markTabSessionActive();
 
-    // Oturum modu: yeni tarayıcı/sekme açılışı — kalıcı token kalmamalı
+    // Oturum modu: yeni tarayıcı/sekme açılışı — kalıcı token kalmamalı (profil localStorage'da kalır)
     if (persistence === 'session' || !rememberPreferred) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem(TOKEN_EXPIRY_KEY);
-      localStorage.removeItem('user');
       if (persistence === 'session') {
         localStorage.removeItem(AUTH_PERSISTENCE_KEY);
       }
@@ -86,10 +85,15 @@ export function getAccessToken(): string | null {
   if (isRememberMeSession()) {
     return localStorage.getItem('accessToken');
   }
+  const sessionToken = sessionStorage.getItem('accessToken');
   if (getAuthPersistence() === 'session') {
-    return sessionStorage.getItem('accessToken');
+    return sessionToken;
   }
-  return null;
+  // Oturum modu etiketi eksik olsa bile sessionStorage token'ını kullan
+  if (sessionToken) {
+    return sessionToken;
+  }
+  return localStorage.getItem('accessToken');
 }
 
 export function getRefreshToken(): string | null {

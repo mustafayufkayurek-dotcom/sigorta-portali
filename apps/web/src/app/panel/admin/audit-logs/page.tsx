@@ -83,9 +83,13 @@ export default function AuditLogsPage() {
   }, [query]);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Denetim Kayıtları</h1>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title">Denetim Kayıtları</h1>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
         <input className="border rounded px-2 py-1" placeholder="entityType" value={entityType} onChange={(e) => setEntityType(e.target.value)} />
         <input className="border rounded px-2 py-1" placeholder="userId" value={userId} onChange={(e) => setUserId(e.target.value)} />
         <TrDateInput className="border rounded px-2 py-1" value={from} onChange={setFrom} />
@@ -93,10 +97,11 @@ export default function AuditLogsPage() {
       </div>
 
       <TableColumnsProvider value={tableColumns}>
-      <div className="overflow-auto border rounded">
-        <div className="px-3 py-2 border-b flex justify-end bg-slate-50">
+      <div className="overflow-hidden rounded border">
+        <div className="flex justify-end border-b bg-slate-50 px-3 py-2">
           <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
+        <div className="overflow-x-auto">
         <table className="min-w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <thead>
             <tr className="bg-slate-50">
@@ -125,6 +130,7 @@ export default function AuditLogsPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       </TableColumnsProvider>
 

@@ -2,15 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalPageHeader from '@/components/portal/PortalPageHeader';
+import { fetchPendingExternalApprovals, getPortalAuthHeaders, hasPortalSessionToken, PORTAL_API } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-}
 
 interface Approval {
   id: string;
@@ -38,22 +32,20 @@ export default function SigortaOnaylarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const loadApprovals = (companyId: string) => {
+  const loadApprovals = () => {
+    if (!hasPortalSessionToken()) {
+      router.push('/giris');
+      return;
+    }
     setError(null);
-    fetch(`${API}/external-approvals/pending?approverType=insurance_company&approverId=${companyId}`, {
-      headers: getHeaders(),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
-        return r.json();
-      })
-      .then((res) => setApprovals(res?.data ?? []))
+    fetchPendingExternalApprovals()
+      .then((data) => setApprovals(data as Approval[]))
       .catch((err: Error) => setError(err.message ?? 'Onaylar yüklenemedi.'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    const { user, hasScope, companyIds } = readInsurancePortalUser();
+    const { user, hasScope } = readInsurancePortalUser();
     if (!user) { router.push('/giris'); return; }
     if (!hasInsuranceCompanyUserAccess(user)) { router.push('/panel'); return; }
     if (!hasScope) {
@@ -61,7 +53,7 @@ export default function SigortaOnaylarPage() {
       setLoading(false);
       return;
     }
-    loadApprovals(companyIds[0]);
+    loadApprovals();
   }, [router]);
 
   const handleRespond = async () => {
@@ -69,9 +61,9 @@ export default function SigortaOnaylarPage() {
     if (action === 'rejected' && !comment.trim()) { alert('Red için yorum zorunludur.'); return; }
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/external-approvals/${selected.id}/respond-auth`, {
+      const res = await fetch(`${PORTAL_API}/external-approvals/${selected.id}/respond-auth`, {
         method: 'POST',
-        headers: getHeaders(),
+        headers: getPortalAuthHeaders(),
         body: JSON.stringify({ action, comments: comment }),
       });
       if (!res.ok) throw new Error('İstek başarısız');
@@ -94,17 +86,18 @@ export default function SigortaOnaylarPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
   return (
-    <div className="space-y-4">
-      <PortalBreadcrumb
+    <div className="min-w-0 max-w-full space-y-4">
+      <PortalPageHeader
         portalHomeHref="/panel/sigorta-portal"
         portalHomeLabel="Sigorta Portal"
         currentLabel="Onaylar"
+        title="Bekleyen Onaylar"
+        actions={
+          <span className="w-fit shrink-0 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
+            {approvals.length} onay bekliyor
+          </span>
+        }
       />
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Bekleyen Onaylar</h2>
-        <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">{approvals.length} onay bekliyor</span>
-      </div>
 
       {toast && (
         <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 flex justify-between items-center">

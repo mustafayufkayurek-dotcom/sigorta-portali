@@ -148,7 +148,10 @@
 
 /* Sayfa Header */
 .page-header {
-  @apply mb-7 flex items-start justify-between gap-4;
+  @apply mb-5 flex flex-col items-stretch gap-3 sm:mb-7 sm:flex-row sm:items-start sm:justify-between sm:gap-4;
+}
+.page-header-actions {
+  @apply flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center;
 }
 .page-header-icon {
   @apply w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center

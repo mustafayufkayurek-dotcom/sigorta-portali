@@ -3,16 +3,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalProcessTimeline from '@/components/portal/PortalProcessTimeline';
 import { fmtDate } from '@/utils/date-helpers';
+import { fetchPortalClaimFiles, hasPortalSessionToken } from '@/utils/portal-api';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { readInsurancePortalUser } from '@/utils/portal-insurance-scope';
-
-function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-}
 
 interface ClaimFile {
   id: string;
@@ -34,7 +30,7 @@ export interface PortalFileFlowPageProps {
   emptyHint: string;
   filesLinkHref: string;
   filesLinkLabel: string;
-  filesApiUrl: string;
+  filesLimit?: number;
   assertAccess: (user: { role?: { code?: string } }) => boolean;
   scopeRequiredMessage?: string;
 }
@@ -46,7 +42,7 @@ export default function PortalFileFlowPage({
   emptyHint,
   filesLinkHref,
   filesLinkLabel,
-  filesApiUrl,
+  filesLimit = 50,
   assertAccess,
   scopeRequiredMessage,
 }: PortalFileFlowPageProps) {
@@ -92,19 +88,26 @@ export default function PortalFileFlowPage({
     }
     setMissingScope(false);
 
+    if (!hasPortalSessionToken()) {
+      router.push('/giris');
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    fetch(filesApiUrl, { headers: getHeaders() })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
-        return r.json();
-      })
+    fetchPortalClaimFiles(filesLimit)
       .then((res) => {
-        setFiles(res?.data ?? []);
+        setFiles((res?.data ?? []) as ClaimFile[]);
       })
-      .catch((err: Error) => setError(err.message ?? 'Dosyalar yüklenemedi.'))
+      .catch((err: Error) => {
+        if (err.message === 'SESSION_REQUIRED') {
+          router.push('/giris');
+          return;
+        }
+        setError(err.message ?? 'Dosyalar yüklenemedi.');
+      })
       .finally(() => setLoading(false));
-  }, [router, filesApiUrl, assertAccess, scopeRequiredMessage]);
+  }, [router, filesLimit, assertAccess, scopeRequiredMessage]);
 
   useEffect(() => {
     if (files.length === 0) {
@@ -121,34 +124,37 @@ export default function PortalFileFlowPage({
   const selectedFile = files.find((f) => f.id === selectedId);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-slate-500">
+        Yükleniyor...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <PortalBreadcrumb
+    <div className="min-w-0 max-w-full space-y-4">
+      <PortalPageHeader
         portalHomeHref={portalHomeHref}
         portalHomeLabel={portalHomeLabel}
         currentLabel="Dosya Akışı"
+        title="Dosya Akışı İzleme"
+        actions={
+          <Link
+            href={filesLinkHref}
+            className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
+          >
+            {filesLinkLabel}
+          </Link>
+        }
       />
 
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-2xl font-bold text-slate-900">Dosya Akışı İzleme</h2>
-        <Link
-          href={filesLinkHref}
-          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          {filesLinkLabel}
-        </Link>
-      </div>
-
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
-          <span>{error}</span>
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <span className="text-sm">{error}</span>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900 ml-4 font-bold"
+            className="ml-4 font-bold text-red-700 hover:text-red-900"
           >
             &times;
           </button>
@@ -156,13 +162,13 @@ export default function PortalFileFlowPage({
       )}
 
       {missingScope && scopeRequiredMessage ? (
-        <div className="bg-white rounded-xl border border-amber-200 py-16 text-center px-6">
-          <p className="text-slate-700 font-medium">Sigorta şirketi kapsamı tanımlı değil.</p>
-          <p className="text-slate-500 text-sm mt-2">{scopeRequiredMessage}</p>
+        <div className="rounded-xl border border-amber-200 bg-white px-6 py-16 text-center">
+          <p className="font-medium text-slate-700">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="mt-2 text-sm text-slate-500">{scopeRequiredMessage}</p>
         </div>
       ) : !error && files.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
-          <svg className="mx-auto h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
+          <svg className="mx-auto mb-3 h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -170,20 +176,21 @@ export default function PortalFileFlowPage({
               d="M13 10V3L4 14h7v7l9-11h-7z"
             />
           </svg>
-          <p className="text-slate-500 font-medium">Henüz dosya bulunmuyor.</p>
-          <p className="text-slate-400 text-sm mt-1">{emptyHint}</p>
+          <p className="font-medium text-slate-500">Henüz dosya bulunmuyor.</p>
+          <p className="mt-1 text-sm text-slate-400">{emptyHint}</p>
           <Link
             href={filesLinkHref}
-            className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800"
+            className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-800"
           >
             {filesLinkLabel}
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 space-y-2">
-            <p className="text-xs font-medium text-slate-500 px-1">{listTitle}</p>
-            <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+        <div className="space-y-4">
+          {/* Mobil: dosya seçici */}
+          <div className="md:hidden">
+            <p className="mb-2 px-1 text-xs font-medium text-slate-500">{listTitle}</p>
+            <div className="space-y-2">
               {files.map((f) => {
                 const active = f.id === selectedId;
                 return (
@@ -191,14 +198,22 @@ export default function PortalFileFlowPage({
                     key={f.id}
                     type="button"
                     onClick={() => selectFile(f.id)}
-                    className={`w-full text-left px-4 py-3 transition-colors ${
-                      active ? 'bg-blue-50 border-l-2 border-l-blue-600' : 'hover:bg-slate-50'
+                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                      active
+                        ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-200'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-slate-900">{fileNoOf(f)}</span>
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{fileNoOf(f)}</p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {f.insuranceCompany?.name ?? '—'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">{fmtDate(f.createdAt)}</p>
+                      </div>
                       <span
-                        className="inline-block rounded-full px-2 py-0.5 text-xs font-medium shrink-0"
+                        className="inline-block max-w-[6.5rem] shrink-0 truncate rounded-full px-2 py-0.5 text-[10px] font-medium"
                         style={{
                           background: f.currentStatus?.colorCode
                             ? `${f.currentStatus.colorCode}20`
@@ -209,44 +224,80 @@ export default function PortalFileFlowPage({
                         {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">
-                      {f.insuranceCompany?.name ?? '—'}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{fmtDate(f.createdAt)}</p>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="lg:col-span-8">
-            {selectedId && selectedFile ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h3 className="text-base font-semibold text-slate-800">
-                    {fileNoOf(selectedFile)}
-                    {selectedFile.insuranceCompany?.name && (
-                      <span className="text-sm font-normal text-slate-500 ml-2">
-                        · {selectedFile.insuranceCompany.name}
-                      </span>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="hidden space-y-2 md:block lg:col-span-4">
+              <p className="px-1 text-xs font-medium text-slate-500">{listTitle}</p>
+              <div className="max-h-[70vh] divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 bg-white">
+                {files.map((f) => {
+                  const active = f.id === selectedId;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => selectFile(f.id)}
+                      className={`w-full px-4 py-3 text-left transition-colors ${
+                        active ? 'border-l-2 border-l-blue-600 bg-blue-50' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-slate-900">{fileNoOf(f)}</span>
+                        <span
+                          className="inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            background: f.currentStatus?.colorCode
+                              ? `${f.currentStatus.colorCode}20`
+                              : '#f3f4f6',
+                            color: f.currentStatus?.colorCode ?? '#374151',
+                          }}
+                        >
+                          {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {f.insuranceCompany?.name ?? '—'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-400">{fmtDate(f.createdAt)}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="lg:col-span-8">
+              {selectedId && selectedFile ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <h3 className="text-base font-semibold text-slate-800">
+                      {fileNoOf(selectedFile)}
+                      {selectedFile.insuranceCompany?.name ? (
+                        <span className="ml-2 text-sm font-normal text-slate-500">
+                          · {selectedFile.insuranceCompany.name}
+                        </span>
+                      ) : null}
+                    </h3>
+                  </div>
+                  <PortalProcessTimeline
+                    claimFileId={selectedId}
+                    fileCreatedAt={selectedFile.createdAt}
+                    initialStatusCode={selectedFile.currentStatus?.code}
+                    initialStatusName={portalStatusLabel(
+                      selectedFile.currentStatus?.code,
+                      selectedFile.currentStatus?.name,
                     )}
-                  </h3>
+                  />
                 </div>
-                <PortalProcessTimeline
-                  claimFileId={selectedId}
-                  fileCreatedAt={selectedFile.createdAt}
-                  initialStatusCode={selectedFile.currentStatus?.code}
-                  initialStatusName={portalStatusLabel(
-                    selectedFile.currentStatus?.code,
-                    selectedFile.currentStatus?.name,
-                  )}
-                />
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 py-12 text-center text-slate-500 text-sm">
-                Görüntülemek için bir dosya seçin.
-              </div>
-            )}
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
+                  Görüntülemek için bir dosya seçin.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

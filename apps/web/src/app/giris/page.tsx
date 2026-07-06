@@ -404,7 +404,7 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 32px;
+          padding: max(10px, env(safe-area-inset-top)) 32px 10px;
           min-height: var(--login-nav-h);
           background: var(--navy);
           border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -415,25 +415,6 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           flex-shrink: 0;
-        }
-        .logo-brand-shell {
-          display: inline-flex;
-          align-items: center;
-          justify-content: flex-start;
-          background: #ffffff;
-          border-radius: 10px;
-          padding: 10px 24px 10px 14px;
-          box-shadow:
-            0 8px 24px rgba(0, 0, 0, 0.18),
-            0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-        .login-brand-full {
-          display: block;
-          height: 58px;
-          width: auto;
-          max-width: min(300px, 52vw);
-          object-fit: contain;
-          object-position: left center;
         }
         .nav-right {
           display: flex;
@@ -582,8 +563,6 @@ export default function LoginPage() {
           color: rgba(255,255,255,0.7);
           font-size: 0.75rem;
           font-weight: 500;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
           width: fit-content;
           margin-bottom: 28px;
         }
@@ -730,15 +709,22 @@ export default function LoginPage() {
           letter-spacing: -0.03em;
           margin: 0;
         }
+        .login-panel-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 4px;
+        }
         .login-header {
           display: flex;
           align-items: center;
-          margin-bottom: 4px;
+          min-width: 0;
+          flex: 1;
         }
         .login-panel-status {
-          position: absolute;
-          top: 18px;
-          right: 24px;
+          position: static;
+          flex-shrink: 0;
           z-index: 2;
         }
         .login-sub {
@@ -936,8 +922,6 @@ export default function LoginPage() {
           color: rgba(255,255,255,0.35);
           font-size: 0.68rem;
           font-weight: 600;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
           margin-bottom: 12px;
         }
         .marquee-track {
@@ -993,13 +977,6 @@ export default function LoginPage() {
         @media (max-width: 1023px) {
           .login-panel { flex: 0 0 380px; width: 380px; }
           .marketing-panel { padding: 44px 40px 0; }
-          .logo-brand-shell {
-            padding: 8px 18px 8px 12px;
-          }
-          .login-brand-full {
-            height: 50px;
-            max-width: 260px;
-          }
           .nav-right {
             max-width: 300px;
             margin-right: 0;
@@ -1007,6 +984,7 @@ export default function LoginPage() {
         }
         @media (max-width: 900px) {
           .login-root {
+            --login-strip-h: 0px;
             max-height: none;
             overflow-x: hidden;
             overflow-y: auto;
@@ -1029,52 +1007,59 @@ export default function LoginPage() {
           .login-scroll {
             overflow-y: visible;
             justify-content: flex-start;
-            padding: 28px 20px 24px;
+            padding: max(28px, calc(env(safe-area-inset-top) + 16px)) 20px 24px;
             padding-bottom: max(24px, env(safe-area-inset-bottom));
+            scroll-padding-top: max(28px, calc(env(safe-area-inset-top) + 16px));
             scroll-padding-bottom: max(24px, env(safe-area-inset-bottom));
           }
+          .login-panel-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
           .login-panel-status {
-            position: static;
             align-self: flex-end;
-            margin: 12px 20px 0;
           }
           .marketing-panel {
             flex: none;
             overflow: visible;
-            padding: 36px 24px 20px;
+            padding: 20px 16px 12px;
+          }
+          .hero-badge {
+            margin-bottom: 12px;
+            font-size: 0.7rem;
+            padding: 4px 12px;
+          }
+          .hero-title {
+            font-size: clamp(1.35rem, 5vw, 1.75rem);
+            margin-bottom: 12px;
+          }
+          .hero-sub {
+            font-size: 0.9rem;
+            margin-bottom: 16px;
           }
           .feature-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 24px;
+            display: none;
           }
-          .stats-band { grid-template-columns: repeat(2, 1fr); }
+          .stats-band {
+            display: none;
+          }
+          .insurers-strip {
+            display: none;
+          }
           .nav-contacts { display: flex; }
-          .login-brand-full {
-            height: 46px;
-            max-width: 240px;
-          }
         }
         @media (max-width: 540px) {
-          .feature-grid { grid-template-columns: 1fr; }
           .top-nav {
             flex-direction: column;
             align-items: center;
-            padding: 12px 20px;
+            padding: max(12px, env(safe-area-inset-top)) 20px 12px;
             gap: 10px;
           }
           .top-nav-logo {
             width: 100%;
-            justify-content: center;
-          }
-          .logo-brand-shell {
-            width: 100%;
-            max-width: 340px;
-            justify-content: center;
-          }
-          .login-brand-full {
-            height: 44px;
-            max-width: min(280px, 88vw);
+            justify-content: flex-start;
+            padding-left: 2px;
           }
           .nav-right {
             width: 100%;
@@ -1098,8 +1083,6 @@ export default function LoginPage() {
           .nav-contact-title { font-size: 0.68rem; }
           .nav-contact-item { font-size: 0.7rem; }
           .login-header { align-items: flex-start; }
-          .login-panel-status { top: 14px; right: 16px; }
-          .stats-band { grid-template-columns: repeat(2, 1fr); }
         }
       `}</style>
 
@@ -1108,9 +1091,7 @@ export default function LoginPage() {
         {/* ── TOP NAV ── */}
         <nav className="top-nav">
           <div className="top-nav-logo">
-            <div className="logo-brand-shell">
-              <LoginBrandLogo alt={companyName} />
-            </div>
+            <LoginBrandLogo alt={companyName} />
           </div>
 
           <div className="nav-right">
@@ -1176,13 +1157,15 @@ export default function LoginPage() {
 
           {/* ── RIGHT LOGIN FORM ── */}
           <div className="login-panel">
-            <div className="status-pill login-panel-status">
-              <span className="status-dot" />
-              Sistem Aktif
-            </div>
             <div className="login-scroll">
-              <div className="login-header fade-up-1">
-                <h2 className="login-heading">Kullanıcı Girişi</h2>
+              <div className="login-panel-header fade-up-1">
+                <div className="login-header">
+                  <h2 className="login-heading">Kullanıcı Girişi</h2>
+                </div>
+                <div className="status-pill login-panel-status">
+                  <span className="status-dot" />
+                  Sistem Aktif
+                </div>
               </div>
               <p className="login-sub fade-up-2">Kurumsal bilgilerinizle giriş yapın.</p>
 

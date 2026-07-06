@@ -1,6 +1,7 @@
 /**
- * Türkiye tarih girişi — GG.AA.YYYY metin maskesi (native date picker kullanılmaz).
- * Müşteriler, Tedarikçiler ve yeni formlarda ortak standart.
+ * Türkiye tarih girişi — GG.AA.YYYY metin maskesi.
+ * TrDateInput: metin girişi (masaüstü) + mobilde native tarih seçici (type=date overlay).
+ * Müşteriler, Tedarikçiler ve panel formlarında ortak standart.
  */
 
 export function maskTrDateInput(input: string): string {

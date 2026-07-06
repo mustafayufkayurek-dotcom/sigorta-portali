@@ -1,18 +1,12 @@
 'use client';
 
-import { CORPORATE_LOGO_DARK } from '@/constants/brand';
+import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
 
 interface Props {
   alt: string;
 }
 
-/** Orijinal kurumsal logo — tek parça, animasyonsuz */
+/** Giriş ve dış sayfalarda kurumsal logo — sola yaslı, kenardan nefes payı ile */
 export function LoginBrandLogo({ alt }: Props) {
-  return (
-    <img
-      src={CORPORATE_LOGO_DARK}
-      alt={alt}
-      className="login-brand-full"
-    />
-  );
+  return <BrandLogoMark alt={alt} variant="login" />;
 }

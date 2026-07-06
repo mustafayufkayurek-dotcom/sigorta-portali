@@ -154,12 +154,14 @@ export default function ErisimLoglariPage() {
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Erişim Logları</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Müşteri Bilgisi Erişim Kayıtları ve Anormal Erişim Uyarıları
-        </p>
+    <div className="min-w-0 overflow-x-hidden">
+      <div className="page-header">
+        <div className="min-w-0">
+          <h1 className="page-title">Erişim Logları</h1>
+          <p className="page-subtitle">
+            Müşteri Bilgisi Erişim Kayıtları ve Anormal Erişim Uyarıları
+          </p>
+        </div>
       </div>
 
       {/* Özet Kartlar */}
@@ -186,7 +188,7 @@ export default function ErisimLoglariPage() {
 
       {/* Filtreler */}
       <div className="mb-4 rounded-lg bg-white p-4 shadow-sm border border-slate-200">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input
             type="text"
             placeholder="Kullanıcı ID"

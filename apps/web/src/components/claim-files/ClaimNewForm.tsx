@@ -119,6 +119,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const isPanel = variant === 'panel';
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
+  /** Panel + mobil: tek sütun; sm+ iki sütun */
+  const formGrid = 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2';
+  const spanFull = 'col-span-1 sm:col-span-2';
 
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
   const [claimSubjects, setClaimSubjects] = useState<string[]>([]);
@@ -520,18 +523,18 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => setShowCustomerModal(true)}
-              className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50"
+              className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 sm:flex-1"
             >
               Listeden Seç
             </button>
             <button
               type="button"
               onClick={() => { setShowNewCustomerForm(true); setSelectedCustomer(null); setCustomerSearch(''); setOpenSections((p) => ({ ...p, eksper: true })); }}
-              className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50"
+              className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 sm:flex-1"
             >
               Yeni Eksper Ofisi
             </button>
@@ -551,8 +554,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
               İptal
             </button>
           </div>
-          <div className={`grid ${isPanel ? 'grid-cols-2 gap-2' : 'grid-cols-1 sm:grid-cols-2 gap-3'}`}>
-            <div className={isPanel ? 'col-span-2' : 'sm:col-span-2'}>
+          <div className={`${formGrid} ${isPanel ? '' : 'sm:gap-3'}`}>
+            <div className={spanFull}>
               <label className={label}>Şirket Adı <span className="text-red-500">*</span></label>
               <input
                 className={field}
@@ -597,7 +600,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           ) : null}
         </div>
       )}
-      <div className={`grid ${isPanel ? 'grid-cols-2 gap-2' : 'grid-cols-1 sm:grid-cols-2 gap-3'}`}>
+      <div className={formGrid}>
         <div className="min-w-0">
           <label className={label}>Sigortalı Adı Soyadı <span className="text-red-500">*</span></label>
           <input
@@ -636,9 +639,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
           {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
         </div>
-        <div className="col-span-2 min-w-0 pt-1 border-t border-slate-100">
+        <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
           {!isPanel && <p className="text-[11px] font-medium text-slate-500 mb-2">Dosya Adresi</p>}
-          <div className="grid grid-cols-2 gap-2 min-w-0">
+          <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 sm:gap-2">
             <div className="min-w-0">
               <label className={label}>{ADDRESS_FIELD.province}</label>
               <select
@@ -662,7 +665,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
                 {currentDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <div className="col-span-2">
+            <div className={spanFull}>
               <label className={label}>{ADDRESS_FIELD.openAddress}</label>
               <textarea
                 rows={isPanel ? 2 : 2}
@@ -675,7 +678,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
             </div>
           </div>
         </div>
-        <div className="col-span-2">
+        <div className={spanFull}>
           <label className={label}>İhbar Detayı</label>
           <textarea
             rows={isPanel ? 2 : 4}

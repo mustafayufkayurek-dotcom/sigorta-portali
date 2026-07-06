@@ -514,3 +514,23 @@ export function PanelTableSummaryFoot({
     </tfoot>
   );
 }
+
+/** Tablo taşmasını kart içinde yatay kaydırmaya hapseder; mobilde sayfa genişliğini bozmaz */
+export function PanelTableFrame({
+  children,
+  toolbar,
+  className = '',
+}: {
+  children: ReactNode;
+  toolbar?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white ${className}`}>
+      {toolbar ? (
+        <div className="flex min-w-0 justify-end border-b border-slate-100 px-3 py-2 sm:px-4">{toolbar}</div>
+      ) : null}
+      <div className="max-w-full overflow-x-auto">{children}</div>
+    </div>
+  );
+}

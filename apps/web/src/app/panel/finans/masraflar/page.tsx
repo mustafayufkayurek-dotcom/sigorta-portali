@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
+import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -1021,12 +1022,22 @@ export default function MasraflarPage() {
           )}
 
           {!editId && (
-            <div className="rounded-xl border border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4">
+            <FileDropZone
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+              disabled={scanning}
+              clickToOpen={false}
+              onFiles={(files) => {
+                const file = files.find((f) => f.type.startsWith('image/'));
+                if (file) void handleReceiptScan(file);
+              }}
+              className="rounded-xl border border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4 transition-colors"
+              activeClassName="border-blue-400 bg-blue-100/80 dark:bg-blue-900/40"
+            >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Akıllı Fiş / Fatura Okuma</p>
                   <p className="text-xs text-blue-700/80 dark:text-blue-300/80 mt-1">
-                    Kamerayla fişi çekin veya galeriden seçin; tutar, tarih ve açıklama otomatik doldurulur.
+                    Kamerayla fişi çekin, galeriden seçin veya fiş görselini buraya sürükleyin; tutar, tarih ve açıklama otomatik doldurulur.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -1093,7 +1104,7 @@ export default function MasraflarPage() {
                   </p>
                 </div>
               )}
-            </div>
+            </FileDropZone>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

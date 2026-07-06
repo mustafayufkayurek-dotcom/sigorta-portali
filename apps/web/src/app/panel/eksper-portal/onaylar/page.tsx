@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { getAccessToken } from '@/utils/auth-session';
 import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
@@ -11,8 +12,11 @@ const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+  const token = getAccessToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'Content-Type': 'application/json',
+  };
 }
 
 interface Approval {
@@ -97,16 +101,16 @@ export default function EksperOnaylarPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4">
       <PortalBreadcrumb
         portalHomeHref={EKSPER_PORTAL_HOME}
         portalHomeLabel={EKSPER_PORTAL_LABEL}
         currentLabel="Bekleyen Onaylar"
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Bekleyen Onaylar</h2>
-        <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">{approvals.length} onay bekliyor</span>
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Bekleyen Onaylar</h2>
+        <span className="w-fit shrink-0 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">{approvals.length} onay bekliyor</span>
       </div>
 
       {toast && (
@@ -134,9 +138,9 @@ export default function EksperOnaylarPage() {
       ) : (
         <div className="space-y-3">
           {approvals.map((a) => (
-            <div key={a.id} className="bg-white rounded-xl border border-slate-200 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
+            <div key={a.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-slate-900">{a.report?.claimFile?.fileNumber ?? '—'}</span>
                     <span className="text-slate-400">·</span>
@@ -151,7 +155,7 @@ export default function EksperOnaylarPage() {
                   </div>
                 </div>
                 {a.status === 'pending' && (
-                  <div className="flex-shrink-0 flex gap-2">
+                  <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
                     <button type="button"
                       onClick={() => { setSelected(a); setAction('approved'); setComment(''); }}
                       className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"

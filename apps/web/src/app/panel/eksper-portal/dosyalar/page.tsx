@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTh,
   PanelTableTd,
+  PanelTableFrame,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
+import { getAccessToken } from '@/utils/auth-session';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
 const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
@@ -31,8 +34,11 @@ const EKSPER_FILE_TABLE_COLUMNS: TableColumnDef[] = [
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+  const token = getAccessToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'Content-Type': 'application/json',
+  };
 }
 
 interface ClaimFile {
@@ -83,16 +89,16 @@ export default function EksperDosyalarPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4">
       <PortalBreadcrumb
         portalHomeHref={EKSPER_PORTAL_HOME}
         portalHomeLabel={EKSPER_PORTAL_LABEL}
         currentLabel="Dosyalarım"
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Dosyalarım</h2>
-        <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{total} dosya</span>
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Dosyalarım</h2>
+        <span className="w-fit shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">{total} dosya</span>
       </div>
 
       {error && (
@@ -111,56 +117,71 @@ export default function EksperDosyalarPage() {
           <p className="text-slate-400 text-sm mt-1">Yeni ihbar verdiğiniz veya size atanan dosyalar burada listelenir.</p>
         </div>
       ) : (
-        <TableColumnsProvider value={tableColumns}>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
-            <PanelTableColumnPicker tableColumns={tableColumns} />
-          </div>
-          <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
-            <thead className="bg-slate-50">
-              <tr>
-                <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
-                <PanelTableTh colId="insuranceCompany" className="table-th-center">Sigorta Şirketi</PanelTableTh>
-                <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
-                <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
-                <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {files.map((f) => (
-                <tr
-                  key={f.id}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/panel/eksper-portal/randevular?fileId=${f.id}`)}
-                >
-                  <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
-                  <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-sm text-slate-600">{f.insuranceCompany?.name ?? '—'}</PanelTableTd>
-                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatClaimSubjectLabel(f.lossType, undefined, f.subject)}</PanelTableTd>
-                  <PanelTableTd colId="status" className="px-4 py-3">
-                    <span
-                      className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
-                      style={{ background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6', color: f.currentStatus?.colorCode ?? '#374151' }}
+        <>
+          <PortalMobileFileList
+            items={files.map((f) => ({
+              id: f.id,
+              fileNo: fileNoOf(f),
+              insuranceCompany: f.insuranceCompany?.name,
+              subject: formatClaimSubjectLabel(f.lossType, undefined, f.subject),
+              statusName: f.currentStatus?.name,
+              statusColor: f.currentStatus?.colorCode,
+              createdAt: f.createdAt,
+              flowHref: `/panel/eksper-portal/randevular?fileId=${f.id}`,
+            }))}
+            onItemClick={(id) => router.push(`/panel/eksper-portal/randevular?fileId=${id}`)}
+          />
+          <TableColumnsProvider value={tableColumns}>
+            <PanelTableFrame
+              className="hidden md:block"
+              toolbar={<PanelTableColumnPicker tableColumns={tableColumns} />}
+            >
+              <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="insuranceCompany" className="table-th-center">Sigorta Şirketi</PanelTableTh>
+                    <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
+                    <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                    <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
+                    <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {files.map((f) => (
+                    <tr
+                      key={f.id}
+                      className="cursor-pointer transition-colors hover:bg-slate-50"
+                      onClick={() => router.push(`/panel/eksper-portal/randevular?fileId=${f.id}`)}
                     >
-                      {f.currentStatus?.name ?? '—'}
-                    </span>
-                  </PanelTableTd>
-                  <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmt(f.createdAt)}</PanelTableTd>
-                  <PanelTableTd colId="flow" className="px-4 py-3">
-                    <Link
-                      href={`/panel/eksper-portal/randevular?fileId=${f.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Akış
-                    </Link>
-                  </PanelTableTd>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        </TableColumnsProvider>
+                      <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
+                      <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-sm text-slate-600">{f.insuranceCompany?.name ?? '—'}</PanelTableTd>
+                      <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatClaimSubjectLabel(f.lossType, undefined, f.subject)}</PanelTableTd>
+                      <PanelTableTd colId="status" className="px-4 py-3">
+                        <span
+                          className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          style={{ background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6', color: f.currentStatus?.colorCode ?? '#374151' }}
+                        >
+                          {f.currentStatus?.name ?? '—'}
+                        </span>
+                      </PanelTableTd>
+                      <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmt(f.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="flow" className="px-4 py-3">
+                        <Link
+                          href={`/panel/eksper-portal/randevular?fileId=${f.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          Akış
+                        </Link>
+                      </PanelTableTd>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </PanelTableFrame>
+          </TableColumnsProvider>
+        </>
       )}
     </div>
   );

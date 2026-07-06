@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTh,
   PanelTableTd,
+  PanelTableFrame,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
+import { fetchPortalInvoices, hasPortalSessionToken } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 
 const SIGORTA_INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
@@ -22,13 +24,6 @@ const SIGORTA_INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'totalAmount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
   { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
 ];
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-}
 
 interface Invoice {
   id: string;
@@ -60,13 +55,22 @@ export default function SigortaFaturalarPage() {
     }
 
     setError(null);
-    fetch(`${API}/invoices?limit=50`, { headers: getHeaders() })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
-        return r.json();
+    if (!hasPortalSessionToken()) {
+      router.push('/giris');
+      return;
+    }
+    fetchPortalInvoices(50)
+      .then((res) => {
+        setInvoices((res?.data ?? []) as Invoice[]);
+        setTotal(res?.meta?.total ?? 0);
       })
-      .then((res) => { setInvoices(res?.data ?? []); setTotal(res?.meta?.total ?? 0); })
-      .catch((err: Error) => setError(err.message ?? 'Faturalar yüklenemedi.'))
+      .catch((err: Error) => {
+        if (err.message === 'SESSION_REQUIRED') {
+          router.push('/giris');
+          return;
+        }
+        setError(err.message ?? 'Faturalar yüklenemedi.');
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -94,17 +98,18 @@ export default function SigortaFaturalarPage() {
   const totalPending = invoices.filter((i) => i.status === 'sent' || i.status === 'overdue').reduce((s, i) => s + i.totalAmount, 0);
 
   return (
-    <div className="space-y-4">
-      <PortalBreadcrumb
+    <div className="min-w-0 max-w-full space-y-4">
+      <PortalPageHeader
         portalHomeHref="/panel/sigorta-portal"
         portalHomeLabel="Sigorta Portal"
         currentLabel="Faturalar"
+        title="Faturalar"
+        actions={
+          <span className="w-fit shrink-0 rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-purple-800">
+            {total} fatura
+          </span>
+        }
       />
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Faturalar</h2>
-        <span className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{total} fatura</span>
-      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
@@ -138,39 +143,60 @@ export default function SigortaFaturalarPage() {
               <p className="text-slate-500">Fatura bulunamadı.</p>
             </div>
           ) : (
-            <TableColumnsProvider value={tableColumns}>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
-                <PanelTableColumnPicker tableColumns={tableColumns} />
+            <>
+              <div className="space-y-2 md:hidden">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{inv.invoiceNo ?? '—'}</p>
+                        <p className="mt-1 text-xs text-slate-500">Düzenleme: {fmtDate(inv.invoiceDate)}</p>
+                        {inv.dueDate ? (
+                          <p className="text-xs text-slate-500">Vade: {fmtDate(inv.dueDate)}</p>
+                        ) : null}
+                        <p className="mt-1 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
+                        {statusLabel(inv.status)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
-                <thead className="bg-slate-50">
-                  <tr>
-                    <PanelTableTh colId="invoiceNo" className="table-th-center">Fatura No</PanelTableTh>
-                    <PanelTableTh colId="invoiceDate" className="table-th-center">Düzenleme</PanelTableTh>
-                    <PanelTableTh colId="dueDate" className="table-th-center">Vade</PanelTableTh>
-                    <PanelTableTh colId="totalAmount" className="table-th-center">Tutar</PanelTableTh>
-                    <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                      <PanelTableTd colId="invoiceNo" className="px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNo ?? '—'}</PanelTableTd>
-                      <PanelTableTd colId="invoiceDate" className="px-4 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</PanelTableTd>
-                      <PanelTableTd colId="dueDate" className="px-4 py-3 text-sm text-slate-600">{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</PanelTableTd>
-                      <PanelTableTd colId="totalAmount" className="px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
-                      <PanelTableTd colId="status" className="px-4 py-3">
-                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
-                          {statusLabel(inv.status)}
-                        </span>
-                      </PanelTableTd>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            </TableColumnsProvider>
+              <TableColumnsProvider value={tableColumns}>
+                <PanelTableFrame
+                  className="hidden md:block"
+                  toolbar={<PanelTableColumnPicker tableColumns={tableColumns} />}
+                >
+                  <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <PanelTableTh colId="invoiceNo" className="table-th-center">Fatura No</PanelTableTh>
+                        <PanelTableTh colId="invoiceDate" className="table-th-center">Düzenleme</PanelTableTh>
+                        <PanelTableTh colId="dueDate" className="table-th-center">Vade</PanelTableTh>
+                        <PanelTableTh colId="totalAmount" className="table-th-center">Tutar</PanelTableTh>
+                        <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {invoices.map((inv) => (
+                        <tr key={inv.id} className="transition-colors hover:bg-slate-50">
+                          <PanelTableTd colId="invoiceNo" className="px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNo ?? '—'}</PanelTableTd>
+                          <PanelTableTd colId="invoiceDate" className="px-4 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</PanelTableTd>
+                          <PanelTableTd colId="dueDate" className="px-4 py-3 text-sm text-slate-600">{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</PanelTableTd>
+                          <PanelTableTd colId="totalAmount" className="px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
+                          <PanelTableTd colId="status" className="px-4 py-3">
+                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
+                              {statusLabel(inv.status)}
+                            </span>
+                          </PanelTableTd>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </PanelTableFrame>
+              </TableColumnsProvider>
+            </>
           )}
         </>
       )}

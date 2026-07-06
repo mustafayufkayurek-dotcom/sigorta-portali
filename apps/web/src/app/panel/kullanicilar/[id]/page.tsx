@@ -322,6 +322,7 @@ const SCREEN_LABELS: Record<string, string> = {
   guvenlik:          'Güvenlik',
   harita:            'Harita',
   personel_yonetimi: 'Personel Yönetimi',
+  personel_ozluk: 'Personel Özlük',
 };
 
 type ScreenRow = {

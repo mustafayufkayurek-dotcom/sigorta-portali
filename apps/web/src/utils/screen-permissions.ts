@@ -11,6 +11,7 @@ export const ALL_SCREEN_CODES = [
   'guvenlik',
   'harita',
   'personel_yonetimi',
+  'personel_ozluk',
   'test_notes_admin',
 ] as const;
 
@@ -29,5 +30,6 @@ export const SCREEN_LABELS: Record<string, string> = {
   guvenlik: 'Güvenlik',
   harita: 'Harita',
   personel_yonetimi: 'Personel Yönetimi',
+  personel_ozluk: 'Personel Özlük',
   test_notes_admin: 'Test Notları ve Görev Takip',
 };

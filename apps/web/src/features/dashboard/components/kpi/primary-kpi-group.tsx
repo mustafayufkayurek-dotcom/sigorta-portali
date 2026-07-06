@@ -34,7 +34,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
   return (
     <WidgetBoundary>
       <section
-        className={`grid grid-cols-1 gap-3 transition-all duration-500 ease-out sm:grid-cols-2 lg:grid-cols-3 ${
+        className={`grid grid-cols-2 gap-2 transition-all duration-500 ease-out sm:gap-3 lg:grid-cols-3 ${
           hideFinance ? (hideAcil ? 'xl:grid-cols-4' : 'xl:grid-cols-5') : (hideAcil ? 'xl:grid-cols-5' : 'xl:grid-cols-6')
         } ${
           isLoading ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
