@@ -21,6 +21,9 @@ export class ClaimFilesController {
   async findAll(@Query() query: any, @CurrentUser() user: any) {
     if (user?.role?.code === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
+      if (companyIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
       query.insuranceCompanyIds = companyIds;
     }
     const result = await this.claimFilesService.findAll(query, {

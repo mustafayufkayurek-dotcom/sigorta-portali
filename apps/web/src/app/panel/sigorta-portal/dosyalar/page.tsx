@@ -13,7 +13,12 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
-import { formatDisplayLabel } from '@/utils/text-helpers';
+import { fmtDate } from '@/utils/date-helpers';
+import { formatClaimSubjectLabel } from '@/utils/text-helpers';
+import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
+
+const SIGORTA_PORTAL_HOME = '/panel/sigorta-portal';
+const SIGORTA_PORTAL_LABEL = 'Sigorta Portal';
 
 const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNumber', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
@@ -26,6 +31,7 @@ const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
+
 function getHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -35,6 +41,7 @@ interface ClaimFile {
   id: string;
   fileNumber: string;
   fileNo?: string;
+  lossType?: string;
   createdAt: string;
   subject?: string;
   currentStatus?: { name: string; colorCode?: string };
@@ -51,34 +58,48 @@ export default function SigortaDosyalarPage() {
   const [files, setFiles] = useState<ClaimFile[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [missingScope, setMissingScope] = useState(false);
   const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-dosyalar', SIGORTA_FILE_TABLE_COLUMNS);
 
   useEffect(() => {
-    const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/giris'); return; }
-    const u = JSON.parse(raw);
-    if (u?.role?.code !== 'insurance_company_user') { router.push('/panel'); return; }
+    const { user, hasScope } = readInsurancePortalUser();
+    if (!user) {
+      router.push('/giris');
+      return;
+    }
+    if (!hasInsuranceCompanyUserAccess(user)) {
+      router.push('/panel');
+      return;
+    }
+    if (!hasScope) {
+      setMissingScope(true);
+      setLoading(false);
+      return;
+    }
 
-    const scopes: { id: string }[] = u.insuranceCompanyScopes ?? [];
-    if (scopes.length === 0) { setLoading(false); return; }
-
-    const companyQuery = scopes.map((s) => `insuranceCompanyIds[]=${s.id}`).join('&');
-    fetch(`${API}/claim-files?${companyQuery}&limit=50`, { headers: getHeaders() })
-      .then((r) => r.json())
-      .then((res) => { setFiles(res?.data ?? []); setTotal(res?.meta?.total ?? 0); })
-      .catch(() => {})
+    setError(null);
+    setMissingScope(false);
+    fetch(`${API}/claim-files?limit=50`, { headers: getHeaders() })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
+        return r.json();
+      })
+      .then((res) => {
+        setFiles(res?.data ?? []);
+        setTotal(res?.meta?.total ?? 0);
+      })
+      .catch((err: Error) => setError(err.message ?? 'Dosyalar yüklenemedi.'))
       .finally(() => setLoading(false));
   }, [router]);
-
-  const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR');
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
   return (
     <div className="space-y-4">
       <PortalBreadcrumb
-        portalHomeHref="/panel/sigorta-portal"
-        portalHomeLabel="Sigorta Portal"
+        portalHomeHref={SIGORTA_PORTAL_HOME}
+        portalHomeLabel={SIGORTA_PORTAL_LABEL}
         currentLabel="Dosyalar"
       />
 
@@ -95,9 +116,27 @@ export default function SigortaDosyalarPage() {
         </div>
       </div>
 
-      {files.length === 0 ? (
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError(null)} className="text-red-700 hover:text-red-900 ml-4 font-bold">&times;</button>
+        </div>
+      )}
+
+      {missingScope ? (
+        <div className="bg-white rounded-xl border border-amber-200 py-16 text-center px-6">
+          <p className="text-slate-700 font-medium">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="text-slate-500 text-sm mt-2">
+            Hesabınıza bağlı sigorta şirketi bulunamadı. Meridyen operasyon ekibinden kapsam ataması isteyin veya çıkış yapıp tekrar giriş yapın.
+          </p>
+        </div>
+      ) : !error && files.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
-          <p className="text-slate-500">Dosya bulunamadı.</p>
+          <svg className="mx-auto h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          <p className="text-slate-500 font-medium">Henüz dosya bulunmuyor.</p>
+          <p className="text-slate-400 text-sm mt-1">Sigorta şirketinize bağlı dosyalar burada listelenir.</p>
         </div>
       ) : (
         <TableColumnsProvider value={tableColumns}>
@@ -124,7 +163,9 @@ export default function SigortaDosyalarPage() {
                   onClick={() => router.push(`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`)}
                 >
                   <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
-                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatDisplayLabel(f.subject)}</PanelTableTd>
+                  <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">
+                    {formatClaimSubjectLabel(f.lossType, undefined, f.subject)}
+                  </PanelTableTd>
                   <PanelTableTd colId="status" className="px-4 py-3">
                     <span
                       className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -136,12 +177,12 @@ export default function SigortaDosyalarPage() {
                   <PanelTableTd colId="assignedUser" className="px-4 py-3 text-sm text-slate-600">
                     {f.assignedFieldUser ? `${f.assignedFieldUser.firstName} ${f.assignedFieldUser.lastName}` : '—'}
                   </PanelTableTd>
-                  <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmt(f.createdAt)}</PanelTableTd>
+                  <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmtDate(f.createdAt)}</PanelTableTd>
                   <PanelTableTd colId="flow" className="px-4 py-3">
                     <Link
                       href={`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                     >
                       Akış
                     </Link>

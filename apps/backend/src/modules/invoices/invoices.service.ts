@@ -40,6 +40,8 @@ export class InvoicesService {
     invoiceType?: string;
     status?: string;
     counterpartyId?: string;
+    insuranceCompanyId?: string;
+    insuranceCompanyIds?: string[];
     dateFrom?: string;
     dateTo?: string;
     page?: number;
@@ -54,6 +56,12 @@ export class InvoicesService {
     if (params.invoiceType) where.invoiceType = params.invoiceType;
     if (params.status) where.status = params.status;
     if (params.counterpartyId) where.counterpartyId = params.counterpartyId;
+    if (params.insuranceCompanyId) {
+      where.claimFile = { insuranceCompanyId: params.insuranceCompanyId };
+    }
+    if (params.insuranceCompanyIds?.length) {
+      where.claimFile = { insuranceCompanyId: { in: params.insuranceCompanyIds } };
+    }
     if (params.dateFrom || params.dateTo) {
       where.invoiceDate = {};
       if (params.dateFrom) where.invoiceDate.gte = new Date(params.dateFrom);

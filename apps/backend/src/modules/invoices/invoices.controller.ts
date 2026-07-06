@@ -16,18 +16,29 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
 
 @ApiTags('invoices')
 @ApiBearerAuth()
 @Controller()
 @UseGuards(PermissionsGuard)
 export class InvoicesController {
-  constructor(private readonly service: InvoicesService) {}
+  constructor(
+    private readonly service: InvoicesService,
+    private readonly claimFilesService: ClaimFilesService,
+  ) {}
 
   @Get('invoices')
   @RequirePermissions('invoice.view')
   @ApiOperation({ summary: 'Fatura listesi' })
-  async findAll(@Query() query: any) {
+  async findAll(@Query() query: any, @CurrentUser() user: any) {
+    if (user?.role?.code === 'insurance_company_user') {
+      const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
+      if (companyIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
+      query.insuranceCompanyIds = companyIds;
+    }
     const result = await this.service.findAll(query);
     return { success: true, ...result };
   }

@@ -390,6 +390,26 @@ async function main() {
 
   await seedPilotOperationData(prisma);
 
+  // Demo sigorta portal kullanıcısına pilot şirket kapsamı (ALLIANZ_DEMO dosyaları)
+  const sigortaPortalUser = await prisma.user.findUnique({ where: { email: 'sigorta@example.com' } });
+  const demoInsuranceCompany = await prisma.insuranceCompany.findFirst({ where: { code: 'ALLIANZ_DEMO' } });
+  if (sigortaPortalUser && demoInsuranceCompany) {
+    await prisma.userInsuranceCompanyScope.upsert({
+      where: {
+        userId_insuranceCompanyId: {
+          userId: sigortaPortalUser.id,
+          insuranceCompanyId: demoInsuranceCompany.id,
+        },
+      },
+      update: {},
+      create: {
+        userId: sigortaPortalUser.id,
+        insuranceCompanyId: demoInsuranceCompany.id,
+      },
+    });
+    console.log('✅ Sigorta portal demo kullanıcısına ALLIANZ_DEMO kapsamı atandı');
+  }
+
   // Demo: Adjuster kaydı oluştur ve expert kullanıcıya bağla
   const demoAdjuster = await prisma.adjuster.upsert({
     where: { licenseNo: 'DEMO-EXPERT-001' },

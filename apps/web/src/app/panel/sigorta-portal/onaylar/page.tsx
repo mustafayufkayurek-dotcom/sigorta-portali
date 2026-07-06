@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -20,7 +22,7 @@ interface Approval {
   report?: {
     reportNumber?: string;
     totalAmount?: number;
-    claimFile?: { fileNumber?: string };
+    claimFile?: { fileNumber?: string; fileNo?: string };
   };
 }
 
@@ -28,6 +30,8 @@ export default function SigortaOnaylarPage() {
   const router = useRouter();
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [missingScope, setMissingScope] = useState(false);
   const [selected, setSelected] = useState<Approval | null>(null);
   const [action, setAction] = useState<'approved' | 'rejected' | null>(null);
   const [comment, setComment] = useState('');
@@ -35,23 +39,29 @@ export default function SigortaOnaylarPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   const loadApprovals = (companyId: string) => {
+    setError(null);
     fetch(`${API}/external-approvals/pending?approverType=insurance_company&approverId=${companyId}`, {
       headers: getHeaders(),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Sunucu hatası: ${r.status}`);
+        return r.json();
+      })
       .then((res) => setApprovals(res?.data ?? []))
-      .catch(() => {})
+      .catch((err: Error) => setError(err.message ?? 'Onaylar yüklenemedi.'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/giris'); return; }
-    const u = JSON.parse(raw);
-    if (u?.role?.code !== 'insurance_company_user') { router.push('/panel'); return; }
-    const scopes: any[] = u.insuranceCompanyScopes ?? [];
-    if (scopes.length > 0) loadApprovals(scopes[0].id);
-    else setLoading(false);
+    const { user, hasScope, companyIds } = readInsurancePortalUser();
+    if (!user) { router.push('/giris'); return; }
+    if (!hasInsuranceCompanyUserAccess(user)) { router.push('/panel'); return; }
+    if (!hasScope) {
+      setMissingScope(true);
+      setLoading(false);
+      return;
+    }
+    loadApprovals(companyIds[0]);
   }, [router]);
 
   const handleRespond = async () => {
@@ -79,19 +89,17 @@ export default function SigortaOnaylarPage() {
   const statusColor = (s: string) => ({ pending: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', rejected: 'bg-red-100 text-red-800', expired: 'bg-slate-100 text-slate-600' }[s] ?? 'bg-slate-100 text-slate-600');
   const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const fmtMoney = (v?: number) => v != null ? v.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) : '—';
+  const fileNoOf = (a: Approval) => a.report?.claimFile?.fileNo ?? a.report?.claimFile?.fileNumber ?? '—';
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <a href="/panel/sigorta-portal" className="hover:text-blue-600 transition-colors">Sigorta Portal</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Onaylar</span>
-      </nav>
+      <PortalBreadcrumb
+        portalHomeHref="/panel/sigorta-portal"
+        portalHomeLabel="Sigorta Portal"
+        currentLabel="Onaylar"
+      />
 
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900">Bekleyen Onaylar</h2>
@@ -105,7 +113,19 @@ export default function SigortaOnaylarPage() {
         </div>
       )}
 
-      {approvals.length === 0 ? (
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError(null)} className="text-red-700 hover:text-red-900 ml-4 font-bold">&times;</button>
+        </div>
+      )}
+
+      {missingScope ? (
+        <div className="bg-white rounded-xl border border-amber-200 py-16 text-center px-6">
+          <p className="text-slate-700 font-medium">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="text-slate-500 text-sm mt-2">Onay listesi için hesabınıza sigorta şirketi atanmalıdır.</p>
+        </div>
+      ) : !error && approvals.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
           <p className="text-slate-500">Bekleyen onay isteği bulunmuyor.</p>
         </div>
@@ -116,7 +136,7 @@ export default function SigortaOnaylarPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-900">{a.report?.claimFile?.fileNumber ?? '—'}</span>
+                    <span className="font-semibold text-slate-900">{fileNoOf(a)}</span>
                     <span className="text-slate-400">·</span>
                     <span className="text-sm text-slate-600">{a.report?.reportNumber ?? a.reportId.slice(0, 8)}</span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(a.status)}`}>{statusLabel(a.status)}</span>
@@ -139,13 +159,12 @@ export default function SigortaOnaylarPage() {
         </div>
       )}
 
-      {/* Modal */}
       {selected && action && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 className="text-lg font-bold text-slate-900">{action === 'approved' ? 'Onay Ver' : 'Reddet'}</h3>
             <div className="text-sm text-slate-600 space-y-1">
-              <p><span className="font-medium">Dosya No:</span> {selected.report?.claimFile?.fileNumber ?? '—'}</p>
+              <p><span className="font-medium">Dosya No:</span> {fileNoOf(selected)}</p>
               <p><span className="font-medium">Tutar:</span> {fmtMoney(selected.report?.totalAmount)}</p>
             </div>
             <div>

@@ -7,6 +7,7 @@ import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
 import PortalProcessTimeline from '@/components/portal/PortalProcessTimeline';
 import { fmtDate } from '@/utils/date-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
+import { readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 
 function getHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
@@ -35,6 +36,7 @@ export interface PortalFileFlowPageProps {
   filesLinkLabel: string;
   filesApiUrl: string;
   assertAccess: (user: { role?: { code?: string } }) => boolean;
+  scopeRequiredMessage?: string;
 }
 
 export default function PortalFileFlowPage({
@@ -46,6 +48,7 @@ export default function PortalFileFlowPage({
   filesLinkLabel,
   filesApiUrl,
   assertAccess,
+  scopeRequiredMessage,
 }: PortalFileFlowPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,6 +58,7 @@ export default function PortalFileFlowPage({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [missingScope, setMissingScope] = useState(false);
 
   const selectFile = useCallback(
     (id: string) => {
@@ -78,6 +82,16 @@ export default function PortalFileFlowPage({
       return;
     }
 
+    if (scopeRequiredMessage) {
+      const { hasScope } = readInsurancePortalUser();
+      if (!hasScope) {
+        setMissingScope(true);
+        setLoading(false);
+        return;
+      }
+    }
+    setMissingScope(false);
+
     setLoading(true);
     setError(null);
     fetch(filesApiUrl, { headers: getHeaders() })
@@ -90,7 +104,7 @@ export default function PortalFileFlowPage({
       })
       .catch((err: Error) => setError(err.message ?? 'Dosyalar yüklenemedi.'))
       .finally(() => setLoading(false));
-  }, [router, filesApiUrl, assertAccess]);
+  }, [router, filesApiUrl, assertAccess, scopeRequiredMessage]);
 
   useEffect(() => {
     if (files.length === 0) {
@@ -141,7 +155,12 @@ export default function PortalFileFlowPage({
         </div>
       )}
 
-      {!error && files.length === 0 ? (
+      {missingScope && scopeRequiredMessage ? (
+        <div className="bg-white rounded-xl border border-amber-200 py-16 text-center px-6">
+          <p className="text-slate-700 font-medium">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="text-slate-500 text-sm mt-2">{scopeRequiredMessage}</p>
+        </div>
+      ) : !error && files.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
           <svg className="mx-auto h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path

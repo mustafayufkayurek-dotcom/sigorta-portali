@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -19,24 +21,24 @@ export default function SigortaPortalPage() {
   const [recentApprovals, setRecentApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [missingScope, setMissingScope] = useState(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/giris'); return; }
-    const u = JSON.parse(raw);
-    if (u?.role?.code !== 'insurance_company_user') { setLoading(false); setAccessDenied(true); return; }
-    setUser(u);
+    const { user: storedUser, hasScope, companyIds } = readInsurancePortalUser();
+    if (!storedUser) { router.push('/giris'); return; }
+    if (!hasInsuranceCompanyUserAccess(storedUser)) { setLoading(false); setAccessDenied(true); return; }
+    setUser(storedUser);
 
-    const companyIds: string[] = (u.insuranceCompanyScopes ?? []).map((s: any) => s.id);
-    const companyQuery = companyIds.map((id) => `insuranceCompanyIds[]=${id}`).join('&');
+    if (!hasScope) {
+      setMissingScope(true);
+      setLoading(false);
+      return;
+    }
+    setMissingScope(false);
 
     Promise.all([
-      companyIds.length > 0
-        ? fetch(`${API}/external-approvals/pending?approverType=insurance_company&approverId=${companyIds[0]}`, { headers: getHeaders() }).then((r) => r.json())
-        : Promise.resolve({ data: [] }),
-      companyQuery
-        ? fetch(`${API}/claim-files?${companyQuery}&limit=1`, { headers: getHeaders() }).then((r) => r.json())
-        : Promise.resolve({ data: [], meta: { total: 0 } }),
+      fetch(`${API}/external-approvals/pending?approverType=insurance_company&approverId=${companyIds[0]}`, { headers: getHeaders() }).then((r) => r.json()),
+      fetch(`${API}/claim-files?limit=1`, { headers: getHeaders() }).then((r) => r.json()),
     ])
       .then(([approvals, files]) => {
         const list: any[] = approvals?.data ?? [];
@@ -52,19 +54,14 @@ export default function SigortaPortalPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
   if (accessDenied) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Sigorta Portal</span>
-      </nav>
+      <PortalBreadcrumb portalHomeHref="/panel/sigorta-portal" portalHomeLabel="Sigorta Portal" currentLabel="Erişim" />
 
       <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center">
         <svg className="w-7 h-7 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-slate-800">Bu sayfa sigorta şirketi kullanıcıları içindir</p>
-        <p className="text-sm text-slate-500 mt-1">Sigorta Portalı yalnızca sigorta şirketi rolündeki kullanıcılar tarafından kullanılabilir.</p>
+        <p className="text-base font-semibold text-slate-800">Bu Sayfa Sigorta Şirketi Kullanıcıları İçindir</p>
+        <p className="text-sm text-slate-500 mt-1">Sigorta portalı yalnızca sigorta şirketi rolündeki kullanıcılar tarafından kullanılabilir.</p>
       </div>
       <Link href="/panel" className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Dashboard&apos;a Dön</Link>
     </div>
@@ -74,7 +71,7 @@ export default function SigortaPortalPage() {
   const statusLabel = (s: string) => ({ pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi', expired: 'Süresi Doldu' }[s] ?? s);
   const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const companies: string = (user?.insuranceCompanyScopes ?? []).map((s: any) => s.name).join(', ') || '—';
+  const companies: string = (user?.insuranceCompanyScopes ?? []).map((s: any) => s.name ?? s).join(', ') || '—';
 
   return (
     <div className="space-y-6">
@@ -84,6 +81,12 @@ export default function SigortaPortalPage() {
           {user?.firstName} {user?.lastName} — {companies}
         </p>
       </div>
+
+      {missingScope && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-900">
+          Sigorta şirketi kapsamı tanımlı değil. Dosya ve fatura listeleri için Meridyen operasyon ekibinden kapsam ataması isteyin.
+        </div>
+      )}
 
       {/* İstatistik kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -103,11 +106,7 @@ export default function SigortaPortalPage() {
           </div>
           <div>
             <p className="text-sm text-slate-500">Toplam Dosya</p>
-            <div className="flex gap-2 text-xs text-slate-400 mt-0.5">
-              <span className="text-green-600">{fileStats.open} Açık</span>
-              <span>·</span>
-              <span>{fileStats.closed} Kapalı</span>
-            </div>
+            <Link href="/panel/sigorta-portal/dosyalar" className="text-xs text-blue-600 hover:underline">Dosyaları Görüntüle</Link>
           </div>
         </div>
 
