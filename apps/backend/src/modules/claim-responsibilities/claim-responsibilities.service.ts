@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { regionValueMatchesProvince } from '@/common/helpers/turkey-geographic-regions.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateClaimResponsibilityDto, UpdateClaimResponsibilityDto } from './dto/claim-responsibilities.dto';
 
@@ -126,7 +127,7 @@ export class ClaimResponsibilitiesService {
       const regionValues = (a.regionValues as any as string[]) ?? [];
       if (a.regionType === 'city' && regionValues.includes(city)) return a.user;
       if (a.regionType === 'district' && district && regionValues.includes(district)) return a.user;
-      if (a.regionType === 'region' && regionValues.includes(city)) return a.user; // Bölge mantığı city bazlı
+      if (a.regionType === 'region' && regionValueMatchesProvince(regionValues, city)) return a.user;
     }
 
     return null;

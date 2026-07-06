@@ -16,6 +16,7 @@ import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
+import { GeographicRegionScopePanel } from '@/components/users/GeographicRegionScopePanel';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
@@ -39,6 +40,12 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 import { normalizeEmailAddress } from '@/utils/normalize-email';
 import { API, authHeader } from '@/utils/api';
 import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
+import {
+  getProvincesForRegionCode,
+  getRegionCodeFromApiCode,
+  getRegionNamesForSelectedIds,
+  inferSelectedRegionIdsFromServiceAreas,
+} from '@/utils/turkey-geographic-regions';
 import { toInternationalFormat, validateEmail } from '@/utils/validators';
 import {
   ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
@@ -222,6 +229,12 @@ interface ServiceBranch {
   sortOrder?: number;
 }
 
+interface GeographicRegion {
+  id: string;
+  code: string;
+  name: string;
+}
+
 interface Province {
   id: string;
   name: string;
@@ -296,6 +309,7 @@ interface UserFormState {
   acilYardimCustomerIds: string[];
   countrywide: boolean;
   serviceAreas: ServiceAreaSelection[];
+  selectedGeographicRegionIds: string[];
   selectedSubjects: string[];
   otherSubjectNotes: string;
 }
@@ -314,6 +328,7 @@ const DEFAULT_FORM: UserFormState = {
   acilYardimCustomerIds: [],
   countrywide: true,
   serviceAreas: [],
+  selectedGeographicRegionIds: [],
   selectedSubjects: [],
   otherSubjectNotes: '',
 };
@@ -589,6 +604,7 @@ export default function KullanicilarPage() {
   const [brokerCustomers, setBrokerCustomers] = useState<PortalOrganizationOption[]>([]);
   const [serviceBranches, setServiceBranches] = useState<ServiceBranch[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
+  const [geographicRegions, setGeographicRegions] = useState<GeographicRegion[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [districts, setDistricts] = useState<District[]>([]);
   const provinceOptions = useMemo(
@@ -827,6 +843,27 @@ export default function KullanicilarPage() {
     }
   }, []);
 
+  const loadGeographicRegions = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/regions`, { headers: authHeader() });
+      const list = r.data?.data ?? r.data ?? [];
+      setGeographicRegions(Array.isArray(list) ? list : []);
+    } catch {
+      setGeographicRegions([]);
+    }
+  }, []);
+
+  const fetchDistrictsForPanel = useCallback(async (provinceId: string) => {
+    if (!provinceId) return [];
+    try {
+      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
+      const list = r.data?.data ?? r.data ?? [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   const loadDistricts = useCallback(async (provinceId: string) => {
     if (!provinceId) {
       setDistricts([]);
@@ -852,7 +889,31 @@ export default function KullanicilarPage() {
     loadBrokerCustomers();
     loadServiceBranches();
     loadProvinces();
-  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadBrokerCustomers, loadServiceBranches, loadProvinces]);
+    loadGeographicRegions();
+  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadBrokerCustomers, loadServiceBranches, loadProvinces, loadGeographicRegions]);
+
+  useEffect(() => {
+    if (modal !== 'edit' || form.userTask !== 'operations' || form.countrywide) return;
+    if (form.selectedGeographicRegionIds.length > 0 || form.serviceAreas.length === 0) return;
+    if (geographicRegions.length === 0 || provinces.length === 0) return;
+
+    const inferred = inferSelectedRegionIdsFromServiceAreas(
+      provinces,
+      form.serviceAreas,
+      geographicRegions,
+    );
+    if (inferred.length > 0) {
+      setForm((prev) => ({ ...prev, selectedGeographicRegionIds: inferred }));
+    }
+  }, [
+    modal,
+    form.userTask,
+    form.countrywide,
+    form.serviceAreas,
+    form.selectedGeographicRegionIds.length,
+    geographicRegions,
+    provinces,
+  ]);
 
   // ── Filtreli liste ────────────────────────────────────────────────────────
 
@@ -939,6 +1000,10 @@ export default function KullanicilarPage() {
     selectedSubjects: string[] = [],
     acilCustomerIds: string[] = [],
     otherSubjectNotes = '',
+    options?: {
+      useGeographicRegions?: boolean;
+      geographicRegionNames?: string[];
+    },
   ) => {
     const memberships = buildDepartmentMemberships(area);
     if (!memberships) return null;
@@ -989,16 +1054,58 @@ export default function KullanicilarPage() {
       });
     }
 
-    const cityValues = Array.from(new Set(
-      serviceAreas
-        .filter((item) => !item.districtId)
-        .map((item) => item.provinceName ?? provinces.find((province) => province.id === item.provinceId)?.name)
-        .filter((value): value is string => Boolean(value)),
-    ));
     const districtValues = Array.from(new Set(
       serviceAreas
         .filter((item) => item.districtId)
         .map((item) => item.districtName ?? districts.find((district) => district.id === item.districtId)?.name)
+        .filter((value): value is string => Boolean(value)),
+    ));
+
+    if (options?.useGeographicRegions) {
+      const regionValues = options.geographicRegionNames ?? [];
+
+      return memberships.flatMap((membership) => {
+        const coverage = buildCoverageForDepartment(membership.departmentId);
+        const department = departments.find((item) => item.id === membership.departmentId);
+        if (department && departmentCodeMatchesArea(department.code, 'acil')) {
+          return [{
+            departmentId: membership.departmentId,
+            regionType: 'countrywide',
+            regionValues: [],
+            coverageType: coverage.coverageType,
+            coverageConfig: coverage.coverageConfig,
+            priority: 0,
+            isActive: true,
+          }];
+        }
+
+        return [
+          ...(regionValues.length > 0 ? [{
+            departmentId: membership.departmentId,
+            regionType: 'region',
+            regionValues,
+            coverageType: coverage.coverageType,
+            coverageConfig: coverage.coverageConfig,
+            priority: 0,
+            isActive: true,
+          }] : []),
+          ...(districtValues.length > 0 ? [{
+            departmentId: membership.departmentId,
+            regionType: 'district',
+            regionValues: districtValues,
+            coverageType: coverage.coverageType,
+            coverageConfig: coverage.coverageConfig,
+            priority: 10,
+            isActive: true,
+          }] : []),
+        ];
+      });
+    }
+
+    const cityValues = Array.from(new Set(
+      serviceAreas
+        .filter((item) => !item.districtId)
+        .map((item) => item.provinceName ?? provinces.find((province) => province.id === item.provinceId)?.name)
         .filter((value): value is string => Boolean(value)),
     ));
 
@@ -1091,8 +1198,14 @@ export default function KullanicilarPage() {
       acilYardimCustomerIds: value === 'operations' ? prev.acilYardimCustomerIds : [],
       expertCustomerId: value === 'expert' ? prev.expertCustomerId : '',
       brokerCustomerId: value === 'broker' ? prev.brokerCustomerId : '',
-      countrywide: value === 'operations' || value === 'field_operations' || value === 'expert' ? prev.countrywide : true,
+      countrywide:
+        value === 'operations'
+          ? false
+          : value === 'field_operations' || value === 'expert'
+            ? prev.countrywide
+            : true,
       serviceAreas: value === 'operations' || value === 'field_operations' || value === 'expert' ? prev.serviceAreas : [],
+      selectedGeographicRegionIds: value === 'operations' ? prev.selectedGeographicRegionIds : [],
       selectedSubjects: value === 'field_operations' ? prev.selectedSubjects : [],
     }));
     setFormErrors((prev) => ({
@@ -1118,8 +1231,10 @@ export default function KullanicilarPage() {
       selectedSubjects: prev.userTask === 'field_operations' ? [] : prev.selectedSubjects,
       otherSubjectNotes: prev.userTask === 'field_operations' ? '' : prev.otherSubjectNotes,
       ...(prev.userTask === 'operations' && area === 'acil'
-        ? { serviceAreas: [], countrywide: true }
-        : {}),
+        ? { serviceAreas: [], countrywide: true, selectedGeographicRegionIds: [] }
+        : prev.userTask === 'operations' && area === 'hasar'
+          ? { countrywide: false }
+          : {}),
     }));
     setFormErrors((prev) => ({
       ...prev,
@@ -1143,6 +1258,62 @@ export default function KullanicilarPage() {
         : prev.otherSubjectNotes,
     }));
     setFormErrors((prev) => ({ ...prev, selectedSubjects: undefined, otherSubjectNotes: undefined, general: undefined }));
+  };
+
+  const toggleOperationsDistrict = (
+    provinceId: string,
+    districtId: string,
+    districtsInProvince: { id: string; name: string }[],
+  ) => {
+    const province = provinces.find((item) => item.id === provinceId);
+    setForm((prev) => ({
+      ...prev,
+      serviceAreas: toggleDistrictArea(
+        prev.serviceAreas,
+        provinceId,
+        districtId,
+        districtsInProvince,
+        province?.name,
+      ) as ServiceAreaSelection[],
+    }));
+  };
+
+  const toggleGeographicRegion = (regionId: string, checked: boolean) => {
+    const region = geographicRegions.find((item) => item.id === regionId);
+    if (!region) return;
+    const regionCode = getRegionCodeFromApiCode(region.code);
+    if (!regionCode) return;
+    const regionProvinces = getProvincesForRegionCode(regionCode, provinces);
+
+    setForm((prev) => {
+      const nextSelected = checked
+        ? [...prev.selectedGeographicRegionIds.filter((id) => id !== regionId), regionId]
+        : prev.selectedGeographicRegionIds.filter((id) => id !== regionId);
+
+      let nextServiceAreas = [...prev.serviceAreas];
+      if (checked) {
+        for (const province of regionProvinces) {
+          if (!nextServiceAreas.some((area) => area.provinceId === province.id && !area.districtId)) {
+            nextServiceAreas.push({
+              provinceId: province.id,
+              districtId: null,
+              provinceName: province.name,
+            });
+          }
+        }
+      } else {
+        const provinceIds = new Set(regionProvinces.map((province) => province.id));
+        nextServiceAreas = nextServiceAreas.filter((area) => !provinceIds.has(area.provinceId));
+      }
+
+      return {
+        ...prev,
+        countrywide: false,
+        selectedGeographicRegionIds: nextSelected,
+        serviceAreas: nextServiceAreas,
+      };
+    });
+    setFormErrors((prev) => ({ ...prev, selectedGeographicRegionIds: undefined, general: undefined }));
   };
 
   const toggleServiceArea = (provinceId: string, districtId: string | null) => {
@@ -1287,6 +1458,16 @@ export default function KullanicilarPage() {
         provinceName: area.province?.name ?? area.provinceName,
         districtName: area.district?.name ?? area.districtName ?? null,
       })),
+      selectedGeographicRegionIds: task.userTask === 'operations' && (u.serviceAreas ?? []).length > 0
+        ? inferSelectedRegionIdsFromServiceAreas(
+          provinces,
+          (u.serviceAreas ?? []).map((area: any) => ({
+            provinceId: area.provinceId,
+            districtId: area.districtId ?? null,
+          })),
+          geographicRegions,
+        )
+        : [],
       selectedSubjects: [],
       otherSubjectNotes: '',
     });
@@ -1353,6 +1534,14 @@ export default function KullanicilarPage() {
     }
     if (form.userTask === 'operations' && showsAcilYardimCustomerScope(form.operationArea) && form.acilYardimCustomerIds.length === 0) {
       nextErrors.acilYardimCustomerIds = 'Acil yardım müşterisi seçilmelidir.';
+    }
+    if (
+      form.userTask === 'operations'
+      && showsOperationsServiceAreaScope(form.operationArea)
+      && !form.countrywide
+      && form.selectedGeographicRegionIds.length === 0
+    ) {
+      nextErrors.selectedGeographicRegionIds = 'En az bir coğrafi bölge seçilmelidir.';
     }
     setFormErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -1429,6 +1618,11 @@ export default function KullanicilarPage() {
           usesRegions ? form.countrywide : true,
           [],
           form.acilYardimCustomerIds,
+          '',
+          usesRegions ? {
+            useGeographicRegions: true,
+            geographicRegionNames: getRegionNamesForSelectedIds(form.selectedGeographicRegionIds, geographicRegions),
+          } : undefined,
         );
       }
 
@@ -2491,78 +2685,26 @@ export default function KullanicilarPage() {
 	                  )}
 
 	                  {showsOperationsServiceAreaScope(form.operationArea) && (
-	                  <div>
-	                    <div className="mb-2 flex items-center justify-between gap-3">
-	                      <p className="text-sm font-medium text-slate-700">Bölgeler</p>
-	                      <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-	                        <input
-	                          type="checkbox"
-	                          checked={form.countrywide}
-	                          onChange={(e) => setForm({ ...form, countrywide: e.target.checked, serviceAreas: e.target.checked ? [] : form.serviceAreas })}
-	                          className="rounded border-slate-300 text-blue-600"
-	                        />
-	                        Tüm Türkiye
-	                      </label>
-	                    </div>
-	                    {!form.countrywide && (
-	                      <div className="rounded-xl border border-slate-200 bg-white p-3">
-	                        <div className="mb-3 flex gap-2">
-	                          <SearchableSelect
-	                            className="flex-1 min-w-0"
-	                            options={provinceOptions}
-	                            value={selectedProvinceId}
-	                            onChange={(provinceId) => {
-	                              setSelectedProvinceId(provinceId);
-	                              loadDistricts(provinceId);
-	                            }}
-	                            placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
-	                            emptyText={ADDRESS_FIELD.provinceSearchEmpty}
-	                            inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-	                          />
-                          {selectedProvinceId && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={addWholeProvince}
-                                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
-                              >
-                                Tüm İl
-                              </button>
-                              {districts.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={addAllDistrictsInProvinceHandler}
-                                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"
-                                >
-                                  Tüm İlçeler
-                                </button>
-                              )}
-                            </>
-                          )}
-	                        </div>
-	                        {selectedProvinceId && districts.length > 0 && (
-	                          <DistrictCheckboxGrid
-	                            districts={districts}
-	                            maxHeightClass="max-h-36"
-	                            gridClassName="grid gap-2 sm:grid-cols-3"
-	                            accentClass="accent-blue-600"
-	                            isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
-	                            onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
-	                          />
-	                        )}
-	                        {form.serviceAreas.length > 0 && (
-	                          <div className="mt-3 flex flex-wrap gap-1.5">
-	                            {form.serviceAreas.map((area) => (
-	                              <span key={`${area.provinceId}:${area.districtId ?? ''}`} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-	                                {area.districtId ? `${area.provinceName ?? area.provinceId} / ${area.districtName ?? area.districtId}` : `${area.provinceName ?? area.provinceId} (Tümü)`}
-	                                <button type="button" onClick={() => toggleServiceArea(area.provinceId, area.districtId)} className="text-blue-400 hover:text-red-500">×</button>
-	                              </span>
-	                            ))}
-	                          </div>
-	                        )}
-	                      </div>
-	                    )}
-	                  </div>
+	                  <GeographicRegionScopePanel
+	                    regions={geographicRegions}
+	                    provinces={provinces}
+	                    selectedRegionIds={form.selectedGeographicRegionIds}
+	                    serviceAreas={form.serviceAreas}
+	                    countrywide={form.countrywide}
+	                    onCountrywideChange={(checked) => {
+	                      setForm((prev) => ({
+	                        ...prev,
+	                        countrywide: checked,
+	                        serviceAreas: checked ? [] : prev.serviceAreas,
+	                        selectedGeographicRegionIds: checked ? [] : prev.selectedGeographicRegionIds,
+	                      }));
+	                      setFormErrors((prev) => ({ ...prev, selectedGeographicRegionIds: undefined, general: undefined }));
+	                    }}
+	                    onToggleRegion={toggleGeographicRegion}
+	                    onToggleDistrict={toggleOperationsDistrict}
+	                    loadDistricts={fetchDistrictsForPanel}
+	                    error={formErrors.selectedGeographicRegionIds}
+	                  />
 	                  )}
 	                </div>
 	              </div>
