@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { renderAgreementTemplate } from '@sigorta/shared';
+import { renderAgreementTemplate, DEFAULT_AGREEMENT_TEMPLATES } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
@@ -17,16 +17,24 @@ export class AgreementsService {
     private readonly systemSettings: SystemSettingsService,
   ) {}
 
-  private async resolveRenderedContent(rawContent: string): Promise<string> {
-    const company = await this.systemSettings.getCompanyInfo();
-    const vars = companyInfoToAgreementVars(company);
-    return renderAgreementTemplate(rawContent, vars);
+  private resolveRawContent(rawContent: string, type?: string): string {
+    const trimmed = rawContent?.trim();
+    if (trimmed) return trimmed;
+    if (type === 'kvkk') return DEFAULT_AGREEMENT_TEMPLATES.kvkk;
+    if (type === 'gizlilik') return DEFAULT_AGREEMENT_TEMPLATES.gizlilik;
+    return '<p>Sözleşme içeriği henüz tanımlanmamış. Lütfen Ayarlar → Sözleşmeler bölümünden içerik ekleyin.</p>';
   }
 
-  private async withRenderedContent<T extends { content: string }>(agreement: T): Promise<T> {
+  private async resolveRenderedContent(rawContent: string, type?: string): Promise<string> {
+    const company = await this.systemSettings.getCompanyInfo();
+    const vars = companyInfoToAgreementVars(company);
+    return renderAgreementTemplate(this.resolveRawContent(rawContent, type), vars);
+  }
+
+  private async withRenderedContent<T extends { content: string; type?: string }>(agreement: T): Promise<T> {
     return {
       ...agreement,
-      content: await this.resolveRenderedContent(agreement.content),
+      content: await this.resolveRenderedContent(agreement.content, agreement.type),
     };
   }
 
@@ -106,8 +114,8 @@ export class AgreementsService {
     return { message: 'Sözleşme pasifleştirildi' };
   }
 
-  private async renderedContentHash(rawContent: string): Promise<string> {
-    const rendered = await this.resolveRenderedContent(rawContent);
+  private async renderedContentHash(rawContent: string, type?: string): Promise<string> {
+    const rendered = await this.resolveRenderedContent(rawContent, type);
     return hashAgreementContent(rendered);
   }
 
@@ -144,7 +152,7 @@ export class AgreementsService {
 
     const pending: typeof activeAgreements = [];
     for (const agreement of activeAgreements) {
-      const currentHash = await this.renderedContentHash(agreement.content);
+      const currentHash = await this.renderedContentHash(agreement.content, agreement.type);
       if (this.isAcceptanceStale(agreement, acceptanceByAgreement.get(agreement.id), currentHash)) {
         pending.push(agreement);
       }
@@ -161,7 +169,7 @@ export class AgreementsService {
   ) {
     const normalizedUserId = resolveUserId({ id: userId });
     const agreement = await this.findOne(dto.agreementId, { render: false });
-    const renderedContent = await this.resolveRenderedContent(agreement.content);
+    const renderedContent = await this.resolveRenderedContent(agreement.content, agreement.type);
     const signature = dto.signature?.trim();
 
     if (!signature) {

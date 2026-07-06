@@ -1,18 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { DEFAULT_AGREEMENT_TEMPLATES } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { sanitizeHtml } from '@/utils/sanitize-html';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-}
-function authHeader() {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` };
-}
+import { sanitizeDocumentHtml } from '@/utils/sanitize-html';
+import { apiClient } from '@/lib/api-client';
 
 interface PendingAgreement {
   id: string;
@@ -20,6 +12,18 @@ interface PendingAgreement {
   type: string;
   version: string;
   content?: string;
+}
+
+function fallbackAgreementHtml(type: string): string {
+  if (type === 'kvkk') return DEFAULT_AGREEMENT_TEMPLATES.kvkk;
+  if (type === 'gizlilik') return DEFAULT_AGREEMENT_TEMPLATES.gizlilik;
+  return '<p>Sözleşme içeriği yüklenemedi. Lütfen sistem yöneticisine başvurun.</p>';
+}
+
+function resolveAgreementHtml(type: string, raw?: string | null): string {
+  const trimmed = raw?.trim();
+  if (trimmed) return trimmed;
+  return fallbackAgreementHtml(type);
 }
 
 interface Props {
@@ -97,12 +101,26 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
     setCheckboxConfirmedAt(null);
     setError('');
 
-    fetch(`${API}/agreements/${current.id}`, { headers: authHeader() })
-      .then((r) => r.json())
-      .then((json) => setContent(json?.data?.content ?? ''))
-      .catch(() => setContent('<p>Sözleşme içeriği yüklenemedi.</p>'))
+    apiClient
+      .get<{ content?: string; type?: string }>(`/agreements/${current.id}`)
+      .then((data) => setContent(resolveAgreementHtml(current.type, data?.content)))
+      .catch(() => setContent(fallbackAgreementHtml(current.type)))
       .finally(() => setLoadingContent(false));
-  }, [currentIndex, current?.id, expectedFullName]);
+  }, [currentIndex, current?.id, current?.type, expectedFullName]);
+
+  // Kısa belgelerde veya boş scroll alanında otomatik "okundu" say
+  useEffect(() => {
+    if (loadingContent) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const timer = window.setTimeout(() => {
+      if (el.scrollHeight <= el.clientHeight + 12) {
+        setScrolledToBottom(true);
+        setScrolledAt((prev) => prev ?? new Date().toISOString());
+      }
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [loadingContent, content, currentIndex]);
 
   useEffect(() => {
     if (!onDismiss || saving) return;
@@ -128,20 +146,12 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
     setError('');
     setSaving(true);
     try {
-      const res = await fetch(`${API}/agreements/accept`, {
-        method: 'POST',
-        headers: authHeader(),
-        body: JSON.stringify({
-          agreementId: current.id,
-          signature: toTitleCaseTR(signature.trim()),
-          scrolledAt: scrolledAt ?? new Date().toISOString(),
-          checkboxConfirmedAt: checkboxConfirmedAt ?? new Date().toISOString(),
-        }),
+      await apiClient.post('/agreements/accept', {
+        agreementId: current.id,
+        signature: toTitleCaseTR(signature.trim()),
+        scrolledAt: scrolledAt ?? new Date().toISOString(),
+        checkboxConfirmedAt: checkboxConfirmedAt ?? new Date().toISOString(),
       });
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json?.message ?? 'Onay kaydedilemedi');
-      }
       if (currentIndex + 1 < pendingAgreements.length) {
         setCurrentIndex((i) => i + 1);
       } else {
@@ -213,8 +223,8 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
+              className="prose prose-sm max-w-none agreement-document"
+              dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(content) }}
             />
           )}
         </div>
