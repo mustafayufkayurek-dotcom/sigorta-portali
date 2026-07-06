@@ -136,11 +136,10 @@ export class ReportPdfService {
   private buildHtml(report: ReportData, viewType: 'internal' | 'external'): string {
     // Dynamic base URL — falls back to APP_BASE_URL then APP_URL
     const appUrl = resolveAppUrl(this.config);
-
-    // Backend URL for serving local files
-    const backendUrl =
-      this.config.get<string>('BACKEND_URL') ??
-      'http://localhost:3000';
+    const uploadsBase = (
+      this.config.get<string>('BACKEND_PUBLIC_URL') ||
+      appUrl.replace(/\/api\/v1\/?$/, '')
+    ).replace(/\/$/, '');
 
     const isDraft = report.status === 'draft' || !report.status;
     const cf = report.claimFile;
@@ -283,8 +282,7 @@ export class ReportPdfService {
     if (images.length > 0) {
       const imageItems = images.map((img) => {
         // local: /uploads/report-images/{storageKey}
-        const base = (process.env.BACKEND_PUBLIC_URL || process.env.WEB_URL || 'http://localhost:3000').replace(/\/$/, '');
-        const imgUrl = `${base}/uploads/report-images/${encodeURIComponent(img.storageKey)}`;
+        const imgUrl = `${uploadsBase}/uploads/report-images/${encodeURIComponent(img.storageKey)}`;
         const caption = img.caption ?? img.fileName ?? '';
         return `
           <div class="photo-item">
