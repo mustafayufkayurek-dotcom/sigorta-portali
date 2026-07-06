@@ -9,7 +9,7 @@ Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka
 
 ## Zorunlu adımlar
 
-1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v223, backend v224 — rollback web v222 / backend v223)
+1. Bilinen iyi sürüm: `deploy/manifests/KNOWN_GOOD_IMAGES.json` (şu an web v223, backend v225 — rollback web v222 / backend v224)
 2. Deploy öncesi: `scripts/pre-deploy-safety.sh ETİKET` (sunucuda)
 3. Disk bakım: `scripts/server-disk-maintenance.sh` — **`-af` prune yasak**, manifest'ten korunan image'lar
 4. Yedek kontrol: `scripts/verify-backup-health.sh`
