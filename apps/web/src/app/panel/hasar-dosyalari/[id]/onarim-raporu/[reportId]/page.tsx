@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
@@ -1030,6 +1030,10 @@ function filterWorkGroupsByCategory(workGroups: any[], damageCategory: string): 
   return workGroups.filter((wg: any) => wg.code !== 'esya' && wg.code !== 'mobilya');
 }
 
+export interface EditableItemsTableHandle {
+  quickAddRow: () => Promise<void>;
+}
+
 interface EditableItemsTableProps {
   items: any[];
   workGroups: any[];
@@ -1255,12 +1259,16 @@ function LocationSelector({
   );
 }
 
-function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd }: EditableItemsTableProps) {
+const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
+  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd },
+  ref,
+) {
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [addingRow, setAddingRow] = useState<RowState>(emptyRow());
   const [addingDirty, setAddingDirty] = useState(false);
   const [addingSaving, setAddingSaving] = useState(false);
+  const [quickAdding, setQuickAdding] = useState(false);
   const [activeCell, setActiveCell] = useState<{ rowIdx: number | 'new'; col: string } | null>(null);
   const [subGroups, setSubGroups] = useState<Record<string, any[]>>({}); // workGroupId -> subgroups
   const [addingSubGroups, setAddingSubGroups] = useState<any[]>([]);
@@ -1389,6 +1397,63 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
       setAddingSubGroups([]);
     } finally { setAddingSaving(false); }
   };
+
+  const quickAddRow = useCallback(async () => {
+    if (!isEditable || quickAdding) return;
+
+    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+    let workGroupId = lastRow?.workGroupId ?? '';
+    const damageCategory: 'bina' | 'esya' = lastRow?.damageCategory ?? 'bina';
+    const location = lastRow?.location ?? '';
+    const unit = lastRow?.unit ?? 'm²';
+    const pricingType = lastRow?.pricingType ?? 'unit';
+    const damageTypeId = lastRow?.damageTypeId ?? '';
+
+    if (!workGroupId) {
+      workGroupId = filterWorkGroupsByCategory(workGroups, damageCategory)[0]?.id ?? '';
+    }
+
+    if (!workGroupId) {
+      setAddingRow({
+        ...emptyRow(),
+        damageCategory,
+        location,
+        unit,
+        jobDescription: 'Yeni Kalem',
+      });
+      setAddingDirty(true);
+      setTimeout(() => focusCell('new', 'workGroup'), 100);
+      return;
+    }
+
+    setQuickAdding(true);
+    try {
+      await onAdd({
+        workGroupId,
+        location: location || undefined,
+        jobDescription: 'Yeni Kalem',
+        quantity: 1,
+        unit,
+        salesUnitPrice: 0,
+        supplierUnitPrice: 0,
+        pricingType,
+        damageCategory,
+        damageTypeId: damageTypeId || undefined,
+      });
+    } finally {
+      setQuickAdding(false);
+    }
+  }, [isEditable, quickAdding, rows, workGroups, onAdd]);
+
+  useImperativeHandle(ref, () => ({ quickAddRow }), [quickAddRow]);
+
+  const addingMissingTooltip = !addingRow.workGroupId && !addingRow.jobDescription.trim()
+    ? 'İş Grubu ve İş Tanımı gerekli'
+    : !addingRow.workGroupId
+      ? 'İş Grubu seçin'
+      : !addingRow.jobDescription.trim()
+        ? 'İş Tanımı girin'
+        : 'Ekle (Enter)';
 
   const COLS = ['damageCategory', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
 
@@ -1608,6 +1673,22 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
             ↩ Geri Al
           </button>
         )}
+      </div>
+    )}
+    {rows.length === 0 && isEditable && (
+      <div className="flex flex-col items-center justify-center py-10 px-4 mb-3 border-2 border-dashed border-blue-200 rounded-xl bg-blue-50/30">
+        <p className="text-sm text-slate-500 mb-4">Henüz onarım kalemi eklenmemiş.</p>
+        <button
+          type="button"
+          disabled={quickAdding}
+          onClick={quickAddRow}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          {quickAdding ? 'Ekleniyor...' : '+ İlk Kalemi Ekle'}
+        </button>
       </div>
     )}
     <div ref={tableRef} className="overflow-x-auto rounded-lg border border-slate-200">
@@ -2097,19 +2178,17 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
                   </span>
                 )}
               </td>
-              {/* Ekle butonu */}
-              <td className="w-8 border-l border-slate-100 text-center">
-                {addingDirty && (
-                  <button
-                    type="button"
-                    disabled={addingSaving || !addingRow.workGroupId || !addingRow.jobDescription}
-                    onClick={saveAddingRow}
-                    className="w-6 h-6 rounded bg-blue-600 text-white text-xs font-bold flex items-center justify-center mx-auto hover:bg-blue-700 disabled:opacity-40 transition-colors"
-                    title="Ekle (Enter)"
-                  >
-                    {addingSaving ? '...' : '✓'}
-                  </button>
-                )}
+              {/* Ekle butonu — her zaman görünür */}
+              <td className="w-14 border-l border-slate-100 text-center px-1">
+                <button
+                  type="button"
+                  disabled={addingSaving || !addingRow.workGroupId || !addingRow.jobDescription.trim()}
+                  onClick={saveAddingRow}
+                  title={addingMissingTooltip}
+                  className="min-w-[2.5rem] h-7 px-2 rounded bg-blue-600 text-white text-[10px] font-semibold flex items-center justify-center mx-auto hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {addingSaving ? '...' : 'Ekle'}
+                </button>
               </td>
             </tr>
           )}
@@ -2119,6 +2198,20 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
         <div className="text-center py-8 text-slate-400 text-sm">Henüz Kalem Eklenmemiş.</div>
       )}
     </div>
+
+    {isEditable && (
+      <button
+        type="button"
+        disabled={quickAdding}
+        onClick={quickAddRow}
+        className="w-full mt-2 py-2.5 border-2 border-dashed border-blue-200 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        {quickAdding ? 'Ekleniyor...' : '+ Yeni Satır Ekle'}
+      </button>
+    )}
 
     {/* Zarar Uyarısı */}
     {(() => {
@@ -2158,7 +2251,7 @@ function EditableItemsTable({ items, workGroups, isEditable, viewMode, onSave, o
     )}
     </>
   );
-}
+});
 
 // KalemForm ve KalemKarti kaldırıldı — EditableItemsTable ile değiştirildi.
 
@@ -2181,6 +2274,7 @@ function EmergencyReportEditor({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const findingsTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const itemsTableRef = useRef<EditableItemsTableHandle>(null);
   const claimPath = `/panel/hasar-dosyalari/${claimId}`;
 
   const isEditable = report.status === 'draft' || report.status === 'rejected';
@@ -2343,8 +2437,23 @@ function EmergencyReportEditor({
           </SectionCard>
 
           {/* İş Kalemleri */}
-          <SectionCard title="İş Kalemleri">
+          <SectionCard
+            title="İş Kalemleri"
+            action={isEditable ? (
+              <button
+                type="button"
+                onClick={() => itemsTableRef.current?.quickAddRow()}
+                className="flex items-center gap-1.5 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                + Satır Ekle
+              </button>
+            ) : undefined}
+          >
             <EditableItemsTable
+              ref={itemsTableRef}
               items={report.items ?? []}
               workGroups={workGroups}
               damageTypes={[]}
@@ -2532,6 +2641,7 @@ export default function RepairReportPage() {
   const [uploadingCat, setUploadingCat] = useState<string | null>(null);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const bulgularTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const itemsTableRef = useRef<EditableItemsTableHandle>(null);
   // Önerilen kalemler (şablon önerileri)
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [templateSuggestions, setTemplateSuggestions] = useState<any[]>([]);
@@ -3350,17 +3460,31 @@ export default function RepairReportPage() {
 
       {/* Onarım Kalemleri */}
       <SectionCard title="Onarım Kalemleri" id="onarim-kalemleri-section" action={
-        isEditable && templateSuggestions.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleOpenSuggestModal}
-            className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            Önerilen Kalemler
-          </button>
+        isEditable ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => itemsTableRef.current?.quickAddRow()}
+              className="flex items-center gap-1.5 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              + Satır Ekle
+            </button>
+            {templateSuggestions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenSuggestModal}
+                className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Önerilen Kalemler
+              </button>
+            )}
+          </div>
         ) : undefined
       }>
         {/* Hasar nedeni filtresi */}
@@ -3380,6 +3504,7 @@ export default function RepairReportPage() {
         )}
 
         <EditableItemsTable
+          ref={itemsTableRef}
           items={damageFilter === 'all' ? (report.items ?? []) : (report.items ?? []).filter((i: any) => i.damageTypeId === damageFilter)}
           workGroups={workGroups}
           damageTypes={report.damageTypes ?? []}
