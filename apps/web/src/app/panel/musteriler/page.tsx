@@ -772,7 +772,6 @@ export default function MusterilerPage() {
   const [newRelTypeValue, setNewRelTypeValue] = useState('');
   const [savingRelType, setSavingRelType] = useState(false);
   const [serviceBranchMap, setServiceBranchMap] = useState<Record<'hasar' | 'acil_yardim', string[]>>({ hasar: [], acil_yardim: [] });
-  const [serviceTypes, setServiceTypes] = useState<string[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [customerSubTypeRequired, setCustomerSubTypeRequired] = useState(true);
 
@@ -1394,12 +1393,6 @@ export default function MusterilerPage() {
       setNewRelTypeValue('');
     }
   };
-
-  useEffect(() => {
-    axios.get(`${API}/system-settings/service-types`, { headers: authHeader() })
-      .then((r) => setServiceTypes(r.data.data ?? []))
-      .catch(() => setServiceTypes(['Tadilat', 'Onarım', 'Restorasyon', 'Bakım', 'Montaj', 'Söküm', 'Temizlik', 'Peyzaj', 'Diğer']));
-  }, []);
 
   useEffect(() => {
     axios.get(`${API}/system-settings/field-requirements`, { headers: authHeader() })
