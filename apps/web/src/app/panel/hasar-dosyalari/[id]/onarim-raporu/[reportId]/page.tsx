@@ -25,6 +25,32 @@ function fmtCurrency(n: number | null | undefined) {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
 }
 
+type FileExpertInfo = {
+  name: string;
+  office?: string;
+  missing: boolean;
+};
+
+function resolveFileExpertDisplay(report: any): FileExpertInfo {
+  if (!report) return { name: '—', missing: true };
+  const adjuster = report.claimFile?.assignedAdjuster;
+  const office = report.expertOffice?.companyName?.trim();
+  const inspector = report.inspectorName?.trim();
+
+  if (adjuster) {
+    const name = `${adjuster.firstName ?? ''} ${adjuster.lastName ?? ''}`.trim();
+    if (name) return { name, office: office || undefined, missing: false };
+  }
+  if (office) return { name: office, missing: false };
+  if (inspector) return { name: inspector, missing: false };
+  return { name: 'Atanmamış', missing: true };
+}
+
+function approvalActorName(user: any) {
+  if (!user) return '—';
+  return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || '—';
+}
+
 // ─── Güvenli Matematiksel İfade Parser ──────────────────────────────────────
 function evaluateExpression(expr: string): number | null {
   const trimmed = expr.trim();
@@ -2391,6 +2417,8 @@ export default function RepairReportPage() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -2439,8 +2467,11 @@ export default function RepairReportPage() {
       // Load approval history
       try {
         const hRes = await axios.get(`${API}/repair-reports/${reportId}/approval-history`, { headers: authHeader() });
-        setApprovalHistory(hRes.data.data || []);
-      } catch (_) {}
+        const fromApi = hRes.data.data || [];
+        setApprovalHistory(fromApi.length > 0 ? fromApi : (rRes.data.data?.approvalHistory ?? []));
+      } catch (_) {
+        setApprovalHistory(rRes.data.data?.approvalHistory ?? []);
+      }
 
       // Load version history
       try {
@@ -2508,6 +2539,18 @@ export default function RepairReportPage() {
         && new Date(ea.expiresAt) > new Date(),
     ),
     [externalApprovals],
+  );
+
+  const fileExpert = useMemo(() => resolveFileExpertDisplay(report), [report]);
+
+  const latestSubmission = useMemo(
+    () => approvalHistory.find((h) => h.action === 'pending_approval'),
+    [approvalHistory],
+  );
+
+  const latestApprovalDecision = useMemo(
+    () => approvalHistory.find((h) => h.action === 'approved' || h.action === 'rejected'),
+    [approvalHistory],
   );
 
   const openWhatsAppModal = useCallback(() => {
@@ -2627,11 +2670,13 @@ export default function RepairReportPage() {
   };
 
   const handleRequestApproval = async () => {
-    if (!confirm('Raporu onaya göndermek istediğinizden emin misiniz?')) return;
+    setRequestingApproval(true);
     try {
       await axios.post(`${API}/repair-reports/${reportId}/request-approval`, {}, { headers: authHeader() });
-      load();
+      setShowRequestApprovalModal(false);
+      await load();
     } catch (e: any) { alert(e.response?.data?.message ?? 'Hata Oluştu'); }
+    finally { setRequestingApproval(false); }
   };
 
   const handleApprove = async () => {
@@ -2884,7 +2929,7 @@ export default function RepairReportPage() {
           )}
           {(report.status === 'draft' || report.status === 'rejected') && (
             <button type="button"
-              onClick={handleRequestApproval}
+              onClick={() => setShowRequestApprovalModal(true)}
               className="text-xs bg-yellow-500 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-600"
             >
               Onaya Gönder
@@ -2992,6 +3037,45 @@ export default function RepairReportPage() {
         </div>
       </div>
 
+      {/* Onay durumu özeti */}
+      {(latestSubmission || latestApprovalDecision) && report.status !== 'draft' && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 space-y-1">
+          {latestSubmission && (
+            <p>
+              <span className="font-medium text-slate-800">Onaya Gönderildi:</span>{' '}
+              {fmtDateTime(latestSubmission.createdAt)}
+              {' · '}
+              <span className="text-slate-600">Gönderen: {approvalActorName(latestSubmission.user)}</span>
+              {!fileExpert.missing && (
+                <>
+                  {' · '}
+                  <span className="text-slate-600">Dosya Eksperi: {fileExpert.name}</span>
+                </>
+              )}
+            </p>
+          )}
+          {latestApprovalDecision?.action === 'approved' && (
+            <p>
+              <span className="font-medium text-green-800">Onaylandı:</span>{' '}
+              {fmtDateTime(latestApprovalDecision.createdAt)}
+              {' · '}
+              <span className="text-slate-600">Onaylayan: {approvalActorName(latestApprovalDecision.user)}</span>
+            </p>
+          )}
+          {latestApprovalDecision?.action === 'rejected' && (
+            <p>
+              <span className="font-medium text-red-800">Reddedildi:</span>{' '}
+              {fmtDateTime(latestApprovalDecision.createdAt)}
+              {' · '}
+              <span className="text-slate-600">Reddeden: {approvalActorName(latestApprovalDecision.user)}</span>
+              {latestApprovalDecision.reason && (
+                <span className="block text-xs text-red-600 mt-0.5 italic">Neden: {latestApprovalDecision.reason}</span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Dosya Bilgileri */}
       <SectionCard title="Dosya Bilgileri">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -3000,6 +3084,7 @@ export default function RepairReportPage() {
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
             { label: 'Hasar Konusu', value: formatDisplayLabel(report.claimFile?.lossType) },
             { label: 'Sigortalı', value: report.claimFile?.customer?.fullName ?? report.claimFile?.customer?.companyName },
+            { label: 'Dosya Eksperi', value: fileExpert.missing ? undefined : (fileExpert.office ? `${fileExpert.name} (${fileExpert.office})` : fileExpert.name) },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
           ].map((f) => (
             <div key={f.label}>
@@ -3597,6 +3682,70 @@ export default function RepairReportPage() {
               <button type="button"
                 onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
                 className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+              >
+                İptal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRequestApprovalModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-base font-bold text-slate-900 mb-1">Onaya Gönder — Son Teyit</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Rapor onay sürecine alınmadan önce dosya eksperi ve gönderim bilgilerini kontrol edin.
+            </p>
+
+            <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500 mb-1">Dosya Eksperi</p>
+                {fileExpert.missing ? (
+                  <p className="text-sm font-semibold text-amber-700">Bu dosyada atanmış eksper bulunamadı</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-slate-900">{fileExpert.name}</p>
+                    {fileExpert.office && (
+                      <p className="text-xs text-slate-500 mt-0.5">{fileExpert.office}</p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {fileExpert.missing ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-5">
+                  Eksper atanmadan onaya göndermek operasyon riski oluşturabilir. Devam etmeden önce dosyada eksper atamasını kontrol edin.
+                </div>
+              ) : (
+                <p className="text-sm text-slate-700 leading-6">
+                  <span className="font-medium text-slate-900">{fileExpert.name}</span> dosya eksperi kapsamında
+                  {' '}
+                  <span className="font-medium">{report.reportNo}</span>
+                  {' '}
+                  numaralı rapor onay sürecine alınacaktır. Onay sonrası ilgili sigorta şirketi portalında otomatik görünecektir.
+                </p>
+              )}
+
+              <p className="text-xs text-slate-500">
+                Onaya gönderme tarihi ve gönderen bilgisi rapor sayfasında kayıt altına alınır.
+              </p>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                type="button"
+                onClick={handleRequestApproval}
+                disabled={requestingApproval}
+                className="flex-1 bg-yellow-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-50"
+              >
+                {requestingApproval ? 'Gönderiliyor…' : 'Onaya Gönder'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRequestApprovalModal(false)}
+                disabled={requestingApproval}
+                className="flex-1 border border-slate-200 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >
                 İptal
               </button>
