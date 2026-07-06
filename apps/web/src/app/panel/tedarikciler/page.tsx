@@ -2315,7 +2315,7 @@ export default function VendorsPage() {
 
       {/* ── Tedarikçi Formu (Sağ Drawer) ── */}
       <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
-        <div className="flex flex-col h-full min-h-0">
+        <div className="grid h-full min-h-0 grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
             {/* Panel Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0">
               <div>
@@ -2349,17 +2349,24 @@ export default function VendorsPage() {
               );
             })()}
 
-            {/* Section Tabs */}
-            <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+            {/* Section Tabs — 3+2 satır; yatay kaydırma gerekmez */}
+            <div className="grid grid-cols-6 border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
               {MODAL_SECTIONS.map((sec, i) => (
-                <button key={sec} type="button" onClick={() => setActiveSection(i)}
-                  className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${activeSection === i ? 'border-indigo-600 text-indigo-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}>
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setActiveSection(i)}
+                  title={`${i + 1}. ${sec}`}
+                  className={`px-2 py-2.5 text-[11px] font-medium border-b-2 transition-all text-center leading-snug ${
+                    i >= 3 ? 'col-span-3' : 'col-span-2'
+                  } ${activeSection === i ? 'border-indigo-600 text-indigo-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}
+                >
                   {i + 1}. {sec}
                 </button>
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="min-h-0 overflow-y-auto p-6">
               {/* ── Section 0: Temel Bilgiler ── */}
               {activeSection === 0 && (
                 <div>

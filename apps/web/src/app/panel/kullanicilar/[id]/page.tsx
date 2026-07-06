@@ -313,7 +313,7 @@ const SCREEN_LABELS: Record<string, string> = {
   acil_yardim:       'Acil Yardım',
   finans:            'Finans',
   operasyon:         'Operasyon',
-  eksperler:         'Eksperler',
+  eksperler:         'Eksper Firması (Müşteri)',
   musteriler:        'Müşteriler',
   tedarikciler:      'Tedarikçiler',
   raporlar:          'Raporlar',

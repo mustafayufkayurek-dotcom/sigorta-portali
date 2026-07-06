@@ -67,7 +67,6 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/eksper-crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/eksperler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN'] },
@@ -109,7 +108,6 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/eksperler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/eksper-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/sigorta-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
@@ -141,7 +139,6 @@ const SCREEN_TO_PATH: Record<string, string> = {
   operasyon:         '/panel/operasyon',
   sahiplik:          '/panel/sahiplik',
   crm:               '/panel/crm',
-  eksperler:         '/panel/eksperler',
   musteriler:        '/panel/musteriler',
   tedarikciler:      '/panel/tedarikciler',
   raporlar:          '/panel/raporlar',
@@ -181,7 +178,11 @@ function canSeeNavItemDynamic(navPath: string, allowedScreens: string[], roleCod
     .sort(([, a], [, b]) => b.length - a.length)
     .find(([, p]) => navPath === p || navPath.startsWith(p + '/'));
   if (!match) return true;
-  return allowedScreens.includes(match[0]);
+  const screen = match[0];
+  if (allowedScreens.includes(screen)) return true;
+  // Eski eksperler ekran izni → müşteriler menüsü
+  if (screen === 'musteriler' && allowedScreens.includes('eksperler')) return true;
+  return false;
 }
 
 const CONTEXT_BACK_LINKS: Record<string, { href: string; label: string }> = {
@@ -274,7 +275,6 @@ function getPanelMainLinks({
             { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
-            { title: 'Eksperler', href: '/panel/eksperler', icon: UserCog },
             ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Harita', href: '/panel/harita', icon: MapPin },
           ]

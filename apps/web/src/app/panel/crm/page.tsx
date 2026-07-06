@@ -555,8 +555,8 @@ function EmptyState({ onReset }: { onReset: () => void }) {
         <Link href="/panel/musteriler" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700">
           Müşteriler
         </Link>
-        <Link href="/panel/eksperler" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700">
-          Eksperler
+        <Link href="/panel/musteriler?subType=eksper_firmasi" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700">
+          Eksper Firmaları
         </Link>
         <Link href="/panel/tedarikciler" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700">
           Tedarikçiler

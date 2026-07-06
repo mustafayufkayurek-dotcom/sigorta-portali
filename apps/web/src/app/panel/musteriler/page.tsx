@@ -1678,7 +1678,11 @@ export default function MusterilerPage() {
           </div>
           <div>
             <h2 className="page-title">Müşteriler</h2>
-            <p className="page-subtitle">Bireysel ve Kurumsal Müşteri Yönetimi</p>
+            <p className="page-subtitle">
+              {subTypeFilter === 'eksper_firmasi'
+                ? 'Eksper Firması Kayıtları — Hasar İhbar Cari Hesapları'
+                : 'Bireysel ve Kurumsal Müşteri Yönetimi'}
+            </p>
           </div>
         </div>
         <button type="button" onClick={() => { resetForm(); loadCustomerSources(); loadCustomerSubTypes(); setShowModal(true); }}
@@ -1733,6 +1737,31 @@ export default function MusterilerPage() {
           {/* Finans istatistikleri: gerçek API verisi geldikten sonra eklenecek */}
 
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-semibold text-slate-500">Alt Tip:</span>
+        {[
+          { value: '', label: 'Tümü' },
+          { value: 'eksper_firmasi', label: 'Eksper Firması' },
+          { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
+          { value: 'broker_firmasi', label: 'Broker Firması' },
+          { value: 'asistan_firmasi', label: 'Asistan Firması' },
+          { value: 'private_customer', label: 'Özel Müşteri' },
+        ].map((chip) => (
+          <button
+            key={chip.value || 'all'}
+            type="button"
+            onClick={() => { setSubTypeFilter(chip.value); setPage(1); }}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              subTypeFilter === chip.value
+                ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-2.5">

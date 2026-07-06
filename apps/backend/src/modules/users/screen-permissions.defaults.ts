@@ -3,7 +3,6 @@ export const ALL_SCREEN_CODES = [
   'acil_yardim',
   'finans',
   'operasyon',
-  'eksperler',
   'musteriler',
   'tedarikciler',
   'raporlar',
@@ -22,7 +21,6 @@ export const SCREEN_LABELS: Record<string, string> = {
   acil_yardim:       'Acil Yardım',
   finans:            'Finans',
   operasyon:         'Operasyon',
-  eksperler:         'Eksperler',
   musteriler:        'Müşteriler',
   tedarikciler:      'Tedarikçiler',
   raporlar:          'Raporlar',
@@ -36,17 +34,17 @@ export const SCREEN_LABELS: Record<string, string> = {
 
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
   admin: [
-    'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon', 'eksperler',
+    'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon',
     'musteriler', 'tedarikciler', 'raporlar', 'ayarlar', 'kullanicilar',
     'guvenlik', 'harita', 'personel_yonetimi',
     'test_notes_admin',
   ],
   manager: [
-    'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon', 'eksperler',
+    'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon',
     'musteriler', 'tedarikciler', 'raporlar', 'harita', 'personel_yonetimi',
   ],
   office_staff: [
-    'hasar_dosyalari', 'musteriler', 'tedarikciler', 'eksperler',
+    'hasar_dosyalari', 'musteriler', 'tedarikciler',
     'operasyon', 'acil_yardim', 'harita',
   ],
   field_staff: [

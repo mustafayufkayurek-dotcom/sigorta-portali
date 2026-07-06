@@ -26,7 +26,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   dosyalar:    'Hasar Dosyaları',
   musteriler:  'Müşteriler',
   tedarikciler:'Tedarikçiler',
-  eksperler:   'Eksperler',
+  eksperler:   'Eksper Firması',
   faturalar:   'Faturalar',
 };
 

@@ -658,8 +658,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         <div className="col-span-2">
           <label className={label}>İhbar Detayı</label>
           <textarea
-            rows={isPanel ? 3 : 4}
-            className={`${field} w-full resize-y min-h-[88px] max-h-[320px]`}
+            rows={isPanel ? 2 : 4}
+            className={`${field} w-full resize-y ${isPanel ? 'min-h-[64px] max-h-[120px]' : 'min-h-[88px] max-h-[320px]'}`}
             placeholder="Opsiyonel — ihbar notu, ek açıklama..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -720,7 +720,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   return (
     <>
       {isPanel ? (
-        <form className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" onSubmit={handleSubmit}>
+        <form className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden" onSubmit={handleSubmit}>
           <NewFilePanelShell errorGeneral={errors.general} onCancel={onCancel} saving={saving}>
             {panelPanels}
           </NewFilePanelShell>

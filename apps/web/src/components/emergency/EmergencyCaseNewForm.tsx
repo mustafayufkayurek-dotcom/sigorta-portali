@@ -744,7 +744,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   return (
     <>
       {isPanel ? (
-        <form className="flex h-full min-h-0 flex-col overflow-hidden" onSubmit={handleSubmit}>
+        <form className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden" onSubmit={handleSubmit}>
           <NewFilePanelShell errorGeneral={errors.general} onCancel={onCancel} saving={saving}>
             {panelPanels}
           </NewFilePanelShell>
