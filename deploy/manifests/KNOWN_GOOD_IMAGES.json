@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-06",
-  "label": "v209-onarim-raporu-portal-kapsam",
-  "description": "Onarım raporu Paylaş UX, otomatik sigorta portalı, WhatsApp alıcı seçimi, dosya sorumlusu Tüm Sigorta Şirketleri; rollback web v208 / backend v208",
+  "label": "v210-onarim-onay-teyit",
+  "description": "Onarım raporu onaya gönder teyit modalı ve onay tarihi özeti; rollback web v209 / backend v209",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v209-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v209-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v210-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v208-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v207-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v209-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v209-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
