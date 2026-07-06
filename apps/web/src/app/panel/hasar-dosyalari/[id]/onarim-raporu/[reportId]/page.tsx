@@ -10,6 +10,7 @@ import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-re
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
+import RepairItemsModal, { type SelectedRepairItem } from '@/components/damage-reports/RepairItemsModal';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -961,7 +962,7 @@ function WorkDefinitionSelector({
     setSaving(true);
     try {
       const result = await onAddNew(trimmed, workGroupId);
-      onSelect(result?.name ?? trimmed, result?.defaultUnit);
+      onSelect(result?.name ?? trimmed, result?.unitType ?? result?.defaultUnit);
     } catch { /* ignore */ } finally {
       setSaving(false);
       setAddingNew(false);
@@ -1005,11 +1006,11 @@ function WorkDefinitionSelector({
           setAddingNew(true);
         } else {
           const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
-          onSelect(e.target.value, sg?.defaultUnit);
+          onSelect(e.target.value, sg?.unitType ?? sg?.defaultUnit);
         }
       }}
     >
-      <option value="">— Serbest Giriş —</option>
+      <option value="">— İş Tanımı Seç —</option>
       {subGroups.map((sg: any) => (
         <option key={sg.id} value={sg.name ?? sg.id}>{sg.name}</option>
       ))}
@@ -1270,8 +1271,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [addingSaving, setAddingSaving] = useState(false);
   const [quickAdding, setQuickAdding] = useState(false);
   const [activeCell, setActiveCell] = useState<{ rowIdx: number | 'new'; col: string } | null>(null);
-  const [subGroups, setSubGroups] = useState<Record<string, any[]>>({}); // workGroupId -> subgroups
-  const [addingSubGroups, setAddingSubGroups] = useState<any[]>([]);
+  const [subGroups, setSubGroups] = useState<Record<string, any[]>>({}); // workGroupId -> alt gruplar (API önbellek)
+  const [loadingSubGroupIds, setLoadingSubGroupIds] = useState<Set<string>>(new Set());
   const [metrajModalRowId, setMetrajModalRowId] = useState<string | null>(null); // rowId veya 'new'
   const [locationList, setLocationList] = useState<string[]>([]);
   // Zam oranı state
@@ -1297,30 +1298,69 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     setRows(items.map((item) => ({ ...rowFromItem(item), _id: item.id, _isDirty: false, _savedFlash: false })));
   }, [items]);
 
-  // sub-group yükleme
+  const getEmbeddedSubGroups = useCallback((workGroupId: string): any[] | null => {
+    const wg = workGroups.find((w: any) => w.id === workGroupId);
+    if (!wg || !Array.isArray(wg.workSubGroups)) return null;
+    return wg.workSubGroups;
+  }, [workGroups]);
+
+  const resolveSubGroups = useCallback((workGroupId: string): any[] => {
+    if (!workGroupId) return [];
+    const embedded = getEmbeddedSubGroups(workGroupId);
+    if (embedded && embedded.length > 0) return embedded;
+    return subGroups[workGroupId] ?? embedded ?? [];
+  }, [getEmbeddedSubGroups, subGroups]);
+
+  // work-groups listesindeki alt grupları önbelleğe al
+  useEffect(() => {
+    const seeded: Record<string, any[]> = {};
+    for (const wg of workGroups) {
+      if (Array.isArray(wg.workSubGroups) && wg.workSubGroups.length > 0) {
+        seeded[wg.id] = wg.workSubGroups;
+      }
+    }
+    if (Object.keys(seeded).length > 0) {
+      setSubGroups((prev) => ({ ...seeded, ...prev }));
+    }
+  }, [workGroups]);
+
+  // Mevcut kalemlerin iş grupları için alt grup yükle
+  useEffect(() => {
+    const ids = Array.from(new Set(items.map((i: any) => i.workGroupId).filter(Boolean))) as string[];
+    for (const id of ids) {
+      const embedded = getEmbeddedSubGroups(id);
+      if (embedded && embedded.length > 0) continue;
+      if (subGroups[id] !== undefined) continue;
+      void loadSubGroups(id);
+    }
+  }, [items, workGroups]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadSubGroups = async (workGroupId: string) => {
-    if (!workGroupId || subGroups[workGroupId] !== undefined) return;
+    if (!workGroupId) return;
+    const embedded = getEmbeddedSubGroups(workGroupId);
+    if (embedded && embedded.length > 0) {
+      setSubGroups((prev) => ({ ...prev, [workGroupId]: embedded }));
+      return;
+    }
+    if (subGroups[workGroupId] !== undefined || loadingSubGroupIds.has(workGroupId)) return;
+    setLoadingSubGroupIds((prev) => new Set(prev).add(workGroupId));
     try {
       const res = await axios.get(`${API}/work-groups/${workGroupId}/sub-groups`, { headers: authHeader() });
       const data = res.data.data || [];
       setSubGroups((prev) => ({ ...prev, [workGroupId]: data }));
     } catch {
-      setSubGroups((prev) => ({ ...prev, [workGroupId]: [] }));
-    }
-  };
-
-  const loadAddingSubGroups = async (workGroupId: string) => {
-    if (!workGroupId) { setAddingSubGroups([]); return; }
-    try {
-      const res = await axios.get(`${API}/work-groups/${workGroupId}/sub-groups`, { headers: authHeader() });
-      setAddingSubGroups(res.data.data || []);
-    } catch {
-      setAddingSubGroups([]);
+      setSubGroups((prev) => ({ ...prev, [workGroupId]: embedded ?? [] }));
+    } finally {
+      setLoadingSubGroupIds((prev) => {
+        const next = new Set(prev);
+        next.delete(workGroupId);
+        return next;
+      });
     }
   };
 
   // Inline yeni iş tanımı ekleme
-  const createSubGroup = async (name: string, workGroupId: string): Promise<{ name: string }> => {
+  const createSubGroup = async (name: string, workGroupId: string): Promise<{ name: string; unitType?: string; defaultUnit?: string }> => {
     const code = `${name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
     const res = await axios.post(
       `${API}/work-groups/${workGroupId}/sub-groups`,
@@ -1333,8 +1373,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       const existing = prev[workGroupId] ?? [];
       return { ...prev, [workGroupId]: [...existing, newSg] };
     });
-    setAddingSubGroups((prev) => [...prev, newSg]);
-    return { name: newSg.name };
+    return { name: newSg.name, unitType: newSg.unitType };
   };
 
   const updateRow = (id: string, field: keyof RowState, value: string) => {
@@ -1394,7 +1433,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       });
       setAddingRow(emptyRow());
       setAddingDirty(false);
-      setAddingSubGroups([]);
     } finally { setAddingSaving(false); }
   };
 
@@ -1725,8 +1763,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const total = calcTotal(row);
             const isSaving = savingId === row._id;
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
-            const rowSubGroups = subGroups[row.workGroupId] ?? null;
-            const hasSubs = rowSubGroups && rowSubGroups.length > 0;
+            const rowSubGroups = resolveSubGroups(row.workGroupId);
+            const subGroupsLoading = row.workGroupId ? loadingSubGroupIds.has(row.workGroupId) : false;
             const supplierVal = parseFloat(row.supplierUnitPrice) || 0;
             const salesVal = parseFloat(row.salesUnitPrice) || 0;
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
@@ -1796,7 +1834,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         updateRow(row._id, 'workGroupId', e.target.value);
                         updateRow(row._id, 'jobDescription', '');
                         updateRow(row._id, 'unit', 'm²');
-                        loadSubGroups(e.target.value);
+                        void loadSubGroups(e.target.value);
                       }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'workGroup', row._id)}
                     >
@@ -1810,12 +1848,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
                 <td className={tdCls(rowIdx, 'jobDescription')}>
                   {isEditable ? (
-                    hasSubs ? (
+                    row.workGroupId ? (
+                      subGroupsLoading ? (
+                        <span className="px-2 text-xs text-slate-400 block py-3">Yükleniyor...</span>
+                      ) : (
                       <WorkDefinitionSelector
                         data-cell={`${rowIdx}-jobDescription`}
                         className={`${cellCls(rowIdx, 'jobDescription', true)} font-medium`}
                         value={row.jobDescription}
-                        subGroups={rowSubGroups!}
+                        subGroups={rowSubGroups}
                         workGroupId={row.workGroupId}
                         tabIndex={getCellTabIndex(rowIdx, 'jobDescription')}
                         onFocus={() => setActiveCell({ rowIdx, col: 'jobDescription' })}
@@ -1823,22 +1864,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         onSelect={(v, unit) => {
                           updateRow(row._id, 'jobDescription', v);
                           if (unit) updateRow(row._id, 'unit', unit);
+                          setTimeout(() => saveRow(row._id), 50);
                         }}
                         onAddNew={createSubGroup}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'jobDescription', row._id)}
                       />
+                      )
                     ) : (
-                      <input
-                        data-cell={`${rowIdx}-jobDescription`}
-                        className={`${cellCls(rowIdx, 'jobDescription', true)} font-medium`}
-                        value={row.jobDescription}
-                        placeholder="İş tanımı..."
-                        tabIndex={getCellTabIndex(rowIdx, 'jobDescription')}
-                        onFocus={() => setActiveCell({ rowIdx, col: 'jobDescription' })}
-                        onBlur={() => { setActiveCell(null); const tv = toTitleCaseTR(row.jobDescription.trim()); if (tv !== row.jobDescription) updateRow(row._id, 'jobDescription', tv); saveRow(row._id); }}
-                        onChange={(e) => updateRow(row._id, 'jobDescription', e.target.value)}
-                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'jobDescription', row._id)}
-                      />
+                      <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
                     )
                   ) : (
                     <span className="px-2 text-xs font-medium text-slate-800 block py-3">{row.jobDescription || '—'}</span>
@@ -2043,7 +2076,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   onChange={(e) => {
                     setAddingRow((p) => ({ ...p, workGroupId: e.target.value, jobDescription: '', unit: 'm²' }));
                     setAddingDirty(true);
-                    loadAddingSubGroups(e.target.value);
+                    void loadSubGroups(e.target.value);
                   }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'workGroup')}
                 >
@@ -2053,12 +2086,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
               <td className={tdCls('new', 'jobDescription')}>
-                {addingSubGroups.length > 0 ? (
+                {!addingRow.workGroupId ? (
+                  <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
+                ) : loadingSubGroupIds.has(addingRow.workGroupId) ? (
+                  <span className="px-2 text-xs text-slate-400 block py-3">Yükleniyor...</span>
+                ) : (
                   <WorkDefinitionSelector
                     data-cell="new-jobDescription"
                     className={`${cellCls('new', 'jobDescription', true)} font-medium placeholder:font-normal`}
                     value={addingRow.jobDescription}
-                    subGroups={addingSubGroups}
+                    subGroups={resolveSubGroups(addingRow.workGroupId)}
                     workGroupId={addingRow.workGroupId}
                     tabIndex={getCellTabIndex('new', 'jobDescription')}
                     onFocus={() => setActiveCell({ rowIdx: 'new', col: 'jobDescription' })}
@@ -2068,18 +2105,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       setAddingDirty(true);
                     }}
                     onAddNew={createSubGroup}
-                    onKeyDown={(e) => handleCellKeyDown(e, 'new', 'jobDescription')}
-                  />
-                ) : (
-                  <input
-                    data-cell="new-jobDescription"
-                    className={`${cellCls('new', 'jobDescription', true)} font-medium placeholder:font-normal`}
-                    value={addingRow.jobDescription}
-                    placeholder="İş tanımı yazın..."
-                    tabIndex={getCellTabIndex('new', 'jobDescription')}
-                    onFocus={() => setActiveCell({ rowIdx: 'new', col: 'jobDescription' })}
-                    onBlur={() => { setActiveCell(null); const tv = toTitleCaseTR(addingRow.jobDescription.trim()); if (tv !== addingRow.jobDescription) setAddingRow((p) => ({ ...p, jobDescription: tv })); }}
-                    onChange={(e) => { setAddingRow((p) => ({ ...p, jobDescription: e.target.value })); setAddingDirty(true); }}
                     onKeyDown={(e) => handleCellKeyDown(e, 'new', 'jobDescription')}
                   />
                 )}
