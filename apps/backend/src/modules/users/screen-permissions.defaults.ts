@@ -46,16 +46,18 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
   office_staff: [
     'hasar_dosyalari', 'musteriler', 'tedarikciler',
     'operasyon', 'acil_yardim', 'harita',
+    'test_notes_admin',
   ],
   field_staff: [
     'hasar_dosyalari', 'operasyon',
   ],
   accountant: [
-    'finans', 'raporlar',
+    'finans', 'raporlar', 'test_notes_admin',
   ],
   finance: [
     'finans', 'raporlar', 'operasyon',
     'musteriler', 'tedarikciler', 'hasar_dosyalari',
+    'test_notes_admin',
   ],
   expert: [],
   insurance_company_user: [],

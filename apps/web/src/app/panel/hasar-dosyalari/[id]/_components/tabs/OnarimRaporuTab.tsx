@@ -347,6 +347,13 @@ function YeniRaporWizard({
       }
       return;
     }
+    const hasarFallback = wizardDepartments.find((d) => d.code === 'hasar-onarim') ?? wizardDepartments[0] ?? null;
+    if (hasarFallback) {
+      setSelectedDept(hasarFallback);
+      setDeptResolveError('');
+      setStep('type');
+      return;
+    }
     setDeptResolveError('Bu dosyanın operasyon hattı belirlenemedi. Dosya bilgilerinden departman atamasını kontrol edin.');
     setStep('department');
   }, [claimContext, wizardDepartments, resolvedDept]);

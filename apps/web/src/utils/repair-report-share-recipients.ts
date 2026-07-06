@@ -96,7 +96,7 @@ export function buildRepairReportShareRecipients(report: {
       list,
       seen,
       'office-user',
-      'Ofis Sorumlusu',
+      'Meridyen Dosya Sorumlusu',
       officeUser.phone,
       [officeUser.firstName, officeUser.lastName].filter(Boolean).join(' ') || undefined,
     );

@@ -88,7 +88,40 @@ export class DamageRepairTemplatesService {
         });
       }
     }
-    return { items: Array.from(merged.values()).sort((a, b) => b.usageCount - a.usageCount) };
+    let items = Array.from(merged.values()).sort((a, b) => b.usageCount - a.usageCount);
+    if (items.length === 0) {
+      items = await this.fallbackQuickRepairSuggestions(dto.damageTypes, dto.damageSize);
+    }
+    return { items };
+  }
+
+  /** Şablon kaydı yoksa hızlı onarım iş kalemlerinden öneri üretir. */
+  private async fallbackQuickRepairSuggestions(damageTypes: string[], damageSize?: string) {
+    const workGroup = await this.prisma.workGroup.findFirst({
+      where: { code: 'hizli_onarim', status: 'active' },
+      select: { id: true },
+    });
+    if (!workGroup) return [];
+
+    const subGroups = await this.prisma.workSubGroup.findMany({
+      where: { workGroupId: workGroup.id, status: 'active' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      take: 40,
+    });
+
+    const qtyForSize = (size?: string) => (size === 'SMALL' ? 1 : size === 'LARGE' ? 3 : 2);
+
+    return subGroups.map((sg) => ({
+      templateId: `fallback-${sg.id}`,
+      workSubGroupId: sg.id,
+      code: sg.code,
+      name: sg.name,
+      unitType: sg.unitType,
+      unitPrice: sg.unitPrice ? Number(sg.unitPrice) : 0,
+      suggestedQuantity: qtyForSize(damageSize),
+      usageCount: 0,
+      damageType: damageTypes[0] ?? 'FIRE_HOME',
+    }));
   }
 
   async incrementUsage(id: string) {

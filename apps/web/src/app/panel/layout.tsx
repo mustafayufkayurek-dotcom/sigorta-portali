@@ -69,7 +69,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/eksper-crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
-  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN'] },
+  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -112,7 +112,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/sigorta-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
-  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN'] },
+  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -277,6 +277,7 @@ function getPanelMainLinks({
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Harita', href: '/panel/harita', icon: MapPin },
+            { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : isFieldStaff
         ? [
@@ -296,6 +297,7 @@ function getPanelMainLinks({
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
             { title: 'Raporlar', href: '/panel/raporlar', icon: ClipboardList },
+            { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },

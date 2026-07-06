@@ -1582,12 +1582,12 @@ export default function MusterilerPage() {
         notes: form.notes || null, source: form.source || null,
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
         followUpDate: form.followUpDate || null, tags: form.tags,
-        serviceType: form.subType === 'private_customer'
-          ? (form.privateServiceType || null)
-          : form.subType === 'asistan_firmasi'
+        serviceType: form.subType === 'asistan_firmasi'
             ? 'acil_yardim'
-            : (form.serviceType || null),
-        serviceBranches: form.serviceBranches,
+            : form.subType === 'sigorta_sirketi'
+              ? 'hasar'
+              : null,
+        serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
         contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map((c) => ({ ...c, role: c.role === '__other__' ? '' : c.role })),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
@@ -3036,56 +3036,10 @@ export default function MusterilerPage() {
                     </FormField>
                   </div>
 
-                  {/* ── Hizmet Türü & Branşlar (koşullu) ── */}
-                  {/* Eksper veya Eksper Firması: Hizmet Türü + Branşlar */}
-                  {/* Sigorta Şirketi: Sadece Branşlar */}
-                  {/* Sigortalı / Özel Müşteri: Gizli */}
-                  {form.subType === 'private_customer' && (
+                  {/* Sigorta şirketi müşteri tipi: yalnızca branş seçimi */}
+                  {form.subType === 'sigorta_sirketi' && (
                   <div className="mt-5">
-                    <SectionDivider emoji="🛠" title="Hizmet Türü" />
-                    <FormField label="Hizmet Türü">
-                      <select
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
-                        value={form.privateServiceType}
-                        onChange={(e) => setForm((p) => ({ ...p, privateServiceType: e.target.value }))}
-                      >
-                        <option value="">Seçiniz...</option>
-                        {serviceTypes.map((st) => (
-                          <option key={st} value={st}>{st}</option>
-                        ))}
-                      </select>
-                    </FormField>
-                  </div>
-                  )}
-                  {(form.subType === 'eksper' || form.subType === 'eksper_firmasi' || form.subType === 'sigorta_sirketi' || form.subType === 'broker_firmasi' || form.subType === 'asistan_firmasi') && (
-                  <div className="mt-5">
-                    <SectionDivider emoji="🛠" title="Hizmet Türü & Branşlar" />
-
-                    {/* Sigorta, broker ve asistan firması için Hizmet Türü gizli */}
-                    {form.subType !== 'sigorta_sirketi' && form.subType !== 'broker_firmasi' && form.subType !== 'asistan_firmasi' && (
-                    <FormField label="Hizmet Türü">
-                      <div className="flex gap-2">
-                        {(['hasar', 'acil_yardim'] as const).map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setForm((p) => ({ ...p, serviceType: p.serviceType === type ? '' : type, serviceBranches: [] }))}
-                            className={`flex-1 py-2 px-3 rounded-lg text-sm border transition-all font-medium ${
-                              form.serviceType === type
-                                ? type === 'hasar'
-                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                  : 'border-orange-400 bg-orange-50 text-orange-700'
-                                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            {type === 'hasar' ? 'Hasar' : 'Acil Yardım'}
-                          </button>
-                        ))}
-                      </div>
-                    </FormField>
-                    )}
-
-                    {(form.serviceType || form.subType === 'sigorta_sirketi' || form.subType === 'asistan_firmasi') && (
+                    <SectionDivider emoji="🛠" title="Branşlar" />
                       <div className="mt-3">
                         {branchesLoading ? (
                           <p className="text-xs text-slate-400 py-2 flex items-center gap-1.5">
@@ -3094,18 +3048,14 @@ export default function MusterilerPage() {
                           </p>
                         ) : (
                           (() => {
-                          const branchKey = form.subType === 'sigorta_sirketi'
-                            ? 'hasar'
-                            : form.subType === 'asistan_firmasi'
-                              ? 'acil_yardim'
-                              : (form.serviceType as 'hasar' | 'acil_yardim');
+                          const branchKey = 'hasar' as const;
                           const branchList = serviceBranchMap[branchKey] ?? [];
                           const allSelected = branchList.length > 0 && branchList.every((b) => form.serviceBranches.includes(b));
                           return (
                             <>
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-xs font-medium text-slate-500">
-                                  {form.subType === 'sigorta_sirketi' ? 'Branşlar' : form.serviceType === 'hasar' ? 'Hasar Branşları' : 'Acil Yardım Hizmet Alanları'}
+                                  Branşlar
                                   <span className="text-slate-400 font-normal ml-1">(Çoklu Seçim)</span>
                                 </p>
                                 {branchList.length > 0 && (
@@ -3118,11 +3068,7 @@ export default function MusterilerPage() {
                                     className={`text-xs px-2.5 py-1 rounded-lg border transition-all font-medium ${
                                       allSelected
                                         ? 'border-slate-300 text-slate-500 hover:bg-slate-50'
-                                        : form.subType === 'sigorta_sirketi'
-                                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                          : form.serviceType === 'hasar'
-                                            ? 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                            : 'border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                                        : 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                     }`}
                                   >
                                     {allSelected ? 'Tümünü Kaldır' : 'Tümünü Seç'}
@@ -3147,15 +3093,13 @@ export default function MusterilerPage() {
                                         }))}
                                         className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border transition-all text-left ${
                                           selected
-                                            ? (form.subType === 'sigorta_sirketi' || form.serviceType === 'hasar')
-                                              ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium'
-                                              : 'border-orange-400 bg-orange-50 text-orange-700 font-medium'
+                                            ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium'
                                             : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                         }`}
                                       >
                                         <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-[9px] ${
                                           selected
-                                            ? (form.subType === 'sigorta_sirketi' || form.serviceType === 'hasar') ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-orange-500 border-orange-500 text-white'
+                                            ? 'bg-emerald-600 border-emerald-600 text-white'
                                             : 'border-slate-300'
                                         }`}>
                                           {selected ? '✓' : ''}
@@ -3176,7 +3120,6 @@ export default function MusterilerPage() {
                         })()
                         )}
                       </div>
-                    )}
                   </div>
                   )}
                 </div>

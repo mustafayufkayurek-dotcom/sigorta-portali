@@ -33,7 +33,7 @@ export class TestNotesController {
   constructor(private readonly service: TestNotesService) {}
 
   @Get()
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   @ApiOperation({ summary: 'Test notlarını listele' })
   async findAll(@Query() query: TestNoteFilterDto) {
     const result = await this.service.findAllTestNotes(query);
@@ -41,42 +41,42 @@ export class TestNotesController {
   }
 
   @Get(':id')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   async findOne(@Param('id') id: string) {
     const data = await this.service.findOneTestNote(id);
     return { success: true, data };
   }
 
   @Post()
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.create')
   async create(@Body() dto: CreateTestNoteDto, @Req() req: any) {
     const data = await this.service.createTestNote(dto, req.user.id);
     return { success: true, data };
   }
 
   @Patch(':id')
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.update', 'note.create')
   async update(@Param('id') id: string, @Body() dto: UpdateTestNoteDto, @Req() req: any) {
     const data = await this.service.updateTestNote(id, dto, req.user.id);
     return { success: true, data };
   }
 
   @Delete(':id')
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.update', 'note.create')
   async remove(@Param('id') id: string, @Req() req: any) {
     const data = await this.service.removeTestNote(id, req.user.id);
     return { success: true, data };
   }
 
   @Post(':id/generate-format')
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.update', 'note.create')
   async generateFormat(@Param('id') id: string, @Body() dto: GenerateTestNoteFormatDto, @Req() req: any) {
     const data = await this.service.generateFormat(id, dto, req.user.id);
     return { success: true, data };
   }
 
   @Get('export/excel')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   async exportExcel(@Query() query: TestNoteFilterDto, @Query() workItemQuery: WorkItemFilterDto, @Res() res: Response) {
     const buffer = await this.service.exportExcel(query, workItemQuery);
     const filename = `test-notlari-ve-gorevler-${new Date().toISOString().slice(0, 10)}.xlsx`;

@@ -489,6 +489,9 @@ export class ClaimFilesService {
 
       let assignedOfficeUserId = rest.assignedOfficeUserId ?? null;
       let resolvedDepartmentId = departmentId ?? null;
+      if (!resolvedDepartmentId && sourceChannel !== 'expert_portal') {
+        resolvedDepartmentId = await this.resolveHasarDepartmentId();
+      }
 
       if (
         sourceChannel === 'expert_portal'

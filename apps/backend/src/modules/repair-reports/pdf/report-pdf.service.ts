@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
 import * as puppeteer from 'puppeteer';
@@ -104,18 +104,26 @@ export class ReportPdfService {
   constructor(private readonly config: ConfigService) {}
 
   async generate(report: ReportData, viewType: 'internal' | 'external'): Promise<Buffer> {
-    const html = this.buildHtml(report, viewType);
-    return this.htmlToPdf(html);
+    try {
+      const html = this.buildHtml(report, viewType);
+      return await this.htmlToPdf(html);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'PDF oluşturulamadı. Sunucu PDF motorunu kontrol edin veya daha sonra tekrar deneyin.',
+      );
+    }
   }
 
   private async htmlToPdf(html: string): Promise<Buffer> {
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
     try {
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'load', timeout: 60_000 });
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,

@@ -209,8 +209,9 @@ async function main() {
 
   // Office staff permissions
   const officePermCodes = [
-    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.status_change',
+    'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
     'customer.view', 'customer.create', 'customer.update',
+    'vendor.view', 'vendor.create', 'vendor.update',
     'task.view', 'task.create', 'task.update', 'task.complete',
     'document.view', 'document.upload',
     'note.view', 'note.create', 'note.update',
@@ -220,6 +221,7 @@ async function main() {
     'dashboard.view',
     'location.view',
     'hr.view', 'hr.leave.request',
+    'report.view', 'report.create',
     'operation_inbox.view', 'operation_inbox.manage',
   ];
   await assignPermissions(officeStaffRole.id, officePermCodes, createdPermissions);
@@ -246,7 +248,7 @@ async function main() {
   const financePermCodes = [
     'claim_file.view', 'claim_file.update',
     'document.view', 'document.upload',
-    'note.view', 'note.create',
+    'note.view', 'note.create', 'note.update',
     'dashboard.view',
     'invoice.view', 'invoice.create', 'invoice.update', 'invoice.delete',
     'payment.view', 'payment.create', 'payment.update',

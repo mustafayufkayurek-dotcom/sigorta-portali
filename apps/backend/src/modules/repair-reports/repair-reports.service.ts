@@ -557,8 +557,13 @@ export class RepairReportsService {
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
     const report = await this.getReport(reportId);
-    const buffer = await this.pdfService.generate(report as any, viewType);
-    return { buffer, report };
+    try {
+      const buffer = await this.pdfService.generate(report as any, viewType);
+      return { buffer, report };
+    } catch (error) {
+      this.logger.error(`PDF generation failed for report ${reportId}: ${(error as Error)?.message ?? error}`);
+      throw error;
+    }
   }
 
   async sendEmail(reportId: string, dto: SendEmailDto) {

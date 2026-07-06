@@ -11,6 +11,7 @@ import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-inp
 import { formatVendorAddress } from '@/utils/vendor-form-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import {
   loadClaimNewPrefs,
   saveClaimNewPrefs,
@@ -188,11 +189,33 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const loadLookups = useCallback(async () => {
     try {
-      const [icRes, subjectsRes] = await Promise.all([
+      const [icRes, subjectsRes, meRes] = await Promise.all([
         axios.get(`${API}/insurance-companies?limit=200`, { headers: authHeader() }),
         axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch(() => null),
+        axios.get(`${API}/auth/me`, { headers: authHeader() }).catch(() => null),
       ]);
-      setInsuranceCompanies(icRes.data.data || []);
+      let companies: { id: string; name: string }[] = icRes.data.data || [];
+      const me = meRes?.data?.data ?? meRes?.data?.user ?? meRes?.data;
+      const roleCode = String(me?.role?.code ?? me?.roleCode ?? '').toLowerCase();
+      const scopedIds = Array.isArray(me?.insuranceCompanyScopes)
+        ? me.insuranceCompanyScopes.map((s: { id?: string }) => s.id).filter(Boolean)
+        : [];
+      if (isOfficeStaffRole(roleCode) && scopedIds.length > 0) {
+        companies = companies.filter((c) => scopedIds.includes(c.id));
+      }
+      setInsuranceCompanies(companies);
+
+      const prefs = loadClaimNewPrefs();
+      const prefCompanyId = prefs.insuranceCompanyId;
+      if (prefCompanyId && companies.some((c) => c.id === prefCompanyId)) {
+        setInsuranceCompanyId(prefCompanyId);
+      } else if (isOfficeStaffRole(roleCode) && companies.length === 1) {
+        setInsuranceCompanyId(companies[0].id);
+      } else {
+        setInsuranceCompanyId('');
+      }
+      if (prefs.lossType) setLossType(prefs.lossType);
+
       const subjectData = subjectsRes?.data?.data;
       const subjects = Array.isArray(subjectData?.hasar)
         ? subjectData.hasar
@@ -238,9 +261,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   useEffect(() => {
     setNotificationDate(todayTrDateDisplay());
-    const prefs = loadClaimNewPrefs();
-    if (prefs.insuranceCompanyId) setInsuranceCompanyId(prefs.insuranceCompanyId);
-    if (prefs.lossType) setLossType(prefs.lossType);
   }, []);
 
   useEffect(() => {
@@ -422,7 +442,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       if (!createdId) {
         throw new Error('Oluşturulan dosya kimliği alınamadı');
       }
-      saveClaimNewPrefs({ insuranceCompanyId, lossType });
+      saveClaimNewPrefs({ lossType });
       onSuccess(createdId);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)

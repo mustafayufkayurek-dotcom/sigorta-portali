@@ -32,7 +32,7 @@ export class WorkItemsController {
   constructor(private readonly service: TestNotesService) {}
 
   @Get()
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   @ApiOperation({ summary: 'İş/karar kayıtlarını listele' })
   async findAll(@Query() query: WorkItemFilterDto) {
     const result = await this.service.findAllWorkItems(query);
@@ -40,35 +40,35 @@ export class WorkItemsController {
   }
 
   @Get(':id')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   async findOne(@Param('id') id: string) {
     const data = await this.service.findOneWorkItem(id);
     return { success: true, data };
   }
 
   @Post()
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.create')
   async create(@Body() dto: CreateWorkItemDto, @Req() req: any) {
     const data = await this.service.createWorkItem(dto, req.user.id);
     return { success: true, data };
   }
 
   @Patch(':id')
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.update', 'note.create')
   async update(@Param('id') id: string, @Body() dto: UpdateWorkItemDto, @Req() req: any) {
     const data = await this.service.updateWorkItem(id, dto, req.user.id);
     return { success: true, data };
   }
 
   @Delete(':id')
-  @RequirePermissions('settings.update')
+  @RequirePermissions('note.update', 'note.create')
   async remove(@Param('id') id: string, @Req() req: any) {
     const data = await this.service.removeWorkItem(id, req.user.id);
     return { success: true, data };
   }
 
   @Get('export/excel')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('note.view')
   async exportExcel(@Query() query: WorkItemFilterDto, @Res() res: Response) {
     const buffer = await this.service.exportExcel({ page: 1, limit: 5000 } as TestNoteFilterDto, query);
     const filename = `gecici-is-gorev-takip-${new Date().toISOString().slice(0, 10)}.xlsx`;

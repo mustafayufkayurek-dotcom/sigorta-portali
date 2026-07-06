@@ -37,19 +37,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'excel-rapor', label: 'Excel Rapor' },
 ];
 
-function canAccess() {
-  if (typeof window === 'undefined') return false;
-  const raw = localStorage.getItem('user');
-  if (!raw) return false;
-  try {
-    const parsed = JSON.parse(raw);
-    const roleCode = String(parsed?.role?.code ?? parsed?.roleCode ?? '').toLowerCase();
-    const permissions = parsed?.screenPermissions ?? [];
-    return roleCode === 'admin' || permissions.some((item: any) => item?.code === 'test_notes_admin' && item?.canView);
-  } catch {
-    return false;
-  }
-}
+import { canAccessTestNotesFromStorage } from '@/utils/test-notes-access';
 
 export default function TestNotlariGorevTakipPage() {
   const router = useRouter();
@@ -73,12 +61,16 @@ export default function TestNotlariGorevTakipPage() {
       router.push('/giris');
       return;
     }
-    if (!canAccess()) {
+    if (!canAccessTestNotesFromStorage()) {
       router.push('/panel');
       return;
     }
     setLoading(true);
-    Promise.all([fetchTestNotes({ page: 1, limit: 100, isArchived: false }), fetchWorkItems({ page: 1, limit: 100 }), fetchUsers()])
+    Promise.all([
+      fetchTestNotes({ page: 1, limit: 100, isArchived: false }),
+      fetchWorkItems({ page: 1, limit: 100 }),
+      fetchUsers().catch(() => [] as UserSummary[]),
+    ])
       .then(([notesRes, workRes, usersRes]) => {
         setTestNotes(notesRes.data ?? []);
         setWorkItems(workRes.data ?? []);

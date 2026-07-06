@@ -1,3 +1,5 @@
+import { canAccessTestNotesFromStorage } from '@/utils/test-notes-access';
+
 /** Tanım CRUD sayfalarının standart geri linki */
 export const TANIMLAR_BACK_HREF = '/panel/ayarlar/tanimlar';
 export const TANIMLAR_BACK_TEXT = '← Tanımlar Merkezi';
@@ -26,15 +28,5 @@ export const DEFINITION_SETTINGS_PAGES = [
 ] as const;
 
 export function canAccessTestNotesHub(): boolean {
-  if (typeof window === 'undefined') return false;
-  const raw = localStorage.getItem('user');
-  if (!raw) return false;
-  try {
-    const parsed = JSON.parse(raw);
-    const roleCode = String(parsed?.role?.code ?? parsed?.roleCode ?? '').toLowerCase();
-    const permissions = parsed?.screenPermissions ?? [];
-    return roleCode === 'admin' || permissions.some((item: { code?: string; canView?: boolean }) => item?.code === 'test_notes_admin' && item?.canView);
-  } catch {
-    return false;
-  }
+  return canAccessTestNotesFromStorage();
 }

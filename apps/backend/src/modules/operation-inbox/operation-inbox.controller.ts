@@ -210,7 +210,7 @@ export class OperationInboxController {
   }
 
   @Post('sync')
-  @RequirePermissions('operation_inbox.settings')
+  @RequirePermissions('operation_inbox.manage', 'operation_inbox.settings')
   triggerSync() {
     return this.inboxService.triggerSync();
   }
