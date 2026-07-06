@@ -282,8 +282,9 @@ export class ReportPdfService {
     let photoGalleryHtml = '';
     if (images.length > 0) {
       const imageItems = images.map((img) => {
-        // local: /uploads/report-images/{storageKey}  veya  /report-images/{storageKey}
-        const imgUrl = `${backendUrl}/report-images/${encodeURIComponent(img.storageKey)}`;
+        // local: /uploads/report-images/{storageKey}
+        const base = (process.env.BACKEND_PUBLIC_URL || process.env.WEB_URL || 'http://localhost:3000').replace(/\/$/, '');
+        const imgUrl = `${base}/uploads/report-images/${encodeURIComponent(img.storageKey)}`;
         const caption = img.caption ?? img.fileName ?? '';
         return `
           <div class="photo-item">

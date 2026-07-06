@@ -9,7 +9,7 @@ import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/dam
 import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-recipients';
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
-import RepairItemsModal, { DAMAGE_SIZE_OPTIONS, DAMAGE_TYPE_OPTIONS, SelectedRepairItem, damageSizeLabel, damageTypeLabel } from '@/components/damage-reports/RepairItemsModal';
+import { getReportImageUrl } from '@/utils/upload-url';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -322,7 +322,7 @@ function FinancialSummaryBar({
   ];
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 flex-1 flex-wrap min-w-0">
+    <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap min-w-0">
       <div className="hidden md:flex items-center gap-2 pr-1 flex-shrink-0">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
         <span className="text-xs font-semibold text-slate-300 tracking-wide">Finansal Özet</span>
@@ -2376,7 +2376,7 @@ function EmergencyReportEditor({
                 {report.images.map((img: any) => (
                   <div key={img.id} className="relative group rounded-lg overflow-hidden border border-slate-100">
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/uploads/report-images/${img.storageKey}`}
+                      src={getReportImageUrl(img.storageKey)}
                       alt={img.fileName ?? img.category}
                       className="w-full h-28 object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%239ca3af" font-size="12">Yüklenemedi</text></svg>'; }}
@@ -3503,7 +3503,7 @@ export default function RepairReportPage() {
             {report.images.map((img: any) => (
               <div key={img.id} className="relative group rounded-xl overflow-hidden border border-slate-100 bg-slate-50 aspect-square">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/uploads/report-images/${img.hasAnnotation && img.annotatedKey ? img.annotatedKey : img.storageKey}`}
+                  src={getReportImageUrl(img.hasAnnotation && img.annotatedKey ? img.annotatedKey : img.storageKey)}
                   alt={img.caption ?? img.category}
                   className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%239ca3af" font-size="12">Yüklenemedi</text></svg>'; }}
@@ -3544,20 +3544,18 @@ export default function RepairReportPage() {
         />
       </SectionCard>
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4 flex-wrap">
-          {/* Kâr Özeti — sadece iç görünümde ve saha personeli değilse */}
-          {effectiveViewMode === 'internal' && !isFieldStaff && (
-            <FinancialSummaryBar
-              totalSupplierCost={report.totalSupplierCost}
-              totalSalesAmount={report.totalSalesAmount}
-              grossProfit={report.grossProfit}
-              grossMarginPct={report.grossMarginPct}
-            />
-          )}
-          {effectiveViewMode === 'external' && <div className="flex-1" />}
-
-          {/* Aksiyon Butonları */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4">
+          <div className="flex-1 flex justify-center min-w-0">
+            {effectiveViewMode === 'internal' && !isFieldStaff && (
+              <FinancialSummaryBar
+                totalSupplierCost={report.totalSupplierCost}
+                totalSalesAmount={report.totalSalesAmount}
+                grossProfit={report.grossProfit}
+                grossMarginPct={report.grossMarginPct}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
             {/* Taslak veya Reddedildi: Kaydet + İptal */}
             {(report.status === 'draft' || report.status === 'rejected') && (
               <>
@@ -3619,7 +3617,7 @@ export default function RepairReportPage() {
       {/* Annotation Editor — Fabric.js */}
       {showAnnotation && (
         <ImageAnnotationEditor
-          imageUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/uploads/report-images/${showAnnotation.hasAnnotation && showAnnotation.annotatedKey ? showAnnotation.annotatedKey : showAnnotation.storageKey}`}
+          imageUrl={getReportImageUrl(showAnnotation.hasAnnotation && showAnnotation.annotatedKey ? showAnnotation.annotatedKey : showAnnotation.storageKey)}
           imageId={showAnnotation.id}
           reportId={reportId}
           onSave={(blob) => handleSaveAnnotation(showAnnotation.id, blob)}

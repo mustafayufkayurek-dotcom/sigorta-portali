@@ -22,6 +22,7 @@ import {
 } from './_components/financial-visibility-config';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
+import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -888,6 +889,7 @@ export default function ClaimFileDetailPage() {
   const [activeGroup, setActiveGroup] = useState<GroupTab>('genel-bilgiler');
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
   const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
+  const [fieldSurveyRefreshKey, setFieldSurveyRefreshKey] = useState(0);
 
   const canEditFieldSurvey = userHasPermission('claim_file.update');
 
@@ -924,10 +926,12 @@ export default function ClaimFileDetailPage() {
             onClick={() => setFieldSurveyOpen(true)}
             className="btn-secondary text-sm"
           >
-            Keşif Ölçüsü
+            Saha Keşif Ölçüsü
           </button>
         </div>
       )}
+
+      <FieldSurveyBriefList claimFileId={id!} refreshKey={fieldSurveyRefreshKey} />
 
       <FieldSurveyBriefModal
         open={fieldSurveyOpen}
@@ -935,6 +939,7 @@ export default function ClaimFileDetailPage() {
         claimFileId={id!}
         claimFileNo={claim.fileNo}
         defaultPhone={claim.assignedSupplier?.phone ?? claim.customer?.phone ?? null}
+        onSaved={() => setFieldSurveyRefreshKey((k) => k + 1)}
       />
 
       {!isFieldStaff && canViewFinancials && activeGroup !== 'finans' && (
