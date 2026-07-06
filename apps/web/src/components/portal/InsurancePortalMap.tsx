@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InsuranceMapPin, InsurancePinCategory } from './insurance-portal-map.types';
 import { pinCategoryColor } from '@/utils/insurance-portal-map-utils';
 
@@ -52,6 +52,26 @@ export default function InsurancePortalMap({ pins, loading }: InsurancePortalMap
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<any[]>([]);
   const leafletRef = useRef<any>(null);
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
+  const [mapFocused, setMapFocused] = useState(false);
+
+  const attachScrollWheelGuard = useCallback((map: any) => {
+    wheelCleanupRef.current?.();
+    map.scrollWheelZoom.disable();
+
+    const container = map.getContainer() as HTMLElement;
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        map.scrollWheelZoom.enable();
+        window.setTimeout(() => map.scrollWheelZoom.disable(), 150);
+        return;
+      }
+      // Harita üzerinde normal kaydırma sayfayı hareket ettirsin; zoom tetiklenmesin.
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: true });
+    wheelCleanupRef.current = () => container.removeEventListener('wheel', onWheel);
+  }, []);
 
   const renderMarkers = useCallback((data: InsuranceMapPin[]) => {
     const L = leafletRef.current;
@@ -95,7 +115,11 @@ export default function InsurancePortalMap({ pins, loading }: InsurancePortalMap
       }
       if (!mapRef.current && mapContainerRef.current) {
         const leaflet = leafletRef.current;
-        mapRef.current = leaflet.map(mapContainerRef.current).setView([39.0, 35.0], 6);
+        mapRef.current = leaflet.map(mapContainerRef.current, {
+          scrollWheelZoom: false,
+          zoomControl: true,
+        }).setView([39.0, 35.0], 6);
+        attachScrollWheelGuard(mapRef.current);
         leaflet
           .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap Katkıda Bulunanları',
@@ -104,7 +128,12 @@ export default function InsurancePortalMap({ pins, loading }: InsurancePortalMap
       }
       renderMarkers(pins);
     });
-  }, [pins, renderMarkers]);
+
+    return () => {
+      wheelCleanupRef.current?.();
+      wheelCleanupRef.current = null;
+    };
+  }, [pins, renderMarkers, attachScrollWheelGuard]);
 
   useEffect(() => {
     renderMarkers(pins);
@@ -118,8 +147,19 @@ export default function InsurancePortalMap({ pins, loading }: InsurancePortalMap
   }, [pins.length]);
 
   return (
-    <div className="relative min-h-[420px] h-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+    <div
+      className="relative min-h-[420px] h-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+      onMouseEnter={() => setMapFocused(true)}
+      onMouseLeave={() => setMapFocused(false)}
+    >
       <div ref={mapContainerRef} className="h-full w-full min-h-[420px]" />
+      <div
+        className={`pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-slate-200/80 bg-white/90 px-2.5 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-opacity duration-300 ${
+          mapFocused ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        Yakınlaştırmak İçin Ctrl veya ⌘ + Kaydır · Sürükleyerek Gezinin
+      </div>
       {loading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/60">
           <p className="text-sm font-medium text-slate-600">Harita Yükleniyor...</p>
