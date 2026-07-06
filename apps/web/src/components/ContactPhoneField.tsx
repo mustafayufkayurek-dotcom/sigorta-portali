@@ -26,8 +26,8 @@ export function ContactPhoneField({
   const mainPlaceholder = phoneType === 'landline' ? '0212 123 45 67' : '5XX XXX XX XX';
 
   return (
-    <div className="space-y-2 w-full">
-      <div className="flex gap-1.5 items-stretch w-full min-w-0">
+    <div className="space-y-2 w-full min-w-0">
+      <div className="flex flex-wrap gap-1.5 items-stretch w-full min-w-0">
         <span className="flex-shrink-0 w-8 h-9 flex items-center justify-center rounded-lg bg-slate-50 border border-slate-200 text-slate-400">
           {phoneType === 'gsm' ? (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -49,9 +49,9 @@ export function ContactPhoneField({
           <option value="gsm">GSM</option>
           <option value="landline">Sabit Hat</option>
         </select>
-        <div className="flex-1 min-w-[9rem]">
+        <div className="flex-1 min-w-0 basis-[min(100%,8rem)]">
           <PhoneInput
-            className="w-full"
+            className="w-full min-w-0"
             value={phone}
             onChange={onPhoneChange}
             onBlur={onPhoneBlur}

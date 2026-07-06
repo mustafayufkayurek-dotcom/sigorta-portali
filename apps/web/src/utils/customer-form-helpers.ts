@@ -1,3 +1,9 @@
+import {
+  ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
+  showsAcilYardimCustomerScope,
+  type OperationAreaCode,
+} from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 export type CustomerType = 'individual' | 'corporate';
@@ -74,6 +80,18 @@ export function customerSubTypesForPicker(
     if (customerType === 'individual' && CORPORATE_ONLY_SUB_TYPES.has(t.value)) return false;
     return t.forType === customerType || t.forType === 'both';
   });
+}
+
+/** Hasar-only dosya sorumlusu (office_staff) acil yardım müşteri tiplerini görmemeli */
+export function filterCustomerSubTypesForPanelUser(
+  subTypes: CustomerSubTypeDef[],
+  roleCode: string,
+  operationArea: OperationAreaCode,
+): CustomerSubTypeDef[] {
+  if (isOfficeStaffRole(roleCode) && !showsAcilYardimCustomerScope(operationArea)) {
+    return subTypes.filter((t) => t.value !== ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE);
+  }
+  return subTypes;
 }
 
 /** Alt tip seçildiğinde form altında gösterilen kısa yönlendirme metni */

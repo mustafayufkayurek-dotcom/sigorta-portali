@@ -90,10 +90,10 @@ export function PhoneInput({ value, onChange, onBlur, className = '', placeholde
     onChange(intl);
   };
 
-  const inputBase = `flex-1 border-0 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-0 ${disabled ? 'text-gray-400' : 'text-gray-800'}`;
+  const inputBase = `min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-0 ${disabled ? 'text-gray-400' : 'text-gray-800'}`;
 
   return (
-    <div className={`relative flex items-stretch border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-400 transition-colors ${className}`}
+    <div className={`relative flex min-w-0 items-stretch border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-400 transition-colors ${className}`}
       ref={dropdownRef}>
       {/* Ülke Kodu Seçici Butonu */}
       <button

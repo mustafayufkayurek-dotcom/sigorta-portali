@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import {
@@ -28,6 +28,7 @@ import {
   CUSTOMER_RELATION_SECTION_HINT,
   DEFAULT_CUSTOMER_SUB_TYPES,
   customerSubTypeHint,
+  filterCustomerSubTypesForPanelUser,
   mergeCustomerSubTypes,
   customerSubTypesForPicker,
   normalizeCustomerAddressFields,
@@ -41,6 +42,9 @@ import {
   type MusteriGrubuAddContext,
 } from '@/utils/musteri-gruplari-add-context';
 import { consumeInboxCustomerPrefill, type InboxCustomerPrefillPayload } from '@/utils/inbox-customer-prefill';
+import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { readStoredPanelUser, userOperationArea } from '@/utils/panel-access';
+import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PanelTableColumnPicker,
@@ -684,6 +688,15 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   );
 }
 
+const SUB_TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
+  { value: '', label: 'Tümü' },
+  { value: 'eksper_firmasi', label: 'Eksper Firması' },
+  { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
+  { value: 'broker_firmasi', label: 'Broker Firması' },
+  { value: 'asistan_firmasi', label: 'Asistan Firması' },
+  { value: 'private_customer', label: 'Özel Müşteri' },
+];
+
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
   { id: 'phone', label: 'Telefon', defaultWidth: 160, minWidth: 130 },
@@ -697,6 +710,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
 export default function MusterilerPage() {
   const { showToast } = useToast();
   const router = useRouter();
+  const roleCode = usePanelRoleCode();
   const tableColumns = usePanelTableColumns('table-cols:musteriler', TABLE_COLUMNS);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -740,6 +754,19 @@ export default function MusterilerPage() {
 
   const [customerSources, setCustomerSources] = useState<string[]>([]);
   const [customerSubTypes, setCustomerSubTypes] = useState<CustomerSubTypeDef[]>([]);
+  const panelOperationArea = useMemo(() => userOperationArea(readStoredPanelUser()), [roleCode]);
+  const visibleCustomerSubTypes = useMemo(
+    () => filterCustomerSubTypesForPanelUser(customerSubTypes, roleCode, panelOperationArea),
+    [customerSubTypes, roleCode, panelOperationArea],
+  );
+  const visibleSubTypeFilterChips = useMemo(() => {
+    const allowed = new Set(visibleCustomerSubTypes.map((t) => t.value));
+    return SUB_TYPE_FILTER_CHIPS.filter((chip) => !chip.value || allowed.has(chip.value));
+  }, [visibleCustomerSubTypes]);
+  const canSelectAsistanFirmasi = useMemo(
+    () => visibleCustomerSubTypes.some((t) => t.value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE),
+    [visibleCustomerSubTypes],
+  );
   const [relationshipTypes, setRelationshipTypes] = useState<string[]>([]); // sadece aktif olanların label listesi
   const [addingNewRelType, setAddingNewRelType] = useState(false);
   const [newRelTypeValue, setNewRelTypeValue] = useState('');
@@ -1247,6 +1274,14 @@ export default function MusterilerPage() {
   useEffect(() => { loadCustomerSources(); }, [loadCustomerSources]);
   useEffect(() => { loadCustomerSubTypes(); }, [loadCustomerSubTypes]);
 
+  useEffect(() => {
+    if (!subTypeFilter) return;
+    if (!visibleCustomerSubTypes.some((t) => t.value === subTypeFilter)) {
+      setSubTypeFilter('');
+      setPage(1);
+    }
+  }, [subTypeFilter, visibleCustomerSubTypes]);
+
   // Gelen kutusundan müşteri ön-dolumu (?inboxPrefill=1)
   useEffect(() => {
     if (searchParams.get('inboxPrefill') !== '1') return;
@@ -1269,23 +1304,32 @@ export default function MusterilerPage() {
 
     const subType = searchParams.get('subType')?.trim() ?? '';
     const entityType = searchParams.get('entityType') === 'corporate' ? 'corporate' : 'individual';
+    const panelUser = readStoredPanelUser();
+    const panelRole = String(panelUser?.role?.code ?? '').toLowerCase();
+    const panelOpArea = userOperationArea(panelUser);
+    const subTypeAllowed = !subType || filterCustomerSubTypesForPanelUser(
+      [{ value: subType, label: '', forType: 'both', color: 'gray' }],
+      panelRole,
+      panelOpArea,
+    ).length > 0;
+    const effectiveSubType = subTypeAllowed ? subType : '';
 
     if (subType || searchParams.get('openAdd') === '1') {
-      if (subType) {
+      if (effectiveSubType) {
         setTypeFilter(entityType);
-        setSubTypeFilter(subType);
+        setSubTypeFilter(effectiveSubType);
       }
       setForm({
         ...emptyForm(),
         customerType: entityType,
-        subType: subType as ReturnType<typeof emptyForm>['subType'],
+        subType: effectiveSubType as ReturnType<typeof emptyForm>['subType'],
       });
       loadCustomerSources();
       loadCustomerSubTypes();
       setShowModal(true);
       if (ctx) {
         showToast('info', `${ctx.returnLabel} için kurumsal cari ekliyorsunuz.`);
-      } else if (subType) {
+      } else if (effectiveSubType) {
         showToast('info', 'Önce müşteri tipi seçili geldi; cari bilgilerini tamamlayın.');
       }
     }
@@ -1741,14 +1785,7 @@ export default function MusterilerPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold text-slate-500">Alt Tip:</span>
-        {[
-          { value: '', label: 'Tümü' },
-          { value: 'eksper_firmasi', label: 'Eksper Firması' },
-          { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
-          { value: 'broker_firmasi', label: 'Broker Firması' },
-          { value: 'asistan_firmasi', label: 'Asistan Firması' },
-          { value: 'private_customer', label: 'Özel Müşteri' },
-        ].map((chip) => (
+        {visibleSubTypeFilterChips.map((chip) => (
           <button
             key={chip.value || 'all'}
             type="button"
@@ -1802,7 +1839,7 @@ export default function MusterilerPage() {
             onChange={(e) => { setSubTypeFilter(e.target.value); setPage(1); }}
           >
             <option value="">Tüm Alt Tipler</option>
-            {customerSubTypes.map((t) => (
+            {visibleCustomerSubTypes.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
@@ -1880,7 +1917,7 @@ export default function MusterilerPage() {
             <span className="text-xs text-slate-400 mr-0.5">Aktif filtreler:</span>
             {search && <FilterChip label={`Arama: "${search}"`} onRemove={() => setSearchInput('')} />}
             {typeFilter && <FilterChip label={`Tip: ${typeLabel[typeFilter] ?? typeFilter}`} onRemove={() => { setTypeFilter(''); setPage(1); }} />}
-            {subTypeFilter && <FilterChip label={`Alt Tip: ${customerSubTypes.find((t) => t.value === subTypeFilter)?.label ?? subTypeFilter}`} onRemove={() => { setSubTypeFilter(''); setPage(1); }} />}
+            {subTypeFilter && <FilterChip label={`Alt Tip: ${visibleCustomerSubTypes.find((t) => t.value === subTypeFilter)?.label ?? subTypeFilter}`} onRemove={() => { setSubTypeFilter(''); setPage(1); }} />}
             {cityFilter && <FilterChip label={`Bölge: ${cityFilter}`} onRemove={() => { setCityFilter(''); setPage(1); }} />}
             {statusFilter && statusFilter !== DEFAULT_STATUS_FILTER && (
               <FilterChip
@@ -2360,11 +2397,12 @@ export default function MusterilerPage() {
 
                   <CustomerSubTypePicker
                     customerType={form.customerType}
-                    subTypes={customerSubTypes}
+                    subTypes={visibleCustomerSubTypes}
                     selectedSubType={form.subType}
                     required={customerSubTypeRequired}
                     hasError={!!fieldErrors.subType}
                     onToggle={(value) => {
+                      if (value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE && !canSelectAsistanFirmasi) return;
                       setForm((p) => {
                         const nextSubType = p.subType === value ? '' : value as typeof p.subType;
                         return {
@@ -2657,16 +2695,18 @@ export default function MusterilerPage() {
                                       />
                                     )}
                                   </FormField>
-                                  <FormField label="Telefon">
-                                    <ContactPhoneField
-                                      phone={c.phone}
-                                      phoneType={c.phoneType}
-                                      extensionNo={c.extensionNo}
-                                      onPhoneChange={(v) => upC(idx, 'phone', v)}
-                                      onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
-                                      onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
-                                    />
-                                  </FormField>
+                                  <div className="col-span-2 min-w-0">
+                                    <FormField label="Telefon">
+                                      <ContactPhoneField
+                                        phone={c.phone}
+                                        phoneType={c.phoneType}
+                                        extensionNo={c.extensionNo}
+                                        onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                        onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                        onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                      />
+                                    </FormField>
+                                  </div>
                                   <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                                 </div>
                               </div>
@@ -2734,16 +2774,18 @@ export default function MusterilerPage() {
                                   />
                                 )}
                               </FormField>
-                              <FormField label="Telefon">
-                                <ContactPhoneField
-                                  phone={c.phone}
-                                  phoneType={c.phoneType}
-                                  extensionNo={c.extensionNo}
-                                  onPhoneChange={(v) => upC(idx, 'phone', v)}
-                                  onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
-                                  onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
-                                />
-                              </FormField>
+                              <div className="col-span-2 min-w-0">
+                                <FormField label="Telefon">
+                                  <ContactPhoneField
+                                    phone={c.phone}
+                                    phoneType={c.phoneType}
+                                    extensionNo={c.extensionNo}
+                                    onPhoneChange={(v) => upC(idx, 'phone', v)}
+                                    onPhoneTypeChange={(t) => upContact(idx, { phoneType: t, extensionNo: '' })}
+                                    onExtensionChange={(v) => upC(idx, 'extensionNo', v)}
+                                  />
+                                </FormField>
+                              </div>
                               <div className="col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
                             </div>
                           </div>
@@ -2759,27 +2801,27 @@ export default function MusterilerPage() {
                   <SectionDivider emoji="📡" title="İletişim Kanalları" />
                   <div className="space-y-2.5 mb-4">
                     {contactInfos.map((ci, idx) => (
-                      <div key={idx} className="flex gap-2 items-center bg-slate-50 rounded-xl p-3 border border-slate-100">
-                        <select className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm bg-white w-32 flex-shrink-0" value={ci.type} onChange={(e) => upCI(idx, 'type', e.target.value)}>
+                      <div key={idx} className="flex flex-wrap gap-2 items-stretch sm:items-center bg-slate-50 rounded-xl p-3 border border-slate-100 min-w-0">
+                        <select className="border border-slate-200 rounded-lg px-2 py-2 text-sm bg-white w-[7.25rem] flex-shrink-0" value={ci.type} onChange={(e) => upCI(idx, 'type', e.target.value)}>
                           <option value="phone">📞 Telefon</option>
                           <option value="email">✉ E-posta</option>
                           <option value="fax">🖷 Faks</option>
                           <option value="whatsapp">💬 WhatsApp</option>
                         </select>
                         {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
-                          <PhoneInput className="flex-1 min-w-0" value={ci.value} onChange={(v) => upCI(idx, 'value', v)} />
+                          <PhoneInput className="flex-1 min-w-0 basis-0" value={ci.value} onChange={(v) => upCI(idx, 'value', v)} />
                         ) : (
-                          <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                          <input className="flex-1 min-w-0 basis-0 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
                             placeholder={ci.type === 'email' ? 'ornek@sirket.com' : 'Faks numarası'}
                             value={ci.value} onChange={(e) => upCI(idx, 'value', e.target.value)} />
                         )}
-                        <select className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm bg-white w-28 flex-shrink-0" value={ci.label} onChange={(e) => upCI(idx, 'label', e.target.value)}>
+                        <select className="border border-slate-200 rounded-lg px-2 py-2 text-sm bg-white w-24 flex-shrink-0" value={ci.label} onChange={(e) => upCI(idx, 'label', e.target.value)}>
                           <option value="general">Genel</option>
                           <option value="work">İş</option>
                           <option value="personal">Kişisel</option>
                         </select>
                         {contactInfos.length > 1 && (
-                          <button type="button" onClick={() => setContactInfos((p) => p.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                          <button type="button" onClick={() => setContactInfos((p) => p.filter((_, i) => i !== idx))} className="flex-shrink-0 self-center text-slate-300 hover:text-red-500 transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         )}
