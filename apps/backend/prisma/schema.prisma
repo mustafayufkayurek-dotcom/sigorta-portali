@@ -195,6 +195,7 @@ model User {
   createdFileAppointments    FileAppointment[]         @relation("FileAppointmentCreatedBy")
   assignedInboundMessages  InboundMessage[]          @relation("InboundMessageAssignee")
   vendorDiscoverySessions  VendorDiscoverySession[]
+  createdFieldSurveyBriefs FieldSurveyBrief[]
   activitySessions         ActivitySession[]
 
   // Personel modülü (pod — ileride bağlanacak)
@@ -376,6 +377,7 @@ model ClaimFile {
   activityLogs         FileActivityLog[]
   fileAppointments     FileAppointment[]
   inboundMessages      InboundMessage[]
+  fieldSurveyBriefs    FieldSurveyBrief[]
 
   @@index([fileNo])
   @@index([insuranceCompanyId])
@@ -3707,4 +3709,32 @@ model VendorDiscoveryCandidate {
   @@unique([sessionId, externalId])
   @@index([sessionId])
   @@map("vendor_discovery_candidates")
+}
+
+// Marangoz Keşif Ölçüsü — Faz 1
+model FieldSurveyBrief {
+  id                String   @id @default(uuid())
+  claimFileId       String   @map("claim_file_id")
+  createdByUserId   String   @map("created_by_user_id")
+  itemType          String   @map("item_type")
+  // mutfak_alt_modul | kapi | lavabo_alt | ada_tezgah | parke | diger
+  title             String
+  summaryText       String   @map("summary_text")
+  dimensionsJson    Json     @map("dimensions_json")
+  materialsJson     Json     @map("materials_json")
+  aiConfidence      Float?   @map("ai_confidence")
+  isEstimated       Boolean  @default(true) @map("is_estimated")
+  photoUrl          String?  @map("photo_url")
+  annotatedPhotoUrl String?  @map("annotated_photo_url")
+  status            String   @default("draft")
+  // draft | sent
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  claimFile     ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdByUser User      @relation(fields: [createdByUserId], references: [id])
+
+  @@index([claimFileId, createdAt])
+  @@index([createdByUserId])
+  @@map("field_survey_briefs")
 }

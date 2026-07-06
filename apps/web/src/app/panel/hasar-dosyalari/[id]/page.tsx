@@ -21,6 +21,7 @@ import {
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -886,6 +887,9 @@ export default function ClaimFileDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeGroup, setActiveGroup] = useState<GroupTab>('genel-bilgiler');
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
+  const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
+
+  const canEditFieldSurvey = userHasPermission('claim_file.update');
 
   useEffect(() => {
     setUserRoleCode(getCurrentUserRole());
@@ -911,6 +915,26 @@ export default function ClaimFileDetailPage() {
         claim={claim}
         onBack={() => router.push('/panel/hasar-dosyalari')}
         onOpenRaporlarTab={() => setActiveGroup('raporlar')}
+      />
+
+      {canEditFieldSurvey && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setFieldSurveyOpen(true)}
+            className="btn-secondary text-sm"
+          >
+            Keşif Ölçüsü
+          </button>
+        </div>
+      )}
+
+      <FieldSurveyBriefModal
+        open={fieldSurveyOpen}
+        onClose={() => setFieldSurveyOpen(false)}
+        claimFileId={id!}
+        claimFileNo={claim.fileNo}
+        defaultPhone={claim.assignedSupplier?.phone ?? claim.customer?.phone ?? null}
       />
 
       {!isFieldStaff && canViewFinancials && activeGroup !== 'finans' && (
