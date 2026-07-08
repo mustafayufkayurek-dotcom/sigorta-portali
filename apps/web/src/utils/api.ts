@@ -37,6 +37,67 @@ export async function ensureSessionBeforeMutation(): Promise<boolean> {
   return ok && Boolean(getAccessToken());
 }
 
+/** Oturum süresi dolduğunda kullanıcıya gösterilecek standart mesaj */
+export const SESSION_EXPIRED_USER_MESSAGE =
+  'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.';
+
+/** fetch() ile oturum korumalı istek — mutation öncesi yenileme + 401 retry */
+export async function authFetch(
+  url: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    await ensureValidSession(API);
+  }
+
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  const headers: HeadersInit = isFormData
+    ? {
+        ...(init.headers ?? {}),
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      }
+    : authFetchHeaders(init.headers);
+
+  let response = await fetch(url, { ...init, headers });
+
+  if (response.status === 401 && method !== 'GET' && method !== 'HEAD') {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      try {
+        const refreshed = await fetch(`${API}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const body = await refreshed.json().catch(() => null);
+        const tokens = body?.data;
+        if (tokens?.accessToken && tokens?.refreshToken) {
+          persistTokens(tokens.accessToken, tokens.refreshToken);
+          response = await fetch(url, {
+            ...init,
+            headers: {
+              ...headers,
+              Authorization: `Bearer ${tokens.accessToken}`,
+            },
+          });
+        }
+      } catch {
+        /* refresh başarısız */
+      }
+    }
+  }
+
+  if (response.status === 401) {
+    clearAuth();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/giris')) {
+      window.location.href = '/giris?reason=session_expired';
+    }
+  }
+
+  return response;
+}
+
 export async function authAxios<T>(
   config: AxiosRequestConfig,
 ): Promise<AxiosResponse<T>> {

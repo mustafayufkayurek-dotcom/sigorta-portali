@@ -12,6 +12,10 @@
 | Kontrol | Durum | Not |
 |---------|-------|-----|
 | JWT access token kısa ömür (15m) | Kod | `JWT_ACCESS_EXPIRES_IN=15m` |
+| Web: `getAccessToken()` tek kaynak (session + remember) | Kod v228+ | `localStorage` doğrudan okuma yasak |
+| Web: panel keepalive (10 dk) + aktivite yenileme | Kod v228+ | `layout.tsx`, `SessionTimeoutBar` |
+| Web: global axios 401 retry + mutation öncesi refresh | Kod v229+ | `setup-axios-auth.ts` |
+| Web: `apiClient` / `authFetch` mutation koruması | Kod v228+ | `api-client.ts`, `utils/api.ts` |
 | Refresh token DB'de, logout'ta silinir | Kod | |
 | Token blacklist (Redis) logout sonrası | Kod | Redis düşerse **fail-open** — bilinçli risk |
 | bcrypt password hash | Kod | |

@@ -8,6 +8,7 @@ import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
 import { SESSION_KEEPALIVE_MS } from '@/utils/api';
 import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred } from '@/utils/auth-session';
+import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
@@ -893,6 +894,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     // window scroll da sıfırla
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  useEffect(() => {
+    installAxiosAuthInterceptors();
+  }, []);
 
   useEffect(() => {
     const token = getAccessToken();

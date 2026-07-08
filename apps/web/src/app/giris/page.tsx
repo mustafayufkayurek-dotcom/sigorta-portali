@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API } from '@/utils/api';
 import { LoginBrandLogo } from '@/components/brand/LoginBrandLogo';
@@ -276,7 +276,16 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -291,6 +300,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
+    } else if (reason === 'timeout') {
+      setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
+    }
     if (!authHydrated.current) {
       authHydrated.current = true;
       const saved = loadRememberedLoginForm();

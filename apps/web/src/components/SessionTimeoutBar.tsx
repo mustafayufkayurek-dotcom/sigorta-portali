@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearAuth, getAccessToken, isRememberMeSession } from '@/utils/auth-session';
+import { clearAuth, ensureValidSession, getAccessToken, isRememberMeSession } from '@/utils/auth-session';
+import { API } from '@/utils/api';
 
-const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
-const WARN_BEFORE_MS = 5 * 60 * 1000;       // warn when 5 minutes remain
-const EXTEND_ON_ACTIVITY = true;
+/** Beni Hatırla kapalı oturumlarda hareketsizlik süresi */
+const SESSION_DURATION_MS = 30 * 60 * 1000;
+const WARN_BEFORE_MS = 5 * 60 * 1000;
+const ACTIVITY_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
 
 export default function SessionTimeoutBar() {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function SessionTimeoutBar() {
   const [visible, setVisible] = useState(false);
   const [extending, setExtending] = useState(false);
   const lastActivityRef = useRef(Date.now());
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resetActivity = useCallback(() => {
@@ -24,22 +27,18 @@ export default function SessionTimeoutBar() {
   const extendSession = useCallback(async () => {
     setExtending(true);
     try {
-      // Try to hit a lightweight endpoint to refresh the token TTL
-      const token = getAccessToken();
-      if (token) {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-        const api = apiBase.endsWith('/api/v1') ? apiBase : `${apiBase}/api/v1`;
-        await fetch(`${api}/auth/extend-session`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => { /* ignore – just reset local timer */ });
+      const ok = await ensureValidSession(API);
+      if (!ok || !getAccessToken()) {
+        clearAuth({ preserveRememberedEmail: true });
+        router.push('/giris?reason=session_expired');
+        return;
       }
     } finally {
       lastActivityRef.current = Date.now();
       setVisible(false);
       setExtending(false);
     }
-  }, []);
+  }, [router]);
 
   const doLogout = useCallback(() => {
     clearAuth({ preserveRememberedEmail: true });
@@ -47,10 +46,26 @@ export default function SessionTimeoutBar() {
   }, [router]);
 
   useEffect(() => {
-    if (!EXTEND_ON_ACTIVITY || rememberMe) return;
+    if (rememberMe) return;
+
+    const scheduleTokenRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = setTimeout(() => {
+        if (getAccessToken()) void ensureValidSession(API);
+      }, ACTIVITY_REFRESH_DEBOUNCE_MS);
+    };
+
+    const onActivity = () => {
+      resetActivity();
+      scheduleTokenRefresh();
+    };
+
     const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
-    events.forEach((ev) => window.addEventListener(ev, resetActivity, { passive: true }));
-    return () => events.forEach((ev) => window.removeEventListener(ev, resetActivity));
+    events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, onActivity));
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
   }, [resetActivity, rememberMe]);
 
   useEffect(() => {
@@ -78,11 +93,10 @@ export default function SessionTimeoutBar() {
   const minutes = Math.floor(remainingMs / 60000);
   const seconds = Math.floor((remainingMs % 60000) / 1000);
   const timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
-  const isUrgent = remainingMs <= 60000; // last 60 s
+  const isUrgent = remainingMs <= 60000;
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all ${isUrgent ? 'bg-red-600' : 'bg-amber-500'}`}>
-      {/* Progress bar */}
       <div className="h-1 bg-black/20">
         <div
           className="h-full bg-white/60 transition-all duration-1000"

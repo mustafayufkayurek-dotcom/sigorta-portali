@@ -1,18 +1,4 @@
-import { getAccessToken } from './auth-session';
-
-const _fBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API_BASE = _fBase.endsWith('/api/v1') ? _fBase : `${_fBase.replace(/\/$/, '')}/api/v1`;
-
-function getToken(): string {
-  return getAccessToken() ?? '';
-}
-
-function authHeaders(): HeadersInit {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${getToken()}`,
-  };
-}
+import { authFetch, API } from './api';
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -78,9 +64,9 @@ export function createFileDocument(body: {
   entityId: string;
   documentKind: FileDocumentKind;
 }): Promise<FileDocument> {
-  return fetch(`${API_BASE}/file-documents`, {
+  return authFetch(`${API}/file-documents`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then((r) => handleResponse<FileDocument>(r));
 }
@@ -89,24 +75,20 @@ export function getFileDocuments(
   entityType: string,
   entityId: string,
 ): Promise<FileDocument[]> {
-  return fetch(`${API_BASE}/file-documents/entity/${entityType}/${entityId}`, {
-    headers: authHeaders(),
-  }).then((r) => handleResponse<FileDocument[]>(r));
+  return authFetch(`${API}/file-documents/entity/${entityType}/${entityId}`).then((r) => handleResponse<FileDocument[]>(r));
 }
 
 export function getFileDocument(id: string): Promise<FileDocument> {
-  return fetch(`${API_BASE}/file-documents/${id}`, {
-    headers: authHeaders(),
-  }).then((r) => handleResponse<FileDocument>(r));
+  return authFetch(`${API}/file-documents/${id}`).then((r) => handleResponse<FileDocument>(r));
 }
 
 export function sendWhatsapp(
   id: string,
   phone: string,
 ): Promise<{ waUrl: string; link: string }> {
-  return fetch(`${API_BASE}/file-documents/${id}/whatsapp`, {
+  return authFetch(`${API}/file-documents/${id}/whatsapp`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
   }).then((r) => handleResponse<{ waUrl: string; link: string }>(r));
 }
@@ -117,9 +99,8 @@ export function uploadPhysicalDocument(
 ): Promise<FileDocument> {
   const formData = new FormData();
   formData.append('file', file);
-  return fetch(`${API_BASE}/file-documents/${id}/physical-upload`, {
+  return authFetch(`${API}/file-documents/${id}/physical-upload`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getToken()}` },
     body: formData,
   }).then((r) => handleResponse<FileDocument>(r));
 }
@@ -127,18 +108,16 @@ export function uploadPhysicalDocument(
 export function getClaimClosureConditions(
   claimFileId: string,
 ): Promise<ClaimClosureConditions> {
-  return fetch(
-    `${API_BASE}/file-documents/claim-file/${claimFileId}/closure-conditions`,
-    { headers: authHeaders() },
+  return authFetch(
+    `${API}/file-documents/claim-file/${claimFileId}/closure-conditions`,
   ).then((r) => handleResponse<ClaimClosureConditions>(r));
 }
 
 export function getEmergencyClosureConditions(
   emergencyCaseId: string,
 ): Promise<EmergencyClosureConditions> {
-  return fetch(
-    `${API_BASE}/file-documents/emergency-case/${emergencyCaseId}/closure-conditions`,
-    { headers: authHeaders() },
+  return authFetch(
+    `${API}/file-documents/emergency-case/${emergencyCaseId}/closure-conditions`,
   ).then((r) => handleResponse<EmergencyClosureConditions>(r));
 }
 
@@ -151,13 +130,13 @@ export function getPublicDocument(token: string): Promise<{
   renderedContent: string;
   digitallyApprovedAt: string | null;
 }> {
-  return fetch(`${API_BASE}/public/evrak/${token}`).then((r) =>
+  return fetch(`${API}/public/evrak/${token}`).then((r) =>
     handleResponse(r),
   );
 }
 
 export function markDocumentViewed(token: string): Promise<{ success: boolean }> {
-  return fetch(`${API_BASE}/public/evrak/${token}/viewed`, {
+  return fetch(`${API}/public/evrak/${token}/viewed`, {
     method: 'POST',
   }).then((r) => handleResponse(r));
 }
@@ -166,7 +145,7 @@ export function approveDocumentPublic(
   token: string,
   fullName: string,
 ): Promise<{ digitallyApprovedAt: string }> {
-  return fetch(`${API_BASE}/public/evrak/${token}/approve`, {
+  return fetch(`${API}/public/evrak/${token}/approve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fullName }),
