@@ -14,6 +14,8 @@
 | JWT access token kısa ömür (15m) | Kod | `JWT_ACCESS_EXPIRES_IN=15m` |
 | Web: `getAccessToken()` tek kaynak (session + remember) | Kod v228+ | `localStorage` doğrudan okuma yasak |
 | Web: panel keepalive (10 dk) + aktivite yenileme | Kod v228+ | `layout.tsx`, `SessionTimeoutBar` |
+| Web: şifresiz giriş sızıntısı kapatıldı | Kod v232+ | `auth-session.ts`: localStorage fallback kaldırıldı, tarayıcı yeniden açılış temizliği, Beni Hatırla süresi `NEXT_PUBLIC_REMEMBER_ME_MAX_DAYS` (varsayılan 7g) |
+| Web: panel route cache engeli | Kod v232+ | `middleware.ts` no-store |
 | Web: global axios 401 retry + mutation öncesi refresh | Kod v229+ | `setup-axios-auth.ts` |
 | Web: `apiClient` / `authFetch` mutation koruması | Kod v228+ | `api-client.ts`, `utils/api.ts` |
 | Refresh token DB'de, logout'ta silinir | Kod | |

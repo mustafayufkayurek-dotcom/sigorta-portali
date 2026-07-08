@@ -7,7 +7,7 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
 import { SESSION_KEEPALIVE_MS } from '@/utils/api';
-import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred } from '@/utils/auth-session';
+import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
@@ -902,7 +902,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const token = getAccessToken();
-    if (!token || !hasValidSessionScope()) {
+    if (!token || !hasValidSessionScope() || isRememberMeExpired() || isRememberMeInactive()) {
       clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
       router.push('/giris');
       return;

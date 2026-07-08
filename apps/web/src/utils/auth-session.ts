@@ -6,7 +6,20 @@ export const REMEMBER_ME_FLAG = 'meridyenRememberMe';
 export const REMEMBERED_EMAIL_KEY = 'rememberedEmail';
 export const AUTH_PERSISTENCE_KEY = 'authPersistence';
 export const TOKEN_EXPIRY_KEY = 'tokenExpiry';
+export const LAST_AUTH_ACTIVITY_KEY = 'meridyenLastAuthActivity';
 const TAB_SESSION_KEY = 'meridyenAuthTab';
+const BROWSER_SESSION_KEY = 'meridyenBrowserSession';
+
+/** Beni Hatırla: şifresiz otomatik giriş üst sınırı (varsayılan 7 gün, backend refresh ile hizalı) */
+const REMEMBER_ME_MAX_DAYS = Number(process.env.NEXT_PUBLIC_REMEMBER_ME_MAX_DAYS ?? '7');
+const REMEMBER_ME_MAX_MS =
+  (Number.isFinite(REMEMBER_ME_MAX_DAYS) && REMEMBER_ME_MAX_DAYS > 0
+    ? REMEMBER_ME_MAX_DAYS
+    : 7) *
+  24 *
+  60 *
+  60 *
+  1000;
 
 let storageInitialized = false;
 
@@ -17,6 +30,32 @@ function markTabSessionActive(): void {
 
 function isTabSessionActive(): boolean {
   return typeof window !== 'undefined' && sessionStorage.getItem(TAB_SESSION_KEY) === '1';
+}
+
+function markBrowserSessionActive(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(BROWSER_SESSION_KEY, '1');
+}
+
+function isBrowserSessionActive(): boolean {
+  return typeof window !== 'undefined' && sessionStorage.getItem(BROWSER_SESSION_KEY) === '1';
+}
+
+function purgeOrphanLocalTokens(): void {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+function purgeSessionTokens(): void {
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
+  sessionStorage.removeItem('authSession');
+}
+
+export function touchAuthActivity(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LAST_AUTH_ACTIVITY_KEY, String(Date.now()));
 }
 
 /**
@@ -30,36 +69,47 @@ export function initAuthStorage(): void {
   const rememberPreferred = localStorage.getItem(REMEMBER_ME_FLAG) === '1';
   const persistence = localStorage.getItem(AUTH_PERSISTENCE_KEY);
   const tabActive = isTabSessionActive();
+  const browserActive = isBrowserSessionActive();
+
+  if (!browserActive) {
+    markBrowserSessionActive();
+    purgeSessionTokens();
+    if (!rememberPreferred) {
+      purgeOrphanLocalTokens();
+      if (persistence === 'remember' || persistence === 'session') {
+        localStorage.removeItem(AUTH_PERSISTENCE_KEY);
+      }
+    }
+  }
 
   if (!tabActive) {
     markTabSessionActive();
 
-    // Oturum modu: yeni tarayıcı/sekme açılışı — kalıcı token kalmamalı (profil localStorage'da kalır)
     if (persistence === 'session' || !rememberPreferred) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+      purgeOrphanLocalTokens();
       if (persistence === 'session') {
         localStorage.removeItem(AUTH_PERSISTENCE_KEY);
       }
     }
   }
 
-  // Beni Hatırla kapalı → localStorage'da asla oturum tokenı tutulmaz
   if (!rememberPreferred) {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    purgeOrphanLocalTokens();
     if (persistence === 'remember') {
       localStorage.removeItem(AUTH_PERSISTENCE_KEY);
     }
   }
 
-  // Oturum modu: token yalnızca sessionStorage'da
   if (persistence === 'session') {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    purgeOrphanLocalTokens();
+  }
+
+  if (rememberPreferred && (isRememberMeExpired() || isRememberMeInactive())) {
+    purgeOrphanLocalTokens();
+    localStorage.removeItem(LAST_AUTH_ACTIVITY_KEY);
+    if (localStorage.getItem(AUTH_PERSISTENCE_KEY) === 'remember') {
+      localStorage.removeItem(AUTH_PERSISTENCE_KEY);
+    }
   }
 }
 
@@ -82,29 +132,41 @@ export function isRememberMePreferred(): boolean {
 export function getAccessToken(): string | null {
   initAuthStorage();
   if (typeof window === 'undefined') return null;
+
   if (isRememberMeSession()) {
+    if (isRememberMeExpired() || isRememberMeInactive()) return null;
     return localStorage.getItem('accessToken');
   }
-  const sessionToken = sessionStorage.getItem('accessToken');
+
   if (getAuthPersistence() === 'session') {
+    return sessionStorage.getItem('accessToken');
+  }
+
+  const sessionToken = sessionStorage.getItem('accessToken');
+  if (sessionToken && sessionStorage.getItem('authSession') === 'active') {
     return sessionToken;
   }
-  // Oturum modu etiketi eksik olsa bile sessionStorage token'ını kullan
-  if (sessionToken) {
-    return sessionToken;
-  }
-  return localStorage.getItem('accessToken');
+
+  return null;
 }
 
 export function getRefreshToken(): string | null {
   initAuthStorage();
   if (typeof window === 'undefined') return null;
+
   if (isRememberMeSession()) {
+    if (isRememberMeExpired() || isRememberMeInactive()) return null;
     return localStorage.getItem('refreshToken');
   }
+
   if (getAuthPersistence() === 'session') {
     return sessionStorage.getItem('refreshToken');
   }
+
+  if (sessionStorage.getItem('authSession') === 'active') {
+    return sessionStorage.getItem('refreshToken');
+  }
+
   return null;
 }
 
@@ -125,9 +187,8 @@ export function setRememberMePreference(enabled: boolean, email?: string) {
   } else {
     localStorage.removeItem(REMEMBER_ME_FLAG);
     localStorage.removeItem(REMEMBERED_EMAIL_KEY);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    purgeOrphanLocalTokens();
+    localStorage.removeItem(LAST_AUTH_ACTIVITY_KEY);
     if (localStorage.getItem(AUTH_PERSISTENCE_KEY) === 'remember') {
       localStorage.removeItem(AUTH_PERSISTENCE_KEY);
     }
@@ -136,28 +197,30 @@ export function setRememberMePreference(enabled: boolean, email?: string) {
 
 /** Oturum tokenlarını temizle; Beni Hatırla tercihine dokunma */
 export function clearSessionTokensOnly() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
+  purgeOrphanLocalTokens();
   localStorage.removeItem(AUTH_PERSISTENCE_KEY);
-  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  localStorage.removeItem(LAST_AUTH_ACTIVITY_KEY);
   localStorage.removeItem('user');
-  sessionStorage.removeItem('accessToken');
-  sessionStorage.removeItem('refreshToken');
-  sessionStorage.removeItem('authSession');
+  purgeSessionTokens();
 }
 
 export function hasValidSessionScope(): boolean {
   initAuthStorage();
   if (typeof window === 'undefined') return false;
+
   const persistence = getAuthPersistence();
   if (persistence === 'remember' && isRememberMePreferred()) {
+    if (isRememberMeExpired() || isRememberMeInactive()) return false;
     return Boolean(localStorage.getItem('accessToken'));
   }
+
   if (persistence === 'session') {
     return sessionStorage.getItem('authSession') === 'active'
       && Boolean(sessionStorage.getItem('accessToken'));
   }
-  return false;
+
+  return sessionStorage.getItem('authSession') === 'active'
+    && Boolean(sessionStorage.getItem('accessToken'));
 }
 
 export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
@@ -182,14 +245,15 @@ export function persistTokens(accessToken: string, refreshToken: string) {
   if (isRememberMeSession()) {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    touchAuthActivity();
     return;
   }
   sessionStorage.setItem('accessToken', accessToken);
   sessionStorage.setItem('refreshToken', refreshToken);
   sessionStorage.setItem('authSession', 'active');
   localStorage.setItem(AUTH_PERSISTENCE_KEY, 'session');
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
+  purgeOrphanLocalTokens();
+  touchAuthActivity();
 }
 
 export function storeAuthAfterLogin(
@@ -204,6 +268,7 @@ export function storeAuthAfterLogin(
   clearSessionTokensOnly();
 
   const normalizedEmail = email.trim().toLowerCase();
+  const now = Date.now();
 
   if (remember) {
     localStorage.setItem('accessToken', tokens.accessToken);
@@ -211,7 +276,10 @@ export function storeAuthAfterLogin(
     localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizedEmail);
     localStorage.setItem(REMEMBER_ME_FLAG, '1');
     localStorage.setItem(AUTH_PERSISTENCE_KEY, 'remember');
-    localStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    localStorage.setItem(TOKEN_EXPIRY_KEY, String(now + REMEMBER_ME_MAX_MS));
+    localStorage.setItem(LAST_AUTH_ACTIVITY_KEY, String(now));
+    markBrowserSessionActive();
+    markTabSessionActive();
     return;
   }
 
@@ -219,10 +287,12 @@ export function storeAuthAfterLogin(
   localStorage.removeItem(REMEMBERED_EMAIL_KEY);
   localStorage.removeItem(AUTH_PERSISTENCE_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  localStorage.removeItem(LAST_AUTH_ACTIVITY_KEY);
   sessionStorage.setItem('accessToken', tokens.accessToken);
   sessionStorage.setItem('refreshToken', tokens.refreshToken);
   sessionStorage.setItem('authSession', 'active');
   localStorage.setItem(AUTH_PERSISTENCE_KEY, 'session');
+  markBrowserSessionActive();
   markTabSessionActive();
 }
 
@@ -231,6 +301,15 @@ export function isRememberMeExpired(): boolean {
   if (!expiryRaw || !isRememberMeSession()) return false;
   const expiry = Number(expiryRaw);
   return Number.isFinite(expiry) && Date.now() > expiry;
+}
+
+/** Beni Hatırla: son oturum aktivitesinden bu yana üst sınır aşıldı mı */
+export function isRememberMeInactive(): boolean {
+  if (!isRememberMeSession()) return false;
+  const lastRaw = localStorage.getItem(LAST_AUTH_ACTIVITY_KEY);
+  if (!lastRaw) return true;
+  const last = Number(lastRaw);
+  return !Number.isFinite(last) || Date.now() - last > REMEMBER_ME_MAX_MS;
 }
 
 /** Oturum geçerli mi kontrol eder; 401 ise refresh dener. */
@@ -244,6 +323,7 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
     await axios.get(`${base}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    touchAuthActivity();
     return true;
   } catch (error) {
     if (!axios.isAxiosError(error) || error.response?.status !== 401) {
@@ -266,8 +346,7 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
 }
 
 /**
- * Şifresiz otomatik giriş yalnızca Beni Hatırla açıkken.
- * Kutucuk kapalıyken tarayıcı yeniden açıldığında giriş formu gösterilir.
+ * Şifresiz otomatik giriş yalnızca Beni Hatırla açıkken ve süre sınırı içinde.
  */
 export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
   initAuthStorage();
@@ -281,7 +360,7 @@ export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
     return false;
   }
 
-  if (isRememberMeExpired()) {
+  if (isRememberMeExpired() || isRememberMeInactive()) {
     clearSessionTokensOnly();
     return false;
   }
