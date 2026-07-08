@@ -55,7 +55,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
-import { getAccessToken } from '@/utils/auth-session';
+import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -1550,6 +1550,11 @@ export default function MusterilerPage() {
     setFieldErrors({});
     setSaving(true);
     try {
+      const sessionOk = await ensureValidSession(API);
+      if (!sessionOk || !getAccessToken()) {
+        showToast('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+        return;
+      }
       const addr = normalizeCustomerAddressFields(form);
       setForm((p) => ({ ...p, ...addr }));
 
@@ -1625,6 +1630,10 @@ export default function MusterilerPage() {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen Bir Hata Oluştu';
       const status = e?.response?.status;
       console.error('[doSave] Müşteri kayıt hatası:', { status, msg, error: e });
+      if (status === 401) {
+        showToast('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+        return;
+      }
       if (msg.includes('Vergi No zaten kayıtlı') && form.taxNumber) {
         try {
           const taxNo = form.taxNumber.replace(/\s/g, '');
