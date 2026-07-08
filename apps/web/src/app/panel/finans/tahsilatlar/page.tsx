@@ -1,13 +1,11 @@
 'use client';
 
-import { getAccessToken } from '@/utils/auth-session';
-'use client';
-
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { getAccessToken } from '@/utils/auth-session';
 import { useToast } from '@/contexts/ToastContext';
 import {
   usePanelTableColumns,
