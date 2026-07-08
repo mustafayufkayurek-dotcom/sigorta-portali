@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Ba
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
+import { resolveVendorPrimaryPhone } from './vendor-contact-resolve.util';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -109,9 +110,11 @@ export class VendorsController {
     if (!dto?.name?.trim()) {
       throw new BadRequestException('Ad alanı zorunludur');
     }
-    if (!dto?.phone?.trim()) {
+    const phone = resolveVendorPrimaryPhone(dto);
+    if (!phone) {
       throw new BadRequestException('Telefon alanı zorunludur');
     }
+    dto.phone = phone;
     const userId = user?.id ?? user?.userId;
     const data = await this.vendorsService.create(dto, userId);
     return { success: true, data };
@@ -121,6 +124,10 @@ export class VendorsController {
   @RequirePermissions('vendor.update')
   @ApiOperation({ summary: 'Tedarikçi güncelle' })
   async update(@Param('id') id: string, @Body() dto: any) {
+    const phone = resolveVendorPrimaryPhone(dto);
+    if (phone) {
+      dto.phone = phone;
+    }
     const data = await this.vendorsService.update(id, dto);
     return { success: true, data };
   }

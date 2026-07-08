@@ -9,6 +9,7 @@ import {
   Res,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -16,21 +17,40 @@ import { Response } from 'express';
 import { EntityDocumentsService } from './entity-documents.service';
 import { FileValidationPipe } from '@/common/pipes/file-validation.pipe';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { PermissionsGuard } from '@/common/guards/permissions.guard';
+import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import {
+  isInsuranceCompanyUser,
+  normalizeRequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 
 @Controller('entity-documents')
+@UseGuards(PermissionsGuard)
 export class EntityDocumentsController {
-  constructor(private readonly service: EntityDocumentsService) {}
+  constructor(
+    private readonly service: EntityDocumentsService,
+    private readonly claimFilesService: ClaimFilesService,
+  ) {}
 
-  // List docs for entity: GET /entity-documents?entityType=customer&entityId=xxx
+  private async resolveScope(user: any) {
+    const requestingUser = normalizeRequestUser(user);
+    let insuranceCompanyIds: string[] | undefined;
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode)) {
+      insuranceCompanyIds = await this.claimFilesService.getInsuranceScopes(requestingUser.id);
+    }
+    return { requestingUser, insuranceCompanyIds };
+  }
+
   @Get()
   async findByEntity(
     @Query('entityType') entityType: string,
     @Query('entityId') entityId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.service.findByEntity(entityType, entityId);
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    return this.service.findByEntity(entityType, entityId, requestingUser, insuranceCompanyIds);
   }
 
-  // Upload: POST /entity-documents
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
@@ -46,6 +66,7 @@ export class EntityDocumentsController {
     @Body('notes') notes: string,
     @CurrentUser() user: any,
   ) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
     return this.service.create({
       file,
       entityType,
@@ -53,36 +74,52 @@ export class EntityDocumentsController {
       documentTypeId: documentTypeId || undefined,
       notes: notes || undefined,
       uploadedByUserId: user.id,
+      requestingUser,
+      insuranceCompanyIds,
     });
   }
 
-  // Signed URL ile güvenli erişim: GET /entity-documents/:id/download
   @Get(':id/download')
-  async download(@Param('id') id: string, @Res() res: Response) {
-    const { url, fileName, mimeType } = await this.service.getSignedUrl(id, 900);
-    // Local provider'da direkt redirect, S3'te signed URL redirect
+  async download(@Param('id') id: string, @Res() res: Response, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const { url, fileName, mimeType } = await this.service.getSignedUrl(
+      id,
+      900,
+      requestingUser,
+      insuranceCompanyIds,
+    );
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
     return res.redirect(302, url);
   }
 
-  // Signed URL döndür (frontend için): GET /entity-documents/:id/signed-url
   @Get(':id/signed-url')
-  async getSignedUrl(@Param('id') id: string) {
-    const { url, fileName, mimeType } = await this.service.getSignedUrl(id, 900);
+  async getSignedUrl(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const { url, fileName, mimeType } = await this.service.getSignedUrl(
+      id,
+      900,
+      requestingUser,
+      insuranceCompanyIds,
+    );
     return { success: true, data: { url, fileName, mimeType, expiresIn: 900 } };
   }
 
-  // Thumbnail signed URL: GET /entity-documents/:id/thumbnail
   @Get(':id/thumbnail')
-  async getThumbnail(@Param('id') id: string) {
-    const { url } = await this.service.getThumbnailSignedUrl(id, 900);
+  async getThumbnail(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const { url } = await this.service.getThumbnailSignedUrl(
+      id,
+      900,
+      requestingUser,
+      insuranceCompanyIds,
+    );
     return { success: true, data: { url, expiresIn: 900 } };
   }
 
-  // Delete: DELETE /entity-documents/:id
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    return this.service.remove(id, requestingUser, insuranceCompanyIds);
   }
 }

@@ -43,6 +43,7 @@ export class HealthService {
 
     return {
       status: allUp ? 'ok' : 'degraded',
+      maintenanceMode: process.env.SYSTEM_MAINTENANCE_MODE === 'true',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       services: {

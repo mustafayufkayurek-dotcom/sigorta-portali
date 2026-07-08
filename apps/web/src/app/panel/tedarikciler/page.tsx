@@ -42,6 +42,9 @@ import {
   vendorTypeModeBadge,
   formatVendorTypeLabel,
   formatVendorAddress,
+  resolveVendorPrimaryEmail,
+  resolveVendorPrimaryPhone,
+  vendorPhoneRequiredError,
   filterDocumentTypesForCategory,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
@@ -263,6 +266,7 @@ const emptyForm = () => ({
   entityType: 'corporate' as 'corporate' | 'individual',
   name: '', type: '', taxNumber: '', taxOffice: '', tradeRegistryNo: '',
   identityNo: '', firstName: '', lastName: '', birthDate: '',
+  phone: '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: '',
   cityCode: '', city: '', district: '', neighborhood: '', streetName: '', buildingNo: '', doorNo: '', address: '',
   iban: '', bankName: '', referral: '', tags: [] as string[], notes: '',
   contractStartDate: '', contractEndDate: '', contractNotes: '',
@@ -1431,6 +1435,7 @@ export default function VendorsPage() {
         ...emptyForm(),
         entityType: 'corporate',
         name: prefill.name ?? '',
+        phone: prefill.phone ?? '',
         cityCode: matchedProv?.code ?? '',
         city: prefill.city ?? '',
         district: prefill.district ?? '',
@@ -1470,6 +1475,7 @@ export default function VendorsPage() {
       taxNumber: v.taxNumber ?? '',
       taxOffice: v.taxOffice ?? '', tradeRegistryNo: v.tradeRegistryNo ?? '',
       identityNo: v.identityNo ?? '', firstName: v.firstName ?? '', lastName: v.lastName ?? '', birthDate: '',
+      phone: v.phone ?? '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: v.email ?? '',
       cityCode: matchedProv?.code ?? '', city: v.city ?? '', district: v.district ?? '',
       neighborhood: v.neighborhood ?? '', streetName: v.streetName ?? '',
       buildingNo: v.buildingNo ?? '', doorNo: v.doorNo ?? '',
@@ -1537,6 +1543,13 @@ export default function VendorsPage() {
       }
     }
 
+    const resolvedPhone = resolveVendorPrimaryPhone(form.phone, contacts, contactInfos);
+    const phoneErr = vendorPhoneRequiredError(resolvedPhone, form.phoneType);
+    if (phoneErr) {
+      errors.phone = phoneErr;
+      missingLabels.push('Telefon');
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       showToast('warning', `Lütfen zorunlu alanları doldurun: ${missingLabels.join(', ')}`);
@@ -1586,8 +1599,13 @@ export default function VendorsPage() {
     setSaving(true);
     const wasEdit = !!editVendor;
     try {
+      const resolvedPhone = resolveVendorPrimaryPhone(form.phone, contacts, contactInfos);
+      const resolvedEmail = resolveVendorPrimaryEmail(form.email, contacts, contactInfos);
       const payload: any = {
         entityType: form.entityType, name: form.name,
+        phone: resolvedPhone,
+        email: resolvedEmail || null,
+        authorizedPhone: resolvedPhone,
         type: isVendorTypeOther(form.type)
           ? toTitleCaseTR(typeCustom.trim())
           : (form.type ? toTitleCaseTR(form.type) : undefined),
@@ -1603,7 +1621,7 @@ export default function VendorsPage() {
         contractNotes: form.contractNotes || null,
         serviceAreas, workGroupIds: selectedWorkGroupIds.filter((id) => id !== HIZMET_KOLU_OTHER_KEY),
         serviceBranches: buildServiceBranchesPayload(),
-        contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map(mapContactToPayload),
+        contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim() || c.phone.trim() || c.email.trim()).map(mapContactToPayload),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.entityType === 'corporate') {
@@ -2827,6 +2845,43 @@ export default function VendorsPage() {
                       </div>
                     </>
                   )}
+
+                  <SectionDivider icon={Icon.phone} title="İletişim Bilgileri" />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
+                    <div className="col-span-1 sm:col-span-2">
+                      <FormField label="Telefon" required error={fieldErrors.phone}>
+                        <ContactPhoneField
+                          phone={form.phone}
+                          phoneType={form.phoneType}
+                          extensionNo={form.extensionNo}
+                          onPhoneChange={(v) => {
+                            setForm((p) => ({ ...p, phone: v }));
+                            setFieldErrors((p) => { const n = { ...p }; delete n.phone; return n; });
+                            setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.phone; return n; });
+                          }}
+                          onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
+                          onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
+                          onPhoneBlur={(v) => {
+                            const digits = v.replace(/\D/g, '');
+                            if (digits.length >= 10) handlePhoneDuplicateCheck(digits);
+                          }}
+                        />
+                      </FormField>
+                    </div>
+                    <FormField label="E-posta">
+                      <input
+                        type="email"
+                        className={inp}
+                        placeholder="ornek@mail.com"
+                        value={form.email}
+                        onChange={(e) => {
+                          setForm((p) => ({ ...p, email: e.target.value }));
+                          setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.email; return n; });
+                        }}
+                        onBlur={() => { if (form.email.trim()) handleEmailDuplicateCheck(form.email.trim()); }}
+                      />
+                    </FormField>
+                  </div>
                 </div>
               )}
 

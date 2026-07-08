@@ -428,7 +428,7 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
 
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/claim-files?customerId=${customerId}&limit=50`, { headers: authHeader() })
+    axios.get(`${API}/customers/${customerId}/claim-files?limit=50`, { headers: authHeader() })
       .then((r) => setFiles(r.data.data || [])).catch(console.error).finally(() => setLoading(false));
   };
 

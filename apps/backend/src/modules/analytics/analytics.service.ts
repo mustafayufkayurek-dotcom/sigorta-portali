@@ -14,9 +14,22 @@ import {
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private applyInsuranceScope(
+    where: Record<string, unknown>,
+    insuranceCompanyIds?: string[],
+  ): Record<string, unknown> {
+    if (insuranceCompanyIds?.length) {
+      where.insuranceCompanyId = { in: insuranceCompanyIds };
+    }
+    return where;
+  }
+
   // ── Branş Dağılımı ───────────────────────────────────────────────────────
 
-  async getBranchDistribution(filters: BranchDistributionFiltersDto) {
+  async getBranchDistribution(
+    filters: BranchDistributionFiltersDto,
+    insuranceCompanyIds?: string[],
+  ) {
     const where: Record<string, unknown> = {};
 
     if (filters.dateFrom || filters.dateTo) {
@@ -28,6 +41,7 @@ export class AnalyticsService {
     if (filters.customerId) {
       where.customerId = filters.customerId;
     }
+    this.applyInsuranceScope(where, insuranceCompanyIds);
 
     const files = await this.prisma.claimFile.findMany({
       where,
@@ -108,7 +122,10 @@ export class AnalyticsService {
 
   // ── Aylık Branş Trendi ───────────────────────────────────────────────────
 
-  async getBranchTrend(filters: BranchTrendFiltersDto) {
+  async getBranchTrend(
+    filters: BranchTrendFiltersDto,
+    insuranceCompanyIds?: string[],
+  ) {
     const months = filters.months ?? 12;
     const since = new Date();
     since.setMonth(since.getMonth() - months);
@@ -117,6 +134,7 @@ export class AnalyticsService {
 
     const where: Record<string, unknown> = { createdAt: { gte: since } };
     if (filters.customerId) where.customerId = filters.customerId;
+    this.applyInsuranceScope(where, insuranceCompanyIds);
 
     const files = await this.prisma.claimFile.findMany({
       where,

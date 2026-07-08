@@ -1,4 +1,5 @@
 import { toTitleCaseTR } from './text-helpers';
+import { customerPhoneValidationError } from '@/utils/customer-form-helpers';
 import {
   documentTypeMatchesVendorCategory,
   filterDocumentTypesForVendorCategory,
@@ -264,3 +265,64 @@ export const VENDOR_FORM_SECTIONS = [
   'İlişki Özeti & Finans',
   'Evraklar',
 ] as const;
+
+type ContactLike = {
+  phone?: string;
+  phoneType?: 'gsm' | 'landline';
+  email?: string;
+  isPrimary?: boolean;
+};
+
+type ContactInfoLike = {
+  type?: string;
+  value?: string;
+};
+
+/** Tedarikçi kaydında telefon — form, yetkili kişi veya contactInfos */
+export function resolveVendorPrimaryPhone(
+  formPhone: string,
+  contacts: ContactLike[],
+  contactInfos: ContactInfoLike[],
+): string {
+  const trimmed = formPhone?.trim();
+  if (trimmed) return trimmed;
+
+  const primaryContact = contacts.find((c) => c.isPrimary && c.phone?.trim());
+  if (primaryContact?.phone?.trim()) return primaryContact.phone.trim();
+
+  const anyContact = contacts.find((c) => c.phone?.trim());
+  if (anyContact?.phone?.trim()) return anyContact.phone.trim();
+
+  const infoPhone = contactInfos.find((ci) => ci.type === 'phone' && ci.value?.trim());
+  if (infoPhone?.value?.trim()) return infoPhone.value.trim();
+
+  return '';
+}
+
+export function resolveVendorPrimaryEmail(
+  formEmail: string,
+  contacts: ContactLike[],
+  contactInfos: ContactInfoLike[],
+): string {
+  const trimmed = formEmail?.trim();
+  if (trimmed) return trimmed;
+
+  const primaryContact = contacts.find((c) => c.isPrimary && c.email?.trim());
+  if (primaryContact?.email?.trim()) return primaryContact.email.trim();
+
+  const anyContact = contacts.find((c) => c.email?.trim());
+  if (anyContact?.email?.trim()) return anyContact.email.trim();
+
+  const infoEmail = contactInfos.find((ci) => ci.type === 'email' && ci.value?.trim());
+  if (infoEmail?.value?.trim()) return infoEmail.value.trim();
+
+  return '';
+}
+
+export function vendorPhoneRequiredError(
+  phone: string,
+  phoneType: 'gsm' | 'landline' = 'gsm',
+): string | null {
+  if (!phone.trim()) return 'Telefon alanı zorunludur';
+  return customerPhoneValidationError(phone, phoneType);
+}

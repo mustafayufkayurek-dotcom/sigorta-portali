@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bull';
 import { APP_GUARD } from '@nestjs/core';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TokenBlacklistService } from './modules/auth/token-blacklist.service';
@@ -217,6 +218,10 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     CacheModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

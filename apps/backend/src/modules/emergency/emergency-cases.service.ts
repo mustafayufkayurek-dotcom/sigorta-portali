@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmergencyStatus } from '@prisma/client';
+import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import { isInsuranceCompanyUser, mergeWhereAnd, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { CreateEmergencyCaseDto } from './dto/create-emergency-case.dto';
 import { UpdateEmergencyCaseDto } from './dto/update-emergency-case.dto';
 import { UpdateEmergencyStatusDto } from './dto/update-emergency-status.dto';
@@ -109,17 +111,118 @@ export class EmergencyCasesService {
     return { data: this.enrichCase(created) };
   }
 
-  async findAll(filters: {
-    status?: EmergencyStatus;
-    month?: number;
-    year?: number;
-    customerId?: string;
-    search?: string;
-    overdueOnly?: boolean;
-  }) {
-    const where: any = {};
-    if (filters.status) where.status = filters.status;
+  async findAllForCustomer(
+    customerId: string,
+    filters: {
+      status?: EmergencyStatus;
+      month?: number;
+      year?: number;
+      search?: string;
+      overdueOnly?: boolean;
+    },
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+    if (!customer) {
+      throw new NotFoundException('Müşteri bulunamadı');
+    }
+
+    return this.findAll(
+      { ...filters, customerId },
+      requestingUser,
+      insuranceCompanyIds,
+    );
+  }
+
+  private buildListScope(
+    filters: { customerId?: string },
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ): Record<string, unknown> {
+    const where: Record<string, unknown> = {};
     if (filters.customerId) where.customerId = filters.customerId;
+
+    if (requestingUser && isFieldStaff(requestingUser.roleCode)) {
+      where.OR = [
+        { assignedUserId: requestingUser.id },
+        {
+          customer: {
+            claimFiles: { some: { assignedFieldUserId: requestingUser.id } },
+          },
+        },
+      ];
+    }
+
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode) && insuranceCompanyIds?.length) {
+      where.customer = {
+        claimFiles: { some: { insuranceCompanyId: { in: insuranceCompanyIds } } },
+      };
+    }
+
+    return where;
+  }
+
+  private async assertCaseAccess(
+    emergencyCase: { id: string; assignedUserId?: string | null; customerId?: string | null },
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ): Promise<void> {
+    if (!requestingUser) return;
+
+    if (isFieldStaff(requestingUser.roleCode)) {
+      if (emergencyCase.assignedUserId === requestingUser.id) return;
+      if (emergencyCase.customerId) {
+        const linked = await this.prisma.claimFile.findFirst({
+          where: {
+            customerId: emergencyCase.customerId,
+            assignedFieldUserId: requestingUser.id,
+          },
+          select: { id: true },
+        });
+        if (linked) return;
+      }
+      throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+    }
+
+    if (isInsuranceCompanyUser(requestingUser.roleCode) && insuranceCompanyIds?.length) {
+      if (!emergencyCase.customerId) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+      const linked = await this.prisma.claimFile.findFirst({
+        where: {
+          customerId: emergencyCase.customerId,
+          insuranceCompanyId: { in: insuranceCompanyIds },
+        },
+        select: { id: true },
+      });
+      if (!linked) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+    }
+  }
+
+  async findAll(
+    filters: {
+      status?: EmergencyStatus;
+      month?: number;
+      year?: number;
+      customerId?: string;
+      search?: string;
+      overdueOnly?: boolean;
+    },
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
+    const where: any = this.buildListScope(
+      { customerId: filters.customerId },
+      requestingUser,
+      insuranceCompanyIds,
+    );
+    if (filters.status) where.status = filters.status;
     if (filters.search) {
       const q = filters.search.trim();
       const digits = q.replace(/[\s\-./]/g, '');
@@ -133,7 +236,9 @@ export class EmergencyCasesService {
         or.push({ fileNo: { contains: digits, mode: 'insensitive' } });
         or.push({ caseNo: { contains: digits, mode: 'insensitive' } });
       }
-      where.OR = or;
+      const scoped = mergeWhereAnd(where, { OR: or });
+      Object.keys(where).forEach((k) => delete where[k]);
+      Object.assign(where, scoped);
     }
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);
@@ -159,7 +264,11 @@ export class EmergencyCasesService {
     return { data: filtered };
   }
 
-  async findOne(id: string) {
+  async findOne(
+    id: string,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const c = await this.prisma.emergencyCase.findUnique({
       where: { id },
       include: {
@@ -171,6 +280,7 @@ export class EmergencyCasesService {
       },
     });
     if (!c) throw new NotFoundException('Acil vaka bulunamadı');
+    await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds);
     return { data: this.enrichCase(c) };
   }
 

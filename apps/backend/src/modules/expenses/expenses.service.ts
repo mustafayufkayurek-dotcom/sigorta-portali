@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
@@ -13,6 +14,11 @@ import { ReceiptScanResult } from './receipt-scan.types';
 import { extractReceiptFieldsFromImage } from './receipt-scan.util';
 import { resolveExpenseCategoryFields } from './expense-category-resolver.util';
 import { isOverheadCategoryCode } from '../finance/overhead.constants';
+import {
+  assertClaimFileAccess,
+  buildClaimFileRelationScope,
+  RequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 
 @Injectable()
 export class ExpensesService {
@@ -362,7 +368,11 @@ export class ExpensesService {
     };
   }
 
-  async findAll(filters: ExpenseFilterDto) {
+  async findAll(
+    filters: ExpenseFilterDto,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const page = Number(filters.page) || 1;
     const limit = Math.min(Number(filters.limit) || 50, 200);
     const skip = (page - 1) * limit;
@@ -378,6 +388,11 @@ export class ExpensesService {
     if (filters.fileCaseId) where.fileCaseId = filters.fileCaseId;
     if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
     if (filters.operationSubject) where.operationSubject = filters.operationSubject;
+
+    const claimScope = buildClaimFileRelationScope(requestingUser, insuranceCompanyIds);
+    if (claimScope) {
+      where.fileCase = claimScope.claimFile;
+    }
 
     const [total, data] = await Promise.all([
       this.prisma.expense.count({ where }),
@@ -398,17 +413,34 @@ export class ExpensesService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string) {
+  async findOne(
+    id: string,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const expense = await this.prisma.expense.findUnique({
       where: { id },
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
-        fileCase: { select: { id: true, fileNo: true } },
+        fileCase: {
+          select: {
+            id: true,
+            fileNo: true,
+            insuranceCompanyId: true,
+            assignedFieldUserId: true,
+            closedAt: true,
+          },
+        },
         expenseCategory: { include: { parent: true } },
       },
     });
     if (!expense) throw new NotFoundException('Masraf bulunamadı');
+    if (expense.fileCase) {
+      assertClaimFileAccess(expense.fileCase, requestingUser, insuranceCompanyIds);
+    } else if (requestingUser && (requestingUser.roleCode === 'field_staff' || requestingUser.roleCode === 'insurance_company_user')) {
+      throw new ForbiddenException('Bu masrafa erişim izniniz bulunmamaktadır');
+    }
     return expense;
   }
 
@@ -610,7 +642,11 @@ export class ExpensesService {
     return { success: true, count: ids.length };
   }
 
-  async getBudgetTracking(filters: ExpenseFilterDto) {
+  async getBudgetTracking(
+    filters: ExpenseFilterDto,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const where: Record<string, unknown> = {};
     if (filters.dateFrom || filters.dateTo) {
       where.date = {};
@@ -619,6 +655,11 @@ export class ExpensesService {
     }
     if (filters.expensePlan) where.expensePlan = filters.expensePlan;
     if (filters.fileCaseId) where.fileCaseId = filters.fileCaseId;
+
+    const claimScope = buildClaimFileRelationScope(requestingUser, insuranceCompanyIds);
+    if (claimScope) {
+      (where as any).fileCase = claimScope.claimFile;
+    }
 
     const expenses = await this.prisma.expense.findMany({
       where,

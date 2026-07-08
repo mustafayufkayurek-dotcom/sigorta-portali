@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import {
+  applyClaimFileListScope,
+  assertClaimFileAccess,
+  normalizeRequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { SmsService } from '@/modules/notifications/sms/sms.service';
@@ -8,8 +12,6 @@ import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { CacheService } from '@/cache/cache.service';
 import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
-
-const ACCESS_EXPIRY_HOURS = 48;
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -215,9 +217,41 @@ export class ClaimFilesService {
     });
   }
 
+  /**
+   * Müşteri detay sayfası için zorunlu customerId kapsamlı liste.
+   * Generic GET /claim-files yerine bu metot kullanılmalıdır.
+   */
+  async findAllForCustomer(
+    customerId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      statusId?: string;
+      insuranceCompanyId?: string;
+      assignedFieldUserId?: string;
+      assignedOfficeUserId?: string;
+      assignedAdjusterId?: string;
+      insuranceCompanyIds?: string[];
+      invoiceStatus?: string;
+      repairReportStatus?: string;
+    },
+    requestingUser?: { id: string; roleCode: string },
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+    if (!customer) {
+      throw new NotFoundException('Müşteri bulunamadı');
+    }
+
+    return this.findAll({ ...params, customerId }, requestingUser);
+  }
+
   async findAll(params?: {
     page?: number;
     limit?: number;
+    customerId?: string;
     statusId?: string;
     insuranceCompanyId?: string;
     assignedFieldUserId?: string;
@@ -231,57 +265,34 @@ export class ClaimFilesService {
     const limit = Number(params?.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (params?.statusId) where.currentStatusId = params.statusId;
-    if (params?.insuranceCompanyId) where.insuranceCompanyId = params.insuranceCompanyId;
-    if (params?.assignedFieldUserId) where.assignedFieldUserId = params.assignedFieldUserId;
-    if (params?.assignedOfficeUserId) where.assignedOfficeUserId = params.assignedOfficeUserId;
-    if (params?.assignedAdjusterId) where.assignedAdjusterId = params.assignedAdjusterId;
+    const baseWhere: Record<string, unknown> = {};
+    if (params?.customerId) baseWhere.customerId = params.customerId;
+    if (params?.statusId) baseWhere.currentStatusId = params.statusId;
+    if (params?.insuranceCompanyId) baseWhere.insuranceCompanyId = params.insuranceCompanyId;
+    if (params?.assignedFieldUserId) baseWhere.assignedFieldUserId = params.assignedFieldUserId;
+    if (params?.assignedOfficeUserId) baseWhere.assignedOfficeUserId = params.assignedOfficeUserId;
+    if (params?.assignedAdjusterId && requestingUser?.roleCode !== 'expert') {
+      baseWhere.assignedAdjusterId = params.assignedAdjusterId;
+    }
     if (params?.insuranceCompanyIds?.length) {
-      where.insuranceCompanyId = { in: params.insuranceCompanyIds };
+      baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
     }
     if (params?.invoiceStatus) {
       if (params.invoiceStatus === 'none') {
-        where.invoices = { none: {} };
+        baseWhere.invoices = { none: {} };
       } else {
-        where.invoices = { some: { status: params.invoiceStatus } };
+        baseWhere.invoices = { some: { status: params.invoiceStatus } };
       }
     }
     if (params?.repairReportStatus) {
-      where.repairReports = { some: { status: params.repairReportStatus } };
+      baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
 
-    // Saha personeli sadece kendine atanmış dosyaları görür
-    if (requestingUser && isFieldStaff(requestingUser.roleCode)) {
-      where.assignedFieldUserId = requestingUser.id;
-      // 48 saat erişim süresi: kapanıp 48h geçmiş dosyalar listeden çıkar
-      const expiryThreshold = new Date(Date.now() - ACCESS_EXPIRY_HOURS * 60 * 60 * 1000);
-      where.OR = [
-        { closedAt: null },
-        { closedAt: { gt: expiryThreshold } },
-      ];
-    }
-
-    // Eksper: kendine atanan dosyalar + portal üzerinden ihbar ettiği dosyalar
-    if (requestingUser?.roleCode === 'expert') {
-      delete where.assignedAdjusterId;
-      const expertFileScope = {
-        OR: [
-          { assignedAdjusterId: requestingUser.id },
-          {
-            sourceChannel: 'expert_portal',
-            repairReports: { some: { createdByUserId: requestingUser.id } },
-          },
-        ],
-      };
-      if (Object.keys(where).length > 0) {
-        const filters = { ...where };
-        for (const key of Object.keys(where)) delete where[key];
-        where.AND = [filters, expertFileScope];
-      } else {
-        Object.assign(where, expertFileScope);
-      }
-    }
+    const where = applyClaimFileListScope(
+      baseWhere,
+      requestingUser,
+      params?.insuranceCompanyIds,
+    ) as any;
 
     const [data, total] = await Promise.all([
       this.prisma.claimFile.findMany({
@@ -376,18 +387,23 @@ export class ClaimFilesService {
       throw new NotFoundException('Hasar dosyası bulunamadı');
     }
 
-    // Saha personeli sahiplik + 48 saat erişim süresi kontrolü
-    if (requestingUser && isFieldStaff(requestingUser.roleCode)) {
-      if (claimFile.assignedFieldUserId !== requestingUser.id) {
+    const normalizedUser = normalizeRequestUser(requestingUser);
+    let insuranceCompanyIds: string[] | undefined;
+    if (normalizedUser && normalizedUser.roleCode === 'insurance_company_user') {
+      insuranceCompanyIds = await this.getInsuranceScopes(normalizedUser.id);
+    }
+    assertClaimFileAccess(claimFile, normalizedUser, insuranceCompanyIds);
+
+    if (normalizedUser?.roleCode === 'expert') {
+      const hasExpertAccess =
+        claimFile.assignedAdjusterId === normalizedUser.id ||
+        (claimFile.sourceChannel === 'expert_portal' &&
+          (await this.prisma.repairReport.findFirst({
+            where: { claimFileId: id, createdByUserId: normalizedUser.id },
+            select: { id: true },
+          })));
+      if (!hasExpertAccess) {
         throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
-      }
-      // 48 saat kapanma süresi kontrolü
-      if (claimFile.closedAt) {
-        const expiryMs = ACCESS_EXPIRY_HOURS * 60 * 60 * 1000;
-        const expiry = new Date((claimFile.closedAt as Date).getTime() + expiryMs);
-        if (new Date() > expiry) {
-          throw new ForbiddenException('Bu dosya için erişim süreniz dolmuştur');
-        }
       }
     }
 

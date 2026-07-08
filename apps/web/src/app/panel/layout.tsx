@@ -839,6 +839,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [agreementModalDismissed, setAgreementModalDismissed] = useState(false);
   const [allowedScreens, setAllowedScreens] = useState<string[] | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // Tema localStorage'dan oku — SSR safe + canlı güncelleme
   useEffect(() => {
@@ -1064,6 +1065,26 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [loading, fetchUnreadCount]);
 
   useEffect(() => {
+    let cancelled = false;
+    const checkMaintenance = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/health`, { timeout: 8000 });
+        if (!cancelled) {
+          setMaintenanceMode(Boolean(res.data?.maintenanceMode));
+        }
+      } catch {
+        if (!cancelled) setMaintenanceMode(false);
+      }
+    };
+    checkMaintenance();
+    const interval = setInterval(checkMaintenance, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!loading && authChecked) {
       if (!getAccessToken()) return;
       apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'REQUESTED', limit: 1 })
@@ -1273,6 +1294,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             hidden={mustChangePassword}
           />
           <div className="min-w-0 flex-1">
+        {maintenanceMode && (
+          <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
+            <div className="mx-auto max-w-screen-2xl">
+              <p className="text-sm text-yellow-900">
+                Sistem bakımda; veri girişi geçici olarak kapalı.
+              </p>
+            </div>
+          </div>
+        )}
         {agreementsChecked && pendingAgreements.length > 0 && !agreementModalDismissed && (
           <AgreementConsentModal
             pendingAgreements={pendingAgreements}

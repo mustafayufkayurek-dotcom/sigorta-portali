@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import { isInsuranceCompanyUser, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import * as ExcelJS from 'exceljs';
 
@@ -158,7 +159,8 @@ export class CustomersService {
       source?: string;
       followUpOverdue?: string;
     },
-    requestingUser?: { id: string; roleCode: string },
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
   ) {
     const page = Number(params?.page) || 1;
     const limit = Number(params?.limit) || 20;
@@ -216,6 +218,13 @@ export class CustomersService {
     if (requestingUser && isFieldStaff(requestingUser.roleCode)) {
       where.claimFiles = {
         some: { assignedFieldUserId: requestingUser.id },
+      };
+    }
+
+    // Sigorta kullanıcısı yalnızca kapsamındaki şirketlerin dosyalarındaki müşterileri görür
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode) && insuranceCompanyIds?.length) {
+      where.claimFiles = {
+        some: { insuranceCompanyId: { in: insuranceCompanyIds } },
       };
     }
 

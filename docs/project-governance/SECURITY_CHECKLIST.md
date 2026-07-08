@@ -39,7 +39,24 @@
 | `PERMISSION_FALLBACK_ENABLED` | Env | **Production'da `false` veya unset** — açıksa DB boşken rol default yetkileri devreye girer |
 | Public endpoint envanteri | Kod | health, auth, public token linkler, webhooks, widget proxy |
 
-**Backlog:** Tüm `findOne` endpoint'lerinde rol bazlı scope denetimi tek tek audit edilmeli (IDOR regresyon riski).
+**Backlog:** Kritik list/detail endpoint'lerinde rol bazlı scope denetimi tamamlandı (v231+). Kalan: vendor-statements findOne (iç panel — vendor.view RBAC), analytics staff/closure/profitability aggregate endpoint'leri (sigorta kullanıcısı için ikincil filtre).
+
+| Kontrol | Durum | Not |
+|---------|-------|-----|
+| `claim-files` findAll/findOne scope | Kod v231+ | customerId, insuranceCompanyIds, field/expert |
+| `emergency-cases` findAll/findOne scope | Kod v231+ | customerId, field/insurance |
+| `customers` findAll scope | Kod v231+ | field staff + insurance |
+| `payments` findAll/findOne scope | Kod v231+ | claimFile relation scope |
+| `expenses` findAll/findOne scope | Kod v231+ | fileCase relation scope |
+| `analytics` branch-distribution/trend | Kod v231+ | insuranceCompanyIds |
+| `entity-documents` entity erişimi | Kod v231+ | customer/claim_file scope |
+| Scoped müşteri route'ları | Kod | `GET /customers/:id/claim-files`, `GET /customers/:id/emergency-cases` |
+| Tedarikçi telefon resolve (create+update) | Kod v231+ | `vendor-contact-resolve.util.ts` |
+| Panelden hasar/acil/müşteri kalıcı silme | Kod | API `BadRequestException` — yalnızca arşiv/kapatma |
+| `PRODUCTION_DATA_PROTECTED` production'da true | Env | Toplu purge scriptleri gerçek veriyi hedefleyemez |
+| Purge öncesi bakım modu + DB yedeği | Script | `set-maintenance-mode.sh`, `pre-deploy-safety.sh` |
+
+Detay: [OPERATIONAL_DATA_PURGE.md](./OPERATIONAL_DATA_PURGE.md)
 
 ---
 
@@ -111,6 +128,8 @@
 | Audit log hassas alan maskeleme | Kod | `audit-log.sanitizer.ts` |
 | Deploy smoke + hash doğrulama | Script | |
 | Yedek off-site kopya | **Sunucu** | Disk yangını / ransomware senaryosu |
+| Purge öncesi bakım modu | Script + Kod | `set-maintenance-mode.sh on` — API yazma kapalı; bkz. [OPERATIONAL_DATA_PURGE.md](./OPERATIONAL_DATA_PURGE.md) |
+| Purge varsayılan test-markers + dry-run | Script | `purge-pilot-test-data-production.sh` — `CONFIRM_PURGE=YES` olmadan silmez |
 
 ### Cron örnekleri (sunucu `crontab -e`)
 
@@ -202,3 +221,4 @@ Nginx limit_req 429 logları fail2ban filtresi ile birleştirilir. Kurulum sonra
 3. `.env.production`: `PERMISSION_FALLBACK_ENABLED` kapalı mı?
 4. `ENABLE_SWAGGER` kapalı mı?
 5. Rollback tag manifest'te mevcut mu?
+6. Operasyonel purge planlanıyorsa önce `DRY_RUN=1` önizleme + bakım modu prosedürü ([OPERATIONAL_DATA_PURGE.md](./OPERATIONAL_DATA_PURGE.md))

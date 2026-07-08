@@ -20,34 +20,74 @@ import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { FileValidationPipe } from '@/common/pipes/file-validation.pipe';
+import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import {
+  isInsuranceCompanyUser,
+  normalizeRequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 
 @ApiTags('payments')
 @ApiBearerAuth()
 @Controller()
 @UseGuards(PermissionsGuard)
 export class PaymentsController {
-  constructor(private readonly service: PaymentsService) {}
+  constructor(
+    private readonly service: PaymentsService,
+    private readonly claimFilesService: ClaimFilesService,
+  ) {}
+
+  private async resolveScope(user: any) {
+    const requestingUser = normalizeRequestUser(user);
+    let insuranceCompanyIds: string[] | undefined;
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode)) {
+      insuranceCompanyIds = await this.claimFilesService.getInsuranceScopes(requestingUser.id);
+    }
+    return { requestingUser, insuranceCompanyIds };
+  }
 
   @Get('payments')
   @RequirePermissions('payment.view')
   @ApiOperation({ summary: 'Ödeme listesi' })
-  async findAll(@Query() query: any) {
-    const result = await this.service.findAll(query);
+  async findAll(@Query() query: any, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode) && !insuranceCompanyIds?.length) {
+      return {
+        success: true,
+        data: [],
+        meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 },
+        summary: {
+          totalIncoming: 0,
+          totalOutgoing: 0,
+          pendingIncoming: 0,
+          pendingIncomingCount: 0,
+          pendingOutgoing: 0,
+          pendingOutgoingCount: 0,
+          dueOutgoing: 0,
+          dueOutgoingCount: 0,
+          pendingOnlineLinks: 0,
+          pendingOnlineLinksAmount: 0,
+        },
+      };
+    }
+    const result = await this.service.findAll(query, requestingUser, insuranceCompanyIds);
     return { success: true, ...result };
   }
 
   @Get('payments/:id')
   @RequirePermissions('payment.view')
   @ApiOperation({ summary: 'Ödeme detayı' })
-  async findOne(@Param('id') id: string) {
-    const data = await this.service.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const data = await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     return { success: true, data };
   }
 
   @Get('payments/:id/receipt/download')
   @RequirePermissions('payment.view')
   @ApiOperation({ summary: 'Ödeme dekontu indirme bağlantısı' })
-  async getReceiptDownload(@Param('id') id: string) {
+  async getReceiptDownload(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.getReceiptDownloadUrl(id);
     return { success: true, data };
   }
@@ -56,6 +96,11 @@ export class PaymentsController {
   @RequirePermissions('payment.create')
   @ApiOperation({ summary: 'Yeni ödeme kaydet' })
   async create(@Body() dto: CreatePaymentDto, @CurrentUser() user: any) {
+    const { requestingUser } = await this.resolveScope(user);
+    await this.claimFilesService.findOne(dto.claimFileId, {
+      id: requestingUser?.id ?? user.id,
+      roleCode: requestingUser?.roleCode ?? user.roleCode,
+    });
     const data = await this.service.create(dto, user.id);
     return { success: true, data };
   }
@@ -74,6 +119,8 @@ export class PaymentsController {
     @UploadedFile(new FileValidationPipe()) file: Express.Multer.File,
     @CurrentUser() user: any,
   ) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.uploadReceipt(id, file, user.id);
     return { success: true, data };
   }
@@ -82,6 +129,8 @@ export class PaymentsController {
   @RequirePermissions('payment.update')
   @ApiOperation({ summary: 'Ödeme güncelle' })
   async update(@Param('id') id: string, @Body() dto: UpdatePaymentDto, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.update(id, dto, user?.id);
     return { success: true, data };
   }
@@ -89,8 +138,22 @@ export class PaymentsController {
   @Get('claim-files/:id/payments')
   @RequirePermissions('payment.view')
   @ApiOperation({ summary: 'Dosya ödemeleri' })
-  async getByClaimFile(@Param('id') claimFileId: string, @Query() query: any) {
-    const result = await this.service.findAll({ ...query, claimFileId });
+  async getByClaimFile(
+    @Param('id') claimFileId: string,
+    @Query() query: any,
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    await this.claimFilesService.findOne(claimFileId, {
+      id: userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const result = await this.service.findAll(
+      { ...query, claimFileId },
+      requestingUser,
+      insuranceCompanyIds,
+    );
     return { success: true, ...result };
   }
 }

@@ -3,6 +3,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import {
+  isInsuranceCompanyUser,
+  normalizeRequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 import {
   BranchDistributionFiltersDto,
   BranchTrendFiltersDto,
@@ -18,21 +24,40 @@ import {
 @Controller('analytics')
 @UseGuards(PermissionsGuard)
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly claimFilesService: ClaimFilesService,
+  ) {}
+
+  private async resolveInsuranceScope(user: any): Promise<string[] | undefined> {
+    const requestingUser = normalizeRequestUser(user);
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode)) {
+      return this.claimFilesService.getInsuranceScopes(requestingUser.id);
+    }
+    return undefined;
+  }
 
   @Get('branch-distribution')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Branş bazlı dosya dağılımı' })
-  async getBranchDistribution(@Query() filters: BranchDistributionFiltersDto) {
-    const data = await this.analyticsService.getBranchDistribution(filters);
+  async getBranchDistribution(
+    @Query() filters: BranchDistributionFiltersDto,
+    @CurrentUser() user: any,
+  ) {
+    const insuranceCompanyIds = await this.resolveInsuranceScope(user);
+    const data = await this.analyticsService.getBranchDistribution(filters, insuranceCompanyIds);
     return { success: true, data };
   }
 
   @Get('branch-trend')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Aylık branş trendi' })
-  async getBranchTrend(@Query() filters: BranchTrendFiltersDto) {
-    const data = await this.analyticsService.getBranchTrend(filters);
+  async getBranchTrend(
+    @Query() filters: BranchTrendFiltersDto,
+    @CurrentUser() user: any,
+  ) {
+    const insuranceCompanyIds = await this.resolveInsuranceScope(user);
+    const data = await this.analyticsService.getBranchTrend(filters, insuranceCompanyIds);
     return { success: true, data };
   }
 

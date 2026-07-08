@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-08",
-  "label": "v229-oturum-dayaniklilik",
-  "description": "Web-only: global axios auth interceptor, authFetch, SessionTimeoutBar fix, giriş session_expired; v228 keepalive dahil; backend v225 sabit",
+  "label": "v231-idor-scope",
+  "description": "Kritik IDOR scope denetimi (hasar/acil/ödeme/masraf/evrak/analytics), tedarikçi telefon, müşteri claim-files scoped endpoint",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v225-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v229-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v231-idor-scope-20260708-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v230-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v228-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v224-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v229-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v230-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

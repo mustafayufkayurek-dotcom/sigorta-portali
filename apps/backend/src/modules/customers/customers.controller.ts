@@ -15,12 +15,16 @@ import {
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
+import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import { EmergencyCasesService } from '@/modules/emergency/emergency-cases.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CustomerAccessGuard } from '@/common/guards/customer-access.guard';
 import { PhoneMaskingInterceptor } from '@/common/interceptors/phone-masking.interceptor';
+import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.interceptor';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CustomerAccessLogService } from '@/modules/customer-access-log/customer-access-log.service';
+import { normalizeRequestUser } from '@/common/helpers/claim-file-scope.helper';
 
 @ApiTags('customers')
 @ApiBearerAuth()
@@ -30,6 +34,8 @@ import { CustomerAccessLogService } from '@/modules/customer-access-log/customer
 export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,
+    private readonly claimFilesService: ClaimFilesService,
+    private readonly emergencyCasesService: EmergencyCasesService,
     private readonly accessLogService: CustomerAccessLogService,
   ) {}
 
@@ -83,7 +89,15 @@ export class CustomersController {
   @RequirePermissions('customer.view')
   @ApiOperation({ summary: 'Müşterileri listele' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
-    const result = await this.customersService.findAll(query, user);
+    const userId = user?.id ?? user?.userId;
+    let insuranceCompanyIds: string[] | undefined;
+    if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
+      insuranceCompanyIds = await this.claimFilesService.getInsuranceScopes(userId);
+      if (insuranceCompanyIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
+    }
+    const result = await this.customersService.findAll(query, normalizeRequestUser(user), insuranceCompanyIds);
     if (result.data.length > 0) {
       for (const customer of result.data) {
         this.accessLogService.logAsync({
@@ -132,6 +146,64 @@ export class CustomersController {
   }
 
   // ── Tekil işlemler ────────────────────────────────────────────────────────
+
+  @Get(':id/emergency-cases')
+  @RequirePermissions('claim_file.view')
+  @UseGuards(CustomerAccessGuard)
+  @ApiOperation({ summary: 'Müşteriye ait acil yardım dosyalarını listele (kapsamlı)' })
+  async findEmergencyCases(
+    @Param('id') id: string,
+    @Query() query: Record<string, unknown>,
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    let insuranceCompanyIds: string[] | undefined;
+    if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
+      insuranceCompanyIds = await this.claimFilesService.getInsuranceScopes(userId);
+      if (!insuranceCompanyIds?.length) {
+        return { success: true, data: [] };
+      }
+    }
+    const result = await this.emergencyCasesService.findAllForCustomer(
+      id,
+      {
+        status: query.status as any,
+        month: query.month ? Number(query.month) : undefined,
+        year: query.year ? Number(query.year) : undefined,
+        search: query.search as string | undefined,
+        overdueOnly: query.overdueOnly === 'true',
+      },
+      normalizeRequestUser(user),
+      insuranceCompanyIds,
+    );
+    return { success: true, data: result.data };
+  }
+
+  @Get(':id/claim-files')
+  @RequirePermissions('claim_file.view')
+  @UseGuards(CustomerAccessGuard)
+  @UseInterceptors(CostMaskingInterceptor)
+  @ApiOperation({ summary: 'Müşteriye ait hasar dosyalarını listele (kapsamlı)' })
+  async findClaimFiles(
+    @Param('id') id: string,
+    @Query() query: Record<string, unknown>,
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    const scopedQuery = { ...query };
+    if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
+      const companyIds = await this.claimFilesService.getInsuranceScopes(userId);
+      if (companyIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
+      scopedQuery.insuranceCompanyIds = companyIds;
+    }
+    const result = await this.claimFilesService.findAllForCustomer(id, scopedQuery, {
+      id: userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
+    return { success: true, data: result.data, meta: result.meta };
+  }
 
   @Get(':id')
   @RequirePermissions('customer.view')

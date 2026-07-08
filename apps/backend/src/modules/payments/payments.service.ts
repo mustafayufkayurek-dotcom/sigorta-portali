@@ -10,6 +10,12 @@ import { CacheService } from '../../cache/cache.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
+import {
+  assertClaimFileAccess,
+  buildClaimFileRelationScope,
+  mergeWhereAnd,
+  RequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 
 /** Onaylı tedarikçi hakedişinden sonra ödeme vadesi (gün) */
 export const VENDOR_HAKEDIS_DUE_DAYS = 30;
@@ -43,7 +49,11 @@ export class PaymentsService {
     @Optional() private readonly logoSync?: LogoSyncService,
   ) {}
 
-  private buildWhere(params: PaymentListParams): Prisma.PaymentWhereInput {
+  private buildWhere(
+    params: PaymentListParams,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ): Prisma.PaymentWhereInput {
     const where: Prisma.PaymentWhereInput = {};
 
     if (params.claimFileId) where.claimFileId = params.claimFileId;
@@ -88,6 +98,12 @@ export class PaymentsService {
         { referenceNo: { contains: q, mode: 'insensitive' } },
         { claimFile: { fileNo: { contains: q, mode: 'insensitive' } } },
       ];
+    }
+
+    const claimScope = buildClaimFileRelationScope(requestingUser, insuranceCompanyIds);
+    if (claimScope) {
+      const merged = mergeWhereAnd(where as Record<string, unknown>, claimScope);
+      return merged as Prisma.PaymentWhereInput;
     }
 
     return where;
@@ -160,11 +176,15 @@ export class PaymentsService {
     }));
   }
 
-  async findAll(params: PaymentListParams) {
+  async findAll(
+    params: PaymentListParams,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
     const skip = (page - 1) * limit;
-    const where = this.buildWhere(params);
+    const where = this.buildWhere(params, requestingUser, insuranceCompanyIds);
 
     const orderBy: Prisma.PaymentOrderByWithRelationInput[] =
       params.queue === 'payable' || params.dueOverdue === 'true'
@@ -275,17 +295,32 @@ export class PaymentsService {
     }
   }
 
-  async findOne(id: string) {
+  async findOne(
+    id: string,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: {
-        claimFile: { select: { id: true, fileNo: true } },
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            insuranceCompanyId: true,
+            assignedFieldUserId: true,
+            closedAt: true,
+          },
+        },
         invoice: true,
         bankAccount: true,
         createdBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
     if (!payment) throw new NotFoundException('Ödeme bulunamadı');
+    if (payment.claimFile) {
+      assertClaimFileAccess(payment.claimFile, requestingUser, insuranceCompanyIds);
+    }
     return payment;
   }
 
