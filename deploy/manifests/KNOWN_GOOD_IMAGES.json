@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-07",
-  "label": "v225-guvenlik",
-  "description": "Nginx güvenlik header/rate limit, auth/collection throttle, SECURITY_CHECKLIST, server-security-audit; web v223 sabit; rollback backend v224",
+  "updatedAt": "2026-07-08",
+  "label": "v226-profil-hotfix",
+  "description": "Web-only: profil sayfası sonsuz spinner düzeltmesi (getAccessToken + apiClient); backend v225-guvenlik sabit",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v225-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v223-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v226-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v222-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v223-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v224-amd64"
   },
   "mustPassSmokeRoutes": [
