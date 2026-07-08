@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-08",
-  "label": "v228-oturum-guvenlik",
-  "description": "Web-only: merkezi auth (getAccessToken, authAxios, keepalive), 28 dosya token migrasyonu; backend v225-guvenlik sabit",
+  "label": "v229-oturum-dayaniklilik",
+  "description": "Web-only: global axios auth interceptor, authFetch, SessionTimeoutBar fix, giriş session_expired; v228 keepalive dahil; backend v225 sabit",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v225-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v228-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v229-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v227-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v228-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v224-amd64"
   },
   "mustPassSmokeRoutes": [
