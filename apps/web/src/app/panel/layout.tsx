@@ -6,7 +6,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
-import { clearAuth, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred } from '@/utils/auth-session';
+import { SESSION_KEEPALIVE_MS } from '@/utils/api';
+import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred } from '@/utils/auth-session';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
@@ -967,6 +968,26 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         setAuthChecked(true);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Oturum token'ı 15 dk'da doluyor; panel açıkken periyodik yenileme
+  useEffect(() => {
+    const apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+    const refreshSession = () => {
+      if (getAccessToken() && hasValidSessionScope()) {
+        void ensureValidSession(apiBase);
+      }
+    };
+    refreshSession();
+    const intervalId = window.setInterval(refreshSession, SESSION_KEEPALIVE_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshSession();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   // Onaylanmamış sözleşme kontrolü

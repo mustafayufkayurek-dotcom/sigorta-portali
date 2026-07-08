@@ -1,5 +1,6 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
@@ -9,16 +10,6 @@ import {
   FIELD_SURVEY_ITEM_TYPE_OPTIONS,
   type FieldSurveyItemType,
 } from '@/components/field-survey/field-survey.constants';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-}
-function authHeader() {
-  return { Authorization: `Bearer ${getToken()}` };
-}
 
 export type { FieldSurveyItemType } from '@/components/field-survey/field-survey.constants';
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
+import { getAccessToken } from '@/utils/auth-session';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -23,10 +25,7 @@ const ImageAnnotationEditor = dynamic(
   { ssr: false }
 );
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
@@ -199,7 +198,7 @@ function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const token = getAccessToken();
     fetch(`${API}/repair-reports/${reportId}/revision-history`, {
       headers: { Authorization: `Bearer ${token}` },
     })

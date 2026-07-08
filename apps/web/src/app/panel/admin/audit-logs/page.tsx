@@ -1,5 +1,6 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -21,16 +22,6 @@ const AUDIT_LOG_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'changes', label: 'Değişiklikler', defaultWidth: 280, minWidth: 160 },
 ];
 
-const _base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
-const API = _base.endsWith('/api/v1') ? _base : _base + '/api/v1';
-
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-}
-
-function authHeader() {
-  return { Authorization: `Bearer ${getToken()}` };
-}
 
 type AuditLog = {
   id: string;

@@ -3,12 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { customerDisplayName } from '@/utils/customer-form-helpers';
-import { getAccessToken } from '@/utils/auth-session';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return getAccessToken(); }
-function authHeader() { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
+import { API, authHeader } from '@/utils/api';
 
 type Customer = {
   id: string;

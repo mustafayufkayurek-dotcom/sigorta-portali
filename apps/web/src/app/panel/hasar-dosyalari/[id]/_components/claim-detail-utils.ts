@@ -1,72 +1,7 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import {
-  clearAuth,
-  getAccessToken,
-  getRefreshToken,
-  persistTokens,
-} from '@/utils/auth-session';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-export const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-
-export function getToken() {
-  return getAccessToken();
-}
-
-export function authHeader() {
-  return { Authorization: `Bearer ${getToken()}` };
-}
-
-export async function authAxios<T>(
-  config: AxiosRequestConfig,
-): Promise<AxiosResponse<T>> {
-  const token = getAccessToken();
-  const requestConfig: AxiosRequestConfig = {
-    ...config,
-    headers: {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  };
-
-  try {
-    return await axios.request<T>(requestConfig);
-  } catch (error) {
-    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
-      throw error;
-    }
-
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      clearAuth();
-      if (typeof window !== 'undefined') window.location.href = '/giris';
-      throw error;
-    }
-
-    try {
-      const refreshed = await axios.post(`${API}/auth/refresh`, { refreshToken });
-      const tokens = refreshed.data?.data;
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
-        return await axios.request<T>({
-          ...config,
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${tokens.accessToken}`,
-          },
-        });
-      }
-    } catch {
-      /* refresh başarısız */
-    }
-
-    clearAuth();
-    if (typeof window !== 'undefined') window.location.href = '/giris';
-    throw error;
-  }
-}
-
+import { API, authAxios, authHeader, getToken } from '@/utils/api';
 import { fmtDate as fmtDateSafe } from '@/utils/date-helpers';
+
+export { API, authAxios, authHeader, getToken };
 
 export function fmtDate(d: string | null | undefined) {
   return fmtDateSafe(d);

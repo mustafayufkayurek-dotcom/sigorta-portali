@@ -1,5 +1,6 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
@@ -45,10 +46,7 @@ const PROFITABILITY_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'grossMarginPct', label: 'Marj', defaultWidth: 80, minWidth: 64 },
 ];
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
   return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });

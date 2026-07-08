@@ -1,12 +1,10 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TimelineEntry {

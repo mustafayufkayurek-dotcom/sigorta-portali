@@ -1,5 +1,6 @@
 'use client';
 
+import { API, getToken } from '@/utils/api';
 import { useEffect, useState, useCallback } from 'react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
@@ -22,7 +23,6 @@ const ACCESS_LOG_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'status', label: 'Durum', defaultWidth: 100, minWidth: 80 },
 ];
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
 interface AccessLog {
   id: string;
@@ -77,13 +77,10 @@ export default function ErisimLoglariPage() {
   const [page, setPage] = useState(1);
   const tableColumns = usePanelTableColumns('table-cols:guvenlik-erisim-loglari', ACCESS_LOG_TABLE_COLUMNS);
 
-  const getToken = () =>
-    typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
   const fetchStats = useCallback(async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/customer-access-logs/stats`, {
+      const res = await fetch(`${API}/customer-access-logs/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -106,7 +103,7 @@ export default function ErisimLoglariPage() {
       if (filterFrom) params.set('fromDate', filterFrom);
       if (filterTo) params.set('toDate', filterTo);
 
-      const res = await fetch(`${API_BASE}/customer-access-logs?${params}`, {
+      const res = await fetch(`${API}/customer-access-logs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

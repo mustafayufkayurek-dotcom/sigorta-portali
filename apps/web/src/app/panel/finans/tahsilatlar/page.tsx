@@ -1,5 +1,8 @@
 'use client';
 
+import { getAccessToken } from '@/utils/auth-session';
+'use client';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
@@ -65,7 +68,7 @@ function getCurrentUserId(): string | null {
   try {
     const raw = localStorage.getItem('currentUser');
     if (raw) return JSON.parse(raw)?.id ?? null;
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token) return null;
     return JSON.parse(atob(token.split('.')[1]))?.sub ?? null;
   } catch {

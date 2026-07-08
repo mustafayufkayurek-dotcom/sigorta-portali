@@ -1,5 +1,6 @@
 'use client';
 
+import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -24,10 +25,7 @@ import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null; }
-function authHeader() { return { Authorization: `Bearer ${getToken()}` }; }
+
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
   return String(roleCode).trim().toLowerCase().replace(/\s+/g, '_');

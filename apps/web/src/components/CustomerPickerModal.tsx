@@ -2,12 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return getAccessToken(); }
-function authHeader() { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
+import { API, authHeader, ensureSessionBeforeMutation } from '@/utils/api';
+import { getAccessToken } from '@/utils/auth-session';
 
 export type PickedCustomer = {
   id: string;
@@ -105,7 +101,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
     }
     setSaving(true);
     try {
-      const sessionOk = await ensureValidSession(API);
+      const sessionOk = await ensureSessionBeforeMutation();
       if (!sessionOk || !getAccessToken()) {
         setNewError('Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
         return;

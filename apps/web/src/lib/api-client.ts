@@ -1,4 +1,4 @@
-import { getAccessToken } from '@/utils/auth-session';
+import { ensureValidSession, getAccessToken, getRefreshToken, persistTokens } from '@/utils/auth-session';
 
 export class ApiError extends Error {
   status: number;
@@ -48,7 +48,13 @@ function getAuthHeaders(): HeadersInit {
 }
 
 async function request<T>(url: string, init: RequestInit = {}, params?: QueryParams): Promise<T> {
-  const isGet = (init.method ?? 'GET').toUpperCase() === 'GET';
+  const method = (init.method ?? 'GET').toUpperCase();
+  const apiBase = getBaseUrl().replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+  if (method !== 'GET' && method !== 'HEAD') {
+    await ensureValidSession(apiBase);
+  }
+
+  const isGet = method === 'GET';
   const finalUrl = isGet ? buildUrl(url, params) : buildUrl(url);
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -56,13 +62,46 @@ async function request<T>(url: string, init: RequestInit = {}, params?: QueryPar
     ...(init.headers ?? {}),
   };
 
-  const response = await fetch(finalUrl, { ...init, headers });
+  let response = await fetch(finalUrl, { ...init, headers });
   let data: unknown = null;
 
   try {
     data = await response.json();
   } catch {
     data = null;
+  }
+
+  if (response.status === 401 && method !== 'GET' && method !== 'HEAD') {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      try {
+        const refreshed = await fetch(`${apiBase}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const refreshData = await refreshed.json().catch(() => null);
+        const tokens = refreshData?.data;
+        if (tokens?.accessToken && tokens?.refreshToken) {
+          persistTokens(tokens.accessToken, tokens.refreshToken);
+          response = await fetch(finalUrl, {
+            ...init,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${tokens.accessToken}`,
+              ...(init.headers ?? {}),
+            },
+          });
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+        }
+      } catch {
+        /* refresh başarısız */
+      }
+    }
   }
 
   if (!response.ok) {

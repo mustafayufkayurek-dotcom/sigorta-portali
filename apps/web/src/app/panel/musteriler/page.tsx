@@ -55,12 +55,8 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
-import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-function getToken() { return getAccessToken(); }
-function authHeader() { const t = getToken(); return t ? { Authorization: `Bearer ${t}` } : {}; }
+import { getAccessToken } from '@/utils/auth-session';
+import { API, authHeader, ensureSessionBeforeMutation, getToken } from '@/utils/api';
 
 async function turmobQuery(taxNumber: string, token: string | null) {
   const r = await axios.get(`${API}/tax-verification/turmob-query?taxNumber=${encodeURIComponent(taxNumber)}`, {
@@ -1550,7 +1546,7 @@ export default function MusterilerPage() {
     setFieldErrors({});
     setSaving(true);
     try {
-      const sessionOk = await ensureValidSession(API);
+      const sessionOk = await ensureSessionBeforeMutation();
       if (!sessionOk || !getAccessToken()) {
         showToast('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
         return;
