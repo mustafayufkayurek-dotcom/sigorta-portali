@@ -1,21 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import { apiClient } from '@/lib/api-client';
 import { formatPhoneDisplay } from '@/data/country-codes';
-
-const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-
-function getToken() {
-  return typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-}
-function authHeader() {
-  return { Authorization: `Bearer ${getToken()}` };
-}
+import { getAccessToken } from '@/utils/auth-session';
 
 interface UserProfile {
   id: string;
@@ -139,21 +129,28 @@ export default function ProfilPage() {
   const [showRepeat, setShowRepeat] = useState(false);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
+    const token = getAccessToken();
+    if (!token) {
+      setLoading(false);
+      router.replace('/giris');
+      return;
+    }
 
     // Önce localStorage'dan hızlıca yükle
     const cached = localStorage.getItem('user');
     if (cached) {
-      setProfile(JSON.parse(cached));
-      setLoading(false);
+      try {
+        setProfile(JSON.parse(cached));
+        setLoading(false);
+      } catch {
+        localStorage.removeItem('user');
+      }
     }
 
-    // Sonra API'den taze veri çek
-    axios
-      .get(`${API}/auth/me`, { headers: authHeader() })
-      .then((r) => {
-        const data = r.data.data;
+    // Sonra API'den taze veri çek (sessionStorage token destekli)
+    apiClient
+      .get<UserProfile>('/auth/me')
+      .then((data) => {
         setProfile(data);
         localStorage.setItem('user', JSON.stringify(data));
       })
@@ -165,7 +162,7 @@ export default function ProfilPage() {
     void loadPendingAgreements().then((pending) => {
       if (pending.length > 0) setShowConsentModal(true);
     });
-  }, [loadAcceptances, loadPendingAgreements]);
+  }, [loadAcceptances, loadPendingAgreements, router]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,12 +184,10 @@ export default function ProfilPage() {
 
     setPwdSaving(true);
     try {
-      const response = await axios.post(
-        `${API}/auth/change-password`,
-        { oldPassword, newPassword },
-        { headers: authHeader() },
-      );
-      const updatedUser = response.data?.data;
+      const updatedUser = await apiClient.post<UserProfile>('/auth/change-password', {
+        oldPassword,
+        newPassword,
+      });
       if (updatedUser) {
         setProfile(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));

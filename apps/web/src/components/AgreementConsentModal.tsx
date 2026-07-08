@@ -5,6 +5,7 @@ import { DEFAULT_AGREEMENT_TEMPLATES } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { sanitizeDocumentHtml } from '@/utils/sanitize-html';
 import { apiClient } from '@/lib/api-client';
+import { getAccessToken } from '@/utils/auth-session';
 
 interface PendingAgreement {
   id: string;
@@ -58,7 +59,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
         if (fn || ln) return `${fn} ${ln}`.trim();
       }
       // Try parsing from JWT
-      const token = localStorage.getItem('accessToken');
+      const token = getAccessToken();
       if (token) {
         const parts = token.split('.');
         if (parts.length === 3) {
