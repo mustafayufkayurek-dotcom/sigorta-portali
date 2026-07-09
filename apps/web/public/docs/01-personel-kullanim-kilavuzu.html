@@ -31,6 +31,8 @@
     }
     .page-break { page-break-before: always; }
 
+    [id] { scroll-margin-top: 20px; }
+
     .doc-header {
       background: var(--navy);
       color: #fff;
@@ -383,7 +385,7 @@
     <div class="doc-meta">Bölüm 1</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">1</span> Platforma Giriş ve Operasyon Merkezi</div>
+    <div class="section-title" id="operasyon-merkezi"><span class="num">1</span> Platforma Giriş ve Operasyon Merkezi</div>
 
     <p>Meridyen Hasar Yönetim Platformu, ofis personelinin hasar dosyalarını açması, acil yardım süreçlerini yönetmesi, müşteri ve tedarikçi kayıtlarını güncellemesi ve operasyon ekibiyle kayıt altında iletişim kurması için tasarlanmıştır.</p>
 
@@ -476,6 +478,16 @@
         </tr>
       </tbody>
     </table>
+
+    <div id="dosya-merkezi" class="highlight-box" style="margin-top:14px;">
+      <div class="label">Dosya Merkezi — Ofis Personeli</div>
+      <p>Ofis personeli giriş yaptığında ana ekran <strong>Dosya Merkezi</strong> olarak görünür. Sol menüden <strong>Operasyon</strong>, <strong>Müşteriler</strong>, <strong>Tedarikçiler</strong> ve yetkiniz varsa <strong>Acil Yardım</strong> modüllerine erişirsiniz. Günlük işe <strong>Operasyon</strong> ekranından başlayın; bekleyen dosyalar ve revizyon talepleri burada listelenir.</p>
+    </div>
+
+    <div id="saha-personeli" class="highlight-box" style="margin-top:14px;">
+      <div class="label">Saha Merkezi — Saha Personeli</div>
+      <p>Saha personeli giriş yaptığında ana ekran <strong>Saha Merkezi</strong> olarak görünür. <strong>Hasar Dosyaları</strong> ve yetkiniz varsa <strong>Acil Yardım</strong> üzerinden size atanan işleri takip edersiniz. <strong>Carilerim</strong> menüsünden kişisel cari hesap özetinizi görüntüleyebilirsiniz. Dosya detayında durum güncellemelerini ve saha notlarınızı kaydedin.</p>
+    </div>
 
     <div class="feature-grid">
       <div class="feature-card">
@@ -733,7 +745,7 @@
     <div class="doc-meta">Bölüm 6–7</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">6</span> Dosya Sorumlusu ve Atamalar</div>
+    <div class="section-title" id="dosya-sorumlusu"><span class="num">6</span> Dosya Sorumlusu ve Atamalar</div>
 
     <p>Hasar dosyasında sorumlu kişiler, dosya detay ekranındaki <strong>Bu Dosyada Kimler Var</strong> bölümünden yönetilir. Atama yetkisi rolünüze ve ekran izinlerinize bağlıdır.</p>
 
@@ -807,7 +819,7 @@
     <div class="doc-meta">Bölüm 8</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">8</span> Finans Modülleri</div>
+    <div class="section-title" id="finans-modulleri"><span class="num">8</span> Finans Modülleri</div>
 
     <p>Finans modülleri <strong>Finans</strong> menüsü altında toplanır. Erişim finans, muhasebe ve yönetici rollerine özeldir; ofis personeli finans ekranlarını görmez.</p>
 
