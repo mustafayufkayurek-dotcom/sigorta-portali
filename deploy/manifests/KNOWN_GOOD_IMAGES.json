@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-09",
-  "label": "v233-sidebar-kilavuz",
-  "description": "Web-only: sidebar UX (logo, kullanıcı kartı, hızlı işlem) ve rol bazlı kullanım kılavuzu footer",
+  "label": "v234-sidebar-duzeltme",
+  "description": "Web-only: sol menü eski düzene döndü (navbar logo+profil), kılavuz footer korundu, AI governance kuralı",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
