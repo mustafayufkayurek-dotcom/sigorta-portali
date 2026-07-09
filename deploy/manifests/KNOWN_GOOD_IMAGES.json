@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-08",
-  "label": "v232-oturum-guvenlik",
-  "description": "Web-only: oturum sızıntısı fix (localStorage fallback kaldırıldı), panel middleware no-store, Beni Hatırla 7 gün yapılandırılabilir",
+  "updatedAt": "2026-07-09",
+  "label": "v233-sidebar-kilavuz",
+  "description": "Web-only: sidebar UX (logo, kullanıcı kartı, hızlı işlem) ve rol bazlı kullanım kılavuzu footer",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v231-idor-scope-20260708-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v232-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v233-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v230-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v232-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v230-amd64"
   },
   "mustPassSmokeRoutes": [
