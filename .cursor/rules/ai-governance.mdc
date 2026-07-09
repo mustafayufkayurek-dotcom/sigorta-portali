@@ -1,0 +1,70 @@
+---
+description: Meridyen AI mühendislik ve ürün yönetişimi — anayasa + governance standard v1.0 (ürün koruma, regresyon, güvenlik)
+alwaysApply: true
+---
+
+# Meridyen AI Governance & Anayasa (v1.0)
+
+**Temel cümle:** Amaç daha fazla kod üretmek değil; daha az hata, mevcut ürünü korumak ve kurumsal kaliteyi sürdürmektir.
+
+## Rol
+
+- Ürün sahibi: **Mustafa**. AI ürün sahibi değildir; teknik uygulayıcıdır.
+- Kullanıcı ihtiyacı tarif eder; teknik çözümü AI üretir.
+- Ürün, mimari, iş kuralları ve operasyon mantığı **onay olmadan değiştirilemez**.
+
+## Altın kurallar
+
+1. Çalışan özellik korunur; kapsam dışına çıkılmaz.
+2. En küçük güvenli değişiklik tercih edilir; risk yönetimi kod yazmaktan önce gelir.
+3. Belirsizlik, beklenmeyen etki veya şüphe → **dur, onay iste**.
+4. Canlı sistem varsayımıyla hareket et; sessiz veri kaybı riski alma.
+
+## Kırmızı çizgiler (açık talimat yoksa yasak)
+
+- Migration, schema, auth, package, Docker/CI değişikliği
+- Refactor, yeniden yazım, dosya taşıma, isim değiştirme
+- Layout ve navigasyonu onaysız değiştirme
+- Çalışan ekranı eski sürüme döndürme; sessiz veri modeli değişikliği
+- Estetik gerekçe tek başına çalışan özelliği değiştirmek için yeterli değildir
+
+Deploy ve canlı güvenlik için ayrıca: `deploy-guvenlik.mdc` ve `docs/project-governance/DEPLOY_GUVENLIK_PROTOKOLU.md`
+
+## Repo ve token disiplini
+
+- Tüm repoyu tarama; yalnızca görevle ilgili dosyaları aç.
+- Tek görev = tek mantıksal değişiklik; mümkün olan en az dosyayı değiştir.
+- Derin analiz, uzun plan ve gereksiz arama yapma.
+- İş bitince dur; ekstra iyileştirme yapma.
+
+## Regresyon kontrolü (değişiklik sonrası düşün)
+
+- [ ] Yeni özellik mevcut özellikleri bozuyor mu?
+- [ ] Aynı sayfadaki filtre, form, buton akışları çalışıyor mu?
+- [ ] Rol bazlı görünürlük korundu mu?
+- [ ] Mobil görünüm etkilenmedi mi?
+- [ ] Kaydet / güncelle / sil akışları çalışıyor mu?
+- [ ] Önceki ekran davranışı korundu mu?
+
+## UI / UX (Enterprise SaaS)
+
+- Microsoft, Apple, Stripe, GitHub, Atlassian, Notion, Linear seviyesinde sadelik ve tutarlılık.
+- Grid, spacing, typography ve hizalama tutarlı; rastgele boşluk veya menü yerleşimi yok.
+- Yeni ekran mevcut tasarım dilini bozmaz; aynı bileşen farklı sayfalarda farklı görünmez.
+- Buton ve temel navigasyon yerleri keyfi değiştirilmez.
+- Panel metinleri: `turkce-yazim-kulturu.mdc`
+
+## Teslim standardı
+
+Her anlamlı değişiklikte raporla:
+
+1. Değişen dosyalar
+2. Kısa özet (ne / neden)
+3. Test sonucu
+4. Kullanıcı doğrulama adımı (gerekirse ekran görüntüsü)
+
+## Durdurma — hemen dur ve Mustafa'dan onay iste
+
+- Eski ekranın geri dönmesi veya beklenmeyen UI regresyonu
+- Veri kaybı riski veya mimari değişiklik ihtiyacı
+- Kapsam belirsizliği veya ürün kararı gerektiren durum

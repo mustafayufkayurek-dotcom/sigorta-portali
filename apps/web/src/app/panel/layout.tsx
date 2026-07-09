@@ -55,8 +55,6 @@ import {
   Users,
   TestTube2,
   UserCog,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -758,10 +756,10 @@ function PanelSidebar({
 
   const linkClass = (href: string, compact = false, forceActive?: boolean, exactMatch?: boolean) => {
     const active = forceActive ?? isActive(href, exactMatch);
-    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-semibold transition ${
+    return `group flex items-center justify-between gap-2 rounded-lg px-2.5 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-medium transition ${
       active
-        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+        ? 'bg-blue-50 text-blue-700'
+        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
     }`;
   };
 
@@ -815,7 +813,7 @@ function PanelSidebar({
   return (
     <aside
       className={`hidden h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200 md:flex dark:border-slate-800 dark:bg-slate-950 ${
-        collapsed ? 'w-[74px]' : 'w-[286px]'
+        collapsed ? 'w-[68px]' : 'w-[248px]'
       }`}
     >
       <PanelSidebarChrome
@@ -830,35 +828,20 @@ function PanelSidebar({
         homeHref={homeHref}
         companyLogo={companyLogo}
         collapsed={collapsed}
+        onToggleCollapsed={onToggleCollapsed}
       />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className={`flex shrink-0 items-center px-3 pt-3 ${collapsed ? 'justify-center' : 'justify-between px-3'}`}>
-          {!collapsed ? (
-            <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">Menü</p>
-          ) : null}
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:hover:bg-slate-800"
-            aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-            title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
-          {visibleMainLinks.map((link) => renderNavLink(link))}
-        </nav>
-        <PanelSidebarGuideFooter
-          roleCode={roleCode}
-          isExpert={isExpert}
-          isInsuranceCompanyUser={isInsuranceCompanyUser}
-          isFinance={isFinance}
-          isFieldStaff={isFieldStaff}
-          isOfficeStaff={isOfficeStaff}
-          collapsed={collapsed}
-        />
-      </div>
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+        {visibleMainLinks.map((link) => renderNavLink(link))}
+      </nav>
+      <PanelSidebarGuideFooter
+        roleCode={roleCode}
+        isExpert={isExpert}
+        isInsuranceCompanyUser={isInsuranceCompanyUser}
+        isFinance={isFinance}
+        isFieldStaff={isFieldStaff}
+        isOfficeStaff={isOfficeStaff}
+        collapsed={collapsed}
+      />
     </aside>
   );
 }

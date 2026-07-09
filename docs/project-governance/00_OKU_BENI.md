@@ -20,6 +20,7 @@
 
 | # | Dosya | Durum |
 |---|-------|--------|
+| 0 | `AI_GOVERNANCE_INDEX.md` | ✅ AI anayasa + governance (Cursor rule eşlemesi) |
 | 1 | `00_PROJE_ANAYASASI.md` | ✅ |
 | 2 | `00_CALISMA_YASASI.md` | ✅ |
 | 3 | `01_MERIDYEN_21_22_23_HAZIRAN_KURTARMA_PAKETI_v1.md` | ⏳ Mustafa onayı bekliyor |

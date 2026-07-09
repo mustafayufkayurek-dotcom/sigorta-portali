@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FilePlus, LifeBuoy, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FilePlus, LifeBuoy } from 'lucide-react';
 import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 import {
@@ -26,6 +26,7 @@ type PanelSidebarChromeProps = {
   homeHref: string;
   companyLogo?: string | null;
   collapsed: boolean;
+  onToggleCollapsed: () => void;
 };
 
 function userInitials(user: PanelSidebarChromeProps['user']): string {
@@ -53,6 +54,7 @@ export function PanelSidebarChrome({
   homeHref,
   companyLogo,
   collapsed,
+  onToggleCollapsed,
 }: PanelSidebarChromeProps) {
   const contextLabel = resolvePanelContextLabel({
     roleCode,
@@ -64,74 +66,71 @@ export function PanelSidebarChrome({
   });
   const showClaimActions = canShowNewClaimQuickAction({ isExpert, isInsuranceCompanyUser, isFieldStaff });
   const logoSrc = companyLogo || CORPORATE_LOGO_LIGHT;
+  const roleLine = user?.role?.name ?? contextLabel;
 
   return (
-    <div className={`shrink-0 border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950 ${collapsed ? 'px-2 py-3' : 'px-3 py-4'}`}>
-      <div className={`mb-3 flex ${collapsed ? 'justify-center' : 'justify-start'}`}>
-        <Link href={homeHref} title="Panel ana sayfa" className="inline-flex">
+    <div className={`shrink-0 border-b border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 ${collapsed ? 'px-2 py-2.5' : 'px-3 py-3'}`}>
+      <div className={`flex items-center gap-2 ${collapsed ? 'flex-col' : ''}`}>
+        <Link
+          href={homeHref}
+          title="Panel ana sayfa"
+          className={`min-w-0 ${collapsed ? 'flex justify-center' : 'flex-1'}`}
+        >
           <BrandLogoMark
             alt="Meridyen Assistance"
             src={logoSrc}
             variant={collapsed ? 'portal' : 'panel'}
           />
         </Link>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:hover:bg-slate-800"
+          aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+        >
+          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
-      {!collapsed ? (
-        <Link
-          href="/panel/profil"
-          className="mb-3 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
-        >
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-            {userInitials(user)}
-          </span>
+      <Link
+        href="/panel/profil"
+        title={userDisplayName(user)}
+        className={`mt-2.5 flex items-center transition hover:opacity-90 ${collapsed ? 'justify-center' : 'gap-2.5 rounded-lg px-1 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-900/50'}`}
+      >
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+          {userInitials(user)}
+        </span>
+        {!collapsed ? (
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
               {userDisplayName(user)}
             </span>
-            <span className="block truncate text-xs text-slate-500">{user?.role?.name ?? contextLabel}</span>
+            <span className="block truncate text-xs text-slate-500">{roleLine}</span>
           </span>
-          <User className="h-4 w-4 shrink-0 text-slate-400" />
-        </Link>
-      ) : (
-        <Link
-          href="/panel/profil"
-          title={userDisplayName(user)}
-          className="mb-3 mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-        >
-          {userInitials(user)}
-        </Link>
-      )}
+        ) : null}
+      </Link>
 
-      {!collapsed && (
-        <p className="mb-3 px-1 text-[11px] font-medium text-slate-400">{contextLabel}</p>
-      )}
-
-      {showClaimActions && !collapsed && (
-        <div className="mb-3 grid grid-cols-2 gap-2">
+      {showClaimActions && !collapsed ? (
+        <div className="mt-2 flex gap-1.5">
           <Link
             href="/panel/hasar-dosyalari/yeni"
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800"
           >
-            <FilePlus className="h-3.5 w-3.5" />
+            <FilePlus className="h-3 w-3" />
             Yeni Hasar
           </Link>
           {showAcilYardim ? (
             <Link
               href="/panel/acil-yardim/yeni"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800"
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-900 transition hover:bg-amber-100"
             >
-              <LifeBuoy className="h-3.5 w-3.5" />
+              <LifeBuoy className="h-3 w-3" />
               Yeni Acil
             </Link>
-          ) : (
-            <span className="rounded-lg border border-dashed border-slate-200 px-2 py-2 text-center text-[10px] text-slate-400">
-              Acil yetkisi yok
-            </span>
-          )}
+          ) : null}
         </div>
-      )}
-
+      ) : null}
     </div>
   );
 }
