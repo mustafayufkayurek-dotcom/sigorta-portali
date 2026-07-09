@@ -28,7 +28,6 @@ import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
-import { PanelSidebarChrome } from '@/components/panel/PanelSidebarChrome';
 import { PanelSidebarGuideFooter } from '@/components/panel/PanelSidebarGuideFooter';
 import PortalBottomNav from '@/components/portal/PortalBottomNav';
 import {
@@ -55,6 +54,8 @@ import {
   Users,
   TestTube2,
   UserCog,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -246,9 +247,6 @@ interface PanelSidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   hidden?: boolean;
-  user: any;
-  companyLogo: string | null;
-  homeHref: string;
 }
 
 function getPanelMainLinks({
@@ -347,7 +345,6 @@ interface NavbarProps {
   isFinance: boolean;
   isFieldStaff: boolean;
   showAcilYardim: boolean;
-  hideBrandOnDesktop?: boolean;
   userGuide?: ReturnType<typeof resolvePanelUserGuide>;
 }
 
@@ -357,7 +354,7 @@ function Navbar({
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
   allowedScreens, companyLogo, companyName,
-  isFinance, isFieldStaff, showAcilYardim, hideBrandOnDesktop = false, userGuide,
+  isFinance, isFieldStaff, showAcilYardim, userGuide,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
@@ -427,8 +424,8 @@ function Navbar({
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-4">
         <div className="flex h-14 sm:h-[60px] items-center justify-between gap-2">
-          {/* Logo — mobilde üst barda; masaüstünde sidebar'da */}
-          <div className={`flex min-w-0 flex-1 items-center ${hideBrandOnDesktop ? 'md:hidden' : ''}`}>
+          {/* Logo — portal ve saha/ofis: panel ana sayfa; diğer: kurumsal site */}
+          <div className="flex min-w-0 flex-1 items-center">
             {usePanelHomeLogo ? (
               <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
                 <BrandLogoMark
@@ -721,9 +718,6 @@ function PanelSidebar({
   collapsed,
   onToggleCollapsed,
   hidden = false,
-  user,
-  companyLogo,
-  homeHref,
 }: PanelSidebarProps) {
   if (hidden) return null;
 
@@ -756,10 +750,10 @@ function PanelSidebar({
 
   const linkClass = (href: string, compact = false, forceActive?: boolean, exactMatch?: boolean) => {
     const active = forceActive ?? isActive(href, exactMatch);
-    return `group flex items-center justify-between gap-2 rounded-lg px-2.5 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-medium transition ${
+    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-semibold transition ${
       active
-        ? 'bg-blue-50 text-blue-700'
-        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
     }`;
   };
 
@@ -812,36 +806,40 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`hidden h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200 md:flex dark:border-slate-800 dark:bg-slate-950 ${
-        collapsed ? 'w-[68px]' : 'w-[248px]'
+      className={`hidden shrink-0 border-r border-slate-200 bg-white transition-[width] duration-200 md:block dark:border-slate-800 dark:bg-slate-950 ${
+        collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
-      <PanelSidebarChrome
-        user={user}
-        roleCode={roleCode}
-        isExpert={isExpert}
-        isInsuranceCompanyUser={isInsuranceCompanyUser}
-        isFinance={isFinance}
-        isFieldStaff={isFieldStaff}
-        isOfficeStaff={isOfficeStaff}
-        showAcilYardim={showAcilYardim}
-        homeHref={homeHref}
-        companyLogo={companyLogo}
-        collapsed={collapsed}
-        onToggleCollapsed={onToggleCollapsed}
-      />
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-        {visibleMainLinks.map((link) => renderNavLink(link))}
-      </nav>
-      <PanelSidebarGuideFooter
-        roleCode={roleCode}
-        isExpert={isExpert}
-        isInsuranceCompanyUser={isInsuranceCompanyUser}
-        isFinance={isFinance}
-        isFieldStaff={isFieldStaff}
-        isOfficeStaff={isOfficeStaff}
-        collapsed={collapsed}
-      />
+      <div className="sticky top-14 sm:top-[60px] flex h-[calc(100vh-3.5rem)] flex-col sm:h-[calc(100vh-60px)]">
+        <div className={`flex shrink-0 items-center px-3 pt-4 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+          {!collapsed ? (
+            <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">Menü</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:hover:bg-slate-800"
+            aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+            title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {visibleMainLinks.map((link) => renderNavLink(link))}
+        </nav>
+
+        <PanelSidebarGuideFooter
+          roleCode={roleCode}
+          isExpert={isExpert}
+          isInsuranceCompanyUser={isInsuranceCompanyUser}
+          isFinance={isFinance}
+          isFieldStaff={isFieldStaff}
+          isOfficeStaff={isOfficeStaff}
+          collapsed={collapsed}
+        />
+      </div>
     </aside>
   );
 }
@@ -1257,14 +1255,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       .catch(() => {});
   }, []);
 
-  const panelHomeHref = isExpert
-    ? '/panel/eksper-portal'
-    : isInsuranceCompanyUser
-      ? '/panel/sigorta-portal'
-      : isFinance
-        ? '/panel/finans'
-        : '/panel';
-
   const userGuide = resolvePanelUserGuide({
     roleCode,
     isExpert,
@@ -1283,7 +1273,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
     allowedScreens, companyLogo, companyName,
     isFinance, isFieldStaff, showAcilYardim,
-    hideBrandOnDesktop: !mustChangePassword,
     userGuide,
   };
   const contextBackLink = isSettingsPath(pathname) ? null : getContextBackLink(pathname);
@@ -1343,28 +1332,25 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen bg-slate-50" ref={mainRef}>
-        <PanelSidebar
-          pathname={pathname}
-          roleCode={roleCode}
-          isPortalUser={isPortalUser}
-          isExpert={isExpert}
-          isInsuranceCompanyUser={isInsuranceCompanyUser}
-          isFinance={isFinance}
-          isFieldStaff={isFieldStaff}
-          showAcilYardim={showAcilYardim}
-          pendingRevisionCount={pendingRevisionCount}
-          allowedScreens={allowedScreens}
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={toggleSidebarCollapsed}
-          hidden={mustChangePassword}
-          user={user}
-          companyLogo={companyLogo}
-          homeHref={panelHomeHref}
-        />
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
-        <div className="min-w-0 flex-1 overflow-x-hidden">
+        <div className="flex min-h-0 flex-1 overflow-x-hidden">
+          <PanelSidebar
+            pathname={pathname}
+            roleCode={roleCode}
+            isPortalUser={isPortalUser}
+            isExpert={isExpert}
+            isInsuranceCompanyUser={isInsuranceCompanyUser}
+            isFinance={isFinance}
+            isFieldStaff={isFieldStaff}
+            showAcilYardim={showAcilYardim}
+            pendingRevisionCount={pendingRevisionCount}
+            allowedScreens={allowedScreens}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={toggleSidebarCollapsed}
+            hidden={mustChangePassword}
+          />
+          <div className="min-w-0 flex-1">
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
             <div className="mx-auto max-w-screen-2xl">
@@ -1442,9 +1428,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {isPortalUser && !mustChangePassword ? (
           <PortalBottomNav variant={isExpert ? 'expert' : 'insurance'} />
         ) : null}
+          </div>
         </div>
         <SessionTimeoutBar />
-        </div>
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
