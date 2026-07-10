@@ -49,7 +49,7 @@ export class InboundIngestProcessor {
   async handleSyncMailbox(job: Job<SyncMailboxJobData>) {
     const { mailbox, nextLink, pageCount = 0 } = job.data;
     try {
-      return await this.runSyncMailbox(job, mailbox, nextLink, pageCount);
+      return await this.runSyncMailbox(mailbox, nextLink, pageCount);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`${mailbox}: senkron başarısız — ${message}`);
@@ -58,7 +58,6 @@ export class InboundIngestProcessor {
   }
 
   private async runSyncMailbox(
-    job: Job<SyncMailboxJobData>,
     mailbox: InboundMailbox,
     nextLink: string | undefined,
     pageCount: number,
