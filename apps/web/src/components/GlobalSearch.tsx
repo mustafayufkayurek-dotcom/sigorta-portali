@@ -10,11 +10,13 @@ interface SearchResultItem {
   title: string;
   subtitle?: string;
   url: string;
-  category: 'dosyalar' | 'musteriler' | 'tedarikciler' | 'eksperler' | 'faturalar';
+  category: 'dosyalar' | 'acil_dosyalar' | 'mailler' | 'musteriler' | 'tedarikciler' | 'eksperler' | 'faturalar';
 }
 
 interface SearchResults {
   dosyalar: SearchResultItem[];
+  acil_dosyalar: SearchResultItem[];
+  mailler: SearchResultItem[];
   musteriler: SearchResultItem[];
   tedarikciler: SearchResultItem[];
   eksperler: SearchResultItem[];
@@ -23,19 +25,23 @@ interface SearchResults {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  dosyalar:    'Hasar Dosyaları',
-  musteriler:  'Müşteriler',
-  tedarikciler:'Tedarikçiler',
-  eksperler:   'Eksper Firması',
-  faturalar:   'Faturalar',
+  dosyalar:     'Hasar Dosyaları',
+  acil_dosyalar:'Acil Yardım',
+  mailler:      'Gelen Kutusu',
+  musteriler:   'Müşteriler',
+  tedarikciler: 'Tedarikçiler',
+  eksperler:    'Eksper Firması',
+  faturalar:    'Faturalar',
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
-  dosyalar:    '📁',
-  musteriler:  '👤',
-  tedarikciler:'🏭',
-  eksperler:   '🔍',
-  faturalar:   '🧾',
+  dosyalar:     '📁',
+  acil_dosyalar:'🚨',
+  mailler:      '📧',
+  musteriler:   '👤',
+  tedarikciler: '🏭',
+  eksperler:    '🔍',
+  faturalar:    '🧾',
 };
 
 const RECENT_SEARCHES_KEY = 'globalSearch_recent';
@@ -88,6 +94,8 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const flatItems: SearchResultItem[] = results
     ? [
         ...results.dosyalar,
+        ...results.acil_dosyalar,
+        ...results.mailler,
         ...results.musteriler,
         ...results.tedarikciler,
         ...results.eksperler,
@@ -170,7 +178,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
   if (!open) return null;
 
-  const categories: Array<keyof SearchResults> = ['dosyalar', 'musteriler', 'tedarikciler', 'eksperler', 'faturalar'];
+  const categories: Array<keyof SearchResults> = [
+    'dosyalar', 'acil_dosyalar', 'mailler', 'musteriler', 'tedarikciler', 'eksperler', 'faturalar',
+  ];
 
   let globalIdx = 0;
 
@@ -203,7 +213,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Dosya no, müşteri adı, fatura..."
+              placeholder="Dosya no, müşteri, gelen kutusu, fatura..."
               className="flex-1 text-sm text-slate-800 placeholder-slate-400 bg-transparent outline-none"
             />
             {query && (
@@ -254,7 +264,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <p className="text-sm text-slate-400">Aramak için yazmaya başlayın</p>
-                <p className="text-xs text-slate-300">Dosya no, müşteri, tedarikçi, eksper veya fatura</p>
+                <p className="text-xs text-slate-300">Dosya, gelen kutusu, müşteri, tedarikçi veya fatura</p>
               </div>
             )}
 

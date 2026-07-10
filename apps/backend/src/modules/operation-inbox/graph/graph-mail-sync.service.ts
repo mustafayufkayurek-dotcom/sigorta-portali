@@ -59,6 +59,21 @@ export class GraphMailSyncService {
     return mailbox === 'IHBAR' ? config.ihbarMailbox : config.hasarMailbox;
   }
 
+  /** Graph delta token süresi dolduğunda dönen hata */
+  isStaleDeltaError(message: string): boolean {
+    const lower = message.toLowerCase();
+    return lower.includes('sync state') && lower.includes('not found');
+  }
+
+  async clearDeltaLink(mailbox: InboundMailbox): Promise<void> {
+    const subscriptionId = `${DELTA_POLL_SUBSCRIPTION_PREFIX}${mailbox}`;
+    await this.prisma.graphSubscription.updateMany({
+      where: { subscriptionId, isActive: true },
+      data: { deltaLink: null },
+    });
+    this.logger.warn(`${mailbox}: delta link sıfırlandı (Graph sync state geçersiz)`);
+  }
+
   async getStoredDeltaLink(mailbox: InboundMailbox): Promise<string | null> {
     const row = await this.prisma.graphSubscription.findFirst({
       where: {

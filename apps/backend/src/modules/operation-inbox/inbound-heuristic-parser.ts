@@ -1,5 +1,11 @@
 import { InboundMessage } from '@prisma/client';
-import { extractSubjectHints, stripReplyPrefixes } from './inbound-subject-parser';
+import {
+  mapInboundCategoryToMeridyen,
+  mapInboundLossTypeToMeridyen,
+  parseRemedSubjectLine,
+  sanitizeInboundPhone,
+} from '@sigorta/shared';
+import { extractSubjectHints } from './inbound-subject-parser';
 
 export interface HeuristicExtractedFields {
   customerName?: string | null;
@@ -9,10 +15,13 @@ export interface HeuristicExtractedFields {
   claimNo?: string | null;
   address?: string | null;
   lossType?: string | null;
+  fileSubject?: string | null;
 }
 
 function decodeText(raw: string): string {
   return raw
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/\u00a0/g, ' ')
@@ -27,23 +36,37 @@ function pickField(text: string, label: string): string | undefined {
 }
 
 /** AI çıktısı yokken konu/gövdeden müşteri ve dosya ipuçları çıkarır. */
-export function extractHeuristicFields(message: Pick<InboundMessage, 'subject' | 'bodyText' | 'bodyPreview'>): HeuristicExtractedFields {
-  const text = decodeText([message.bodyText, message.bodyPreview, message.subject].filter(Boolean).join(' '));
+export function extractHeuristicFields(
+  message: Pick<InboundMessage, 'subject' | 'bodyText' | 'bodyPreview' | 'bodyHtml'>,
+): HeuristicExtractedFields {
+  const bodyFromHtml = message.bodyHtml ? decodeText(message.bodyHtml) : '';
+  const text = decodeText(
+    [message.bodyText, bodyFromHtml, message.bodyPreview, message.subject].filter(Boolean).join(' '),
+  );
   const subjectHints = extractSubjectHints(message.subject);
-  const subjectParts = stripReplyPrefixes(message.subject).split('/').map((s) => s.trim());
+  const remed = parseRemedSubjectLine(message.subject);
+
+  const bodyLossType = pickField(text, 'Hasar Şekli') ?? pickField(text, 'Branş');
+  const subjectCategory = remed?.rawCategory;
+  const fileSubject =
+    mapInboundCategoryToMeridyen(subjectCategory)
+    ?? mapInboundCategoryToMeridyen(bodyLossType);
+  const lossType =
+    mapInboundLossTypeToMeridyen(bodyLossType)
+    ?? (fileSubject && subjectCategory ? mapInboundLossTypeToMeridyen(subjectCategory) : undefined);
 
   return {
     customerName:
       pickField(text, 'Sigorta Ettiren Ad-Soyad')
       ?? pickField(text, 'Sigorta Ettiren')
-      ?? (subjectParts[1]?.length > 2 ? subjectParts[1] : undefined),
-    phone: pickField(text, 'İletişim No') ?? pickField(text, 'Telefon'),
-    policyNo: pickField(text, 'Poliçe No') ?? subjectHints.policyNo ?? subjectParts[0],
-    fileNo: pickField(text, 'Dosya No') ?? subjectParts[0],
-    claimNo: pickField(text, 'Referans No') ?? subjectHints.claimNo,
+      ?? remed?.customerName
+      ?? undefined,
+    phone: sanitizeInboundPhone(pickField(text, 'İletişim No') ?? pickField(text, 'Telefon')),
+    policyNo: pickField(text, 'Poliçe No') ?? subjectHints.policyNo ?? remed?.policyNo,
+    fileNo: pickField(text, 'Dosya No') ?? remed?.remedFileNo,
+    claimNo: pickField(text, 'Referans No') ?? remed?.policyNo,
     address: pickField(text, 'Adres'),
-    lossType: pickField(text, 'Hasar Şekli') ?? pickField(text, 'Branş') ?? subjectParts.find(
-      (s) => s !== subjectParts[0] && s !== subjectParts[1],
-    ),
+    lossType: lossType ?? undefined,
+    fileSubject: fileSubject ?? undefined,
   };
 }

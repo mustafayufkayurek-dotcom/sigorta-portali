@@ -84,6 +84,7 @@ import { TimelineModule } from './modules/timeline/timeline.module';
 import { TestNotesModule } from './modules/test-notes/test-notes.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { OperationInboxModule } from './modules/operation-inbox/operation-inbox.module';
+import { OperationalAccessGrantsModule } from './modules/operational-access-grants/operational-access-grants.module';
 import { FieldSurveyBriefsModule } from './modules/field-survey-briefs/field-survey-briefs.module';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -214,6 +215,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     TestNotesModule,
     CrmModule,
     OperationInboxModule,
+    OperationalAccessGrantsModule,
     FieldSurveyBriefsModule,
     CacheModule,
   ],

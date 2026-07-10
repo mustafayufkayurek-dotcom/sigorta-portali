@@ -131,10 +131,53 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
+    const grantRows = data.length > 0
+      ? await this.prisma.operationalAccessGrant.findMany({
+          where: {
+            granteeUserId: { in: data.map((user) => user.id) },
+            isActive: true,
+            validFrom: { lte: new Date() },
+            OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+          },
+          include: {
+            principalUser: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: [{ validFrom: 'desc' }, { createdAt: 'desc' }],
+        })
+      : [];
+
+    const grantsByUserId = new Map<string, typeof grantRows>();
+    for (const grant of grantRows) {
+      const bucket = grantsByUserId.get(grant.granteeUserId) ?? [];
+      bucket.push(grant);
+      grantsByUserId.set(grant.granteeUserId, bucket);
+    }
+
     return {
       data: data.map((u) => {
         const { passwordHash, ...user } = u;
-        return user;
+        const grants = grantsByUserId.get(u.id) ?? [];
+        return {
+          ...user,
+          operationalAccessGrants: grants.map((grant) => ({
+            id: grant.id,
+            scopeType: grant.scopeType,
+            grantType: grant.grantType,
+            accessLevel: grant.accessLevel,
+            validFrom: grant.validFrom.toISOString(),
+            validTo: grant.validTo ? grant.validTo.toISOString() : null,
+            principalUserId: grant.principalUserId,
+            principalUser: grant.principalUser
+              ? {
+                  id: grant.principalUser.id,
+                  firstName: grant.principalUser.firstName,
+                  lastName: grant.principalUser.lastName,
+                }
+              : null,
+          })),
+        };
       }),
       meta: {
         total,
@@ -1320,13 +1363,19 @@ export class UsersService {
       where: { userId },
     });
 
-    if (records.length > 0) {
-      const screens = records.filter((r) => r.canView).map((r) => r.screenCode);
-      return { screens };
+    const defaults = getDefaultScreensForRole(roleCode);
+
+    if (records.length === 0) {
+      return { screens: defaults };
     }
 
-    // Kayıt yoksa role default döndür
-    return { screens: getDefaultScreensForRole(roleCode) };
+    const dbMap = new Map(records.map((r) => [r.screenCode, r.canView]));
+    const screens = ALL_SCREEN_CODES.filter((code) => {
+      if (dbMap.has(code)) return dbMap.get(code) === true;
+      return defaults.includes(code);
+    }).map((code) => String(code));
+
+    return { screens };
   }
 
   async getScreenPermissionsForUser(userId: string, roleCode: string) {

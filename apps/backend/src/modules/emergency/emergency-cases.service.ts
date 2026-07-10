@@ -8,10 +8,18 @@ import { UpdateEmergencyCaseDto } from './dto/update-emergency-case.dto';
 import { UpdateEmergencyStatusDto } from './dto/update-emergency-status.dto';
 import { CreateCostEntryDto } from './dto/create-cost-entry.dto';
 import { UpdateCostEntryDto } from './dto/update-cost-entry.dto';
+import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
+import {
+  findClaimFileIdByCompactFileNo,
+  findEmergencyCaseIdByCompactFileNo,
+} from '@/common/utils/file-no-helpers';
 
 @Injectable()
 export class EmergencyCasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly operationalAccessGrants: OperationalAccessGrantsService,
+  ) {}
 
   private computeOverdueLevel(
     resolvedAt: Date | null,
@@ -58,14 +66,15 @@ export class EmergencyCasesService {
     fileNo: string,
     excludeId?: string,
   ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null }> {
-    const emergencyWhere: any = { fileNo };
-    if (excludeId) emergencyWhere.id = { not: excludeId };
-    const existingEmergency = await this.prisma.emergencyCase.findFirst({
-      where: emergencyWhere,
-      select: { id: true },
-    });
-    if (existingEmergency) {
+    const trimmed = fileNo.trim();
+    const emergencyId = await findEmergencyCaseIdByCompactFileNo(this.prisma, trimmed, excludeId);
+    if (emergencyId) {
       return { exists: true, usedBy: 'acil' };
+    }
+
+    const claimId = await findClaimFileIdByCompactFileNo(this.prisma, trimmed);
+    if (claimId) {
+      return { exists: true, usedBy: 'hasar' };
     }
 
     return { exists: false, usedBy: null };
@@ -138,11 +147,11 @@ export class EmergencyCasesService {
     );
   }
 
-  private buildListScope(
+  private async buildListScope(
     filters: { customerId?: string },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
-  ): Record<string, unknown> {
+  ): Promise<Record<string, unknown>> {
     const where: Record<string, unknown> = {};
     if (filters.customerId) where.customerId = filters.customerId;
 
@@ -157,6 +166,17 @@ export class EmergencyCasesService {
       ];
     }
 
+    if (
+      requestingUser
+      && this.operationalAccessGrants.isDelegationScopedRole(requestingUser.roleCode)
+    ) {
+      const delegationWhere = await this.operationalAccessGrants.buildEmergencyDelegationScope(
+        requestingUser.id,
+        requestingUser.roleCode,
+      );
+      Object.assign(where, delegationWhere);
+    }
+
     if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode) && insuranceCompanyIds?.length) {
       where.customer = {
         claimFiles: { some: { insuranceCompanyId: { in: insuranceCompanyIds } } },
@@ -167,7 +187,12 @@ export class EmergencyCasesService {
   }
 
   private async assertCaseAccess(
-    emergencyCase: { id: string; assignedUserId?: string | null; customerId?: string | null },
+    emergencyCase: {
+      id: string;
+      assignedUserId?: string | null;
+      customerId?: string | null;
+      createdByUserId?: string | null;
+    },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
   ): Promise<void> {
@@ -203,6 +228,23 @@ export class EmergencyCasesService {
         throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
       }
     }
+
+    if (this.operationalAccessGrants.isDelegationScopedRole(requestingUser.roleCode)) {
+      const assignedId = emergencyCase.assignedUserId;
+      if (assignedId === requestingUser.id) return;
+      if (!assignedId && emergencyCase.createdByUserId === requestingUser.id) return;
+      if (!assignedId) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+      const viaDelegation = await this.operationalAccessGrants.canAccessAssignedUserViaDelegation(
+        requestingUser.id,
+        assignedId,
+        'acil_yardim',
+      );
+      if (!viaDelegation) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+    }
   }
 
   async findAll(
@@ -217,7 +259,7 @@ export class EmergencyCasesService {
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
   ) {
-    const where: any = this.buildListScope(
+    const where: any = await this.buildListScope(
       { customerId: filters.customerId },
       requestingUser,
       insuranceCompanyIds,
@@ -281,7 +323,16 @@ export class EmergencyCasesService {
     });
     if (!c) throw new NotFoundException('Acil vaka bulunamadı');
     await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds);
-    return { data: this.enrichCase(c) };
+
+    const activeDelegation = requestingUser
+      ? await this.operationalAccessGrants.resolveDelegationBanner(
+          requestingUser.id,
+          c.assignedUserId,
+          'acil_yardim',
+        )
+      : null;
+
+    return { data: { ...this.enrichCase(c), activeDelegation } };
   }
 
   async update(id: string, dto: UpdateEmergencyCaseDto) {

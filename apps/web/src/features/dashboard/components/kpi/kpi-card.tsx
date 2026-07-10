@@ -42,7 +42,10 @@ export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, h
           <p className="mt-0.5 text-[11px] font-medium leading-tight text-slate-500 dark:text-slate-400 sm:text-xs">{label}</p>
           {subtext && <p className="hidden text-xs text-slate-400 dark:text-slate-500 sm:block">{subtext}</p>}
           {isZeroValue && emptyHint && (
-            <p className="mt-0.5 hidden text-[11px] font-medium text-slate-400 dark:text-slate-500 sm:block">{emptyHint}</p>
+            <p className="mt-0.5 hidden text-[11px] font-medium text-slate-400 dark:text-slate-500 sm:block">
+              {emptyHint}
+              {isInteractive && ' Liste için tıklayın.'}
+            </p>
           )}
         </div>
       </div>

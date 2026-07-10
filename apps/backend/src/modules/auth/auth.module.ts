@@ -7,10 +7,12 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { OperationalAccessGrantsModule } from '../operational-access-grants/operational-access-grants.module';
 
 @Module({
   imports: [
     PassportModule,
+    OperationalAccessGrantsModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { toTitleCaseTR } from '@/utils/text-helpers';
@@ -17,6 +18,8 @@ import { InboxMatchCandidates } from '@/components/operation-inbox/InboxMatchCan
 import { InboxDetailModal } from '@/components/operation-inbox/InboxDetailModal';
 import { InboxOpenFileModal } from '@/components/operation-inbox/InboxOpenFileModal';
 import { buildInboxFileOpenDraft, buildInboxFileOpenDraftFromRow, type InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+import { parseAssigneeAssistantScope } from '@/utils/inbox-assignee-assistant-scope';
+import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import type { EmergencyCase } from '@/utils/emergencyApi';
@@ -96,9 +99,14 @@ interface RoutingSuggestion {
     customer?: CustomerMatchCandidate;
     candidates?: CustomerMatchCandidate[];
   };
+  assistantCustomerMatch?: {
+    status: 'found' | 'ambiguous' | 'not_found';
+    customer?: CustomerMatchCandidate;
+    candidates?: CustomerMatchCandidate[];
+  };
   insuredName?: string | null;
   insuredPhone?: string | null;
-  mailFields?: {
+    mailFields?: {
     insuredName?: string | null;
     insuredPhone?: string | null;
     insuredAddress?: string | null;
@@ -106,13 +114,23 @@ interface RoutingSuggestion {
     policyNo?: string | null;
     claimNo?: string | null;
     lossType?: string | null;
+    fileSubject?: string | null;
     insurer?: string | null;
   } | null;
   warnings: string[];
   confidence: number;
   reasons: string[];
   insuranceCompanyId?: string | null;
+  city?: string | null;
+  district?: string | null;
   escalated?: boolean;
+}
+
+interface AutoAssignPreview {
+  suggestion: RoutingSuggestion;
+  missingFields: string[];
+  departmentCode: string | null;
+  departmentName: string | null;
 }
 
 interface PanelUser {
@@ -507,6 +525,8 @@ function InstructionModal({
 
 export default function GelenKutusuPage() {
   const { showToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<InboundMessageRow[]>([]);
   const [stats, setStats] = useState<InboxStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -554,7 +574,13 @@ export default function GelenKutusuPage() {
   const [policyNoInput, setPolicyNoInput] = useState('');
   const [claimNoInput, setClaimNoInput] = useState('');
   const [lossTypeInput, setLossTypeInput] = useState('');
+  const [fileSubjectInput, setFileSubjectInput] = useState('');
   const [actionDraft, setActionDraft] = useState<InboxFileOpenDraft | null>(null);
+  const [assistantCompanies, setAssistantCompanies] = useState<CustomerMatchCandidate[]>([]);
+  const [selectedAssistantCustomerId, setSelectedAssistantCustomerId] = useState('');
+  const [assigneeAssistantScopeLabel, setAssigneeAssistantScopeLabel] = useState('');
+  const [autoAssignPreview, setAutoAssignPreview] = useState<AutoAssignPreview | null>(null);
+  const [autoAssignLoading, setAutoAssignLoading] = useState(false);
 
   const applyFileOpenDraft = useCallback((draft: InboxFileOpenDraft) => {
     setActionDraft(draft);
@@ -565,19 +591,128 @@ export default function GelenKutusuPage() {
     setPolicyNoInput(draft.policyNo);
     setClaimNoInput(draft.claimNo);
     setLossTypeInput(draft.lossType);
+    setFileSubjectInput(draft.fileSubject);
   }, []);
 
-  const loadPanelUsers = useCallback(async () => {
+  const loadAssistantCompanies = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/users`, {
+      const res = await axios.get(`${API}/customers`, {
         headers: authHeader(),
-        params: { limit: 100 },
+        params: {
+          limit: 200,
+          status: 'active',
+          customerType: 'corporate',
+          subType: ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
+        },
       });
-      setPanelUsers((res.data?.data ?? []) as PanelUser[]);
+      const list = (res.data?.data ?? res.data ?? []) as Array<{
+        id: string;
+        companyName?: string | null;
+        fullName?: string | null;
+      }>;
+      setAssistantCompanies(
+        Array.isArray(list)
+          ? list
+              .map((row) => ({
+                id: row.id,
+                name: row.companyName?.trim() || row.fullName?.trim() || 'Asistan Firması',
+              }))
+              .filter((row) => row.name)
+              .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+          : [],
+      );
+    } catch {
+      setAssistantCompanies([]);
+    }
+  }, []);
+
+  const loadAssigneeAssistantScope = useCallback(async (userId: string) => {
+    if (!userId) {
+      setAssigneeAssistantScopeLabel('');
+      return;
+    }
+    try {
+      const res = await axios.get(`${API}/claim-responsibilities`, {
+        headers: authHeader(),
+        params: { userId, isActive: true },
+      });
+      const rows = (res.data?.data ?? res.data ?? []) as Array<Record<string, unknown>>;
+      const nameById = new Map(assistantCompanies.map((c) => [c.id, c.name]));
+      const scope = parseAssigneeAssistantScope(rows, nameById);
+      setAssigneeAssistantScopeLabel(scope.label);
+    } catch {
+      setAssigneeAssistantScopeLabel('');
+    }
+  }, [assistantCompanies]);
+
+  const loadPanelUsers = useCallback(async (messageId?: string) => {
+    try {
+      const listParams = messageId ? { messageId } : undefined;
+      const usersRes = await apiClient.get<{ users: PanelUser[] }>(
+        '/operation-inbox/assignable-users',
+        listParams,
+      );
+      const baseUsers = usersRes.users ?? [];
+      try {
+        const delegatesRes = await axios.get(`${API}/operational-access-grants/function-delegates`, {
+          headers: authHeader(),
+          params: { scopeType: 'acil_yardim' },
+        });
+        const delegates = (delegatesRes.data?.data ?? []) as PanelUser[];
+        const seen = new Set(baseUsers.map((u) => u.id));
+        const merged = [...baseUsers];
+        for (const delegate of delegates) {
+          if (!seen.has(delegate.id)) {
+            merged.push(delegate);
+            seen.add(delegate.id);
+          }
+        }
+        setPanelUsers(merged);
+      } catch {
+        setPanelUsers(baseUsers);
+      }
     } catch {
       setPanelUsers([]);
     }
   }, []);
+
+  const applyRoutingFromSuggestion = useCallback((routing: RoutingSuggestion) => {
+    setActionRouting(routing);
+    setSelectedAssigneeId(routing.suggestedAssigneeId ?? '');
+    if (routing.customerMatch.status === 'found' && routing.customerMatch.customer) {
+      setSelectedCustomerId(routing.customerMatch.customer.id);
+      setCreateNewCustomer(false);
+    } else if (routing.customerMatch.status === 'not_found') {
+      setSelectedCustomerId('');
+      setCreateNewCustomer(true);
+    } else {
+      setSelectedCustomerId('');
+      setCreateNewCustomer(false);
+    }
+    if (routing.insuranceCompanyId) {
+      setInsuranceCompanyId(routing.insuranceCompanyId);
+    }
+    const assistantMatch = routing.assistantCustomerMatch;
+    if (assistantMatch?.status === 'found' && assistantMatch.customer) {
+      setSelectedAssistantCustomerId(assistantMatch.customer.id);
+    } else if (assistantMatch?.status === 'ambiguous' && assistantMatch.candidates?.length === 1) {
+      setSelectedAssistantCustomerId(assistantMatch.candidates[0].id);
+    }
+    if (routing.suggestedAssigneeId) {
+      void loadAssigneeAssistantScope(routing.suggestedAssigneeId);
+    }
+    const mf = routing.mailFields;
+    if (mf) {
+      if (mf.insuredName?.trim()) setInsuredNameInput(toTitleCaseTR(mf.insuredName.trim()));
+      if (mf.insuredPhone?.trim()) setInsuredPhoneInput(mf.insuredPhone.trim());
+      if (mf.insuredAddress?.trim()) setInsuredAddressInput(toTitleCaseTR(mf.insuredAddress.trim()));
+      if (mf.fileNo?.trim()) setFileNoInput(mf.fileNo.trim());
+      if (mf.policyNo?.trim()) setPolicyNoInput(mf.policyNo.trim());
+      if (mf.claimNo?.trim()) setClaimNoInput(mf.claimNo.trim());
+      if (mf.fileSubject?.trim()) setFileSubjectInput(toTitleCaseTR(mf.fileSubject.trim()));
+      if (mf.lossType?.trim()) setLossTypeInput(toTitleCaseTR(mf.lossType.trim()));
+    }
+  }, [loadAssigneeAssistantScope]);
 
   const loadActionContext = useCallback(async (messageId: string, rowFallback?: InboundMessageRow) => {
     setRoutingLoading(true);
@@ -629,21 +764,8 @@ export default function GelenKutusuPage() {
       setActionError('');
 
       if (routing) {
-        setActionRouting(routing);
-        setSelectedAssigneeId(routing.suggestedAssigneeId ?? '');
-        if (routing.customerMatch.status === 'found' && routing.customerMatch.customer) {
-          setSelectedCustomerId(routing.customerMatch.customer.id);
-          setCreateNewCustomer(false);
-        } else if (routing.customerMatch.status === 'not_found') {
-          setSelectedCustomerId('');
-          setCreateNewCustomer(true);
-        } else {
-          setSelectedCustomerId('');
-          setCreateNewCustomer(false);
-        }
-        if (routing.insuranceCompanyId) {
-          setInsuranceCompanyId(routing.insuranceCompanyId);
-        } else if (draft.insurer && insuranceCompanies.length > 0) {
+        applyRoutingFromSuggestion(routing);
+        if (!routing.insuranceCompanyId && draft.insurer && insuranceCompanies.length > 0) {
           const match = insuranceCompanies.find(
             (c) => c.name.toLowerCase().includes(draft.insurer!.toLowerCase().slice(0, 6))
               || draft.insurer!.toLowerCase().includes(c.name.toLowerCase().slice(0, 6)),
@@ -667,7 +789,7 @@ export default function GelenKutusuPage() {
     } finally {
       setRoutingLoading(false);
     }
-  }, [applyFileOpenDraft, insuranceCompanies]);
+  }, [applyFileOpenDraft, applyRoutingFromSuggestion, insuranceCompanies]);
 
   const loadRoutingSuggestion = useCallback(async (messageId: string) => {
     setRoutingLoading(true);
@@ -736,6 +858,14 @@ export default function GelenKutusuPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const messageId = searchParams.get('messageId')?.trim();
+    if (!messageId) return;
+    setDetailModalId(messageId);
+    setActionQueueFilter(false);
+    router.replace('/panel/operasyon/gelen-kutusu', { scroll: false });
+  }, [searchParams, router]);
+
   const handleReprocessMatching = async () => {
     setReprocessing(true);
     try {
@@ -783,6 +913,8 @@ export default function GelenKutusuPage() {
     setSelectedAssigneeId('');
     setSelectedCustomerId('');
     setCreateNewCustomer(!!options?.prefillCustomer);
+    setSelectedAssistantCustomerId('');
+    setAssigneeAssistantScopeLabel('');
 
     const row = options?.row ?? items.find((i) => i.id === messageId);
     if (kind === 'claim' || kind === 'emergency') {
@@ -804,6 +936,7 @@ export default function GelenKutusuPage() {
           claimNo: '',
           policyNo: '',
           lossType: '',
+          fileSubject: '',
           insuredName: '',
           insuredPhone: '',
           insuredAddress: '',
@@ -816,9 +949,10 @@ export default function GelenKutusuPage() {
       setInsuranceCompanyId('');
     }
     if (kind === 'claim' || kind === 'emergency') {
-      void loadPanelUsers();
+      void loadPanelUsers(messageId);
       void (async () => {
         if (kind === 'claim') await loadInsuranceCompanies();
+        if (kind === 'emergency') await loadAssistantCompanies();
         const ctx = await loadActionContext(messageId, row);
         if (options?.prefillCustomer && ctx?.routing?.customerMatch.status === 'not_found') {
           setCreateNewCustomer(true);
@@ -836,6 +970,8 @@ export default function GelenKutusuPage() {
     setSelectedAssigneeId('');
     setSelectedCustomerId('');
     setCreateNewCustomer(false);
+    setSelectedAssistantCustomerId('');
+    setAssigneeAssistantScopeLabel('');
     setInsuredNameInput('');
     setInsuredPhoneInput('');
     setInsuredAddressInput('');
@@ -843,7 +979,38 @@ export default function GelenKutusuPage() {
     setPolicyNoInput('');
     setClaimNoInput('');
     setLossTypeInput('');
+    setFileSubjectInput('');
     setActionDraft(null);
+    setAutoAssignPreview(null);
+    setAutoAssignLoading(false);
+  };
+
+  const handleRequestAutoAssign = async () => {
+    if (!actionModal) return;
+    setAutoAssignLoading(true);
+    setActionError('');
+    try {
+      const preview = await apiClient.get<AutoAssignPreview>(
+        `/operation-inbox/messages/${actionModal.messageId}/auto-assign-preview`,
+      );
+      setAutoAssignPreview(preview);
+    } catch {
+      setActionError('Otomatik atama önerisi alınamadı.');
+      setAutoAssignPreview(null);
+    } finally {
+      setAutoAssignLoading(false);
+    }
+  };
+
+  const handleAcceptAutoAssign = () => {
+    if (!autoAssignPreview) return;
+    applyRoutingFromSuggestion(autoAssignPreview.suggestion);
+    setAutoAssignPreview(null);
+    showToast('success', 'Atama önerisi uygulandı. Bilgileri kontrol edip dosyayı açın.');
+  };
+
+  const handleRejectAutoAssign = () => {
+    setAutoAssignPreview(null);
   };
 
   const openLinkModal = (row: InboundMessageRow) => {
@@ -989,6 +1156,11 @@ export default function GelenKutusuPage() {
       return;
     }
 
+    if (actionModal.kind === 'emergency' && !selectedAssistantCustomerId.trim()) {
+      setActionError('Acil yardım dosyası için asistan firması seçilmelidir.');
+      return;
+    }
+
     setActionLoading(true);
     setActionError('');
     try {
@@ -1001,6 +1173,7 @@ export default function GelenKutusuPage() {
         policyNo: policyNoInput.trim() || undefined,
         claimNo: claimNoInput.trim() || undefined,
         lossType: toTitleCaseTR(lossTypeInput.trim()) || undefined,
+        fileSubject: toTitleCaseTR(fileSubjectInput.trim()) || undefined,
       };
       const { firstName, lastName } = parseSenderPersonName(insuredName);
       const customerPayload = createNewCustomer
@@ -1037,8 +1210,8 @@ export default function GelenKutusuPage() {
           `/operation-inbox/messages/${actionModal.messageId}/open-emergency-file`,
           {
             instruction: trimmed,
+            assistantCustomerId: selectedAssistantCustomerId.trim(),
             ...assigneePayload,
-            ...customerPayload,
             ...fileFieldsPayload,
           },
         );
@@ -1205,7 +1378,10 @@ export default function GelenKutusuPage() {
         users={panelUsers}
         usersLoading={routingLoading}
         selectedAssigneeId={selectedAssigneeId}
-        onAssigneeChange={setSelectedAssigneeId}
+        onAssigneeChange={(userId) => {
+          setSelectedAssigneeId(userId);
+          void loadAssigneeAssistantScope(userId);
+        }}
         selectedCustomerId={selectedCustomerId}
         onCustomerChange={setSelectedCustomerId}
         createNewCustomer={createNewCustomer}
@@ -1224,10 +1400,27 @@ export default function GelenKutusuPage() {
         onClaimNoChange={setClaimNoInput}
         lossType={lossTypeInput}
         onLossTypeChange={setLossTypeInput}
+        fileSubject={fileSubjectInput}
+        onFileSubjectChange={setFileSubjectInput}
         insuranceCompanies={insuranceCompanies}
         insuranceCompanyId={insuranceCompanyId}
         onInsuranceCompanyChange={setInsuranceCompanyId}
         insuranceRequired={insuranceCompanies.length > 1}
+        assistantCompanies={assistantCompanies}
+        selectedAssistantCustomerId={selectedAssistantCustomerId}
+        onAssistantCustomerChange={setSelectedAssistantCustomerId}
+        assigneeAssistantScopeLabel={assigneeAssistantScopeLabel}
+        missingFields={
+          autoAssignPreview?.missingFields
+          ?? actionRouting?.warnings
+            .filter((w) => w.startsWith('Eksik bilgi:'))
+            .map((w) => w.replace('Eksik bilgi: ', ''))
+        }
+        autoAssignPreview={autoAssignPreview}
+        autoAssignLoading={autoAssignLoading}
+        onRequestAutoAssign={handleRequestAutoAssign}
+        onAcceptAutoAssign={handleAcceptAutoAssign}
+        onRejectAutoAssign={handleRejectAutoAssign}
         onConfirm={handleActionConfirm}
         onCancel={closeActionModal}
       />

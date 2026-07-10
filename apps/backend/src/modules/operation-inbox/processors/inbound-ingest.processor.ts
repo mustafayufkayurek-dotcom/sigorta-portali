@@ -12,6 +12,7 @@ import { SystemSettingsService } from '../../system-settings/system-settings.ser
 import { GraphAuthService } from '../graph/graph-auth.service';
 import {
   GraphAttachment,
+  DeltaPageResult,
   GraphMailSyncService,
   GraphMessage,
 } from '../graph/graph-mail-sync.service';
@@ -47,6 +48,21 @@ export class InboundIngestProcessor {
   @Process(INGEST_JOB_SYNC_MAILBOX)
   async handleSyncMailbox(job: Job<SyncMailboxJobData>) {
     const { mailbox, nextLink, pageCount = 0 } = job.data;
+    try {
+      return await this.runSyncMailbox(job, mailbox, nextLink, pageCount);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`${mailbox}: senkron başarısız — ${message}`);
+      throw err;
+    }
+  }
+
+  private async runSyncMailbox(
+    job: Job<SyncMailboxJobData>,
+    mailbox: InboundMailbox,
+    nextLink: string | undefined,
+    pageCount: number,
+  ) {
 
     const config = await this.systemSettings.getM365GraphConfig();
     if (!config.tenantId || !config.clientId || !config.clientSecret) {
@@ -72,7 +88,22 @@ export class InboundIngestProcessor {
       }
     }
 
-    const page = await this.graphSync.fetchDeltaPage(token, fetchUrl);
+    let page: DeltaPageResult;
+    try {
+      page = await this.graphSync.fetchDeltaPage(token, fetchUrl);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!this.graphSync.isStaleDeltaError(message)) {
+        throw err;
+      }
+      this.logger.warn(`${mailbox}: delta link geçersiz — sıfırlanıp yeniden taranıyor`);
+      await this.graphSync.clearDeltaLink(mailbox);
+      const restartUrl = this.graphSync.buildInitialDeltaUrl(mailboxAddress);
+      this.logger.log(
+        `${mailbox}: ilk delta senkron (${INBOUND_SYNC_CUTOFF_ISO} sonrası, tur başına en fazla ${SYNC_MAX_PAGES_PER_JOB} sayfa)`,
+      );
+      page = await this.graphSync.fetchDeltaPage(token, restartUrl);
+    }
 
     let created = 0;
     let updated = 0;

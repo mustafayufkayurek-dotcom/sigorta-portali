@@ -396,6 +396,32 @@ async function main() {
   });
   console.log('✅ Created/updated insurance company user (sigorta@example.com / admin123)');
 
+  // Yerel geliştirme: acil yardım asistan firmaları (davet + gelen kutusu kapsamı)
+  const assistantFirmSeeds = [
+    {
+      taxNumber: '7340735275',
+      companyName: 'Remed Uluslararası Destek Ve Danışmanlık Hizmetleri Tic. A.Ş.',
+    },
+  ];
+  for (const firm of assistantFirmSeeds) {
+    const existing = await prisma.customer.findFirst({ where: { taxNumber: firm.taxNumber } });
+    const data = {
+      type: 'kurumsal',
+      entityType: 'corporate',
+      subType: 'asistan_firmasi',
+      companyName: firm.companyName,
+      fullName: firm.companyName,
+      serviceType: 'acil_yardim',
+      status: 'active',
+    };
+    if (existing) {
+      await prisma.customer.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.customer.create({ data: { ...data, taxNumber: firm.taxNumber } });
+    }
+  }
+  console.log(`✅ Created/updated ${assistantFirmSeeds.length} acil yardım asistan firması (yerel seed)`);
+
   await seedPilotOperationData(prisma);
 
   // Demo sigorta portal kullanıcısına pilot şirket kapsamı (ALLIANZ_DEMO dosyaları)

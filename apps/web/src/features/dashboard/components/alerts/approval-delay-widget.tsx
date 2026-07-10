@@ -48,7 +48,12 @@ export function ApprovalDelayWidget({ staggerIndex = 0 }: ApprovalDelayWidgetPro
       {isLoading || isFetching ? (
         <WidgetSkeleton rows={3} className="min-h-[200px]" />
       ) : total === 0 ? (
-        <WidgetEmpty icon={FileCheck} message="Geciken onay bekleyen dosya bulunmuyor." />
+        <WidgetEmpty
+          icon={FileCheck}
+          message="Geciken onay bekleyen dosya bulunmuyor. Atanan hasar dosyalarınızı kontrol edebilirsiniz."
+          actionLabel="Hasar Dosyalarına Git"
+          actionHref="/panel/hasar-dosyalari"
+        />
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

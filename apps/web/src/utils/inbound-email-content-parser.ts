@@ -1,12 +1,21 @@
 /** E-posta gövdesi ve konusundan okunabilir alanlar çıkarır (Remed / sigorta ihbar formları). */
 
+import {
+  mapInboundCategoryToMeridyen,
+  mapInboundLossTypeToMeridyen,
+  parseRemedSubjectLine,
+  sanitizeInboundPhone,
+} from '@sigorta/shared';
+
 export type InboxSenderProfile = 'remed' | 'safran' | 'insurance' | 'unknown';
 
 export interface ParsedSubjectParts {
   fileOrPolicyNo?: string;
   customerName?: string;
   claimNo?: string;
+  remedFileNo?: string;
   category?: string;
+  fileSubject?: string;
 }
 
 export interface ParsedFormField {
@@ -29,9 +38,8 @@ export interface ParsedInboxEmailContent {
   address?: string;
   insurer?: string;
   category?: string;
+  fileSubject?: string;
 }
-
-const REPLY_PREFIX = /^(?:(?:Ynt|Re|Fwd|İlt|Yanıt):\s*)+/i;
 
 const FORM_FIELD_LABELS: { key: string; label: string }[] = [
   { key: 'insurer', label: 'Sigorta Şirketi' },
@@ -77,20 +85,17 @@ export function decodeEmailText(raw: string): string {
 }
 
 export function parseSubjectParts(subject: string): ParsedSubjectParts | undefined {
-  const cleaned = subject.replace(REPLY_PREFIX, '').trim();
-  const segments = cleaned.split('/').map((s) => s.trim()).filter(Boolean);
-  if (segments.length < 2) return undefined;
-
-  const fileOrPolicyNo = /^\d{6,12}$/.test(segments[0]) ? segments[0] : undefined;
-  const customerName = segments[1]?.length > 2 ? segments[1] : undefined;
-  const claimSegment = segments.find((s) => /^RCS-/i.test(s) || /^\d{9,12}$/.test(s));
-  const claimNo = claimSegment?.replace(/^RCS-/i, '') ?? undefined;
-  const category = segments.find(
-    (s) => s !== segments[0] && s !== segments[1] && s !== claimSegment,
-  );
-
-  if (!fileOrPolicyNo && !customerName && !claimNo) return undefined;
-  return { fileOrPolicyNo, customerName, claimNo: claimNo ? `RCS-${claimNo.replace(/^RCS-/i, '')}` : undefined, category };
+  const remed = parseRemedSubjectLine(subject);
+  if (!remed) return undefined;
+  if (!remed.policyNo && !remed.customerName && !remed.remedFileNo) return undefined;
+  return {
+    fileOrPolicyNo: remed.policyNo,
+    customerName: remed.customerName,
+    remedFileNo: remed.remedFileNo,
+    claimNo: remed.remedFileNo,
+    category: remed.rawCategory,
+    fileSubject: remed.fileSubject,
+  };
 }
 
 function extractFormFields(text: string): ParsedFormField[] {
@@ -193,18 +198,25 @@ export function parseInboundEmailContent(input: {
     ?? fieldMap.get('sigorta ettiren')
     ?? subjectParts?.customerName;
 
-  const phone =
+  const phone = sanitizeInboundPhone(
     fieldMap.get('i̇letişim no')
     ?? fieldMap.get('iletisim no')
-    ?? fieldMap.get('telefon');
+    ?? fieldMap.get('telefon'),
+  );
 
-  const fileNo = fieldMap.get('dosya no') ?? subjectParts?.fileOrPolicyNo;
+  const fileNo = fieldMap.get('dosya no') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
   const policyNo = fieldMap.get('poliçe no') ?? subjectParts?.fileOrPolicyNo;
-  const claimRaw = fieldMap.get('referans no') ?? subjectParts?.claimNo;
+  const claimRaw = fieldMap.get('referans no') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
   const claimNo = normalizeClaimNo(claimRaw);
   const address = fieldMap.get('adres');
   const insurer = fieldMap.get('sigorta şirketi');
-  const category = fieldMap.get('hasar şekli') ?? fieldMap.get('branş') ?? subjectParts?.category;
+  const bodyCategory = fieldMap.get('hasar şekli') ?? fieldMap.get('branş');
+  const category = bodyCategory ?? subjectParts?.category;
+  const fileSubject =
+    subjectParts?.fileSubject
+    ?? mapInboundCategoryToMeridyen(subjectParts?.category)
+    ?? mapInboundCategoryToMeridyen(bodyCategory);
+  const normalizedLossType = mapInboundLossTypeToMeridyen(bodyCategory) ?? mapInboundLossTypeToMeridyen(subjectParts?.category);
   const description = fieldMap.get('açıklama') ?? fieldMap.get('hasar açıklaması');
 
   return {
@@ -221,7 +233,8 @@ export function parseInboundEmailContent(input: {
     policyNo,
     address,
     insurer,
-    category,
+    category: normalizedLossType ?? category,
+    fileSubject,
   };
 }
 
@@ -239,6 +252,7 @@ export function buildSummaryFields(parsed: ParsedInboxEmailContent): ParsedFormF
   push('Referans No', parsed.claimNo);
   push('Poliçe No', parsed.policyNo);
   push('İletişim No', parsed.phone);
+  push('Dosya Konusu', parsed.fileSubject);
   push('Hasar Şekli', parsed.category);
   push('Adres', parsed.address);
   push('Açıklama', parsed.description);

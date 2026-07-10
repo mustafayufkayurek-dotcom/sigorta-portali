@@ -163,7 +163,7 @@ export class SystemSettingsController {
   }
 
   @Get('work-group-fields')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('settings.view', 'report.view', 'report.create')
   @ApiOperation({ summary: 'İş grubu alan zorunluluklarını getir' })
   async getWorkGroupFields() {
     const data = await this.service.getWorkGroupFields();
@@ -179,7 +179,7 @@ export class SystemSettingsController {
   }
 
   @Get('work-sub-group-fields')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('settings.view', 'report.view', 'report.create')
   @ApiOperation({ summary: 'İş alt grubu alan zorunluluklarını getir' })
   async getWorkSubGroupFields() {
     const data = await this.service.getWorkSubGroupFields();
@@ -195,7 +195,7 @@ export class SystemSettingsController {
   }
 
   @Get('unit-options')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('settings.view', 'report.view', 'report.create')
   @ApiOperation({ summary: 'Birim seçeneklerini getir' })
   async getUnitOptions() {
     const data = await this.service.getUnitOptions();

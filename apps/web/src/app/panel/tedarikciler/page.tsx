@@ -1468,13 +1468,17 @@ export default function VendorsPage() {
     const loadEffectiveType = typeIsPreset ? rawType : rawType;
     const loadHizmetMode = loadEffectiveType ? resolveVendorTypeHizmetMode(loadEffectiveType) : null;
     const loadCategory = (['hasar', 'acil', 'her_ikisi'].includes(v.category) ? v.category : 'hasar') as VendorCategory;
+    const individualNameParts = (v.entityType === 'individual' ? (v.name ?? '') : '').trim().split(/\s+/);
     setForm({
       entityType: (v.entityType as 'corporate' | 'individual') || 'corporate',
       name: v.name,
       type: typeIsPreset ? rawType : 'Diğer',
       taxNumber: v.taxNumber ?? '',
       taxOffice: v.taxOffice ?? '', tradeRegistryNo: v.tradeRegistryNo ?? '',
-      identityNo: v.identityNo ?? '', firstName: v.firstName ?? '', lastName: v.lastName ?? '', birthDate: '',
+      identityNo: v.identityNo ?? '',
+      firstName: v.entityType === 'individual' ? (individualNameParts[0] ?? '') : (v.firstName ?? ''),
+      lastName: v.entityType === 'individual' ? individualNameParts.slice(1).join(' ') : (v.lastName ?? ''),
+      birthDate: '',
       phone: v.phone ?? '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: v.email ?? '',
       cityCode: matchedProv?.code ?? '', city: v.city ?? '', district: v.district ?? '',
       neighborhood: v.neighborhood ?? '', streetName: v.streetName ?? '',
@@ -1629,8 +1633,6 @@ export default function VendorsPage() {
         payload.taxOffice = form.taxOffice || null;
         payload.tradeRegistryNo = form.tradeRegistryNo || null;
       } else {
-        payload.firstName = form.firstName || null;
-        payload.lastName = form.lastName || null;
         payload.name = `${form.firstName} ${form.lastName}`.trim() || form.name;
         payload.identityNo = form.identityNo || null;
       }

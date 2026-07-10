@@ -13,6 +13,7 @@ export interface InboxMailFields {
   policyNo?: string | null;
   claimNo?: string | null;
   lossType?: string | null;
+  fileSubject?: string | null;
   insurer?: string | null;
 }
 
@@ -28,6 +29,7 @@ export interface InboxFileOpenDraft {
   claimNo: string;
   policyNo: string;
   lossType: string;
+  fileSubject: string;
   insuredName: string;
   insuredPhone: string;
   insuredAddress: string;
@@ -76,10 +78,11 @@ export function buildInboxFileOpenDraft(
   const mf = routing?.mailFields;
   const insuredNameRaw = mergeField(mf?.insuredName, routing?.insuredName, parsed.customerName);
   const insuredPhoneRaw = mergeField(mf?.insuredPhone, routing?.insuredPhone, parsed.phone);
-  const fileNoRaw = mergeField(mf?.fileNo, parsed.fileNo, parsed.policyNo);
-  const claimNoRaw = mergeField(mf?.claimNo, parsed.claimNo);
+  const fileNoRaw = mergeField(mf?.fileNo, parsed.fileNo);
+  const claimNoRaw = mergeField(mf?.claimNo, parsed.policyNo, parsed.claimNo);
   const policyNoRaw = mergeField(mf?.policyNo, parsed.policyNo);
   const addressRaw = mergeField(mf?.insuredAddress, parsed.address);
+  const fileSubjectRaw = mergeField(mf?.fileSubject, parsed.fileSubject);
   const lossTypeRaw = mergeField(mf?.lossType, parsed.category);
   const insurerRaw = mergeField(mf?.insurer, parsed.insurer);
 
@@ -95,6 +98,7 @@ export function buildInboxFileOpenDraft(
     claimNo: claimNoRaw,
     policyNo: policyNoRaw,
     lossType: lossTypeRaw ? toTitleCaseTR(lossTypeRaw) : '',
+    fileSubject: fileSubjectRaw ? toTitleCaseTR(fileSubjectRaw) : '',
     insuredName: insuredNameRaw ? toTitleCaseTR(insuredNameRaw) : '',
     insuredPhone: insuredPhoneRaw,
     insuredAddress: addressRaw ? toTitleCaseTR(addressRaw) : '',
@@ -134,6 +138,9 @@ export function applyMailFieldsToDraft(
     lossType: fields.lossType?.trim()
       ? toTitleCaseTR(fields.lossType.trim())
       : draft.lossType,
+    fileSubject: fields.fileSubject?.trim()
+      ? toTitleCaseTR(fields.fileSubject.trim())
+      : draft.fileSubject,
     insurer: fields.insurer?.trim()
       ? toTitleCaseTR(fields.insurer.trim())
       : draft.insurer,

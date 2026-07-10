@@ -24,6 +24,7 @@ import {
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
+import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -569,6 +570,11 @@ function DosyadaKimlerVarCard({
           </div>
           {activePanel === 'office' && (
             <p className="mt-2 text-[11px] font-medium text-blue-600">Atama paneli açık ↓</p>
+          )}
+          {claim.activeDelegation && (
+            <div className="mt-2.5">
+              <DelegationBanner delegation={claim.activeDelegation} />
+            </div>
           )}
         </div>
 

@@ -12,6 +12,11 @@ import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { CacheService } from '@/cache/cache.service';
 import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
+import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
+import {
+  findClaimFileIdByCompactFileNo,
+  findEmergencyCaseIdByCompactFileNo,
+} from '@/common/utils/file-no-helpers';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -123,6 +128,7 @@ export class ClaimFilesService {
     @Optional() private readonly smsService?: SmsService,
     @Optional() private readonly templateService?: MessageTemplateService,
     @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
+    @Optional() private readonly operationalAccessGrants?: OperationalAccessGrantsService,
   ) {}
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
@@ -288,6 +294,15 @@ export class ClaimFilesService {
       baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
 
+    const normalizedUser = normalizeRequestUser(requestingUser);
+    if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
+      const delegationWhere = await this.operationalAccessGrants.buildClaimFileDelegationScope(
+        normalizedUser.id,
+        normalizedUser.roleCode,
+      );
+      Object.assign(baseWhere, delegationWhere);
+    }
+
     const where = applyClaimFileListScope(
       baseWhere,
       requestingUser,
@@ -394,6 +409,32 @@ export class ClaimFilesService {
     }
     assertClaimFileAccess(claimFile, normalizedUser, insuranceCompanyIds);
 
+    if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
+      const assignedId = claimFile.assignedOfficeUserId;
+      if (assignedId && assignedId !== normalizedUser.id) {
+        const viaDelegation = await this.operationalAccessGrants.canAccessAssignedUserViaDelegation(
+          normalizedUser.id,
+          assignedId,
+          'hasar',
+        );
+        if (!viaDelegation) {
+          throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+        }
+      } else if (!assignedId) {
+        const createdBySelf = await this.prisma.claimStatusHistory.findFirst({
+          where: {
+            claimFileId: claimFile.id,
+            changedByUserId: normalizedUser.id,
+            note: 'Dosya oluşturuldu',
+          },
+          select: { id: true },
+        });
+        if (!createdBySelf) {
+          throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+        }
+      }
+    }
+
     if (normalizedUser?.roleCode === 'expert') {
       const hasExpertAccess =
         claimFile.assignedAdjusterId === normalizedUser.id ||
@@ -414,9 +455,18 @@ export class ClaimFilesService {
     });
     const latestReport = pickPreferredRepairReport(reports);
 
+    const activeDelegation = normalizedUser && this.operationalAccessGrants
+      ? await this.operationalAccessGrants.resolveDelegationBanner(
+          normalizedUser.id,
+          claimFile.assignedOfficeUserId,
+          'hasar',
+        )
+      : null;
+
     return {
       ...claimFile,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
+      activeDelegation,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
       canViewFinancials: requestingUser
         ? canViewFileFinancials(requestingUser, claimFile)
@@ -507,6 +557,16 @@ export class ClaimFilesService {
       let resolvedDepartmentId = departmentId ?? null;
       if (!resolvedDepartmentId && sourceChannel !== 'expert_portal') {
         resolvedDepartmentId = await this.resolveHasarDepartmentId();
+      }
+
+      const normalizedRoleCode = String(roleCode ?? '').trim().toLowerCase();
+      if (
+        !assignedOfficeUserId
+        && !rest.assignedFieldUserId
+        && expertUserId
+        && this.operationalAccessGrants?.isDelegationScopedRole(normalizedRoleCode)
+      ) {
+        assignedOfficeUserId = expertUserId;
       }
 
       if (
@@ -1114,14 +1174,22 @@ export class ClaimFilesService {
     excludeId?: string,
     excludeType?: 'hasar' | 'acil',
   ): Promise<{ exists: boolean; usedBy: 'hasar' | 'acil' | null; matchedRecord?: { id: string; status?: string } | null }> {
-    const claimWhere: any = { fileNo };
-    if (excludeType === 'hasar' && excludeId) claimWhere.id = { not: excludeId };
-    const existingClaim = await this.prisma.claimFile.findFirst({
-      where: claimWhere,
-      select: { id: true },
-    });
-    if (existingClaim) {
-      return { exists: true, usedBy: 'hasar', matchedRecord: { id: existingClaim.id } };
+    const trimmed = fileNo.trim();
+    const claimExcludeId = excludeType === 'hasar' ? excludeId : undefined;
+    const emergencyExcludeId = excludeType === 'acil' ? excludeId : undefined;
+
+    const existingClaimId = await findClaimFileIdByCompactFileNo(this.prisma, trimmed, claimExcludeId);
+    if (existingClaimId) {
+      return { exists: true, usedBy: 'hasar', matchedRecord: { id: existingClaimId } };
+    }
+
+    const existingEmergencyId = await findEmergencyCaseIdByCompactFileNo(
+      this.prisma,
+      trimmed,
+      emergencyExcludeId,
+    );
+    if (existingEmergencyId) {
+      return { exists: true, usedBy: 'acil', matchedRecord: { id: existingEmergencyId } };
     }
 
     return { exists: false, usedBy: null, matchedRecord: null };

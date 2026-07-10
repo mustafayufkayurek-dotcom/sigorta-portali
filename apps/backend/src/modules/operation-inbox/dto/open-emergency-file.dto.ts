@@ -16,6 +16,11 @@ export class OpenEmergencyFileDto {
   @IsOptional()
   assignedVendorId?: string;
 
+  /** Acil yardım dosyasının bağlı olduğu asistan firması (EmergencyCase.customerId) */
+  @IsString()
+  @IsNotEmpty({ message: 'Asistan firması seçilmelidir' })
+  assistantCustomerId!: string;
+
   @IsString()
   @IsOptional()
   customerId?: string;
@@ -47,6 +52,10 @@ export class OpenEmergencyFileDto {
   @IsString()
   @IsOptional()
   lossType?: string;
+
+  @IsString()
+  @IsOptional()
+  fileSubject?: string;
 
   @IsOptional()
   @ValidateNested()

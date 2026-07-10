@@ -20,19 +20,28 @@ import {
 } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import {
   canAccessAcilYardim,
+  canAccessAcilYardimRoute,
   userOperationArea,
+  type OperationalAccessGrantSummary,
 } from '@/utils/panel-access';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
+import { getDefaultScreensForRole } from '@/utils/screen-permissions-defaults';
 import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
 import { PanelSidebarGuideFooter } from '@/components/panel/PanelSidebarGuideFooter';
+import { PanelSidebarBrand } from '@/components/panel/PanelSidebarBrand';
+import { PanelUserProvider } from '@/contexts/PanelUserContext';
+import { applyPanelThemeToDocument, type StoredThemeConfig } from '@/utils/panel-time-theme';
 import PortalBottomNav from '@/components/portal/PortalBottomNav';
 import {
-  resolvePanelUserGuide,
-} from '@/config/panel-user-guide';
+  PANEL_MAIN_TOP,
+  PANEL_NAVBAR_HEIGHT,
+  PANEL_SIDEBAR_STICKY_TOP,
+} from '@/config/panel-layout-spacing';
+import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
   getExpertPortalNav,
   getInsurancePortalNav,
@@ -82,6 +91,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
+  { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -92,9 +102,15 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
 ];
 
-function hasRouteAccess(pathname: string, roleCode: string, operationArea: OperationAreaCode = ''): boolean {
+function hasRouteAccess(
+  pathname: string,
+  roleCode: string,
+  operationArea: OperationAreaCode = '',
+  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
+  allowedScreens?: string[] | null,
+): boolean {
   if (pathname === '/panel/acil-yardim' || pathname.startsWith('/panel/acil-yardim/')) {
-    return canAccessAcilYardim(roleCode, operationArea);
+    return canAccessAcilYardimRoute(pathname, roleCode, operationArea, operationalAccessGrants, allowedScreens);
   }
 
   const matching = ROUTE_ACCESS
@@ -125,6 +141,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
+  { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -292,9 +309,10 @@ function getPanelMainLinks({
           ]
       : isFinance
         ? [
-            { title: 'Finans Özeti', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
+            { title: 'Finans Merkezi', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
             { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
             { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
+            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -353,7 +371,7 @@ function Navbar({
   pendingRevisionCount, onLogout,
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
-  allowedScreens, companyLogo, companyName,
+  allowedScreens, companyLogo: _companyLogo, companyName: _companyName,
   isFinance, isFieldStaff, showAcilYardim, userGuide,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
@@ -408,45 +426,30 @@ function Navbar({
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const isOfficeStaff = isOfficeStaffRole(roleCode);
-  const usePanelHomeLogo = isPortalUser || isFieldStaff || isOfficeStaff;
-  const displayLogo = isPortalUser || isFieldStaff || isOfficeStaff
-    ? CORPORATE_LOGO_LIGHT
-    : (companyLogo || CORPORATE_LOGO_LIGHT);
-  const portalHomeHref = isExpert
+  const panelLogoHref = isExpert
     ? '/panel/eksper-portal'
     : isInsuranceCompanyUser
       ? '/panel/sigorta-portal'
-      : '/panel';
-  const panelLogoHref = isPortalUser ? portalHomeHref : '/panel';
+      : isFinance
+        ? '/panel/finans'
+        : '/panel';
 
   return (
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
-      <div className="mx-auto max-w-screen-2xl px-3 sm:px-4">
-        <div className="flex h-14 sm:h-[60px] items-center justify-between gap-2">
-          {/* Logo — portal ve saha/ofis: panel ana sayfa; diğer: kurumsal site */}
-          <div className="flex min-w-0 flex-1 items-center">
-            {usePanelHomeLogo ? (
-              <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
-                <BrandLogoMark
-                  alt="Meridyen Assistance"
-                  src={displayLogo}
-                  variant="panel"
-                />
-              </Link>
-            ) : (
+      <div className="w-full px-2 sm:px-3 lg:px-5">
+        <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
+          <div className={`flex min-w-0 shrink-0 items-center ${isPortalUser ? '' : 'md:hidden'}`}>
+            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
               <BrandLogoMark
-                alt={companyName}
-                src={displayLogo}
-                variant="navbar"
-                href="https://meridyenassistance.com"
-                title="Meridyen Assistance web sitesini yeni sekmede aç"
+                alt="Meridyen Assistance"
+                src={CORPORATE_LOGO_LIGHT}
+                variant="panel"
               />
-            )}
+            </Link>
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
 
             {/* Arama Butonu */}
             <button
@@ -561,7 +564,7 @@ function Navbar({
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
-                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+                className="flex items-center gap-2 py-1.5 pl-2 pr-1 sm:pr-1.5 rounded-xl hover:bg-slate-100 transition-colors"
               >
                 <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
@@ -748,9 +751,28 @@ function PanelSidebar({
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const linkClass = (href: string, compact = false, forceActive?: boolean, exactMatch?: boolean) => {
+  const panelLogoHref = isExpert
+    ? '/panel/eksper-portal'
+    : isInsuranceCompanyUser
+      ? '/panel/sigorta-portal'
+      : isFinance
+        ? '/panel/finans'
+        : '/panel';
+
+  const linkClass = (
+    href: string,
+    compact = false,
+    forceActive?: boolean,
+    exactMatch?: boolean,
+    isFirst = false,
+  ) => {
     const active = forceActive ?? isActive(href, exactMatch);
-    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} font-semibold transition ${
+    const verticalPad = compact
+      ? 'py-1.5 text-xs'
+      : isFirst
+        ? 'pt-0 pb-2 text-sm'
+        : 'py-2 text-sm';
+    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${verticalPad} font-semibold transition ${
       active
         ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
@@ -764,12 +786,12 @@ function PanelSidebar({
     return link.title;
   };
 
-  const renderNavLink = (link: NavigationLink, compact = false) => {
+  const renderNavLink = (link: NavigationLink, compact = false, isFirst = false) => {
     const tooltipLabel = getNavTooltipLabel(link);
     const linkNode = (
       <Link
         href={link.href}
-        className={`${linkClass(link.href, compact, undefined, link.exactMatch)}${collapsed ? ' relative' : ''}`}
+        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative' : ''}`}
         aria-label={collapsed ? tooltipLabel : undefined}
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
@@ -806,40 +828,39 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 border-r border-slate-200 bg-white transition-[width] duration-200 md:block dark:border-slate-800 dark:bg-slate-950 ${
+      className={`relative hidden min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width] duration-200 md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} dark:border-slate-800 dark:bg-slate-950 ${
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
-      <div className="sticky top-14 sm:top-[60px] flex h-[calc(100vh-3.5rem)] flex-col sm:h-[calc(100vh-60px)]">
-        <div className={`flex shrink-0 items-center px-3 pt-4 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-          {!collapsed ? (
-            <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400">Menü</p>
-          ) : null}
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:hover:bg-slate-800"
-            aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-            title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
+      <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
+
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        className={`absolute z-10 inline-flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-800 ${
+          collapsed ? 'right-2 top-[4.25rem] w-7' : 'right-3 top-[4.25rem] px-2'
+        }`}
+        aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+        title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+      >
+        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
+
+      <nav className={`flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-2 ${collapsed ? 'pr-3' : 'pr-11'}`}>
+        <div className="min-h-0 flex-1 space-y-0.5 pb-2">
+          {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
+      </nav>
 
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
-          {visibleMainLinks.map((link) => renderNavLink(link))}
-        </nav>
-
-        <PanelSidebarGuideFooter
-          roleCode={roleCode}
-          isExpert={isExpert}
-          isInsuranceCompanyUser={isInsuranceCompanyUser}
-          isFinance={isFinance}
-          isFieldStaff={isFieldStaff}
-          isOfficeStaff={isOfficeStaff}
-          collapsed={collapsed}
-        />
-      </div>
+      <PanelSidebarGuideFooter
+        roleCode={roleCode}
+        isExpert={isExpert}
+        isInsuranceCompanyUser={isInsuranceCompanyUser}
+        isFinance={isFinance}
+        isFieldStaff={isFieldStaff}
+        isOfficeStaff={isOfficeStaff}
+        collapsed={collapsed}
+      />
     </aside>
   );
 }
@@ -888,34 +909,28 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [authChecked, setAuthChecked] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
-  // Tema localStorage'dan oku — SSR safe + canlı güncelleme
+  // Tema — manuel seçim veya günün saatine göre (06:00–18:00 açık)
   useEffect(() => {
-    const applyTheme = () => {
+    const readTheme = (): StoredThemeConfig | null => {
       try {
-        const html = document.documentElement;
-        const saved = localStorage.getItem('app-theme');
-        let shouldUseDark = false;
-        if (saved) {
-          const { mode, colorScheme } = JSON.parse(saved) as { mode?: string; colorScheme?: string };
-          const media = window.matchMedia('(prefers-color-scheme: dark)');
-          shouldUseDark = mode === 'dark' || (mode === 'system' && media.matches);
-          if (colorScheme) {
-            html.setAttribute('data-color-scheme', colorScheme);
-          }
-        } else {
-          html.setAttribute('data-color-scheme', 'blue');
-        }
-        html.classList.toggle('dark', shouldUseDark);
-        html.style.colorScheme = shouldUseDark ? 'dark' : 'light';
-      } catch { /* localStorage erişim hatası yoksay */ }
+        const raw = localStorage.getItem('app-theme');
+        if (!raw) return null;
+        return JSON.parse(raw) as StoredThemeConfig;
+      } catch {
+        return null;
+      }
     };
+
+    const applyTheme = () => applyPanelThemeToDocument(readTheme());
+
     applyTheme();
-    // Kurulum sayfasından tema değişince anında uygula
     const onStorage = (e: StorageEvent) => { if (e.key === 'app-theme') applyTheme(); };
     const onCustom = () => applyTheme();
+    const hourly = window.setInterval(applyTheme, 60 * 60 * 1000);
     window.addEventListener('storage', onStorage);
     window.addEventListener('theme-changed', onCustom);
     return () => {
+      window.clearInterval(hourly);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('theme-changed', onCustom);
     };
@@ -963,16 +978,21 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         if (me) {
           setUser(me);
           localStorage.setItem('user', JSON.stringify(me));
+          window.dispatchEvent(new Event('meridyen:user-updated'));
         } else {
           throw new Error('auth/me boş döndü');
         }
         return axios.get(`${apiBase}/users/me/permissions`, {
           headers: { Authorization: `Bearer ${token}` },
-        });
+        }).then((permResponse) => ({ me, permResponse }));
       })
-      .then((response) => {
-        const data = response.data?.data ?? response.data;
-        if (data?.screens) setAllowedScreens(data.screens);
+      .then(({ me, permResponse }) => {
+        const data = permResponse.data?.data ?? permResponse.data;
+        const role = me?.role?.code ?? '';
+        const screens = Array.isArray(data?.screens) && data.screens.length > 0
+          ? data.screens
+          : getDefaultScreensForRole(role);
+        setAllowedScreens(screens);
       })
       .catch(async (error) => {
         if (axios.isAxiosError(error) && error.response?.status === 403) {
@@ -1002,11 +1022,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 if (me) {
                   setUser(me);
                   localStorage.setItem('user', JSON.stringify(me));
+                  window.dispatchEvent(new Event('meridyen:user-updated'));
                   const permissions = await axios.get(`${apiBase}/users/me/permissions`, {
                     headers: { Authorization: `Bearer ${tokens.accessToken}` },
                   });
                   const permData = permissions.data?.data ?? permissions.data;
-                  if (permData?.screens) setAllowedScreens(permData.screens);
+                  const screens = Array.isArray(permData?.screens) && permData.screens.length > 0
+                    ? permData.screens
+                    : getDefaultScreensForRole(me?.role?.code ?? '');
+                  setAllowedScreens(screens);
                   return;
                 }
               }
@@ -1169,6 +1193,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     setNotifOpen(false);
     if (notif.relatedEntityType === 'claim_file' && notif.relatedEntityId) {
       router.push(`/panel/hasar-dosyalari/${notif.relatedEntityId}`);
+      return;
+    }
+    if (
+      (notif.relatedEntityType === 'emergency_case' || notif.relatedEntityType === 'emergency')
+      && notif.relatedEntityId
+    ) {
+      router.push(`/panel/acil-yardim/${notif.relatedEntityId}`);
+      return;
+    }
+    if (notif.relatedEntityType === 'inbound_message' && notif.relatedEntityId) {
+      router.push(`/panel/operasyon/gelen-kutusu?messageId=${notif.relatedEntityId}`);
     }
   };
 
@@ -1224,7 +1259,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const isPortalUser = isExpert || isInsuranceCompanyUser;
   const isFinance = isFinanceRole(roleCode);
   const isFieldStaff = isFieldStaffRole(roleCode);
-  const showAcilYardim = canAccessAcilYardim(roleCode, operationArea);
+  const showAcilYardim = canAccessAcilYardim(roleCode, operationArea, user?.operationalAccessGrants);
 
   useEffect(() => {
     if (!loading && isExpert && pathname === '/panel') router.replace('/panel/eksper-portal');
@@ -1236,7 +1271,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const isPublicPanelPath = pathname === '/panel/profil';
   const mustChangePassword = user?.mustChangePassword === true;
   const accessDenied =
-    !loading && !isPortalUser && !isPublicPanelPath && !mustChangePassword && roleCode !== '' && !hasRouteAccess(pathname, roleCode, operationArea);
+    !loading
+    && allowedScreens !== null
+    && !isPortalUser
+    && !isPublicPanelPath
+    && !mustChangePassword
+    && roleCode !== ''
+    && !hasRouteAccess(pathname, roleCode, operationArea, user?.operationalAccessGrants, allowedScreens);
 
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
@@ -1323,7 +1364,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Link href="/panel" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200/60">Dashboard&apos;a Dön</Link>
               <button type="button" onClick={() => router.back()} className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 shadow-sm">Geri Git</button>
             </div>
-            <p className="mt-4 text-xs text-slate-400">Hata kodu: 403 — Rol: {user?.role?.name ?? roleCode}</p>
+            <p className="mt-4 text-xs text-slate-400">
+              Hata kodu: 403 — Rol: {user?.role?.name ?? roleCode}
+              {pathname ? ` · Sayfa: ${pathname}` : ''}
+            </p>
           </div>
         </main>
       </div>
@@ -1332,6 +1376,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   return (
     <QueryClientProvider client={queryClient}>
+      <PanelUserProvider user={user}>
       <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
         <div className="flex min-h-0 flex-1 overflow-x-hidden">
@@ -1406,7 +1451,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         )}
         <main className={`min-w-0 flex-1 overflow-x-hidden ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
-          <div className="mx-auto min-w-0 max-w-screen-2xl px-3 py-4 sm:px-4 sm:py-6">
+          <div className={`mx-auto min-w-0 max-w-screen-2xl px-3 sm:px-4 ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
             <GlobalActivityStrip />
             {contextBackLink && (
@@ -1433,6 +1478,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <SessionTimeoutBar />
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
+      </PanelUserProvider>
     </QueryClientProvider>
   );
 }

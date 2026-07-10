@@ -15,8 +15,8 @@ type BrandLogoMarkProps = {
 
 const variantStyles: Record<BrandLogoVariant, { shell: string; img: string }> = {
   navbar: {
-    shell: 'inline-flex shrink-0 items-center justify-start py-0.5 transition-opacity hover:opacity-80',
-    img: 'block h-9 w-auto max-w-[min(168px,38vw)] object-contain object-left sm:h-10 sm:max-w-[200px]',
+    shell: 'inline-flex shrink-0 items-center justify-start transition-opacity hover:opacity-80',
+    img: 'block h-[3.5rem] w-auto max-w-[min(300px,56vw)] object-contain object-left sm:h-16 sm:max-w-[360px]',
   },
   portal: {
     shell: 'inline-flex shrink-0 items-center justify-start',
@@ -25,8 +25,8 @@ const variantStyles: Record<BrandLogoVariant, { shell: string; img: string }> = 
   /** Panel navbar — logo çerçeveye tam oturur, mobil/masaüstü ölçek tutarlı */
   panel: {
     shell:
-      'inline-flex h-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-slate-200/90 bg-white px-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:h-10 sm:px-3',
-    img: 'block h-[26px] w-auto max-w-[min(116px,28vw)] object-contain object-center sm:h-[30px] sm:max-w-[140px]',
+      'inline-flex h-11 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-slate-200/90 bg-white pl-2 pr-3 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:h-12 sm:pl-2.5 sm:pr-3.5',
+    img: 'block h-9 w-auto max-w-[min(190px,44vw)] object-contain object-center sm:h-11 sm:max-w-[240px]',
   },
   login: {
     shell:

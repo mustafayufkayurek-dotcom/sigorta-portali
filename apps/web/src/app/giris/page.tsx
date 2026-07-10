@@ -364,6 +364,7 @@ function LoginPageInner() {
       storeAuthAfterLogin(tokens, shouldRemember, normalizedEmail);
       setRememberMePreference(shouldRemember, normalizedEmail);
       localStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('meridyen:user-updated'));
 
       router.push('/panel');
     } catch (err: unknown) {

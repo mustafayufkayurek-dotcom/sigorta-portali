@@ -18,6 +18,7 @@ describe('AuthService', () => {
       prisma,
       { signAsync: jest.fn(), decode: jest.fn() } as any,
       { get: jest.fn() } as any,
+      { getGrantSummaryForUser: jest.fn().mockResolvedValue([]) } as any,
     );
   });
 

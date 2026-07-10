@@ -110,5 +110,48 @@ describe('ClaimFilesService', () => {
         }),
       );
     });
+
+    it('office_staff için assignedOfficeUserId vekalet kapsamı uygular', async () => {
+      const operationalAccessGrants = {
+        isDelegationScopedRole: (roleCode: string) => roleCode === 'office_staff',
+        buildClaimFileDelegationScope: jest.fn().mockResolvedValue({
+          OR: [
+            { assignedOfficeUserId: { in: ['office-1'] } },
+            {
+              assignedOfficeUserId: null,
+              statusHistory: {
+                some: {
+                  changedByUserId: 'office-1',
+                  note: 'Dosya oluşturuldu',
+                },
+              },
+            },
+          ],
+        }),
+      };
+      service = new ClaimFilesService(
+        prisma,
+        cache,
+        { log: jest.fn() } as any,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        operationalAccessGrants as any,
+      );
+
+      await service.findAll({}, { id: 'office-1', roleCode: 'office_staff' });
+
+      expect(operationalAccessGrants.buildClaimFileDelegationScope).toHaveBeenCalledWith('office-1', 'office_staff');
+      expect(prisma.claimFile.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { assignedOfficeUserId: { in: ['office-1'] } },
+            ]),
+          }),
+        }),
+      );
+    });
   });
 });

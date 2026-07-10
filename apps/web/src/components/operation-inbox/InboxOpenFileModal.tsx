@@ -21,8 +21,24 @@ interface RoutingSuggestion {
     customer?: CustomerMatchCandidate;
     candidates?: CustomerMatchCandidate[];
   };
+  assistantCustomerMatch?: {
+    status: 'found' | 'ambiguous' | 'not_found';
+    customer?: CustomerMatchCandidate;
+    candidates?: CustomerMatchCandidate[];
+  };
   warnings: string[];
   insuranceCompanyId?: string | null;
+  confidence?: number;
+  reasons?: string[];
+  city?: string | null;
+  district?: string | null;
+}
+
+interface AutoAssignPreview {
+  suggestion: RoutingSuggestion;
+  missingFields: string[];
+  departmentCode: string | null;
+  departmentName: string | null;
 }
 
 interface PanelUser {
@@ -140,10 +156,22 @@ export function InboxOpenFileModal({
   onClaimNoChange,
   lossType,
   onLossTypeChange,
+  fileSubject,
+  onFileSubjectChange,
   insuranceCompanies,
   insuranceCompanyId,
   onInsuranceCompanyChange,
   insuranceRequired,
+  assistantCompanies,
+  selectedAssistantCustomerId,
+  onAssistantCustomerChange,
+  assigneeAssistantScopeLabel,
+  missingFields,
+  autoAssignPreview,
+  autoAssignLoading,
+  onRequestAutoAssign,
+  onAcceptAutoAssign,
+  onRejectAutoAssign,
   contextLoading,
   onConfirm,
   onCancel,
@@ -180,10 +208,22 @@ export function InboxOpenFileModal({
   onClaimNoChange: (v: string) => void;
   lossType: string;
   onLossTypeChange: (v: string) => void;
+  fileSubject: string;
+  onFileSubjectChange: (v: string) => void;
   insuranceCompanies?: InsuranceCompany[];
   insuranceCompanyId?: string;
   onInsuranceCompanyChange?: (v: string) => void;
   insuranceRequired?: boolean;
+  assistantCompanies?: CustomerMatchCandidate[];
+  selectedAssistantCustomerId?: string;
+  onAssistantCustomerChange?: (v: string) => void;
+  assigneeAssistantScopeLabel?: string;
+  missingFields?: string[];
+  autoAssignPreview?: AutoAssignPreview | null;
+  autoAssignLoading?: boolean;
+  onRequestAutoAssign?: () => void;
+  onAcceptAutoAssign?: () => void;
+  onRejectAutoAssign?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -195,8 +235,9 @@ export function InboxOpenFileModal({
     || !!insuranceCompanyId
     || (insuranceCompanies?.length ?? 0) <= 1;
   const insuredOk = !!insuredName.trim();
+  const assistantOk = kind !== 'emergency' || !!selectedAssistantCustomerId?.trim();
   const canConfirm =
-    !loading && instruction.trim().length >= 3 && insuranceOk && insuredOk;
+    !loading && instruction.trim().length >= 3 && insuranceOk && insuredOk && assistantOk;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -225,9 +266,27 @@ export function InboxOpenFileModal({
 
           {routing && routing.warnings.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {routing.warnings.map((w) => (
-                <span key={w} className="badge badge-amber">{w}</span>
-              ))}
+              {routing.warnings
+                .filter((w) => !w.startsWith('Eksik bilgi:'))
+                .map((w) => (
+                  <span key={w} className="badge badge-amber">{w}</span>
+                ))}
+            </div>
+          )}
+
+          {missingFields && missingFields.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50/60 px-3 py-2.5">
+              <p className="text-xs font-medium text-red-800 mb-1.5">Eksik Bilgiler</p>
+              <ul className="text-sm text-red-900/90 space-y-0.5 list-disc list-inside">
+                {missingFields.map((field) => (
+                  <li key={field}>
+                    {field.startsWith('Eksik bilgi:') ? field.replace('Eksik bilgi: ', '') : field}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-red-700/80 mt-1.5">
+                Eksik alanları manuel tamamlayın veya mail kaynağını kontrol edin.
+              </p>
             </div>
           )}
 
@@ -282,7 +341,7 @@ export function InboxOpenFileModal({
                 value={insuredPhone}
                 onChange={onInsuredPhoneChange}
                 disabled={loading || usersLoading}
-                placeholder="Mail formundan"
+                placeholder="05xx xxx xx xx"
               />
               <FieldInput
                 label="Dosya No"
@@ -310,6 +369,14 @@ export function InboxOpenFileModal({
             </div>
             <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FieldInput
+                label="Dosya Konusu"
+                value={fileSubject}
+                onChange={onFileSubjectChange}
+                onBlurTitleCase
+                disabled={loading || usersLoading}
+                placeholder="Mail konusundan (ör. Konut Cam)"
+              />
+              <FieldInput
                 label="Poliçe No"
                 value={policyNo}
                 onChange={onPolicyNoChange}
@@ -327,15 +394,102 @@ export function InboxOpenFileModal({
                 onChange={onLossTypeChange}
                 onBlurTitleCase
                 disabled={loading || usersLoading}
+                placeholder="Formdan çıkarılan hasar türü"
               />
             </div>
           </section>
 
-          {routing && onAssigneeChange && (
-            <>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                Önerilen Sorumlu
-              </label>
+          {onAssigneeChange && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="block text-xs font-medium text-slate-600">
+                  Dosya Sorumlusu
+                </label>
+                {onRequestAutoAssign && (
+                  <button
+                    type="button"
+                    onClick={onRequestAutoAssign}
+                    disabled={loading || usersLoading || autoAssignLoading}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                  >
+                    {autoAssignLoading ? 'Hesaplanıyor…' : 'Otomatik Ata'}
+                  </button>
+                )}
+              </div>
+
+              {autoAssignPreview && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-blue-900">Otomatik Atama Önerisi</p>
+                  {autoAssignPreview.departmentName && (
+                    <p className="text-sm text-slate-700">
+                      Departman: <span className="font-medium">{autoAssignPreview.departmentName}</span>
+                    </p>
+                  )}
+                  {autoAssignPreview.suggestion.city && (
+                    <p className="text-sm text-slate-700">
+                      Bölge:{' '}
+                      <span className="font-medium">
+                        {autoAssignPreview.suggestion.city}
+                        {autoAssignPreview.suggestion.district
+                          ? ` / ${autoAssignPreview.suggestion.district}`
+                          : ''}
+                      </span>
+                    </p>
+                  )}
+                  {autoAssignPreview.suggestion.suggestedAssigneeName ? (
+                    <p className="text-sm text-slate-700">
+                      Önerilen Sorumlu:{' '}
+                      <span className="font-medium">
+                        {autoAssignPreview.suggestion.suggestedAssigneeName}
+                      </span>
+                      {typeof autoAssignPreview.suggestion.confidence === 'number' && (
+                        <span className="text-slate-500 ml-1">
+                          (%{Math.round(autoAssignPreview.suggestion.confidence * 100)} güven)
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-800">
+                      Departman ve bölgeye uygun otomatik sorumlu bulunamadı.
+                    </p>
+                  )}
+                  {autoAssignPreview.suggestion.reasons && autoAssignPreview.suggestion.reasons.length > 0 && (
+                    <ul className="text-[11px] text-slate-600 list-disc list-inside">
+                      {autoAssignPreview.suggestion.reasons.map((r) => (
+                        <li key={r}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {autoAssignPreview.missingFields.length > 0 && (
+                    <p className="text-xs text-red-700">
+                      Eksik: {autoAssignPreview.missingFields.join(', ')}
+                    </p>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    {onAcceptAutoAssign && (
+                      <button
+                        type="button"
+                        onClick={onAcceptAutoAssign}
+                        disabled={loading || !autoAssignPreview.suggestion.suggestedAssigneeId}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                      >
+                        Onayla
+                      </button>
+                    )}
+                    {onRejectAutoAssign && (
+                      <button
+                        type="button"
+                        onClick={onRejectAutoAssign}
+                        disabled={loading}
+                        className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200"
+                      >
+                        Reddet
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <select
                 value={selectedAssigneeId ?? ''}
                 onChange={(e) => onAssigneeChange(e.target.value)}
@@ -343,23 +497,79 @@ export function InboxOpenFileModal({
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               >
                 <option value="">Sorumlu seçin…</option>
-                {routing.suggestedAssigneeId && routing.suggestedAssigneeName && (
+                {routing?.suggestedAssigneeId && routing.suggestedAssigneeName && (
                   <option value={routing.suggestedAssigneeId}>
                     {routing.suggestedAssigneeName} (Önerilen)
                   </option>
                 )}
                 {(users ?? [])
-                  .filter((u) => u.id !== routing.suggestedAssigneeId)
+                  .filter((u) => u.id !== routing?.suggestedAssigneeId)
                   .map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.firstName} {u.lastName}
                     </option>
                   ))}
               </select>
-            </>
+              {(users ?? []).length === 0 && !usersLoading && (
+                <p className="text-[11px] text-amber-700">
+                  Atanabilir dosya sorumlusu listesi boş. Departman üyeliği veya yetki kontrol edin.
+                </p>
+              )}
+
+              {kind === 'emergency' && onAssistantCustomerChange && (
+                <div className="rounded-xl border border-orange-200 bg-orange-50/40 p-3 space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">
+                      Asistan Firma Sorumluluğu
+                      <span className="text-red-500 ml-0.5">*</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Dosyanın hangi asistan firmasına bağlanacağını seçin. Mailden gelen firma ön seçilir.
+                    </p>
+                  </div>
+                  {assigneeAssistantScopeLabel && selectedAssigneeId && (
+                    <p className="text-xs text-orange-900/90 rounded-lg bg-orange-100/70 px-2.5 py-1.5">
+                      Seçilen sorumlunun kapsamı: <span className="font-medium">{assigneeAssistantScopeLabel}</span>
+                    </p>
+                  )}
+                  {routing?.assistantCustomerMatch?.status === 'ambiguous'
+                    && routing.assistantCustomerMatch.candidates
+                    && routing.assistantCustomerMatch.candidates.length > 0 ? (
+                    <select
+                      value={selectedAssistantCustomerId ?? ''}
+                      onChange={(e) => onAssistantCustomerChange(e.target.value)}
+                      disabled={loading || usersLoading}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white"
+                    >
+                      <option value="">Asistan firması seçin…</option>
+                      {routing.assistantCustomerMatch.candidates.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={selectedAssistantCustomerId ?? ''}
+                      onChange={(e) => onAssistantCustomerChange(e.target.value)}
+                      disabled={loading || usersLoading}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white"
+                    >
+                      <option value="">Asistan firması seçin…</option>
+                      {(assistantCompanies ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {draft.assistantFirm && (
+                    <p className="text-[11px] text-slate-500">
+                      Mail kaynağı: {draft.assistantFirm}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
-          {routing && onCustomerChange && (
+          {(routing || onCustomerChange) && onCustomerChange && routing && (
             <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
               <p className="text-xs font-medium text-slate-600 mb-2">Müşteri</p>
               {routing.customerMatch.status === 'found' && routing.customerMatch.customer && (

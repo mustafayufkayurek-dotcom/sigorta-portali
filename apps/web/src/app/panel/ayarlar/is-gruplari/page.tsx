@@ -25,6 +25,7 @@ import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/s
 import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 
 const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
@@ -94,6 +95,9 @@ const fmt = (n?: number | null) =>
   n != null ? n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2 }) : '—';
 
 export default function IsGruplariPage() {
+  const { isManagement } = usePanelAccess();
+  const backHref = isManagement ? TANIMLAR_BACK_HREF : '/panel/tedarikciler';
+  const backText = isManagement ? TANIMLAR_BACK_TEXT : '← Tedarikçiler';
   const [groups, setGroups] = useState<WorkGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -379,11 +383,11 @@ export default function IsGruplariPage() {
     <SettingsPageLayout
       title="İş Grubu Yönetimi"
       description="Onarım maliyet kalemleri ve tedarikçi hasar hizmet kolları (Sıva, Boya, Mobilya). Tedarikçi kartında Hasar Onarım seçilince bu gruplar listelenir."
-      backHref={TANIMLAR_BACK_HREF}
-      backText={TANIMLAR_BACK_TEXT}
+      backHref={backHref}
+      backText={backText}
       headerExtra={
         <div className="flex items-center gap-2">
-          {groups.length === 0 && (
+          {isManagement && groups.length === 0 && (
             <button
               type="button"
               onClick={handleSeed}
@@ -438,10 +442,16 @@ export default function IsGruplariPage() {
             </svg>
           </div>
           <p className="text-sm font-medium text-slate-700 mb-1">Henüz iş grubu yok</p>
-          <p className="text-xs text-slate-400 mb-4">İş grubu ekleyerek başlayın veya varsayılan seti yükleyin.</p>
-          <button type="button" onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
-            {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
-          </button>
+          <p className="text-xs text-slate-400 mb-4">
+            {isManagement
+              ? 'İş grubu ekleyerek başlayın veya varsayılan seti yükleyin.'
+              : 'İş grubu ekleyerek başlayın.'}
+          </p>
+          {isManagement && (
+            <button type="button" onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+              {seeding ? 'Yükleniyor...' : 'Varsayılanları Yükle'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -490,11 +500,15 @@ export default function IsGruplariPage() {
                       </svg>
                       Alt Grup Ekle
                     </button>
-                    <button type="button" onClick={() => toggleGroupStatus(group)}>
-                      <StatusBadge active={group.status === 'active'} />
-                    </button>
-                    <EditButton onClick={() => openEditGroup(group)} />
-                    <DeleteButton onClick={() => setDeleteGroupTarget(group)} />
+                    {isManagement && (
+                      <>
+                        <button type="button" onClick={() => toggleGroupStatus(group)}>
+                          <StatusBadge active={group.status === 'active'} />
+                        </button>
+                        <EditButton onClick={() => openEditGroup(group)} />
+                        <DeleteButton onClick={() => setDeleteGroupTarget(group)} />
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -517,7 +531,7 @@ export default function IsGruplariPage() {
                           <SettingsTableTh>Birim</SettingsTableTh>
                           <SettingsTableTh>Birim Fiyat</SettingsTableTh>
                           <SettingsTableTh>Durum</SettingsTableTh>
-                          <SettingsTableTh>İşlemler</SettingsTableTh>
+                          {isManagement && <SettingsTableTh>İşlemler</SettingsTableTh>}
                         </SettingsTableHead>
                         <SettingsTableBody>
                           {subs.map((sub, subIndex) => (
@@ -541,16 +555,22 @@ export default function IsGruplariPage() {
                                 <span className="text-sm font-semibold text-slate-900">{fmt(sub.unitPrice)}</span>
                               </SettingsTableTd>
                               <SettingsTableTd>
-                                <button type="button" onClick={() => toggleSubStatus(sub)}>
+                                {isManagement ? (
+                                  <button type="button" onClick={() => toggleSubStatus(sub)}>
+                                    <StatusBadge active={sub.status === 'active'} />
+                                  </button>
+                                ) : (
                                   <StatusBadge active={sub.status === 'active'} />
-                                </button>
+                                )}
                               </SettingsTableTd>
-                              <SettingsTableTd>
-                                <SettingsTableActions>
-                                  <EditButton onClick={() => openEditSub(sub)} />
-                                  <DeleteButton onClick={() => setDeleteSubTarget(sub)} />
-                                </SettingsTableActions>
-                              </SettingsTableTd>
+                              {isManagement && (
+                                <SettingsTableTd>
+                                  <SettingsTableActions>
+                                    <EditButton onClick={() => openEditSub(sub)} />
+                                    <DeleteButton onClick={() => setDeleteSubTarget(sub)} />
+                                  </SettingsTableActions>
+                                </SettingsTableTd>
+                              )}
                             </SettingsTableRow>
                           ))}
                         </SettingsTableBody>
@@ -709,25 +729,29 @@ export default function IsGruplariPage() {
         </div>
       </SettingsModal>
 
-      <DeleteConfirmDialog
-        isOpen={deleteGroupTarget !== null}
-        onClose={() => setDeleteGroupTarget(null)}
-        onConfirm={confirmDeleteGroup}
-        deleting={deleting}
-        itemName={deleteGroupTarget?.name}
-        description={
-          deleteGroupTarget && (deleteGroupTarget._count?.workSubGroups ?? deleteGroupTarget.workSubGroups?.length ?? 0) > 0
-            ? 'Bu iş grubun alt grupları var. Silmeden önce alt grupları kaldırın.'
-            : `"${deleteGroupTarget?.name}" iş grubunu silmek istediğinize emin misiniz?`
-        }
-      />
-      <DeleteConfirmDialog
-        isOpen={deleteSubTarget !== null}
-        onClose={() => setDeleteSubTarget(null)}
-        onConfirm={confirmDeleteSub}
-        deleting={deleting}
-        itemName={deleteSubTarget?.name}
-      />
+      {isManagement && (
+        <DeleteConfirmDialog
+          isOpen={deleteGroupTarget !== null}
+          onClose={() => setDeleteGroupTarget(null)}
+          onConfirm={confirmDeleteGroup}
+          deleting={deleting}
+          itemName={deleteGroupTarget?.name}
+          description={
+            deleteGroupTarget && (deleteGroupTarget._count?.workSubGroups ?? deleteGroupTarget.workSubGroups?.length ?? 0) > 0
+              ? 'Bu iş grubun alt grupları var. Silmeden önce alt grupları kaldırın.'
+              : `"${deleteGroupTarget?.name}" iş grubunu silmek istediğinize emin misiniz?`
+          }
+        />
+      )}
+      {isManagement && (
+        <DeleteConfirmDialog
+          isOpen={deleteSubTarget !== null}
+          onClose={() => setDeleteSubTarget(null)}
+          onConfirm={confirmDeleteSub}
+          deleting={deleting}
+          itemName={deleteSubTarget?.name}
+        />
+      )}
     </SettingsPageLayout>
   );
 }

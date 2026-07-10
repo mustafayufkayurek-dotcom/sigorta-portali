@@ -146,12 +146,21 @@ export class VendorsService {
     return vendor;
   }
 
+  private sanitizeVendorWriteData(rest: Record<string, unknown>): Record<string, unknown> {
+    const { firstName, lastName, ...vendorData } = rest;
+    if (!vendorData.name && (firstName || lastName)) {
+      vendorData.name = `${String(firstName ?? '')} ${String(lastName ?? '')}`.trim();
+    }
+    applyTitleCase(vendorData, ['name']);
+    return vendorData;
+  }
+
   async create(data: any, createdByUserId?: string) {
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
-    applyTitleCase(rest, ['name', 'firstName', 'lastName']);
+    const vendorData = this.sanitizeVendorWriteData(rest);
     const vendor = await this.prisma.vendor.create({
       data: {
-        ...rest,
+        ...(vendorData as any),
         ...(createdByUserId ? { createdByUserId } : {}),
       },
     });
@@ -199,9 +208,9 @@ export class VendorsService {
   async update(id: string, data: any) {
     await this.findOne(id);
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
-    applyTitleCase(rest, ['name', 'firstName', 'lastName']);
+    const vendorData = this.sanitizeVendorWriteData(rest);
 
-    await this.prisma.vendor.update({ where: { id }, data: rest });
+    await this.prisma.vendor.update({ where: { id }, data: vendorData as any });
 
     if (serviceAreas !== undefined) {
       await this.prisma.vendorServiceArea.deleteMany({ where: { vendorId: id } });

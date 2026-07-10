@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InboundMailbox, InboundMessage, Prisma } from '@prisma/client';
+import {
+  mapInboundCategoryToMeridyen,
+  mapInboundLossTypeToMeridyen,
+  sanitizeInboundPhone,
+} from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
 import { ClaimFilesService } from '../claim-files/claim-files.service';
@@ -28,6 +33,7 @@ export interface InboundMailFields {
   policyNo?: string | null;
   claimNo?: string | null;
   lossType?: string | null;
+  fileSubject?: string | null;
   insurer?: string | null;
 }
 
@@ -36,6 +42,8 @@ export interface InboundRoutingSuggestion {
   suggestedAssigneeName?: string | null;
   suggestedAssigneeRole?: 'office' | 'field' | null;
   customerMatch: CustomerMatchResult;
+  /** Mail gönderenine göre asistan firması eşleşmesi */
+  assistantCustomerMatch: CustomerMatchResult;
   /** Formdan / konudan çıkarılan sigortalı adı soyadı */
   insuredName?: string | null;
   insuredPhone?: string | null;
@@ -51,6 +59,26 @@ export interface InboundRoutingSuggestion {
   escalatedAt?: string;
 }
 
+export interface AssignableOfficeUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  departmentCodes: string[];
+}
+
+export interface AssignableUsersResult {
+  departmentCode: string | null;
+  departmentName: string | null;
+  users: AssignableOfficeUser[];
+}
+
+export interface AutoAssignPreview {
+  suggestion: InboundRoutingSuggestion;
+  missingFields: string[];
+  departmentCode: string | null;
+  departmentName: string | null;
+}
+
 interface ExtractedFields {
   customerName?: string | null;
   phone?: string | null;
@@ -60,6 +88,7 @@ interface ExtractedFields {
   claimNo?: string | null;
   address?: string | null;
   lossType?: string | null;
+  fileSubject?: string | null;
   urgency?: 'NORMAL' | 'HIGH' | null;
   suggestedResponsibleRole?: 'office' | 'field' | null;
 }
@@ -110,28 +139,143 @@ export class InboundRoutingService {
     return this.buildRoutingSuggestion(message);
   }
 
+  async listAssignableOfficeUsers(messageId?: string): Promise<AssignableUsersResult> {
+    let departmentId: string | null = null;
+    let departmentCode: string | null = null;
+    let departmentName: string | null = null;
+
+    if (messageId) {
+      const message = await this.prisma.inboundMessage.findUnique({ where: { id: messageId } });
+      if (message) {
+        departmentId = await this.resolveDepartmentId(message);
+        if (departmentId) {
+          const dept = await this.prisma.department.findUnique({
+            where: { id: departmentId },
+            select: { code: true, name: true },
+          });
+          departmentCode = dept?.code ?? null;
+          departmentName = dept?.name ?? null;
+        }
+      }
+    }
+
+    const roles = await this.prisma.role.findMany({
+      where: { code: { in: ['office_staff', 'manager', 'admin'] } },
+      select: { id: true },
+    });
+    const roleIds = roles.map((r) => r.id);
+    if (roleIds.length === 0) {
+      return { departmentCode, departmentName, users: [] };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        isWebUser: true,
+        roleId: { in: roleIds },
+        ...(departmentId
+          ? {
+              departmentMemberships: {
+                some: { departmentId, isActive: true },
+              },
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        departmentMemberships: {
+          where: { isActive: true },
+          select: { department: { select: { code: true } } },
+        },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    return {
+      departmentCode,
+      departmentName,
+      users: users.map((u) => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        departmentCodes: u.departmentMemberships.map((m) => m.department.code),
+      })),
+    };
+  }
+
+  async getAutoAssignPreview(messageId: string): Promise<AutoAssignPreview> {
+    const message = await this.prisma.inboundMessage.findUnique({ where: { id: messageId } });
+    if (!message) {
+      return {
+        suggestion: this.emptySuggestion(),
+        missingFields: ['Mesaj bulunamadı'],
+        departmentCode: null,
+        departmentName: null,
+      };
+    }
+
+    const suggestion = await this.buildRoutingSuggestion(message);
+    const missingFields = this.collectMissingFields(suggestion);
+    const departmentId = await this.resolveDepartmentId(message);
+    let departmentCode: string | null = null;
+    let departmentName: string | null = null;
+    if (departmentId) {
+      const dept = await this.prisma.department.findUnique({
+        where: { id: departmentId },
+        select: { code: true, name: true },
+      });
+      departmentCode = dept?.code ?? null;
+      departmentName = dept?.name ?? null;
+    }
+
+    return { suggestion, missingFields, departmentCode, departmentName };
+  }
+
   private async buildRoutingSuggestion(message: InboundMessage): Promise<InboundRoutingSuggestion> {
     const extracted = this.parseExtracted(message.aiExtractedJson);
     const heuristic = extractHeuristicFields(message);
     if (!extracted.customerName?.trim()) extracted.customerName = heuristic.customerName ?? null;
     if (!extracted.phone?.trim()) extracted.phone = heuristic.phone ?? null;
+    else extracted.phone = sanitizeInboundPhone(extracted.phone) ?? extracted.phone;
     if (!extracted.policyNo?.trim()) extracted.policyNo = heuristic.policyNo ?? null;
     if (!extracted.fileNo?.trim()) extracted.fileNo = heuristic.fileNo ?? null;
     if (!extracted.claimNo?.trim()) extracted.claimNo = heuristic.claimNo ?? null;
-    if (!extracted.address?.trim()) extracted.address = heuristic.address ?? null;
+    if (!extracted.fileSubject?.trim()) extracted.fileSubject = heuristic.fileSubject ?? null;
     if (!extracted.lossType?.trim()) extracted.lossType = heuristic.lossType ?? null;
+    extracted.lossType = mapInboundLossTypeToMeridyen(extracted.lossType) ?? extracted.lossType;
+    extracted.fileSubject = mapInboundCategoryToMeridyen(extracted.fileSubject) ?? extracted.fileSubject;
+    if (!extracted.address?.trim()) {
+      extracted.address = heuristic.address ?? null;
+    }
+    let addressInferredFromExistingFile = false;
+    if (!extracted.address?.trim()) {
+      const inferredAddress = await this.resolveAddressFromExistingFiles(
+        extracted.policyNo,
+        extracted.fileNo,
+      );
+      if (inferredAddress) {
+        extracted.address = inferredAddress;
+        addressInferredFromExistingFile = true;
+      }
+    }
     const emailHint = extracted.email?.trim() || message.fromAddress?.trim() || null;
     if (!extracted.email && emailHint && !emailHint.includes('@safranbh.com')) {
       extracted.email = emailHint;
     }
 
     const customerMatch = await this.resolveCustomer(extracted, message.fromName);
+    const assistantCustomerMatch = await this.resolveAssistantCustomer(message.fromAddress);
     const { city, district } = await this.resolveLocation(extracted.address);
     const insuranceCompanyId = await this.resolveInsuranceCompanyId(extracted.policyNo);
     const departmentId = await this.resolveDepartmentId(message);
 
     const warnings: string[] = [];
     const reasons: string[] = [];
+    if (addressInferredFromExistingFile) {
+      reasons.push('Adres mevcut dosya kaydından eşleştirildi');
+    }
     let confidence = 0.4;
     let suggestedAssigneeId: string | null = null;
     let suggestedAssigneeName: string | null = null;
@@ -208,22 +352,31 @@ export class InboundRoutingService {
       reasons.push('Yeni müşteri oluşturulabilir');
     }
 
+    const mailFields: InboundMailFields = {
+      insuredName: extracted.customerName?.trim() || null,
+      insuredPhone: extracted.phone?.trim() || null,
+      insuredAddress: extracted.address?.trim() || null,
+      fileNo: extracted.fileNo?.trim() || null,
+      policyNo: extracted.policyNo?.trim() || null,
+      claimNo: extracted.claimNo?.trim() || null,
+      lossType: extracted.lossType?.trim() || null,
+      fileSubject: extracted.fileSubject?.trim() || null,
+    };
+
+    for (const field of this.collectMissingFields({ mailFields })) {
+      const warn = `Eksik bilgi: ${field}`;
+      if (!warnings.includes(warn)) warnings.push(warn);
+    }
+
     return {
       suggestedAssigneeId,
       suggestedAssigneeName,
       suggestedAssigneeRole,
       customerMatch,
+      assistantCustomerMatch,
       insuredName: extracted.customerName?.trim() || null,
       insuredPhone: extracted.phone?.trim() || null,
-      mailFields: {
-        insuredName: extracted.customerName?.trim() || null,
-        insuredPhone: extracted.phone?.trim() || null,
-        insuredAddress: extracted.address?.trim() || null,
-        fileNo: extracted.fileNo?.trim() || null,
-        policyNo: extracted.policyNo?.trim() || null,
-        claimNo: extracted.claimNo?.trim() || null,
-        lossType: extracted.lossType?.trim() || null,
-      },
+      mailFields,
       warnings,
       confidence: Math.round(confidence * 100) / 100,
       reasons,
@@ -231,6 +384,84 @@ export class InboundRoutingService {
       city,
       district,
     };
+  }
+
+  private collectMissingFields(input: { mailFields?: InboundMailFields | null }): string[] {
+    const mf = input.mailFields;
+    const missing: string[] = [];
+    if (!mf?.insuredName?.trim()) missing.push('Sigortalı adı soyadı');
+    if (!mf?.insuredPhone?.trim()) missing.push('Sigortalı telefonu');
+    if (!mf?.insuredAddress?.trim()) missing.push('Sigortalı adresi');
+    if (!mf?.fileNo?.trim() && !mf?.policyNo?.trim()) missing.push('Dosya / poliçe numarası');
+    if (!mf?.fileSubject?.trim()) missing.push('Dosya konusu');
+    if (!mf?.lossType?.trim()) missing.push('Hasar şekli / hizmet türü');
+    return missing;
+  }
+
+  private async resolveAddressFromExistingFiles(
+    policyNo?: string | null,
+    remedFileNo?: string | null,
+  ): Promise<string | null> {
+    const terms = new Set<string>();
+    if (policyNo?.trim()) terms.add(policyNo.trim());
+    if (remedFileNo?.trim()) {
+      const normalized = remedFileNo.trim().toUpperCase();
+      terms.add(normalized);
+      terms.add(normalized.replace(/^RCS-/i, ''));
+    }
+
+    for (const term of terms) {
+      const emergency = await this.prisma.emergencyCase.findFirst({
+        where: {
+          OR: [
+            { fileNo: { equals: term, mode: 'insensitive' } },
+            { fileNo: { contains: term, mode: 'insensitive' } },
+            { notes: { contains: term, mode: 'insensitive' } },
+          ],
+          address: { notIn: ['', 'Belirtilmemiş'] },
+        },
+        select: { address: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (emergency?.address?.trim()) return emergency.address.trim();
+    }
+
+    if (policyNo?.trim()) {
+      const claim = await this.prisma.claimFile.findFirst({
+        where: {
+          OR: [
+            { policyNo: policyNo.trim() },
+            { claimNo: policyNo.trim() },
+            ...(remedFileNo
+              ? [{ claimNo: { contains: remedFileNo.replace(/^RCS-/i, ''), mode: 'insensitive' as const } }]
+              : []),
+          ],
+        },
+        select: {
+          propertyAddress: {
+            select: {
+              addressLine: true,
+              city: true,
+              district: true,
+              neighborhood: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      const addr = claim?.propertyAddress;
+      if (addr) {
+        const parts = [
+          addr.addressLine,
+          addr.neighborhood,
+          addr.district,
+          addr.city,
+        ].filter((p) => p?.trim());
+        if (parts.length > 0) return parts.join(', ');
+      }
+    }
+
+    return null;
   }
 
   private async resolveCustomer(
@@ -434,6 +665,7 @@ export class InboundRoutingService {
       claimNo: typeof raw.claimNo === 'string' ? raw.claimNo : null,
       address: typeof raw.address === 'string' ? raw.address : null,
       lossType: typeof raw.lossType === 'string' ? raw.lossType : null,
+      fileSubject: typeof raw.fileSubject === 'string' ? raw.fileSubject : null,
       urgency: raw.urgency === 'HIGH' || raw.urgency === 'NORMAL' ? raw.urgency : null,
       suggestedResponsibleRole:
         raw.suggestedResponsibleRole === 'office' || raw.suggestedResponsibleRole === 'field'
@@ -450,9 +682,65 @@ export class InboundRoutingService {
     return digits.length >= 10 ? digits : undefined;
   }
 
+  private async resolveAssistantCustomer(fromAddress: string): Promise<CustomerMatchResult> {
+    const addr = fromAddress?.trim().toLowerCase() ?? '';
+    if (!addr) return { status: 'not_found' };
+
+    const REMED_TAX = '7340735275';
+    const profiles: Array<{ match: (a: string) => boolean; taxNumber?: string; nameHint?: string }> = [
+      { match: (a) => a.includes('remed.com'), taxNumber: REMED_TAX, nameHint: 'Remed' },
+      { match: (a) => a.includes('safranbh.com'), nameHint: 'Safran' },
+    ];
+
+    for (const profile of profiles) {
+      if (!profile.match(addr)) continue;
+      const where: Prisma.CustomerWhereInput = {
+        entityType: 'corporate',
+        subType: 'asistan_firmasi',
+        status: 'active',
+        OR: [],
+      };
+      if (profile.taxNumber) {
+        (where.OR as Prisma.CustomerWhereInput[]).push({ taxNumber: profile.taxNumber });
+      }
+      if (profile.nameHint) {
+        (where.OR as Prisma.CustomerWhereInput[]).push({
+          companyName: { contains: profile.nameHint, mode: 'insensitive' },
+        });
+      }
+      const rows = await this.prisma.customer.findMany({
+        where,
+        select: { id: true, companyName: true, fullName: true },
+        take: 5,
+      });
+      if (rows.length === 1) {
+        const row = rows[0];
+        return {
+          status: 'found',
+          customer: {
+            id: row.id,
+            name: row.companyName ?? row.fullName ?? 'Asistan Firması',
+          },
+        };
+      }
+      if (rows.length > 1) {
+        return {
+          status: 'ambiguous',
+          candidates: rows.map((row) => ({
+            id: row.id,
+            name: row.companyName ?? row.fullName ?? 'Asistan Firması',
+          })),
+        };
+      }
+    }
+
+    return { status: 'not_found' };
+  }
+
   private emptySuggestion(): InboundRoutingSuggestion {
     return {
       customerMatch: { status: 'not_found' },
+      assistantCustomerMatch: { status: 'not_found' },
       warnings: [],
       confidence: 0,
       reasons: [],

@@ -14,7 +14,13 @@ describe('EmergencyCasesService', () => {
       },
       claimFile: { findFirst: jest.fn() },
     };
-    service = new EmergencyCasesService(prisma);
+    const operationalAccessGrants = {
+      isDelegationScopedRole: jest.fn().mockReturnValue(false),
+      buildEmergencyDelegationScope: jest.fn().mockResolvedValue({}),
+      canAccessAssignedUserViaDelegation: jest.fn().mockResolvedValue(false),
+      resolveDelegationBanner: jest.fn().mockResolvedValue(null),
+    };
+    service = new EmergencyCasesService(prisma, operationalAccessGrants as any);
   });
 
   describe('findAllForCustomer', () => {

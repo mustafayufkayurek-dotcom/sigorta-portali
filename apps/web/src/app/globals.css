@@ -176,7 +176,7 @@
   @apply w-1 h-5 rounded-full bg-blue-600;
 }
 .section-heading-text {
-  @apply text-sm font-semibold text-slate-700 uppercase tracking-wider;
+  @apply text-sm font-semibold text-slate-700;
 }
 
 /* Filtre Bar */

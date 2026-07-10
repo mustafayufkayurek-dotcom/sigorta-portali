@@ -5,6 +5,11 @@ import {
   InboundMessage,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { compactFileNo } from '@sigorta/shared';
+import {
+  findClaimFileIdByCompactFileNo,
+  findEmergencyCaseIdByCompactFileNo,
+} from '@/common/utils/file-no-helpers';
 import { extractSubjectHints } from './inbound-subject-parser';
 
 export interface FileMatchCandidate {
@@ -172,7 +177,7 @@ export class InboundFileMatcherService {
   }
 
   private normalizeFileNo(value: string): string {
-    return value.trim().toUpperCase().replace(/\s+/g, '');
+    return compactFileNo(value);
   }
 
   private normalizePlate(value: string): string {
@@ -180,32 +185,41 @@ export class InboundFileMatcherService {
   }
 
   private async matchByFileNo(fileNo: string): Promise<FileMatchCandidate[]> {
-    const [claim, emergency] = await Promise.all([
-      this.prisma.claimFile.findUnique({ where: { fileNo }, select: { id: true, fileNo: true } }),
-      this.prisma.emergencyCase.findFirst({
-        where: { OR: [{ fileNo }, { caseNo: fileNo }] },
-        select: { id: true, fileNo: true, caseNo: true },
-      }),
+    const [claimId, emergencyId] = await Promise.all([
+      findClaimFileIdByCompactFileNo(this.prisma, fileNo),
+      findEmergencyCaseIdByCompactFileNo(this.prisma, fileNo),
     ]);
 
     const results: FileMatchCandidate[] = [];
-    if (claim) {
-      results.push({
-        type: 'claim',
-        id: claim.id,
-        fileNo: claim.fileNo,
-        score: 100,
-        reason: 'Dosya no tam eşleşme',
+    if (claimId) {
+      const claim = await this.prisma.claimFile.findUnique({
+        where: { id: claimId },
+        select: { id: true, fileNo: true },
       });
+      if (claim) {
+        results.push({
+          type: 'claim',
+          id: claim.id,
+          fileNo: claim.fileNo,
+          score: 100,
+          reason: 'Dosya no eşleşmesi (boşluksuz)',
+        });
+      }
     }
-    if (emergency) {
-      results.push({
-        type: 'emergency',
-        id: emergency.id,
-        fileNo: emergency.fileNo ?? emergency.caseNo,
-        score: 100,
-        reason: 'Dosya no tam eşleşme',
+    if (emergencyId) {
+      const emergency = await this.prisma.emergencyCase.findUnique({
+        where: { id: emergencyId },
+        select: { id: true, fileNo: true, caseNo: true },
       });
+      if (emergency) {
+        results.push({
+          type: 'emergency',
+          id: emergency.id,
+          fileNo: emergency.fileNo ?? emergency.caseNo,
+          score: 100,
+          reason: 'Dosya no eşleşmesi (boşluksuz)',
+        });
+      }
     }
     return results;
   }

@@ -4,6 +4,7 @@ import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
+import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
 import {
   DASHBOARD_APPROVAL_DELAYS_TTL_SEC,
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
@@ -21,18 +22,33 @@ export class DashboardService {
   constructor(
     private prisma: PrismaService,
     private cache: CacheService,
+    private operationalAccessGrants: OperationalAccessGrantsService,
   ) {}
 
-  /** office_staff scope: yalnızca atanmış dosya sorumlusu dosyaları */
-  private scopedOfficeStaffWhere(scopeUserId?: string) {
-    if (!scopeUserId) return {};
-    return { assignedOfficeUserId: scopeUserId };
+  /** office_staff scope: atanmış + vekalet kapsamındaki dosya sorumlusu dosyaları */
+  private async buildDelegationScope(scopeUserId?: string) {
+    if (!scopeUserId) {
+      return { claim: {}, emergency: {} };
+    }
+    const [hasarPrincipalIds, acilPrincipalIds] = await Promise.all([
+      this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'hasar'),
+      this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'acil_yardim'),
+    ]);
+    return {
+      claim: { assignedOfficeUserId: { in: [scopeUserId, ...hasarPrincipalIds] } },
+      emergency: { assignedUserId: { in: [scopeUserId, ...acilPrincipalIds] } },
+    };
   }
 
-  private scopedOpenClaimFileWhere(scopeUserId?: string) {
+  private async scopedOfficeStaffWhere(scopeUserId?: string) {
+    const scope = await this.buildDelegationScope(scopeUserId);
+    return scope.claim;
+  }
+
+  private async scopedOpenClaimFileWhere(scopeUserId?: string) {
     const base = { currentStatus: { isClosedState: false } };
     if (!scopeUserId) return base;
-    return { ...base, ...this.scopedOfficeStaffWhere(scopeUserId) };
+    return { ...base, ...(await this.scopedOfficeStaffWhere(scopeUserId)) };
   }
 
   async getOperationsKpis(scopeUserId?: string) {
@@ -58,8 +74,9 @@ export class DashboardService {
 
     const now = new Date();
 
-    const scopeWhere = this.scopedOfficeStaffWhere(scopeUserId);
-    const emergencyScopeWhere = scopeUserId ? { assignedUserId: scopeUserId } : {};
+    const delegationScope = await this.buildDelegationScope(scopeUserId);
+    const scopeWhere = delegationScope.claim;
+    const emergencyScopeWhere = delegationScope.emergency;
     const closedEmergencyStatuses: EmergencyStatus[] = [
       EmergencyStatus.COZULDU,
       EmergencyStatus.FATURALANDILDI,
@@ -122,7 +139,7 @@ export class DashboardService {
   }
 
   async getUserPerformance(filters: DashboardFiltersDto, scopeUserId?: string) {
-    const where = { ...this.buildWhereClause(filters), ...this.scopedOfficeStaffWhere(scopeUserId) };
+    const where = { ...this.buildWhereClause(filters), ...(await this.scopedOfficeStaffWhere(scopeUserId)) };
     const now = new Date();
 
     const claimFiles = await this.prisma.claimFile.findMany({
@@ -1138,7 +1155,7 @@ export class DashboardService {
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
     const openFiles = await this.prisma.claimFile.findMany({
-      where: this.scopedOpenClaimFileWhere(scopeUserId),
+      where: await this.scopedOpenClaimFileWhere(scopeUserId),
       include: {
         currentStatus: true,
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
@@ -1167,7 +1184,7 @@ export class DashboardService {
 
     const inactiveFiles = await this.prisma.claimFile.findMany({
       where: {
-        ...this.scopedOpenClaimFileWhere(scopeUserId),
+        ...(await this.scopedOpenClaimFileWhere(scopeUserId)),
         lastActivityAt: { lt: fortyEightHoursAgo },
       },
       select: { id: true, fileNo: true, lastActivityAt: true, currentStatus: { select: { name: true } } },
@@ -1218,7 +1235,7 @@ export class DashboardService {
 
     const now = new Date();
     const claimFileScope = scopeUserId
-      ? { ...this.scopedOfficeStaffWhere(scopeUserId), currentStatus: { isClosedState: false } }
+      ? { ...(await this.scopedOfficeStaffWhere(scopeUserId)), currentStatus: { isClosedState: false } }
       : { currentStatus: { isClosedState: false } };
 
     const reports = await this.prisma.repairReport.findMany({
@@ -1335,7 +1352,7 @@ export class DashboardService {
       ],
     };
     if (isOfficeStaff) {
-      Object.assign(where, this.scopedOfficeStaffWhere(userId));
+      Object.assign(where, await this.scopedOfficeStaffWhere(userId));
     }
 
     const files = await this.prisma.claimFile.findMany({
@@ -1369,7 +1386,7 @@ export class DashboardService {
 
     const now = new Date();
     const openFiles = await this.prisma.claimFile.findMany({
-      where: this.scopedOpenClaimFileWhere(scopeUserId),
+      where: await this.scopedOpenClaimFileWhere(scopeUserId),
       include: { currentStatus: true },
     });
 

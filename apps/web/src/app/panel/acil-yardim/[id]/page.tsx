@@ -13,6 +13,7 @@ import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 
 const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
 const STATUS_LABELS: Record<EmergencyStatus, string> = {
@@ -514,6 +515,19 @@ export default function VakaDetayPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
         <p className="text-xs font-semibold text-slate-500 tracking-wider">Dosya Bilgileri</p>
         <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-slate-400">Dosya Sorumlusu</p>
+            <p className="font-medium text-slate-800">
+              {vaka.assignedUser
+                ? `${vaka.assignedUser.firstName} ${vaka.assignedUser.lastName}`.trim()
+                : '—'}
+            </p>
+            {vaka.activeDelegation && (
+              <div className="mt-2">
+                <DelegationBanner delegation={vaka.activeDelegation} />
+              </div>
+            )}
+          </div>
           <div>
             <p className="text-xs text-slate-400">Sorun Türü</p>
             <p className="font-medium text-blue-700">{vaka.issueType}</p>

@@ -3,6 +3,7 @@ export { FinanceQueuesStrip } from './finance-queues-strip';
 export { OverheadAllocationReminderWidget } from './overhead-allocation-reminder-widget';
 export { FinanceKpiGroup } from './finance-kpi-group';
 export { FinanceFlowStrip } from './finance-flow-strip';
+export { FinanceExtraAccessSection } from './finance-extra-access-section';
 export { FinanceModulesWidget } from './finance-modules-widget';
 export { FinanceModulesDrawer } from './finance-modules-drawer';
 export { FinancePeriodSelector } from './finance-period-selector';

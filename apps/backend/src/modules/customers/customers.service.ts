@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
 import { isInsuranceCompanyUser, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
@@ -18,7 +19,23 @@ type CustomerNameFields = {
 
 @Injectable()
 export class CustomersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private systemSettings: SystemSettingsService,
+  ) {}
+
+  private async assertCustomerSubTypeIfRequired(data: Record<string, unknown>): Promise<void> {
+    const entityType = String(data.entityType ?? data.customerType ?? '').trim();
+    const subType = String(data.subType ?? '').trim();
+    if (entityType === 'corporate' && !subType) {
+      throw new BadRequestException('Kurumsal müşteride alt tip seçimi zorunludur.');
+    }
+    const reqs = await this.systemSettings.getFieldRequirements();
+    if (!reqs.customerSubTypeRequired) return;
+    if (entityType === 'individual' && !subType) {
+      throw new BadRequestException('Müşteri tipi (alt tip) seçimi zorunludur.');
+    }
+  }
 
   /** Çakışma uyarılarında gösterilecek okunaklı müşteri adı */
   private resolveCustomerDisplayName(c: CustomerNameFields): string {
@@ -260,6 +277,7 @@ export class CustomersService {
       include: {
         contacts: true,
         contactInfos: { orderBy: { createdAt: 'asc' } },
+        updatedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         _count: { select: { claimFiles: true } },
       },
     });
@@ -283,9 +301,10 @@ export class CustomersService {
     return customer;
   }
 
-  async create(data: any) {
+  async create(data: any, actorUserId?: string) {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
+    await this.assertCustomerSubTypeIfRequired(rest);
 
     // entityType / type eşleme
     if (customerType && !rest.entityType) {
@@ -308,6 +327,9 @@ export class CustomersService {
     // DateTime alanlarını düzelt (boş string -> null, DD.MM.YYYY veya YYYY-MM-DD -> ISO)
     rest.followUpDate = this.parseDate(rest.followUpDate);
     rest.birthDate = this.parseDate(rest.birthDate);
+    if (actorUserId) {
+      rest.updatedByUserId = actorUserId;
+    }
 
     const customer = await this.prisma.customer.create({ data: rest }).catch((err: any) => {
       if (err?.code === 'P2002') {
@@ -358,10 +380,11 @@ export class CustomersService {
     return this.findOne(customer.id);
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: any, actorUserId?: string) {
     await this.findOne(id);
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
+    await this.assertCustomerSubTypeIfRequired(rest);
     if (customerType && !rest.entityType) {
       rest.entityType = customerType;
     }
@@ -376,6 +399,9 @@ export class CustomersService {
     // DateTime alanlarını düzelt
     rest.followUpDate = this.parseDate(rest.followUpDate);
     rest.birthDate = this.parseDate(rest.birthDate);
+    if (actorUserId) {
+      rest.updatedByUserId = actorUserId;
+    }
 
     await this.prisma.customer.update({ where: { id }, data: rest }).catch((err: any) => {
       if (err?.code === 'P2002') {

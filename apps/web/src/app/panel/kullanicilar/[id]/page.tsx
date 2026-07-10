@@ -13,17 +13,22 @@ import {
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
 import { formatPhoneDisplay } from '@/data/country-codes';
+import {
+  OperationalAccessGrantPanel,
+  resolveDefaultAuthorizationFlow,
+} from '@/components/users/OperationalAccessGrantPanel';
 
 
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
 
-type UserTab = 'profil' | 'bolgeler' | 'randevular' | 'ekranlar';
+type UserTab = 'profil' | 'bolgeler' | 'randevular' | 'ekranlar' | 'vekalet';
 
 const TABS: { id: UserTab; label: string; adminOnly?: boolean }[] = [
   { id: 'profil', label: 'Profil' },
   { id: 'bolgeler', label: 'Hizmet Bölgeleri' },
   { id: 'randevular', label: 'Randevuları' },
   { id: 'ekranlar', label: 'Ekran İzinleri' },
+  { id: 'vekalet', label: 'Yetkilendirme', adminOnly: true },
 ];
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -465,6 +470,7 @@ export default function KullaniciDetayPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<UserTab>('profil');
   const [canManageScreens, setCanManageScreens] = useState(false);
+  const [isAdminOrManager, setIsAdminOrManager] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -474,6 +480,7 @@ export default function KullaniciDetayPage() {
         const roleCode = String(parsed?.role?.code ?? '').toLowerCase();
         const permissions: string[] = parsed?.permissions ?? [];
         setCanManageScreens(roleCode === 'admin' || permissions.includes('user.update') || permissions.includes('user.view'));
+        setIsAdminOrManager(roleCode === 'admin' || roleCode === 'manager');
       } catch { /* ignore */ }
     }
   }, []);
@@ -508,7 +515,11 @@ export default function KullaniciDetayPage() {
     );
   }
 
-  const visibleTabs = TABS.filter((t) => t.id !== 'ekranlar' || canManageScreens);
+  const visibleTabs = TABS.filter((t) => {
+    if (t.id === 'ekranlar') return canManageScreens;
+    if (t.adminOnly) return isAdminOrManager;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -556,6 +567,12 @@ export default function KullaniciDetayPage() {
         {activeTab === 'randevular' && <RandevularTab userId={id!} />}
         {activeTab === 'ekranlar' && canManageScreens && (
           <EkranlarTab userId={id!} roleCode={user?.role?.code ?? ''} />
+        )}
+        {activeTab === 'vekalet' && isAdminOrManager && (
+          <OperationalAccessGrantPanel
+            userId={id!}
+            defaultFlow={resolveDefaultAuthorizationFlow(user?.role?.code)}
+          />
         )}
       </div>
     </div>

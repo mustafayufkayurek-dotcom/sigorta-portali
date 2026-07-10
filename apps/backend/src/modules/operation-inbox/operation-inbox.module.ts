@@ -9,6 +9,7 @@ import { ClaimResponsibilitiesModule } from '../claim-responsibilities/claim-res
 import { CustomersModule } from '../customers/customers.module';
 import { EmergencyModule } from '../emergency/emergency.module';
 import { NotesModule } from '../notes/notes.module';
+import { OperationalAccessGrantsModule } from '../operational-access-grants/operational-access-grants.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
 import { OperationInboxController } from './operation-inbox.controller';
 import { OperationInboxWebhookController } from './operation-inbox-webhook.controller';
@@ -36,8 +37,9 @@ import { OperationInboxScheduler } from './operation-inbox.scheduler';
     NotificationsModule,
     ClaimFilesModule,
     ClaimResponsibilitiesModule,
-    CustomersModule,
+    forwardRef(() => CustomersModule),
     EmergencyModule,
+    OperationalAccessGrantsModule,
     NotesModule,
     HttpModule.register({ timeout: 60_000, maxRedirects: 3 }),
     BullModule.registerQueue(

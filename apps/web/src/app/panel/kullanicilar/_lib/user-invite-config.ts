@@ -28,8 +28,8 @@ export type OperationAreaCode = '' | 'hasar' | 'acil' | 'both';
 
 /** Seed ve canlı ortamda birlikte yaşayan departman kodları */
 const DEPARTMENT_CODE_ALIASES: Record<'hasar' | 'acil', string[]> = {
-  hasar: ['hasar-onarim', 'HASAR_ONARIM'],
-  acil: ['acil-yardim', 'ACIL_YARDIM'],
+  hasar: ['hasar-onarim', 'HASAR_ONARIM', 'hasar_onarim'],
+  acil: ['acil-yardim', 'ACIL_YARDIM', 'acil_yardim'],
 };
 
 export interface IhbarKonulari {
@@ -43,9 +43,13 @@ export function departmentCodeMatchesArea(code: string | undefined, area: 'hasar
 }
 
 export function operationAreaFromDepartmentCodes(codes: Iterable<string | undefined>): OperationAreaCode {
-  const set = new Set(Array.from(codes).filter(Boolean) as string[]);
-  const hasar = DEPARTMENT_CODE_ALIASES.hasar.some((code) => set.has(code));
-  const acil = DEPARTMENT_CODE_ALIASES.acil.some((code) => set.has(code));
+  const normalized = new Set(
+    Array.from(codes)
+      .filter(Boolean)
+      .map((code) => String(code).trim().toLowerCase().replace(/_/g, '-')),
+  );
+  const hasar = DEPARTMENT_CODE_ALIASES.hasar.some((code) => normalized.has(code.toLowerCase().replace(/_/g, '-')));
+  const acil = DEPARTMENT_CODE_ALIASES.acil.some((code) => normalized.has(code.toLowerCase().replace(/_/g, '-')));
   if (hasar && acil) return 'both';
   if (hasar) return 'hasar';
   if (acil) return 'acil';

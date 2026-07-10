@@ -433,6 +433,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         notificationDate: ihbarIso,
         priority: 'normal',
         description: description || undefined,
+        insuredName: insuredName.trim() ? toTitleCaseTR(insuredName.trim()) : undefined,
         customerId: customerId || undefined,
         propertyAddressId,
       };
@@ -635,6 +636,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
             onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); void checkFileNoDuplicate(v); }}
           />
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
+          {!fileNoChecking && !errors.fileNo && (
+            <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
+          )}
           {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>

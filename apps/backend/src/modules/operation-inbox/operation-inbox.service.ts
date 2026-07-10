@@ -30,8 +30,10 @@ import { CreateCustomerFromInboxDto } from './dto/create-customer-from-inbox.dto
 import { GraphMailSendService } from './graph/graph-mail-send.service';
 import { InboundRoutingService, InboundRoutingSuggestion } from './inbound-routing.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
+import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
+import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import {
   FileMatchCandidate,
   InboundFileMatcherService,
@@ -52,6 +54,7 @@ interface AiExtractedFields {
   claimNo?: string | null;
   address?: string | null;
   lossType?: string | null;
+  fileSubject?: string | null;
   urgency?: 'NORMAL' | 'HIGH' | null;
   outboundReplies?: OutboundReplyAudit[];
   lastReplyAt?: string;
@@ -81,6 +84,7 @@ export class OperationInboxService {
     private readonly graphMailSend: GraphMailSendService,
     private readonly routingService: InboundRoutingService,
     private readonly inboxNotifications: OperationInboxNotificationService,
+    private readonly operationalAccessGrants: OperationalAccessGrantsService,
   ) {}
 
   async listMessages(filters: {
@@ -178,6 +182,18 @@ export class OperationInboxService {
   async getRoutingSuggestion(id: string) {
     await this.getMessage(id);
     return this.routingService.getRoutingSuggestion(id);
+  }
+
+  async listAssignableUsers(messageId?: string) {
+    if (messageId) {
+      await this.getMessage(messageId);
+    }
+    return this.routingService.listAssignableOfficeUsers(messageId);
+  }
+
+  async getAutoAssignPreview(id: string) {
+    await this.getMessage(id);
+    return this.routingService.getAutoAssignPreview(id);
   }
 
   async getMatchCandidates(id: string): Promise<{ candidates: FileMatchCandidate[] }> {
@@ -718,13 +734,24 @@ export class OperationInboxService {
     const message = await this.getMessage(id);
     this.assertCanOpenEmergency(message);
 
+    const assistantCustomerId = dto.assistantCustomerId?.trim();
+    if (!assistantCustomerId) {
+      throw new BadRequestException('Asistan firması seçilmelidir');
+    }
+    const assistantCustomer = await this.prisma.customer.findFirst({
+      where: {
+        id: assistantCustomerId,
+        entityType: 'corporate',
+        subType: 'asistan_firmasi',
+        status: 'active',
+      },
+      select: { id: true, companyName: true, fullName: true },
+    });
+    if (!assistantCustomer) {
+      throw new BadRequestException('Geçersiz asistan firması seçildi');
+    }
+
     const extracted = this.enrichExtracted(message, this.parseExtracted(message.aiExtractedJson));
-    const customerId = await this.resolveCustomerForOpen(
-      dto,
-      extracted,
-      message.fromName,
-      message.fromAddress,
-    );
     const fileNo = await this.resolveUniqueFileNo(
       dto.fileNo?.trim() || extracted.fileNo,
       () => this.generateEmergencyFileNo(),
@@ -734,13 +761,18 @@ export class OperationInboxService {
       || 'Belirtilmemiş';
     const customerPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
     const address = dto.insuredAddress?.trim() || extracted.address?.trim() || 'Belirtilmemiş';
-    const issueType = dto.lossType?.trim() || extracted.lossType?.trim() || 'Gelen Kutu İhbarı';
+    const issueType =
+      mapInboundCategoryToMeridyen(dto.fileSubject?.trim() || extracted.fileSubject)
+      || mapInboundLossTypeToMeridyen(dto.lossType?.trim() || extracted.lossType)
+      || 'Gelen Kutu İhbarı';
     const urgency: EmergencyUrgency =
       extracted.urgency === 'HIGH' ? 'YUKSEK' : 'NORMAL';
     const instructionBlock = dto.instruction.trim();
+    const assistantLabel = assistantCustomer.companyName ?? assistantCustomer.fullName ?? 'Asistan Firması';
     const notes = [
       `Gelen kutusu ihbarı: ${message.subject}`,
       message.aiSummary,
+      `Asistan firması: ${assistantLabel}`,
       `Talimat: ${instructionBlock}`,
     ]
       .filter(Boolean)
@@ -750,11 +782,15 @@ export class OperationInboxService {
     const assigneeId =
       dto.assignedUserId ?? message.assignedUserId ?? routing?.suggestedAssigneeId ?? undefined;
 
+    if (assigneeId) {
+      await this.assertAssigneeCoversAssistantCustomer(assigneeId, assistantCustomerId);
+    }
+
     const { data: emergencyCase } = await this.emergencyCasesService.create(
       {
         customerName,
         customerPhone,
-        customerId,
+        customerId: assistantCustomerId,
         fileNo,
         address,
         issueType,
@@ -808,6 +844,43 @@ export class OperationInboxService {
       },
       message: updated,
     };
+  }
+
+  private async assertAssigneeCoversAssistantCustomer(
+    userId: string,
+    assistantCustomerId: string,
+  ): Promise<void> {
+    const hasFunctionDelegation = await this.operationalAccessGrants.hasFunctionDelegation(
+      userId,
+      'acil_yardim',
+    );
+    if (hasFunctionDelegation) return;
+
+    const ACIL_DEPT_CODES = new Set(['acil-yardim', 'ACIL_YARDIM', 'acil', 'ACIL']);
+    const assignments = await this.prisma.claimResponsibilityAssignment.findMany({
+      where: { userId, isActive: true },
+      include: { department: { select: { code: true } } },
+    });
+    const acilAssignments = assignments.filter(
+      (item) => item.department?.code && ACIL_DEPT_CODES.has(item.department.code),
+    );
+    if (acilAssignments.length === 0) return;
+
+    const coversAll = acilAssignments.some((item) => item.coverageType === 'all');
+    if (coversAll) return;
+
+    const allowedIds = new Set<string>();
+    for (const item of acilAssignments) {
+      const cfg = item.coverageConfig as { customerIds?: string[] } | null;
+      for (const id of cfg?.customerIds ?? []) {
+        if (id) allowedIds.add(id);
+      }
+    }
+    if (allowedIds.size > 0 && !allowedIds.has(assistantCustomerId)) {
+      throw new BadRequestException(
+        'Seçilen dosya sorumlusu bu asistan firması kapsamında değil. Sorumlu veya asistan firmasını güncelleyin.',
+      );
+    }
   }
 
   private async resolveCustomerForOpen(
@@ -919,6 +992,7 @@ export class OperationInboxService {
       claimNo: extracted.claimNo?.trim() || heuristic.claimNo || null,
       address: extracted.address?.trim() || heuristic.address || null,
       lossType: extracted.lossType?.trim() || heuristic.lossType || null,
+      fileSubject: extracted.fileSubject?.trim() || heuristic.fileSubject || null,
     };
   }
 
@@ -948,6 +1022,7 @@ export class OperationInboxService {
       claimNo: typeof raw.claimNo === 'string' ? raw.claimNo : null,
       address: typeof raw.address === 'string' ? raw.address : null,
       lossType: typeof raw.lossType === 'string' ? raw.lossType : null,
+      fileSubject: typeof raw.fileSubject === 'string' ? raw.fileSubject : null,
       urgency:
         raw.urgency === 'HIGH' || raw.urgency === 'NORMAL' ? raw.urgency : null,
     };

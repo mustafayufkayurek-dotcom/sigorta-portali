@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { AuthTokens, RegisterDto } from '@sigorta/shared';
+import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 
 function normalizeAuthEmail(email: string): string {
   return normalizeEmailAddress(email);
@@ -19,6 +20,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private operationalAccessGrants: OperationalAccessGrantsService,
   ) {}
 
   private async findActiveUserByEmail(normalizedEmail: string) {
@@ -337,6 +339,15 @@ export class AuthService {
           },
         },
         branch: true,
+        departmentMemberships: {
+          where: { isActive: true },
+          include: {
+            department: {
+              select: { id: true, code: true, name: true },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         userInsuranceCompanyScopes: {
           include: {
             insuranceCompany: true,
@@ -348,6 +359,8 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Kullanıcı bulunamadı');
     }
+
+    const operationalAccessGrants = await this.operationalAccessGrants.getGrantSummaryForUser(userId);
 
     return {
       id: user.id,
@@ -369,6 +382,14 @@ export class AuthService {
         code: s.insuranceCompany.code,
         name: s.insuranceCompany.name,
       })),
+      departmentMemberships: user.departmentMemberships.map((m) => ({
+        departmentId: m.departmentId,
+        isPrimary: m.isPrimary,
+        department: m.department
+          ? { id: m.department.id, code: m.department.code, name: m.department.name }
+          : null,
+      })),
+      operationalAccessGrants,
       isMobileUser: user.isMobileUser,
       isWebUser: user.isWebUser,
       lastLoginAt: user.lastLoginAt,

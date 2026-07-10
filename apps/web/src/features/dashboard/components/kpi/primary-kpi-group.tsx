@@ -2,11 +2,11 @@
 
 import {
   FileText,
-  Clock,
   AlertTriangle,
   BellRing,
   TrendingUp,
 } from 'lucide-react';
+import { HASAR_OPERATION_ICON, ACIL_OPERATION_ICON } from '@/constants/operation-icons';
 import { WidgetBoundary } from '../widget-frame';
 import { KpiCard } from './kpi-card';
 import { useDashboardOperations, usePendingActions } from '../../hooks/use-dashboard-data';
@@ -73,9 +73,10 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               color="bg-blue-600"
               subtext={ops && !opsFailed ? `${ops.openOperationalFiles} açık takip` : undefined}
               emptyHint="Henüz kayıtlı operasyon dosyası bulunmuyor."
+              href="/panel/hasar-dosyalari"
             />
             <KpiCard
-              icon={Clock}
+              icon={HASAR_OPERATION_ICON}
               label="Hasar Dosyası"
               value={opsFailed ? '—' : (ops?.totalClaims ?? '—')}
               color="bg-indigo-600"
@@ -85,7 +86,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
             />
             {!hideAcil && (
             <KpiCard
-              icon={BellRing}
+              icon={ACIL_OPERATION_ICON}
               label="Acil Yardım"
               value={opsFailed ? '—' : (ops?.totalEmergencyCases ?? '—')}
               color="bg-cyan-600"
@@ -100,7 +101,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               value={opsFailed ? '—' : (ops?.slaViolationCount ?? '—')}
               color={ops && !opsFailed && ops.slaViolationCount > 0 ? 'bg-red-600' : 'bg-emerald-600'}
               emptyHint="Riskte bekleyen SLA ihlali görünmüyor."
-              href={ops && !opsFailed && ops.slaViolationCount > 0 ? '/panel/hasar-dosyalari?status=sla_exceeded' : undefined}
+              href="/panel/raporlar/sla"
             />
             <KpiCard
               icon={BellRing}
@@ -108,7 +109,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               value={pendingFailed ? '—' : (pendingCount || '—')}
               color="bg-amber-600"
               emptyHint={pendingFailed ? 'Bekleyen aksiyon verisi alınamadı.' : 'Şu anda işlem bekleyen aksiyon bulunmuyor.'}
-              href={!pendingFailed && pendingCount > 0 ? '/panel/hasar-dosyalari?status=open' : undefined}
+              href="/panel/hasar-dosyalari?status=open"
             />
             {!hideFinance && (
             <KpiCard

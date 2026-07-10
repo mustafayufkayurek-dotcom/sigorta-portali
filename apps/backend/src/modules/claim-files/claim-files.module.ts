@@ -5,9 +5,10 @@ import { CustomerAccessLogModule } from '@/modules/customer-access-log/customer-
 import { PrismaModule } from '@/prisma/prisma.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { ClaimResponsibilitiesModule } from '@/modules/claim-responsibilities/claim-responsibilities.module';
+import { OperationalAccessGrantsModule } from '@/modules/operational-access-grants/operational-access-grants.module';
 
 @Module({
-  imports: [CustomerAccessLogModule, PrismaModule, NotificationsModule, ClaimResponsibilitiesModule],
+  imports: [CustomerAccessLogModule, PrismaModule, NotificationsModule, ClaimResponsibilitiesModule, OperationalAccessGrantsModule],
   providers: [ClaimFilesService],
   controllers: [ClaimFilesController],
   exports: [ClaimFilesService],

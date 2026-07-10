@@ -1,7 +1,8 @@
 'use client';
 
-import { ArrowRight, Banknote, ClipboardCheck, FileText, ListTodo, Siren } from 'lucide-react';
+import { ArrowRight, Banknote, ClipboardCheck, ListTodo } from 'lucide-react';
 import Link from 'next/link';
+import { HASAR_OPERATION_ICON, ACIL_OPERATION_ICON } from '@/constants/operation-icons';
 import { useDashboardOperations, usePendingActions, useApprovalDelays } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -9,7 +10,7 @@ type FlowItem = {
   title: string;
   value: string | number;
   detail: string;
-  icon: typeof FileText;
+  icon: typeof HASAR_OPERATION_ICON;
   iconClassName: string;
   path: string;
 };
@@ -31,12 +32,39 @@ export function OperationFlowStrip({
   const pendingCount = pendingItems.length;
   const approvalDelayTotal = approvalDelaysQuery.data?.summary?.total ?? 0;
 
-  const items: FlowItem[] = [
+  const items: FlowItem[] = isOfficeStaff
+    ? [
+        {
+          title: 'Açık Hasar Dosyalarım',
+          value: ops?.openClaims ?? '—',
+          detail: ops ? `${ops.totalClaims} toplam dosya` : 'Veri bekleniyor',
+          icon: HASAR_OPERATION_ICON,
+          iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
+          path: '/panel/hasar-dosyalari?status=open',
+        },
+        {
+          title: 'Onay Gecikmesi',
+          value: approvalDelayTotal,
+          detail: approvalDelayTotal > 0 ? '24 saat üzeri bekleyen rapor' : 'Geciken onay yok',
+          icon: ClipboardCheck,
+          iconClassName: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
+          path: '/panel/hasar-dosyalari?repairReportStatus=pending_approval',
+        },
+        {
+          title: 'Bekleyen Aksiyonlarım',
+          value: pendingCount,
+          detail: pendingCount > 0 ? 'İşlem bekleyen kayıtlar' : 'Bekleyen kayıt yok',
+          icon: ListTodo,
+          iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+          path: '/panel/hasar-dosyalari?status=open',
+        },
+      ]
+    : [
     {
-      title: isOfficeStaff ? 'Açık Hasar Dosyalarım' : 'Hasar Dosyaları',
+      title: 'Hasar Dosyaları',
       value: ops?.openClaims ?? '—',
       detail: ops ? `${ops.totalClaims} toplam dosya` : 'Veri bekleniyor',
-      icon: FileText,
+      icon: HASAR_OPERATION_ICON,
       iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
       path: '/panel/hasar-dosyalari',
     },
@@ -46,22 +74,12 @@ export function OperationFlowStrip({
       title: 'Acil Yardım',
       value: ops?.openEmergencyCases ?? '—',
       detail: ops ? `${ops.totalEmergencyCases} toplam dosya` : 'Veri bekleniyor',
-      icon: Siren,
+      icon: ACIL_OPERATION_ICON,
       iconClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
       path: '/panel/acil-yardim',
     }]),
-    ...(isOfficeStaff
-      ? [{
-      title: 'Onay Gecikmesi',
-      value: approvalDelayTotal,
-      detail: approvalDelayTotal > 0 ? '24 saat üzeri bekleyen rapor' : 'Geciken onay yok',
-      icon: ClipboardCheck,
-      iconClassName: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
-      path: '/panel/hasar-dosyalari?repairReportStatus=pending_approval',
-    }]
-      : []),
     {
-      title: isOfficeStaff ? 'Bekleyen Aksiyonlarım' : 'Bekleyen Aksiyon',
+      title: 'Bekleyen Aksiyon',
       value: pendingCount,
       detail: pendingCount > 0 ? 'İşlem bekleyen kayıtlar' : 'Bekleyen kayıt yok',
       icon: ListTodo,
@@ -97,10 +115,12 @@ export function OperationFlowStrip({
           <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>
         )}
       </div>
-      <div className={`grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 ${
-        hideFinance
-          ? (hideAcil ? (isOfficeStaff ? 'xl:grid-cols-3' : 'xl:grid-cols-2') : (isOfficeStaff ? 'xl:grid-cols-4' : 'xl:grid-cols-3'))
-          : (hideAcil ? 'xl:grid-cols-3' : 'xl:grid-cols-4')
+      <div className={`grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 ${
+        isOfficeStaff
+          ? 'xl:grid-cols-3'
+          : hideFinance
+            ? (hideAcil ? 'xl:grid-cols-2' : 'xl:grid-cols-3')
+            : (hideAcil ? 'xl:grid-cols-3' : 'xl:grid-cols-4')
       }`}>
         {items.map((item) => {
           const Icon = item.icon;

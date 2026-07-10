@@ -45,6 +45,7 @@ export default function InboxInsuredModalPreviewPage() {
   const [policyNo, setPolicyNo] = useState(draft.policyNo);
   const [claimNo, setClaimNo] = useState(draft.claimNo);
   const [lossType, setLossType] = useState(draft.lossType);
+  const [fileSubject, setFileSubject] = useState(draft.fileSubject);
 
   return (
     <div className="min-h-screen bg-slate-200/60 p-4 sm:p-8">
@@ -115,6 +116,8 @@ export default function InboxInsuredModalPreviewPage() {
         onClaimNoChange={setClaimNo}
         lossType={lossType}
         onLossTypeChange={setLossType}
+        fileSubject={fileSubject}
+        onFileSubjectChange={setFileSubject}
         insuranceCompanies={[{ id: '1', name: 'Türkiye Sigorta' }]}
         insuranceCompanyId="1"
         onConfirm={() => setOpen(false)}

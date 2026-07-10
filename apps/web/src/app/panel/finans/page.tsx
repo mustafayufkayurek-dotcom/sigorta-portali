@@ -1,13 +1,5 @@
 'use client';
 
-/**
- * MERIDYEN PRODUCT GUARDRAIL
- * Bu ekran teknik CRUD ekranı olarak genişletilemez.
- * İlgili ürün kararı:
- * docs/product/MERIDYEN_URUN_KARARI_ANAYASASI.md
- * docs/product/UI_GUARDRAIL_CHECKLIST.md
- */
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -20,16 +12,16 @@ import {
   FinanceModulesDrawer,
   FinancePeriodSelector,
   FinanceBottleneckWidget,
+  FinanceExtraAccessSection,
   OverheadAllocationReminderWidget,
 } from '@/features/dashboard/components/finance';
-import { OperationFlowStrip } from '@/features/dashboard/components/flow';
 import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
-import { PendingActionsWidget } from '@/features/dashboard/components/queue';
-import { SlaRiskWidget } from '@/features/dashboard/components/sla';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 export default function FinansDashboard() {
   const router = useRouter();
+  const { showFinanceExtraAccessAcil } = usePanelAccess();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -46,8 +38,8 @@ export default function FinansDashboard() {
   return (
     <DashboardShell>
       <DashboardHeader
-        title="Finans Özeti"
-        subtitle="Gelir-gider özeti, tahsilat kuyruğu ve günlük operasyon takibi tek ekranda"
+        title="Finans Merkezi"
+        subtitle="Gelir-gider, tahsilat ve fatura kuyruğu — ana iş akışınız"
         hideDefaultActions
         showAcilAction={false}
         actions={
@@ -86,27 +78,13 @@ export default function FinansDashboard() {
 
       <OverheadAllocationReminderWidget staggerIndex={2} />
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">Operasyon Takibi</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Hasar dosyaları, bekleyen aksiyonlar ve geciken tahsilatlar — finans kararları için günlük operasyon özeti.
-          </p>
-        </div>
-        <OperationFlowStrip hideFinance={false} hideAcil />
-      </section>
+      {showFinanceExtraAccessAcil && <FinanceExtraAccessSection staggerIndex={3} />}
 
-      <CriticalAlertsWidget staggerIndex={3} />
-
-      <PendingActionsWidget staggerIndex={4} />
+      <CriticalAlertsWidget staggerIndex={showFinanceExtraAccessAcil ? 4 : 3} />
 
       <DashboardGrid>
-        <SlaRiskWidget staggerIndex={5} />
-        <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={6} />
-      </DashboardGrid>
-
-      <DashboardGrid>
-        <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={7} />
+        <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={showFinanceExtraAccessAcil ? 5 : 4} />
+        <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={showFinanceExtraAccessAcil ? 6 : 5} />
       </DashboardGrid>
 
       <FinanceModulesDrawer open={modulesOpen} onClose={() => setModulesOpen(false)} />

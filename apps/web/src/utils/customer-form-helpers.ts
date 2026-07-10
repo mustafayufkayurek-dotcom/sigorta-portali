@@ -223,3 +223,126 @@ export function normalizeCustomerAddressFields(form: {
     address: norm(form.address),
   };
 }
+
+export function mapCustomerContactsToForm(contacts: Array<{
+  id?: string;
+  name?: string;
+  role?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}> = []) {
+  if (!contacts.length) {
+    return [{ firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm' as const, extensionNo: '', email: '' }];
+  }
+  return contacts.map((contact) => {
+    const parts = String(contact.name ?? '').trim().split(/\s+/);
+    const firstName = parts[0] ?? '';
+    const lastName = parts.slice(1).join(' ');
+    return {
+      id: contact.id,
+      firstName,
+      lastName,
+      role: contact.role ?? '',
+      phone: contact.phone ?? '',
+      phoneType: 'gsm' as const,
+      extensionNo: '',
+      email: contact.email ?? '',
+    };
+  });
+}
+
+export function mapCustomerContactInfosToForm(contactInfos: Array<{
+  id?: string;
+  type?: string;
+  value?: string;
+  label?: string;
+}> = []) {
+  if (!contactInfos.length) {
+    return [{ type: 'phone', value: '', label: 'general' }];
+  }
+  return contactInfos.map((item) => ({
+    id: item.id,
+    type: item.type ?? 'phone',
+    value: item.value ?? '',
+    label: item.label ?? 'general',
+  }));
+}
+
+/** API müşteri kaydı → tam müşteri formu (düzenleme) */
+export function mapCustomerRecordToForm(
+  customer: Record<string, unknown>,
+  provinces: Array<{ code: string; name: string }>,
+) {
+  const entityType = (customer.entityType ?? customer.customerType ?? 'individual') as 'individual' | 'corporate';
+  const province = provinces.find((p) => p.name === customer.city);
+  const serviceBranches = Array.isArray(customer.serviceBranches)
+    ? customer.serviceBranches.filter((v): v is string => typeof v === 'string')
+    : [];
+  const tags = Array.isArray(customer.tags)
+    ? customer.tags.filter((t): t is string => typeof t === 'string')
+    : [];
+  const subType = String(customer.subType ?? '') as CustomerSubType;
+  const serviceTypeRaw = String(customer.serviceType ?? '').toLowerCase();
+  const serviceType = serviceTypeRaw === 'acil_yardim' || serviceTypeRaw === 'hasar'
+    ? serviceTypeRaw
+    : subType === 'asistan_firmasi'
+      ? 'acil_yardim'
+      : subType === 'sigorta_sirketi'
+        ? 'hasar'
+        : '' as '' | 'hasar' | 'acil_yardim';
+
+  return {
+    customerType: entityType,
+    subType,
+    firstName: String(customer.firstName ?? ''),
+    lastName: String(customer.lastName ?? ''),
+    companyName: String(customer.companyName ?? ''),
+    taxNumber: String(customer.taxNumber ?? ''),
+    taxOffice: String(customer.taxOffice ?? ''),
+    identityNo: String(customer.identityNo ?? ''),
+    contactFirstName: String(customer.contactFirstName ?? ''),
+    contactLastName: String(customer.contactLastName ?? ''),
+    phone: String(customer.phone ?? ''),
+    email: String(customer.email ?? ''),
+    phoneType: 'gsm' as const,
+    extensionNo: '',
+    cityCode: province?.code ?? '',
+    city: String(customer.city ?? ''),
+    district: String(customer.district ?? ''),
+    neighborhood: String(customer.neighborhood ?? ''),
+    streetName: String(customer.streetName ?? ''),
+    buildingNo: String(customer.buildingNo ?? ''),
+    doorNo: String(customer.doorNo ?? ''),
+    address: String(customer.address ?? ''),
+    source: String(customer.source ?? ''),
+    satisfactionScore: customer.satisfactionScore
+      ? String(customer.satisfactionScore) as '1' | '2' | '3' | '4' | '5'
+      : '' as '' | '1' | '2' | '3' | '4' | '5',
+    followUpDate: customer.followUpDate
+      ? new Date(String(customer.followUpDate)).toISOString().slice(0, 10)
+      : '',
+    tags,
+    notes: String(customer.notes ?? ''),
+    serviceType,
+    serviceBranches,
+    privateServiceType: '',
+  };
+}
+
+export function formatCustomerUpdatedMeta(customer: {
+  updatedAt?: string | Date | null;
+  updatedByUser?: { firstName?: string | null; lastName?: string | null } | null;
+}): string | null {
+  if (!customer.updatedAt) return null;
+  const when = new Date(customer.updatedAt).toLocaleString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const who = customer.updatedByUser
+    ? `${customer.updatedByUser.firstName ?? ''} ${customer.updatedByUser.lastName ?? ''}`.trim()
+    : '';
+  return who ? `${who} — ${when}` : when;
+}

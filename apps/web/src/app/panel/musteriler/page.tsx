@@ -33,8 +33,12 @@ import {
   customerSubTypesForPicker,
   normalizeCustomerAddressFields,
   normalizeCustomerRow,
+  mapCustomerRecordToForm,
+  mapCustomerContactsToForm,
+  mapCustomerContactInfosToForm,
   subTypeActiveClass,
   customerPhoneValidationError,
+  formatCustomerUpdatedMeta,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
 import {
@@ -674,7 +678,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
         </button>
         <button
           type="button"
-          onClick={() => { onEdit(customer); }}
+          onClick={() => { onClose(); if (customer) onEdit(customer); }}
           disabled={!customer}
           className="flex-1 border border-slate-200 text-slate-700 text-sm font-medium py-2.5 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
@@ -732,6 +736,11 @@ export default function MusterilerPage() {
   const limit = 20;
 
   const [showModal, setShowModal] = useState(false);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
+  const [editingCustomerMeta, setEditingCustomerMeta] = useState<{
+    updatedAt?: string | Date | null;
+    updatedByUser?: { firstName?: string | null; lastName?: string | null } | null;
+  } | null>(null);
   const [inboxPrefillFocusRole, setInboxPrefillFocusRole] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
@@ -811,6 +820,7 @@ export default function MusterilerPage() {
   const [drawerCustomerId, setDrawerCustomerId] = useState<string | null>(null);
   const [settingsReturn, setSettingsReturn] = useState<MusteriGrubuAddContext | null>(null);
   const groupAddHandled = useRef(false);
+  const editCustomerHandled = useRef(false);
 
   // ── Hover card state ──────────────────────────────────────────────────────
   const [hoverCustomer, setHoverCustomer] = useState<any>(null);
@@ -956,6 +966,8 @@ export default function MusterilerPage() {
   ].filter(Boolean).join(', ');
 
   const resetForm = () => {
+    setEditingCustomerId(null);
+    setEditingCustomerMeta(null);
     setForm(emptyForm()); setGibError(null); setTcResult(null);
     setIdentityNoError(null); setPhoneError(null); setEmailError(null); setTaxNoError(null);
     setPhoneWarn(null); setEmailWarn(null); setTcWarn(null); setTaxNoWarn(null);
@@ -997,6 +1009,47 @@ export default function MusterilerPage() {
       showToast('info', payload.toastMessage);
     }
   }, [showToast]);
+
+  const openCustomerForEdit = useCallback((customer: any) => {
+    if (!customer?.id) return;
+    setEditingCustomerId(customer.id);
+    setEditingCustomerMeta({
+      updatedAt: customer.updatedAt ?? null,
+      updatedByUser: customer.updatedByUser ?? null,
+    });
+    setForm(mapCustomerRecordToForm(customer, STATIC_PROVINCES));
+    setContacts(mapCustomerContactsToForm(customer.contacts ?? []));
+    setContactInfos(mapCustomerContactInfosToForm(customer.contactInfos ?? []));
+    setLocationCoords(
+      customer.latitude != null && customer.longitude != null
+        ? { lat: Number(customer.latitude), lng: Number(customer.longitude) }
+        : null,
+    );
+    setGibError(null);
+    setTcResult(null);
+    setIdentityNoError(null);
+    setPhoneError(null);
+    setEmailError(null);
+    setTaxNoError(null);
+    setPhoneWarn(null);
+    setEmailWarn(null);
+    setTcWarn(null);
+    setTaxNoWarn(null);
+    setDuplicateConflicts({});
+    setDuplicateExistingCustomerId(null);
+    setFieldErrors({});
+    setSectionErrors(null);
+    setTagInput('');
+    setActiveSection(0);
+    setContactsOpen(false);
+    setGeocodeMsg(null);
+    setShowModal(true);
+  }, []);
+
+  const requiresCustomerSubType = useCallback(
+    (customerType: string) => customerType === 'corporate' || customerSubTypeRequired,
+    [customerSubTypeRequired],
+  );
 
   const goToDuplicateCustomer = () => {
     if (!duplicateExistingCustomerId) return;
@@ -1267,6 +1320,20 @@ export default function MusterilerPage() {
       .catch(() => setCustomerSubTypes(DEFAULT_CUSTOMER_SUB_TYPES));
   }, []);
 
+  const openCustomerForEditById = useCallback(async (customerId: string) => {
+    if (!customerId) return;
+    loadCustomerSources();
+    loadCustomerSubTypes();
+    try {
+      const r = await axios.get(`${API}/customers/${customerId}`, { headers: authHeader() });
+      const customer = r.data?.data ?? r.data;
+      openCustomerForEdit(customer);
+      showToast('info', 'Müşteri kaydı düzenleme formunda açıldı.');
+    } catch {
+      showToast('error', 'Müşteri kaydı yüklenemedi.');
+    }
+  }, [loadCustomerSources, loadCustomerSubTypes, openCustomerForEdit, showToast]);
+
   useEffect(() => { loadCustomerSources(); }, [loadCustomerSources]);
   useEffect(() => { loadCustomerSubTypes(); }, [loadCustomerSubTypes]);
 
@@ -1332,6 +1399,20 @@ export default function MusterilerPage() {
 
     router.replace('/panel/musteriler', { scroll: false });
   }, [searchParams, router, showToast, loadCustomerSources, loadCustomerSubTypes]);
+
+  // Müşteri detay / liste → tam form ile düzenleme (?edit=uuid)
+  useEffect(() => {
+    if (editCustomerHandled.current) return;
+    const editId = searchParams.get('edit')?.trim();
+    if (!editId) return;
+    editCustomerHandled.current = true;
+
+    loadCustomerSources();
+    loadCustomerSubTypes();
+    openCustomerForEditById(editId);
+
+    router.replace('/panel/musteriler', { scroll: false });
+  }, [searchParams, router, loadCustomerSources, loadCustomerSubTypes, openCustomerForEditById]);
 
   useEffect(() => {
     if (!showModal || !inboxPrefillFocusRole) return;
@@ -1452,6 +1533,9 @@ export default function MusterilerPage() {
       }
     } else {
       if (!form.companyName.trim()) errors.companyName = 'Bu alan zorunludur';
+      if (requiresCustomerSubType(form.customerType) && !form.subType) {
+        errors.subType = 'Alt tip seçimi zorunludur';
+      }
     }
     if (form.phone) {
       const phoneErr = customerPhoneValidationError(form.phone, form.phoneType);
@@ -1501,6 +1585,10 @@ export default function MusterilerPage() {
       }
     } else {
       if (!form.companyName.trim()) { errors.companyName = 'Bu alan zorunludur'; missingLabels.push('Şirket Adı'); }
+      if (requiresCustomerSubType(form.customerType) && !form.subType) {
+        errors.subType = 'Alt tip seçimi zorunludur';
+        missingLabels.push('Alt Tip');
+      }
     }
 
     if (form.phone) {
@@ -1583,7 +1671,13 @@ export default function MusterilerPage() {
               ? 'hasar'
               : null,
         serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
-        contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim()).map((c) => ({ ...c, role: c.role === '__other__' ? '' : c.role })),
+        contacts: contacts
+          .filter((c) => c.firstName.trim() || c.lastName.trim())
+          .map((c) => ({
+            ...c,
+            name: `${c.firstName} ${c.lastName}`.trim(),
+            role: c.role === '__other__' ? '' : c.role,
+          })),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.customerType === 'individual') {
@@ -1592,6 +1686,7 @@ export default function MusterilerPage() {
       } else {
         payload.companyName = form.companyName; payload.taxNumber = form.taxNumber || null;
         payload.taxOffice = form.taxOffice || null;
+        payload.subType = form.subType || null;
         payload.contactFirstName = form.contactFirstName || null;
         payload.contactLastName = form.contactLastName || null;
         // Geriye dönük uyumluluk için authorizedPerson'ı da doldur
@@ -1599,8 +1694,23 @@ export default function MusterilerPage() {
           payload.authorizedPerson = `${form.contactFirstName} ${form.contactLastName}`.trim() || null;
         }
       }
-      const res = await axios.post(`${API}/customers`, payload, { headers: authHeader() });
-      const newId = res.data?.data?.id;
+
+      const isEdit = Boolean(editingCustomerId);
+      const res = isEdit
+        ? await axios.patch(`${API}/customers/${editingCustomerId}`, payload, { headers: authHeader() })
+        : await axios.post(`${API}/customers`, payload, { headers: authHeader() });
+      const savedId = res.data?.data?.id ?? editingCustomerId;
+      if (isEdit) {
+        setShowModal(false);
+        resetForm();
+        load();
+        showToast('success', 'Müşteri Kaydı Güncellendi');
+        if (savedId) {
+          router.push(`/panel/musteriler/${savedId}`);
+        }
+        return;
+      }
+      const newId = savedId;
       if (effectiveSaveMode === 'close') {
         setShowModal(false); resetForm(); load();
         if (settingsReturn) {
@@ -2270,6 +2380,13 @@ export default function MusterilerPage() {
                               Arşivle
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => void openCustomerForEditById(c.id)}
+                            className="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg transition-colors font-medium"
+                          >
+                            Düzenle
+                          </button>
                           <Link href={`/panel/musteriler/${c.id}`}
                             className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
                             Detay
@@ -2310,26 +2427,37 @@ export default function MusterilerPage() {
         customerId={drawerCustomerId}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onEdit={() => {
+        onEdit={(customer) => {
           setDrawerOpen(false);
-          resetForm();
-          loadCustomerSources();
-          setShowModal(true);
+          if (customer?.id) {
+            void openCustomerForEditById(customer.id);
+          }
         }}
       />
 
-      <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
+      <SlidePanel open={showModal} onClose={() => { setShowModal(false); resetForm(); }} width={640} scrollContent={false}>
         <div className="flex flex-col h-full min-h-0">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
               <div>
                 <h3 className="text-base font-semibold text-white">
-                  {settingsReturn ? `${settingsReturn.returnLabel} Ekle` : 'Yeni Müşteri Ekle'}
+                  {editingCustomerId
+                    ? 'Müşteri Düzenle'
+                    : settingsReturn
+                      ? `${settingsReturn.returnLabel} Ekle`
+                      : 'Yeni Müşteri Ekle'}
                 </h3>
                 <p className="text-emerald-200 text-xs mt-0.5">
-                  {settingsReturn
-                    ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
-                    : 'Tüm Bilgileri Eksiksiz Doldurun'}
+                  {editingCustomerId
+                    ? 'Kayıt türü ve alt tip dahil tüm alanları güncelleyebilirsiniz'
+                    : settingsReturn
+                      ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
+                      : 'Tüm Bilgileri Eksiksiz Doldurun'}
                 </p>
+                {editingCustomerId && editingCustomerMeta && formatCustomerUpdatedMeta(editingCustomerMeta) && (
+                  <p className="text-emerald-100 text-xs mt-1">
+                    Son Güncelleme: {formatCustomerUpdatedMeta(editingCustomerMeta)}
+                  </p>
+                )}
                 {settingsReturn && (
                   <Link
                     href={settingsReturn.returnTo}
@@ -2412,7 +2540,7 @@ export default function MusterilerPage() {
                     customerType={form.customerType}
                     subTypes={visibleCustomerSubTypes}
                     selectedSubType={form.subType}
-                    required={customerSubTypeRequired}
+                    required={requiresCustomerSubType(form.customerType)}
                     hasError={!!fieldErrors.subType}
                     onToggle={(value) => {
                       if (value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE && !canSelectAsistanFirmasi) return;
@@ -2429,7 +2557,7 @@ export default function MusterilerPage() {
                     }}
                   />
 
-                  {customerSubTypeRequired && !form.subType ? (
+                  {requiresCustomerSubType(form.customerType) && !form.subType ? (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Cari bilgileri için yukarıdan müşteri tipini seçin.
                     </div>

@@ -17,6 +17,10 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { GeographicRegionScopePanel } from '@/components/users/GeographicRegionScopePanel';
+import {
+  OperationalAccessGrantPanel,
+  resolveDefaultAuthorizationFlow,
+} from '@/components/users/OperationalAccessGrantPanel';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
@@ -255,6 +259,17 @@ interface ServiceAreaSelection {
 
 type UserStatus = 'active' | 'inactive' | 'archived' | 'suspended';
 
+interface OperationalAccessGrantListItem {
+  id: string;
+  scopeType: string;
+  grantType: string;
+  accessLevel?: string;
+  validFrom?: string;
+  validTo?: string | null;
+  principalUserId?: string | null;
+  principalUser?: { id: string; firstName: string; lastName: string } | null;
+}
+
 interface User {
   id: string;
   firstName: string;
@@ -266,6 +281,7 @@ interface User {
   status: UserStatus;
   role?: Role | null;
   departmentMemberships?: DepartmentMembership[];
+  operationalAccessGrants?: OperationalAccessGrantListItem[];
   serviceAreas?: ServiceAreaSelection[];
   userInsuranceCompanyScopes?: Array<{ insuranceCompanyId: string; insuranceCompany?: InsuranceCompany | null }>;
   lastLoginAt?: string | null;
@@ -420,16 +436,70 @@ function operationAreaLabel(area: OperationArea) {
   return 'Saha tespit alanı seçilmedi';
 }
 
-function displayRoleWithOperation(user: User) {
-  if (roleCodesMatch(user.role?.code, 'admin')) return { primary: 'Meridyen Yönetim', secondary: 'Yönetici' };
-  if (roleCodesMatch(user.role?.code, 'manager')) return { primary: 'Meridyen Yönetim', secondary: 'Müdür' };
+/** Liste «Görev» sütunu: dosya sorumlusu kapsamı */
+function operationAreaScopeLabel(area: OperationArea) {
+  if (area === 'hasar') return 'Hasar';
+  if (area === 'acil') return 'Acil';
+  if (area === 'both') return 'Hasar - Acil';
+  return null;
+}
+
+function grantScopeListLabel(scopeType: string): string {
+  if (scopeType === 'both') return 'Hasar ve Acil Yardım';
+  if (scopeType === 'acil_yardim') return 'Acil Yardım';
+  if (scopeType === 'hasar') return 'Hasar';
+  return scopeType;
+}
+
+function formatOperationalGrantListLabel(grant: OperationalAccessGrantListItem): string {
+  const scope = grantScopeListLabel(grant.scopeType);
+  if (grant.grantType === 'function_delegation') {
+    return `Ek Yetki · ${scope}`;
+  }
+  if (grant.grantType === 'person_delegation') {
+    const principal = grant.principalUser
+      ? `${grant.principalUser.firstName} ${grant.principalUser.lastName} Adına`
+      : 'Vekalet';
+    return `İzin Vekaleti · ${principal} · ${scope}`;
+  }
+  return scope;
+}
+
+type RoleDisplayLines = {
+  primary: string;
+  secondary: string | null;
+  extras: Array<{ id: string; label: string }>;
+};
+
+function displayRoleWithOperation(user: User): RoleDisplayLines {
+  const extras = (user.operationalAccessGrants ?? []).map((grant) => ({
+    id: grant.id,
+    label: formatOperationalGrantListLabel(grant),
+  }));
+
+  if (roleCodesMatch(user.role?.code, 'admin')) {
+    return { primary: 'Meridyen Yönetim', secondary: 'Yönetici', extras };
+  }
+  if (roleCodesMatch(user.role?.code, 'manager')) {
+    return { primary: 'Meridyen Yönetim', secondary: 'Müdür', extras };
+  }
+  if (roleCodesMatch(user.role?.code, 'office_staff')) {
+    const area = operationAreaFromMemberships(user.departmentMemberships);
+    const scope = operationAreaScopeLabel(area);
+    return {
+      primary: 'Dosya Sorumlusu',
+      secondary: scope ?? 'Kapsam Belirtilmedi',
+      extras,
+    };
+  }
   if (!isFieldStaffRole(user.role)) {
-    return { primary: displayRoleName(user.role), secondary: null as string | null };
+    return { primary: displayRoleName(user.role), secondary: null, extras };
   }
   const area = operationAreaFromMemberships(user.departmentMemberships);
   return {
     primary: displayRoleName(user.role),
     secondary: `Saha Tespit: ${operationAreaLabel(area)}`,
+    extras,
   };
 }
 
@@ -447,12 +517,14 @@ function isUserInviteSelectableInsuranceCompany(company: InsuranceCompany) {
 
 function Modal({
   title,
+  subtitle,
   onClose,
   children,
   variant = 'default',
   size = 'md',
 }: {
   title: string;
+  subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
   variant?: 'default' | 'success';
@@ -487,7 +559,12 @@ function Modal({
         <div className={`flex items-center justify-between px-6 py-4 ${
           isSuccess ? 'border-b border-emerald-200 bg-emerald-50' : 'border-b border-slate-200 bg-white'
         }`}>
-          <h3 className={`text-base font-semibold ${isSuccess ? 'text-emerald-950' : 'text-slate-900'}`}>{title}</h3>
+          <div className="min-w-0 pr-3">
+            <h3 className={`text-base font-semibold ${isSuccess ? 'text-emerald-950' : 'text-slate-900'}`}>{title}</h3>
+            {subtitle && (
+              <p className={`mt-0.5 truncate text-xs ${isSuccess ? 'text-emerald-800' : 'text-slate-500'}`}>{subtitle}</p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -616,6 +693,7 @@ export default function KullanicilarPage() {
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [filterRoleId, setFilterRoleId] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdminOrManager, setIsAdminOrManager] = useState(false);
 
   // Seçim (toplu işlem)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -880,6 +958,14 @@ export default function KullanicilarPage() {
 
   useEffect(() => {
     setCurrentUserId(getCurrentUserId());
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('user') ?? '{}';
+      try {
+        const parsed = JSON.parse(raw);
+        const roleCode = String(parsed?.role?.code ?? '').toLowerCase();
+        setIsAdminOrManager(roleCode === 'admin' || roleCode === 'manager');
+      } catch { /* ignore */ }
+    }
     loadUsers();
     loadRoles();
     loadDepartments();
@@ -1175,6 +1261,18 @@ export default function KullanicilarPage() {
       acilYardimCustomerIds: prev.acilYardimCustomerIds.includes(customerId)
         ? prev.acilYardimCustomerIds.filter((id) => id !== customerId)
         : [...prev.acilYardimCustomerIds, customerId],
+    }));
+    setFormErrors((prev) => ({ ...prev, acilYardimCustomerIds: undefined, general: undefined }));
+  };
+
+  const allAcilYardimCustomersSelected =
+    acilYardimCustomers.length > 0
+    && acilYardimCustomers.every((customer) => form.acilYardimCustomerIds.includes(customer.id));
+
+  const toggleAllAcilYardimCustomers = (checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      acilYardimCustomerIds: checked ? acilYardimCustomers.map((customer) => customer.id) : [],
     }));
     setFormErrors((prev) => ({ ...prev, acilYardimCustomerIds: undefined, general: undefined }));
   };
@@ -2160,10 +2258,26 @@ export default function KullanicilarPage() {
                               {roleLines.primary}
                             </p>
                             {roleLines.secondary && (
-                              <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500" title={roleLines.secondary}>
+                              <p
+                                className={`mt-0.5 truncate text-[11px] font-medium leading-snug ${
+                                  roleLines.secondary === 'Kapsam Belirtilmedi'
+                                    ? 'text-amber-700'
+                                    : 'text-slate-600'
+                                }`}
+                                title={roleLines.secondary}
+                              >
                                 {roleLines.secondary}
                               </p>
                             )}
+                            {roleLines.extras.map((extra) => (
+                              <p
+                                key={extra.id}
+                                className="mt-0.5 truncate text-[11px] font-medium leading-snug text-violet-700"
+                                title={extra.label}
+                              >
+                                {extra.label}
+                              </p>
+                            ))}
                           </div>
                         );
                       })() : (
@@ -2277,11 +2391,18 @@ export default function KullanicilarPage() {
                 : 'Davet Tamamlandı'
               : modal === 'add'
                 ? 'Kullanıcı Davet Et'
-                : 'Kullanıcıyı Düzenle'
+                : editingUser
+                  ? `Kullanıcıyı Düzenle — ${editingUser.firstName} ${editingUser.lastName}`
+                  : 'Kullanıcıyı Düzenle'
+          }
+          subtitle={
+            !createdCredential && modal === 'edit' && editingUser
+              ? editingUser.email
+              : undefined
           }
           onClose={closeModal}
           variant={createdCredential ? 'success' : 'default'}
-          size={modal === 'add' && !createdCredential ? 'lg' : 'md'}
+          size={!createdCredential && (modal === 'add' || modal === 'edit') ? 'lg' : 'md'}
         >
           {createdCredential ? (
             <CredentialSuccessPanel
@@ -2661,10 +2782,30 @@ export default function KullanicilarPage() {
 
 	                  {showsAcilYardimCustomerScope(form.operationArea) && (
 	                  <div>
-	                    <p className="mb-2 text-sm font-medium text-slate-700">Acil Yardım Müşterileri</p>
+	                    <div className="mb-2 flex items-center justify-between gap-3">
+	                      <p className="text-sm font-medium text-slate-700">Acil Yardım Müşterileri</p>
+	                      {acilYardimCustomers.length > 0 && (
+	                        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+	                          <input
+	                            type="checkbox"
+	                            checked={allAcilYardimCustomersSelected}
+	                            onChange={(e) => toggleAllAcilYardimCustomers(e.target.checked)}
+	                            className="rounded border-slate-300 text-blue-600"
+	                          />
+	                          Hepsini Seç
+	                        </label>
+	                      )}
+	                    </div>
+	                    {formErrors.acilYardimCustomerIds && (
+	                      <p className="mb-2 text-xs text-red-600">{formErrors.acilYardimCustomerIds}</p>
+	                    )}
 	                    {acilYardimCustomers.length === 0 ? (
 	                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
 	                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
+	                      </p>
+	                    ) : allAcilYardimCustomersSelected ? (
+	                      <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+	                        Tüm acil yardım asistan firmaları kapsam dahilindedir.
 	                      </p>
 	                    ) : (
 	                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
@@ -2919,6 +3060,14 @@ export default function KullanicilarPage() {
             </div>
 
               </>
+            )}
+
+            {modal === 'edit' && editingUser && isAdminOrManager && (
+              <OperationalAccessGrantPanel
+                userId={editingUser.id}
+                compact
+                defaultFlow={resolveDefaultAuthorizationFlow(editingUser.role?.code, form.userTask)}
+              />
             )}
 
             <div className="sticky bottom-0 z-10 -mx-6 -mb-5 flex gap-3 border-t border-slate-200 bg-white px-6 py-4 shadow-[0_-8px_18px_rgba(15,23,42,0.06)]">

@@ -122,10 +122,22 @@ export class OperationInboxController {
     return this.inboxService.getMatchCandidates(id);
   }
 
+  @Get('assignable-users')
+  @RequirePermissions('operation_inbox.view')
+  listAssignableUsers(@Query('messageId') messageId?: string) {
+    return this.inboxService.listAssignableUsers(messageId);
+  }
+
   @Get('messages/:id/routing-suggestion')
   @RequirePermissions('operation_inbox.view')
   getRoutingSuggestion(@Param('id') id: string) {
     return this.inboxService.getRoutingSuggestion(id);
+  }
+
+  @Get('messages/:id/auto-assign-preview')
+  @RequirePermissions('operation_inbox.view')
+  getAutoAssignPreview(@Param('id') id: string) {
+    return this.inboxService.getAutoAssignPreview(id);
   }
 
   @Get('messages/:id')

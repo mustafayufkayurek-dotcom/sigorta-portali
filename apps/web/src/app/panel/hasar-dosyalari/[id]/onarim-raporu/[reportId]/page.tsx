@@ -1024,6 +1024,101 @@ function WorkDefinitionSelector({
   );
 }
 
+// ─── İş Grubu Seçici (inline yeni ekleme destekli) ───────────────────────────
+function WorkGroupSelector({
+  value,
+  workGroups,
+  onSelect,
+  onAddNew,
+  className,
+  'data-cell': dataCell,
+  tabIndex,
+  onFocus,
+  onBlur,
+  onKeyDown,
+}: {
+  value: string;
+  workGroups: any[];
+  onSelect: (workGroupId: string) => void;
+  onAddNew: (name: string) => Promise<{ id: string; name: string }>;
+  className?: string;
+  'data-cell'?: string;
+  tabIndex?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}) {
+  const [addingNew, setAddingNew] = useState(false);
+  const [newVal, setNewVal] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (addingNew) inputRef.current?.focus();
+  }, [addingNew]);
+
+  const commit = async () => {
+    const trimmed = toTitleCaseTR(newVal.trim());
+    if (!trimmed) { setAddingNew(false); setNewVal(''); return; }
+    setSaving(true);
+    try {
+      const result = await onAddNew(trimmed);
+      onSelect(result.id);
+    } catch { /* ignore */ } finally {
+      setSaving(false);
+      setAddingNew(false);
+      setNewVal('');
+    }
+  };
+
+  if (addingNew) {
+    return (
+      <div className="flex items-center gap-1 px-1 w-full">
+        <input
+          ref={inputRef}
+          type="text"
+          className="flex-1 h-8 border border-blue-300 rounded px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="İş grubu adı..."
+          value={newVal}
+          disabled={saving}
+          onChange={(e) => setNewVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            else if (e.key === 'Escape') { setAddingNew(false); setNewVal(''); }
+          }}
+          onBlur={commit}
+        />
+        <button type="button" onClick={() => { setAddingNew(false); setNewVal(''); }} className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs">×</button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      data-cell={dataCell}
+      className={className}
+      value={value}
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      onChange={(e) => {
+        if (e.target.value === '__add_new__') {
+          setAddingNew(true);
+        } else {
+          onSelect(e.target.value);
+        }
+      }}
+    >
+      <option value="">—</option>
+      {workGroups.map((wg: any) => (
+        <option key={wg.id} value={wg.id}>{wg.name}</option>
+      ))}
+      <option value="__add_new__">+ Yeni İş Grubu Ekle</option>
+    </select>
+  );
+}
+
 // ─── Excel-benzeri Inline Editable Tablo ─────────────────────────────────────
 // Eşya kategorisine ait iş grubu kodları — bu kategoride sadece bu gruplar gösterilir
 const ESYA_WORK_GROUP_CODES = ['esya', 'mobilya', 'diger', 'temizlik', 'teknik_temizlik'];
@@ -1053,6 +1148,7 @@ interface EditableItemsTableProps {
   onDelete: (itemId: string) => void;
   onAdd: (data: any) => Promise<void>;
   onDirtyChange?: (count: number) => void;
+  onWorkGroupCreated?: (workGroup: any) => void;
 }
 
 interface RowState {
@@ -1269,7 +1365,7 @@ function LocationSelector({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange },
+  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated },
   ref,
 ) {
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
@@ -1395,7 +1491,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     const code = `${name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
     const res = await axios.post(
       `${API}/work-groups/${workGroupId}/sub-groups`,
-      { code, name, unitType: 'm²', sortOrder: 0 },
+      { code, name: toTitleCaseTR(name.trim()), unitType: 'm²', sortOrder: 0 },
       { headers: authHeader() },
     );
     const newSg = res.data.data ?? res.data;
@@ -1405,6 +1501,18 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       return { ...prev, [workGroupId]: [...existing, newSg] };
     });
     return { name: newSg.name, unitType: newSg.unitType };
+  };
+
+  const createWorkGroup = async (name: string): Promise<{ id: string; name: string }> => {
+    const code = `${name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
+    const res = await axios.post(
+      `${API}/work-groups`,
+      { code, name: toTitleCaseTR(name.trim()), sortOrder: 99 },
+      { headers: authHeader() },
+    );
+    const newWg = res.data.data ?? res.data;
+    onWorkGroupCreated?.(newWg);
+    return { id: newWg.id, name: newWg.name };
   };
 
   const updateRow = (id: string, field: keyof RowState, value: string) => {
@@ -1865,24 +1973,23 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* İş Grubu */}
                 <td className={tdCls(rowIdx, 'workGroup')}>
                   {isEditable ? (
-                    <select
+                    <WorkGroupSelector
                       data-cell={`${rowIdx}-workGroup`}
                       className={cellCls(rowIdx, 'workGroup', true)}
                       value={row.workGroupId}
+                      workGroups={filterWorkGroupsByCategory(workGroups, row.damageCategory)}
                       tabIndex={getCellTabIndex(rowIdx, 'workGroup')}
                       onFocus={() => { setActiveCell({ rowIdx, col: 'workGroup' }); loadSubGroups(row.workGroupId); }}
                       onBlur={() => { setActiveCell(null); saveRow(row._id); }}
-                      onChange={(e) => {
-                        updateRow(row._id, 'workGroupId', e.target.value);
+                      onSelect={(workGroupId) => {
+                        updateRow(row._id, 'workGroupId', workGroupId);
                         updateRow(row._id, 'jobDescription', '');
                         updateRow(row._id, 'unit', 'm²');
-                        void loadSubGroups(e.target.value);
+                        void loadSubGroups(workGroupId);
                       }}
+                      onAddNew={createWorkGroup}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'workGroup', row._id)}
-                    >
-                      <option value="">—</option>
-                      {filterWorkGroupsByCategory(workGroups, row.damageCategory).map((wg: any) => <option key={wg.id} value={wg.id}>{wg.name}</option>)}
-                    </select>
+                    />
                   ) : (
                     <span className="px-2 text-xs text-slate-700 block py-3">{wgName || '—'}</span>
                   )}
@@ -2144,23 +2251,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* İş Grubu */}
               <td className={tdCls('new', 'workGroup')}>
-                <select
+                <WorkGroupSelector
                   data-cell="new-workGroup"
                   className={cellCls('new', 'workGroup', true)}
                   value={addingRow.workGroupId}
+                  workGroups={filterWorkGroupsByCategory(workGroups, addingRow.damageCategory)}
                   tabIndex={getCellTabIndex('new', 'workGroup')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'workGroup' })}
                   onBlur={() => setActiveCell(null)}
-                  onChange={(e) => {
-                    setAddingRow((p) => ({ ...p, workGroupId: e.target.value, jobDescription: '', unit: 'm²' }));
+                  onSelect={(workGroupId) => {
+                    setAddingRow((p) => ({ ...p, workGroupId, jobDescription: '', unit: 'm²' }));
                     setAddingDirty(true);
-                    void loadSubGroups(e.target.value);
+                    void loadSubGroups(workGroupId);
                   }}
+                  onAddNew={createWorkGroup}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'workGroup')}
-                >
-                  <option value="">— Seç —</option>
-                  {filterWorkGroupsByCategory(workGroups, addingRow.damageCategory).map((wg: any) => <option key={wg.id} value={wg.id}>{wg.name}</option>)}
-                </select>
+                />
               </td>
               {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
               <td className={tdCls('new', 'jobDescription')}>
@@ -2365,12 +2471,14 @@ function EmergencyReportEditor({
   claimId,
   workGroups,
   onReload,
+  onWorkGroupCreated,
 }: {
   report: any;
   reportId: string;
   claimId: string;
   workGroups: any[];
   onReload: () => void;
+  onWorkGroupCreated?: (workGroup: any) => void;
 }) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
@@ -2566,6 +2674,7 @@ function EmergencyReportEditor({
               onSave={handleUpdateItem}
               onDelete={handleDeleteItem}
               onAdd={handleAddItem}
+              onWorkGroupCreated={onWorkGroupCreated}
             />
           </SectionCard>
 
@@ -2703,6 +2812,13 @@ export default function RepairReportPage() {
   const router = useRouter();
   const [report, setReport] = useState<any>(null);
   const [workGroups, setWorkGroups] = useState<any[]>([]);
+  const handleWorkGroupCreated = useCallback((workGroup: any) => {
+    if (!workGroup?.id) return;
+    setWorkGroups((prev) => {
+      if (prev.some((wg) => wg.id === workGroup.id)) return prev;
+      return [...prev, workGroup].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99) || String(a.name).localeCompare(String(b.name), 'tr'));
+    });
+  }, []);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
   const [showAnnotation, setShowAnnotation] = useState<any>(null);
@@ -3222,6 +3338,7 @@ export default function RepairReportPage() {
         claimId={claimId}
         workGroups={workGroups}
         onReload={load}
+        onWorkGroupCreated={handleWorkGroupCreated}
       />
     );
   }
@@ -3635,6 +3752,7 @@ export default function RepairReportPage() {
           onDelete={handleRemoveItem}
           onAdd={handleAddItem}
           onDirtyChange={setDirtyItemCount}
+          onWorkGroupCreated={handleWorkGroupCreated}
         />
         {itemsApprovalError && (
           <p className="text-xs text-red-500 mt-3">{itemsApprovalError}</p>

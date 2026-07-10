@@ -11,21 +11,53 @@ const PRIORITY_LABELS: Record<string, string> = {
   critical: 'Kritik',
 };
 
+type DosyaField = {
+  label: string;
+  value: string;
+  wide?: boolean;
+};
+
 function formatPriority(priority: string | null | undefined): string {
   if (!priority) return '—';
   const key = String(priority).trim().toLowerCase();
   return PRIORITY_LABELS[key] ?? toTitleCaseTR(priority);
 }
 
-export function buildDosyaBilgileriFields(claim: any) {
-  const core = [
+function resolveInsuredDisplayName(claim: any): string | null {
+  if (claim.insuredName?.trim()) {
+    return toTitleCaseTR(claim.insuredName.trim());
+  }
+  const customer = claim.customer;
+  if (!customer) return null;
+  const entityType = String(customer.entityType ?? customer.type ?? '').trim().toLowerCase();
+  if (entityType === 'corporate') return null;
+  if (customer.fullName?.trim()) return toTitleCaseTR(customer.fullName.trim());
+  return null;
+}
+
+function formatPropertyAddress(claim: any): string | null {
+  const address = claim.propertyAddress;
+  if (!address) return null;
+  const line = [
+    address.city,
+    address.district,
+    address.neighborhood,
+    address.addressLine,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return line || null;
+}
+
+export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
+  const core: DosyaField[] = [
     { label: 'Hasar Tarihi', value: fmtDate(claim.incidentDate) },
     { label: 'İhbar Tarihi', value: fmtDate(claim.notificationDate) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
   ];
 
-  const supplementary: { label: string; value: string }[] = [];
+  const supplementary: DosyaField[] = [];
   if (claim.policyNo?.trim()) {
     supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
   }
@@ -41,11 +73,23 @@ export function buildDosyaBilgileriFields(claim: any) {
   if (claim.fileType?.trim()) {
     supplementary.push({ label: 'Dosya Tipi', value: toTitleCaseTR(claim.fileType.trim()) });
   }
-  if (claim.insuredName?.trim()) {
-    supplementary.push({ label: 'Sigortalı', value: toTitleCaseTR(claim.insuredName.trim()) });
+
+  const insuredName = resolveInsuredDisplayName(claim);
+  if (insuredName) {
+    supplementary.push({ label: 'Sigortalı Ad Soyad', value: insuredName, wide: true });
   }
+
+  const propertyAddress = formatPropertyAddress(claim);
+  if (propertyAddress) {
+    supplementary.push({ label: 'Hasar Adresi', value: propertyAddress, wide: true });
+  }
+
   if (claim.description?.trim()) {
-    supplementary.push({ label: 'Açıklama', value: claim.description.trim() });
+    supplementary.push({
+      label: 'İhbar İçeriği',
+      value: claim.description.trim(),
+      wide: true,
+    });
   }
 
   return [...core, ...supplementary];
@@ -69,6 +113,8 @@ export function DosyaBilgileriDetay({ claim }: { claim: any }) {
   const [open, setOpen] = useState(false);
   const fields = buildDosyaBilgileriFields(claim);
   const subtitle = buildDosyaBilgileriSubtitle(claim);
+  const compactFields = fields.filter((field) => !field.wide);
+  const wideFields = fields.filter((field) => field.wide);
 
   return (
     <div className="border-t border-slate-100">
@@ -87,14 +133,28 @@ export function DosyaBilgileriDetay({ claim }: { claim: any }) {
       </button>
       {open && (
         <div className="px-4 pb-3 pt-0 border-t border-slate-100 bg-slate-50/40">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3 pt-3">
-            {fields.map((f) => (
-              <div key={f.label} className="text-center">
-                <p className="text-[11px] text-slate-400">{f.label}</p>
-                <p className="text-xs font-medium text-slate-800 mt-0.5">{f.value}</p>
-              </div>
-            ))}
-          </div>
+          {compactFields.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3 pt-3">
+              {compactFields.map((field) => (
+                <div key={field.label} className="text-center">
+                  <p className="text-[11px] text-slate-400">{field.label}</p>
+                  <p className="text-xs font-medium text-slate-800 mt-0.5">{field.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {wideFields.length > 0 && (
+            <div className={`space-y-3 ${compactFields.length > 0 ? 'mt-3 pt-3 border-t border-slate-100' : 'pt-3'}`}>
+              {wideFields.map((field) => (
+                <div key={field.label}>
+                  <p className="text-[11px] text-slate-400">{field.label}</p>
+                  <p className="text-xs font-medium text-slate-800 mt-0.5 whitespace-pre-wrap break-words">
+                    {field.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

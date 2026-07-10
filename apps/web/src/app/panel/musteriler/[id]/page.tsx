@@ -6,16 +6,13 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
+import { LocationPreview } from '@/components/LocationPickerModal';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
-import { useToast } from '@/contexts/ToastContext';
-import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
-import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
-import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
-import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
-import { geocodeAddressCascade } from '@/utils/geocode-address';
-import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE } from '@/utils/customer-form-helpers';
+import { formatDisplayLabel } from '@/utils/text-helpers';
+import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, formatCustomerUpdatedMeta } from '@/utils/customer-form-helpers';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -765,277 +762,6 @@ function CustomerAnalizTab({ customerId }: { customerId: string }) {
   );
 }
 
-// ── Edit Modal ─────────────────────────────────────────────────────────────────
-function EditCustomerModal({ customer, onClose, onSaved }: { customer: any; onClose: () => void; onSaved: () => void }) {
-  const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
-  const matchedProv = STATIC_PROVINCES.find((p) => p.name === customer.city);
-  const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30';
-  const [form, setForm] = useState({
-    firstName: customer.firstName ?? '',
-    lastName: customer.lastName ?? '',
-    companyName: customer.companyName ?? '',
-    phone: customer.phone ?? '',
-    email: customer.email ?? '',
-    cityCode: matchedProv?.code ?? '',
-    city: customer.city ?? '',
-    district: customer.district ?? '',
-    neighborhood: customer.neighborhood ?? '',
-    streetName: customer.streetName ?? '',
-    buildingNo: customer.buildingNo ?? '',
-    doorNo: customer.doorNo ?? '',
-    address: customer.address ?? '',
-  });
-  const currentDistricts = form.cityCode ? (STATIC_DISTRICTS[form.cityCode] ?? []) : [];
-  const [locationCoords, setLocationCoords] = useState<LatLng | null>(
-    customer.latitude != null && customer.longitude != null
-      ? { lat: customer.latitude, lng: customer.longitude }
-      : null,
-  );
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeMsg, setGeocodeMsg] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const addressLabel = [
-    form.neighborhood,
-    form.streetName,
-    form.buildingNo ? `No: ${form.buildingNo}` : '',
-    form.doorNo ? `D: ${form.doorNo}` : '',
-    form.address,
-    form.district,
-    form.city,
-  ].filter(Boolean).join(', ');
-
-  const handleGeocodeAddress = async () => {
-    if (!form.city?.trim()) return;
-    setGeocoding(true);
-    setGeocodeMsg(null);
-    try {
-      const result = await geocodeAddressCascade({
-        city: form.city,
-        district: form.district,
-        neighborhood: form.neighborhood,
-        streetName: form.streetName,
-        siteName: form.address,
-        buildingNo: form.buildingNo,
-      });
-      if (result) {
-        setLocationCoords({ lat: result.lat, lng: result.lng });
-        const shortName = result.displayName.split(',').slice(0, 2).join(',');
-        setGeocodeMsg(result.approximate ? `Yaklaşık konum: ${shortName}` : `Konum bulundu: ${shortName}`);
-      } else {
-        setGeocodeMsg('Konum bulunamadı. Haritadan veya GPS ile belirleyin.');
-      }
-    } catch {
-      setGeocodeMsg('Geocoding başarısız.');
-    } finally {
-      setGeocoding(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const addressParts = [
-        form.neighborhood,
-        form.streetName,
-        form.buildingNo ? `No: ${form.buildingNo}` : '',
-        form.doorNo ? `D: ${form.doorNo}` : '',
-      ].filter(Boolean);
-      const computedAddress = addressParts.length > 0 ? addressParts.join(' ') : (form.address || null);
-      await axios.patch(`${API}/customers/${customer.id}`, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        companyName: form.companyName,
-        phone: form.phone,
-        email: form.email,
-        city: form.city || null,
-        district: form.district || null,
-        neighborhood: form.neighborhood || null,
-        streetName: form.streetName || null,
-        buildingNo: form.buildingNo || null,
-        doorNo: form.doorNo || null,
-        address: computedAddress,
-        latitude: locationCoords?.lat ?? null,
-        longitude: locationCoords?.lng ?? null,
-      }, { headers: authHeader() });
-      onSaved();
-      onClose();
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Kayıt başarısız');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
-        <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
-            <h3 className="text-sm font-semibold text-slate-800">Müşteri Düzenle</h3>
-            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-5 space-y-3">
-            {isCorporate ? (
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Şirket Adı</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  value={form.companyName} onChange={(e) => setForm((p) => ({ ...p, companyName: e.target.value }))}
-                  onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Ad</label>
-                  <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
-                    onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Soyad</label>
-                  <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
-                    onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Telefon</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
-                <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.province}</label>
-                <select className={inp} value={form.cityCode}
-                  onChange={(e) => {
-                    const prov = STATIC_PROVINCES.find((p) => p.code === e.target.value);
-                    setForm((p) => ({ ...p, cityCode: e.target.value, city: prov?.name ?? '', district: '', neighborhood: '' }));
-                  }}>
-                  <option value="">{ADDRESS_FIELD.provincePlaceholder}</option>
-                  {STATIC_PROVINCES.map((p) => (
-                    <option key={p.code} value={p.code}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.district}</label>
-                <select className={inp} value={form.district} disabled={!form.cityCode}
-                  onChange={(e) => setForm((p) => ({ ...p, district: e.target.value, neighborhood: '' }))}>
-                  <option value="">{ADDRESS_FIELD.districtPlaceholder}</option>
-                  {currentDistricts.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.neighborhood}</label>
-              <NeighborhoodSelect
-                provinceName={form.city}
-                districtName={form.district}
-                value={form.neighborhood}
-                onChange={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
-                inputClassName={inp}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.street}</label>
-              <input className={inp} placeholder={ADDRESS_FIELD.streetPlaceholder}
-                value={form.streetName}
-                onChange={(e) => setForm((p) => ({ ...p, streetName: e.target.value }))}
-                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, streetName: v })); }} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.buildingNo}</label>
-                <input className={inp} placeholder={ADDRESS_FIELD.buildingNoPlaceholder}
-                  value={form.buildingNo} onChange={(e) => setForm((p) => ({ ...p, buildingNo: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.doorNo}</label>
-                <input className={inp} placeholder={ADDRESS_FIELD.doorNoPlaceholder}
-                  value={form.doorNo} onChange={(e) => setForm((p) => ({ ...p, doorNo: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">{ADDRESS_FIELD.siteName}</label>
-              <input className={inp} placeholder={ADDRESS_FIELD.siteNamePlaceholder}
-                value={form.address}
-                onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, address: v })); }} />
-            </div>
-
-            <div className="pt-1 border-t border-slate-100">
-              <p className="text-xs font-semibold text-slate-500 tracking-wide mb-2">Harita Konumu</p>
-              <div className="flex flex-wrap gap-2 mb-2">
-                <button
-                  type="button"
-                  disabled={geocoding || !addressLabel}
-                  onClick={handleGeocodeAddress}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
-                >
-                  {geocoding ? 'Aranıyor...' : 'Konumu Bul'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLocationPicker(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${locationCoords ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                >
-                  {locationCoords ? 'Konum Seçildi' : 'Haritadan Konum Seç'}
-                </button>
-              </div>
-              {geocodeMsg && (
-                <p className={`text-xs mb-2 px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                  {geocodeMsg}
-                </p>
-              )}
-              {locationCoords && (
-                <LocationPreview
-                  lat={locationCoords.lat}
-                  lng={locationCoords.lng}
-                  addressLabel={addressLabel || undefined}
-                  onEdit={() => setShowLocationPicker(true)}
-                  onClear={() => { setLocationCoords(null); setGeocodeMsg(null); }}
-                  accentColor="emerald"
-                />
-              )}
-            </div>
-
-            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-          </div>
-          <div className="px-5 pb-5 flex justify-end gap-2 sticky bottom-0 bg-white border-t border-slate-100 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <LocationPickerModal
-        open={showLocationPicker}
-        initial={locationCoords}
-        addressHint={addressLabel || undefined}
-        onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
-        onClose={() => setShowLocationPicker(false)}
-      />
-    </>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -1044,7 +770,6 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<CustomerTab>('profil');
-  const [showEditModal, setShowEditModal] = useState(false);
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -1180,7 +905,7 @@ export default function CustomerDetailPage() {
                 {!isFieldStaff && (
                   <button
                     type="button"
-                    onClick={() => setShowEditModal(true)}
+                    onClick={() => router.push(`/panel/musteriler?edit=${id}`)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1218,7 +943,7 @@ export default function CustomerDetailPage() {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-50">
           {[
             { label: 'Hasar Dosyası', value: customer._count?.claimFiles ?? 0 },
             { label: 'Yetkili Kişi', value: contactCount },
@@ -1231,6 +956,11 @@ export default function CustomerDetailPage() {
             </div>
           ))}
         </div>
+        {formatCustomerUpdatedMeta(customer) && (
+          <p className="mt-3 text-xs text-slate-500">
+            Son Güncelleme: <span className="font-medium text-slate-700">{formatCustomerUpdatedMeta(customer)}</span>
+          </p>
+        )}
 
         {/* Tags */}
         {Array.isArray(customer.tags) && customer.tags.length > 0 && (
@@ -1265,7 +995,7 @@ export default function CustomerDetailPage() {
       </div>
 
       {/* ── Tab Content ── */}
-      {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => setShowEditModal(true)} />}
+      {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => router.push(`/panel/musteriler?edit=${id}`)} />}
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
       {activeTab === 'evraklar' && (
@@ -1278,11 +1008,6 @@ export default function CustomerDetailPage() {
         />
       )}
       {activeTab === 'analiz' && <CustomerAnalizTab customerId={id!} />}
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <EditCustomerModal customer={customer} onClose={() => setShowEditModal(false)} onSaved={load} />
-      )}
 
       {/* Arşivle Onay Modalı */}
       {archiveConfirm && (

@@ -568,6 +568,9 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
             onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); void checkFileNoDuplicate(v); }}
           />
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
+          {!fileNoChecking && !errors.fileNo && (
+            <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
+          )}
           {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
         </div>
         {!isPanel ? (

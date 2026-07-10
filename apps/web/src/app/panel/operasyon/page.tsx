@@ -15,7 +15,19 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
-import { formatClaimSubjectLabel, formatDisplayLabel } from '@/utils/text-helpers';
+import { formatClaimSubjectLabel, formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
+
+function resolveHasarInsuredName(claim: {
+  insuredName?: string | null;
+  customer?: { fullName?: string | null; firstName?: string | null; lastName?: string | null } | null;
+}): string {
+  if (claim.insuredName?.trim()) return toTitleCaseTR(claim.insuredName.trim());
+  const customer = claim.customer;
+  const composed = [customer?.firstName, customer?.lastName].filter(Boolean).join(' ').trim()
+    || customer?.fullName?.trim()
+    || '';
+  return composed ? toTitleCaseTR(composed) : '—';
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,8 +79,8 @@ const EMERGENCY_STATUS_CLASSES: Record<string, string> = {
 // ─── Unified row type ──────────────────────────────────────────────────────────
 
 type UnifiedRow =
-  | { kind: 'hasar'; id: string; fileNo: string; customerName: string; date: string; subject: string; statusLabel: string; invoiceStatus: string; amount: string | null }
-  | { kind: 'acil'; id: string; fileNo: string; customerName: string; date: string; subject: string; statusCode: string; invoiceStatus: string; amount: string | null };
+  | { kind: 'hasar'; id: string; fileNo: string; customerName: string; insuredName: string; date: string; subject: string; statusLabel: string; invoiceStatus: string; amount: string | null }
+  | { kind: 'acil'; id: string; fileNo: string; customerName: string; insuredName: string; date: string; subject: string; statusCode: string; invoiceStatus: string; amount: string | null };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -114,7 +126,8 @@ function StatCard({
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'kind', label: 'Tür', defaultWidth: 88, minWidth: 72 },
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
-  { id: 'customer', label: 'Müşteri', defaultWidth: 140, minWidth: 100 },
+  { id: 'customer', label: 'Sigorta Şirketi', defaultWidth: 140, minWidth: 100 },
+  { id: 'insured', label: 'Sigortalı Adı Soyadı', defaultWidth: 160, minWidth: 120 },
   { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
   { id: 'subject', label: 'İhbar Konusu', defaultWidth: 160, minWidth: 100 },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
@@ -203,7 +216,8 @@ export default function OperasyonPage() {
     return {
       kind: 'hasar', id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
-      customerName, date: claim.createdAt, subject,
+      customerName, insuredName: resolveHasarInsuredName(claim),
+      date: claim.createdAt, subject,
       statusLabel: claim.currentStatus?.name ?? 'N/A',
       invoiceStatus: invStatus,
       amount: claim.totalAmount != null ? `${Number(claim.totalAmount).toLocaleString('tr-TR')} ₺` : null,
@@ -211,7 +225,9 @@ export default function OperasyonPage() {
   });
 
   const acilRows: UnifiedRow[] = cases.map((c) => ({
-    kind: 'acil', id: c.id, fileNo: c.caseNo, customerName: c.customerName,
+    kind: 'acil', id: c.id, fileNo: c.caseNo,
+    customerName: '—',
+    insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
     date: c.createdAt, subject: formatDisplayLabel(c.issueType ?? c.notes),
     statusCode: c.status,
     invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
@@ -379,7 +395,8 @@ export default function OperasyonPage() {
                 <tr>
                   <PanelTableTh colId="kind" className="table-th">Tür</PanelTableTh>
                   <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th">Müşteri</PanelTableTh>
+                  <PanelTableTh colId="customer" className="table-th">Sigorta Şirketi</PanelTableTh>
+                  <PanelTableTh colId="insured" className="table-th">Sigortalı Adı Soyadı</PanelTableTh>
                   <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
                   <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
@@ -415,6 +432,9 @@ export default function OperasyonPage() {
                     </PanelTableTd>
                     <PanelTableTd colId="customer" className="table-td max-w-[140px] whitespace-nowrap" title={row.customerName}>
                       {row.customerName}
+                    </PanelTableTd>
+                    <PanelTableTd colId="insured" className="table-td max-w-[160px] whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                      {row.insuredName}
                     </PanelTableTd>
                     <PanelTableTd colId="date" className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</PanelTableTd>
                     <PanelTableTd colId="subject" className="table-td text-slate-500 max-w-[160px] whitespace-nowrap" title={row.subject}>

@@ -252,16 +252,18 @@ export class CustomersController {
   @Post()
   @RequirePermissions('customer.create')
   @ApiOperation({ summary: 'Yeni müşteri oluştur' })
-  async create(@Body() createDto: any) {
-    const data = await this.customersService.create(createDto);
+  async create(@Body() createDto: any, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const data = await this.customersService.create(createDto, userId);
     return { success: true, data };
   }
 
   @Patch(':id')
   @RequirePermissions('customer.update')
   @ApiOperation({ summary: 'Müşteri güncelle' })
-  async update(@Param('id') id: string, @Body() updateDto: any) {
-    const data = await this.customersService.update(id, updateDto);
+  async update(@Param('id') id: string, @Body() updateDto: any, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const data = await this.customersService.update(id, updateDto, userId);
     return { success: true, data };
   }
 

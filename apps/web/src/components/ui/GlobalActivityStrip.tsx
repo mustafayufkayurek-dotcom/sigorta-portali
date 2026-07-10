@@ -27,7 +27,7 @@ export function GlobalActivityStrip() {
 
   return (
     <div
-      className="pointer-events-none fixed left-0 right-0 top-[73px] z-[9998] h-0.5 overflow-hidden bg-slate-200/60 dark:bg-slate-800/60"
+      className="pointer-events-none fixed left-0 right-0 top-[4.75rem] z-[9998] h-0.5 overflow-hidden bg-slate-200/60 dark:bg-slate-800/60"
       aria-hidden="true"
     >
       <div className="meridyen-indeterminate-bar h-full w-1/3 bg-blue-600 dark:bg-blue-500" />

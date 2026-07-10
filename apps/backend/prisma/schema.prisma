@@ -186,6 +186,7 @@ model User {
   // Ekran İzinleri
   screenPermissions          ScreenPermission[]
   createdTestNotes           TestNote[]                @relation("TestNoteCreatedBy")
+  customersUpdated           Customer[]                @relation("CustomerUpdatedBy")
   assignedWorkItems          WorkItem[]                @relation("WorkItemAssignee")
   // Masraf İzleme
   createdExpenses            Expense[]                 @relation("ExpenseCreatedBy")
@@ -198,6 +199,11 @@ model User {
   vendorDiscoverySessions  VendorDiscoverySession[]
   createdFieldSurveyBriefs FieldSurveyBrief[]
   activitySessions         ActivitySession[]
+
+  // Operasyonel erişim izinleri (vekalet)
+  operationalAccessGrantsAsGrantee   OperationalAccessGrant[] @relation("GranteeUser")
+  operationalAccessGrantsAsPrincipal OperationalAccessGrant[] @relation("PrincipalUser")
+  operationalAccessGrantsGranted   OperationalAccessGrant[] @relation("GrantedByUser")
 
   // Personel modülü (pod — ileride bağlanacak)
   hrEmployeeProfile          HrEmployeeProfile?
@@ -506,8 +512,11 @@ model Customer {
   tags            Json?     @default("[]")
   status          String    @default("active") // active | passive | blacklisted
   notes           String?
+  updatedByUserId String?   @map("updated_by_user_id")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  updatedByUser User? @relation("CustomerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   claimFiles   ClaimFile[]
   contacts     CustomerContact[]
@@ -3741,4 +3750,33 @@ model FieldSurveyBrief {
   @@index([claimFileId, createdAt])
   @@index([createdByUserId])
   @@map("field_survey_briefs")
+}
+
+// Operasyonel erişim izinleri (vekalet) — Faz 1
+model OperationalAccessGrant {
+  id               String    @id @default(uuid())
+  granteeUserId    String    @map("grantee_user_id")
+  principalUserId  String?   @map("principal_user_id")
+  scopeType        String    @map("scope_type")
+  // hasar | acil_yardim | both
+  grantType        String    @map("grant_type")
+  // person_delegation | function_delegation
+  accessLevel      String    @default("manage") @map("access_level")
+  // view | manage
+  validFrom        DateTime  @map("valid_from")
+  validTo          DateTime? @map("valid_to")
+  reason           String?
+  grantedByUserId  String    @map("granted_by_user_id")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  granteeUser   User  @relation("GranteeUser", fields: [granteeUserId], references: [id], onDelete: Cascade)
+  principalUser User? @relation("PrincipalUser", fields: [principalUserId], references: [id], onDelete: SetNull)
+  grantedByUser User  @relation("GrantedByUser", fields: [grantedByUserId], references: [id])
+
+  @@index([granteeUserId, isActive])
+  @@index([principalUserId])
+  @@index([grantType, scopeType])
+  @@map("operational_access_grants")
 }
