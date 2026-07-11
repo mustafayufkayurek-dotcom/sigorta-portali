@@ -14,11 +14,16 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import RepairItemsModal, {
   type SelectedRepairItem,
-  DAMAGE_TYPE_OPTIONS,
   DAMAGE_SIZE_OPTIONS,
   damageTypeLabel,
   damageSizeLabel,
 } from '@/components/damage-reports/RepairItemsModal';
+import {
+  inferQuickDamageTypesFromReport,
+  filterQuickDamageTypeOptions,
+  REPORT_IMAGE_CATEGORY_LABELS,
+} from '@/utils/quick-repair-damage-types';
+import { resolveInsuredDisplayName } from '@/utils/insured-display';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -39,16 +44,13 @@ type FileExpertInfo = {
 
 function resolveFileExpertDisplay(report: any): FileExpertInfo {
   if (!report) return { name: '—', missing: true };
-  const adjuster = report.claimFile?.assignedAdjuster;
-  const office = report.expertOffice?.companyName?.trim();
+  const expertOffice = report.expertOffice?.companyName?.trim();
   const inspector = report.inspectorName?.trim();
+  const assignedInspector = report.claimFile?.assignedInspectorVendor?.name?.trim();
 
-  if (adjuster) {
-    const name = `${adjuster.firstName ?? ''} ${adjuster.lastName ?? ''}`.trim();
-    if (name) return { name, office: office || undefined, missing: false };
-  }
-  if (office) return { name: office, missing: false };
+  if (expertOffice) return { name: expertOffice, missing: false };
   if (inspector) return { name: inspector, missing: false };
+  if (assignedInspector) return { name: assignedInspector, missing: false };
   return { name: 'Atanmamış', missing: true };
 }
 
@@ -336,13 +338,13 @@ function FinancialSummaryBar({
       {metrics.map((metric) => (
         <div
           key={metric.label}
-          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem]"
+          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] text-center"
         >
           <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">{metric.label}</p>
           <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${metric.valueClass}`}>{metric.value}</p>
         </div>
       ))}
-      <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] ${marginChipClass}`}>
+      <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] text-center ${marginChipClass}`}>
         <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Marj</p>
         <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${marginValueClass}`}>
           %{margin.toFixed(1)}
@@ -426,8 +428,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
       >
         <div className="flex items-center gap-2">
           <span className="w-5 h-5 rounded-md bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">%</span>
-          <span className="text-sm font-semibold text-slate-700">İş Grubu Bazlı Kar Özeti</span>
-          <span className="text-xs text-indigo-500 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">Dahili</span>
+          <span className="text-sm font-semibold text-slate-700">Dosya Bütçesi</span>
         </div>
         <div className="flex items-center gap-3">
           <span className={`text-sm font-bold ${profitColor(grandProfitPct)}`}>
@@ -2408,20 +2409,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       )}
     </div>
 
-    {isEditable && (
-      <button
-        type="button"
-        disabled={quickAdding}
-        onClick={quickAddRow}
-        className="w-full mt-2 py-2.5 border-2 border-dashed border-blue-200 rounded-lg text-xs font-medium text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        {quickAdding ? 'Ekleniyor...' : '+ Yeni Satır Ekle'}
-      </button>
-    )}
-
     {/* Zarar Uyarısı */}
     {(() => {
       const lossCount = rows.filter((r) => {
@@ -2522,7 +2509,7 @@ function EmergencyReportEditor({
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', 'damage');
-        await axios.post(`${API}/repair-reports/${reportId}/images`, fd, { headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' } });
+        await axios.post(`${API}/repair-reports/${reportId}/images`, fd, { headers: authHeader() });
       }
       onReload();
     } catch (err: any) {
@@ -2650,18 +2637,6 @@ function EmergencyReportEditor({
           {/* İş Kalemleri */}
           <SectionCard
             title="İş Kalemleri"
-            action={isEditable ? (
-              <button
-                type="button"
-                onClick={() => itemsTableRef.current?.quickAddRow()}
-                className="flex items-center gap-1.5 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                + Satır Ekle
-              </button>
-            ) : undefined}
           >
             <EditableItemsTable
               ref={itemsTableRef}
@@ -2881,7 +2856,9 @@ export default function RepairReportPage() {
         axios.get(`${API}/work-groups`, { headers: authHeader() }),
       ]);
       setReport(rRes.data.data);
-      setQuickDamageTypes(rRes.data.data?.quickDamageTypes ?? []);
+      const inferredQuickTypes = inferQuickDamageTypesFromReport(rRes.data.data);
+      const storedQuickTypes = rRes.data.data?.quickDamageTypes ?? [];
+      setQuickDamageTypes(storedQuickTypes.length > 0 ? storedQuickTypes : inferredQuickTypes);
       setQuickDamageSize(rRes.data.data?.quickDamageSize ?? 'MEDIUM');
       setWorkGroups(wgRes.data.data || []);
 
@@ -2963,6 +2940,16 @@ export default function RepairReportPage() {
   );
 
   const fileExpert = useMemo(() => resolveFileExpertDisplay(report), [report]);
+
+  const insuredName = useMemo(
+    () => resolveInsuredDisplayName(report?.claimFile),
+    [report?.claimFile],
+  );
+
+  const quickDamageTypeOptions = useMemo(() => {
+    const inferred = inferQuickDamageTypesFromReport(report);
+    return filterQuickDamageTypeOptions(inferred);
+  }, [report]);
 
   const latestSubmission = useMemo(
     () => approvalHistory.find((h) => h.action === 'pending_approval'),
@@ -3055,16 +3042,23 @@ export default function RepairReportPage() {
   };
 
   const handleAddQuickRepairItems = async (items: SelectedRepairItem[]) => {
-    await axios.post(`${API}/damage-reports/${reportId}/repair-items`, {
-      damageTypes: quickDamageTypes,
-      fileId: claimId,
-      items: items.map((item) => ({ workSubGroupId: item.workSubGroupId, quantity: item.quantity, note: item.note })),
-    }, { headers: authHeader() });
-    await axios.put(`${API}/repair-reports/${reportId}`, {
-      quickDamageTypes,
-      quickDamageSize,
-    }, { headers: authHeader() });
-    await loadKeepScroll();
+    try {
+      await axios.post(`${API}/damage-reports/${reportId}/repair-items`, {
+        damageTypes: quickDamageTypes,
+        fileId: claimId,
+        items: items.map((item) => ({ workSubGroupId: item.workSubGroupId, quantity: item.quantity, note: item.note })),
+      }, { headers: authHeader() });
+      if (quickDamageTypes.length > 0) {
+        await axios.put(`${API}/repair-reports/${reportId}`, {
+          quickDamageTypes,
+          quickDamageSize,
+        }, { headers: authHeader() });
+      }
+      await loadKeepScroll();
+    } catch (err: any) {
+      alert(err?.response?.data?.message ?? 'Hızlı onarım kalemleri eklenemedi. Lütfen tekrar deneyin.');
+      throw err;
+    }
   };
 
   const handleSendExternalApproval = async () => {
@@ -3237,7 +3231,7 @@ export default function RepairReportPage() {
       fd.append('file', blob, `annotated-${imageId}.png`);
       fd.append('category', 'annotated');
       await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
-        headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+        headers: authHeader(),
       });
       setShowAnnotation(null);
       load();
@@ -3266,7 +3260,7 @@ export default function RepairReportPage() {
         fd.append('file', file);
         fd.append('category', category);
         await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
-          headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
+          headers: authHeader(),
         });
       }
       await load();
@@ -3313,7 +3307,7 @@ export default function RepairReportPage() {
 
   if (loading || !report) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
 
-  const imageCats: Record<string, string> = { before: 'Öncesi', damage: 'Hasar', after: 'Sonrası' };
+  const imageCats = REPORT_IMAGE_CATEGORY_LABELS;
   const catColor: Record<string, string> = { before: 'bg-blue-100 text-blue-700', damage: 'bg-red-100 text-red-700', after: 'bg-green-100 text-green-700' };
 
   // Saha personeli maliyet gizleme
@@ -3539,15 +3533,28 @@ export default function RepairReportPage() {
       )}
 
       {/* Dosya Bilgileri */}
-      <SectionCard title="Dosya Bilgileri">
+      <SectionCard
+        title="Dosya Bilgileri"
+        action={
+          report.reportType === 'multi' && isEditable ? (
+            <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Hasar Nedeni</button>
+          ) : undefined
+        }
+      >
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
             { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
             { label: 'Hasar Konusu', value: formatDisplayLabel(report.claimFile?.lossType) },
-            { label: 'Sigortalı', value: report.claimFile?.customer?.fullName ?? report.claimFile?.customer?.companyName },
-            { label: 'Dosya Eksperi', value: fileExpert.missing ? undefined : (fileExpert.office ? `${fileExpert.name} (${fileExpert.office})` : fileExpert.name) },
+            { label: 'Sigortalı', value: insuredName },
+            { label: 'Dosya Eksperi', value: fileExpert.missing ? undefined : fileExpert.name },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
+            {
+              label: 'Hasar Nedeni',
+              value: report.reportType === 'single'
+                ? (report.damageTypes?.[0]?.damageTypeName ? formatDisplayLabel(report.damageTypes[0].damageTypeName) : undefined)
+                : undefined,
+            },
           ].map((f) => (
             <div key={f.label}>
               <p className="text-xs text-slate-400">{f.label}</p>
@@ -3555,50 +3562,33 @@ export default function RepairReportPage() {
             </div>
           ))}
         </div>
+        {report.reportType === 'multi' && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs text-slate-400 mb-2">Hasar Nedenleri</p>
+            {!(report.damageTypes?.length) ? (
+              <p className="text-slate-400 text-sm">Henüz Hasar Nedeni Eklenmemiş.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {report.damageTypes.map((dt: any) => (
+                  <span key={dt.id} className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1 text-xs font-medium">
+                    {dt.damageTypeName}
+                    {isEditable && (
+                      <button type="button" onClick={() => handleRemoveDamageType(dt.id)} className="text-red-400 hover:text-red-700 ml-1">×</button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </SectionCard>
 
-      {/* Hasar Nedeni — Tek Hasarlı banner */}
-      {report.reportType === 'single' && (report.damageTypes?.length ?? 0) > 0 && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold flex-shrink-0">TH</span>
-          <div>
-            <p className="text-xs text-blue-500 font-medium">Hasar Nedeni</p>
-            <p className="text-sm font-semibold text-blue-800">{formatDisplayLabel(report.damageTypes[0]?.damageTypeName)}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Hasar Nedenleri (multi only) */}
-      {report.reportType === 'multi' && (
-        <SectionCard title="Hasar Nedenleri" action={
-          isEditable && (
-            <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Ekle</button>
-          )
-        }>
-          {!(report.damageTypes?.length) ? (
-            <p className="text-slate-400 text-sm">Henüz Hasar Nedeni Eklenmemiş.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {report.damageTypes.map((dt: any) => (
-                <span key={dt.id} className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1 text-xs font-medium">
-                  {dt.damageTypeName}
-                  {isEditable && (
-                    <button type="button" onClick={() => handleRemoveDamageType(dt.id)} className="text-red-400 hover:text-red-700 ml-1">×</button>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      )}
-
-      {/* Tespit Bulguları */}
-      <SectionCard title="Hızlı Onarım Kalemleri">
+      <SectionCard title="Hızlı Onarım Türü">
         <div className="space-y-4">
           <div>
-            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Türü(leri)</p>
+            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Türü</p>
             <div className="flex flex-wrap gap-2">
-              {DAMAGE_TYPE_OPTIONS.map((option) => {
+              {quickDamageTypeOptions.map((option) => {
                 const active = quickDamageTypes.includes(option.value);
                 return (
                   <button
@@ -3631,7 +3621,7 @@ export default function RepairReportPage() {
             onClick={() => setShowQuickRepairModal(true)}
             className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            ⚡ Hızlı Onarım Kalemleri Ekle
+            ⚡ Hızlı Onarım Türü Ekle
           </button>
           {quickDamageTypes.length > 0 && (
             <p className="text-xs text-slate-400">{quickDamageTypes.map(damageTypeLabel).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
@@ -3685,16 +3675,6 @@ export default function RepairReportPage() {
       <SectionCard title="Onarım Kalemleri" id="onarim-kalemleri-section" action={
         isEditable ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => itemsTableRef.current?.quickAddRow()}
-              className="flex items-center gap-1.5 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              + Satır Ekle
-            </button>
             <button
               type="button"
               onClick={handleSaveReport}
@@ -3869,13 +3849,13 @@ export default function RepairReportPage() {
                   className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%239ca3af" font-size="12">Yüklenemedi</text></svg>'; }}
                 />
-                <div className="absolute top-1.5 left-1.5">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${catColor[img.category] ?? 'bg-slate-100 text-slate-600'}`}>
+                <div className="absolute top-1.5 right-1.5">
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shadow-sm ${catColor[img.category] ?? 'bg-slate-100 text-slate-600'}`}>
                     {imageCats[img.category] ?? img.category}
                   </span>
                 </div>
                 {img.hasAnnotation && (
-                  <div className="absolute top-1.5 right-6">
+                  <div className="absolute top-1.5 left-1.5">
                     <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">✎</span>
                   </div>
                 )}
@@ -3905,8 +3885,8 @@ export default function RepairReportPage() {
         />
       </SectionCard>
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4">
-          <div className="flex-1 flex justify-center min-w-0">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
+          <div className="hidden lg:flex items-center min-w-0 flex-1">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 totalSupplierCost={report.totalSupplierCost}
@@ -4194,12 +4174,7 @@ export default function RepairReportPage() {
                 {fileExpert.missing ? (
                   <p className="text-sm font-semibold text-amber-700">Bu dosyada atanmış eksper bulunamadı</p>
                 ) : (
-                  <>
-                    <p className="text-sm font-semibold text-slate-900">{fileExpert.name}</p>
-                    {fileExpert.office && (
-                      <p className="text-xs text-slate-500 mt-0.5">{fileExpert.office}</p>
-                    )}
-                  </>
+                  <p className="text-sm font-semibold text-slate-900">{fileExpert.name}</p>
                 )}
               </div>
 

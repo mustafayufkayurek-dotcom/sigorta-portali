@@ -9,6 +9,7 @@ import {
   portalStatusLabel,
 } from '@/utils/portal-file-flow-labels';
 import { getAccessToken } from '@/utils/auth-session';
+import { REPORT_IMAGE_CATEGORY_LABELS } from '@/utils/quick-repair-damage-types';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -145,7 +146,7 @@ export default function PortalProcessTimeline({
               gallery.push({
                 id: img.id,
                 url: `${UPLOADS_ORIGIN}/uploads/report-images/${encodeURIComponent(img.storageKey)}`,
-                label: img.caption || img.fileName || 'Rapor Görseli',
+                label: img.caption || REPORT_IMAGE_CATEGORY_LABELS[img.category] || img.fileName || 'Rapor Görseli',
               });
             }
           } catch {

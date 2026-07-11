@@ -855,7 +855,7 @@ export class ReportPdfService {
     </div>
     <div class="info-row">
       <span class="info-label">Sigortalı</span>
-      <span class="info-value">${escHtml(cf?.customer?.fullName ?? cf?.customer?.companyName)}</span>
+      <span class="info-value">${escHtml(cf?.customer?.fullName ?? cf?.customer?.companyName ?? cf?.insuredName ?? cf?.commercialTitle)}</span>
     </div>
   </div>
   <div class="info-row-full">

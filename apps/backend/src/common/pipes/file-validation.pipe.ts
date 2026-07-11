@@ -17,6 +17,8 @@ export class FileValidationPipe implements PipeTransform {
     'image/png',
     'image/gif',
     'image/webp',
+    'image/heic',
+    'image/heif',
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

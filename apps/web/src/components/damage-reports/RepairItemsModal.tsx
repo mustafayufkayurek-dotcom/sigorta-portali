@@ -110,7 +110,7 @@ export default function RepairItemsModal({
         <div className="border-b border-slate-100 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Hızlı Onarım Kalemleri</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Hızlı Onarım Türü</h3>
               <p className="mt-1 text-xs text-slate-500">{damageTypes.map(damageTypeLabel).join(' + ')} ({damageSizeLabel(damageSize)})</p>
             </div>
             <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700">×</button>

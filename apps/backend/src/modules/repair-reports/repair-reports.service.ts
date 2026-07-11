@@ -43,9 +43,11 @@ const REPORT_INCLUDE = {
       insuranceCompany: true,
       customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
       propertyAddress: true,
+      claimSubject: { select: { id: true, code: true, name: true } },
       assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
       assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
       assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      assignedInspectorVendor: { select: { id: true, name: true } },
     },
   },
   createdBy: { select: { id: true, firstName: true, lastName: true } },
@@ -118,6 +120,7 @@ export class RepairReportsService {
       include: {
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+        assignedInspectorVendor: { select: { id: true, name: true } },
       },
     });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
@@ -129,13 +132,12 @@ export class RepairReportsService {
     });
     const autoReporterName = reporter ? `${reporter.firstName} ${reporter.lastName}` : undefined;
 
-    // Eksper ofisi: dto'dan geldiyse kullan, yoksa hasar dosyasındaki atanmış eksper/ofis kullanıcısının adını inspectorName olarak set et
+    // Eksper: dto'dan geldiyse kullan; yoksa atanmış eksper firması veya ofis kullanıcısı
     const autoInspectorName = dto.inspectorName
-      ?? ((claimFile as any).assignedAdjuster
-        ? `${(claimFile as any).assignedAdjuster.firstName} ${(claimFile as any).assignedAdjuster.lastName}`
-        : ((claimFile as any).assignedOfficeUser
-          ? `${(claimFile as any).assignedOfficeUser.firstName} ${(claimFile as any).assignedOfficeUser.lastName}`
-          : undefined));
+      ?? (claimFile as any).assignedInspectorVendor?.name
+      ?? ((claimFile as any).assignedOfficeUser
+        ? `${(claimFile as any).assignedOfficeUser.firstName} ${(claimFile as any).assignedOfficeUser.lastName}`
+        : undefined);
 
     const count = await this.prisma.repairReport.count({ where: { claimFileId } });
     const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;
@@ -319,6 +321,13 @@ export class RepairReportsService {
       include: { workGroup: true },
     });
     const subGroupMap = new Map(subGroups.map((subGroup) => [subGroup.id, subGroup]));
+    const reportDamageTypes = await this.prisma.reportDamageType.findMany({
+      where: { reportId },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const defaultDamageTypeId = reportDamageTypes.length === 1
+      ? reportDamageTypes[0].id
+      : reportDamageTypes[0]?.id ?? null;
     const created = [];
     for (const item of dto.items) {
       const subGroup = subGroupMap.get(item.workSubGroupId);
@@ -329,6 +338,7 @@ export class RepairReportsService {
         data: {
           reportId,
           workGroupId: subGroup.workGroupId,
+          damageTypeId: defaultDamageTypeId,
           jobDescription: subGroup.name,
           description: item.note,
           quantity,
