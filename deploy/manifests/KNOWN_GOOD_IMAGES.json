@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v282-sidebar-logo-compact",
-  "description": "Sidebar logo kompakt tek satır (v253): dar menüde alt chevron ve çift kutu kaldırıldı",
+  "label": "v283-logo-prominent",
+  "description": "Sidebar logo alan içi belirgin ölçek — şerit kompakt (v282), geniş logo 4.75rem",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v276-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v282-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v283-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v281-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v282-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
   },
   "mustPassSmokeRoutes": [
