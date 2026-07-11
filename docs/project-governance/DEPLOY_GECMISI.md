@@ -8,12 +8,12 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v276 hazır, deploy bekliyor)
+## Canlı durum (11 Temmuz 2026 — v276)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v276-amd64` | repoda hazır |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | repoda hazır |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v276-amd64` | healthy |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
 | **Rollback** | Web **v275** / Backend **v275** | manifest `rollbackImages` |
 | **Etiket** | `v276-ihbar-konusu-logo-mail-404` | |
 
@@ -21,13 +21,16 @@
 
 ## Son deploy kronolojisi
 
-### v276 — Full (11 Temmuz 2026 akşam — hazır, deploy bekliyor)
+### v276 — Full (11 Temmuz 2026 akşam)
 
-- **İhbar konusu:** canonical only — serbest metin notları gösterilmez; gelen kutusu açılışında `claimSubjectId` bağlanır
-- **Logo:** sidebar geniş/dar beyaz kutu kaldırıldı; `meridyen-logo-official.png`
-- **E-posta 404:** `actionUrl` panel yollarına; eski `/claim-files/*` middleware redirect
+- **İhbar konusu:** canonical only; gelen kutusu `claimSubjectId` bağlama
+- **Logo:** sidebar beyaz kutu kaldırıldı
+- **E-posta 404:** panel URL + `/claim-files/*` redirect
+- **Onarım raporu:** yatay revizyon geçmişi (Dosya Bilgileri içinde)
 - **Sürüm etiketi:** `panel-build-info.ts` → v276
 - Migration yok
+- Commit: `1fafa1b`
+- Disk: eski image temizliği sonrası deploy (korunan: v275, v274 web, v272 backend)
 
 ### v275 — Full (11 Temmuz 2026 akşam)
 
