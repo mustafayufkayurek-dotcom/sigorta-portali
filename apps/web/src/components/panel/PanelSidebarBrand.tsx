@@ -28,11 +28,11 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
       <button
         type="button"
         onClick={onToggleCollapsed}
-        className="panel-sidebar-brand-toggle absolute right-1.5 top-1.5 z-10 h-7 w-7"
+        className="panel-sidebar-brand-toggle absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 shrink-0"
         aria-label={toggleLabel}
         title={toggleLabel}
       >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
 
       <Link

@@ -264,7 +264,7 @@
   @apply relative shrink-0 border-b border-slate-200 bg-white box-border;
 }
 .panel-sidebar-brand--collapsed {
-  @apply h-[3.25rem] px-1.5;
+  @apply h-[3.25rem] px-2;
 }
 .panel-sidebar-brand--expanded {
   @apply h-[3.5rem] px-2.5;
@@ -273,14 +273,14 @@
   @apply flex h-full items-center justify-center overflow-hidden;
 }
 .panel-sidebar-brand-link--collapsed {
-  @apply pr-8;
+  @apply justify-start pl-1 pr-9;
 }
 .panel-sidebar-brand-link--expanded {
   @apply pr-9;
 }
 .panel-sidebar-brand-globe__img {
-  @apply h-10 w-10 object-contain;
-  transform: scale(1.2);
+  @apply h-9 w-9 object-contain;
+  transform: scale(1.15);
   transform-origin: center center;
 }
 .panel-sidebar-brand-full__img {
