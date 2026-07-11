@@ -58,6 +58,10 @@ function resolveDosyaEksperi(claim: any, reportSummary?: any | null): string {
   if (name) return toTitleCaseTR(name);
   const vendor = claim.assignedInspectorVendor?.name?.trim();
   if (vendor) return toTitleCaseTR(vendor);
+  const adjuster = claim.assignedAdjuster
+    ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim()
+    : '';
+  if (adjuster) return toTitleCaseTR(adjuster);
   return 'Atanmamış';
 }
 
@@ -139,12 +143,12 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   return [...core, ...supplementary];
 }
 
-function buildDosyaBilgileriSubtitle(claim: any): string {
+function buildDosyaBilgileriSubtitle(claim: any, reportSummary?: any | null): string {
   const parts: string[] = [];
   const notification = resolveIhbarTarihi(claim);
   if (notification !== '—') parts.push(`İhbar ${notification}`);
-  const eksper = resolveDosyaEksperi(claim, null);
-  if (eksper !== '—') parts.push(eksper);
+  const eksper = resolveDosyaEksperi(claim, reportSummary ?? null);
+  if (eksper !== 'Atanmamış' && eksper !== '—') parts.push(eksper);
   const priority = formatPriority(claim.priority);
   if (priority !== '—') parts.push(priority);
   const sla = fmtDate(claim.slaDueAt);
@@ -249,7 +253,7 @@ export function DosyaBilgileriDetay({
   if (hasarNedeni !== '—') subtitleParts.push(hasarNedeni);
   const quickRepair = resolveQuickRepairSummary(reportSummary);
   if (quickRepair !== '—') subtitleParts.push(quickRepair);
-  const baseSubtitle = buildDosyaBilgileriSubtitle(claim);
+  const baseSubtitle = buildDosyaBilgileriSubtitle(claim, reportSummary);
   if (baseSubtitle) subtitleParts.push(baseSubtitle);
   const subtitle = subtitleParts.join(' · ');
   const compactFields = fields.filter((field) => !field.wide);
@@ -289,6 +293,16 @@ export function DosyaBilgileriDetay({
                   <p className="text-xs font-medium text-slate-800 mt-0.5">{field.value}</p>
                 </div>
               ))}
+              {repairReportId && (
+                <div className="col-span-2 sm:col-span-3 lg:col-span-5 border-t border-slate-100/80 pt-2 mt-1">
+                  <RevisionHistoryStrip reportId={repairReportId} embedded compact />
+                </div>
+              )}
+            </div>
+          )}
+          {!compactFields.length && repairReportId && (
+            <div className="pt-3">
+              <RevisionHistoryStrip reportId={repairReportId} embedded compact />
             </div>
           )}
           {wideFields.length > 0 && (
@@ -301,11 +315,6 @@ export function DosyaBilgileriDetay({
                   </p>
                 </div>
               ))}
-            </div>
-          )}
-          {repairReportId && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <RevisionHistoryStrip reportId={repairReportId} embedded />
             </div>
           )}
         </div>

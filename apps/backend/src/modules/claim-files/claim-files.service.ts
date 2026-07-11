@@ -1364,6 +1364,11 @@ export class ClaimFilesService {
       },
     });
 
+    await this.prisma.repairReport.updateMany({
+      where: { claimFileId: fileId, status: 'draft' },
+      data: { inspectorName: vendor.name },
+    });
+
     const updated = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
       include: {

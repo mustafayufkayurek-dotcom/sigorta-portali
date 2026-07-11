@@ -4,6 +4,7 @@ export type RepairReportExpertSource = {
   claimFile?: {
     assignedInspectorVendor?: { name?: string | null } | null;
     assignedOfficeUser?: { firstName?: string | null; lastName?: string | null } | null;
+    assignedAdjuster?: { firstName?: string | null; lastName?: string | null } | null;
   } | null;
 };
 
@@ -21,6 +22,9 @@ export function resolveRepairReportExpertName(source: RepairReportExpertSource):
 
   const expertOffice = source.expertOffice?.companyName?.trim();
   if (expertOffice) return expertOffice;
+
+  const adjuster = officeUserFullName(source.claimFile?.assignedAdjuster);
+  if (adjuster) return adjuster;
 
   const inspector = source.inspectorName?.trim();
   if (!inspector) return null;

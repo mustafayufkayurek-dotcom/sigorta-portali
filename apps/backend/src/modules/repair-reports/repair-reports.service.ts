@@ -166,6 +166,15 @@ export class RepairReportsService {
       include: REPORT_INCLUDE,
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const claim = report.claimFile as {
+      assignedInspectorVendor?: { name?: string | null } | null;
+    } | null;
+    const vendorName = claim?.assignedInspectorVendor?.name?.trim();
+    if (!report.inspectorName?.trim() && vendorName) {
+      return { ...report, inspectorName: vendorName };
+    }
+
     return report;
   }
 

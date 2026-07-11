@@ -19,9 +19,11 @@ type RevHistoryItem = {
 export function RevisionHistoryStrip({
   reportId,
   embedded = false,
+  compact = false,
 }: {
   reportId: string;
   embedded?: boolean;
+  compact?: boolean;
 }) {
   const [items, setItems] = useState<RevHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +63,9 @@ export function RevisionHistoryStrip({
   }, [reportId]);
 
   if (loading) {
+    if (compact) {
+      return <p className="text-[11px] text-slate-400 py-1">Revizyon geçmişi yükleniyor…</p>;
+    }
     return (
       <div className={embedded ? 'pt-3' : 'p-5'}>
         <p className="text-xs text-slate-400">Revizyon Geçmişi yükleniyor…</p>
@@ -84,7 +89,40 @@ export function RevisionHistoryStrip({
       ? 'border-amber-200 bg-amber-50 text-amber-800'
       : item.status === 'approved'
         ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-slate-200 bg-slate-50 text-slate-700';
+        : 'border-slate-200 bg-white text-slate-700';
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <p className="text-[11px] text-slate-400 shrink-0">Revizyon Geçmişi</p>
+        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
+          {items.map((item, idx) => (
+            <div key={item.id} className="flex items-center gap-1 shrink-0">
+              <div
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${statusTone(item)}`}
+                title={item.requestedBy ?? undefined}
+              >
+                <span className="font-bold tabular-nums">v{item.version ?? idx + 1}</span>
+                <span className="font-medium">{statusLabel(item)}</span>
+                {item.requestedBy && (
+                  <span className="opacity-75 truncate max-w-[88px] hidden sm:inline">{item.requestedBy}</span>
+                )}
+              </div>
+              {idx < items.length - 1 && (
+                <span className="text-slate-300 text-xs shrink-0" aria-hidden>→</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <a
+          href={`/panel/revizyon-talepleri?reportId=${reportId}`}
+          className="text-[10px] text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
+        >
+          Tümünü Gör →
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className={embedded ? '' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>

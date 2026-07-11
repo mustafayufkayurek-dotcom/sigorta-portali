@@ -152,6 +152,10 @@ function resolveFileExpertDisplay(report: any): FileExpertInfo {
   if (name) return { name, missing: false };
   const vendor = report.claimFile?.assignedInspectorVendor?.name?.trim();
   if (vendor) return { name: vendor, missing: false };
+  const adjuster = report.claimFile?.assignedAdjuster
+    ? `${report.claimFile.assignedAdjuster.firstName ?? ''} ${report.claimFile.assignedAdjuster.lastName ?? ''}`.trim()
+    : '';
+  if (adjuster) return { name: adjuster, missing: false };
   return { name: 'Atanmamış', missing: true };
 }
 
@@ -4127,7 +4131,7 @@ export default function RepairReportPage() {
           ))}
         </div>
       <div className="mt-4">
-          <RevisionHistoryStrip reportId={reportId as string} embedded />
+          <RevisionHistoryStrip reportId={reportId as string} embedded compact />
         </div>
         {report.reportType === 'multi' && (
           <div className="mt-4 pt-4 border-t border-slate-100">
