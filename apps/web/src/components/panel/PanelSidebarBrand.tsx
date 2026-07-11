@@ -29,8 +29,8 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
           <img
             src={CORPORATE_LOGO_GLOBE}
             alt="Meridyen"
-            width={36}
-            height={36}
+            width={40}
+            height={40}
             className="panel-sidebar-brand-globe__img"
             onError={(e) => {
               const img = e.currentTarget;
