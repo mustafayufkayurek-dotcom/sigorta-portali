@@ -279,10 +279,10 @@
   @apply pr-9;
 }
 .panel-sidebar-brand-globe__img {
-  @apply h-11 w-11 object-contain;
+  @apply h-12 w-12 object-contain;
 }
 .panel-sidebar-brand-full__img {
-  @apply block h-14 w-full object-contain object-center sm:h-[4rem];
+  @apply block h-[4.25rem] w-full object-contain object-center sm:h-[4.75rem];
 }
 .panel-sidebar-brand-toggle {
   @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800;
