@@ -267,6 +267,10 @@
   background-color: #0f172a !important;
   border-color: #253247 !important;
 }
+.dark .panel-sidebar-brand--expanded {
+  /* Tam logo JPEG şeffaf değil — geniş menüde açık zemin gerekli */
+  background-color: #ffffff !important;
+}
 .panel-sidebar-brand--collapsed {
   @apply flex flex-col items-center gap-1.5 px-1.5 py-2;
 }
@@ -284,14 +288,11 @@
   border: none !important;
   box-shadow: none !important;
 }
-.panel-sidebar-brand-globe__img {
-  @apply h-10 w-10 object-contain;
-}
 .panel-sidebar-brand-full {
   @apply flex items-center justify-center overflow-hidden rounded-xl pr-9 bg-transparent;
 }
 .panel-sidebar-brand-full__img {
-  @apply block h-14 w-full max-h-14 object-contain object-center;
+  @apply block h-16 w-full max-h-16 object-contain object-center sm:max-h-[4.5rem];
 }
 .panel-sidebar-brand-toggle {
   @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800;

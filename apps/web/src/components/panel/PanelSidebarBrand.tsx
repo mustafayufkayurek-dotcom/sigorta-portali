@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CORPORATE_LOGO_FULL, CORPORATE_LOGO_GLOBE, CORPORATE_LOGO_GLOBE_FALLBACK, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { MeridyenGlobeAnimated } from '@/components/brand/MeridyenGlobeAnimated';
+import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 
 type PanelSidebarBrandProps = {
   href: string;
@@ -13,6 +14,7 @@ type PanelSidebarBrandProps = {
 /**
  * Sidebar üst marka alanı — tek kaynak (ONAYLI_UI_CHECKLIST S1/S2).
  * Stil: globals.css `.panel-sidebar-brand-*` (köşe ovali, ölçek, koyu tema muafiyeti).
+ * Dar menü: MeridyenGlobeAnimated SVG (beyaz zeminli PNG yok).
  */
 export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelSidebarBrandProps) {
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
@@ -21,19 +23,7 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
     return (
       <div className="panel-sidebar-brand panel-sidebar-brand--collapsed">
         <Link href={href} className="panel-sidebar-brand-globe" title="Panel ana sayfa">
-          <img
-            src={CORPORATE_LOGO_GLOBE}
-            alt="Meridyen"
-            width={36}
-            height={36}
-            className="panel-sidebar-brand-globe__img"
-            onError={(e) => {
-              const img = e.currentTarget;
-              if (img.src.includes('globe-square')) {
-                img.src = CORPORATE_LOGO_GLOBE_FALLBACK;
-              }
-            }}
-          />
+          <MeridyenGlobeAnimated size={36} />
         </Link>
         <button
           type="button"
@@ -62,7 +52,7 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
 
       <Link href={href} className="panel-sidebar-brand-full" title="Panel ana sayfa">
         <img
-          src={CORPORATE_LOGO_FULL}
+          src={CORPORATE_LOGO_LIGHT}
           alt="Meridyen Assistance"
           className="panel-sidebar-brand-full__img"
           onError={(e) => {
