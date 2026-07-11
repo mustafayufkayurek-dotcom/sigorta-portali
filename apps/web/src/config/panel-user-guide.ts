@@ -2,7 +2,7 @@
  * Rol bazlı panel kullanım kılavuzları.
  * HTML kılavuz güncellendiğinde GUIDE_CONTENT_VERSION artırılmalıdır.
  */
-export const GUIDE_CONTENT_VERSION = '2026-07-09';
+export const GUIDE_CONTENT_VERSION = '2026-07-11';
 
 export type PanelGuideEntry = {
   href: string;

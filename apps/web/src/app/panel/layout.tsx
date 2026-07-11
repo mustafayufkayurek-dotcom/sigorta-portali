@@ -435,27 +435,14 @@ function Navbar({
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
       <div className="w-full px-2 sm:px-3 lg:px-5">
         <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          <div className="flex min-w-0 shrink-0 items-center gap-3">
-            <Link
-              href={panelLogoHref}
-              className={`inline-flex shrink-0 items-center ${isPortalUser ? '' : 'hidden'}`}
-              title="Panel ana sayfa"
-            >
+          <div className="flex min-w-0 shrink-0 items-center md:hidden">
+            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
               <BrandLogoMark
                 alt="Meridyen Assistance"
                 src={CORPORATE_LOGO_LIGHT}
                 variant="panel"
               />
             </Link>
-            <div className={`flex min-w-0 shrink-0 items-center ${isPortalUser ? '' : 'md:hidden'}`}>
-              <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
-                <BrandLogoMark
-                  alt="Meridyen Assistance"
-                  src={CORPORATE_LOGO_LIGHT}
-                  variant="panel"
-                />
-              </Link>
-            </div>
           </div>
 
           {/* Right side */}
