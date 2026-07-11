@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-10",
-  "label": "v248-dashboard-delta-hasar-detay",
-  "description": "Full: Yönetim Merkezi dashboard, hasar detay paneli, HASAR Graph delta otomatik kurtarma",
+  "updatedAt": "2026-07-11",
+  "label": "v250-admin-dashboard-sidebar-logo",
+  "description": "Web-only: Yönetim Merkezi mockup düzeni, sidebar tam logo/küre, rol algısı düzeltmesi",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v248-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v248-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v249-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v250-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v247-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v247-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v248-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v249-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

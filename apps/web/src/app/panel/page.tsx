@@ -73,78 +73,71 @@ export default function PanelPage() {
 
   const hideAcil = !showAcilYardim;
 
+  /** Admin / müdür: onaylı mockup — yalnızca üç ana blok */
+  if (isManagement) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          title={title}
+          subtitle={subtitle}
+          showAcilAction
+        />
+
+        <AdminFinanceSummarySection
+          year={year}
+          month={month}
+          onYearChange={setYear}
+          onMonthChange={setMonth}
+          staggerIndex={0}
+        />
+
+        <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+          <div className="mb-3">
+            <h2 className="text-base font-semibold text-slate-950 dark:text-white">Operasyon Özeti</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Dosya akışı ve operasyon metrikleri</p>
+          </div>
+          <PrimaryKpiGroup staggerIndex={1} hideFinance hideAcil={hideAcil} />
+        </section>
+
+        <WeeklyPerformanceWidget staggerIndex={2} />
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
       <DashboardHeader
         title={title}
         subtitle={subtitle}
-        showAcilAction={isManagement || (showAcilYardim && !isOfficeStaff)}
+        showAcilAction={showAcilYardim && !isOfficeStaff}
         singlePrimaryAction={isOfficeStaff}
       />
 
-      {isManagement && (
-        <>
-          <AdminFinanceSummarySection
-            year={year}
-            month={month}
-            onYearChange={setYear}
-            onMonthChange={setMonth}
-            staggerIndex={0}
-          />
+      <PrimaryKpiGroup staggerIndex={0} hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
 
-          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-            <div className="mb-3">
-              <h2 className="text-base font-semibold text-slate-950 dark:text-white">Operasyon Özeti</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Dosya akışı ve operasyon metrikleri</p>
-            </div>
-            <PrimaryKpiGroup staggerIndex={1} hideFinance hideAcil={hideAcil} />
-          </section>
+      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} isOfficeStaff={isOfficeStaff} />
 
-          <WeeklyPerformanceWidget staggerIndex={2} />
-        </>
-      )}
+      {isOfficeStaff && <ApprovalDelayWidget staggerIndex={2} />}
 
-      {!isManagement && (
-        <PrimaryKpiGroup staggerIndex={0} hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
-      )}
+      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={isOfficeStaff ? 3 : 2} />}
 
-      <OperationFlowStrip
-        hideFinance={isManagement ? true : !showFinanceWidgets}
-        hideAcil={hideAcil}
-        isOfficeStaff={isOfficeStaff}
-      />
+      <CriticalAlertsWidget staggerIndex={isOfficeStaff ? 4 : 3} />
 
-      {isOfficeStaff && <ApprovalDelayWidget staggerIndex={isManagement ? 4 : 2} />}
-
-      {(isManagement || showFinanceWidgets) && (
-        <OverheadAllocationReminderWidget staggerIndex={isOfficeStaff ? 3 : isManagement ? 5 : 2} />
-      )}
-
-      <CriticalAlertsWidget staggerIndex={isOfficeStaff ? 4 : isManagement ? 6 : 3} />
-
-      <PendingActionsWidget staggerIndex={isOfficeStaff ? 5 : isManagement ? 7 : 4} />
+      <PendingActionsWidget staggerIndex={isOfficeStaff ? 5 : 4} />
 
       <DashboardGrid>
-        <SlaRiskWidget staggerIndex={isOfficeStaff ? 6 : isManagement ? 8 : 5} />
-        {(isManagement || showFinanceWidgets) && (
-          <OwnershipLoadWidget staggerIndex={isOfficeStaff ? 7 : isManagement ? 9 : 7} />
-        )}
+        <SlaRiskWidget staggerIndex={isOfficeStaff ? 6 : 5} />
+        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={7} />}
       </DashboardGrid>
 
-      {(isManagement || showFinanceWidgets) && (
+      {showFinanceWidgets && (
         <DashboardGrid>
-          <FinanceBottleneckWidget
-            onNavigate={handleNavigate}
-            staggerIndex={isOfficeStaff ? 8 : isManagement ? 10 : 8}
-          />
-          <ActivityFeedWidget
-            onNavigate={handleNavigate}
-            staggerIndex={isOfficeStaff ? 9 : isManagement ? 11 : 9}
-          />
+          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={8} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={9} />
         </DashboardGrid>
       )}
 
-      {!isManagement && !showFinanceWidgets && (
+      {!showFinanceWidgets && (
         <DashboardGrid>
           <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={isOfficeStaff ? 7 : 5} />
         </DashboardGrid>

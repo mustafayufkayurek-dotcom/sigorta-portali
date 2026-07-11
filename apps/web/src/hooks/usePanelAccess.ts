@@ -2,7 +2,7 @@
 
 import { roleCodesMatch } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { usePanelUser } from '@/contexts/PanelUserContext';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   canAccessAcilYardim,
   hasActiveFunctionDelegation,
@@ -17,59 +17,53 @@ function resolvePanelUser(contextUser: PanelUserLike | null | undefined): PanelU
   return contextUser ?? readStoredPanelUser();
 }
 
-function readAccessState(contextUser?: PanelUserLike | null) {
-  const user = resolvePanelUser(contextUser ?? null);
-  const roleCode = String(user?.role?.code ?? '').toLowerCase();
-  return {
-    roleCode,
-    operationArea: userOperationArea(user),
-    operationalAccessGrants: user?.operationalAccessGrants ?? [],
-  };
-}
-
 function isManagementRole(roleCode: string): boolean {
   return roleCodesMatch(roleCode, 'admin') || roleCodesMatch(roleCode, 'manager');
 }
 
 export function usePanelAccess() {
   const contextUser = usePanelUser();
-  const [state, setState] = useState(() => readAccessState(contextUser));
+  const [storageTick, setStorageTick] = useState(0);
 
-  const syncAccessState = useCallback(() => {
-    setState(readAccessState(contextUser));
-  }, [contextUser]);
-
-  useLayoutEffect(() => {
-    syncAccessState();
-  }, [syncAccessState]);
+  const syncFromStorage = useCallback(() => {
+    setStorageTick((n) => n + 1);
+  }, []);
 
   useEffect(() => {
-    const onUserUpdated = () => syncAccessState();
+    const onUserUpdated = () => syncFromStorage();
     window.addEventListener('meridyen:user-updated', onUserUpdated);
     window.addEventListener('storage', onUserUpdated);
     return () => {
       window.removeEventListener('meridyen:user-updated', onUserUpdated);
       window.removeEventListener('storage', onUserUpdated);
     };
-  }, [syncAccessState]);
+  }, [syncFromStorage]);
 
-  const { roleCode, operationArea, operationalAccessGrants } = state;
+  const access = useMemo(() => {
+    void storageTick;
+    const user = resolvePanelUser(contextUser);
+    const roleCode = String(user?.role?.code ?? '').toLowerCase();
+    const operationArea = userOperationArea(user);
+    const operationalAccessGrants = user?.operationalAccessGrants ?? [];
 
-  return {
-    roleCode,
-    operationArea,
-    operationalAccessGrants,
-    isManagement: isManagementRole(roleCode),
-    isOfficeStaff: isOfficeStaffRole(roleCode),
-    isFieldStaff: isFieldStaffRole(roleCode),
-    isFinance: isFinanceRole(roleCode),
-    showAcilYardim: canAccessAcilYardim(roleCode, operationArea, operationalAccessGrants),
-    showFinanceWidgets: panelShowsFinanceWidgets(roleCode),
-    showFinanceExtraAccessAcil:
-      isFinanceRole(roleCode) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim'),
-    showFinanceExtraAccessHasar:
-      isFinanceRole(roleCode) && hasActiveFunctionDelegation(operationalAccessGrants, 'hasar'),
-  };
+    return {
+      roleCode,
+      operationArea,
+      operationalAccessGrants,
+      isManagement: isManagementRole(roleCode),
+      isOfficeStaff: isOfficeStaffRole(roleCode),
+      isFieldStaff: isFieldStaffRole(roleCode),
+      isFinance: isFinanceRole(roleCode),
+      showAcilYardim: canAccessAcilYardim(roleCode, operationArea, operationalAccessGrants),
+      showFinanceWidgets: panelShowsFinanceWidgets(roleCode),
+      showFinanceExtraAccessAcil:
+        isFinanceRole(roleCode) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim'),
+      showFinanceExtraAccessHasar:
+        isFinanceRole(roleCode) && hasActiveFunctionDelegation(operationalAccessGrants, 'hasar'),
+    };
+  }, [contextUser, storageTick]);
+
+  return access;
 }
 
 export function notifyPanelUserUpdated(user?: PanelUserLike | null) {
