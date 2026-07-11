@@ -19,7 +19,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
 
   const versionBlock = (
     <div
-      className={`text-center text-[10px] font-medium leading-relaxed text-slate-400 ${
+      className={`text-center text-[10px] font-medium leading-relaxed text-slate-500 ${
         collapsed ? 'px-1 pb-2' : 'px-2 pb-2'
       }`}
     >
@@ -34,9 +34,9 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
       target="_blank"
       rel="noopener noreferrer"
       title={guide.title}
-      className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+      className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-blue-600">
         <HelpCircle className="h-5 w-5" />
       </span>
       <span className="text-[10px] font-medium">Kılavuz</span>
@@ -47,7 +47,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
       target="_blank"
       rel="noopener noreferrer"
       title={`${guide.title} — ${guide.subtitle}`}
-      className="group block rounded-xl border border-white/20 bg-white p-3 shadow-md transition hover:bg-slate-50"
+      className="group block rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
     >
       <div className="flex items-start gap-2.5">
         <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -68,7 +68,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
   );
 
   return (
-    <div className="shrink-0 px-2 pt-1">
+    <div className="shrink-0 px-2 pt-2">
       <SidebarNavTooltip label={guide.title} collapsed={collapsed}>
         {link}
       </SidebarNavTooltip>

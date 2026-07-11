@@ -788,8 +788,8 @@ function PanelSidebar({
         : 'py-2 text-sm';
     return `group flex items-center justify-between gap-2 rounded-xl px-3 ${verticalPad} font-semibold transition ${
       active
-        ? 'bg-blue-500/15 text-blue-100 ring-1 ring-blue-400/25'
-        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
   };
 
@@ -809,7 +809,7 @@ function PanelSidebar({
         aria-label={collapsed ? tooltipLabel : undefined}
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
-          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-200" /> : null}
+          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
         {!collapsed && link.alertCount && link.alertCount > 0 ? (
@@ -832,7 +832,7 @@ function PanelSidebar({
           {linkNode}
         </SidebarNavTooltip>
         {link.children?.length ? (
-          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-700/80 pl-2'}>
+          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-200 pl-2'}>
             {link.children.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}
@@ -842,28 +842,28 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`relative z-30 hidden shrink-0 flex-col overflow-hidden border-r border-slate-700/40 bg-gradient-to-b from-[#0b1324] via-[#0f172a] to-[#111c31] text-slate-200 shadow-[6px_0_28px_rgba(15,23,42,0.18)] transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT} ${
+      className={`z-30 hidden shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT} ${
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
-      <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
+      <PanelSidebarBrand
+        href={panelLogoHref}
+        collapsed={collapsed}
+        onToggleCollapsed={onToggleCollapsed}
+      />
 
-      <nav
-        className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-2 [scrollbar-width:thin] ${
-          collapsed ? 'pb-[11.5rem]' : 'pb-[15.5rem]'
-        }`}
-      >
+      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-2 pb-2 [scrollbar-width:thin]">
         <div className="space-y-0.5">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
       </nav>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#0b1324] shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
+      <div className="shrink-0 border-t border-slate-200 bg-slate-50">
         <div className="px-2.5 pt-2">
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2.5 text-xs font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10 ${
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 ${
               collapsed ? 'px-2' : 'px-3'
             }`}
             aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
