@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v280 web)
+## Canlı durum (11 Temmuz 2026 — v281 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v280-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v281-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v279** / Backend **v276** | manifest `rollbackImages` |
-| **Etiket** | `v280-logo-light-strip` | |
+| **Rollback** | Web **v280** / Backend **v276** | manifest `rollbackImages` |
+| **Etiket** | `v281-light-mode-logo-scale` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v281 — Web-only (11 Temmuz 2026 gece)
+
+- **Koyu mod kapalı** — test aşaması `PANEL_FORCE_LIGHT_MODE`
+- Logo ölçeği **v274/ade5d73** seviyesine döndü (5rem şişirme geri alındı)
+- Commit: `6d6d0a0`
 
 ### v280 — Web-only (11 Temmuz 2026 gece)
 
