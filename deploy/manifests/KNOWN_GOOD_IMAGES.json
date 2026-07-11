@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v283-logo-prominent",
-  "description": "Sidebar logo alan içi belirgin ölçek — şerit kompakt (v282), geniş logo 4.75rem",
+  "label": "v284-logo-scale-fixed",
+  "description": "Sidebar logo şerit sabit yükseklik (v282); belirginlik yalnızca transform scale ile",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
