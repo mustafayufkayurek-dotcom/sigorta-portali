@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v277-sidebar-logo-fix",
-  "description": "Sidebar logo regresyonu: dar menü MeridyenGlobeAnimated SVG; geniş menü meridyen-logo-original; koyu temada geniş logo beyaz zemin",
+  "label": "v278-s2-globe-png",
+  "description": "S2 dar menü logo regresyonu düzeltmesi — meridyen-globe-square.png (SVG küre kaldırıldı); ONAYLI_UI_CHECKLIST uyumu",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v276-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v277-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v278-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v276-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v277-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
   },
   "mustPassSmokeRoutes": [

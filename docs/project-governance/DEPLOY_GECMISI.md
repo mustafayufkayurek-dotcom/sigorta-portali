@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v277 web)
+## Canlı durum (11 Temmuz 2026 — v278 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v277-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v278-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v276** / Backend **v276** | manifest `rollbackImages` |
-| **Etiket** | `v277-sidebar-logo-fix` | |
+| **Rollback** | Web **v277** / Backend **v276** | manifest `rollbackImages` |
+| **Etiket** | `v278-s2-globe-png` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v278 — Web-only (11 Temmuz 2026 gece)
+
+- **S2 dar menü logo:** `meridyen-globe-square.png` geri — v277 SVG ihlali geri alındı (`ONAYLI_UI_CHECKLIST`)
+- Backend **v276 sabit**; migration yok
+- Smoke: login FAIL (yerel credential — bilinen); routing PASS; web healthy
+- Commit: `4ef1981`
 
 ### v277 — Web-only (11 Temmuz 2026 gece)
 
