@@ -480,7 +480,7 @@ export default function OperasyonPage() {
             </table>
           </div>
         )}
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-400">
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
           {filteredRows.length} dosya gösteriliyor &bull; Toplam {claimsTotal + cases.length} kayıt
         </div>
       </div>

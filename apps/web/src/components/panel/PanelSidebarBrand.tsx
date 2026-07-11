@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CORPORATE_LOGO_GLOBE, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { CORPORATE_LOGO_GLOBE, CORPORATE_LOGO_GLOBE_FALLBACK, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 
 type PanelSidebarBrandProps = {
   href: string;
@@ -10,36 +10,35 @@ type PanelSidebarBrandProps = {
   onToggleCollapsed: () => void;
 };
 
-const toggleButtonClass =
-  'inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800';
-
-/** Sidebar üstü: geniş menüde tam logo, dar menüde kurumsal küre */
+/**
+ * Sidebar üst marka alanı — tek kaynak (ONAYLI_UI_CHECKLIST S1/S2).
+ * Stil: globals.css `.panel-sidebar-brand-*` (köşe ovali, ölçek, koyu tema muafiyeti).
+ */
 export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelSidebarBrandProps) {
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
 
   if (collapsed) {
     return (
-      <div className="flex shrink-0 flex-col items-center gap-1.5 border-b border-slate-200 bg-white px-1.5 py-2">
-        <Link
-          href={href}
-          className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-slate-100 bg-white p-0.5"
-          title="Panel ana sayfa"
-        >
+      <div className="panel-sidebar-brand panel-sidebar-brand--collapsed">
+        <Link href={href} className="panel-sidebar-brand-globe" title="Panel ana sayfa">
           <img
             src={CORPORATE_LOGO_GLOBE}
             alt="Meridyen"
-            width={40}
-            height={40}
-            className="h-10 w-10 object-contain"
+            width={36}
+            height={36}
+            className="panel-sidebar-brand-globe__img"
             onError={(e) => {
-              e.currentTarget.src = CORPORATE_LOGO_LIGHT;
+              const img = e.currentTarget;
+              if (img.src.includes('globe-square')) {
+                img.src = CORPORATE_LOGO_GLOBE_FALLBACK;
+              }
             }}
           />
         </Link>
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className={`${toggleButtonClass} h-7 w-full`}
+          className="panel-sidebar-brand-toggle h-7 w-full"
           aria-label={toggleLabel}
           title={toggleLabel}
         >
@@ -50,26 +49,22 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
   }
 
   return (
-    <div className="relative shrink-0 border-b border-slate-200 bg-white px-2.5 py-2">
+    <div className="panel-sidebar-brand panel-sidebar-brand--expanded">
       <button
         type="button"
         onClick={onToggleCollapsed}
-        className={`${toggleButtonClass} absolute right-1.5 top-1.5 z-10 h-7 w-7`}
+        className="panel-sidebar-brand-toggle absolute right-1.5 top-1.5 z-10 h-7 w-7"
         aria-label={toggleLabel}
         title={toggleLabel}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
 
-      <Link
-        href={href}
-        className="flex items-center justify-center pr-9"
-        title="Panel ana sayfa"
-      >
+      <Link href={href} className="panel-sidebar-brand-full" title="Panel ana sayfa">
         <img
           src={CORPORATE_LOGO_LIGHT}
           alt="Meridyen Assistance"
-          className="h-16 w-full object-contain object-center sm:h-[4.5rem]"
+          className="panel-sidebar-brand-full__img"
           onError={(e) => {
             e.currentTarget.src = CORPORATE_LOGO_LIGHT;
           }}
