@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 11 Temmuz 2026 sabah
+**Son güncelleme:** 11 Temmuz 2026 öğle
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (11 Temmuz 2026 sabah)
+## Canlı durum (11 Temmuz 2026 — v250 sonrası)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v248-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v250-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v249-amd64` | healthy |
-| **Rollback** | Web **v247** / Backend **v248** | manifest `rollbackImages` |
-| **Etiket** | `v249-inbound-ingest-fix` | |
+| **Rollback** | Web **v248** / Backend **v249** | manifest `rollbackImages` |
+| **Etiket** | `v250-sidebar-dashboard-sablon` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v250 — Web-only (11 Temmuz 2026)
+
+- **P1 şablon:** Lacivert sidebar (tam logo / küre, Menüyü Daralt, rehber kartı)
+- **Admin Yönetim Merkezi:** Admin rozeti, kırmızı Yeni Acil, Pazartesi Toplantısı
+- Operasyon 6 kompakt kart + yüzde, Ekip Yoğunluğu grafiği
+- Günün Akışı şeridi + büyük Gider Dağıtımı kartı
+- Alt sıra: Kritik Uyarılar | Finans Darboğazları | Personel Yük (progress bar)
+- Backend **v249 sabit** — migration yok
+- Mustafa onayı: 11 Temmuz 2026
 
 ### v246 — Full (önceki oturum)
 
@@ -62,7 +72,7 @@
 
 **Operasyon / hasar:** Gelen kutusu çekirdek, dosya açma modal, global arama, operasyon sigortalı sütunu, bitişik dosya no, hasar detay paneli, 403 düzeltmeleri
 
-**Finans:** Finans Merkezi sayfası, v248 dashboard **iskelet** kartları, PayTR kod yolu (`/odeme/[token]`)
+**Finans:** Finans Merkezi sayfası, v250 **Yönetim Merkezi** şablonu (admin), PayTR kod yolu (`/odeme/[token]`)
 
 **Diğer:** Harita pinleri, tedarikçi dış kaynak arama, personel özlük, eksper/sigorta/broker portalları, MinIO, müşteri modülü UX
 
@@ -74,14 +84,14 @@
 
 | # | Konu | Durum |
 |---|------|--------|
-| — | Repoda olup canlıda olmayan kod | **Boş** — son gap v249’da kapandı |
+| — | Repoda olup canlıda olmayan kod | **Boş** — son gap v250’de kapandı |
 
-### Ürün — onaylı şablon implementasyonu (kod iskeleti canlı, UI şablonu değil)
+### Ürün — şablon sonrası açık işler
 
 | # | Konu | Mockup / not |
 |---|------|----------------|
-| P1 | Admin **Yönetim Merkezi** şablonu birebir UI | `docs/design-mockups/admin-yonetim-merkezi-dashboard-mockup.png` |
 | P2 | **Dosya sorumlusu** dashboard şablonu birebir UI | Ayrı mockup / doğrulama gerekir |
+| P1 | Admin şablon — Mustafa canlı screenshot PASS | `canli-kabul/ekran-goruntuleri/p1-v250/` |
 
 ### Ops işi (kod deploy değil)
 
@@ -105,7 +115,7 @@ PayTR canlı mod, CRM derinliği, gelen kutusu F2–F3, saha keşif, e-imza — 
 
 ## Özet cümle
 
-Son büyük **kod** paketi **v248 (web) + v249 (backend)** canlıda: hasar detay, HASAR delta kurtarma, global arama, 403 ve gelen kutusu düzeltmeleri dahil. **Deploy bekleyen yeni kod yok.** Onaylı **dashboard şablonunun tam UI implementasyonu (P1/P2)** açık. Sırada: şablon paketi → Mustafa PASS → ops backfill (D2).
+Son büyük **kod** paketi **v250 (web-only) + v249 (backend)** canlıda: P1 sidebar + admin dashboard şablonu dahil. **Deploy bekleyen yeni kod yok.** Sırada: canlı screenshot PASS (P1), dosya sorumlusu şablonu (P2), ops backfill (D2).
 
 ---
 

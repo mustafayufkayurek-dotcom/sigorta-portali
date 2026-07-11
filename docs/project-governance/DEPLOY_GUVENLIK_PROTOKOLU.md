@@ -2,11 +2,11 @@
 
 **Amaç:** Sayfa kaybı, eski UI'ya dönüş, kısmi sync, yanlış build context, migration felaketleri ve rollback image kaybını önlemek.
 
-**Son bilinen iyi sürüm:** Web **v248** + Backend **v248** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
-**Etiket:** `v248-dashboard-delta-hasar-detay`  
-**Güncelleme:** 10 Temmuz 2026
+**Son bilinen iyi sürüm:** Web **v250** + Backend **v249** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
+**Etiket:** `v250-sidebar-dashboard-sablon`  
+**Güncelleme:** 11 Temmuz 2026
 
-**Rollback tag'leri:** Web **v247** + Backend **v247** (manifest `rollbackImages`)
+**Rollback tag'leri:** Web **v248** + Backend **v249** (manifest `rollbackImages`)
 
 **Siber güvenlik checklist:** [SECURITY_CHECKLIST.md](./SECURITY_CHECKLIST.md) — auth, firewall, yedek, PayTR, IDOR envanteri.
 
