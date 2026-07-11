@@ -49,6 +49,10 @@ export class OpenClaimFileDto {
   @IsOptional()
   lossType?: string;
 
+  @IsString()
+  @IsOptional()
+  fileSubject?: string;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => CreateCustomerFromInboxDto)

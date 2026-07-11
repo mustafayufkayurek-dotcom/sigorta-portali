@@ -105,10 +105,16 @@ async function request<T>(url: string, init: RequestInit = {}, params?: QueryPar
   }
 
   if (!response.ok) {
+    const rawMessage =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? (data as { message?: unknown }).message
+        : undefined;
     const message =
-      (typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message?: unknown }).message === 'string'
-        ? (data as { message: string }).message
-        : response.statusText) || 'API request failed';
+      typeof rawMessage === 'string'
+        ? rawMessage
+        : Array.isArray(rawMessage)
+          ? rawMessage.filter((item): item is string => typeof item === 'string').join(', ')
+          : response.statusText || 'API request failed';
     throw new ApiError(response.status, message, data);
   }
 

@@ -629,7 +629,11 @@ export class OperationInboxService {
     );
     const receivedAt = message.receivedAt ?? new Date();
     const policyNo = dto.policyNo?.trim() || extracted.policyNo?.trim() || 'Belirtilmedi';
-    const lossType = dto.lossType?.trim() || extracted.lossType?.trim() || 'Belirtilmemiş';
+    const lossType =
+      dto.lossType?.trim()
+      || extracted.lossType?.trim()
+      || mapInboundCategoryToMeridyen(dto.fileSubject?.trim() || extracted.fileSubject)
+      || 'Belirtilmemiş';
     const claimNo =
       dto.claimNo?.trim()
       || extracted.claimNo?.trim()
