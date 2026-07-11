@@ -442,7 +442,7 @@ function Navbar({
           <div className="flex min-w-0 shrink-0 items-center gap-3">
             <Link
               href={panelLogoHref}
-              className={`inline-flex shrink-0 items-center ${isPortalUser ? '' : 'hidden md:inline-flex'}`}
+              className={`inline-flex shrink-0 items-center ${isPortalUser ? '' : 'hidden'}`}
               title="Panel ana sayfa"
             >
               <BrandLogoMark

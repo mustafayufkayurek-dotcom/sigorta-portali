@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v252-logo-navbar-sidebar-footer",
-  "description": "Web-only: Orijinal logo üst bar, daraltılmış menüde yalnız küre, sabit kılavuz+sürüm, akış çubuğu sidebar dışı",
+  "label": "v251-sidebar-logo-fix",
+  "description": "Web-only: Sidebar geniş=tam logo, dar=yalnız küre (metinsiz), navbar çift logo kaldırıldı",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v249-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v252-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v251-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v251-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v250-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v249-amd64"
   },
   "mustPassSmokeRoutes": [
