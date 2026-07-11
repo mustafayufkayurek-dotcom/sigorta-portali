@@ -158,11 +158,13 @@ function InsuredNameEditor({
 export function DosyaBilgileriDetay({
   claim,
   onClaimUpdated,
+  initialOpen = false,
 }: {
   claim: any;
   onClaimUpdated?: (patch: Partial<any>) => void;
+  initialOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const fields = buildDosyaBilgileriFields(claim);
   const subtitle = buildDosyaBilgileriSubtitle(claim);
   const compactFields = fields.filter((field) => !field.wide);

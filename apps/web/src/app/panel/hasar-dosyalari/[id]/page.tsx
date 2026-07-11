@@ -2,7 +2,7 @@
 
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import {
@@ -177,11 +177,13 @@ function DosyaSayfaUstu({
   onBack,
   onOpenRaporlarTab,
   onClaimUpdated,
+  focusSigortali = false,
 }: {
   claim: any;
   onBack: () => void;
   onOpenRaporlarTab?: () => void;
   onClaimUpdated?: (patch: Partial<any>) => void;
+  focusSigortali?: boolean;
 }) {
   const adres = claim.propertyAddress
     ? [
@@ -279,7 +281,11 @@ function DosyaSayfaUstu({
         </div>
       )}
 
-      <DosyaBilgileriDetay claim={claim} onClaimUpdated={onClaimUpdated} />
+      <DosyaBilgileriDetay
+        claim={claim}
+        onClaimUpdated={onClaimUpdated}
+        initialOpen={focusSigortali}
+      />
     </div>
   );
 }
@@ -890,6 +896,8 @@ function GenelTab({
 export default function ClaimFileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const focusSigortali = searchParams.get('sigortali') === '1';
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeGroup, setActiveGroup] = useState<GroupTab>('genel-bilgiler');
@@ -924,6 +932,7 @@ export default function ClaimFileDetailPage() {
         onBack={() => router.push('/panel/hasar-dosyalari')}
         onOpenRaporlarTab={() => setActiveGroup('raporlar')}
         onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
+        focusSigortali={focusSigortali}
       />
 
       {canEditFieldSurvey && (

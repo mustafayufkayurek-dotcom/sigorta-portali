@@ -233,6 +233,8 @@ export default function OperasyonPage() {
     return true;
   });
 
+  const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
+
   const isLoading = claimsLoading || casesLoading;
 
   return (
@@ -328,6 +330,16 @@ export default function OperasyonPage() {
 
       {/* Birleşik Tablo */}
       {claimsError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{claimsError}</div>}
+      {missingInsuredHasar.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">
+            {missingInsuredHasar.length} hasar dosyasında sigortalı adı soyadı kayıtlı değil.
+          </p>
+          <p className="text-xs mt-1 text-amber-800">
+            Tabloda <span className="font-medium">Eksik — Ekle</span> bağlantısına tıklayın, adı girip kaydedin; operasyon listesinde görünür.
+          </p>
+        </div>
+      )}
       <div className="table-container">
         {/* Tablo başlık + filtreler */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
@@ -423,7 +435,20 @@ export default function OperasyonPage() {
                       {row.customerName}
                     </PanelTableTd>
                     <PanelTableTd colId="insured" className="table-td max-w-[160px] whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
-                      {row.insuredName}
+                      {row.kind === 'hasar' && row.insuredName === '—' ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/panel/hasar-dosyalari/${row.id}?sigortali=1`);
+                          }}
+                        >
+                          Eksik — Ekle
+                        </button>
+                      ) : (
+                        row.insuredName
+                      )}
                     </PanelTableTd>
                     <PanelTableTd colId="date" className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</PanelTableTd>
                     <PanelTableTd colId="subject" className="table-td text-slate-500 max-w-[160px] whitespace-nowrap" title={row.subject}>
