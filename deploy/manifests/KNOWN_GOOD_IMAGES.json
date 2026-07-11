@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v281-light-mode-logo-scale",
-  "description": "Test aşaması koyu mod kapalı (PANEL_FORCE_LIGHT_MODE); logo ölçeği ade5d73 seviyesine döndü",
+  "label": "v282-sidebar-logo-compact",
+  "description": "Sidebar logo kompakt tek satır (v253): dar menüde alt chevron ve çift kutu kaldırıldı",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v276-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v281-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v282-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v280-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v281-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
   },
   "mustPassSmokeRoutes": [

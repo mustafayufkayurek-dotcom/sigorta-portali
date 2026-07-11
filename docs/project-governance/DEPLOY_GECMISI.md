@@ -8,18 +8,23 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v281 web)
+## Canlı durum (11 Temmuz 2026 — v282 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v281-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v282-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v280** / Backend **v276** | manifest `rollbackImages` |
-| **Etiket** | `v281-light-mode-logo-scale` | |
+| **Rollback** | Web **v281** / Backend **v276** | manifest `rollbackImages` |
+| **Etiket** | `v282-sidebar-logo-compact` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v282 — Web-only (11 Temmuz 2026 gece) — logo konusu kapatıldı
+
+- Sidebar logo **kompakt tek satır** (v253): dar menüde alt chevron ve çift beyaz kutu kaldırıldı
+- Commit: `167b345`
 
 ### v281 — Web-only (11 Temmuz 2026 gece)
 

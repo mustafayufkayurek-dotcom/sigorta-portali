@@ -37,7 +37,7 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 | ID | Onaylı davranış | Tek kaynak | Durum |
 |----|-----------------|------------|-------|
 | S1 | Geniş menü: tam logo `meridyen-logo-original.png` | `PanelSidebarBrand.tsx` | ✅ v253+ |
-| S2 | Dar menü: yalnız küre `meridyen-globe-square.png` — **SVG animasyonlu küre değil** | `constants/brand.ts` → `CORPORATE_LOGO_GLOBE` | ✅ v261+ |
+| S2 | Dar menü: yalnız küre `meridyen-globe-square.png` — **SVG animasyonlu küre değil**; küre + chevron **tek satır**, alt chevron yok | `constants/brand.ts` → `CORPORATE_LOGO_GLOBE` | ✅ v282+ |
 | S3 | Viewport dock: üst logo+chevron, orta scroll nav, alt kılavuz | `layout.tsx` + `PanelSidebarBrand` | ✅ v253+ |
 | S4 | Daralt/genişlet tercihi `localStorage panel-sidebar-collapsed` | `layout.tsx` | ✅ |
 | S5 | Alt kılavuz linki rol bazlı PDF | `resolvePanelUserGuide()` | ✅ |
