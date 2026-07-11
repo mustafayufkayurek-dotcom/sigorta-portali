@@ -6,6 +6,12 @@ import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, u
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+
+/** Mahal/bölge ve benzeri serbest metin — kayıt ve gösterim öncesi Title Case */
+function normalizeLocationLabel(value: string): string {
+  const trimmed = value.trim();
+  return trimmed ? toTitleCaseTR(trimmed) : trimmed;
+}
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-recipients';
@@ -467,7 +473,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               <tbody className="divide-y divide-slate-50">
                 {rows.map((row) => (
                   <tr key={row.workGroupId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-3 py-2.5 font-medium text-slate-800">{row.workGroupName}</td>
+                    <td className="px-3 py-2.5 font-medium text-slate-800">{formatDisplayLabel(row.workGroupName)}</td>
                     <td className="px-3 py-2.5 text-right text-slate-500">{fmtCurrency(row.supplierTotal)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtCurrency(row.salesTotal)}</td>
                     <td className={`px-3 py-2.5 text-right font-semibold ${row.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -483,8 +489,8 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               </tbody>
               <tfoot>
                 <tr className={`font-bold ${grandProfit < 0 ? 'loss-flash' : 'bg-slate-700'}`}>
-                  <td className="px-3 py-3.5 text-white text-xs font-extrabold tracking-widest rounded-bl-lg">
-                    {grandProfit < 0 ? '⚠ ZARAR' : 'GENEL TOPLAM'}
+                  <td className="px-3 py-3.5 text-white text-xs font-semibold rounded-bl-lg">
+                    {grandProfit < 0 ? '⚠ Zarar' : 'Genel Toplam'}
                   </td>
                   <td className="px-3 py-3.5 text-right text-slate-200 text-sm font-bold">{fmtCurrency(grandSupplier)}</td>
                   <td className="px-3 py-3.5 text-right text-white text-sm font-bold">{fmtCurrency(grandSales)}</td>
@@ -677,7 +683,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
               <h3 className="text-base font-bold text-slate-900">Metraj Hesaplama Asistanı</h3>
               {location && (
                 <p className="text-xs text-blue-600 font-medium mt-0.5">
-                  Mahal/Bölge: <span className="bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">{location}</span>
+                  Mahal/Bölge: <span className="bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">{formatDisplayLabel(location)}</span>
                 </p>
               )}
             </div>
@@ -963,12 +969,12 @@ function WorkDefinitionSelector({
   }, [addingNew]);
 
   const commit = async () => {
-    const trimmed = newVal.trim();
+    const trimmed = normalizeLocationLabel(newVal);
     if (!trimmed || !workGroupId) { setAddingNew(false); setNewVal(''); return; }
     setSaving(true);
     try {
       const result = await onAddNew(trimmed, workGroupId);
-      onSelect(result?.name ?? trimmed, result?.unitType ?? result?.defaultUnit);
+      onSelect(normalizeLocationLabel(result?.name ?? trimmed), result?.unitType ?? result?.defaultUnit);
     } catch { /* ignore */ } finally {
       setSaving(false);
       setAddingNew(false);
@@ -1012,13 +1018,13 @@ function WorkDefinitionSelector({
           setAddingNew(true);
         } else {
           const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
-          onSelect(e.target.value, sg?.unitType ?? sg?.defaultUnit);
+          onSelect(normalizeLocationLabel(e.target.value), sg?.unitType ?? sg?.defaultUnit);
         }
       }}
     >
       <option value="">— İş Tanımı Seç —</option>
       {subGroups.map((sg: any) => (
-        <option key={sg.id} value={sg.name ?? sg.id}>{sg.name}</option>
+        <option key={sg.id} value={sg.name ?? sg.id}>{formatDisplayLabel(sg.name)}</option>
       ))}
       <option value="__add_new__">+ Yeni İş Tanımı Ekle</option>
     </select>
@@ -1113,7 +1119,7 @@ function WorkGroupSelector({
     >
       <option value="">—</option>
       {workGroups.map((wg: any) => (
-        <option key={wg.id} value={wg.id}>{wg.name}</option>
+        <option key={wg.id} value={wg.id}>{formatDisplayLabel(wg.name)}</option>
       ))}
       <option value="__add_new__">+ Yeni İş Grubu Ekle</option>
     </select>
@@ -1170,9 +1176,9 @@ interface RowState {
 function rowFromItem(item: any): RowState {
   return {
     workGroupId: item.workGroupId ?? '',
-    location: item.location ?? '',
-    jobDescription: item.jobDescription ?? '',
-    description: item.description ?? '',
+    location: item.location ? normalizeLocationLabel(item.location) : '',
+    jobDescription: item.jobDescription ? normalizeLocationLabel(item.jobDescription) : '',
+    description: item.description ? normalizeLocationLabel(item.description) : '',
     quantity: String(item.quantity ?? '1'),
     unit: item.unit ?? 'm²',
     salesUnitPrice: String(item.salesUnitPrice ?? '0'),
@@ -1314,7 +1320,7 @@ function LocationSelector({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              const trimmed = newVal.trim();
+              const trimmed = normalizeLocationLabel(newVal);
               if (trimmed) { onAddNew(trimmed); onSelect(trimmed); }
               setAddingNew(false);
               setNewVal('');
@@ -1324,7 +1330,7 @@ function LocationSelector({
             }
           }}
           onBlur={() => {
-            const trimmed = newVal.trim();
+            const trimmed = normalizeLocationLabel(newVal);
             if (trimmed) { onAddNew(trimmed); onSelect(trimmed); }
             setAddingNew(false);
             setNewVal('');
@@ -1352,13 +1358,13 @@ function LocationSelector({
         if (e.target.value === '__add_new__') {
           setAddingNew(true);
         } else {
-          onSelect(e.target.value);
+          onSelect(normalizeLocationLabel(e.target.value));
         }
       }}
     >
       <option value="">—</option>
       {locations.map((loc) => (
-        <option key={loc} value={loc}>{loc}</option>
+        <option key={loc} value={loc}>{formatDisplayLabel(loc)}</option>
       ))}
       <option value="__add_new__">+ Yeni Mahal/Bölge Ekle</option>
     </select>
@@ -1390,13 +1396,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   // locationList'i items'tan türet ve güncel tut
   useEffect(() => {
     const locs = Array.from(new Set(
-      items.map((i: any) => i.location).filter((l: string) => l && l.trim())
+      items
+        .map((i: any) => i.location)
+        .filter((l: string) => l && l.trim())
+        .map((l: string) => normalizeLocationLabel(l)),
     )) as string[];
     setLocationList(locs);
   }, [items]);
 
   const addLocationIfNew = (loc: string) => {
-    setLocationList((prev) => prev.includes(loc) ? prev : [...prev, loc]);
+    const normalized = normalizeLocationLabel(loc);
+    setLocationList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
   };
 
   useEffect(() => {
@@ -1412,7 +1422,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     const isLumpsum = row.pricingType === 'lumpsum';
     return {
       workGroupId: row.workGroupId || undefined,
-      location: row.location || undefined,
+      location: row.location ? normalizeLocationLabel(row.location) : undefined,
       jobDescription: row.jobDescription,
       description: row.description || undefined,
       quantity: parseFloat(row.quantity) || 1,
@@ -1662,7 +1672,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         const supplierStr = String(Math.round(newSupplier * 100) / 100);
         await onSave(row._id, {
           workGroupId: row.workGroupId || undefined,
-          location: row.location || undefined,
+          location: row.location ? normalizeLocationLabel(row.location) : undefined,
           jobDescription: row.jobDescription,
           description: row.description || undefined,
           quantity: parseFloat(row.quantity) || 1,
@@ -1689,7 +1699,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         if (!row) continue;
         await onSave(snap.id, {
           workGroupId: row.workGroupId || undefined,
-          location: row.location || undefined,
+          location: row.location ? normalizeLocationLabel(row.location) : undefined,
           jobDescription: row.jobDescription,
           description: row.description || undefined,
           quantity: parseFloat(row.quantity) || 1,
@@ -1968,7 +1978,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onKeyDown={(e) => handleCellKeyDown(e as React.KeyboardEvent<HTMLInputElement>, rowIdx, 'location', row._id)}
                     />
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3">{row.location || '—'}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3">{row.location ? formatDisplayLabel(row.location) : '—'}</span>
                   )}
                 </td>
                 {/* İş Grubu */}
@@ -1992,7 +2002,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'workGroup', row._id)}
                     />
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3">{wgName || '—'}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3">{wgName ? formatDisplayLabel(wgName) : '—'}</span>
                   )}
                 </td>
                 {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
@@ -2024,7 +2034,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
                     )
                   ) : (
-                    <span className="px-2 text-xs font-medium text-slate-800 block py-3">{row.jobDescription || '—'}</span>
+                    <span className="px-2 text-xs font-medium text-slate-800 block py-3">{row.jobDescription ? formatDisplayLabel(row.jobDescription) : '—'}</span>
                   )}
                 </td>
                 {/* Açıklama */}
@@ -4506,16 +4516,16 @@ export default function RepairReportPage() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-slate-800">{item.jobDescription}</span>
+                              <span className="text-sm font-medium text-slate-800">{formatDisplayLabel(item.jobDescription)}</span>
                               {item.workGroup && (
-                                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{item.workGroup.name}</span>
+                                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{formatDisplayLabel(item.workGroup.name)}</span>
                               )}
                               <span className={`text-xs px-1.5 py-0.5 rounded-full ${item.damageCategory === 'bina' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
                                 {item.damageCategory === 'bina' ? 'Bina' : 'Eşya'}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
-                              {item.location && <span>{item.location}</span>}
+                              {item.location && <span>{formatDisplayLabel(item.location)}</span>}
                               <span>{item.defaultQuantity} {item.defaultUnit}</span>
                             </div>
                           </div>
