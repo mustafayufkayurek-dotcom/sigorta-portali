@@ -25,6 +25,8 @@ import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -314,12 +316,17 @@ function DosyadaKimlerVarCard({
   const [assigningField, setAssigningField] = useState<string | null>(null);
   const [currentOfficeUser, setCurrentOfficeUser] = useState(claim.assignedOfficeUser);
   const [currentFieldUser, setCurrentFieldUser] = useState(claim.assignedFieldUser);
+  const [currentInspectorVendor, setCurrentInspectorVendor] = useState(claim.assignedInspectorVendor);
   const [currentSupplier, setCurrentSupplier] = useState(claim.assignedSupplier);
 
   const [vendors, setVendors] = useState<any[]>([]);
+  const [inspectorVendors, setInspectorVendors] = useState<any[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [inspectorVendorsLoading, setInspectorVendorsLoading] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState(claim.assignedSupplierId ?? '');
+  const [selectedInspectorVendorId, setSelectedInspectorVendorId] = useState(claim.assignedInspectorVendorId ?? '');
   const [assigningSupplier, setAssigningSupplier] = useState(false);
+  const [assigningInspectorVendor, setAssigningInspectorVendor] = useState(false);
   const [assignNote, setAssignNote] = useState('');
   const [assignError, setAssignError] = useState('');
   const [assignSuccess, setAssignSuccess] = useState('');
@@ -334,9 +341,21 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     setCurrentOfficeUser(claim.assignedOfficeUser);
     setCurrentFieldUser(claim.assignedFieldUser);
+    setCurrentInspectorVendor(claim.assignedInspectorVendor);
     setCurrentSupplier(claim.assignedSupplier);
     setSelectedVendorId(claim.assignedSupplierId ?? '');
-  }, [claim.id, claim.assignedOfficeUser, claim.assignedFieldUser, claim.assignedSupplier, claim.assignedSupplierId]);
+    setSelectedInspectorVendorId(claim.assignedInspectorVendorId ?? '');
+  }, [claim.id, claim.assignedOfficeUser, claim.assignedFieldUser, claim.assignedInspectorVendor, claim.assignedInspectorVendorId, claim.assignedSupplier, claim.assignedSupplierId]);
+
+  const regionLabel = claim?.propertyAddress?.city
+    ? `${claim.propertyAddress.city}${claim.propertyAddress.district ? ` / ${claim.propertyAddress.district}` : ''}`
+    : null;
+
+  const whatsappTespitçi = buildClaimAssignmentWhatsAppMessage(claim, 'Tespitçi');
+  const whatsappTedarikçi = buildClaimAssignmentWhatsAppMessage(claim, 'Tedarikçi');
+
+  const vendorPhone = (v: { phone?: string | null; authorizedPhone?: string | null } | null | undefined) =>
+    v?.authorizedPhone?.trim() || v?.phone?.trim() || null;
 
   useEffect(() => {
     if (!claim?.id) return;
@@ -373,7 +392,7 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     if (!canAssign || activePanel !== 'supplier' || !claim?.id) return;
     setVendorsLoading(true);
-    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby`, { headers: authHeader() })
+    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() })
       .then((r) => setVendors(r.data.data ?? []))
       .catch(() => {
         axios.get(`${API}/vendors?status=active&limit=50`, { headers: authHeader() })
@@ -381,6 +400,15 @@ function DosyadaKimlerVarCard({
           .catch(() => setVendors([]));
       })
       .finally(() => setVendorsLoading(false));
+  }, [canAssign, activePanel, claim?.id]);
+
+  useEffect(() => {
+    if (!canAssign || activePanel !== 'field' || !claim?.id) return;
+    setInspectorVendorsLoading(true);
+    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=inspector`, { headers: authHeader() })
+      .then((r) => setInspectorVendors(r.data.data ?? []))
+      .catch(() => setInspectorVendors([]))
+      .finally(() => setInspectorVendorsLoading(false));
   }, [canAssign, activePanel, claim?.id]);
 
   const formatUserName = (user: any) =>
@@ -436,6 +464,39 @@ function DosyadaKimlerVarCard({
       setAssignError(e?.response?.data?.message ?? 'Atama başarısız.');
     } finally {
       setAssigningField(null);
+    }
+  };
+
+  const handleAssignInspectorVendor = async () => {
+    if (!selectedInspectorVendorId) { setAssignError('Tespitçi tedarikçi seçiniz.'); return; }
+    setAssigningInspectorVendor(true);
+    setAssignError('');
+    setAssignSuccess('');
+    try {
+      const r = await axios.post(
+        `${API}/claim-files/${claim.id}/assign-inspector-vendor`,
+        { vendorId: selectedInspectorVendorId, note: assignNote },
+        { headers: authHeader() },
+      );
+      const updated = r.data?.data ?? r.data;
+      const vendor = updated?.assignedInspectorVendor ?? inspectorVendors.find((v) => v.id === selectedInspectorVendorId);
+      if (vendor) {
+        setCurrentInspectorVendor(vendor);
+        setCurrentFieldUser(null);
+        onClaimUpdated?.({
+          assignedInspectorVendor: vendor,
+          assignedInspectorVendorId: updated?.assignedInspectorVendorId ?? selectedInspectorVendorId,
+          inspectorAssignedAt: updated?.inspectorAssignedAt,
+          assignedFieldUser: null,
+          assignedFieldUserId: null,
+        });
+      }
+      setActivePanel(null);
+      setAssignSuccess('Tespitçi (tedarikçi) güncellendi.');
+    } catch (e: any) {
+      setAssignError(e?.response?.data?.message ?? 'Tespitçi atanamadı.');
+    } finally {
+      setAssigningInspectorVendor(false);
     }
   };
 
@@ -601,13 +662,37 @@ function DosyadaKimlerVarCard({
             )}
           </div>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
-              {currentFieldUser ? userInitial(currentFieldUser) : '—'}
-            </div>
-            <p className={`text-base font-semibold truncate ${currentFieldUser ? 'text-slate-900' : 'text-slate-400 italic'}`}>
-              {formatUserName(currentFieldUser)}
-            </p>
+            {currentInspectorVendor ? (
+              <>
+                <div className="w-9 h-9 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+                  {currentInspectorVendor.name?.charAt(0) ?? 'T'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-slate-900 truncate">{currentInspectorVendor.name}</p>
+                  <p className="text-[10px] text-teal-700">Tespitçi Tedarikçi</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-9 h-9 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+                  {currentFieldUser ? userInitial(currentFieldUser) : '—'}
+                </div>
+                <p className={`text-base font-semibold truncate ${currentFieldUser ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+                  {formatUserName(currentFieldUser)}
+                </p>
+              </>
+            )}
           </div>
+          {(currentFieldUser?.phone || vendorPhone(currentInspectorVendor)) && (
+            <div className="mt-2">
+              <PhoneContactActions
+                phone={currentFieldUser?.phone ?? vendorPhone(currentInspectorVendor)}
+                whatsappMessage={whatsappTespitçi}
+                accent="teal"
+                size="sm"
+              />
+            </div>
+          )}
           {activePanel === 'field' && (
             <p className="mt-2 text-[11px] font-medium text-teal-600">Atama paneli açık ↓</p>
           )}
@@ -649,6 +734,16 @@ function DosyadaKimlerVarCard({
               </>
             )}
           </div>
+          {currentSupplier && vendorPhone(currentSupplier) && (
+            <div className="mt-2">
+              <PhoneContactActions
+                phone={vendorPhone(currentSupplier)}
+                whatsappMessage={whatsappTedarikçi}
+                accent="purple"
+                size="sm"
+              />
+            </div>
+          )}
 
           {activePanel === 'supplier' && (
             <p className="mt-2 text-[11px] font-medium text-purple-600">Atama paneli açık ↓</p>
@@ -674,25 +769,73 @@ function DosyadaKimlerVarCard({
       )}
 
       {canAssign && activePanel === 'field' && (
-        <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/40 p-4">
-          <p className="text-sm font-semibold text-slate-800 mb-3">Saha Tespitçisi Seç</p>
-          {renderStaffAssignBlock(
-            fieldSuggestions,
-            fieldSuggLoading,
-            currentFieldUser?.id,
-            assigningField,
-            handleAssignField,
-            staffPool.field,
-            manualFieldId,
-            setManualFieldId,
-            'bg-teal-600',
-          )}
+        <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/40 p-4 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-slate-800 mb-1">Saha Personeli Seç</p>
+            {regionLabel ? (
+              <p className="text-[11px] text-slate-500 mb-3">Bölge: {regionLabel}</p>
+            ) : null}
+            {renderStaffAssignBlock(
+              fieldSuggestions,
+              fieldSuggLoading,
+              currentFieldUser?.id,
+              assigningField,
+              handleAssignField,
+              staffPool.field,
+              manualFieldId,
+              setManualFieldId,
+              'bg-teal-600',
+            )}
+          </div>
+          <div className="border-t border-teal-100 pt-4">
+            <p className="text-sm font-semibold text-slate-800 mb-1">Tespitçi Tedarikçi Seç</p>
+            <p className="text-[11px] text-slate-500 mb-3">
+              Tedarikçi kaydında &quot;Tespitçi Olarak Görevlendir&quot; işaretli firmalar listelenir.
+            </p>
+            {inspectorVendorsLoading ? (
+              <p className="text-xs text-slate-400">Tespitçi tedarikçiler yükleniyor...</p>
+            ) : inspectorVendors.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                {regionLabel
+                  ? `${regionLabel} bölgesinde tespitçi tedarikçi bulunamadı.`
+                  : 'Uygun tespitçi tedarikçi bulunamadı.'}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                  <select
+                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+                    value={selectedInspectorVendorId}
+                    onChange={(e) => setSelectedInspectorVendorId(e.target.value)}
+                  >
+                    <option value="">Tespitçi tedarikçi seç...</option>
+                    {inspectorVendors.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAssignInspectorVendor}
+                    disabled={assigningInspectorVendor || !selectedInspectorVendorId}
+                    className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 shrink-0"
+                  >
+                    {assigningInspectorVendor ? 'Atanıyor...' : 'Ata'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {canAssign && activePanel === 'supplier' && (
         <div className="mt-3 rounded-xl border border-purple-200 bg-purple-50/40 p-4">
-          <p className="text-sm font-semibold text-slate-800 mb-3">Tedarikçi Seç</p>
+          <p className="text-sm font-semibold text-slate-800 mb-1">Tedarikçi Seç</p>
+          {regionLabel ? (
+            <p className="text-[11px] text-slate-500 mb-3">Bölge: {regionLabel}</p>
+          ) : null}
           {vendorsLoading ? (
             <p className="text-xs text-slate-400">Tedarikçiler yükleniyor...</p>
           ) : vendors.length === 0 ? (
@@ -712,7 +855,7 @@ function DosyadaKimlerVarCard({
                   <option value="">Tedarikçi seç...</option>
                   {vendors.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.name}{v.city ? ` · ${v.city}` : ''}
+                      {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
                     </option>
                   ))}
                 </select>

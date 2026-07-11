@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v263-inbox-sigortali-eposta",
-  "description": "Gelen kutusu hasar aç: gönderen e-postası sigortalıdan ayrıldı; müşterisiz açma varsayılanı",
+  "label": "v264-tespitci-tedarikci-atama",
+  "description": "Tedarikçi tespitçi bayrağı, dosya bazlı tespitçi/tedarikçi atama, il/ilçe filtre, WhatsApp özet",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",

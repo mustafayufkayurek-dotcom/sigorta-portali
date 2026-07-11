@@ -10,9 +10,11 @@ type PhoneContactActionsProps = {
   variant?: PhoneContactActionsVariant;
   className?: string;
   /** panel varyantında vurgu rengi */
-  accent?: 'blue' | 'indigo' | 'emerald';
+  accent?: 'blue' | 'indigo' | 'emerald' | 'teal' | 'purple';
   /** inline varyantında metin boyutu */
   size?: 'xs' | 'sm';
+  /** WhatsApp mesaj gövdesi (wa.me?text=) */
+  whatsappMessage?: string | null;
 };
 
 function PhoneIcon({ className }: { className?: string }) {
@@ -73,11 +75,12 @@ export function PhoneContactActions({
   className = '',
   accent = 'blue',
   size = 'xs',
+  whatsappMessage,
 }: PhoneContactActionsProps) {
   const trimmed = phone?.trim();
   if (!trimmed) return null;
 
-  const waLink = toWhatsAppLink(trimmed);
+  const waLink = toWhatsAppLink(trimmed, whatsappMessage);
   const displayPhone = formatPhoneGrouped(trimmed);
 
   if (variant === 'panel') {

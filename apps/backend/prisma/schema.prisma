@@ -297,6 +297,8 @@ model ClaimFile {
   assignedAdjusterId    String?   @map("assigned_adjuster_id")
   assignedSupplierId    String?   @map("assigned_supplier_id")
   supplierAssignedAt    DateTime? @map("supplier_assigned_at")
+  assignedInspectorVendorId String? @map("assigned_inspector_vendor_id")
+  inspectorAssignedAt   DateTime? @map("inspector_assigned_at")
   slaDueAt              DateTime? @map("sla_due_at")
   departmentId          String?   @map("department_id")
   departmentFileSubjectId String? @map("department_file_subject_id") // DEPRECATED: use claimSubjectId
@@ -341,6 +343,7 @@ model ClaimFile {
   assignedOfficeUser  User?         @relation("AssignedOfficeUser", fields: [assignedOfficeUserId], references: [id])
   assignedAdjuster    User?         @relation("AssignedAdjuster", fields: [assignedAdjusterId], references: [id])
   assignedSupplier    Vendor?       @relation("AssignedSupplier", fields: [assignedSupplierId], references: [id])
+  assignedInspectorVendor Vendor?   @relation("AssignedInspectorVendor", fields: [assignedInspectorVendorId], references: [id])
   currentResponsibleUser User?     @relation("CurrentResponsibleUser", fields: [currentResponsibleUserId], references: [id])
   department          Department?   @relation(fields: [departmentId], references: [id])
   departmentFileSubject DepartmentFileSubject? @relation(fields: [departmentFileSubjectId], references: [id])
@@ -899,6 +902,7 @@ model Vendor {
   contractNotes     String?   @map("contract_notes")
   // Tedarikçi kategorisi: hasar | acil | her_ikisi
   category         String   @default("hasar")
+  canActAsInspector Boolean @default(false) @map("can_act_as_inspector")
   // Acil yardım hizmet kolları — Ayarlar → Meridyen Hizmet Branşları (acil_yardim)
   serviceBranches  Json     @default("[]") @map("service_branches")
   status           String   @default("active")
@@ -928,6 +932,7 @@ model Vendor {
 
   // Ofis-Saha: Atanmış Dosyalar
   assignedClaimFiles       ClaimFile[]     @relation("AssignedSupplier")
+  inspectorAssignedClaimFiles ClaimFile[]  @relation("AssignedInspectorVendor")
   importedDiscoveryCandidates VendorDiscoveryCandidate[] @relation("ImportedDiscoveryVendor")
 
   @@index([status])

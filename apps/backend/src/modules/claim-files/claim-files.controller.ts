@@ -178,6 +178,18 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Post(':id/assign-inspector-vendor')
+  @RequirePermissions('claim_file.assign')
+  @ApiOperation({ summary: 'Dosyaya tespitçi (tedarikçi) ata' })
+  async assignInspectorVendor(
+    @Param('id') id: string,
+    @Body() body: { vendorId: string; note?: string },
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.claimFilesService.assignInspectorVendor(id, body.vendorId, user, body.note);
+    return { success: true, data };
+  }
+
   @Post(':id/appointments')
   @RequirePermissions('claim_file.update')
   @ApiOperation({ summary: 'Dosyaya randevu oluştur' })
@@ -232,9 +244,12 @@ export class ClaimFilesController {
 
   @Get(':id/vendors/nearby')
   @RequirePermissions('claim_file.view')
-  @ApiOperation({ summary: 'Dosya bölgesindeki tedarikçiler' })
-  async getNearbyVendors(@Param('id') id: string) {
-    const data = await this.claimFilesService.getNearbyVendors(id);
+  @ApiOperation({ summary: 'Dosya bölgesindeki tedarikçiler veya tespitçi tedarikçiler' })
+  async getNearbyVendors(
+    @Param('id') id: string,
+    @Query('purpose') purpose?: 'supplier' | 'inspector',
+  ) {
+    const data = await this.claimFilesService.getNearbyVendors(id, purpose ?? 'supplier');
     return { success: true, data };
   }
 }

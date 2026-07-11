@@ -17,6 +17,7 @@ import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
+import { buildVendorNearbyWhere, resolveProvinceDistrictIds } from './vendor-area-match.util';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -373,7 +374,13 @@ export class ClaimFilesService {
         assignedBranch: true,
         assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
-        assignedSupplier: { select: { id: true, name: true, city: true, district: true, type: true } },
+        assignedSupplier: { select: { id: true, name: true, city: true, district: true, type: true, phone: true, authorizedPhone: true } },
+        assignedInspectorVendor: {
+          select: {
+            id: true, name: true, city: true, district: true, type: true,
+            phone: true, authorizedPhone: true, canActAsInspector: true,
+          },
+        },
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         department: { select: { id: true, code: true, name: true, reportFormat: true, color: true } },
@@ -788,7 +795,13 @@ export class ClaimFilesService {
     const claimFile = await this.findOne(id);
 
     const updateData: any = {};
-    if (dto.assignedFieldUserId !== undefined) updateData.assignedFieldUserId = dto.assignedFieldUserId;
+    if (dto.assignedFieldUserId !== undefined) {
+      updateData.assignedFieldUserId = dto.assignedFieldUserId;
+      if (dto.assignedFieldUserId) {
+        updateData.assignedInspectorVendorId = null;
+        updateData.inspectorAssignedAt = null;
+      }
+    }
     if (dto.assignedOfficeUserId !== undefined) updateData.assignedOfficeUserId = dto.assignedOfficeUserId;
     if (dto.assignedAdjusterId !== undefined) updateData.assignedAdjusterId = dto.assignedAdjusterId;
     if (dto.assignedBranchId !== undefined) updateData.assignedBranchId = dto.assignedBranchId;
@@ -1320,6 +1333,50 @@ export class ClaimFilesService {
     return newStatus.id;
   }
 
+  async assignInspectorVendor(fileId: string, vendorId: string, actor: any, note?: string) {
+    const file = await this.prisma.claimFile.findUnique({ where: { id: fileId } });
+    if (!file) throw new NotFoundException('Dosya bulunamadı.');
+
+    const vendor = await this.prisma.vendor.findFirst({
+      where: { id: vendorId, status: 'active', canActAsInspector: true },
+    });
+    if (!vendor) throw new BadRequestException('Seçilen tedarikçi tespitçi olarak görevlendirilmemiş veya aktif değil.');
+
+    await this.prisma.claimFile.update({
+      where: { id: fileId },
+      data: {
+        assignedInspectorVendorId: vendorId,
+        inspectorAssignedAt: new Date(),
+        assignedFieldUserId: null,
+      },
+    });
+
+    const updated = await this.prisma.claimFile.findUnique({
+      where: { id: fileId },
+      include: {
+        assignedInspectorVendor: {
+          select: {
+            id: true, name: true, city: true, district: true, type: true,
+            phone: true, authorizedPhone: true, canActAsInspector: true,
+          },
+        },
+        currentStatus: true,
+      },
+    });
+    if (!updated) throw new NotFoundException('Dosya bulunamadı.');
+
+    await this.logActivity({
+      claimFileId: fileId,
+      action: 'NOTE_ADDED',
+      actorId: actor.id,
+      actorRole: actor.role?.code ?? 'unknown',
+      description: `Tespitçi (tedarikçi) "${vendor.name}" atandı.`,
+      metadata: { vendorId, vendorName: vendor.name, note },
+    });
+
+    return updated;
+  }
+
   async assignSupplier(fileId: string, supplierId: string, actor: any, note?: string) {
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
@@ -1499,7 +1556,7 @@ export class ClaimFilesService {
     return { fileId, totalCost: body.totalCost, submittedAt: new Date() };
   }
 
-  async getNearbyVendors(fileId: string) {
+  async getNearbyVendors(fileId: string, purpose: 'supplier' | 'inspector' = 'supplier') {
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
       include: { propertyAddress: true },
@@ -1507,23 +1564,29 @@ export class ClaimFilesService {
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
 
     const city = file.propertyAddress?.city;
+    const districtName = file.propertyAddress?.district;
+    const { provinceId, districtId } = await resolveProvinceDistrictIds(
+      this.prisma,
+      city,
+      districtName,
+    );
+
+    const where = buildVendorNearbyWhere({
+      provinceId,
+      districtId,
+      city,
+      districtName,
+      purpose,
+    });
 
     const vendors = await this.prisma.vendor.findMany({
-      where: {
-        status: 'active',
-        ...(city ? {
-          OR: [
-            { city },
-            { serviceAreas: { some: { province: { name: city } } } },
-          ],
-        } : {}),
-      },
+      where,
       select: {
-        id: true, name: true, type: true, phone: true, email: true,
-        city: true, district: true, category: true,
+        id: true, name: true, type: true, phone: true, email: true, authorizedPhone: true,
+        city: true, district: true, category: true, canActAsInspector: true,
         serviceAreas: { include: { province: true, district: true } },
       },
-      take: 20,
+      take: 30,
       orderBy: { name: 'asc' },
     });
 

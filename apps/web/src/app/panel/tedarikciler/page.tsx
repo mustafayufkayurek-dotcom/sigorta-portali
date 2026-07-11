@@ -271,6 +271,7 @@ const emptyForm = () => ({
   iban: '', bankName: '', referral: '', tags: [] as string[], notes: '',
   contractStartDate: '', contractEndDate: '', contractNotes: '',
   category: 'hasar' as VendorCategory,
+  canActAsInspector: false,
 });
 
 type PendingDoc = {
@@ -1489,6 +1490,7 @@ export default function VendorsPage() {
       contractEndDate: v.contractEndDate ? v.contractEndDate.split('T')[0] : '',
       contractNotes: v.contractNotes ?? '',
       category: loadCategory,
+      canActAsInspector: !!v.canActAsInspector,
     });
     applyServiceBranchFields(
       Array.isArray(v.serviceBranches) ? v.serviceBranches : [],
@@ -1614,6 +1616,7 @@ export default function VendorsPage() {
           ? toTitleCaseTR(typeCustom.trim())
           : (form.type ? toTitleCaseTR(form.type) : undefined),
         category: form.category,
+        canActAsInspector: !!form.canActAsInspector,
         address: form.address || null, city: form.city || null, district: form.district || null,
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
@@ -2756,6 +2759,21 @@ export default function VendorsPage() {
                       </button>
                     ))}
                   </div>
+
+                  <label className="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      checked={!!form.canActAsInspector}
+                      onChange={(e) => setForm((p) => ({ ...p, canActAsInspector: e.target.checked }))}
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-slate-800">Tespitçi Olarak Da Görevlendir</span>
+                      <span className="block text-[11px] text-slate-500 mt-0.5">
+                        Bu tedarikçi hasar dosyalarında saha tespitçisi olarak seçilebilir. Hizmet bölgesi (il/ilçe) dosya atamasında kullanılır.
+                      </span>
+                    </span>
+                  </label>
 
                   {/* Kurumsal */}
                   {form.entityType === 'corporate' && (

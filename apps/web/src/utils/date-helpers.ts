@@ -58,7 +58,7 @@ export function activityColor(dateStr: string | null | undefined): string {
  * Türkiye numaraları için 0 ile başlıyorsa 90 ekler.
  * Numara zaten + veya 90 ile başlıyorsa aynen kullanır.
  */
-export function toWhatsAppLink(phone: string | null | undefined): string | null {
+export function toWhatsAppLink(phone: string | null | undefined, message?: string | null): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
   if (!digits) return null;
@@ -68,5 +68,8 @@ export function toWhatsAppLink(phone: string | null | undefined): string | null 
   } else if (!digits.startsWith('90') && digits.length === 10) {
     normalized = `90${digits}`;
   }
-  return `https://wa.me/${normalized}`;
+  const base = `https://wa.me/${normalized}`;
+  const text = message?.trim();
+  if (!text) return base;
+  return `${base}?text=${encodeURIComponent(text)}`;
 }
