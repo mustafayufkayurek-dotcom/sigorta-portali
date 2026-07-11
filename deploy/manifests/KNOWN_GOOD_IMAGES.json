@@ -1,12 +1,12 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v251-sidebar-shell-polish",
-  "description": "Web-only: Sidebar kabuğu — sabit alt bölüm (daralt + rol kılavuzu), logo yerleşimi, yuvarlak köşeler, içerik kaydırma düzeltmesi",
+  "label": "v251-inbox-gelen-kutusu",
+  "description": "Full: Gelen kutusu telefon/adres çıkarımı (0850 filtresi), acil asistan kapsam etiketi, shared paket sync",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v249-amd64",
+    "backend": "app-backend:dalga2-agreement-hr-01-v251-amd64",
     "web": "sigorta-web:dalga2-agreement-hr-01-v251-amd64"
   },
   "rollbackImages": {
