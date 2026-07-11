@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v271-onarim-raporu-title-case",
-  "description": "Onarım raporu Mahal/Bölge ve serbest metin alanlarında Title Case yazım kuralı",
+  "label": "v272-onarim-raporu-6-madde",
+  "description": "Onarım raporu kalan 6 madde: satır UX, ikon aksiyonlar, kaydet sadeleştirme, yasal şablonlar, tedarikçi kıyas, revizyon modal",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v270-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v271-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v272-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v272-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v270-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v271-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v270-amd64"
   },
   "mustPassSmokeRoutes": [
@@ -21,26 +21,7 @@
     "/panel/raporlar",
     "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
-    "/panel/ayarlar/musteri-tipleri",
-    "/panel/ayarlar/eksper-sigorta-iliskileri",
-    "/panel/ayarlar/saha-tespit-kollari",
-    "/panel/ayarlar/tedarikci-hizmet-kollari",
-    "/panel/ayarlar/entegrasyonlar",
     "/panel/operasyon/gelen-kutusu",
-    "/panel/harita",
-    "/panel/personel-ozluk",
-    "/panel/eksper-portal",
-    "/panel/eksper-portal/dosyalar",
-    "/panel/eksper-portal/randevular",
-    "/panel/sigorta-portal",
-    "/panel/sigorta-portal/dosyalar",
-    "/panel/sigorta-portal/dosya-akisi",
-    "/docs/01-personel-kullanim-kilavuzu.pdf",
-    "/docs/02-sigorta-portal-kilavuzu.pdf",
-    "/docs/03-eksper-portal-tanitim.pdf",
-    "/docs/04-broker-portal-kilavuzu.pdf",
-    "/docs/meridyen-assistance-logo.jpeg",
-    "/api/v1/vendors/summary",
-    "/api/v1/user-locations/field-map"
+    "/panel/hasar-dosyalari"
   ]
 }

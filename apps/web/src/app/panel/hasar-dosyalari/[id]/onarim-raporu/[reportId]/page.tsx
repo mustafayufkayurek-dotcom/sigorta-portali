@@ -6,18 +6,19 @@ import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, u
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
-
-/** Mahal/bölge ve benzeri serbest metin — kayıt ve gösterim öncesi Title Case */
-function normalizeLocationLabel(value: string): string {
-  const trimmed = value.trim();
-  return trimmed ? toTitleCaseTR(trimmed) : trimmed;
-}
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-recipients';
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
+import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
+import VendorQuotePopover, {
+  parseVendorQuoteData,
+  buildVendorQuoteMetrajData,
+  type VendorQuoteData,
+} from '@/components/damage-reports/VendorQuotePopover';
+import { LEGAL_NOTE_TEMPLATES } from '@/constants/legal-note-templates';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -35,6 +36,12 @@ const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
   { ssr: false }
 );
+
+/** Mahal/bölge ve benzeri serbest metin — kayıt ve gösterim öncesi Title Case */
+function normalizeLocationLabel(value: string): string {
+  const trimmed = value.trim();
+  return trimmed ? toTitleCaseTR(trimmed) : trimmed;
+}
 
 
 function fmtCurrency(n: number | null | undefined) {
@@ -207,27 +214,30 @@ function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }
 
   useEffect(() => {
     const token = getAccessToken();
-    fetch(`${API}/repair-reports/${reportId}/revision-history`, {
+    fetch(`${API}/repair-reports/${reportId}/versions`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
-      .then((json) => { setItems(json?.data ?? []); })
-      .catch(() => {
-        // Mock: show sample history
-        setItems([
-          {
-            id: 'v1', version: 1, status: 'approved',
-            requestedAt: null, completedAt: '2024-11-20T10:00:00Z',
-            reason: null, reasonCategory: null, requestedBy: null,
-          },
-          {
-            id: 'rev1', version: 2, status: 'revision',
-            requestedAt: '2024-12-02T09:30:00Z', completedAt: null,
-            reason: 'Malzeme listesine ek kalemler eklenmeli',
-            reasonCategory: 'Eksik Kalem', requestedBy: 'Allianz Hasar Birimi',
-          },
-        ]);
+      .then((json) => {
+        const versions: any[] = json?.data ?? [];
+        setItems(
+          versions.map((v) => ({
+            id: v.id,
+            version: v.versionNo,
+            status: v.status === 'approved' || v.status === 'externally_approved' ? 'approved' : v.status === 'draft' ? 'draft' : 'revision',
+            requestedAt: v.revisedAt ?? v.createdAt,
+            completedAt: v.status === 'approved' ? v.revisedAt : null,
+            reason: null,
+            reasonCategory: null,
+            requestedBy: v.revisedBy
+              ? `${v.revisedBy.firstName ?? ''} ${v.revisedBy.lastName ?? ''}`.trim()
+              : v.createdBy
+                ? `${v.createdBy.firstName ?? ''} ${v.createdBy.lastName ?? ''}`.trim()
+                : null,
+          })),
+        );
       })
+      .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, [reportId]);
 
@@ -1171,9 +1181,12 @@ interface RowState {
   damageTypeId: string;
   pricingType: 'unit' | 'lumpsum';
   lumpSumPrice: string;
+  metrajData: Record<string, unknown> | null;
+  vendorQuotes: VendorQuoteData;
 }
 
 function rowFromItem(item: any): RowState {
+  const vendorQuotes = parseVendorQuoteData(item.metrajData);
   return {
     workGroupId: item.workGroupId ?? '',
     location: item.location ? normalizeLocationLabel(item.location) : '',
@@ -1187,11 +1200,17 @@ function rowFromItem(item: any): RowState {
     damageTypeId: item.damageTypeId ?? '',
     pricingType: (item.pricingType ?? 'unit') as 'unit' | 'lumpsum',
     lumpSumPrice: String(item.lumpSumPrice ?? '0'),
+    metrajData: item.metrajData && typeof item.metrajData === 'object' ? item.metrajData : null,
+    vendorQuotes,
   };
 }
 
 function emptyRow(): RowState {
-  return { workGroupId: '', location: '', jobDescription: '', description: '', quantity: '1', unit: 'm²', salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId: '', pricingType: 'unit', lumpSumPrice: '0' };
+  return {
+    workGroupId: '', location: '', jobDescription: '', description: '', quantity: '1', unit: 'm²',
+    salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId: '',
+    pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {},
+  };
 }
 
 // ─── Hesap Makinesi Input ─────────────────────────────────────────────────────
@@ -1433,6 +1452,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       lumpSumPrice: isLumpsum ? parseFloat(row.lumpSumPrice) || 0 : undefined,
       damageCategory: row.damageCategory,
       damageTypeId: row.damageTypeId || undefined,
+      metrajData: buildVendorQuoteMetrajData(row.metrajData, row.vendorQuotes),
     };
   };
 
@@ -1526,7 +1546,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     return { id: newWg.id, name: newWg.name };
   };
 
-  const updateRow = (id: string, field: keyof RowState, value: string) => {
+  const updateRow = (id: string, field: keyof RowState, value: string | VendorQuoteData) => {
     setRows((prev) => prev.map((r) => r._id === id ? { ...r, [field]: value, _isDirty: true } : r));
   };
 
@@ -1590,6 +1610,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       });
       setAddingRow(emptyRow());
       setAddingDirty(false);
+      focusCell('new', 'damageCategory');
     } finally { setAddingSaving(false); }
   };
 
@@ -1646,13 +1667,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     hasDirtyRows: () => rows.some((r) => r._isDirty),
   }), [quickAddRow, saveAllDirtyRows, rows]);
 
-  const addingMissingTooltip = !addingRow.workGroupId && !addingRow.jobDescription.trim()
-    ? 'İş Grubu ve İş Tanımı gerekli'
-    : !addingRow.workGroupId
-      ? 'İş Grubu seçin'
-      : !addingRow.jobDescription.trim()
-        ? 'İş Tanımı girin'
-        : 'Ekle (Enter)';
 
   const COLS = ['damageCategory', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
 
@@ -2141,7 +2155,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {viewMode === 'internal' && (
                   <td className={`${tdCls(rowIdx, 'supplierUnitPrice')} text-right ${isLoss ? 'bg-red-50/30' : ''}`}>
                     {isEditable ? (
-                      <div className="relative flex items-center">
+                      <div className="relative flex flex-col items-end justify-center h-10 px-1 gap-0.5">
                         <CalcInput
                           data-cell={`${rowIdx}-supplierUnitPrice`}
                           className={`${cellCls(rowIdx, 'supplierUnitPrice', true)} text-right pr-8 text-slate-500 ${isLoss ? '!ring-2 !ring-inset !ring-orange-400 !rounded' : ''}`}
@@ -2152,7 +2166,21 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           onFocus={() => setActiveCell({ rowIdx, col: 'supplierUnitPrice' })}
                           onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'supplierUnitPrice', row._id)}
                         />
-                        <span className="absolute right-2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                        <VendorQuotePopover
+                          data={row.vendorQuotes}
+                          onChange={(next) => updateRow(row._id, 'vendorQuotes', next)}
+                          onApplyPrice={(price, vendorName) => {
+                            updateRow(row._id, 'supplierUnitPrice', price);
+                            if (vendorName.trim()) {
+                              updateRow(row._id, 'vendorQuotes', {
+                                ...row.vendorQuotes,
+                                preferredVendorName: normalizeLocationLabel(vendorName),
+                              });
+                            }
+                            setTimeout(() => saveRow(row._id), 50);
+                          }}
+                        />
                       </div>
                     ) : (
                       <span className="px-2 text-xs text-slate-500 block py-3 text-right">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
@@ -2170,27 +2198,27 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   )}
                 </td>
                 {isEditable && (
-                  <td className="w-24 border-l border-slate-100 text-center px-1">
-                    <div className="flex items-center justify-center gap-1">
+                  <td className="w-20 border-l border-slate-100 text-center px-1">
+                    <div className="flex items-center justify-center gap-0.5">
                       {row._isDirty ? (
                         <>
                           <button
                             type="button"
                             disabled={isSaving}
                             onClick={() => saveRow(row._id)}
-                            className="h-6 px-1.5 rounded bg-emerald-600 text-white text-[10px] font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors"
-                            title="Değişiklikleri kaydet"
+                            className="h-7 w-7 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 flex items-center justify-center transition-colors"
+                            title="Kaydet"
                           >
-                            {isSaving ? '...' : 'Kaydet'}
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                           </button>
                           <button
                             type="button"
                             disabled={isSaving}
                             onClick={() => revertRow(row._id)}
-                            className="h-6 px-1 rounded border border-slate-200 text-slate-500 text-[10px] hover:bg-slate-50 transition-colors"
-                            title="Geri al"
+                            className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center transition-colors"
+                            title="Geri Al"
                           >
-                            ↩
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
                           </button>
                         </>
                       ) : (
@@ -2198,18 +2226,18 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           <button
                             type="button"
                             onClick={() => focusCell(rowIdx, 'workGroup')}
-                            className="h-6 px-1.5 rounded border border-blue-200 text-blue-600 text-[10px] font-medium hover:bg-blue-50 transition-colors"
-                            title="Satırı düzenle"
+                            className="h-7 w-7 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
+                            title="Düzenle"
                           >
-                            Düzelt
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                           </button>
                           <button
                             type="button"
                             onClick={() => onDelete(row._id)}
-                            className="h-6 w-6 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                            className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
                             title="Sil"
                           >
-                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                               <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
                               <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                             </svg>
@@ -2398,22 +2426,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   </span>
                 )}
               </td>
-              {/* Ekle butonu — her zaman görünür */}
-              <td className="w-14 border-l border-slate-100 text-center px-1">
-                <button
-                  type="button"
-                  disabled={addingSaving || !addingRow.workGroupId || !addingRow.jobDescription.trim()}
-                  onClick={saveAddingRow}
-                  title={addingMissingTooltip}
-                  className="min-w-[2.5rem] h-7 px-2 rounded bg-blue-600 text-white text-[10px] font-semibold flex items-center justify-center mx-auto hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {addingSaving ? '...' : 'Ekle'}
-                </button>
-              </td>
+              {isEditable && <td className="w-20 border-l border-slate-100" />}
             </tr>
           )}
         </tbody>
       </table>
+      {isEditable && (
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => { focusCell('new', 'damageCategory'); quickAddRow(); }}
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            + Kalem Ekle
+          </button>
+          <p className="text-[10px] text-slate-400">
+            {addingSaving ? 'Kaydediliyor...' : <>Yeni satırda <span className="font-medium">Enter</span> ile kaydedin.</>}
+          </p>
+        </div>
+      )}
       {rows.length === 0 && !isEditable && (
         <div className="text-center py-8 text-slate-400 text-sm">Henüz Kalem Eklenmemiş.</div>
       )}
@@ -2855,6 +2886,9 @@ export default function RepairReportPage() {
   const [quickDamageTypes, setQuickDamageTypes] = useState<string[]>([]);
   const [quickDamageSize, setQuickDamageSize] = useState('MEDIUM');
   const [showQuickRepairModal, setShowQuickRepairModal] = useState(false);
+  const [showReviseModal, setShowReviseModal] = useState(false);
+  const [revising, setRevising] = useState(false);
+  const legalNotesRef = useRef<HTMLTextAreaElement>(null);
   // claimId used for back navigation
   const claimPath = `/panel/hasar-dosyalari/${claimId}`;
 
@@ -3000,12 +3034,23 @@ export default function RepairReportPage() {
     };
   }, [report?.departmentId, report?.claimFile?.lossType, report?.claimFile?.claimSubjectId]);
 
-  const handleRevise = async () => {
-    if (!confirm('Onaylı raporun revizyonunu oluşturmak istediğinizden emin misiniz?\nEski versiyon değişmeden saklanacak, yeni bir taslak açılacak.')) return;
+  const handleRevise = () => setShowReviseModal(true);
+
+  const confirmRevise = async (payload: ReviseReportPayload) => {
+    setRevising(true);
     try {
-      const res = await axios.post(`${API}/repair-reports/${reportId}/revise`, {}, { headers: authHeader() });
+      const res = await axios.post(
+        `${API}/repair-reports/${reportId}/revise`,
+        payload,
+        { headers: authHeader() },
+      );
+      setShowReviseModal(false);
       router.push(`/panel/hasar-dosyalari/${claimId}/onarim-raporu/${res.data.data.id}`);
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Revizyon Oluşturulamadı'); }
+    } catch (e: any) {
+      alert(e.response?.data?.message ?? 'Revizyon Oluşturulamadı');
+    } finally {
+      setRevising(false);
+    }
   };
 
   const handleOpenSuggestModal = async () => {
@@ -3683,32 +3728,17 @@ export default function RepairReportPage() {
 
       {/* Onarım Kalemleri */}
       <SectionCard title="Onarım Kalemleri" id="onarim-kalemleri-section" action={
-        isEditable ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handleSaveReport}
-              disabled={saving}
-              className="flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
-            </button>
-            {templateSuggestions.length > 0 && (
-              <button
-                type="button"
-                onClick={handleOpenSuggestModal}
-                className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                Önerilen Kalemler
-              </button>
-            )}
-          </div>
+        isEditable && templateSuggestions.length > 0 ? (
+          <button
+            type="button"
+            onClick={handleOpenSuggestModal}
+            className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            Önerilen Kalemler
+          </button>
         ) : undefined
       }>
         {/* Hasar nedeni filtresi */}
@@ -3759,19 +3789,6 @@ export default function RepairReportPage() {
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500 tracking-wide">Hasar Toplam Özeti</p>
-                {isEditable && (
-                  <button
-                    type="button"
-                    onClick={handleSaveReport}
-                    disabled={saving}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
-                  </button>
-                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
@@ -3885,7 +3902,28 @@ export default function RepairReportPage() {
 
       {/* Yasal Notlar */}
       <SectionCard title="Yasal Notlar ve Uyarılar">
+        {isEditable && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {LEGAL_NOTE_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => {
+                  const el = legalNotesRef.current;
+                  if (!el) return;
+                  const current = el.value.trim();
+                  el.value = current ? `${current}\n\n${tpl.text}` : tpl.text;
+                  handleUpdateField('legalNotes', el.value);
+                }}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+              >
+                {tpl.label}
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
+          ref={legalNotesRef}
           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:border-blue-300 resize-y min-h-[60px]"
           rows={3}
           placeholder="Yasal Uyarılar ve Notlar..."
@@ -3907,7 +3945,7 @@ export default function RepairReportPage() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            {isEditable && (
+            {isEditable && hasUnsavedChanges && (
               <>
                 <button
                   type="button"
@@ -3928,7 +3966,7 @@ export default function RepairReportPage() {
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  {saving ? 'Kaydediliyor...' : hasUnsavedChanges ? `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})` : 'Kaydet'}
+                  {saving ? 'Kaydediliyor...' : `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})`}
                 </button>
               </>
             )}
@@ -4584,6 +4622,15 @@ export default function RepairReportPage() {
         onClose={() => setShowQuickRepairModal(false)}
         onAdd={handleAddQuickRepairItems}
       />
+      {showReviseModal && (
+        <RepairReportReviseModal
+          reportNo={report.reportNo}
+          versionNo={report.versionNo}
+          submitting={revising}
+          onClose={() => setShowReviseModal(false)}
+          onConfirm={confirmRevise}
+        />
+      )}
     </div>
   );
 }

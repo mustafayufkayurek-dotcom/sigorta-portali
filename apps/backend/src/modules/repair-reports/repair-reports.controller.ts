@@ -56,6 +56,7 @@ import {
   SendEmailDto,
   AddQuickRepairItemsDto,
 } from './dto/repair-reports.dto';
+import { ReviseReportDto } from './dto/revise-report.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.interceptor';
 import { ApprovalContextService } from '@/modules/vendor-risk/approval-context.service';
@@ -319,8 +320,16 @@ export class RepairReportsController {
   // ── Revizyon ─────────────────────────────────────────────────────────────
 
   @Post('repair-reports/:id/revise')
-  async reviseReport(@Param('id') id: string, @CurrentUser() user: any) {
-    const data = await this.service.reviseReport(id, user.id);
+  async reviseReport(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: ReviseReportDto,
+  ) {
+    const data = await this.service.reviseReport(id, user.id, {
+      reason: dto.reason,
+      reasonNote: dto.reasonNote,
+      affectedSections: dto.affectedSections,
+    });
     return { data };
   }
 

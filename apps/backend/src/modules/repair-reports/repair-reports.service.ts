@@ -904,7 +904,15 @@ export class RepairReportsService {
 
   // ── Revizyon ──────────────────────────────────────────────────────────────
 
-  async reviseReport(reportId: string, userId: string) {
+  async reviseReport(
+    reportId: string,
+    userId: string,
+    options?: {
+      reason?: string;
+      reasonNote?: string;
+      affectedSections?: string[];
+    },
+  ) {
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {
@@ -1036,14 +1044,35 @@ export class RepairReportsService {
       }
 
       // ApprovalHistory kaydı
+      const sectionNote = options?.affectedSections?.length
+        ? ` · Bölümler: ${options.affectedSections.join(', ')}`
+        : '';
+      const reasonDetail = options?.reasonNote?.trim()
+        ? `${options.reasonNote.trim()}${sectionNote}`
+        : `v${report.versionNo} üzerinden revizyon oluşturuldu${sectionNote}`;
       await tx.reportApprovalHistory.create({
         data: {
           reportId: newReport.id,
           userId,
           action: 'revision_created',
-          reason: `v${report.versionNo} üzerinden revizyon oluşturuldu`,
+          reason: reasonDetail,
         },
       });
+
+      if (options?.reason && options?.reasonNote?.trim()) {
+        await tx.reportRevisionRequest.create({
+          data: {
+            reportId: report.id,
+            requestedById: userId,
+            status: 'IN_PROGRESS',
+            priority: 'NORMAL',
+            reason: options.reason as any,
+            reasonNote: options.reasonNote.trim(),
+            affectedItems: options.affectedSections ?? [],
+            newReportId: newReport.id,
+          },
+        });
+      }
 
       // getReport() bu transaction dışından okursa READ COMMITTED nedeniyle 404 alır
       // — doğrudan tx client ile sorgula
