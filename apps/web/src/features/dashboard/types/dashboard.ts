@@ -14,9 +14,14 @@ export type OperationsResponse = {
 };
 
 export type CriticalItem = { id?: string; fileNo: string };
+export type InactiveCriticalItem = CriticalItem & {
+  daysSinceActivity?: number | null;
+  lastActivityAt?: string | null;
+  currentStatus?: string;
+};
 export type CriticalAlertsResponse = {
   slaEscalations: CriticalItem[];
-  inactiveFiles: CriticalItem[];
+  inactiveFiles: InactiveCriticalItem[];
   totalCritical: number;
 };
 

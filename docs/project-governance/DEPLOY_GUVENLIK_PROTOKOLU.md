@@ -2,11 +2,15 @@
 
 **Amaç:** Sayfa kaybı, eski UI'ya dönüş, kısmi sync, yanlış build context, migration felaketleri ve rollback image kaybını önlemek.
 
-**Son bilinen iyi sürüm:** Web `v223` + Backend `v223` (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Son bilinen iyi sürüm:** Web **v248** + Backend **v248** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
+**Etiket:** `v248-dashboard-delta-hasar-detay`  
+**Güncelleme:** 10 Temmuz 2026
 
-**Rollback tag'leri:** Web `v222` + Backend `v220` (manifest `rollbackImages`)
+**Rollback tag'leri:** Web **v247** + Backend **v247** (manifest `rollbackImages`)
 
 **Siber güvenlik checklist:** [SECURITY_CHECKLIST.md](./SECURITY_CHECKLIST.md) — auth, firewall, yedek, PayTR, IDOR envanteri.
+
+**Canlıya alınmamış envanter:** [CANLIYA_ALINMAMIS_ENVANTER.md](./CANLIYA_ALINMAMIS_ENVANTER.md)
 
 ---
 
@@ -30,9 +34,9 @@
 | 1 | Disk + docker | `bash scripts/pre-deploy-check.sh` |
 | 2 | Disk bakım (güvenli) | `bash scripts/server-disk-maintenance.sh` |
 | 3 | Yedek sağlığı | `bash scripts/verify-backup-health.sh` |
-| 4 | Güvenlik paketi | `bash scripts/pre-deploy-safety.sh v223-etiket` |
+| 4 | Güvenlik paketi | `bash scripts/pre-deploy-safety.sh v248-etiket` |
 | 5 | Kritik dosya uyumu | `bash scripts/verify-critical-paths.sh --remote` |
-| 6 | Baseline al | `bash scripts/capture-live-baseline.sh pre-v223` |
+| 6 | Baseline al | `bash scripts/capture-live-baseline.sh pre-v248` |
 | 7 | Scope netliği | Web-only mu, full mu? Migration var mı? |
 
 ---
@@ -43,7 +47,7 @@
 
 ```bash
 # Önerilen (yerelden tek komut):
-bash scripts/deploy-web-production.sh v223-etiket
+bash scripts/deploy-web-production.sh v248-etiket
 
 # Manuel:
 # 1) Yerelden sunucuya
@@ -52,8 +56,8 @@ rsync -avz apps/web/ root@94.138.216.18:/opt/app/apps/web/
 # 2) Sunucuda
 ssh root@94.138.216.18
 cd /opt/app
-bash scripts/pre-deploy-safety.sh v223-xxx
-docker build -f Dockerfile.web -t sigorta-web:dalga2-agreement-hr-01-v223-amd64 \
+bash scripts/pre-deploy-safety.sh v248-xxx
+docker build -f Dockerfile.web -t sigorta-web:dalga2-agreement-hr-01-v248-amd64 \
   --build-arg NEXT_PUBLIC_API_URL=https://app.meridyen-tr.com/api/v1 .
 # override güncelle → web image tag
 bash scripts/restart-web-production.sh   # compose -p sigorta-hasar-sistemi + routing doğrulama
@@ -69,6 +73,18 @@ docker image prune -af   # ❌ rollback image'larını siler
 
 **Backend + migration:** pre-deploy-safety DB yedeği → build backend → `prisma migrate deploy` → smoke.
 
+**Full deploy (web + backend — v248 örneği):**
+```bash
+bash scripts/pre-deploy-safety.sh v248-etiket
+# backend build → app-backend:dalga2-agreement-hr-01-v248-amd64
+# web build     → sigorta-web:dalga2-agreement-hr-01-v248-amd64
+# prisma migrate deploy (migration varsa)
+bash scripts/restart-web-production.sh   # -p sigorta-hasar-sistemi
+bash scripts/post-deploy-smoke.sh
+```
+
+Deploy sonrası manifest güncelle: `deploy/manifests/KNOWN_GOOD_IMAGES.json` — `images`, `rollbackImages`, `mustPassSmokeRoutes`, `updatedAt`.
+
 ---
 
 ## Deploy sonrası
@@ -82,7 +98,11 @@ bash scripts/verify-critical-paths.sh --remote
 Mustafa ekran kontrolü (Cmd+Shift+R) — özellikle:
 - Kullanıcı Davet Et
 - Ayarlar hub / Tanımlar Merkezi
+- Yönetim Merkezi dashboard (admin)
+- Hasar dosyası detay — sigortalı / adres / ihbar alanları
 - Son değiştirilen sayfa
+
+Smoke hedef rotalar: manifest `mustPassSmokeRoutes` (v248'de 28 rota).
 
 ---
 
@@ -92,15 +112,15 @@ Tag'ler manifest'ten okunur (`scripts/rollback-production.sh`):
 
 | Mod | Backend | Web |
 |-----|---------|-----|
-| `default` | `rollbackImages.backendPrevious` (v220) | `rollbackImages.webPrevious` (v222) |
-| `web-only` | `images.backend` (v223) | `rollbackImages.webPrevious` (v222) |
+| `default` | `rollbackImages.backendPrevious` (**v247**) | `rollbackImages.webPrevious` (**v247**) |
+| `web-only` | `images.backend` (**v248**) | `rollbackImages.webPrevious` (**v247**) |
 | `custom` | Manuel tag | Manuel tag |
 
 ```bash
 ssh root@94.138.216.18
 cd /opt/app
-bash scripts/rollback-production.sh              # v220/v222
-bash scripts/rollback-production.sh web-only     # backend v223, web v222
+bash scripts/rollback-production.sh              # v247/v247
+bash scripts/rollback-production.sh web-only     # backend v248, web v247
 ```
 
 Override yedekleri: `/opt/app/backups/override_*`
@@ -131,6 +151,7 @@ Korunan tag listesi tek kaynak: `deploy/manifests/KNOWN_GOOD_IMAGES.json`
 | Tanımlar geri linki | `apps/web/src/utils/settings-definition-nav.ts` |
 | Sol menü | `apps/web/src/app/panel/layout.tsx` |
 | Kritik hash listesi | `deploy/manifests/CRITICAL_PATHS.txt` |
+| Canlı kabul checklist | `docs/project-governance/canli-kabul/CHECKLIST.md` |
 
 Yeni ayar sayfası eklerken **yalnızca `settings-nav.ts`** güncellenir; layout'a ikinci liste yazılmaz.
 

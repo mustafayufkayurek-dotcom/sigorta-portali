@@ -12,7 +12,7 @@ export function PanelSidebarBrand({ href, collapsed }: PanelSidebarBrandProps) {
   return (
     <Link
       href={href}
-      className={`flex shrink-0 items-center border-b border-slate-200/80 px-2 py-3 transition-all dark:border-slate-800 ${
+      className={`flex shrink-0 items-center border-b border-slate-700/80 bg-[#0c1524] px-2 py-3 transition-all ${
         collapsed ? 'justify-center px-1.5' : 'justify-start px-3'
       }`}
       title="Panel ana sayfa"

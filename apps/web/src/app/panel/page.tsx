@@ -17,6 +17,9 @@ import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import {
   AdminFinanceSummarySection,
   WeeklyPerformanceWidget,
+  AdminOperationsKpiBand,
+  AdminDailyFlowSection,
+  AdminBottomRow,
 } from '@/features/dashboard/components/admin';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 
@@ -73,7 +76,7 @@ export default function PanelPage() {
 
   const hideAcil = !showAcilYardim;
 
-  /** Admin / müdür: onaylı mockup — yalnızca üç ana blok */
+  /** Admin / müdür: onaylı mockup — tam şablon düzeni */
   if (isManagement) {
     return (
       <DashboardShell>
@@ -81,6 +84,7 @@ export default function PanelPage() {
           title={title}
           subtitle={subtitle}
           showAcilAction
+          isManagement
         />
 
         <AdminFinanceSummarySection
@@ -91,15 +95,13 @@ export default function PanelPage() {
           staggerIndex={0}
         />
 
-        <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-          <div className="mb-3">
-            <h2 className="text-base font-semibold text-slate-950 dark:text-white">Operasyon Özeti</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Dosya akışı ve operasyon metrikleri</p>
-          </div>
-          <PrimaryKpiGroup staggerIndex={1} hideFinance hideAcil={hideAcil} />
-        </section>
+        <AdminOperationsKpiBand staggerIndex={1} hideAcil={hideAcil} />
 
         <WeeklyPerformanceWidget staggerIndex={2} />
+
+        <AdminDailyFlowSection staggerIndex={3} hideAcil={hideAcil} />
+
+        <AdminBottomRow staggerIndex={4} />
       </DashboardShell>
     );
   }

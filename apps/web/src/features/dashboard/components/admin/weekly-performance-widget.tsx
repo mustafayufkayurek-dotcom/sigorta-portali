@@ -1,8 +1,9 @@
 'use client';
 
-import { CalendarDays, Users } from 'lucide-react';
 import Link from 'next/link';
+import { CalendarDays, Users } from 'lucide-react';
 import { WidgetShell, WidgetSkeleton } from '../widget-frame';
+import { TeamWorkloadChart } from './team-workload-chart';
 import {
   useApprovalDelays,
   useDashboardOperations,
@@ -17,6 +18,8 @@ type WeeklyPerformanceWidgetProps = {
   staggerIndex?: number;
 };
 
+const PRIORITY_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-amber-400', 'bg-blue-500'];
+
 function lastWeekLabel(): string {
   const end = new Date();
   end.setDate(end.getDate() - ((end.getDay() + 6) % 7));
@@ -25,6 +28,13 @@ function lastWeekLabel(): string {
   const fmt = (d: Date) =>
     d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function staffInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 }
 
 export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceWidgetProps) {
@@ -88,7 +98,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
         <WidgetSkeleton variant="card" rows={3} />
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Geçen Hafta</h3>
             <p className="mt-0.5 text-xs text-slate-500">{lastWeekLabel()}</p>
             <dl className="mt-3 space-y-2 text-sm">
@@ -103,48 +113,59 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
                 </dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Açık Operasyon</dt>
-                <dd className="font-semibold text-slate-900 dark:text-white">{ops?.openOperationalFiles ?? '—'}</dd>
+                <dt className="text-slate-500">Tahsilat</dt>
+                <dd className="font-semibold text-slate-900 dark:text-white">
+                  {ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
+                </dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Bekleyen Aksiyon</dt>
-                <dd className="font-semibold text-slate-900 dark:text-white">{ops?.pendingTasks ?? '—'}</dd>
+                <dt className="text-slate-500">Ortalama Kapanış</dt>
+                <dd className="font-semibold text-slate-900 dark:text-white">—</dd>
               </div>
             </dl>
+            <TeamWorkloadChart />
           </div>
 
-          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Bu Hafta Öncelikleri</h3>
             {priorities.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">Kritik öncelik görünmüyor.</p>
             ) : (
-              <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm">
-                {priorities.map((item) => (
-                  <li key={item.label}>
-                    <Link href={item.href} className="font-medium text-blue-700 hover:underline dark:text-blue-300">
+              <ul className="mt-3 space-y-3">
+                {priorities.map((item, idx) => (
+                  <li key={item.label} className="flex items-start gap-2.5">
+                    <span
+                      className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${PRIORITY_COLORS[idx % PRIORITY_COLORS.length]}`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <Link href={item.href} className="text-sm font-medium text-slate-800 hover:text-blue-700 hover:underline dark:text-slate-100 dark:hover:text-blue-300">
                       {item.label}
                     </Link>
                   </li>
                 ))}
-              </ol>
+              </ul>
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
             <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
               <Users className="h-4 w-4 text-indigo-500" />
-              Personel Yük Dağılımı
+              Personel Yük
             </h3>
             {staffItems.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">Atama verisi yok.</p>
             ) : (
-              <ul className="mt-3 space-y-2 text-sm">
+              <ul className="mt-3 space-y-3">
                 {staffItems.map((item) => (
-                  <li key={item.userId} className="flex items-center justify-between gap-2">
-                    <span className="truncate text-slate-700 dark:text-slate-200">{item.userName}</span>
-                    <span className="shrink-0 font-semibold text-slate-900 dark:text-white">
-                      {item.activeFiles} dosya
+                  <li key={item.userId} className="flex items-center gap-2.5">
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                      {staffInitials(item.userName)}
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{item.userName}</p>
+                      <p className="text-xs text-slate-500">{item.activeFiles} dosya</p>
+                    </div>
                   </li>
                 ))}
               </ul>

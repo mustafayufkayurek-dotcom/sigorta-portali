@@ -461,7 +461,7 @@ function Navbar({
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="flex-1 text-left text-xs text-slate-400">Ara...</span>
+              <span className="flex-1 text-left text-xs text-slate-400">Ara (Operasyon, Dosya, Müşteri, Personel...)</span>
               <kbd className="hidden lg:flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium text-slate-300 bg-slate-100 rounded border border-slate-200">
                 ⌘K
               </kbd>
@@ -772,10 +772,10 @@ function PanelSidebar({
       : isFirst
         ? 'pt-0 pb-2 text-sm'
         : 'py-2 text-sm';
-    return `group flex items-center justify-between gap-2 rounded-lg px-3 ${verticalPad} font-semibold transition ${
+    return `group flex items-center justify-between gap-2 rounded-xl px-3 ${verticalPad} font-semibold transition ${
       active
-        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+        ? 'bg-blue-500/15 text-blue-100 ring-1 ring-blue-400/25'
+        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
     }`;
   };
 
@@ -795,7 +795,7 @@ function PanelSidebar({
         aria-label={collapsed ? tooltipLabel : undefined}
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
-          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
+          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-200" /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
         {!collapsed && link.alertCount && link.alertCount > 0 ? (
@@ -818,7 +818,7 @@ function PanelSidebar({
           {linkNode}
         </SidebarNavTooltip>
         {link.children?.length ? (
-          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-200 pl-2 dark:border-slate-800'}>
+          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-700/80 pl-2'}>
             {link.children.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}
@@ -828,39 +828,43 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`relative hidden min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width] duration-200 md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} dark:border-slate-800 dark:bg-slate-950 ${
+      className={`relative hidden min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-[#0f172a] text-slate-200 transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
       <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
 
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        className={`absolute z-10 inline-flex h-7 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-800 ${
-          collapsed ? 'right-2 top-[4.25rem] w-7' : 'right-3 top-[4.25rem] px-2'
-        }`}
-        aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-        title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-      >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
-
-      <nav className={`flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-2 ${collapsed ? 'pr-3' : 'pr-11'}`}>
+      <nav className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-2">
         <div className="min-h-0 flex-1 space-y-0.5 pb-2">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
       </nav>
 
-      <PanelSidebarGuideFooter
-        roleCode={roleCode}
-        isExpert={isExpert}
-        isInsuranceCompanyUser={isInsuranceCompanyUser}
-        isFinance={isFinance}
-        isFieldStaff={isFieldStaff}
-        isOfficeStaff={isOfficeStaff}
-        collapsed={collapsed}
-      />
+      <div className="shrink-0 border-t border-slate-700/80">
+        <PanelSidebarGuideFooter
+          roleCode={roleCode}
+          isExpert={isExpert}
+          isInsuranceCompanyUser={isInsuranceCompanyUser}
+          isFinance={isFinance}
+          isFieldStaff={isFieldStaff}
+          isOfficeStaff={isOfficeStaff}
+          collapsed={collapsed}
+        />
+        <div className="px-2 pb-2.5 sm:px-2.5">
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-slate-600/70 bg-slate-800/50 py-2 text-xs font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white ${
+              collapsed ? 'px-2' : 'px-3'
+            }`}
+            aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+            title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {!collapsed ? <span>Menüyü Daralt</span> : null}
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }

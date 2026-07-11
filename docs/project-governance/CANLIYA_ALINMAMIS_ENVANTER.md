@@ -1,67 +1,148 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026  
-**Referans canlı sürüm:** Web v29 + Backend v27  
+**Tarih:** 11 Temmuz 2026  
+**Referans canlı sürüm:** Web **v248** + Backend **v249** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
+**Rollback:** Web v247 / Backend v248  
+**Etiket:** `v249-inbound-ingest-fix`  
+**Deploy geçmişi / kronoloji:** `DEPLOY_GECMISI.md` ← **“son ne alındı?” tek cevap**  
+**Şablon kabul kriterleri:** `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md`  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
-Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir. Ayarlar oturumu (#1–#18 + v26–v29) **canlıda ve kapalı**.
+---
+
+## Önemli: Üç ayrı kategori (karıştırma)
+
+Bu dosya **“canlıda yok”** ile **“canlıda var ama kabul/test eksik”** ve **“gelecek faz”** maddelerini ayırır.
+
+| Kategori | Anlam | Örnek |
+|----------|--------|--------|
+| **D — Deploy bekleyen kod** | Repoda var, sunucu image’ında **yok** | *(şu an boş — D1 v249’da kapandı)* |
+| **A — Kabul / test eksik** | Kod **canlıda**; Mustafa PASS veya smoke kanıtı eksik | Harita filtre testi, gelen kutusu T1–T7 |
+| **P — Şablon / UI eksik** | Kod iskeleti canlı; **onaylı mockup birebir değil** | Admin Yönetim Merkezi mockup |
+| **B — Gelecek faz / bilinçli erteleme** | Canlıdaki sürümün **sonraki** adımı veya ops işi | PayTR merchant canlı mod, CRM derinliği, e-imza |
+
+> **Yanlış okuma:** “Envanterde geçiyor” ≠ “canlıya alınmamış”. A ve B maddelerinin çoğu **zaten canlıda**; eksik olan ürün kapanışı veya sonraki fazdır.
 
 ---
 
-## Öncelik A — Kod/strateji var, canlı kapanış yok
+## D — Deploy bekleyen kod (repoda var, canlı image’da yok)
 
-| # | Konu | Durum | Risk | Önerilen adım |
-|---|------|-------|------|----------------|
-| A1 | **Resmi kabul kanıtları** (Paket 1 modülleri) | Canlıda olabilir; screenshot/PASS eksik | Orta — "eski mi yeni mi" belirsizliği | Modül modül 5 dk smoke + ekran görüntüsü klasörü |
-| A2 | **Git commit eksikliği** | Canlı ≈ yerel disk; repo HEAD geride | Yüksek — kayıp/rollback zor | `safety/pre-inventory` branch + snapshot commit |
-| A3 | **Hoş geldin maili** | Kod canlı; başarılı gönderim kanıtı zayıf | Orta | 1 test davet + log kontrolü |
+| # | Konu | Durum |
+|---|------|--------|
+| — | *(boş)* | Son gap **D1** → **10 Temmuz 2026 v249** ile canlıya alındı |
 
----
+### Operasyonel (uygulama deploy’u değil)
 
-## Öncelik B — Bilinçli ertelenmiş paketler (canlıya alınmadı)
-
-| # | Konu | Kaynak | Not |
-|---|------|--------|-----|
-| B1 | **D276 Finans UX olgunlaştırması** | ARCHIV envanter | Finans rotaları var; D276'daki özel UX ayrı paket |
-| B2 | **D278 MinIO canlıya alma** | ARCHIV | Hazır denmiş, deploy yok |
-| B3 | **D255 Sahip ekranları CRUD standardı** | ARCHIV | Tek tip şablon henüz kapanmadı |
-| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | Migration iskelet var, UI bağlantısı sonra |
-| B5 | **CRM tam kapsam** | Kurtarma Paketi 1 | Route var; "kısmen geri kazanıldı" — derinlik eksik olabilir |
+| # | Konu | Dosya | Not |
+|---|------|-------|-----|
+| D2 | Yetim hasar dosyası ofis ataması backfill | `scripts/backfill-orphan-claim-office-assignments.sql` | Sunucuda SELECT → onay → UPDATE; kod deploy’u değil |
 
 ---
 
-## Öncelik C — Süreç / belge güncelliği
+## A — Canlıda VAR; ürün kapanışı / Mustafa PASS eksik
 
-| # | Konu | Aksiyon |
-|---|------|---------|
-| C1 | `RECOVERY_LOG_2026-06-24.md` "deploy edilmedi" | Güncelle veya arşivle |
-| C2 | `MUSTAFA_SABAH_RAPORU` | Tarihsel belge olarak işaretle |
-| C3 | Guard checklist canlı PASS | Tek oturumda doğrula |
-
----
-
-## Önerilen sıradaki dalga (güvenli)
-
-**Dalga 3 — Envanter + düşük risk (deploy gerektirmez):**
-1. Git safety snapshot
-2. Resmi kabul klasörü (screenshot)
-3. B paketlerinden hangisinin hâlâ geçerli olduğuna Mustafa kararı
-
-**Dalga 4 — İlk canlı aday (tek paket, web-only tercih):**
-- B1 Finans UX **veya** B3 Sahip CRUD — ikisi birden değil
-- Protokol: pre-deploy-safety → rsync → build → smoke → Mustafa PASS
+| # | Konu | Canlı kanıt | Eksik olan |
+|---|------|-------------|------------|
+| A1 | Resmi kabul screenshot’ları | Smoke route 200 | Modül modül Mustafa PASS + `canli-kabul/ekran-goruntuleri/` |
+| A2 | Mustafa test listesi (`BACKLOG.md`) | İlgili sayfalar canlı | 13 maddelik manuel test oturumu |
+| A3 | Operasyon gelen kutusu T1–T7 | `/panel/operasyon/gelen-kutusu` canlı (v110+, v248/v249 delta) | Test paketi PASS değil |
+| A4 | Giriş logo / kurumsal karşılama | `/giris` canlı | Eski not: canlı görsel Mustafa HAYIR — ayrı web deploy gerekebilir |
+| A5 | Hoş geldin / davet maili | Davet akışı kodu canlı | Gerçek gönderim log kanıtı + Mustafa PASS |
+| A6 | Harita manuel test | `/panel/harita` canlı (v125+) | Filtre/pin Cmd+Shift+R testi |
 
 ---
 
-## Canlıda OLDUĞU kesin (tekrar deploy gereksiz)
+## P — Onaylı şablon henüz birebir uygulanmadı (deploy değil, UI işi)
 
-- Ayarlar anayasası v26–v29 (masraf, iş grubu, dosya, evrak, mahaller, hizmet türleri)
-- Kullanıcı davet akışı + geçici şifre
-- Sol menü tek sahiplik (PanelSidebar)
+| # | Konu | Canlıda ne var | Eksik (mockup) |
+|---|------|----------------|----------------|
+| P0 | **Sol menü kabuğu** (logo, daralt, tema) | Genişlik 74/286 kodda; **mockup görseli canlıda yok** | Tam liste: `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md` — **S2–S6** |
+| P1 | Admin **Yönetim Merkezi** | `/panel` iskelet (v248) | Aynı dosya — **A0–A5** |
+| P2 | **Dosya sorumlusu** merkezi | Başlık + widget’lar (kısmi) | Aynı dosya — **D0** |
+
+---
+
+## B — Gelecek faz / bilinçli erteleme (canlı sürümün ötesi)
+
+| # | Konu | Canlıda ne var | Eksik / sonraki |
+|---|------|----------------|-----------------|
+| B1 | D276 Finans UX | Finans rotaları + v248 dashboard | Alt sayfa ince ayar (opsiyonel paket) |
+| B3 | D255 Sahip CRUD standardı | `/panel/sahiplik` canlı | Tek tip şablon standardizasyonu |
+| B5 | CRM tam kapsam | `/panel/crm` route canlı | İlişki havuzu, performans metrikleri |
+| B6 | Gelen kutusu F2–F3 | F1 + dosya açma + Graph delta (v248/v249) | AI sınıflandırma, M365 sihirbazı, e-posta sekmesi |
+| B7 | Online kart (PayTR) | `/odeme/[token]`, backend servisi canlı | Merchant `.env`, canlı mod, uçtan uca tahsilat testi |
+| B8 | Saha keşif F2–F3 | F1 iskelet canlı | Annotated foto, Bluetooth lazer, mobil offline |
+| B9 | Tedarikçi canlı GPS | Harita pinleri canlı | Mobil uygulama GPS — sonraki faz |
+| B10 | RFQ UAVT adres | — | Tasarım / RFQ |
+| B11 | SSH sertleştirme | Plan dokümanı | Bakım penceresi uygulaması |
+| B12 | E-imza (personel özlük) | `/panel/personel-ozluk` canlı | 5070 nitelikli e-imza F5d |
+
+### Bu listeden çıkarılan (eski envanter hatası)
+
+| Eski madde | Neden çıkarıldı |
+|------------|-----------------|
+| ~~B2 D278 MinIO~~ | **Canlıda çalışıyor** — `sigorta-minio` container Up (sunucu teyidi 10 Temmuz 2026) |
+| ~~“Gelen kutusu canlıya alınmadı”~~ | v110+ / v248 / v249 ile canlı; eksik olan **test PASS** (A3) |
+| ~~“Harita canlıya alınmadı”~~ | v125+ canlı; eksik olan **manuel test** (A6) |
+| ~~“Tedarikçi dış arama canlıya alınmadı”~~ | Faz 2–3 canlı (`TEDARIKCI_DIS_ARAMA_HAZIRLIK.md`); BACKLOG ⬜ satırları güncel değil |
+
+---
+
+## Canlıda kapalı — tekrar deploy gereksiz
+
+Aşağıdakiler bilinen iyi sürümde (**web v248 + backend v249**) **canlıda** kabul edilir.
+
+### Altyapı
+- PostgreSQL, Redis, Nginx, **MinIO** — container’lar healthy
+
+### Platform
+- Ayarlar anayasası (v26–v29)
+- Kullanıcı davet + geçici şifre
+- Sol menü (`PanelSidebar`) + rol kılavuzu (v233+)
 - KVKK / sözleşme onay modalı
 - Tanımlar Merkezi hub
-- Eskalasyon geri linki (v29)
+
+### v248 (web) + v249 (backend) paketleri
+- Dashboard **iskeleti** (şablon birebir değil — P1)
+- Hasar dosyası detay — sigortalı / adres / ihbar
+- HASAR Graph delta otomatik kurtarma
+- Gelen kutusu inbound ingest build fix (`ef87cdb`)
+- Operational access grants
+- Global arama genişletmesi
+
+### Önceki dalgalardan canlı (özet)
+- Müşteri modülü UX (v76–v79, Mustafa PASS)
+- Finans rolleri, mobil portal, carilerim (v223)
+- Oturum güvenliği (v227–v232)
+- IDOR scope, bakım modu (v225)
+- Gelen kutusu çekirdek + dosya açma modal (v110+)
+- Harita pinleri (v125+)
+- Mobil giriş UX (v126–v127)
+- Tedarikçi dış kaynak arama Faz 2–3
+- Personel özlük, eksper/sigorta/broker portalları
+- PayTR kod yolu (`/odeme/[token]`)
 
 ---
 
-*Sonraki adım: Mustafa hangi B maddesinden başlamak istediğini seçer; her deploy `DEPLOY_GUVENLIK_PROTOKOLU` ile yapılır.*
+## Önerilen sıradaki adım (11 Temmuz 2026)
+
+1. **P1 — Admin dashboard şablon paketi** (web-only, tek dalga): mockup → kabul kriteri → kod → yerel önizleme → Mustafa PASS → deploy
+2. **P2 — Dosya sorumlusu şablon** (P1 kapandıktan sonra veya paralel mockup onayı)
+3. **D2 backfill** (ops, 15 dk): SELECT → onay → UPDATE
+4. **A paketi** (deploy yok): tek 30 dk oturum — A3 gelen kutusu + A6 harita öncelik
+5. **B paketi:** PayTR canlı **veya** CRM — P1 bitene kadar ertele
+
+---
+
+## İlgili belgeler
+
+| Belge | Amaç |
+|-------|------|
+| `DEPLOY_GECMISI.md` | Deploy kronolojisi + canlı durum özeti |
+| `deploy/manifests/KNOWN_GOOD_IMAGES.json` | Bilinen iyi / rollback |
+| `docs/project-governance/canli-kabul/CHECKLIST.md` | Modül kabul |
+| `BACKLOG.md` | Manuel test listesi *(bazı ⬜ satırlar güncel değil)* |
+
+---
+
+*Deploy sonrası güncelleme: 10 Temmuz 2026 — v249 backend-only tamamlandı; envanter üç kategoriye ayrıldı.*
