@@ -1,13 +1,13 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v257-brand-globe-weekly-compact",
-  "description": "Web-only: Dar menüde kurumsal küre (meridyen-globe-square), Haftalık Performans compact layout",
+  "label": "v258-weekly-performance-compact",
+  "description": "Web-only: Haftalık Performans compact widget; dar menüye dokunulmadı (v256 sidebar)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v254-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v257-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v258-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v256-amd64",
