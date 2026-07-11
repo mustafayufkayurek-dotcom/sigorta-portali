@@ -290,7 +290,7 @@ function DosyaSayfaUstu({
       <DosyaBilgileriDetay
         claim={claim}
         onClaimUpdated={onClaimUpdated}
-        initialOpen={focusSigortali}
+        initialOpen={focusSigortali || !!claim.latestRepairReport?.id}
         repairReportId={claim.latestRepairReport?.id}
       />
     </div>

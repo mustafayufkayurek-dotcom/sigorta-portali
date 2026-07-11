@@ -239,7 +239,14 @@ export function DosyaBilgileriDetay({
   }, [repairReportId]);
 
   const fields = buildDosyaBilgileriFields(claim, reportSummary);
-  const subtitle = buildDosyaBilgileriSubtitle(claim);
+  const subtitleParts: string[] = [];
+  const hasarNedeni = resolveHasarNedeni(claim, reportSummary);
+  if (hasarNedeni !== '—') subtitleParts.push(hasarNedeni);
+  const quickRepair = resolveQuickRepairSummary(reportSummary);
+  if (quickRepair !== '—') subtitleParts.push(quickRepair);
+  const baseSubtitle = buildDosyaBilgileriSubtitle(claim);
+  if (baseSubtitle) subtitleParts.push(baseSubtitle);
+  const subtitle = subtitleParts.join(' · ');
   const compactFields = fields.filter((field) => !field.wide);
   const wideFields = fields.filter((field) => field.wide);
   const insuredMissing = !claim.insuredName?.trim() && resolveHasarInsuredName(claim) === '—';

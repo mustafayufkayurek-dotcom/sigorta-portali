@@ -822,7 +822,7 @@ function PanelSidebar({
   return (
     <aside
       className={`z-30 hidden h-full shrink-0 flex-col self-stretch overflow-hidden border-r border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 ease-in-out md:flex ${
-        collapsed ? 'w-[88px]' : 'w-[286px]'
+        collapsed ? 'w-[92px]' : 'w-[286px]'
       }`}
     >
       <PanelSidebarBrand

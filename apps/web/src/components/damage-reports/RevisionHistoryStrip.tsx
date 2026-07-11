@@ -60,7 +60,13 @@ export function RevisionHistoryStrip({
       .finally(() => setLoading(false));
   }, [reportId]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className={embedded ? 'mt-4 pt-4 border-t border-slate-100 px-4 pb-3' : 'p-5'}>
+        <p className="text-xs text-slate-400">Revizyon Geçmişi yükleniyor…</p>
+      </div>
+    );
+  }
   if (!items || items.length === 0) return null;
 
   const fmtD = (d: string) =>

@@ -15,29 +15,22 @@ type PanelSidebarBrandProps = {
 };
 
 /**
- * Sidebar üst marka — kompakt tek satır (ONAYLI_UI_CHECKLIST S1/S2).
- * Dar: küre + chevron aynı hizada; geniş: tam logo + chevron köşede.
+ * Sidebar üst marka — logo ve chevron yan yana (üst üste binmez).
  */
 export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelSidebarBrandProps) {
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
 
   return (
     <div
-      className={`panel-sidebar-brand ${collapsed ? 'panel-sidebar-brand--collapsed' : 'panel-sidebar-brand--expanded'}`}
+      className={`panel-sidebar-brand flex items-center gap-0.5 ${
+        collapsed ? 'panel-sidebar-brand--collapsed' : 'panel-sidebar-brand--expanded'
+      }`}
     >
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        className="panel-sidebar-brand-toggle absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 shrink-0"
-        aria-label={toggleLabel}
-        title={toggleLabel}
-      >
-        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
-
       <Link
         href={href}
-        className={`panel-sidebar-brand-link ${collapsed ? 'panel-sidebar-brand-link--collapsed' : 'panel-sidebar-brand-link--expanded'}`}
+        className={`panel-sidebar-brand-link min-w-0 flex-1 ${
+          collapsed ? 'panel-sidebar-brand-link--collapsed' : 'panel-sidebar-brand-link--expanded'
+        }`}
         title="Panel ana sayfa"
       >
         {collapsed ? (
@@ -63,6 +56,16 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
           />
         )}
       </Link>
+
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        className="panel-sidebar-brand-toggle mr-0.5 h-6 w-6 shrink-0"
+        aria-label={toggleLabel}
+        title={toggleLabel}
+      >
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
     </div>
   );
 }
