@@ -16,18 +16,7 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel, formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
-
-function resolveHasarInsuredName(claim: {
-  insuredName?: string | null;
-  customer?: { fullName?: string | null; firstName?: string | null; lastName?: string | null } | null;
-}): string {
-  if (claim.insuredName?.trim()) return toTitleCaseTR(claim.insuredName.trim());
-  const customer = claim.customer;
-  const composed = [customer?.firstName, customer?.lastName].filter(Boolean).join(' ').trim()
-    || customer?.fullName?.trim()
-    || '';
-  return composed ? toTitleCaseTR(composed) : '—';
-}
+import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +126,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:operasyon-v2', TABLE_COLUMNS);
 
   const [claims, setClaims] = useState<any[]>([]);
   const [claimsTotal, setClaimsTotal] = useState(0);

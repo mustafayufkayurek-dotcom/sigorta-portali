@@ -17,6 +17,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair-report-status';
+import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 
@@ -526,10 +527,7 @@ function ClaimFilesPageContent() {
           <div className="grid gap-3 p-3 md:hidden">
             {visibleClaims.map((claim: any) => {
               const customerName = claim.insuranceCompany?.name ?? '—';
-              const insuredName = claim.customer?.fullName ?? claim.customer?.companyName
-                ?? ((claim.customer?.firstName || claim.customer?.lastName)
-                  ? `${claim.customer.firstName ?? ''} ${claim.customer.lastName ?? ''}`.trim()
-                  : '—');
+              const insuredName = resolveHasarInsuredName(claim);
               const revCount = pendingRevisionMap[claim.id] ?? 0;
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
               const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
@@ -609,10 +607,7 @@ function ClaimFilesPageContent() {
               <tbody className="table-body">
                 {visibleClaims.map((claim: any) => {
                   const customerName = claim.insuranceCompany?.name ?? '—';
-                  const insuredName = claim.customer?.fullName ?? claim.customer?.companyName
-                    ?? ((claim.customer?.firstName || claim.customer?.lastName)
-                      ? `${claim.customer.firstName ?? ''} ${claim.customer.lastName ?? ''}`.trim()
-                      : '—');
+                  const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
                   const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;

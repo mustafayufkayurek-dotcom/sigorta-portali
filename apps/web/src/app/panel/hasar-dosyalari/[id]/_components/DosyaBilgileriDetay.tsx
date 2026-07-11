@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import axios from 'axios';
+import { API, authHeader } from '@/utils/api';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
+import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Düşük',
@@ -21,18 +24,6 @@ function formatPriority(priority: string | null | undefined): string {
   if (!priority) return '—';
   const key = String(priority).trim().toLowerCase();
   return PRIORITY_LABELS[key] ?? toTitleCaseTR(priority);
-}
-
-function resolveInsuredDisplayName(claim: any): string | null {
-  if (claim.insuredName?.trim()) {
-    return toTitleCaseTR(claim.insuredName.trim());
-  }
-  const customer = claim.customer;
-  if (!customer) return null;
-  const entityType = String(customer.entityType ?? customer.type ?? '').trim().toLowerCase();
-  if (entityType === 'corporate') return null;
-  if (customer.fullName?.trim()) return toTitleCaseTR(customer.fullName.trim());
-  return null;
 }
 
 function formatPropertyAddress(claim: any): string | null {
@@ -62,10 +53,10 @@ export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
     supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
   }
   if (claim.productBranch?.trim()) {
-    supplementary.push({ label: 'Ürün Branşı', value: formatDisplayLabel(claim.productBranch.trim()) });
+    supplementary.push({ label: 'Ürün Branşı', value: toTitleCaseTR(claim.productBranch.trim()) });
   }
   if (claim.lossType?.trim()) {
-    supplementary.push({ label: 'Hasar Konusu', value: formatDisplayLabel(claim.lossType.trim()) });
+    supplementary.push({ label: 'Hasar Konusu', value: toTitleCaseTR(claim.lossType.trim()) });
   }
   if (claim.sourceChannel?.trim()) {
     supplementary.push({ label: 'Kaynak Kanal', value: toTitleCaseTR(claim.sourceChannel.trim()) });
@@ -74,10 +65,8 @@ export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
     supplementary.push({ label: 'Dosya Tipi', value: toTitleCaseTR(claim.fileType.trim()) });
   }
 
-  const insuredName = resolveInsuredDisplayName(claim);
-  if (insuredName) {
-    supplementary.push({ label: 'Sigortalı Ad Soyad', value: insuredName, wide: true });
-  }
+  const insuredName = resolveHasarInsuredName(claim);
+  supplementary.push({ label: 'Sigortalı Ad Soyad', value: insuredName, wide: true });
 
   const propertyAddress = formatPropertyAddress(claim);
   if (propertyAddress) {
@@ -108,13 +97,77 @@ function buildDosyaBilgileriSubtitle(claim: any): string {
   return parts.join(' · ');
 }
 
+function InsuredNameEditor({
+  claimId,
+  onSaved,
+}: {
+  claimId: string;
+  onSaved: (insuredName: string) => void;
+}) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const save = async () => {
+    const name = toTitleCaseTR(value.trim());
+    if (!name) {
+      setError('Sigortalı adı soyadı girin');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      await axios.patch(`${API}/claim-files/${claimId}`, { insuredName: name }, { headers: authHeader() });
+      onSaved(name);
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e)
+        ? e.response?.data?.message ?? e.message
+        : 'Kaydedilemedi';
+      setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+      <p className="text-[11px] text-amber-900">Sigortalı adı kayıtlı değil — lütfen ekleyin.</p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Sigortalı adı soyadı"
+          className="flex-1 min-w-[180px] rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800"
+        />
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+      </div>
+      {error && <p className="text-[11px] text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 /** Üst bantta özet altında açılır dosya detayı — tüm sekmelerde görünür */
-export function DosyaBilgileriDetay({ claim }: { claim: any }) {
+export function DosyaBilgileriDetay({
+  claim,
+  onClaimUpdated,
+}: {
+  claim: any;
+  onClaimUpdated?: (patch: Partial<any>) => void;
+}) {
   const [open, setOpen] = useState(false);
   const fields = buildDosyaBilgileriFields(claim);
   const subtitle = buildDosyaBilgileriSubtitle(claim);
   const compactFields = fields.filter((field) => !field.wide);
   const wideFields = fields.filter((field) => field.wide);
+  const insuredMissing = !claim.insuredName?.trim() && resolveHasarInsuredName(claim) === '—';
 
   return (
     <div className="border-t border-slate-100">
@@ -133,6 +186,14 @@ export function DosyaBilgileriDetay({ claim }: { claim: any }) {
       </button>
       {open && (
         <div className="px-4 pb-3 pt-0 border-t border-slate-100 bg-slate-50/40">
+          {insuredMissing && onClaimUpdated && (
+            <div className="pt-3">
+              <InsuredNameEditor
+                claimId={claim.id}
+                onSaved={(insuredName) => onClaimUpdated({ insuredName })}
+              />
+            </div>
+          )}
           {compactFields.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-3 pt-3">
               {compactFields.map((field) => (

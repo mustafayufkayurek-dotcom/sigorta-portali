@@ -477,6 +477,30 @@ export class ClaimFilesService {
     };
   }
 
+  private async resolveInsuredNameForCreate(
+    explicit: string | null,
+    customerId: string | null,
+  ): Promise<string | null> {
+    const trimmed = explicit?.trim();
+    if (trimmed) return trimmed;
+
+    if (!customerId) return null;
+
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { entityType: true, fullName: true, firstName: true, lastName: true },
+    });
+    if (!customer) return null;
+
+    const entityType = String(customer.entityType ?? '').trim().toLowerCase();
+    if (entityType === 'corporate') return null;
+
+    const composed = [customer.firstName, customer.lastName].filter(Boolean).join(' ').trim()
+      || customer.fullName?.trim()
+      || '';
+    return composed || null;
+  }
+
   async create(
     data: any,
     requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
@@ -529,6 +553,14 @@ export class ClaimFilesService {
     if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
     if (!productBranch) throw new BadRequestException('Ürün branşı zorunludur');
     if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
+
+    const insuredName = await this.resolveInsuredNameForCreate(
+      typeof rest.insuredName === 'string' ? rest.insuredName : null,
+      rest.customerId ?? null,
+    );
+    if (sourceChannel !== 'expert_portal' && !insuredName) {
+      throw new BadRequestException('Sigortalı adı soyadı zorunludur');
+    }
 
     let propertyAddressId = rest.propertyAddressId ?? null;
     const propertyAddressText = typeof data.propertyAddress === 'string' ? data.propertyAddress.trim() : '';
@@ -592,6 +624,7 @@ export class ClaimFilesService {
       const created = await this.prisma.claimFile.create({
         data: {
           ...rest,
+          insuredName,
           assignedAdjusterId,
           assignedOfficeUserId,
           insuranceCompanyId,

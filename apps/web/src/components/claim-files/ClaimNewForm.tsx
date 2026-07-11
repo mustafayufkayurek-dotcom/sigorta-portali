@@ -433,7 +433,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         notificationDate: ihbarIso,
         priority: 'normal',
         description: description || undefined,
-        insuredName: insuredName.trim() ? toTitleCaseTR(insuredName.trim()) : undefined,
+        insuredName: toTitleCaseTR(insuredName.trim()),
         customerId: customerId || undefined,
         propertyAddressId,
       };

@@ -176,10 +176,12 @@ function DosyaSayfaUstu({
   claim,
   onBack,
   onOpenRaporlarTab,
+  onClaimUpdated,
 }: {
   claim: any;
   onBack: () => void;
   onOpenRaporlarTab?: () => void;
+  onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const adres = claim.propertyAddress
     ? [
@@ -277,7 +279,7 @@ function DosyaSayfaUstu({
         </div>
       )}
 
-      <DosyaBilgileriDetay claim={claim} />
+      <DosyaBilgileriDetay claim={claim} onClaimUpdated={onClaimUpdated} />
     </div>
   );
 }
@@ -921,6 +923,7 @@ export default function ClaimFileDetailPage() {
         claim={claim}
         onBack={() => router.push('/panel/hasar-dosyalari')}
         onOpenRaporlarTab={() => setActiveGroup('raporlar')}
+        onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
       />
 
       {canEditFieldSurvey && (
