@@ -13,13 +13,14 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
-import VendorQuoteModal from '@/components/damage-reports/VendorQuoteModal';
+import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
   buildVendorQuoteMetrajData,
   type VendorQuoteData,
 } from '@/components/damage-reports/VendorQuotePopover';
-import { LEGAL_NOTE_TEMPLATES } from '@/constants/legal-note-templates';
+import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
+import { resolveRepairReportExpertName } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -44,26 +45,54 @@ function normalizeLocationLabel(value: string): string {
   return trimmed ? toTitleCaseTR(trimmed) : trimmed;
 }
 
-function formatLocationLabel(value: string): { formatted: string; warning?: string } {
+function formatLocationLabel(value: string): { formatted: string; warning?: string; valid: boolean } {
   const normalized = normalizeLocationLabel(value);
-  if (!normalized) return { formatted: normalized };
-  if (normalized.includes(' - ')) return { formatted: normalized };
+  if (!normalized) return { formatted: normalized, valid: true };
+  if (normalized.includes(' - ')) return { formatted: normalized, valid: true };
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length === 1) {
     return {
       formatted: `${words[0]} - Genel`,
       warning: 'Mahal formatı "Kelime1 - Kelime2" olmalıdır; otomatik düzenlendi.',
+      valid: false,
     };
   }
   const splitAt = Math.max(1, words.length - 1);
   return {
     formatted: `${words.slice(0, splitAt).join(' ')} - ${words.slice(splitAt).join(' ')}`,
-    warning: words.length > 1 ? 'Mahal formatı "Kelime1 - Kelime2" olmalıdır; otomatik düzenlendi.' : undefined,
+    warning: 'Mahal formatı "Kelime1 - Kelime2" olmalıdır; otomatik düzenlendi.',
+    valid: false,
   };
 }
 
 function validateAndFormatLocation(value: string): string {
   return formatLocationLabel(value).formatted;
+}
+
+function isValidLocationFormat(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return trimmed.includes(' - ') || formatLocationLabel(trimmed).formatted.includes(' - ');
+}
+
+const DEFAULT_DETECTION_SCOPES = [
+  'Sigortalı Konut',
+  'Ortak Alan',
+  'Depo',
+  'Dükkan',
+  'Ofis',
+] as const;
+
+function formatDetectionScopeLabel(value: string): string {
+  const trimmed = normalizeLocationLabel(value);
+  return trimmed ? toTitleCaseTR(trimmed) : trimmed;
+}
+
+function rowSortKey(item: { metrajData?: unknown; location?: string | null; workGroupId?: string | null; workGroup?: { name?: string | null } | null }) {
+  const scope = readMetrajDetectionScope(item.metrajData);
+  const loc = item.location ?? '';
+  const wg = item.workGroup?.name ?? item.workGroupId ?? '';
+  return `${scope}\0${loc}\0${wg}`;
 }
 
 function readMetrajDetectionScope(metrajData: unknown): string {
@@ -73,17 +102,12 @@ function readMetrajDetectionScope(metrajData: unknown): string {
 }
 
 function sortReportItems(items: any[]): any[] {
-  return [...items].sort((a, b) => {
-    const aScope = readMetrajDetectionScope(a.metrajData);
-    const bScope = readMetrajDetectionScope(b.metrajData);
-    if (aScope !== bScope) return aScope.localeCompare(bScope, 'tr');
-    const aLoc = a.location ?? '';
-    const bLoc = b.location ?? '';
-    if (aLoc !== bLoc) return aLoc.localeCompare(bLoc, 'tr');
-    const aWg = a.workGroup?.name ?? '';
-    const bWg = b.workGroup?.name ?? '';
-    return aWg.localeCompare(bWg, 'tr');
-  });
+  return [...items].sort((a, b) => rowSortKey(a).localeCompare(rowSortKey(b), 'tr'));
+}
+
+function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: any[]): string {
+  const wg = workGroups.find((w: any) => w.id === row.workGroupId)?.name ?? row.workGroupId ?? '';
+  return `${row.detectionScope}\0${row.location}\0${wg}`;
 }
 
 function recomputeReportTotals(items: any[]) {
@@ -119,13 +143,14 @@ type FileExpertInfo = {
 
 function resolveFileExpertDisplay(report: any): FileExpertInfo {
   if (!report) return { name: '—', missing: true };
-  const assignedInspector = report.claimFile?.assignedInspectorVendor?.name?.trim();
-  const expertOffice = report.expertOffice?.companyName?.trim();
-  const inspector = report.inspectorName?.trim();
-
-  if (assignedInspector) return { name: assignedInspector, missing: false };
-  if (expertOffice) return { name: expertOffice, missing: false };
-  if (inspector) return { name: inspector, missing: false };
+  const name = resolveRepairReportExpertName({
+    inspectorName: report.inspectorName,
+    expertOffice: report.expertOffice,
+    claimFile: report.claimFile,
+  });
+  if (name) return { name, missing: false };
+  const vendor = report.claimFile?.assignedInspectorVendor?.name?.trim();
+  if (vendor) return { name: vendor, missing: false };
   return { name: 'Atanmamış', missing: true };
 }
 
@@ -331,14 +356,39 @@ function FinancialSummaryBar({
   );
 }
 
-// ─── İş Grubu Bazlı Kar Özeti ─────────────────────────────────────────────────
+// ─── Dosya Bütçesi (iş grubu özeti) ───────────────────────────────────────────
 interface WorkGroupProfitRow {
   workGroupId: string;
   workGroupName: string;
+  vendorSummary: string;
   supplierTotal: number;
   salesTotal: number;
   profit: number;
   profitPct: number;
+}
+
+function summarizeWorkGroupVendors(items: any[], wgId: string): string {
+  const preferred = new Set<string>();
+  const alternatives = new Set<string>();
+  for (const item of items) {
+    const itemWgId = item.workGroupId ?? item.workGroup?.id ?? '__unknown__';
+    if (itemWgId !== wgId) continue;
+    const quotes = parseVendorQuoteData(item.metrajData);
+    if (quotes.preferredVendorName?.trim()) {
+      preferred.add(formatDisplayLabel(quotes.preferredVendorName.trim()));
+    }
+    for (const alt of quotes.alternatives ?? []) {
+      if (alt.vendorName?.trim()) {
+        alternatives.add(formatDisplayLabel(alt.vendorName.trim()));
+      }
+    }
+  }
+  if (preferred.size === 0 && alternatives.size === 0) return '—';
+  const parts: string[] = [];
+  if (preferred.size > 0) parts.push(Array.from(preferred).join(' · '));
+  const altOnly = Array.from(alternatives).filter((n) => !Array.from(preferred).includes(n));
+  if (altOnly.length > 0) parts.push(`Alt: ${altOnly.join(' · ')}`);
+  return parts.join(' | ');
 }
 
 function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroups: any[] }) {
@@ -375,6 +425,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
       result.push({
         workGroupId: wgId,
         workGroupName: wg?.name ?? (wgId === '__unknown__' ? 'Belirtilmemiş' : wgId),
+        vendorSummary: summarizeWorkGroupVendors(items, wgId),
         supplierTotal: totals.supplierTotal,
         salesTotal: totals.salesTotal,
         profit,
@@ -435,7 +486,8 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               <thead>
                 <tr className="bg-slate-50 text-slate-400 text-[10px] tracking-wide">
                   <th className="text-center px-3 py-2 rounded-l-lg">İş Grubu</th>
-                  <th className="text-right px-3 py-2">Tedarikçi (TDR)</th>
+                  <th className="text-left px-3 py-2">Tedarikçi</th>
+                  <th className="text-right px-3 py-2">Maliyet</th>
                   <th className="text-right px-3 py-2">Satış Fiyatı</th>
                   <th className="text-right px-3 py-2">Kar</th>
                   <th className="text-right px-3 py-2 rounded-r-lg">Kar %</th>
@@ -445,6 +497,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                 {rows.map((row) => (
                   <tr key={row.workGroupId} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-3 py-2.5 font-medium text-slate-800">{formatDisplayLabel(row.workGroupName)}</td>
+                    <td className="px-3 py-2.5 text-left text-slate-600 text-[11px] leading-snug max-w-[180px]">{row.vendorSummary}</td>
                     <td className="px-3 py-2.5 text-right text-slate-500">{fmtCurrency(row.supplierTotal)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtCurrency(row.salesTotal)}</td>
                     <td className={`px-3 py-2.5 text-right font-semibold ${row.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -463,6 +516,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                   <td className="px-3 py-3.5 text-white text-xs font-semibold rounded-bl-lg">
                     {grandProfit < 0 ? '⚠ Zarar' : 'Genel Toplam'}
                   </td>
+                  <td className="px-3 py-3.5" />
                   <td className="px-3 py-3.5 text-right text-slate-200 text-sm font-bold">{fmtCurrency(grandSupplier)}</td>
                   <td className="px-3 py-3.5 text-right text-white text-sm font-bold">{fmtCurrency(grandSales)}</td>
                   <td className="px-3 py-3.5 text-right text-sm font-bold text-red-200">{fmtCurrency(grandProfit)}</td>
@@ -1176,6 +1230,50 @@ function emptyRow(location = ''): RowState {
   };
 }
 
+function resolveMemorySupplierPrice(data: VendorQuoteData): string | null {
+  const alts = data.alternatives ?? [];
+  const preferred = data.preferredVendorName?.trim();
+  if (preferred) {
+    const match = alts.find((a) => a.vendorName.trim() === preferred && a.unitPrice.trim());
+    if (match) return match.unitPrice.trim();
+  }
+  const first = alts.find((a) => a.unitPrice.trim());
+  return first?.unitPrice.trim() ?? null;
+}
+
+function persistVendorMemoryFromRow(row: RowState) {
+  if (!row.workGroupId || !row.jobDescription.trim()) return;
+  const price = row.supplierUnitPrice?.trim();
+  const vendor = row.vendorQuotes?.preferredVendorName?.trim();
+  if (!price || price === '0') return;
+  const alts = row.vendorQuotes?.alternatives?.length
+    ? row.vendorQuotes.alternatives
+    : vendor ? [{ vendorName: vendor, unitPrice: price }] : [{ vendorName: '', unitPrice: price }];
+  writeVendorPriceMemory(row.workGroupId, row.jobDescription, {
+    preferredVendorName: vendor,
+    alternatives: alts,
+  });
+}
+
+function mergeVendorMemoryIntoRow(row: RowState): RowState {
+  if (!row.workGroupId || !row.jobDescription.trim()) return row;
+  const stored = readVendorPriceMemory(row.workGroupId, row.jobDescription);
+  if (!stored) return row;
+  const hasQuotes = Boolean(
+    row.vendorQuotes?.preferredVendorName?.trim()
+    || row.vendorQuotes?.alternatives?.some((a) => a.vendorName.trim() || a.unitPrice.trim()),
+  );
+  const next: RowState = {
+    ...row,
+    vendorQuotes: hasQuotes ? row.vendorQuotes : stored,
+  };
+  const memoryPrice = resolveMemorySupplierPrice(stored);
+  if (memoryPrice && (!next.supplierUnitPrice || next.supplierUnitPrice === '0')) {
+    next.supplierUnitPrice = memoryPrice;
+  }
+  return next;
+}
+
 // ─── Hesap Makinesi Input ─────────────────────────────────────────────────────
 function CalcInput({
   value,
@@ -1226,6 +1324,11 @@ function CalcInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === 'Tab') {
       commit(draft);
+      if (onKeyDown) {
+        onKeyDown(e);
+        return;
+      }
+      if (e.key === 'Enter') e.preventDefault();
     } else if (e.key === 'Escape') {
       setEditing(false);
       setDraft(value);
@@ -1303,11 +1406,79 @@ function LocationInput({
           onBlur?.();
         }}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={onKeyDown}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab' || e.key === 'Enter') {
+            onKeyDown?.(e);
+            return;
+          }
+          onKeyDown?.(e);
+        }}
       />
       <datalist id={listId}>
         {suggestions.map((loc) => (
           <option key={loc} value={loc} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+// ─── Tespit — öneri listesi (Sigortalı Konut vb.)
+function DetectionScopeInput({
+  value,
+  suggestions,
+  onChange,
+  onRegister,
+  className,
+  placeholder = 'Sigortalı Konut...',
+  'data-cell': dataCell,
+  tabIndex,
+  onFocus,
+  onBlur,
+  onKeyDown,
+}: {
+  value: string;
+  suggestions: string[];
+  onChange: (v: string) => void;
+  onRegister: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+  'data-cell'?: string;
+  tabIndex?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const listId = React.useId();
+  return (
+    <>
+      <input
+        type="text"
+        data-cell={dataCell}
+        className={className}
+        value={value}
+        placeholder={placeholder}
+        list={listId}
+        tabIndex={tabIndex}
+        onFocus={onFocus}
+        onBlur={() => {
+          const formatted = formatDetectionScopeLabel(value);
+          if (formatted && formatted !== value) onChange(formatted);
+          if (formatted) onRegister(formatted);
+          onBlur?.();
+        }}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab' || e.key === 'Enter') {
+            onKeyDown?.(e);
+            return;
+          }
+          onKeyDown?.(e);
+        }}
+      />
+      <datalist id={listId}>
+        {suggestions.map((scope) => (
+          <option key={scope} value={scope} />
         ))}
       </datalist>
     </>
@@ -1335,9 +1506,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [zamOraniUndoSnapshot, setZamOraniUndoSnapshot] = useState<{ id: string; salesUnitPrice: string; supplierUnitPrice: string }[] | null>(null);
   const [zamApplying, setZamApplying] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+  const addingDraftRef = useRef<RowState>(emptyRow());
   const [descriptionErrors, setDescriptionErrors] = useState<Set<string>>(new Set());
 
-  // locationList'i items'tan türet ve güncel tut
+  useEffect(() => {
+    addingDraftRef.current = addingRow;
+  }, [addingRow]);
+
+  // locationList + tespit önerileri
+  const [detectionScopeList, setDetectionScopeList] = useState<string[]>([...DEFAULT_DETECTION_SCOPES]);
   useEffect(() => {
     const locs = Array.from(new Set(
       items
@@ -1346,6 +1523,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         .map((l: string) => normalizeLocationLabel(l)),
     )) as string[];
     setLocationList(locs);
+    const scopes = Array.from(new Set([
+      ...DEFAULT_DETECTION_SCOPES,
+      ...items.map((i: any) => readMetrajDetectionScope(i.metrajData)).filter(Boolean),
+    ])) as string[];
+    setDetectionScopeList(scopes);
   }, [items]);
 
   const addLocationIfNew = (loc: string) => {
@@ -1353,9 +1535,44 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     setLocationList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
   };
 
+  const addDetectionScopeIfNew = (scope: string) => {
+    const normalized = formatDetectionScopeLabel(scope);
+    if (!normalized) return;
+    setDetectionScopeList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
+  };
+
   useEffect(() => {
-    setRows(sortReportItems(items).map((item) => ({ ...rowFromItem(item), _id: item.id, _isDirty: false, _savedFlash: false })));
+    const draft = addingDraftRef.current;
+    setRows((prev) => {
+      const sorted = sortReportItems(items);
+      return sorted.map((item) => {
+        const existing = prev.find((r) => r._id === item.id);
+        if (existing?._isDirty) return existing;
+        return {
+          ...rowFromItem(item),
+          _id: item.id,
+          _isDirty: false,
+          _savedFlash: existing?._savedFlash ?? false,
+        };
+      });
+    });
+    if (draft.location?.trim() || draft.detectionScope?.trim() || addingDirty) {
+      setAddingRow((prev) => ({
+        ...prev,
+        location: draft.location?.trim() ? draft.location : prev.location,
+        detectionScope: draft.detectionScope?.trim() ? draft.detectionScope : prev.detectionScope,
+        workGroupId: draft.workGroupId || prev.workGroupId,
+        damageCategory: draft.damageCategory ?? prev.damageCategory,
+        unit: draft.unit || prev.unit,
+        damageTypeId: draft.damageTypeId || prev.damageTypeId,
+      }));
+    }
   }, [items]);
+
+  const displayRows = useMemo(
+    () => [...rows].sort((a, b) => rowStateSortKey(a, workGroups).localeCompare(rowStateSortKey(b, workGroups), 'tr')),
+    [rows, workGroups],
+  );
 
   useEffect(() => {
     const dirtyCount = rows.filter((r) => r._isDirty).length + (addingDirty ? 1 : 0);
@@ -1483,7 +1700,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   };
 
   const updateRowCategory = (id: string, patch: Partial<RowState>) => {
-    setRows((prev) => prev.map((r) => r._id === id ? { ...r, ...patch } : r));
+    setRows((prev) => prev.map((r) => r._id === id ? { ...r, ...patch, _isDirty: true } : r));
   };
 
   const revertRow = (id: string) => {
@@ -1500,9 +1717,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       alert('Kaydetmek için İş Grubu ve İş Tanımı zorunludur.');
       return;
     }
+    if (row.location.trim() && !isValidLocationFormat(row.location)) {
+      alert('Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
+      focusCell(rows.findIndex((r) => r._id === id), 'location');
+      return;
+    }
+    addingDraftRef.current = { ...addingDraftRef.current, ...addingRow };
     setSavingId(id);
     try {
       await onSave(id, buildRowPayload(row));
+      persistVendorMemoryFromRow(row);
       setRows((prev) => prev.map((r) => r._id === id ? { ...r, _isDirty: false, _savedFlash: true } : r));
       setTimeout(() => setRows((prev) => prev.map((r) => r._id === id ? { ...r, _savedFlash: false } : r)), 900);
     } finally { setSavingId(null); }
@@ -1527,27 +1751,52 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const saveAddingRow = async () => {
     if (!addingRow.workGroupId || !addingRow.jobDescription) return;
+    if (addingRow.location.trim() && !isValidLocationFormat(addingRow.location)) {
+      alert('Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
+      focusCell('new', 'location');
+      return;
+    }
     setAddingSaving(true);
+    const draftSnapshot = { ...addingRow };
+    addingDraftRef.current = draftSnapshot;
+    const preservedLocation = draftSnapshot.location.trim()
+      || rows[rows.length - 1]?.location?.trim()
+      || '';
+    const preservedDetection = draftSnapshot.detectionScope.trim()
+      || rows[rows.length - 1]?.detectionScope?.trim()
+      || '';
     try {
-      const isLumpsum = addingRow.pricingType === 'lumpsum';
+      const rowToSave = mergeVendorMemoryIntoRow(draftSnapshot);
+      const isLumpsum = rowToSave.pricingType === 'lumpsum';
       await onAdd({
-        workGroupId: addingRow.workGroupId,
-        location: addingRow.location ? validateAndFormatLocation(addingRow.location) : undefined,
-        jobDescription: addingRow.jobDescription,
-        description: addingRow.description || undefined,
-        quantity: parseFloat(addingRow.quantity) || 1,
-        unit: addingRow.unit,
-        salesUnitPrice: parseFloat(addingRow.salesUnitPrice) || 0,
-        supplierUnitPrice: parseFloat(addingRow.supplierUnitPrice) || 0,
-        pricingType: addingRow.pricingType,
-        lumpSumPrice: isLumpsum ? parseFloat(addingRow.lumpSumPrice) || 0 : undefined,
-        damageCategory: addingRow.damageCategory,
-        damageTypeId: addingRow.damageTypeId || undefined,
-        metrajData: buildRowPayload(addingRow).metrajData,
+        workGroupId: rowToSave.workGroupId,
+        location: rowToSave.location ? validateAndFormatLocation(rowToSave.location) : undefined,
+        jobDescription: rowToSave.jobDescription,
+        description: rowToSave.description || undefined,
+        quantity: parseFloat(rowToSave.quantity) || 1,
+        unit: rowToSave.unit,
+        salesUnitPrice: parseFloat(rowToSave.salesUnitPrice) || 0,
+        supplierUnitPrice: parseFloat(rowToSave.supplierUnitPrice) || 0,
+        pricingType: rowToSave.pricingType,
+        lumpSumPrice: isLumpsum ? parseFloat(rowToSave.lumpSumPrice) || 0 : undefined,
+        damageCategory: rowToSave.damageCategory,
+        damageTypeId: rowToSave.damageTypeId || undefined,
+        metrajData: buildRowPayload(rowToSave).metrajData,
       });
-      setAddingRow({ ...emptyRow(addingRow.location), detectionScope: addingRow.detectionScope });
+      persistVendorMemoryFromRow(rowToSave);
+      const nextAddingRow = {
+        ...emptyRow(preservedLocation),
+        detectionScope: preservedDetection,
+        damageCategory: rowToSave.damageCategory,
+        workGroupId: rowToSave.workGroupId,
+        unit: rowToSave.unit,
+        damageTypeId: rowToSave.damageTypeId,
+      };
+      addingDraftRef.current = nextAddingRow;
+      setAddingRow(nextAddingRow);
       setAddingDirty(false);
-      focusCell('new', 'damageCategory');
+      setActiveCell({ rowIdx: 'new', col: 'jobDescription' });
+      setTimeout(() => focusCell('new', 'jobDescription'), 0);
     } finally { setAddingSaving(false); }
   };
 
@@ -1563,54 +1812,37 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const quickAddRow = useCallback(async () => {
     if (!isEditable || quickAdding) return;
 
-    const carryLocation = await persistAddingRowIfNeeded();
-
-    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
-    let workGroupId = lastRow?.workGroupId ?? '';
-    const damageCategory: 'bina' | 'esya' = lastRow?.damageCategory ?? 'bina';
-    const location = carryLocation || lastRow?.location || addingRow.location || '';
-    const detectionScope = lastRow?.detectionScope || addingRow.detectionScope || '';
-    const unit = lastRow?.unit ?? 'm²';
-    const pricingType = lastRow?.pricingType ?? 'unit';
-    const damageTypeId = lastRow?.damageTypeId ?? '';
-
-    if (!workGroupId) {
-      workGroupId = filterWorkGroupsByCategory(workGroups, damageCategory)[0]?.id ?? '';
-    }
-
-    if (!workGroupId) {
-      setAddingRow({
-        ...emptyRow(location),
-        detectionScope,
-        damageCategory,
-        unit,
-        jobDescription: 'Yeni Kalem',
-      });
-      setAddingDirty(true);
-      setTimeout(() => focusCell('new', 'workGroup'), 100);
-      return;
-    }
-
     setQuickAdding(true);
     try {
-      await onAdd({
-        workGroupId,
-        location: location || undefined,
-        jobDescription: 'Yeni Kalem',
-        quantity: 1,
-        unit,
-        salesUnitPrice: 0,
-        supplierUnitPrice: 0,
-        pricingType,
-        damageCategory,
-        damageTypeId: damageTypeId || undefined,
-      });
-      setAddingRow({ ...emptyRow(location), detectionScope });
+      await saveAllDirtyRows();
+      await persistAddingRowIfNeeded();
+
+      const lastRow = displayRows.length > 0 ? displayRows[displayRows.length - 1] : null;
+      const location = addingRow.location.trim()
+        || lastRow?.location?.trim()
+        || '';
+      const detectionScope = addingRow.detectionScope.trim()
+        || lastRow?.detectionScope?.trim()
+        || '';
+      const nextAddingRow = {
+        ...emptyRow(location),
+        detectionScope,
+        damageCategory: (lastRow?.damageCategory ?? addingRow.damageCategory ?? 'bina') as 'bina' | 'esya',
+        workGroupId: lastRow?.workGroupId ?? addingRow.workGroupId ?? '',
+        unit: lastRow?.unit ?? addingRow.unit ?? 'm²',
+        damageTypeId: lastRow?.damageTypeId ?? addingRow.damageTypeId ?? '',
+        pricingType: lastRow?.pricingType ?? addingRow.pricingType ?? 'unit',
+      };
+      addingDraftRef.current = nextAddingRow;
+      setAddingRow(nextAddingRow);
       setAddingDirty(false);
+      setActiveCell({ rowIdx: 'new', col: lastRow?.workGroupId ? 'jobDescription' : 'workGroup' });
+      const focusCol = lastRow?.workGroupId ? 'jobDescription' : 'workGroup';
+      setTimeout(() => focusCell('new', focusCol), 0);
     } finally {
       setQuickAdding(false);
     }
-  }, [isEditable, quickAdding, rows, workGroups, onAdd, addingRow, addingDirty]);
+  }, [isEditable, quickAdding, displayRows, addingRow, saveAllDirtyRows, persistAddingRowIfNeeded]);
 
   useImperativeHandle(ref, () => ({
     quickAddRow,
@@ -1685,15 +1917,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   };
 
   const getCellTabIndex = (rowIdx: number | 'new', col: string) => {
-    const colIdx = COLS.indexOf(col);
-    const rIdx = rowIdx === 'new' ? rows.length : rowIdx as number;
-    return rIdx * COLS.length + colIdx + 1;
+    if (activeCell?.rowIdx === rowIdx && activeCell?.col === col) return 0;
+    return -1;
   };
 
   const focusCell = (rowIdx: number | 'new', col: string) => {
+    setActiveCell({ rowIdx, col });
     const cellKey = rowIdx === 'new' ? `new-${col}` : `${rowIdx}-${col}`;
-    const el = tableRef.current?.querySelector<HTMLElement>(`[data-cell="${cellKey}"]`);
-    el?.focus();
+    requestAnimationFrame(() => {
+      const el = tableRef.current?.querySelector<HTMLElement>(`[data-cell="${cellKey}"]`);
+      el?.focus();
+    });
   };
 
   const handleCellKeyDown = (e: React.KeyboardEvent, rowIdx: number | 'new', col: string, rowId?: string) => {
@@ -1707,14 +1941,28 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     const editableCOLS = COLS.filter((c) => c !== 'total');
     const colIdx = editableCOLS.indexOf(col);
 
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (rowIdx === 'new') {
+        if (addingDirty) void saveAddingRow();
+        return;
+      }
+      if (rowId) void saveRow(rowId);
+      return;
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (rowId) saveRow(rowId);
-      if (rowIdx === 'new') saveAddingRow();
-      // Enter: sağdaki sütuna geç; son sütundaysa alt satırın ilk sütununa
+      if (rowIdx === 'new') {
+        const canSave = addingDirty && addingRow.workGroupId && addingRow.jobDescription.trim();
+        if (canSave && colIdx === editableCOLS.length - 1) {
+          void saveAddingRow();
+          return;
+        }
+      }
       if (colIdx < editableCOLS.length - 1) {
         focusCell(rowIdx, editableCOLS[colIdx + 1]);
-      } else if (rowIdx !== 'new') {
+      } else {
         const nextRowIdx = (rowIdx as number) + 1;
         if (nextRowIdx < rows.length) focusCell(nextRowIdx, editableCOLS[0]);
         else focusCell('new', editableCOLS[0]);
@@ -1780,6 +2028,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       }
     }
   };
+
+  const tableColSpan = (isEditable ? 1 : 0) + 9 + (viewMode === 'internal' ? 1 : 0) + 1 + (isEditable ? 1 : 0);
 
   const cellCls = (rowIdx: number | 'new', col: string, editable: boolean) => {
     const isActive = activeCell?.rowIdx === rowIdx && activeCell?.col === col;
@@ -1873,16 +2123,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
             <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">
-                <span title="Tedarikçi Fiyatı" className="cursor-help underline decoration-dashed underline-offset-2">Tdr Fiyatı</span>
+              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28">
+                Maliyet
               </th>
             )}
             <th className="px-2 py-2 text-right text-slate-500 font-medium w-28">Toplam</th>
-            {isEditable && <th className="w-24 px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
+            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {rows.map((row, rowIdx) => {
+          {displayRows.flatMap((row, rowIdx) => {
             const total = calcTotal(row);
             const isSaving = savingId === row._id;
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
@@ -1891,7 +2141,43 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const supplierVal = parseFloat(row.supplierUnitPrice) || 0;
             const salesVal = parseFloat(row.salesUnitPrice) || 0;
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
-            return (
+
+            const prev = rowIdx > 0 ? displayRows[rowIdx - 1] : null;
+            const prevWgName = prev ? (workGroups.find((wg: any) => wg.id === prev.workGroupId)?.name ?? '') : '';
+            const scopeLabel = row.detectionScope ? formatDisplayLabel(row.detectionScope) : 'Belirtilmemiş';
+            const locLabel = row.location ? formatDisplayLabel(row.location) : 'Belirtilmemiş';
+            const wgLabel = wgName ? formatDisplayLabel(wgName) : 'Belirtilmemiş';
+            const headerNodes: React.ReactNode[] = [];
+
+            if (!prev || (prev.detectionScope || '') !== (row.detectionScope || '')) {
+              headerNodes.push(
+                <tr key={`g-scope-${row._id}`} className="bg-indigo-50/70 border-t-2 border-indigo-100">
+                  <td colSpan={tableColSpan} className="px-3 py-1.5 text-[10px] font-semibold text-indigo-800">
+                    Tespit: {scopeLabel}
+                  </td>
+                </tr>,
+              );
+            }
+            if (!prev || (prev.location || '') !== (row.location || '') || (prev.detectionScope || '') !== (row.detectionScope || '')) {
+              headerNodes.push(
+                <tr key={`g-loc-${row._id}`} className="bg-slate-100/80">
+                  <td colSpan={tableColSpan} className="px-4 py-1 text-[10px] font-medium text-slate-700">
+                    Mahal/Bölge: {locLabel}
+                  </td>
+                </tr>,
+              );
+            }
+            if (!prev || prevWgName !== wgName || (prev.location || '') !== (row.location || '')) {
+              headerNodes.push(
+                <tr key={`g-wg-${row._id}`} className="bg-slate-50/90">
+                  <td colSpan={tableColSpan} className="px-5 py-0.5 text-[10px] text-slate-600">
+                    İş Grubu: {wgLabel}
+                  </td>
+                </tr>,
+              );
+            }
+
+            const dataRow = (
               <tr key={row._id} className={`group transition-colors ${row._savedFlash ? 'saved-flash' : rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/10 ${row._isDirty ? 'border-l-2 border-l-amber-400' : ''}`}>
                 {isEditable && (
                   <td className="w-8 px-1 text-center border-r border-slate-100">
@@ -1907,7 +2193,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       value={row.damageCategory}
                       tabIndex={getCellTabIndex(rowIdx, 'damageCategory')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'damageCategory' })}
-                      onBlur={() => { setActiveCell(null); void saveRow(row._id); }}
+                      onBlur={() => { void saveRow(row._id); }}
                       onChange={(e) => {
                         updateRowCategory(row._id, {
                           damageCategory: e.target.value as 'bina' | 'esya',
@@ -1929,20 +2215,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* Tespit */}
                 <td className={tdCls(rowIdx, 'detectionScope')}>
                   {isEditable ? (
-                    <input
+                    <DetectionScopeInput
                       data-cell={`${rowIdx}-detectionScope`}
                       className={cellCls(rowIdx, 'detectionScope', true)}
                       value={row.detectionScope}
-                      placeholder="Tespit..."
+                      suggestions={detectionScopeList}
+                      onChange={(v) => updateRow(row._id, 'detectionScope', v)}
+                      onRegister={addDetectionScopeIfNew}
                       tabIndex={getCellTabIndex(rowIdx, 'detectionScope')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'detectionScope' })}
-                      onBlur={() => {
-                        setActiveCell(null);
-                        const titleVal = toTitleCaseTR(row.detectionScope.trim());
-                        if (titleVal !== row.detectionScope) updateRow(row._id, 'detectionScope', titleVal);
-                        void saveRow(row._id);
-                      }}
-                      onChange={(e) => updateRow(row._id, 'detectionScope', e.target.value)}
+                      onBlur={() => { if (row._isDirty) void saveRow(row._id); }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'detectionScope', row._id)}
                     />
                   ) : (
@@ -1961,7 +2243,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onRegister={addLocationIfNew}
                       tabIndex={getCellTabIndex(rowIdx, 'location')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'location' })}
-                      onBlur={() => { setActiveCell(null); if (row._isDirty) void saveRow(row._id); }}
+                      onBlur={() => { if (row._isDirty) void saveRow(row._id); }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'location', row._id)}
                     />
                   ) : (
@@ -1978,7 +2260,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       workGroups={filterWorkGroupsByCategory(workGroups, row.damageCategory)}
                       tabIndex={getCellTabIndex(rowIdx, 'workGroup')}
                       onFocus={() => { setActiveCell({ rowIdx, col: 'workGroup' }); loadSubGroups(row.workGroupId); }}
-                      onBlur={() => { setActiveCell(null); saveRow(row._id); }}
+                      onBlur={() => { saveRow(row._id); }}
                       onSelect={(workGroupId) => {
                         updateRow(row._id, 'workGroupId', workGroupId);
                         updateRow(row._id, 'jobDescription', '');
@@ -2007,11 +2289,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         workGroupId={row.workGroupId}
                         tabIndex={getCellTabIndex(rowIdx, 'jobDescription')}
                         onFocus={() => setActiveCell({ rowIdx, col: 'jobDescription' })}
-                        onBlur={() => { setActiveCell(null); saveRow(row._id); }}
+                        onBlur={() => { saveRow(row._id); }}
                         onSelect={(v, unit) => {
-                          updateRow(row._id, 'jobDescription', v);
-                          if (unit) updateRow(row._id, 'unit', unit);
-                          setTimeout(() => saveRow(row._id), 50);
+                          setRows((prev) => prev.map((r) => {
+                            if (r._id !== row._id) return r;
+                            const merged = mergeVendorMemoryIntoRow({
+                              ...r,
+                              jobDescription: v,
+                              unit: unit ?? r.unit,
+                            });
+                            return { ...merged, _isDirty: true };
+                          }));
                         }}
                         onAddNew={createSubGroup}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'jobDescription', row._id)}
@@ -2035,7 +2323,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       tabIndex={getCellTabIndex(rowIdx, 'description')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'description' })}
                       onBlur={() => {
-                        setActiveCell(null);
                         const titleVal = toTitleCaseTR(row.description.trim());
                         if (titleVal !== row.description) updateRow(row._id, 'description', titleVal);
                         if (!row.description.trim()) {
@@ -2091,7 +2378,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       value={row.unit}
                       tabIndex={getCellTabIndex(rowIdx, 'unit')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'unit' })}
-                      onBlur={() => { setActiveCell(null); saveRow(row._id); }}
+                      onBlur={() => { saveRow(row._id); }}
                       onChange={(e) => updateRow(row._id, 'unit', e.target.value)}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'unit', row._id)}
                     >
@@ -2128,7 +2415,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {viewMode === 'internal' && (
                   <td className={`${tdCls(rowIdx, 'supplierUnitPrice')} text-right ${isLoss ? 'bg-red-50/30' : ''}`}>
                     {isEditable ? (
-                      <div className="relative flex flex-col items-end justify-center h-10 px-1 gap-0.5">
+                      <div className="relative flex items-center justify-end h-10 px-1">
                         <CalcInput
                           data-cell={`${rowIdx}-supplierUnitPrice`}
                           className={`${cellCls(rowIdx, 'supplierUnitPrice', true)} text-right pr-8 text-slate-500 ${isLoss ? '!ring-2 !ring-inset !ring-orange-400 !rounded' : ''}`}
@@ -2139,23 +2426,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           onFocus={() => setActiveCell({ rowIdx, col: 'supplierUnitPrice' })}
                           onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'supplierUnitPrice', row._id)}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
-                        <button
-                          type="button"
-                          title="Tedarikçi Karşılaştır"
-                          onClick={() => setVendorModalRowId(row._id)}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
-                        >
-                          Karşılaştır
-                        </button>
+                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                      </div>
+                    ) : (
+                      <div className="px-2 py-2 text-right">
+                        <span className="text-xs text-slate-500 block">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
                         {row.vendorQuotes?.preferredVendorName && (
-                          <span className="text-[9px] text-slate-500 truncate max-w-full leading-tight">
+                          <span className="text-[9px] text-slate-400 block truncate">
                             {formatDisplayLabel(row.vendorQuotes.preferredVendorName)}
                           </span>
                         )}
                       </div>
-                    ) : (
-                      <span className="px-2 text-xs text-slate-500 block py-3 text-right">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
                     )}
                   </td>
                 )}
@@ -2170,32 +2451,36 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   )}
                 </td>
                 {isEditable && (
-                  <td className="w-20 border-l border-slate-100 text-center px-1">
-                    <div className="flex items-center justify-center gap-0.5">
-                      <button
-                        type="button"
-                        disabled={isSaving || !row._isDirty}
-                        onClick={() => void saveRow(row._id)}
-                        className="h-7 w-7 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
-                        title="Kaydet"
-                      >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                      </button>
-                      {row._isDirty ? (
+                  <td className="min-w-[108px] border-l border-slate-100 text-center px-1 py-1">
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-0.5">
                         <button
                           type="button"
-                          disabled={isSaving}
+                          tabIndex={-1}
+                          disabled={isSaving || !row._isDirty}
+                          onClick={() => void saveRow(row._id)}
+                          className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
+                          title="Satırı Kaydet (Ctrl+Enter)"
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                          ↵
+                        </button>
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          disabled={isSaving || !row._isDirty}
                           onClick={() => revertRow(row._id)}
-                          className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center transition-colors"
+                          className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
                           title="Geri Al"
                         >
                           <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
                         </button>
-                      ) : (
                         <button
                           type="button"
+                          tabIndex={-1}
+                          disabled={isSaving || row._isDirty}
                           onClick={() => onDelete(row._id)}
-                          className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
+                          className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
                           title="Sil"
                         >
                           <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
@@ -2203,12 +2488,26 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                             <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                           </svg>
                         </button>
+                      </div>
+                      {viewMode === 'internal' && (
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setVendorModalRowId(row._id)}
+                          className="w-full px-1 py-0.5 rounded text-[10px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 truncate max-w-[96px]"
+                          title={row.vendorQuotes?.preferredVendorName ? formatDisplayLabel(row.vendorQuotes.preferredVendorName) : 'Tedarikçi fiyatlarını karşılaştır'}
+                        >
+                          {row.vendorQuotes?.preferredVendorName
+                            ? formatDisplayLabel(row.vendorQuotes.preferredVendorName)
+                            : 'Tedarikçi'}
+                        </button>
                       )}
                     </div>
                   </td>
                 )}
               </tr>
             );
+            return [...headerNodes, dataRow];
           })}
 
           {/* Yeni Kalem Satırı */}
@@ -2225,7 +2524,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   value={addingRow.damageCategory}
                   tabIndex={getCellTabIndex('new', 'damageCategory')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'damageCategory' })}
-                  onBlur={() => setActiveCell(null)}
+                  onBlur={() => undefined}
                   onChange={(e) => { setAddingRow((p) => ({ ...p, damageCategory: e.target.value as 'bina' | 'esya', workGroupId: '', jobDescription: '' })); setAddingDirty(true); }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'damageCategory')}
                 >
@@ -2235,19 +2534,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* Tespit */}
               <td className={tdCls('new', 'detectionScope')}>
-                <input
+                <DetectionScopeInput
                   data-cell="new-detectionScope"
                   className={cellCls('new', 'detectionScope', true)}
                   value={addingRow.detectionScope}
-                  placeholder="Tespit..."
+                  suggestions={detectionScopeList}
+                  onChange={(v) => { setAddingRow((p) => ({ ...p, detectionScope: v })); setAddingDirty(true); }}
+                  onRegister={addDetectionScopeIfNew}
                   tabIndex={getCellTabIndex('new', 'detectionScope')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'detectionScope' })}
-                  onBlur={() => {
-                    setActiveCell(null);
-                    const tv = toTitleCaseTR(addingRow.detectionScope.trim());
-                    if (tv !== addingRow.detectionScope) setAddingRow((p) => ({ ...p, detectionScope: tv }));
-                  }}
-                  onChange={(e) => { setAddingRow((p) => ({ ...p, detectionScope: e.target.value })); setAddingDirty(true); }}
+                  onBlur={() => undefined}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'detectionScope')}
                 />
               </td>
@@ -2262,7 +2558,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   onRegister={addLocationIfNew}
                   tabIndex={getCellTabIndex('new', 'location')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'location' })}
-                  onBlur={() => setActiveCell(null)}
+                  onBlur={() => undefined}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'location')}
                 />
               </td>
@@ -2275,7 +2571,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   workGroups={filterWorkGroupsByCategory(workGroups, addingRow.damageCategory)}
                   tabIndex={getCellTabIndex('new', 'workGroup')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'workGroup' })}
-                  onBlur={() => setActiveCell(null)}
+                  onBlur={() => undefined}
                   onSelect={(workGroupId) => {
                     setAddingRow((p) => ({ ...p, workGroupId, jobDescription: '', unit: 'm²' }));
                     setAddingDirty(true);
@@ -2300,9 +2596,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     workGroupId={addingRow.workGroupId}
                     tabIndex={getCellTabIndex('new', 'jobDescription')}
                     onFocus={() => setActiveCell({ rowIdx: 'new', col: 'jobDescription' })}
-                    onBlur={() => setActiveCell(null)}
+                    onBlur={() => undefined}
                     onSelect={(v, unit) => {
-                      setAddingRow((p) => ({ ...p, jobDescription: v, unit: unit ?? p.unit }));
+                      setAddingRow((p) => mergeVendorMemoryIntoRow({ ...p, jobDescription: v, unit: unit ?? p.unit }));
                       setAddingDirty(true);
                     }}
                     onAddNew={createSubGroup}
@@ -2319,7 +2615,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   placeholder={addingDirty && !addingRow.description.trim() ? 'Zorunlu!' : 'Açıklama...'}
                   tabIndex={getCellTabIndex('new', 'description')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'description' })}
-                  onBlur={() => { setActiveCell(null); const tv = toTitleCaseTR(addingRow.description.trim()); if (tv !== addingRow.description) setAddingRow((p) => ({ ...p, description: tv })); }}
+                  onBlur={() => { const tv = toTitleCaseTR(addingRow.description.trim()); if (tv !== addingRow.description) setAddingRow((p) => ({ ...p, description: tv })); }}
                   onChange={(e) => { setAddingRow((p) => ({ ...p, description: e.target.value })); setAddingDirty(true); }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'description')}
                 />
@@ -2355,7 +2651,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   value={addingRow.unit}
                   tabIndex={getCellTabIndex('new', 'unit')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'unit' })}
-                  onBlur={() => setActiveCell(null)}
+                  onBlur={() => undefined}
                   onChange={(e) => { setAddingRow((p) => ({ ...p, unit: e.target.value })); setAddingDirty(true); }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'unit')}
                 >
@@ -2381,7 +2677,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               {/* TDR (Tedarikçi Fiyatı) — CalcInput */}
               {viewMode === 'internal' && (
                 <td className={`${tdCls('new', 'supplierUnitPrice')} text-right`}>
-                  <div className="relative flex items-center">
+                  <div className="relative flex items-center justify-end h-10 px-1">
                     <CalcInput
                       data-cell="new-supplierUnitPrice"
                       className={`${cellCls('new', 'supplierUnitPrice', true)} text-right pr-8 text-slate-500`}
@@ -2392,7 +2688,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onFocus={() => setActiveCell({ rowIdx: 'new', col: 'supplierUnitPrice' })}
                       onKeyDown={(e) => handleCellKeyDown(e, 'new', 'supplierUnitPrice')}
                     />
-                    <span className="absolute right-2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
                   </div>
                 </td>
               )}
@@ -2404,7 +2700,34 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   </span>
                 )}
               </td>
-              {isEditable && <td className="w-20 border-l border-slate-100" />}
+              {isEditable && (
+                <td className="min-w-[108px] border-l border-slate-100 text-center px-1 py-1">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      disabled={addingSaving || !addingDirty || !addingRow.workGroupId || !addingRow.jobDescription.trim()}
+                      onClick={() => void saveAddingRow()}
+                      className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
+                      title="Satırı Kaydet (Ctrl+Enter)"
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      ↵
+                    </button>
+                    {viewMode === 'internal' && (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setVendorModalRowId('new')}
+                        className="w-full px-1 py-0.5 rounded text-[10px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 truncate max-w-[96px]"
+                        title="Tedarikçi fiyatlarını karşılaştır"
+                      >
+                        Tedarikçi
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           )}
         </tbody>
@@ -2413,13 +2736,21 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <button
             type="button"
+            tabIndex={-1}
             onClick={() => { void quickAddRow(); }}
             className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
           >
             + Kalem Ekle
           </button>
           <p className="text-[10px] text-slate-400">
-            {addingSaving ? 'Kaydediliyor...' : <>Yeni satırda <span className="font-medium">Enter</span> ile kaydedin.</>}
+            {addingSaving ? 'Kaydediliyor...' : (
+              <>
+                <span className="font-medium">Enter</span> sonraki hücre ·{' '}
+                <span className="font-medium">Ctrl+Enter</span> satırı kaydeder ·{' '}
+                <span className="font-medium">Tab</span> tablo içinde kalır ·{' '}
+                Mahal: Kelime1 - Kelime2
+              </>
+            )}
           </p>
         </div>
       )}
@@ -2446,6 +2777,30 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
     {/* Tedarikçi Karşılaştırma Modal */}
     {vendorModalRowId !== null && (() => {
+      if (vendorModalRowId === 'new') {
+        return (
+          <VendorQuoteModal
+            open
+            onClose={() => setVendorModalRowId(null)}
+            data={addingRow.vendorQuotes}
+            workGroupId={addingRow.workGroupId}
+            jobDescription={addingRow.jobDescription}
+            onChange={(next) => { setAddingRow((p) => ({ ...p, vendorQuotes: next })); setAddingDirty(true); }}
+            onApplyPrice={(price, vendorName) => {
+              setAddingRow((p) => ({
+                ...p,
+                supplierUnitPrice: price,
+                vendorQuotes: {
+                  ...p.vendorQuotes,
+                  preferredVendorName: vendorName.trim() ? normalizeLocationLabel(vendorName) : p.vendorQuotes.preferredVendorName,
+                },
+              }));
+              setAddingDirty(true);
+              setVendorModalRowId(null);
+            }}
+          />
+        );
+      }
       const activeRow = rows.find((r) => r._id === vendorModalRowId);
       if (!activeRow) return null;
       return (
@@ -2516,33 +2871,49 @@ function EmergencyReportEditor({
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
   const [uploading, setUploading] = useState(false);
+  const [localReport, setLocalReport] = useState(report);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const findingsTextareaRef = useRef<HTMLTextAreaElement>(null);
   const itemsTableRef = useRef<EditableItemsTableHandle>(null);
   const claimPath = `/panel/hasar-dosyalari/${claimId}`;
 
-  const isEditable = report.status === 'draft' || report.status === 'rejected';
+  useEffect(() => {
+    setLocalReport(report);
+  }, [report]);
 
-  const totalSupplierCost = report.items?.reduce((s: number, i: any) => s + (i.supplierTotal ?? 0), 0) ?? 0;
-  const totalSalesAmount = report.items?.reduce((s: number, i: any) => s + (i.salesTotal ?? 0), 0) ?? 0;
+  const isEditable = localReport.status === 'draft' || localReport.status === 'rejected';
+
+  const totalSupplierCost = localReport.items?.reduce((s: number, i: any) => s + (i.supplierTotal ?? 0), 0) ?? 0;
+  const totalSalesAmount = localReport.items?.reduce((s: number, i: any) => s + (i.salesTotal ?? 0), 0) ?? 0;
   const grossProfit = totalSalesAmount - totalSupplierCost;
   const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
   const handleAddItem = async (data: any) => {
-    await axios.post(`${API}/repair-reports/${reportId}/items`, data, { headers: authHeader() });
-    onReload();
+    const res = await axios.post(`${API}/repair-reports/${reportId}/items`, data, { headers: authHeader() });
+    const newItem = res.data.data;
+    setLocalReport((prev: any) => {
+      const items = sortReportItems([...(prev?.items ?? []), newItem]);
+      return { ...prev, items, ...recomputeReportTotals(items) };
+    });
   };
 
   const handleUpdateItem = async (itemId: string, data: any) => {
-    await axios.put(`${API}/repair-report-items/${itemId}`, data, { headers: authHeader() });
-    onReload();
+    const res = await axios.put(`${API}/repair-report-items/${itemId}`, data, { headers: authHeader() });
+    const updatedItem = res.data.data;
+    setLocalReport((prev: any) => {
+      const items = sortReportItems((prev?.items ?? []).map((item: any) => item.id === itemId ? updatedItem : item));
+      return { ...prev, items, ...recomputeReportTotals(items) };
+    });
   };
 
   const handleDeleteItem = async (itemId: string) => {
     if (!confirm('Bu kalemi silmek istediğinizden emin misiniz?')) return;
     try {
       await axios.delete(`${API}/repair-report-items/${itemId}`, { headers: authHeader() });
-      onReload();
+      setLocalReport((prev: any) => {
+        const items = (prev?.items ?? []).filter((item: any) => item.id !== itemId);
+        return { ...prev, items, ...recomputeReportTotals(items) };
+      });
     } catch (e) { console.error(e); }
   };
 
@@ -2550,14 +2921,21 @@ function EmergencyReportEditor({
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploading(true);
+    const uploaded: any[] = [];
     try {
       for (const file of files) {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', 'damage');
-        await axios.post(`${API}/repair-reports/${reportId}/images`, fd, { headers: authHeader() });
+        const res = await axios.post(`${API}/repair-reports/${reportId}/images`, fd, { headers: authHeader() });
+        if (res.data?.data) uploaded.push(res.data.data);
       }
-      onReload();
+      if (uploaded.length > 0) {
+        setLocalReport((prev: any) => ({
+          ...prev,
+          images: [...(prev?.images ?? []), ...uploaded],
+        }));
+      }
     } catch (err: any) {
       alert(err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
@@ -2570,7 +2948,10 @@ function EmergencyReportEditor({
   const handleDeleteImage = async (imageId: string) => {
     try {
       await axios.delete(`${API}/report-images/${imageId}`, { headers: authHeader() });
-      onReload();
+      setLocalReport((prev: any) => ({
+        ...prev,
+        images: (prev?.images ?? []).filter((img: any) => img.id !== imageId),
+      }));
     } catch (e) { console.error(e); }
   };
 
@@ -2686,10 +3067,10 @@ function EmergencyReportEditor({
           >
             <EditableItemsTable
               ref={itemsTableRef}
-              items={report.items ?? []}
+              items={localReport.items ?? []}
               workGroups={workGroups}
               damageTypes={[]}
-              reportType={report.reportType ?? 'emergency'}
+              reportType={localReport.reportType ?? 'emergency'}
               isEditable={isEditable}
               viewMode={viewMode}
               onSave={handleUpdateItem}
@@ -2963,12 +3344,31 @@ export default function RepairReportPage() {
     if (!reportId || !report) return;
     const editable = report.status === 'draft' || report.status === 'rejected';
     if (!editable) return;
+    const startedAt = new Date().toISOString();
     sessionStorage.setItem('report-write-started-at', JSON.stringify({
       reportId,
       claimFileId: claimId,
-      startedAt: new Date().toISOString(),
+      startedAt,
+      lastActivityAt: startedAt,
+      // Personel analitiği için ileride backend/BI tüketecek (B-21)
     }));
   }, [report, reportId, claimId]);
+
+  const touchWriteActivity = useCallback(() => {
+    lastWriteActivityRef.current = Date.now();
+    try {
+      const raw = sessionStorage.getItem('report-write-started-at');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { reportId?: string; startedAt?: string };
+      if (parsed.reportId !== reportId) return;
+      sessionStorage.setItem('report-write-started-at', JSON.stringify({
+        ...parsed,
+        reportId,
+        claimFileId: claimId,
+        lastActivityAt: new Date().toISOString(),
+      }));
+    } catch { /* ignore */ }
+  }, [reportId, claimId]);
 
   useEffect(() => {
     const tick = () => {
@@ -2995,8 +3395,8 @@ export default function RepairReportPage() {
   }, [reportId]);
 
   useEffect(() => {
-    lastWriteActivityRef.current = Date.now();
-  }, [pendingFields, dirtyItemCount]);
+    touchWriteActivity();
+  }, [pendingFields, dirtyItemCount, touchWriteActivity]);
 
   useEffect(() => {
     const editable = report?.status === 'draft' || report?.status === 'rejected';
@@ -3004,13 +3404,18 @@ export default function RepairReportPage() {
     const interval = window.setInterval(() => {
       const hasPending = Object.keys(pendingFields).length > 0;
       const idleMs = Date.now() - lastWriteActivityRef.current;
-      if (hasPending && idleMs >= 3 * 60 * 1000) {
+      if (hasPending && idleMs >= 2 * 60 * 1000) {
+        setShowSaveReminderModal(true);
+        lastWriteActivityRef.current = Date.now();
+      }
+      const hasDirtyItems = dirtyItemCount > 0;
+      if (!hasPending && hasDirtyItems && idleMs >= 3 * 60 * 1000) {
         setShowSaveReminderModal(true);
         lastWriteActivityRef.current = Date.now();
       }
     }, 30000);
     return () => window.clearInterval(interval);
-  }, [report?.status, pendingFields]);
+  }, [report?.status, pendingFields, dirtyItemCount]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -3271,6 +3676,7 @@ export default function RepairReportPage() {
   const handleUpdateField = (field: string, value: string) => {
     setPendingFields((prev) => ({ ...prev, [field]: value }));
     setReport((prev: any) => ({ ...prev, [field]: value }));
+    touchWriteActivity();
   };
 
   const handleSaveReport = async () => {
@@ -3291,7 +3697,8 @@ export default function RepairReportPage() {
     }
   };
 
-  const hasUnsavedChanges = Object.keys(pendingFields).length > 0;
+  const hasUnsavedReportFields = Object.keys(pendingFields).length > 0;
+  const hasUnsavedChanges = hasUnsavedReportFields;
 
   const handleCancelChanges = () => {
     setSessionCancelCount((n) => n + 1);
@@ -3364,23 +3771,29 @@ export default function RepairReportPage() {
       const fd = new FormData();
       fd.append('file', blob, `annotated-${imageId}.png`);
       fd.append('category', 'annotated');
-      await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
+      const res = await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
         headers: authHeader(),
       });
+      const uploaded = res.data?.data;
+      if (uploaded) {
+        setReport((prev: any) => ({
+          ...prev,
+          images: (prev?.images ?? []).map((img: any) => img.id === imageId ? { ...img, ...uploaded, hasAnnotation: true } : img),
+        }));
+      }
       setShowAnnotation(null);
-      load();
     } catch (e) {
       console.error(e);
-      // Fallback: try annotation endpoint if upload fails
       try {
         const reader = new FileReader();
         reader.onload = async (ev) => {
           await axios.put(`${API}/report-images/${imageId}/annotation`, { annotationData: ev.target?.result }, { headers: authHeader() });
           setShowAnnotation(null);
-          load();
         };
         reader.readAsDataURL(blob);
-      } catch (_) {}
+      } catch (_) {
+        alert('Anotasyon kaydedilemedi.');
+      }
     }
   };
 
@@ -3483,7 +3896,7 @@ export default function RepairReportPage() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button type="button" onClick={() => {
-          if (hasUnsavedChanges) {
+          if (hasUnsavedReportFields || dirtyItemCount > 0) {
             setShowSaveReminderModal(true);
             return;
           }
@@ -3695,9 +4108,10 @@ export default function RepairReportPage() {
           {[
             { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
+            { label: 'İhbar Tarihi', value: resolveIhbarTarihi(report.claimFile ?? {}) },
             { label: 'Hasar Konusu', value: resolveClaimIhbarKonusu(report.claimFile ?? {}) },
             { label: 'Sigortalı', value: insuredName },
-            { label: 'Dosya Eksperi', value: fileExpert.missing ? undefined : fileExpert.name },
+            { label: 'Dosya Eksperi', value: fileExpert.missing ? 'Atanmamış' : fileExpert.name },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
             {
               label: 'Hasar Nedeni',
@@ -3711,6 +4125,9 @@ export default function RepairReportPage() {
               <p className="text-sm font-medium text-slate-800">{f.value ?? '—'}</p>
             </div>
           ))}
+        </div>
+      <div className="mt-4">
+          <RevisionHistoryStrip reportId={reportId as string} embedded />
         </div>
         {report.reportType === 'multi' && (
           <div className="mt-4 pt-4 border-t border-slate-100">
@@ -3731,7 +4148,6 @@ export default function RepairReportPage() {
             )}
           </div>
         )}
-        <RevisionHistoryStrip reportId={reportId as string} embedded />
       </SectionCard>
 
       <SectionCard title="Hızlı Onarım Türü">
@@ -3943,7 +4359,7 @@ export default function RepairReportPage() {
         )}
       </SectionCard>
 
-      {/* İş Grubu Bazlı Kar Özeti — sadece iç görünümde */}
+      {/* Dosya Bütçesi — sadece tam görünümde */}
       {effectiveViewMode === 'internal' && !isFieldStaff && (
         <WorkGroupProfitSummary items={report.items ?? []} workGroups={workGroups} />
       )}
@@ -3996,7 +4412,13 @@ export default function RepairReportPage() {
       {/* Yasal Notlar */}
       <SectionCard title="Yasal Notlar ve Uyarılar">
         {isEditable && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <>
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              Sigorta şirketi ve sigortalıya gidecek PDF&apos;te yer alacak uyarılar: KDV ve fiyat geçerliliği, garanti süresi,
+              teminat/muafiyet sınırı, ön tespit bildirimi. Boş bırakırsanız PDF&apos;te sistem varsayılan metinleri kullanır;
+              özelleştirmek için şablonları veya «Önerilen Notları Ekle»yi kullanın.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
             {LEGAL_NOTE_TEMPLATES.map((tpl) => (
               <button
                 key={tpl.id}
@@ -4013,7 +4435,23 @@ export default function RepairReportPage() {
                 {tpl.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                const el = legalNotesRef.current;
+                if (!el) return;
+                el.value = buildSuggestedLegalNotesText();
+                handleUpdateField('legalNotes', el.value);
+              }}
+              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+            >
+              Önerilen Notları Ekle
+            </button>
           </div>
+          </>
+        )}
+        {!isEditable && !report.legalNotes?.trim() && (
+          <p className="text-xs text-slate-400 mb-2 italic">Bu raporda özel yasal not girilmemiş; PDF&apos;te varsayılan metinler basılır.</p>
         )}
         <textarea
           ref={legalNotesRef}
@@ -4026,8 +4464,16 @@ export default function RepairReportPage() {
         />
       </SectionCard>
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4">
-          <div className="hidden lg:flex items-center justify-center min-w-0 flex-1">
+        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-400 tabular-nums min-w-0">
+            {isEditable && writeElapsedLabel && (
+              <span>Süre: {writeElapsedLabel}</span>
+            )}
+            {isEditable && (
+              <span>Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}</span>
+            )}
+          </div>
+          <div className="flex items-center justify-center min-w-0">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 totalSupplierCost={report.totalSupplierCost}
@@ -4037,48 +4483,41 @@ export default function RepairReportPage() {
               />
             )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            {isEditable && writeElapsedLabel && (
-              <span className="hidden md:inline text-[10px] text-slate-500 tabular-nums">
-                Süre: {writeElapsedLabel}
-              </span>
-            )}
+          <div className="flex items-center justify-end gap-2 flex-shrink-0">
             {isEditable && (
-              <span className="hidden sm:inline text-[11px] text-slate-400 tabular-nums">
-                Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
+              <span className="lg:hidden text-[11px] text-slate-400 tabular-nums mr-1">
+                {writeElapsedLabel && `${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
               </span>
             )}
             {isEditable && (
               <>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (hasUnsavedChanges) {
-                      setShowSaveReminderModal(true);
-                      return;
-                    }
-                    handleCancelChanges();
-                  }}
+                  tabIndex={-1}
+                  onClick={() => handleCancelChanges()}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-500 text-slate-200 text-sm font-medium hover:bg-slate-800 transition-colors"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
-                  İptal
+                  İptal ({sessionCancelCount})
                 </button>
-                {hasUnsavedChanges && (
-                  <button
-                    type="button"
-                    onClick={handleSaveReport}
-                    disabled={saving}
-                    className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
-                  >
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    {saving ? 'Kaydediliyor...' : `Kaydet (${Object.keys(pendingFields).length})`}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={handleSaveReport}
+                  disabled={saving || !hasUnsavedReportFields}
+                  className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
+                    hasUnsavedReportFields
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                      : 'bg-slate-700 text-slate-400 cursor-default'
+                  } disabled:opacity-50`}
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  {saving ? 'Kaydediliyor...' : `Kaydet (${sessionSaveCount})`}
+                </button>
               </>
             )}
 
@@ -4691,7 +5130,15 @@ export default function RepairReportPage() {
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <h3 className="text-base font-semibold text-slate-800 mb-2">Kaydetmeyi Unutmayın</h3>
             <p className="text-sm text-slate-600 mb-4">
-              Raporda kaydedilmemiş değişiklikler var. Devam etmeden önce kaydetmek ister misiniz?
+              Raporda kaydedilmemiş değişiklikler var
+              {hasUnsavedReportFields && dirtyItemCount > 0
+                ? ' (metin alanları ve tablo satırları)'
+                : hasUnsavedReportFields
+                  ? ' (metin alanları)'
+                  : dirtyItemCount > 0
+                    ? ' (tablo satırları)'
+                    : ''}.
+              Yazımı tamamladıysanız kaydetmenizi öneririz.
             </p>
             <div className="flex flex-col gap-2">
               <button

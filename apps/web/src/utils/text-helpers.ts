@@ -1,4 +1,4 @@
-import { isInboundIhbarNoteText, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { isInboundIhbarNoteText, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 
 /**
  * Türkçe karakter destekli Title Case dönüştürücü.
@@ -144,17 +144,23 @@ export type ClaimIhbarKonusuSource = {
   departmentFileSubject?: { name?: string | null } | null;
 };
 
-/** İhbar konusu — yalnızca canonical ayar konusu veya eşlenmiş hasar türü */
+/** İhbar konusu — canonical ayar konusu veya eşlenmiş hasar türü (ihbar notu değil) */
 export function resolveClaimIhbarKonusu(claim: ClaimIhbarKonusuSource): string {
-  const subjectName =
+  const mappedLoss = mapInboundLossTypeToMeridyen(claim.lossType);
+  if (mappedLoss) return mappedLoss;
+
+  const subjectRaw =
     claim.claimSubject?.name?.trim()
     || claim.departmentFileSubject?.name?.trim();
-  if (subjectName && !isInboundIhbarNoteText(subjectName)) {
-    return formatDisplayLabel(subjectName);
+  if (subjectRaw && !isInboundIhbarNoteText(subjectRaw)) {
+    const mappedSubject =
+      mapInboundLossTypeToMeridyen(subjectRaw)
+      ?? mapInboundCategoryKnown(subjectRaw);
+    if (mappedSubject) return mappedSubject;
+    if (subjectRaw.length <= 40 && !subjectRaw.includes('\n')) {
+      return formatDisplayLabel(subjectRaw);
+    }
   }
-
-  const mapped = mapInboundLossTypeToMeridyen(claim.lossType);
-  if (mapped) return mapped;
 
   return '—';
 }

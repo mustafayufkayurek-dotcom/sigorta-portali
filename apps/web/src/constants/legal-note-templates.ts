@@ -22,3 +22,7 @@ export const LEGAL_NOTE_TEMPLATES: LegalNoteTemplate[] = [
     text: 'Bu rapor ön tespit niteliğindedir; nihai kapsam ve tutarlar onay sürecinde güncellenebilir.',
   },
 ];
+
+export function buildSuggestedLegalNotesText(): string {
+  return LEGAL_NOTE_TEMPLATES.map((tpl) => tpl.text).join('\n\n');
+}

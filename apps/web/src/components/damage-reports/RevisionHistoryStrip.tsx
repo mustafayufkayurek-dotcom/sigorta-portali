@@ -62,7 +62,7 @@ export function RevisionHistoryStrip({
 
   if (loading) {
     return (
-      <div className={embedded ? 'mt-4 pt-4 border-t border-slate-100 px-4 pb-3' : 'p-5'}>
+      <div className={embedded ? 'pt-3' : 'p-5'}>
         <p className="text-xs text-slate-400">Revizyon Geçmişi yükleniyor…</p>
       </div>
     );
@@ -87,25 +87,19 @@ export function RevisionHistoryStrip({
         : 'border-slate-200 bg-slate-50 text-slate-700';
 
   return (
-    <div
-      className={
-        embedded
-          ? 'mt-4 pt-4 border-t border-slate-100 px-4 pb-3'
-          : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'
-      }
-    >
+    <div className={embedded ? '' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>
       <div
-        className={`flex items-center justify-between mb-3 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}
+        className={`flex items-center justify-between mb-2 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}
       >
-        <h4 className="text-sm font-semibold text-slate-700">Revizyon Geçmişi</h4>
+        <h4 className="text-xs font-semibold text-slate-600">Revizyon Geçmişi</h4>
         <a
           href={`/panel/revizyon-talepleri?reportId=${reportId}`}
-          className="text-xs text-blue-600 hover:text-blue-700"
+          className="text-[11px] text-blue-600 hover:text-blue-700"
         >
           Tümünü Gör →
         </a>
       </div>
-      <div className="flex items-stretch gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
         {items.map((item, idx) => (
           <div key={item.id} className="flex items-center gap-2 shrink-0">
             <div

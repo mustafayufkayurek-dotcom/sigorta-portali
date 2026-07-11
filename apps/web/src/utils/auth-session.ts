@@ -111,6 +111,17 @@ export function initAuthStorage(): void {
       localStorage.removeItem(AUTH_PERSISTENCE_KEY);
     }
   }
+
+  // Tutarsız remember bayrağı — şifresiz girişi engelle
+  const persistence = localStorage.getItem(AUTH_PERSISTENCE_KEY);
+  if (persistence === 'remember' && !rememberPreferred) {
+    purgeOrphanLocalTokens();
+    localStorage.removeItem(AUTH_PERSISTENCE_KEY);
+  }
+  if (!rememberPreferred && persistence === 'session' && !sessionStorage.getItem('authSession')) {
+    purgeOrphanLocalTokens();
+    purgeSessionTokens();
+  }
 }
 
 export function getAuthPersistence(): AuthPersistence | null {

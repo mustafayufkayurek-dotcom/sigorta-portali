@@ -69,14 +69,27 @@ Tek tur canlı kabul: her madde için **Pass ☐** veya **Hayır ☐** işaretle
 
 ---
 
-## Bölüm C — Bilinen Eksikler (Deploy Dışı)
+## Bölüm C — Operasyon (Grup 3, 11 Temmuz 2026)
+
+| # | Madde | Durum |
+|---|-------|-------|
+| 1 | Operasyon → dosya tıklama 500 | `claim?.` koruması + API hata mesajı (403/404/500 ayrımı) |
+| 2 | İhbar konusu yanlış eşleşme / ihbar notu karışması | `resolveClaimIhbarKonusu` öncelik: eşlenmiş lossType; `isInboundIhbarNoteText` genişletildi; Hasar Nedeni artık claimSubject fallback kullanmaz |
+| 3 | Chrome yeniden girişte şifre sormama | Oturum modu: tutarsız remember bayrağı temizlenir; sessionStorage yoksa token silinir |
+| 4 | VAM/CAM KIRILMASI → Cam Kırılması | `mapInboundLossTypeToMeridyen` alias + vam/cam kir partial match |
+| 5 | Sütun yer değiştirme | `TableColumnPicker`: sürükle-bırak + ok tuşları (tüm PanelTable sayfaları) |
+| 6 | Sütun genişlik tutarsızlığı | `PanelTableColGroup` + çift tık satır içeriğine göre genişlik (`fitSamples`) |
+
+---
+
+## Bölüm D — Bilinen Eksikler (Deploy Dışı)
 
 Bu maddeler kontrol listesinde işaretlenebilir ancak **v277 öncesi deploy kapsamı dışındadır**:
 
 | Konu | Madde | Durum | Not |
 |------|-------|-------|-----|
-| Analytics | B-21 | ⏳ Sonra | `sessionStorage` `report-write-started-at` yazılır; backend/BI ve personel sayfası raporu yok (`BACKLOG.md`) |
-| Kaydet hatırlatma pop-up | B-19 | ⏳ Sonra | Rapor yazımı bitince modal henüz uygulanmadı |
+| Analytics | B-21 | ⏳ Sonra | `sessionStorage` `report-write-started-at` + `lastActivityAt` yazılır; personel sayfası analitiği için Mustafa notu alındı — backend/BI tüketimi bekliyor (`BACKLOG.md`) |
+| Kaydet hatırlatma pop-up | B-19 | ✅ v278 | 2 dk hareketsizlik + kaydedilmemiş rapor alanları → modal; Geri tuşunda da tetiklenir |
 | Finans tek kaynak | — | ⏳ Sonra | Finans özeti `FinansRaporOzeti` dosya detay, Finans sekmesi ve rapor alt bandında ayrı kopyalar; tek kaynak refaktörü bekliyor |
 
 ---

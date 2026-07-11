@@ -39,7 +39,10 @@ const LOSS_TYPE_ALIASES: Record<string, string> = {
   'cam kirilmasi': 'Cam Kırılması',
   'cam kırılması': 'Cam Kırılması',
   'cam kirigi': 'Cam Kırığı',
+  'cam kırığı': 'Cam Kırığı',
   'vam kirilmasi': 'Cam Kırılması',
+  'vam kırılması': 'Cam Kırılması',
+  'vam kirilmas': 'Cam Kırılması',
   'dahili su': 'Dahili Su',
   'su baskini': 'Su Baskını',
   'su baskını': 'Su Baskını',
@@ -100,8 +103,10 @@ export function mapInboundCategoryToMeridyen(raw?: string | null): string | unde
 export function isInboundIhbarNoteText(value?: string | null): boolean {
   const trimmed = value?.trim();
   if (!trimmed) return false;
+  if (/^gelen kutusu ihbar/i.test(trimmed)) return true;
   if (trimmed.length > 48) return true;
-  return /\b(mutfak|branş|brans|patlam|açıklama|aciklama|notu|tespit|hasar yeri|detay|sigortalı|sigortali)\b/i.test(trimmed);
+  if (/[.!?;:]/.test(trimmed) && trimmed.length > 24) return true;
+  return /\b(mutfak|branş|brans|patlam|açıklama|aciklama|notu|tespit|hasar yeri|detay|sigortalı|sigortali|dolap|dolabi|buzdolab|ankastre|tesisat ar|su kaç|sızınt|sizint)\b/i.test(trimmed);
 }
 
 export function mapInboundLossTypeToMeridyen(raw?: string | null): string | undefined {
@@ -111,7 +116,9 @@ export function mapInboundLossTypeToMeridyen(raw?: string | null): string | unde
   if (LOSS_TYPE_ALIASES[aliasKey]) return LOSS_TYPE_ALIASES[aliasKey];
   const category = mapInboundCategoryKnown(raw);
   if (category) return category;
-  if (aliasKey.includes('cam')) return 'Cam Kırılması';
+  if (aliasKey.includes('vam') && aliasKey.includes('kir')) return 'Cam Kırılması';
+  if (aliasKey.includes('cam') && aliasKey.includes('kir')) return 'Cam Kırılması';
+  if (aliasKey.includes('dahili') && aliasKey.includes('su')) return 'Dahili Su';
   return undefined;
 }
 

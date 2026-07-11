@@ -124,7 +124,7 @@ export function FinansRaporOzeti({
   /** financial-summary yanıtı; yoksa claim alanları kullanılır */
   summary?: FinansOzetSummary | null;
   onOpenFinansTab?: () => void;
-  /** Onarım raporu düzenleme sayfası — tab değiştirmek yerine doğrudan navigasyon */
+  /** Onarım raporu düzenleme sayfası — doğrudan navigasyon */
   reportEditHref?: string | null;
   /** Üst bant: yalnızca KPI ızgarası */
   compact?: boolean;

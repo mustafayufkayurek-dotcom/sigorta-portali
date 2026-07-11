@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { resolveRepairReportExpertName } from '@sigorta/shared';
 import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
@@ -48,13 +49,19 @@ function formatPropertyAddress(claim: any): string | null {
   return line || null;
 }
 
-function resolveDosyaEksperi(claim: any): string {
-  const vendorName = claim.assignedInspectorVendor?.name?.trim();
-  if (vendorName) return toTitleCaseTR(vendorName);
-  return '—';
+function resolveDosyaEksperi(claim: any, reportSummary?: any | null): string {
+  const name = resolveRepairReportExpertName({
+    claimFile: claim,
+    inspectorName: reportSummary?.inspectorName ?? claim.latestRepairReport?.inspectorName,
+    expertOffice: reportSummary?.expertOffice ?? claim.latestRepairReport?.expertOffice,
+  });
+  if (name) return toTitleCaseTR(name);
+  const vendor = claim.assignedInspectorVendor?.name?.trim();
+  if (vendor) return toTitleCaseTR(vendor);
+  return 'Atanmamış';
 }
 
-function resolveIhbarTarihi(claim: any): string {
+export function resolveIhbarTarihi(claim: any): string {
   if (claim.notificationDate) return fmtDate(claim.notificationDate);
   if (claim.createdAt) return fmtDate(claim.createdAt);
   return '—';
@@ -68,8 +75,6 @@ function resolveHasarNedeni(claim: any, reportSummary: any | null): string {
       .filter(Boolean)
       .join(' · ');
   }
-  if (claim.claimSubject?.name?.trim()) return formatDisplayLabel(claim.claimSubject.name.trim());
-  if (claim.lossType?.trim()) return formatDisplayLabel(claim.lossType.trim());
   return '—';
 }
 
@@ -89,7 +94,7 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
     { label: 'Hasar Nedeni', value: resolveHasarNedeni(claim, reportSummary ?? null) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
-    { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim) },
+    { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim, reportSummary ?? null) },
   ];
 
   const quickRepairValue = resolveQuickRepairSummary(reportSummary ?? null);
@@ -138,7 +143,7 @@ function buildDosyaBilgileriSubtitle(claim: any): string {
   const parts: string[] = [];
   const notification = resolveIhbarTarihi(claim);
   if (notification !== '—') parts.push(`İhbar ${notification}`);
-  const eksper = resolveDosyaEksperi(claim);
+  const eksper = resolveDosyaEksperi(claim, null);
   if (eksper !== '—') parts.push(eksper);
   const priority = formatPriority(claim.priority);
   if (priority !== '—') parts.push(priority);
@@ -298,9 +303,13 @@ export function DosyaBilgileriDetay({
               ))}
             </div>
           )}
+          {repairReportId && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <RevisionHistoryStrip reportId={repairReportId} embedded />
+            </div>
+          )}
         </div>
       )}
-      {repairReportId && <RevisionHistoryStrip reportId={repairReportId} embedded />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
+import { resolveRepairReportExpertName } from '@sigorta/shared';
 import * as puppeteer from 'puppeteer';
 
 interface ReportItem {
@@ -69,6 +70,8 @@ interface ReportData {
     insuranceCompany?: { name: string } | null;
     customer?: { fullName?: string | null; companyName?: string | null } | null;
     propertyAddress?: { city: string; district?: string | null; addressLine: string } | null;
+    assignedInspectorVendor?: { name?: string | null } | null;
+    assignedOfficeUser?: { firstName?: string | null; lastName?: string | null } | null;
   } | null;
   items?: ReportItem[];
   damageTypes?: Array<{ id: string; damageTypeName: string }>;
@@ -958,7 +961,7 @@ ${photoGalleryHtml}
   <div class="signature-box">
     <div class="signature-label">Tespiti Yapan</div>
     <div class="signature-line"></div>
-    <div class="signature-name">${escHtml(report.inspectorName) || '..............................'}</div>
+    <div class="signature-name">${escHtml(resolveRepairReportExpertName(report) ?? '') || '..............................'}</div>
   </div>
 </div>
 

@@ -103,7 +103,24 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
     [columnOrder, columns, visibleIds],
   );
 
-  return { visibleIds, columnOrder, orderedVisibleColumns, isVisible, toggle, moveColumn, reset, ready };
+  const reorderColumn = useCallback(
+    (fromId: string, toId: string) => {
+      if (fromId === toId) return;
+      setColumnOrder((prev) => {
+        const fromIdx = prev.indexOf(fromId);
+        const toIdx = prev.indexOf(toId);
+        if (fromIdx < 0 || toIdx < 0) return prev;
+        const next = [...prev];
+        next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, fromId);
+        localStorage.setItem(`${storageKey}:order`, JSON.stringify(next));
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  return { visibleIds, columnOrder, orderedVisibleColumns, isVisible, toggle, moveColumn, reorderColumn, reset, ready };
 }
 
 function buildDefaultWidths(columns: TableColumnDef[]): Record<string, number> {
@@ -167,6 +184,7 @@ interface ResizableThProps {
   minWidth?: number;
   defaultWidth?: number;
   fitLabel?: string;
+  fitSamples?: string[];
   onResize: (id: string, width: number) => void;
   className?: string;
   children: ReactNode;
@@ -179,6 +197,7 @@ export function ResizableTh({
   minWidth = 72,
   defaultWidth,
   fitLabel,
+  fitSamples,
   onResize,
   className = '',
   children,
@@ -223,7 +242,7 @@ export function ResizableTh({
           onDoubleClick={(e) => {
             e.stopPropagation();
             const label = fitLabel ?? colId;
-            onResize(colId, estimateColumnContentWidth(label, minWidth, defaultWidth ?? width));
+            onResize(colId, estimateColumnContentWidth(label, minWidth, defaultWidth ?? width, fitSamples));
           }}
           className="absolute -right-0.5 top-0 z-20 flex h-full w-4 cursor-col-resize touch-none items-stretch justify-center"
         >
@@ -240,12 +259,22 @@ interface TableColumnPickerProps {
   columnOrder: string[];
   onToggle: (id: string) => void;
   onMoveColumn: (id: string, direction: -1 | 1) => void;
+  onReorderColumn?: (fromId: string, toId: string) => void;
   onReset: () => void;
   onResetWidths?: () => void;
 }
 
-export function estimateColumnContentWidth(label: string, minWidth: number, defaultWidth?: number): number {
-  const charBased = Math.round(label.length * 8.5 + 44);
+export function estimateColumnContentWidth(
+  label: string,
+  minWidth: number,
+  defaultWidth?: number,
+  samples: string[] = [],
+): number {
+  const candidates = [label, ...samples].filter(Boolean);
+  const charBased = Math.max(
+    ...candidates.map((text) => Math.round(String(text).length * 8.5 + 44)),
+    Math.round(label.length * 8.5 + 44),
+  );
   const base = defaultWidth ?? minWidth;
   return Math.min(440, Math.max(minWidth, base, charBased));
 }
@@ -256,10 +285,12 @@ export function TableColumnPicker({
   columnOrder,
   onToggle,
   onMoveColumn,
+  onReorderColumn,
   onReset,
   onResetWidths,
 }: TableColumnPickerProps) {
   const [open, setOpen] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const resetAll = () => {
     onReset();
@@ -292,7 +323,17 @@ export function TableColumnPicker({
               return (
               <div
                 key={col.id}
-                className="flex items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                draggable={Boolean(onReorderColumn)}
+                onDragStart={() => setDragId(col.id)}
+                onDragOver={(e) => { if (onReorderColumn) e.preventDefault(); }}
+                onDrop={() => {
+                  if (dragId && onReorderColumn && dragId !== col.id) {
+                    onReorderColumn(dragId, col.id);
+                  }
+                  setDragId(null);
+                }}
+                onDragEnd={() => setDragId(null)}
+                className={`flex items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${dragId === col.id ? 'opacity-50' : ''}`}
               >
                 <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1 py-1 text-sm">
                   <input
@@ -325,7 +366,7 @@ export function TableColumnPicker({
             );
             })}
             <p className="mt-2 border-t border-slate-100 px-2 pt-2 text-[10px] leading-4 text-slate-400 dark:border-slate-700">
-              Sütun sırası: ok tuşları. Genişlik: başlık kenarından sürükleyin; çift tık içeriğe göre ayarlar.
+              Sütun sırası: sürükle-bırak veya ok tuşları. Genişlik: başlık kenarından sürükleyin; çift tık satır içeriğine göre ayarlar.
             </p>
             <button
               type="button"
@@ -396,6 +437,7 @@ export function PanelTableColumnPicker({ tableColumns }: { tableColumns: PanelTa
       columnOrder={tableColumns.prefs.columnOrder}
       onToggle={tableColumns.prefs.toggle}
       onMoveColumn={tableColumns.prefs.moveColumn}
+      onReorderColumn={tableColumns.prefs.reorderColumn}
       onReset={tableColumns.prefs.reset}
       onResetWidths={tableColumns.widths.resetWidths}
     />
@@ -407,9 +449,10 @@ interface PanelTableThProps {
   className?: string;
   children: ReactNode;
   resizable?: boolean;
+  fitSamples?: string[];
 }
 
-export function PanelTableTh({ colId, className = '', children, resizable = true }: PanelTableThProps) {
+export function PanelTableTh({ colId, className = '', children, resizable = true, fitSamples }: PanelTableThProps) {
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   if (!ctx) {
@@ -423,6 +466,7 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
       minWidth={meta?.minWidth ?? 72}
       defaultWidth={meta?.defaultWidth ?? 140}
       fitLabel={meta?.label}
+      fitSamples={fitSamples}
       onResize={ctx.widths.setWidth}
       className={className}
       resizable={resizable && meta?.resizable !== false}

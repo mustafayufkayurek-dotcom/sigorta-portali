@@ -1048,6 +1048,7 @@ export default function ClaimFileDetailPage() {
   const focusSigortali = searchParams.get('sigortali') === '1';
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<GroupTab>('genel-bilgiler');
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
   const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
@@ -1067,14 +1068,33 @@ export default function ClaimFileDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    setLoadError(null);
     axios.get(`${API}/claim-files/${id}`, { headers: authHeader() })
       .then((r) => setClaim(r.data.data))
-      .catch(console.error)
+      .catch((err) => {
+        const status = err?.response?.status;
+        const msg = err?.response?.data?.message;
+        setLoadError(status === 403
+          ? 'Bu dosyaya erişim izniniz yok.'
+          : status === 404
+            ? 'Dosya bulunamadı.'
+            : Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Dosya yüklenirken hata oluştu.'));
+        setClaim(null);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
-  if (!claim) return <div className="text-slate-400 py-16 text-center">Dosya Bulunamadı.</div>;
+  if (!claim) {
+    return (
+      <div className="py-16 text-center space-y-3">
+        <p className="text-slate-500">{loadError ?? 'Dosya Bulunamadı.'}</p>
+        <button type="button" onClick={() => router.push('/panel/operasyon')} className="text-sm text-blue-600 hover:underline">
+          Operasyon sayfasına dön
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -132,12 +132,10 @@ export class RepairReportsService {
     });
     const autoReporterName = reporter ? `${reporter.firstName} ${reporter.lastName}` : undefined;
 
-    // Eksper: dto'dan geldiyse kullan; yoksa atanmış eksper firması veya ofis kullanıcısı
+    // Eksper: dto veya atanmış eksper firması; dosya sorumlusu (assignedOfficeUser) asla eksper adı olmaz
     const autoInspectorName = dto.inspectorName
       ?? (claimFile as any).assignedInspectorVendor?.name
-      ?? ((claimFile as any).assignedOfficeUser
-        ? `${(claimFile as any).assignedOfficeUser.firstName} ${(claimFile as any).assignedOfficeUser.lastName}`
-        : undefined);
+      ?? undefined;
 
     const count = await this.prisma.repairReport.count({ where: { claimFileId } });
     const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;

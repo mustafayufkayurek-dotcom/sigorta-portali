@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCases, EmergencyCase } from '@/utils/emergencyApi';
@@ -9,6 +9,7 @@ import {
   PanelTableColumnPicker,
   PanelTableTd,
   PanelTableTh,
+  PanelTableColGroup,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -236,6 +237,23 @@ export default function OperasyonPage() {
     return true;
   });
 
+  const columnFitSamples = useMemo(() => {
+    const samples: Record<string, string[]> = {};
+    for (const col of TABLE_COLUMNS) samples[col.id] = [col.label];
+    for (const row of filteredRows) {
+      samples.kind?.push(row.kind === 'hasar' ? 'Hasar' : 'Acil');
+      samples.fileNo?.push(row.fileNo);
+      samples.customer?.push(row.customerName);
+      samples.insured?.push(row.insuredName);
+      samples.date?.push(fmtDate(row.date));
+      samples.subject?.push(row.subject);
+      samples.status?.push(row.kind === 'hasar' ? row.statusLabel : (EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode));
+      samples.invoice?.push(INVOICE_STATUS_LABELS[row.invoiceStatus] ?? row.invoiceStatus);
+      if (row.amount) samples.amount?.push(row.amount);
+    }
+    return samples;
+  }, [filteredRows]);
+
   const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
 
   const isLoading = claimsLoading || casesLoading;
@@ -395,10 +413,16 @@ export default function OperasyonPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
                   {tableColumns.prefs.orderedVisibleColumns.map((col) => (
-                    <PanelTableTh key={col.id} colId={col.id} className="table-th">
+                    <PanelTableTh
+                      key={col.id}
+                      colId={col.id}
+                      className="table-th"
+                      fitSamples={columnFitSamples[col.id]}
+                    >
                       {col.label}
                     </PanelTableTh>
                   ))}

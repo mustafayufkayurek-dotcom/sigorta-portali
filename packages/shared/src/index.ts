@@ -5,3 +5,4 @@ export * from './agreement-templates';
 export * from './inbound-mail-terminology';
 export * from './inbound-form-fields';
 export * from './file-no-normalize';
+export * from './repair-report-expert';
