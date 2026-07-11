@@ -33,6 +33,7 @@ import {
   REPORT_IMAGE_CATEGORY_LABELS,
 } from '@/utils/quick-repair-damage-types';
 import { resolveInsuredDisplayName } from '@/utils/insured-display';
+import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -2298,7 +2299,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                               jobDescription: v,
                               unit: unit ?? r.unit,
                             });
-                            return { ...merged, _isDirty: true };
+                            return { ...r, ...merged, _isDirty: true };
                           }));
                         }}
                         onAddNew={createSubGroup}
@@ -3698,7 +3699,6 @@ export default function RepairReportPage() {
   };
 
   const hasUnsavedReportFields = Object.keys(pendingFields).length > 0;
-  const hasUnsavedChanges = hasUnsavedReportFields;
 
   const handleCancelChanges = () => {
     setSessionCancelCount((n) => n + 1);
