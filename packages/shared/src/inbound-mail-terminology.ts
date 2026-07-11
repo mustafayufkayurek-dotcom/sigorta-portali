@@ -78,23 +78,41 @@ export function toInboundTitleCaseTR(value: string): string {
     .join(' ');
 }
 
-export function mapInboundCategoryToMeridyen(raw?: string | null): string | undefined {
+/** Yalnızca bilinen kategori eşlemesi — serbest metin Title Case'e çevrilmez */
+export function mapInboundCategoryKnown(raw?: string | null): string | undefined {
   if (!raw?.trim()) return undefined;
   const collapsed = collapseKey(raw);
   const upper = collapsed.toLocaleUpperCase('tr-TR');
   if (CATEGORY_ALIASES[upper]) return CATEGORY_ALIASES[upper];
   if (upper.includes('KONUT') && upper.includes('CAM')) return 'Konut Cam';
   if (upper.includes('TESISAT')) return 'Tesisat';
-  return toInboundTitleCaseTR(collapsed);
+  return undefined;
+}
+
+export function mapInboundCategoryToMeridyen(raw?: string | null): string | undefined {
+  if (!raw?.trim()) return undefined;
+  const known = mapInboundCategoryKnown(raw);
+  if (known) return known;
+  return toInboundTitleCaseTR(collapseKey(raw));
+}
+
+/** Serbest metin ihbar notu mu (canonical konu değil) */
+export function isInboundIhbarNoteText(value?: string | null): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 48) return true;
+  return /\b(mutfak|branş|brans|patlam|açıklama|aciklama|notu|tespit|hasar yeri|detay|sigortalı|sigortali)\b/i.test(trimmed);
 }
 
 export function mapInboundLossTypeToMeridyen(raw?: string | null): string | undefined {
   if (!raw?.trim()) return undefined;
+  if (isInboundIhbarNoteText(raw)) return undefined;
   const aliasKey = collapseAliasKey(raw);
   if (LOSS_TYPE_ALIASES[aliasKey]) return LOSS_TYPE_ALIASES[aliasKey];
-  const category = mapInboundCategoryToMeridyen(raw);
-  if (category && aliasKey.includes('cam')) return 'Cam Kırılması';
-  return toInboundTitleCaseTR(raw);
+  const category = mapInboundCategoryKnown(raw);
+  if (category) return category;
+  if (aliasKey.includes('cam')) return 'Cam Kırılması';
+  return undefined;
 }
 
 /**

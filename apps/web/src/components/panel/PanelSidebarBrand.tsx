@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CORPORATE_LOGO_GLOBE, CORPORATE_LOGO_GLOBE_FALLBACK, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { CORPORATE_LOGO_FULL, CORPORATE_LOGO_GLOBE, CORPORATE_LOGO_GLOBE_FALLBACK, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 
 type PanelSidebarBrandProps = {
   href: string;
@@ -62,7 +62,7 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
 
       <Link href={href} className="panel-sidebar-brand-full" title="Panel ana sayfa">
         <img
-          src={CORPORATE_LOGO_LIGHT}
+          src={CORPORATE_LOGO_FULL}
           alt="Meridyen Assistance"
           className="panel-sidebar-brand-full__img"
           onError={(e) => {

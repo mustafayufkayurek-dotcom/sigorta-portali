@@ -1,4 +1,4 @@
-import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { isInboundIhbarNoteText, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 
 /**
  * Türkçe karakter destekli Title Case dönüştürücü.
@@ -137,13 +137,6 @@ export function formatDisplayLabel(value: string | null | undefined): string {
   return toTitleCaseTR(spaced);
 }
 
-/** Serbest metin ihbar notu mu (kategori değil) */
-function looksLikeIhbarNoteText(value: string): boolean {
-  const trimmed = value.trim();
-  if (trimmed.length > 48) return true;
-  return /\b(mutfak|branş|patlam|açıklama|notu|tespit|hasar yeri|detay)\b/i.test(trimmed);
-}
-
 export type ClaimIhbarKonusuSource = {
   lossType?: string | null;
   productBranch?: string | null;
@@ -151,22 +144,19 @@ export type ClaimIhbarKonusuSource = {
   departmentFileSubject?: { name?: string | null } | null;
 };
 
-/** İhbar konusu — ayar dosya konusu öncelikli; mail notu değil */
+/** İhbar konusu — yalnızca canonical ayar konusu veya eşlenmiş hasar türü */
 export function resolveClaimIhbarKonusu(claim: ClaimIhbarKonusuSource): string {
-  const fromSubject =
+  const subjectName =
     claim.claimSubject?.name?.trim()
     || claim.departmentFileSubject?.name?.trim();
-  if (fromSubject) return formatDisplayLabel(fromSubject);
-
-  const lossRaw = claim.lossType?.trim();
-  if (lossRaw) {
-    const mapped = mapInboundLossTypeToMeridyen(lossRaw);
-    if (mapped) return mapped;
-    if (!looksLikeIhbarNoteText(lossRaw)) return formatDisplayLabel(lossRaw);
+  if (subjectName && !isInboundIhbarNoteText(subjectName)) {
+    return formatDisplayLabel(subjectName);
   }
 
-  const branch = claim.productBranch?.trim();
-  return branch ? formatDisplayLabel(branch) : '—';
+  const mapped = mapInboundLossTypeToMeridyen(claim.lossType);
+  if (mapped) return mapped;
+
+  return '—';
 }
 
 /** Hasar dosyası konu/branş etiketi — geriye dönük imza */

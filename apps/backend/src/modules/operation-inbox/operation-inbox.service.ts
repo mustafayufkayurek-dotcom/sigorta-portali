@@ -30,7 +30,12 @@ import { CreateCustomerFromInboxDto } from './dto/create-customer-from-inbox.dto
 import { GraphMailSendService } from './graph/graph-mail-send.service';
 import { InboundRoutingService, InboundRoutingSuggestion } from './inbound-routing.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
-import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen, resolveInsuredPhoneForInbox } from '@sigorta/shared';
+import {
+  resolveCanonicalIhbarLabel,
+  resolveClaimSubjectIdByLabel,
+  sanitizeInboundLossType,
+} from '@/common/helpers/ihbar-konusu.helper';
+import { resolveInsuredPhoneForInbox } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -633,15 +638,17 @@ export class OperationInboxService {
     );
     const receivedAt = message.receivedAt ?? new Date();
     const policyNo = dto.policyNo?.trim() || extracted.policyNo?.trim() || 'Belirtilmedi';
-    const lossTypeRaw =
-      dto.lossType?.trim()
-      || extracted.lossType?.trim()
-      || mapInboundCategoryToMeridyen(dto.fileSubject?.trim() || extracted.fileSubject)
-      || '';
-    const lossType =
-      mapInboundLossTypeToMeridyen(lossTypeRaw)
-      || lossTypeRaw
-      || 'Belirtilmemiş';
+    const fileSubject = dto.fileSubject?.trim() || extracted.fileSubject?.trim() || null;
+    const lossTypeRaw = dto.lossType?.trim() || extracted.lossType?.trim() || null;
+    const lossType = sanitizeInboundLossType(lossTypeRaw, fileSubject);
+    const ihbarLabel = resolveCanonicalIhbarLabel({
+      lossType: lossTypeRaw,
+      fileSubject,
+    });
+    const claimSubjectId = await resolveClaimSubjectIdByLabel(
+      this.prisma,
+      ihbarLabel ?? (lossType !== 'Belirtilmemiş' ? lossType : null),
+    );
     const claimNo =
       dto.claimNo?.trim()
       || extracted.claimNo?.trim()
@@ -675,6 +682,10 @@ export class OperationInboxService {
       insuredName,
       insuredPhone,
     };
+
+    if (claimSubjectId) {
+      claimPayload.claimSubjectId = claimSubjectId;
+    }
 
     if (customerId) {
       claimPayload.customerId = customerId;
@@ -773,10 +784,13 @@ export class OperationInboxService {
       || 'Belirtilmemiş';
     const customerPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
     const address = dto.insuredAddress?.trim() || extracted.address?.trim() || 'Belirtilmemiş';
-    const issueType =
-      mapInboundCategoryToMeridyen(dto.fileSubject?.trim() || extracted.fileSubject)
-      || mapInboundLossTypeToMeridyen(dto.lossType?.trim() || extracted.lossType)
-      || 'Gelen Kutu İhbarı';
+    const issueType = (() => {
+      const canonical = sanitizeInboundLossType(
+        dto.lossType?.trim() || extracted.lossType,
+        dto.fileSubject?.trim() || extracted.fileSubject,
+      );
+      return canonical !== 'Belirtilmemiş' ? canonical : 'Gelen Kutu İhbarı';
+    })();
     const urgency: EmergencyUrgency =
       extracted.urgency === 'HIGH' ? 'YUKSEK' : 'NORMAL';
     const instructionBlock = dto.instruction.trim();

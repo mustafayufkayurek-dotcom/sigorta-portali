@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
+import {
+  buildPanelUrl,
+  panelHasarDosyasiPath,
+  panelOnarimRaporuPath,
+  panelRevizyonTalebiPath,
+} from '@/common/utils/panel-url';
 import { EmailService } from './email.service';
 
 @Injectable()
@@ -38,7 +44,7 @@ export class ClaimEventEmailService {
           { label: 'Branş', value: params.branch },
           { label: 'Aciliyet', value: params.priority },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );
@@ -66,7 +72,7 @@ export class ClaimEventEmailService {
           { label: 'Müşteri', value: params.customer },
           { label: 'Atanan Personel', value: params.assigneeName },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );
@@ -95,7 +101,7 @@ export class ClaimEventEmailService {
           { label: 'Dosya No', value: params.fileNo },
           { label: 'Onaylayan', value: params.approvedBy },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}/reports/${params.reportId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
         actionLabel: 'Raporu Görüntüle',
       },
     );
@@ -124,7 +130,7 @@ export class ClaimEventEmailService {
           { label: 'Dosya No', value: params.fileNo },
           { label: 'Red Sebebi', value: params.rejectionReason },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}/reports/${params.reportId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
         actionLabel: 'Raporu Görüntüle',
       },
     );
@@ -152,7 +158,7 @@ export class ClaimEventEmailService {
           { label: 'Kalan Süre', value: `${params.remainingDays} gün` },
           { label: 'SLA Tarihi', value: params.slaDueAt },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );
@@ -180,7 +186,7 @@ export class ClaimEventEmailService {
           { label: 'Gecikme', value: `${params.daysOverdue} gün` },
           { label: 'SLA Tarihi', value: params.slaDueAt },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );
@@ -213,7 +219,7 @@ export class ClaimEventEmailService {
         title: 'Revizyon Talebi',
         preheader: `${params.reportNo} numaralı rapor için revizyon talep edildi.`,
         rows,
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelRevizyonTalebiPath(params.revisionId)),
         actionLabel: 'Talebi Görüntüle',
       },
     );
@@ -241,7 +247,7 @@ export class ClaimEventEmailService {
           { label: 'Yönetici', value: params.fromManager },
           { label: 'Talimat', value: params.instruction },
         ],
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );
@@ -273,7 +279,7 @@ export class ClaimEventEmailService {
         title: 'Dosya Kapatıldı',
         preheader: `${params.fileNo} numaralı hasar dosyası kapatıldı.`,
         rows,
-        actionUrl: `${this.appUrl}/claim-files/${params.claimFileId}`,
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
     );

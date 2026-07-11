@@ -18,7 +18,10 @@ import {
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
 import { buildVendorNearbyWhere, resolveProvinceDistrictIds } from './vendor-area-match.util';
-import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import {
+  resolveClaimSubjectIdByLabel,
+  sanitizeInboundLossType,
+} from '@/common/helpers/ihbar-konusu.helper';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -548,11 +551,10 @@ export class ClaimFilesService {
     const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
     let lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
-    const normalizedLossType = mapInboundLossTypeToMeridyen(lossType);
-    if (normalizedLossType) lossType = normalizedLossType;
+    lossType = sanitizeInboundLossType(lossType);
 
     // Domain Ayrıştırma: claimSubjectId tercih, departmentFileSubjectId backward-compat
-    const claimSubjectId = rest.claimSubjectId ?? null;
+    let claimSubjectId = rest.claimSubjectId ?? null;
     const departmentFileSubjectId = rest.departmentFileSubjectId ?? null;
     const departmentId = rest.departmentId ?? null;
 
@@ -567,6 +569,10 @@ export class ClaimFilesService {
     if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
     if (!productBranch) throw new BadRequestException('Ürün branşı zorunludur');
     if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
+
+    if (!claimSubjectId && lossType !== 'Belirtilmemiş') {
+      claimSubjectId = await resolveClaimSubjectIdByLabel(this.prisma, lossType);
+    }
 
     const insuredName = await this.resolveInsuredNameForCreate(
       typeof rest.insuredName === 'string' ? rest.insuredName : null,

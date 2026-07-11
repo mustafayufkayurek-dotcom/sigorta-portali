@@ -5,7 +5,7 @@ import { getAccessToken } from '@/utils/auth-session';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-recipients';
@@ -308,58 +308,56 @@ function RevisionHistory({ reportId, embedded = false }: { reportId: string; cla
 
   const fmtD = (d: string) => fmtDateTime(d, { day: 'numeric', month: 'short', year: 'numeric' });
 
+  const statusLabel = (item: RevHistoryItem) =>
+    item.status === 'revision'
+      ? 'Revizyon Talebi'
+      : item.status === 'approved'
+        ? 'Onaylandı'
+        : 'Taslak';
+
+  const statusTone = (item: RevHistoryItem) =>
+    item.status === 'revision'
+      ? 'border-amber-200 bg-amber-50 text-amber-800'
+      : item.status === 'approved'
+        ? 'border-green-200 bg-green-50 text-green-800'
+        : 'border-slate-200 bg-slate-50 text-slate-700';
+
   return (
     <div className={embedded ? 'mt-4 pt-4 border-t border-slate-100' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>
-      <div className={`flex items-center justify-between mb-4 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}>
+      <div className={`flex items-center justify-between mb-3 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}>
         <h4 className="text-sm font-semibold text-slate-700">Revizyon Geçmişi</h4>
         <a href={`/panel/revizyon-talepleri?reportId=${reportId}`} className="text-xs text-blue-600 hover:text-blue-700">
           Tümünü Gör →
         </a>
       </div>
-      <div className="relative">
-        {/* Timeline vertical line */}
-        <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-slate-100" />
-        <div className="space-y-4 ml-8">
-          {items.map((item, idx) => (
-            <div key={item.id} className="relative">
-              {/* Dot */}
-              <div className={`absolute -left-8 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 text-xs font-bold ${item.status === 'revision' ? 'bg-amber-100 border-amber-400 text-amber-700' : 'bg-blue-100 border-blue-400 text-blue-700'}`}>
-                {item.version ?? (idx + 1)}
+      <div className="flex items-stretch gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        {items.map((item, idx) => (
+          <div key={item.id} className="flex items-center gap-2 shrink-0">
+            <div className={`min-w-[148px] max-w-[200px] rounded-xl border px-3 py-2.5 ${statusTone(item)}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold tabular-nums">v{item.version ?? (idx + 1)}</span>
+                <span className="text-[11px] font-medium truncate">{statusLabel(item)}</span>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-slate-800">
-                      {item.status === 'revision' ? 'Revizyon Talebi' : `v${item.version ?? (idx + 1)} — ${item.status === 'approved' ? 'Onaylandı' : 'Taslak'}`}
-                    </span>
-                    {item.reasonCategory && (
-                      <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md">
-                        {item.reasonCategory}
-                      </span>
-                    )}
-                  </div>
-                  {item.reason && (
-                    <p className="text-xs text-slate-500 mt-0.5">{item.reason}</p>
-                  )}
-                  {item.requestedBy && (
-                    <p className="text-xs text-slate-400">Talep eden: {item.requestedBy}</p>
-                  )}
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    {item.requestedAt ? fmtD(item.requestedAt) : item.completedAt ? fmtD(item.completedAt) : ''}
-                  </p>
-                </div>
-                {item.status === 'revision' && (
-                  <a
-                    href={`/panel/revizyon-talepleri/${item.id}`}
-                    className="text-xs text-blue-600 hover:text-blue-700 border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50 whitespace-nowrap flex-shrink-0"
-                  >
-                    Detay →
-                  </a>
-                )}
-              </div>
+              {item.requestedBy && (
+                <p className="text-[10px] opacity-80 mt-1 truncate">{item.requestedBy}</p>
+              )}
+              <p className="text-[10px] opacity-70 mt-0.5">
+                {item.requestedAt ? fmtD(item.requestedAt) : item.completedAt ? fmtD(item.completedAt) : ''}
+              </p>
+              {item.status === 'revision' && (
+                <a
+                  href={`/panel/revizyon-talepleri/${item.id}`}
+                  className="inline-block mt-1.5 text-[10px] font-medium text-blue-700 hover:underline"
+                >
+                  Detay →
+                </a>
+              )}
             </div>
-          ))}
-        </div>
+            {idx < items.length - 1 && (
+              <span className="text-slate-300 text-sm shrink-0" aria-hidden>→</span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -3006,8 +3004,6 @@ export default function RepairReportPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [versions, setVersions] = useState<any[]>([]);
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showExternalApprovalModal, setShowExternalApprovalModal] = useState(false);
   const [externalApprovalForm, setExternalApprovalForm] = useState({
     approverType: 'expert' as 'expert' | 'insurance_company',
@@ -3065,12 +3061,6 @@ export default function RepairReportPage() {
       } catch (_) {
         setApprovalHistory(rRes.data.data?.approvalHistory ?? []);
       }
-
-      // Load version history
-      try {
-        const vRes = await axios.get(`${API}/repair-reports/${reportId}/versions`, { headers: authHeader() });
-        setVersions(vRes.data.data || []);
-      } catch (_) {}
 
       // Load external approvals
       try {
@@ -3793,7 +3783,7 @@ export default function RepairReportPage() {
           {[
             { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
-            { label: 'Hasar Konusu', value: formatDisplayLabel(report.claimFile?.lossType) },
+            { label: 'Hasar Konusu', value: resolveClaimIhbarKonusu(report.claimFile ?? {}) },
             { label: 'Sigortalı', value: insuredName },
             { label: 'Dosya Eksperi', value: fileExpert.missing ? undefined : fileExpert.name },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
@@ -4514,62 +4504,6 @@ export default function RepairReportPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Revizyon Geçmişi */}
-      {versions.length > 1 && (
-        <div className="bg-white rounded-xl border border-purple-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-            <h4 className="text-sm font-semibold text-purple-700">Revizyon Geçmişi</h4>
-            <button type="button"
-              onClick={() => setShowVersionHistory((v) => !v)}
-              className="text-xs text-slate-400 hover:text-slate-600"
-            >
-              {showVersionHistory ? 'Gizle' : `${versions.length} Versiyon Göster`}
-            </button>
-          </div>
-          {showVersionHistory && (
-            <div className="space-y-2">
-              {versions.map((v: any) => {
-                const isCurrent = v.id === reportId;
-                return (
-                  <div key={v.id} className={`flex items-center gap-3 rounded-lg px-3 py-2 ${isCurrent ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-50'}`}>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${isCurrent ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}>
-                      v{v.versionNo}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{v.reportNo}</p>
-                      <p className="text-xs text-slate-400">
-                        {new Date(v.createdAt).toLocaleDateString('tr-TR')}
-                        {v.revisedBy && ` · ${v.revisedBy.firstName} ${v.revisedBy.lastName} Tarafından Revize Edildi`}
-                      </p>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      v.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      v.status === 'draft' ? 'bg-slate-100 text-slate-600' :
-                      v.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-700' :
-                      v.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {v.status === 'approved' ? 'Onaylandı' : v.status === 'draft' ? 'Taslak' : v.status === 'pending_approval' ? 'Onay Bekliyor' : v.status === 'rejected' ? 'Reddedildi' : 'Sunuldu'}
-                    </span>
-                    {!isCurrent && (
-                      <a
-                        href={`/panel/hasar-dosyalari/${claimId}/onarim-raporu/${v.id}`}
-                        className="text-xs text-purple-600 hover:underline flex-shrink-0"
-                      >
-                        Aç
-                      </a>
-                    )}
-                    {isCurrent && (
-                      <span className="text-xs text-purple-500 flex-shrink-0">Mevcut</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
 
