@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v276)
+## Canlı durum (11 Temmuz 2026 — v277 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v276-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v277-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v275** / Backend **v275** | manifest `rollbackImages` |
-| **Etiket** | `v276-ihbar-konusu-logo-mail-404` | |
+| **Rollback** | Web **v276** / Backend **v276** | manifest `rollbackImages` |
+| **Etiket** | `v277-sidebar-logo-fix` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v277 — Web-only (11 Temmuz 2026 gece)
+
+- **Sidebar logo:** dar menü `MeridyenGlobeAnimated` SVG; geniş menü `meridyen-logo-original.png`
+- **Koyu tema:** geniş logo için beyaz zemin (JPEG şeffaf değil)
+- Backend **v276 sabit**; migration yok
+- Pre-deploy: disk/routing PASS; nginx → web PASS
+- Smoke: login FAIL (yerel credential — bilinen, v274 ile aynı); diğer rotalar PASS; web container healthy v277
+- Commit: `e0bd4fc`
 
 ### v276 — Full (11 Temmuz 2026 akşam)
 

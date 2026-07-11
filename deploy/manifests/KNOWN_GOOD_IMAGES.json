@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v276-ihbar-konusu-logo-mail-404",
-  "description": "İhbar konusu kirli veri filtresi; claimSubjectId bağlama; sidebar logo şeffaf; e-posta panel URL 404 fix",
+  "label": "v277-sidebar-logo-fix",
+  "description": "Sidebar logo regresyonu: dar menü MeridyenGlobeAnimated SVG; geniş menü meridyen-logo-original; koyu temada geniş logo beyaz zemin",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v276-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v276-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v277-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v275-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v275-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v276-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
