@@ -259,53 +259,54 @@
   color: #e2e8f0 !important;
 }
 
-/* Panel sidebar marka — logo ölçeği ve köşe ovali; generic .dark .bg-white'dan muaf */
+/* Panel sidebar marka — logo alanı koyu temada da açık zemin (logo okunaklılığı) */
 .panel-sidebar-brand {
   @apply shrink-0 border-b border-slate-200 bg-white;
 }
-.dark .panel-sidebar-brand {
-  background-color: #0f172a !important;
-  border-color: #253247 !important;
-}
+.dark .panel-sidebar-brand,
+.dark .panel-sidebar-brand--collapsed,
 .dark .panel-sidebar-brand--expanded {
-  /* Tam logo şeffaf değil — geniş menüde açık zemin */
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
 }
 .panel-sidebar-brand--collapsed {
-  @apply flex flex-col items-center gap-1.5 px-1.5 py-2.5;
+  @apply flex flex-col items-center gap-1.5 px-1.5 py-3;
 }
 .panel-sidebar-brand--expanded {
-  @apply relative px-2.5 py-3;
+  @apply relative px-3 py-3.5;
 }
 .panel-sidebar-brand-globe {
-  @apply flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm;
+  @apply flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .dark .panel-sidebar-brand-globe {
-  background-color: #ffffff !important;
-  border-color: #334155 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .panel-sidebar-brand-globe__img {
-  @apply h-10 w-10 object-contain;
+  @apply h-11 w-11 object-contain;
 }
 .panel-sidebar-brand-full {
-  @apply flex min-h-[4.5rem] items-center justify-center overflow-hidden rounded-xl pr-9 bg-transparent;
+  @apply flex min-h-[5.25rem] w-full items-center justify-center overflow-hidden rounded-xl pr-8;
 }
 .panel-sidebar-brand-full__img {
-  @apply block h-[4.25rem] w-full max-h-[4.5rem] object-contain object-center sm:h-[4.5rem];
+  @apply block h-[5rem] w-full max-h-[5.25rem] object-contain object-center sm:h-[5.25rem];
 }
 .panel-sidebar-brand-toggle {
   @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800;
 }
 .dark .panel-sidebar-brand-toggle {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-  color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 .dark .panel-sidebar-brand-toggle:hover {
-  background-color: #253247 !important;
-  color: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
 }
 
 /* Panel sidebar navigasyon — aktif sayfa ve hover koyu temada belirgin */
