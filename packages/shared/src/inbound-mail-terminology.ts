@@ -162,7 +162,9 @@ export function findInsuredMobilePhoneInText(text?: string | null): string | und
   if (labeled) return labeled;
 
   const formBody = sliceInboundFormBody(text);
-  const scanTarget = formBody.trim() || text;
+  const scanTarget = formBody.trim();
+  if (!scanTarget) return undefined;
+
   const matches = scanTarget.matchAll(
     /(?:^|\D)(0?5\d{2})[\s.-]?(\d{3})[\s.-]?(\d{2})[\s.-]?(\d{2})(?=\D|$)/g,
   );
@@ -174,7 +176,8 @@ export function findInsuredMobilePhoneInText(text?: string | null): string | und
 }
 
 /**
- * Gelen kutusu sigortalı telefonu — öncelik: etiketli/heuristic, AI çıkarımı, metin taraması.
+ * Gelen kutusu sigortalı telefonu — öncelik: form/heuristic, etiketli alan, form gövdesi taraması, AI.
+ * Gönderen/eksper numarası veya yanıt zinciri ASLA fallback olmamalı.
  */
 export function resolveInsuredPhoneForInbox(input: {
   heuristicPhone?: string | null;
@@ -184,11 +187,13 @@ export function resolveInsuredPhoneForInbox(input: {
   const heuristic = sanitizeInboundPhone(input.heuristicPhone);
   if (heuristic) return heuristic;
 
-  const extracted = sanitizeInboundPhone(input.extractedPhone);
-  if (extracted) return extracted;
+  const labeled = findLabeledInsuredPhoneInText(input.bodyText);
+  if (labeled) return labeled;
 
-  return findLabeledInsuredPhoneInText(input.bodyText)
-    ?? findInsuredMobilePhoneInText(input.bodyText);
+  const scanned = findInsuredMobilePhoneInText(input.bodyText);
+  if (scanned) return scanned;
+
+  return sanitizeInboundPhone(input.extractedPhone);
 }
 
 /** Placeholder veya anlamsız telefon değerlerini filtreler */

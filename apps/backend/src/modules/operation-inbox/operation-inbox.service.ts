@@ -945,18 +945,15 @@ export class OperationInboxService {
     }
 
     if (dup.exists) {
+      if (dup.existingRecord?.type === 'customer' && dup.existingRecord.id) {
+        return dup.existingRecord.id;
+      }
       const fieldLabels: Record<string, string> = {
         phone: 'Telefon',
         email: 'E-posta',
         tc: 'TC Kimlik No',
       };
       const label = fieldLabels[dup.field ?? ''] ?? 'Bilgi';
-      const name = dup.existingRecord?.fullName ?? 'mevcut kayıt';
-      if (dup.existingRecord?.type === 'customer') {
-        throw new BadRequestException(
-          `Bu ${label} ile kayıtlı müşteri zaten var: ${name}. Mevcut müşteriyi seçin veya farklı bilgi girin.`,
-        );
-      }
       throw new BadRequestException(
         `Bu ${label} başka bir kayıtta kullanılıyor. Lütfen farklı bilgi girin.`,
       );

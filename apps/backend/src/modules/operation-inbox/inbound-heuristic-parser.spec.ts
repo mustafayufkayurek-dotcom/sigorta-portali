@@ -54,6 +54,16 @@ Adres: ${address}
     expect(resolved).toContain('539');
   });
 
+  it('resolveInsuredPhoneForInbox form etiketini AI çıkarımından önce alır', () => {
+    const resolved = resolveInsuredPhoneForInbox({
+      heuristicPhone: undefined,
+      extractedPhone: staffPhone,
+      bodyText,
+    });
+    expect(resolved).toContain('539');
+    expect(resolved).not.toContain('174');
+  });
+
   it('findInsuredMobilePhoneInText form gövdesindeki numarayı seçer', () => {
     const found = findInsuredMobilePhoneInText(bodyText);
     expect(found).toContain('539');

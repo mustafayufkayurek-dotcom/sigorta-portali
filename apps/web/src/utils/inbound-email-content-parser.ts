@@ -139,7 +139,9 @@ export function parseInboundEmailContent(input: {
     ?? fieldMap.get('iletisim no')
     ?? fieldMap.get('telefon')
     ?? fieldMap.get('cep telefonu')
-    ?? fieldMap.get('gsm'),
+    ?? fieldMap.get('gsm')
+    ?? fieldMap.get('sigortalı telefonu')
+    ?? fieldMap.get('sigortali telefonu'),
   );
   const phone = phoneFromFields ?? findInsuredMobilePhoneInText(text);
 

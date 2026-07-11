@@ -695,6 +695,12 @@ export default function GelenKutusuPage() {
     if (routing.customerMatch.status === 'found' && routing.customerMatch.customer) {
       setSelectedCustomerId(routing.customerMatch.customer.id);
       setCreateNewCustomer(false);
+    } else if (
+      routing.customerMatch.status === 'ambiguous'
+      && routing.customerMatch.candidates?.length === 1
+    ) {
+      setSelectedCustomerId(routing.customerMatch.candidates[0].id);
+      setCreateNewCustomer(false);
     } else if (routing.customerMatch.status === 'not_found') {
       setSelectedCustomerId('');
       setCreateNewCustomer(false);
@@ -938,7 +944,7 @@ export default function GelenKutusuPage() {
     setActionRouting(null);
     setSelectedAssigneeId('');
     setSelectedCustomerId('');
-    setCreateNewCustomer(!!options?.prefillCustomer);
+    setCreateNewCustomer(false);
     setSelectedAssistantCustomerId('');
     setAssigneeAssistantScopeLabel('');
 
@@ -981,7 +987,7 @@ export default function GelenKutusuPage() {
         if (kind === 'emergency') await loadAssistantCompanies();
         const ctx = await loadActionContext(messageId, row);
         if (options?.prefillCustomer && ctx?.routing?.customerMatch.status === 'not_found') {
-          setCreateNewCustomer(false);
+          setCreateNewCustomer(true);
         }
       })();
     }
@@ -1202,19 +1208,26 @@ export default function GelenKutusuPage() {
         fileSubject: toTitleCaseTR(fileSubjectInput.trim()) || undefined,
       };
       const { firstName, lastName } = parseSenderPersonName(insuredName);
-      const customerPayload = createNewCustomer
-        ? {
-            createCustomer: {
-              entityType: 'individual' as const,
-              firstName: firstName || undefined,
-              lastName: lastName || undefined,
-              phone: insuredPhoneInput.trim() || undefined,
-              address: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
-            },
-          }
-        : selectedCustomerId
-          ? { customerId: selectedCustomerId }
-          : {};
+      const matchedCustomerId =
+        actionRouting?.customerMatch.status === 'found' && actionRouting.customerMatch.customer?.id
+          ? actionRouting.customerMatch.customer.id
+          : selectedCustomerId.trim() || undefined;
+      const customerPayload =
+        matchedCustomerId && (actionRouting?.customerMatch.status === 'found' || !createNewCustomer)
+          ? { customerId: matchedCustomerId }
+          : createNewCustomer
+            ? {
+                createCustomer: {
+                  entityType: 'individual' as const,
+                  firstName: firstName || undefined,
+                  lastName: lastName || undefined,
+                  phone: insuredPhoneInput.trim() || undefined,
+                  address: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
+                },
+              }
+            : matchedCustomerId
+              ? { customerId: matchedCustomerId }
+              : {};
 
       if (actionModal.kind === 'claim') {
         const res = await apiClient.post<OpenClaimResult>(
