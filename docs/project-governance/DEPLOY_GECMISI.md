@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v273)
+## Canlı durum (11 Temmuz 2026 — v274)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v273-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v274-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v272-amd64` | healthy |
-| **Rollback** | Web **v272** / Backend **v272** | manifest `rollbackImages` |
-| **Etiket** | `v273-onarim-raporu-dosya-sorumlusu-ux` | |
+| **Rollback** | Web **v273** / Backend **v272** | manifest `rollbackImages` |
+| **Etiket** | `v274-koyu-tema-tablo-sidebar-logo` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v274 — Web-only (11 Temmuz 2026 akşam)
+
+- Koyu tema **tablo zebra kontrastı** — dosyalar okunur
+- **Sidebar logo** kalıcı CSS: `rounded-xl`, ölçek, dar menü küre çipi
+- Backend **v272 sabit**; migration yok
+- Smoke: login FAIL (yerel credential — bilinen); routing PASS; web healthy
+- Commit: `ade5d73`
 
 ### v273 — Web-only (11 Temmuz 2026 akşam)
 

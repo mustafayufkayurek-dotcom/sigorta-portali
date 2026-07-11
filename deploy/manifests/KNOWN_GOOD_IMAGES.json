@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v273-onarim-raporu-dosya-sorumlusu-ux",
-  "description": "Onarım raporu dosya sorumlusu 23 madde: Rapora Git, Dosya Bilgileri, tablo UX, Tespit, tedarikçi modal/hafıza, alt bant, revizyon taşıma",
+  "label": "v274-koyu-tema-tablo-sidebar-logo",
+  "description": "Koyu tema tablo zebra kontrastı; sidebar logo ölçeği, rounded-xl ve dar menü küre çipi kalıcı CSS",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v272-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v273-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v274-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v272-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v273-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v272-amd64"
   },
   "mustPassSmokeRoutes": [
