@@ -439,14 +439,27 @@ function Navbar({
     <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
       <div className="w-full px-2 sm:px-3 lg:px-5">
         <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          <div className={`flex min-w-0 shrink-0 items-center ${isPortalUser ? '' : 'md:hidden'}`}>
-            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
+            <Link
+              href={panelLogoHref}
+              className={`inline-flex shrink-0 items-center ${isPortalUser ? '' : 'hidden md:inline-flex'}`}
+              title="Panel ana sayfa"
+            >
               <BrandLogoMark
                 alt="Meridyen Assistance"
                 src={CORPORATE_LOGO_LIGHT}
                 variant="panel"
               />
             </Link>
+            <div className={`flex min-w-0 shrink-0 items-center ${isPortalUser ? '' : 'md:hidden'}`}>
+              <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
+                <BrandLogoMark
+                  alt="Meridyen Assistance"
+                  src={CORPORATE_LOGO_LIGHT}
+                  variant="panel"
+                />
+              </Link>
+            </div>
           </div>
 
           {/* Right side */}
@@ -835,14 +848,18 @@ function PanelSidebar({
     >
       <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
 
-      <nav className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pb-2 pt-2 [scrollbar-width:thin]">
+      <nav
+        className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-2 [scrollbar-width:thin] ${
+          collapsed ? 'pb-[11.5rem]' : 'pb-[15.5rem]'
+        }`}
+      >
         <div className="space-y-0.5">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
       </nav>
 
-      <div className="mt-auto shrink-0 border-t border-white/10 bg-[#0b1324]/90 backdrop-blur-sm">
-        <div className="px-2.5 pt-2.5">
+      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#0b1324] shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
+        <div className="px-2.5 pt-2">
           <button
             type="button"
             onClick={onToggleCollapsed}
@@ -1400,7 +1417,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
-          <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/90">
+          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/90">
+        <GlobalActivityStrip />
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
             <div className="mx-auto max-w-screen-2xl">
@@ -1458,7 +1476,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <main className={`min-w-0 flex-1 overflow-x-hidden ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
           <div className={`mx-auto min-w-0 max-w-screen-2xl px-3 sm:px-4 ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
-            <GlobalActivityStrip />
             {contextBackLink && (
               <Link
                 href={contextBackLink.href}

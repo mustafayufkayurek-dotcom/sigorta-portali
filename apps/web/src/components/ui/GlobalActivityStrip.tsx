@@ -3,10 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
 
-/**
- * Arka plan istekleri — navbar altında ince şerit (metin yok).
- * Konum: sticky header (~73px) hemen altı, tam genişlik.
- */
+/** Arka plan istekleri — yalnızca içerik alanında ince şerit (sidebar kesilmez) */
 export function GlobalActivityStrip() {
   const fetchingCount = useIsFetching();
   const mutatingCount = useIsMutating();
@@ -27,7 +24,7 @@ export function GlobalActivityStrip() {
 
   return (
     <div
-      className="pointer-events-none fixed left-0 right-0 top-[4.75rem] z-[9998] h-0.5 overflow-hidden bg-slate-200/60 dark:bg-slate-800/60"
+      className="pointer-events-none sticky top-0 z-20 h-0.5 w-full overflow-hidden bg-slate-200/60 dark:bg-slate-800/60"
       aria-hidden="true"
     >
       <div className="meridyen-indeterminate-bar h-full w-1/3 bg-blue-600 dark:bg-blue-500" />
