@@ -86,11 +86,11 @@ export function buildInboxFileOpenDraft(
 
   const mf = routing?.mailFields;
   const insuredNameRaw = mergeField(mf?.insuredName, routing?.insuredName, parsed.customerName);
-  const insuredPhoneRaw = mergePhoneField(mf?.insuredPhone, routing?.insuredPhone, parsed.phone);
+  const insuredPhoneRaw = mergePhoneField(parsed.phone, mf?.insuredPhone, routing?.insuredPhone);
   const fileNoRaw = mergeField(mf?.fileNo, parsed.fileNo);
   const claimNoRaw = mergeField(mf?.claimNo, parsed.policyNo, parsed.claimNo);
   const policyNoRaw = mergeField(mf?.policyNo, parsed.policyNo);
-  const addressRaw = mergeField(mf?.insuredAddress, parsed.address);
+  const addressRaw = mergeField(parsed.address, mf?.insuredAddress);
   const fileSubjectRaw = mergeField(mf?.fileSubject, parsed.fileSubject);
   const lossTypeRaw = mergeField(mf?.lossType, parsed.category);
   const insurerRaw = mergeField(mf?.insurer, parsed.insurer);

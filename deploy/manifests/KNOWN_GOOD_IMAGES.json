@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v264-tespitci-tedarikci-atama",
-  "description": "Tedarikçi tespitçi bayrağı, dosya bazlı tespitçi/tedarikçi atama, il/ilçe filtre, WhatsApp özet",
+  "label": "v265-inbox-telefon-adres-acil-ac",
+  "description": "Gelen kutusu sigortalı telefon/adres çıkarımı, Acil Aç talimat otomatik doldurma, form etiket önceliği",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v263-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v263-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v265-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v265-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v262-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v254-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v264-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v264-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

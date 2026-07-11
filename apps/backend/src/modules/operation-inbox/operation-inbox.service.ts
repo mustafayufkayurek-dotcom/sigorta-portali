@@ -30,7 +30,7 @@ import { CreateCustomerFromInboxDto } from './dto/create-customer-from-inbox.dto
 import { GraphMailSendService } from './graph/graph-mail-send.service';
 import { InboundRoutingService, InboundRoutingSuggestion } from './inbound-routing.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
-import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen, sanitizeInboundPhone, findInsuredMobilePhoneInText } from '@sigorta/shared';
+import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen, resolveInsuredPhoneForInbox } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -1012,10 +1012,12 @@ export class OperationInboxService {
       message.bodyHtml,
     ].filter(Boolean).join('\n');
     const phone =
-      sanitizeInboundPhone(extracted.phone)
-      ?? heuristic.phone
-      ?? findInsuredMobilePhoneInText(bodyTextForPhone)
-      ?? null;
+      resolveInsuredPhoneForInbox({
+        heuristicPhone: heuristic.phone,
+        extractedPhone: extracted.phone,
+        bodyText: bodyTextForPhone,
+      }) ?? null;
+    const address = heuristic.address?.trim() || extracted.address?.trim() || null;
     return {
       ...extracted,
       customerName: extracted.customerName?.trim() || heuristic.customerName || null,
@@ -1023,7 +1025,7 @@ export class OperationInboxService {
       policyNo: extracted.policyNo?.trim() || heuristic.policyNo || null,
       fileNo: extracted.fileNo?.trim() || heuristic.fileNo || null,
       claimNo: extracted.claimNo?.trim() || heuristic.claimNo || null,
-      address: extracted.address?.trim() || heuristic.address || null,
+      address,
       lossType: extracted.lossType?.trim() || heuristic.lossType || null,
       fileSubject: extracted.fileSubject?.trim() || heuristic.fileSubject || null,
     };

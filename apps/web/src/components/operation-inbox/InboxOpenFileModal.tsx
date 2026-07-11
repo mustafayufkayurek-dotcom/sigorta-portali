@@ -236,8 +236,15 @@ export function InboxOpenFileModal({
     || (insuranceCompanies?.length ?? 0) <= 1;
   const insuredOk = !!insuredName.trim();
   const assistantOk = kind !== 'emergency' || !!selectedAssistantCustomerId?.trim();
+  const instructionOk = instruction.trim().length >= 3;
   const canConfirm =
-    !loading && instruction.trim().length >= 3 && insuranceOk && insuredOk && assistantOk;
+    !loading && instructionOk && insuranceOk && insuredOk && assistantOk;
+
+  const confirmBlockers: string[] = [];
+  if (!instructionOk) confirmBlockers.push('Talimat en az 3 karakter olmalı');
+  if (!insuredOk) confirmBlockers.push('Sigortalı adı soyadı gerekli');
+  if (kind === 'emergency' && !assistantOk) confirmBlockers.push('Asistan firması seçilmeli');
+  if (kind === 'claim' && !insuranceOk) confirmBlockers.push('Sigorta şirketi seçilmeli');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -662,7 +669,13 @@ export function InboxOpenFileModal({
           <p className="text-xs text-red-600 px-6 pb-2">{error}</p>
         )}
 
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
+        <div className="flex flex-col items-end gap-1.5 px-6 py-4 border-t border-slate-100 shrink-0">
+          {!canConfirm && !loading && confirmBlockers.length > 0 && (
+            <p className="text-[11px] text-slate-500 w-full text-right">
+              {confirmBlockers.join(' · ')}
+            </p>
+          )}
+          <div className="flex justify-end gap-3 w-full">
           <button
             type="button"
             onClick={onCancel}
@@ -679,6 +692,7 @@ export function InboxOpenFileModal({
           >
             {loading ? 'İşleniyor…' : confirmLabel}
           </button>
+          </div>
         </div>
       </div>
     </div>

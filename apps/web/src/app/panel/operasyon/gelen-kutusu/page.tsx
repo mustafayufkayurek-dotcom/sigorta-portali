@@ -18,6 +18,7 @@ import { InboxMatchCandidates } from '@/components/operation-inbox/InboxMatchCan
 import { InboxDetailModal } from '@/components/operation-inbox/InboxDetailModal';
 import { InboxOpenFileModal } from '@/components/operation-inbox/InboxOpenFileModal';
 import { buildInboxFileOpenDraft, buildInboxFileOpenDraftFromRow, type InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+import { sanitizeInboundPhone } from '@sigorta/shared';
 import { parseAssigneeAssistantScope } from '@/utils/inbox-assignee-assistant-scope';
 import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { API, authHeader } from '@/utils/api';
@@ -716,8 +717,13 @@ export default function GelenKutusuPage() {
     const mf = routing.mailFields;
     if (mf) {
       if (mf.insuredName?.trim()) setInsuredNameInput(toTitleCaseTR(mf.insuredName.trim()));
-      if (mf.insuredPhone?.trim()) setInsuredPhoneInput(mf.insuredPhone.trim());
-      if (mf.insuredAddress?.trim()) setInsuredAddressInput(toTitleCaseTR(mf.insuredAddress.trim()));
+      if (mf.insuredPhone?.trim()) {
+        const fromRouting = sanitizeInboundPhone(mf.insuredPhone.trim());
+        if (fromRouting) setInsuredPhoneInput(fromRouting);
+      }
+      if (mf.insuredAddress?.trim()) {
+        setInsuredAddressInput(toTitleCaseTR(mf.insuredAddress.trim()));
+      }
       if (mf.fileNo?.trim()) setFileNoInput(mf.fileNo.trim());
       if (mf.policyNo?.trim()) setPolicyNoInput(mf.policyNo.trim());
       if (mf.claimNo?.trim()) setClaimNoInput(mf.claimNo.trim());
@@ -774,6 +780,14 @@ export default function GelenKutusuPage() {
       });
       applyFileOpenDraft(draft);
       setActionError('');
+
+      const autoInstruction =
+        draft.description?.trim()
+        || message.aiSummary?.trim()
+        || `Gelen kutusu ihbarı: ${message.subject.trim()}`;
+      if (autoInstruction.trim().length >= 3) {
+        setInstruction(autoInstruction);
+      }
 
       if (routing) {
         applyRoutingFromSuggestion(routing);

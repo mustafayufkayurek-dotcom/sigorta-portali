@@ -3,6 +3,12 @@
  * Remed / asistan firma konu satırı ve form alanları için.
  */
 
+import {
+  extractInboundFormFields,
+  getInboundFormFieldValue,
+  sliceInboundFormBody,
+} from './inbound-form-fields';
+
 export interface RemedSubjectParts {
   policyNo?: string;
   customerName?: string;
@@ -131,15 +137,58 @@ export function isInboundCallCenterPhone(raw?: string | null): boolean {
   return false;
 }
 
-/** Metin içinde sigortalıya ait olabilecek ilk GSM numarasını bulur (05xx). */
+/** Etiketli form alanından sigortalı GSM çıkarır. */
+const PHONE_FIELD_LABELS = [
+  'İletişim No',
+  'Telefon',
+  'Cep Telefonu',
+  'GSM',
+  'Sigortalı Telefonu',
+];
+
+export function findLabeledInsuredPhoneInText(text?: string | null): string | undefined {
+  if (!text?.trim()) return undefined;
+  const formBody = sliceInboundFormBody(text);
+  const fields = extractInboundFormFields(formBody);
+  const raw = getInboundFormFieldValue(fields, ...PHONE_FIELD_LABELS);
+  return sanitizeInboundPhone(raw);
+}
+
+/** Metin içinde sigortalıya ait GSM — önce form etiketi, sonra form gövdesi taraması. */
 export function findInsuredMobilePhoneInText(text?: string | null): string | undefined {
   if (!text?.trim()) return undefined;
-  const matches = text.matchAll(/(?:^|\D)(0?5\d{2})[\s.-]?(\d{3})[\s.-]?(\d{2})[\s.-]?(\d{2})(?=\D|$)/g);
+
+  const labeled = findLabeledInsuredPhoneInText(text);
+  if (labeled) return labeled;
+
+  const formBody = sliceInboundFormBody(text);
+  const scanTarget = formBody.trim() || text;
+  const matches = scanTarget.matchAll(
+    /(?:^|\D)(0?5\d{2})[\s.-]?(\d{3})[\s.-]?(\d{2})[\s.-]?(\d{2})(?=\D|$)/g,
+  );
   for (const match of matches) {
     const candidate = sanitizeInboundPhone(match[0].trim());
     if (candidate) return candidate;
   }
   return undefined;
+}
+
+/**
+ * Gelen kutusu sigortalı telefonu — öncelik: etiketli/heuristic, AI çıkarımı, metin taraması.
+ */
+export function resolveInsuredPhoneForInbox(input: {
+  heuristicPhone?: string | null;
+  extractedPhone?: string | null;
+  bodyText?: string | null;
+}): string | undefined {
+  const heuristic = sanitizeInboundPhone(input.heuristicPhone);
+  if (heuristic) return heuristic;
+
+  const extracted = sanitizeInboundPhone(input.extractedPhone);
+  if (extracted) return extracted;
+
+  return findLabeledInsuredPhoneInText(input.bodyText)
+    ?? findInsuredMobilePhoneInText(input.bodyText);
 }
 
 /** Placeholder veya anlamsız telefon değerlerini filtreler */

@@ -3,8 +3,7 @@ import { InboundMailbox, InboundMessage, Prisma } from '@prisma/client';
 import {
   mapInboundCategoryToMeridyen,
   mapInboundLossTypeToMeridyen,
-  sanitizeInboundPhone,
-  findInsuredMobilePhoneInText,
+  resolveInsuredPhoneForInbox,
 } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
@@ -153,17 +152,18 @@ export class InboundRoutingService {
       message.bodyHtml,
     ].filter(Boolean).join('\n');
 
-    if (!extracted.phone?.trim()) {
-      extracted.phone = heuristic.phone ?? findInsuredMobilePhoneInText(bodyTextForPhone) ?? null;
-    } else {
-      extracted.phone =
-        sanitizeInboundPhone(extracted.phone)
-        ?? heuristic.phone
-        ?? findInsuredMobilePhoneInText(bodyTextForPhone)
-        ?? null;
-    }
+    extracted.phone =
+      resolveInsuredPhoneForInbox({
+        heuristicPhone: heuristic.phone,
+        extractedPhone: extracted.phone,
+        bodyText: bodyTextForPhone,
+      }) ?? null;
 
-    if (!extracted.address?.trim()) extracted.address = heuristic.address ?? null;
+    if (heuristic.address?.trim()) {
+      extracted.address = heuristic.address;
+    } else if (!extracted.address?.trim()) {
+      extracted.address = heuristic.address ?? null;
+    }
     if (!extracted.address?.trim()) {
       const policyNo = stored.mailFields?.policyNo ?? extracted.policyNo;
       const fileNo = stored.mailFields?.fileNo ?? extracted.fileNo;
@@ -286,15 +286,12 @@ export class InboundRoutingService {
       message.bodyHtml,
     ].filter(Boolean).join('\n');
     if (!extracted.customerName?.trim()) extracted.customerName = heuristic.customerName ?? null;
-    if (!extracted.phone?.trim()) {
-      extracted.phone = heuristic.phone ?? findInsuredMobilePhoneInText(bodyTextForPhone) ?? null;
-    } else {
-      extracted.phone =
-        sanitizeInboundPhone(extracted.phone)
-        ?? heuristic.phone
-        ?? findInsuredMobilePhoneInText(bodyTextForPhone)
-        ?? null;
-    }
+    extracted.phone =
+      resolveInsuredPhoneForInbox({
+        heuristicPhone: heuristic.phone,
+        extractedPhone: extracted.phone,
+        bodyText: bodyTextForPhone,
+      }) ?? null;
     if (!extracted.policyNo?.trim()) extracted.policyNo = heuristic.policyNo ?? null;
     if (!extracted.fileNo?.trim()) extracted.fileNo = heuristic.fileNo ?? null;
     if (!extracted.claimNo?.trim()) extracted.claimNo = heuristic.claimNo ?? null;
@@ -302,7 +299,9 @@ export class InboundRoutingService {
     if (!extracted.lossType?.trim()) extracted.lossType = heuristic.lossType ?? null;
     extracted.lossType = mapInboundLossTypeToMeridyen(extracted.lossType) ?? extracted.lossType;
     extracted.fileSubject = mapInboundCategoryToMeridyen(extracted.fileSubject) ?? extracted.fileSubject;
-    if (!extracted.address?.trim()) {
+    if (heuristic.address?.trim()) {
+      extracted.address = heuristic.address;
+    } else if (!extracted.address?.trim()) {
       extracted.address = heuristic.address ?? null;
     }
     let addressInferredFromExistingFile = false;

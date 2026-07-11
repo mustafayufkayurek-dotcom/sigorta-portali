@@ -5,6 +5,9 @@ import {
   parseRemedSubjectLine,
   sanitizeInboundPhone,
   findInsuredMobilePhoneInText,
+  decodeInboundEmailText,
+  extractInboundFormFields,
+  getInboundFormFieldValue,
 } from '@sigorta/shared';
 import { extractSubjectHints } from './inbound-subject-parser';
 
@@ -19,35 +22,20 @@ export interface HeuristicExtractedFields {
   fileSubject?: string | null;
 }
 
-function decodeText(raw: string): string {
-  return raw
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function pickField(text: string, label: string): string | undefined {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = text.match(new RegExp(`${escaped}\\s*:\\s*([^:]+?)(?=\\s+[\\p{L}][\\p{L}\\s\\-]*\\s*:|$)`, 'iu'));
-  return match?.[1]?.trim() || undefined;
-}
-
 /** AI çıktısı yokken konu/gövdeden müşteri ve dosya ipuçları çıkarır. */
 export function extractHeuristicFields(
   message: Pick<InboundMessage, 'subject' | 'bodyText' | 'bodyPreview' | 'bodyHtml'>,
 ): HeuristicExtractedFields {
-  const bodyFromHtml = message.bodyHtml ? decodeText(message.bodyHtml) : '';
-  const text = decodeText(
-    [message.bodyText, bodyFromHtml, message.bodyPreview, message.subject].filter(Boolean).join(' '),
+  const bodyFromHtml = message.bodyHtml ? decodeInboundEmailText(message.bodyHtml) : '';
+  const textForFields = decodeInboundEmailText(
+    [message.bodyText, bodyFromHtml, message.bodyPreview].filter(Boolean).join('\n'),
   );
+  const textForPhone = textForFields || decodeInboundEmailText(message.subject);
+  const fields = extractInboundFormFields(textForFields);
   const subjectHints = extractSubjectHints(message.subject);
   const remed = parseRemedSubjectLine(message.subject);
 
-  const bodyLossType = pickField(text, 'Hasar Şekli') ?? pickField(text, 'Branş');
+  const bodyLossType = getInboundFormFieldValue(fields, 'Hasar Şekli', 'Branş');
   const subjectCategory = remed?.rawCategory;
   const fileSubject =
     mapInboundCategoryToMeridyen(subjectCategory)
@@ -56,29 +44,35 @@ export function extractHeuristicFields(
     mapInboundLossTypeToMeridyen(bodyLossType)
     ?? (fileSubject && subjectCategory ? mapInboundLossTypeToMeridyen(subjectCategory) : undefined);
 
+  const phoneFromFields = sanitizeInboundPhone(
+    getInboundFormFieldValue(
+      fields,
+      'İletişim No',
+      'Telefon',
+      'Cep Telefonu',
+      'GSM',
+      'Sigortalı Telefonu',
+    ),
+  );
+
   return {
     customerName:
-      pickField(text, 'Sigorta Ettiren Ad-Soyad')
-      ?? pickField(text, 'Sigorta Ettiren')
+      getInboundFormFieldValue(fields, 'Sigorta Ettiren Ad-Soyad', 'Sigorta Ettiren')
       ?? remed?.customerName
       ?? undefined,
-    phone:
-      sanitizeInboundPhone(
-        pickField(text, 'İletişim No')
-        ?? pickField(text, 'Telefon')
-        ?? pickField(text, 'Cep Telefonu')
-        ?? pickField(text, 'GSM'),
-      )
-      ?? findInsuredMobilePhoneInText(text)
-      ?? undefined,
-    policyNo: pickField(text, 'Poliçe No') ?? subjectHints.policyNo ?? remed?.policyNo,
-    fileNo: pickField(text, 'Dosya No') ?? remed?.remedFileNo,
-    claimNo: pickField(text, 'Referans No') ?? remed?.policyNo,
-    address:
-      pickField(text, 'Adres')
-      ?? pickField(text, 'Hasar Yeri')
-      ?? pickField(text, 'Sigorta Ettiren Adresi')
-      ?? pickField(text, 'İletişim Adresi'),
+    phone: phoneFromFields ?? findInsuredMobilePhoneInText(textForPhone) ?? undefined,
+    policyNo: getInboundFormFieldValue(fields, 'Poliçe No') ?? subjectHints.policyNo ?? remed?.policyNo,
+    fileNo: getInboundFormFieldValue(fields, 'Dosya No') ?? remed?.remedFileNo,
+    claimNo: getInboundFormFieldValue(fields, 'Referans No') ?? remed?.policyNo,
+    address: getInboundFormFieldValue(
+      fields,
+      'Adres',
+      'Hasar Yeri',
+      'Sigorta Ettiren Adresi',
+      'İletişim Adresi',
+      'Sigortalı Adresi',
+      'Hasar Adresi',
+    ),
     lossType: lossType ?? undefined,
     fileSubject: fileSubject ?? undefined,
   };

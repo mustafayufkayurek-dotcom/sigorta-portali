@@ -1,0 +1,62 @@
+import {
+  findInsuredMobilePhoneInText,
+  resolveInsuredPhoneForInbox,
+} from '@sigorta/shared';
+import { extractHeuristicFields } from './inbound-heuristic-parser';
+
+describe('inbound-heuristic-parser', () => {
+  const staffPhone = '0532 174 5611';
+  const insuredPhone = '0539 876 5432';
+  const address = 'Kemalöz 1.Üniversite No : 51 Daire : 7 Merkez - Türkiye - Usak';
+
+  const bodyText = `
+Didem Caner
+Meridyen
+Tel: ${staffPhone}
+
+KONUT HASAR İHBAR FORMU
+Sigorta Ettiren Ad-Soyad: Özge Oral
+Dosya No: RCS-20261805465
+Poliçe No: 744875622
+Referans No: 744875622
+İletişim No: ${insuredPhone}
+Hasar Şekli: Tesisat
+Adres: ${address}
+`.trim();
+
+  it('adres içindeki iki nokta üst üste ile tam adresi çıkarır', () => {
+    const fields = extractHeuristicFields({
+      subject: 'Ynt: 744875622/ÖZGE ORAL/RCS-20261805465/TESİSAT',
+      bodyText,
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.address).toBe(address);
+  });
+
+  it('yanıt zincirindeki personel telefonunu değil form İletişim No alanını alır', () => {
+    const fields = extractHeuristicFields({
+      subject: 'Ynt: 744875622/ÖZGE ORAL/RCS-20261805465/TESİSAT',
+      bodyText,
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.phone).toContain('539');
+    expect(fields.phone).not.toContain('174');
+  });
+
+  it('resolveInsuredPhoneForInbox heuristic önceliğini korur', () => {
+    const resolved = resolveInsuredPhoneForInbox({
+      heuristicPhone: insuredPhone,
+      extractedPhone: staffPhone,
+      bodyText,
+    });
+    expect(resolved).toContain('539');
+  });
+
+  it('findInsuredMobilePhoneInText form gövdesindeki numarayı seçer', () => {
+    const found = findInsuredMobilePhoneInText(bodyText);
+    expect(found).toContain('539');
+    expect(found).not.toContain('174');
+  });
+});
