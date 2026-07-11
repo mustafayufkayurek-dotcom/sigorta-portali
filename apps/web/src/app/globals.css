@@ -288,6 +288,9 @@
   border: none !important;
   box-shadow: none !important;
 }
+.panel-sidebar-brand-globe__img {
+  @apply h-10 w-10 object-contain;
+}
 .panel-sidebar-brand-full {
   @apply flex items-center justify-center overflow-hidden rounded-xl pr-9 bg-transparent;
 }

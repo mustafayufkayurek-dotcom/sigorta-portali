@@ -116,6 +116,7 @@ Otomatik smoke (`post-deploy-smoke.sh`) route erişimini doğrular; **görsel ka
 | Olay | Kök neden | Önlem |
 |------|-----------|-------|
 | SVG küre geri geldi (v255→v257) | Aynı dosyaya üst üste patch, ortak bileşen yoktu | S2 + `brand.ts` tek kaynak |
+| v277 deploy S2 ihlali | Logo «düzeltmesi» checklist okunmadan MeridyenGlobeAnimated geri yazıldı | Deploy öncesi S2 zorunlu; v278 PNG geri |
 | Sigorta hero eski kaldı | Eksper düzeltildi, sigorta atlandı | P1–P2 ortak `PortalCompactHeader` |
 | Yan boşluk / buton sola yığıldı | Layout hack + inline header | P4, P5, ortak bileşen |
 | override.yml bozulması | Deploy script | `deploy-web-production.sh` printf fix |
