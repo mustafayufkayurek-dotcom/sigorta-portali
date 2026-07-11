@@ -68,6 +68,23 @@ function isAcilYardimDetailPath(pathname: string): boolean {
   return true;
 }
 
+function isAcilYardimFinansPath(pathname: string): boolean {
+  return pathname === '/panel/acil-yardim/finans' || pathname.startsWith('/panel/acil-yardim/finans/');
+}
+
+/** Hasar departmanlı ofis personeli: operasyon / gelen kutusu akışı için sınırlı acil erişim */
+function officeStaffCanAccessAcilOperationally(
+  roleCode: string,
+  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
+  allowedScreens?: string[] | null,
+): boolean {
+  if (!isOfficeStaffRole(roleCode)) return false;
+  if (allowedScreens?.includes('operasyon') || allowedScreens?.includes('acil_yardim')) {
+    return true;
+  }
+  return hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim');
+}
+
 /**
  * Acil yardım liste sayfası departman kapsamına bağlı;
  * dosya detayı gelen kutusu / atanan dosya için operasyon yetkisi olan dosya sorumlusuna açılır.
@@ -83,20 +100,17 @@ export function canAccessAcilYardimRoute(
     return true;
   }
 
-  if (!isAcilYardimDetailPath(pathname)) {
+  if (isAcilYardimFinansPath(pathname)) {
     return false;
   }
 
-  const role = String(roleCode ?? '').trim().toLowerCase();
-  if (isOfficeStaffRole(role)) {
-    if (allowedScreens?.includes('operasyon') || allowedScreens?.includes('acil_yardim')) {
-      return true;
-    }
-    if (hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim')) {
+  if (pathname === '/panel/acil-yardim' || isAcilYardimDetailPath(pathname)) {
+    if (officeStaffCanAccessAcilOperationally(roleCode, operationalAccessGrants, allowedScreens)) {
       return true;
     }
   }
 
+  const role = String(roleCode ?? '').trim().toLowerCase();
   if (isFinanceRole(role) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim')) {
     return true;
   }
