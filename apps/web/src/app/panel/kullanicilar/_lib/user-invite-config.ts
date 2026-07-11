@@ -29,7 +29,7 @@ export type OperationAreaCode = '' | 'hasar' | 'acil' | 'both';
 /** Seed ve canlı ortamda birlikte yaşayan departman kodları */
 const DEPARTMENT_CODE_ALIASES: Record<'hasar' | 'acil', string[]> = {
   hasar: ['hasar-onarim', 'HASAR_ONARIM', 'hasar_onarim'],
-  acil: ['acil-yardim', 'ACIL_YARDIM', 'acil_yardim'],
+  acil: ['acil-yardim', 'ACIL_YARDIM', 'acil_yardim', 'acil', 'ACIL'],
 };
 
 export interface IhbarKonulari {
@@ -39,7 +39,10 @@ export interface IhbarKonulari {
 
 export function departmentCodeMatchesArea(code: string | undefined, area: 'hasar' | 'acil') {
   if (!code) return false;
-  return DEPARTMENT_CODE_ALIASES[area].includes(code);
+  const normalized = code.trim().toLowerCase().replace(/_/g, '-');
+  return DEPARTMENT_CODE_ALIASES[area].some(
+    (alias) => alias.toLowerCase().replace(/_/g, '-') === normalized,
+  );
 }
 
 export function operationAreaFromDepartmentCodes(codes: Iterable<string | undefined>): OperationAreaCode {

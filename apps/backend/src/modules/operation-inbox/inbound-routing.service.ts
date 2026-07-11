@@ -4,6 +4,7 @@ import {
   mapInboundCategoryToMeridyen,
   mapInboundLossTypeToMeridyen,
   sanitizeInboundPhone,
+  findInsuredMobilePhoneInText,
 } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
@@ -134,9 +135,52 @@ export class InboundRoutingService {
     }
 
     const stored = this.parseStoredRouting(message.aiExtractedJson);
-    if (stored) return stored;
+    if (stored) return this.refreshStoredRoutingMailFields(message, stored);
 
     return this.buildRoutingSuggestion(message);
+  }
+
+  /** Önbellekteki routing eski/yanlış telefon-adres taşıyabilir — gövdeden yeniden doğrula. */
+  private async refreshStoredRoutingMailFields(
+    message: InboundMessage,
+    stored: InboundRoutingSuggestion,
+  ): Promise<InboundRoutingSuggestion> {
+    const extracted = this.parseExtracted(message.aiExtractedJson);
+    const heuristic = extractHeuristicFields(message);
+    const bodyTextForPhone = [
+      message.bodyText,
+      message.bodyPreview,
+      message.bodyHtml,
+    ].filter(Boolean).join('\n');
+
+    if (!extracted.phone?.trim()) {
+      extracted.phone = heuristic.phone ?? findInsuredMobilePhoneInText(bodyTextForPhone) ?? null;
+    } else {
+      extracted.phone =
+        sanitizeInboundPhone(extracted.phone)
+        ?? heuristic.phone
+        ?? findInsuredMobilePhoneInText(bodyTextForPhone)
+        ?? null;
+    }
+
+    if (!extracted.address?.trim()) extracted.address = heuristic.address ?? null;
+    if (!extracted.address?.trim()) {
+      const policyNo = stored.mailFields?.policyNo ?? extracted.policyNo;
+      const fileNo = stored.mailFields?.fileNo ?? extracted.fileNo;
+      extracted.address = await this.resolveAddressFromExistingFiles(policyNo, fileNo);
+    }
+
+    const mailFields = {
+      ...stored.mailFields,
+      insuredPhone: extracted.phone?.trim() || null,
+      insuredAddress: extracted.address?.trim() || null,
+    };
+
+    return {
+      ...stored,
+      insuredPhone: mailFields.insuredPhone,
+      mailFields,
+    };
   }
 
   async listAssignableOfficeUsers(messageId?: string): Promise<AssignableUsersResult> {
@@ -236,9 +280,21 @@ export class InboundRoutingService {
   private async buildRoutingSuggestion(message: InboundMessage): Promise<InboundRoutingSuggestion> {
     const extracted = this.parseExtracted(message.aiExtractedJson);
     const heuristic = extractHeuristicFields(message);
+    const bodyTextForPhone = [
+      message.bodyText,
+      message.bodyPreview,
+      message.bodyHtml,
+    ].filter(Boolean).join('\n');
     if (!extracted.customerName?.trim()) extracted.customerName = heuristic.customerName ?? null;
-    if (!extracted.phone?.trim()) extracted.phone = heuristic.phone ?? null;
-    else extracted.phone = sanitizeInboundPhone(extracted.phone) ?? extracted.phone;
+    if (!extracted.phone?.trim()) {
+      extracted.phone = heuristic.phone ?? findInsuredMobilePhoneInText(bodyTextForPhone) ?? null;
+    } else {
+      extracted.phone =
+        sanitizeInboundPhone(extracted.phone)
+        ?? heuristic.phone
+        ?? findInsuredMobilePhoneInText(bodyTextForPhone)
+        ?? null;
+    }
     if (!extracted.policyNo?.trim()) extracted.policyNo = heuristic.policyNo ?? null;
     if (!extracted.fileNo?.trim()) extracted.fileNo = heuristic.fileNo ?? null;
     if (!extracted.claimNo?.trim()) extracted.claimNo = heuristic.claimNo ?? null;

@@ -119,6 +119,29 @@ export function parseRemedSubjectLine(subject: string): RemedSubjectParts | unde
   };
 }
 
+/** 0850 / 444 hatları sigortalı GSM değildir — form şablonunda çağrı merkezi basılır */
+export function isInboundCallCenterPhone(raw?: string | null): boolean {
+  if (!raw?.trim()) return false;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 10) return false;
+  const normalized = digits.startsWith('0') ? digits : `0${digits}`;
+  if (normalized.startsWith('0850') || normalized.startsWith('444')) return true;
+  // 850 XXX XX XX (başında 0 olmadan)
+  if (/^850\d{7}$/.test(digits)) return true;
+  return false;
+}
+
+/** Metin içinde sigortalıya ait olabilecek ilk GSM numarasını bulur (05xx). */
+export function findInsuredMobilePhoneInText(text?: string | null): string | undefined {
+  if (!text?.trim()) return undefined;
+  const matches = text.matchAll(/(?:^|\D)(0?5\d{2})[\s.-]?(\d{3})[\s.-]?(\d{2})[\s.-]?(\d{2})(?=\D|$)/g);
+  for (const match of matches) {
+    const candidate = sanitizeInboundPhone(match[0].trim());
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
 /** Placeholder veya anlamsız telefon değerlerini filtreler */
 export function sanitizeInboundPhone(raw?: string | null): string | undefined {
   if (!raw?.trim()) return undefined;
@@ -134,5 +157,6 @@ export function sanitizeInboundPhone(raw?: string | null): string | undefined {
   }
   const digits = value.replace(/\D/g, '');
   if (digits.length < 10) return undefined;
+  if (isInboundCallCenterPhone(value)) return undefined;
   return value;
 }

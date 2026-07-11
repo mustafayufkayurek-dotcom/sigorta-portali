@@ -4,6 +4,7 @@ import {
   mapInboundLossTypeToMeridyen,
   parseRemedSubjectLine,
   sanitizeInboundPhone,
+  findInsuredMobilePhoneInText,
 } from '@sigorta/shared';
 import { extractSubjectHints } from './inbound-subject-parser';
 
@@ -61,11 +62,23 @@ export function extractHeuristicFields(
       ?? pickField(text, 'Sigorta Ettiren')
       ?? remed?.customerName
       ?? undefined,
-    phone: sanitizeInboundPhone(pickField(text, 'İletişim No') ?? pickField(text, 'Telefon')),
+    phone:
+      sanitizeInboundPhone(
+        pickField(text, 'İletişim No')
+        ?? pickField(text, 'Telefon')
+        ?? pickField(text, 'Cep Telefonu')
+        ?? pickField(text, 'GSM'),
+      )
+      ?? findInsuredMobilePhoneInText(text)
+      ?? undefined,
     policyNo: pickField(text, 'Poliçe No') ?? subjectHints.policyNo ?? remed?.policyNo,
     fileNo: pickField(text, 'Dosya No') ?? remed?.remedFileNo,
     claimNo: pickField(text, 'Referans No') ?? remed?.policyNo,
-    address: pickField(text, 'Adres'),
+    address:
+      pickField(text, 'Adres')
+      ?? pickField(text, 'Hasar Yeri')
+      ?? pickField(text, 'Sigorta Ettiren Adresi')
+      ?? pickField(text, 'İletişim Adresi'),
     lossType: lossType ?? undefined,
     fileSubject: fileSubject ?? undefined,
   };

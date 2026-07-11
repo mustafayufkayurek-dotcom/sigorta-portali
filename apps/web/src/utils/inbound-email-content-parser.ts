@@ -5,6 +5,7 @@ import {
   mapInboundLossTypeToMeridyen,
   parseRemedSubjectLine,
   sanitizeInboundPhone,
+  findInsuredMobilePhoneInText,
 } from '@sigorta/shared';
 
 export type InboxSenderProfile = 'remed' | 'safran' | 'insurance' | 'unknown';
@@ -50,7 +51,12 @@ const FORM_FIELD_LABELS: { key: string; label: string }[] = [
   { key: 'claimNo', label: 'Referans No' },
   { key: 'phone', label: 'İletişim No' },
   { key: 'phoneAlt', label: 'Telefon' },
+  { key: 'phoneAlt2', label: 'Cep Telefonu' },
+  { key: 'phoneAlt3', label: 'GSM' },
   { key: 'address', label: 'Adres' },
+  { key: 'addressAlt', label: 'Hasar Yeri' },
+  { key: 'addressAlt2', label: 'Sigorta Ettiren Adresi' },
+  { key: 'addressAlt3', label: 'İletişim Adresi' },
   { key: 'category', label: 'Hasar Şekli' },
   { key: 'categoryAlt', label: 'Branş' },
   { key: 'description', label: 'Açıklama' },
@@ -198,17 +204,25 @@ export function parseInboundEmailContent(input: {
     ?? fieldMap.get('sigorta ettiren')
     ?? subjectParts?.customerName;
 
-  const phone = sanitizeInboundPhone(
+  const phoneFromFields = sanitizeInboundPhone(
     fieldMap.get('i̇letişim no')
     ?? fieldMap.get('iletisim no')
-    ?? fieldMap.get('telefon'),
+    ?? fieldMap.get('telefon')
+    ?? fieldMap.get('cep telefonu')
+    ?? fieldMap.get('gsm'),
   );
+  const phone = phoneFromFields ?? findInsuredMobilePhoneInText(text);
 
   const fileNo = fieldMap.get('dosya no') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
   const policyNo = fieldMap.get('poliçe no') ?? subjectParts?.fileOrPolicyNo;
   const claimRaw = fieldMap.get('referans no') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
   const claimNo = normalizeClaimNo(claimRaw);
-  const address = fieldMap.get('adres');
+  const address =
+    fieldMap.get('adres')
+    ?? fieldMap.get('hasar yeri')
+    ?? fieldMap.get('sigorta ettiren adresi')
+    ?? fieldMap.get('i̇letişim adresi')
+    ?? fieldMap.get('iletisim adresi');
   const insurer = fieldMap.get('sigorta şirketi');
   const bodyCategory = fieldMap.get('hasar şekli') ?? fieldMap.get('branş');
   const category = bodyCategory ?? subjectParts?.category;

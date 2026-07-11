@@ -3,6 +3,7 @@ import {
   resolveAssistantFirmLabel,
   type ParsedInboxEmailContent,
 } from '@/utils/inbound-email-content-parser';
+import { sanitizeInboundPhone } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 export interface InboxMailFields {
@@ -54,6 +55,14 @@ interface RoutingLike {
   mailFields?: InboxMailFields | null;
 }
 
+function mergePhoneField(...values: Array<string | null | undefined>): string {
+  for (const v of values) {
+    const sanitized = sanitizeInboundPhone(v);
+    if (sanitized) return sanitized;
+  }
+  return '';
+}
+
 function mergeField(...values: Array<string | null | undefined>): string {
   for (const v of values) {
     const t = v?.trim();
@@ -77,7 +86,7 @@ export function buildInboxFileOpenDraft(
 
   const mf = routing?.mailFields;
   const insuredNameRaw = mergeField(mf?.insuredName, routing?.insuredName, parsed.customerName);
-  const insuredPhoneRaw = mergeField(mf?.insuredPhone, routing?.insuredPhone, parsed.phone);
+  const insuredPhoneRaw = mergePhoneField(mf?.insuredPhone, routing?.insuredPhone, parsed.phone);
   const fileNoRaw = mergeField(mf?.fileNo, parsed.fileNo);
   const claimNoRaw = mergeField(mf?.claimNo, parsed.policyNo, parsed.claimNo);
   const policyNoRaw = mergeField(mf?.policyNo, parsed.policyNo);
@@ -128,7 +137,7 @@ export function applyMailFieldsToDraft(
     insuredName: fields.insuredName?.trim()
       ? toTitleCaseTR(fields.insuredName.trim())
       : draft.insuredName,
-    insuredPhone: fields.insuredPhone?.trim() || draft.insuredPhone,
+    insuredPhone: sanitizeInboundPhone(fields.insuredPhone?.trim()) || draft.insuredPhone,
     insuredAddress: fields.insuredAddress?.trim()
       ? toTitleCaseTR(fields.insuredAddress.trim())
       : draft.insuredAddress,

@@ -39,6 +39,10 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     --exclude node_modules --exclude dist --exclude .DS_Store --exclude '._*' \
     "$PROJECT_DIR/apps/backend/" "$REMOTE_HOST:$REMOTE_APP/apps/backend/"
 
+  rsync -avz --delete \
+    --exclude node_modules --exclude dist --exclude .DS_Store --exclude '._*' \
+    "$PROJECT_DIR/packages/shared/" "$REMOTE_HOST:$REMOTE_APP/packages/shared/"
+
   rsync -avz \
     "$PROJECT_DIR/Dockerfile.backend" \
     "$PROJECT_DIR/Dockerfile.web" \

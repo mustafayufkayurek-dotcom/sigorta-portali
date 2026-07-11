@@ -30,7 +30,7 @@ import { CreateCustomerFromInboxDto } from './dto/create-customer-from-inbox.dto
 import { GraphMailSendService } from './graph/graph-mail-send.service';
 import { InboundRoutingService, InboundRoutingSuggestion } from './inbound-routing.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
-import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen, sanitizeInboundPhone, findInsuredMobilePhoneInText } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
@@ -983,10 +983,20 @@ export class OperationInboxService {
 
   private enrichExtracted(message: InboundMessage, extracted: AiExtractedFields): AiExtractedFields {
     const heuristic = extractHeuristicFields(message);
+    const bodyTextForPhone = [
+      message.bodyText,
+      message.bodyPreview,
+      message.bodyHtml,
+    ].filter(Boolean).join('\n');
+    const phone =
+      sanitizeInboundPhone(extracted.phone)
+      ?? heuristic.phone
+      ?? findInsuredMobilePhoneInText(bodyTextForPhone)
+      ?? null;
     return {
       ...extracted,
       customerName: extracted.customerName?.trim() || heuristic.customerName || null,
-      phone: extracted.phone?.trim() || heuristic.phone || null,
+      phone,
       policyNo: extracted.policyNo?.trim() || heuristic.policyNo || null,
       fileNo: extracted.fileNo?.trim() || heuristic.fileNo || null,
       claimNo: extracted.claimNo?.trim() || heuristic.claimNo || null,

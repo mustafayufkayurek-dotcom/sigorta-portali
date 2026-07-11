@@ -25,8 +25,9 @@ export function parseAssigneeAssistantScope(
   const acilRows = assignments.filter(
     (row) => row.isActive !== false && departmentCodeMatchesArea(row.department?.code, 'acil'),
   );
+  // Backend assertAssigneeCoversAssistantCustomer: acil ataması yoksa tüm firmalar seçilebilir
   if (acilRows.length === 0) {
-    return { mode: 'unknown', customerIds: [], label: 'Acil yardım kapsamı tanımlı değil' };
+    return { mode: 'all', customerIds: [], label: 'Tüm Asistan Firmaları' };
   }
   if (acilRows.some((row) => row.coverageType === 'all')) {
     return { mode: 'all', customerIds: [], label: 'Tüm Asistan Firmaları' };
