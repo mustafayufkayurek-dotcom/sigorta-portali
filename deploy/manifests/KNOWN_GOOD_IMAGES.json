@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v272-onarim-raporu-6-madde",
-  "description": "Onarım raporu kalan 6 madde: satır UX, ikon aksiyonlar, kaydet sadeleştirme, yasal şablonlar, tedarikçi kıyas, revizyon modal",
+  "label": "v273-onarim-raporu-dosya-sorumlusu-ux",
+  "description": "Onarım raporu dosya sorumlusu 23 madde: Rapora Git, Dosya Bilgileri, tablo UX, Tespit, tedarikçi modal/hafıza, alt bant, revizyon taşıma",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v272-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v272-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v273-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v271-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v270-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v272-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v272-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

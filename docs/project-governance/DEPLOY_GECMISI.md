@@ -2,24 +2,39 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 11 Temmuz 2026 öğle
+**Son güncelleme:** 11 Temmuz 2026 akşam
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v250 sonrası)
+## Canlı durum (11 Temmuz 2026 — v273)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v250-amd64` | healthy |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v249-amd64` | healthy |
-| **Rollback** | Web **v248** / Backend **v249** | manifest `rollbackImages` |
-| **Etiket** | `v250-sidebar-dashboard-sablon` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v273-amd64` | healthy |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v272-amd64` | healthy |
+| **Rollback** | Web **v272** / Backend **v272** | manifest `rollbackImages` |
+| **Etiket** | `v273-onarim-raporu-dosya-sorumlusu-ux` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v273 — Web-only (11 Temmuz 2026 akşam)
+
+- Onarım raporu dosya sorumlusu **23 madde UX** geri bildirimi
+- Rapora Git doğrudan rapor sayfası; Dosya Bilgileri eksper/ihbar; tablo satır UX; Tespit sütunu; tedarikçi modal/hafıza; alt bant; revizyon geçmişi taşıma
+- Backend **v272 sabit**; migration yok
+- Smoke: login FAIL (yerel credential — bilinen); routing PASS; web healthy
+- Commit: `6c9bfbc`
+
+### v251 — Web-only (11 Temmuz 2026)
+
+- Sidebar kabuğu cilası: **Menüyü Daralt** + **rol kılavuzu** alt bölümde sabit
+- Logo: küre + MERİDYEN / ASİSTANCE (beyaz kutu kaldırıldı)
+- Yuvarlak köşeler (12px), içerik kaydırması menüyü kesmez
+- Backend **v249 sabit**
 
 ### v250 — Web-only (11 Temmuz 2026)
 
