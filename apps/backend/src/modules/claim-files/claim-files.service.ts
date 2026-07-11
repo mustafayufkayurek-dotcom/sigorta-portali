@@ -763,6 +763,11 @@ export class ClaimFilesService {
       }
     }
 
+    if (typeof data.insuredName === 'string') {
+      const trimmed = data.insuredName.trim();
+      data.insuredName = trimmed || null;
+    }
+
     const updated = await this.prisma.claimFile.update({
       where: { id },
       data,

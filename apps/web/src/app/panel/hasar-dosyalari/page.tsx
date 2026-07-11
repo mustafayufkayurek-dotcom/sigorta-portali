@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair-report-status';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 
@@ -628,7 +629,14 @@ function ClaimFilesPageContent() {
                     >
                       <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claim.fileNo ?? claim.claimNo ?? '—'}</PanelTableTd>
                       <PanelTableTd colId="customer" className="table-td text-xs font-medium whitespace-nowrap max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
-                      <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={insuredName}>{insuredName}</PanelTableTd>
+                      <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[180px]">
+                        <InsuredNameInlineEdit
+                          claimId={claim.id}
+                          displayName={insuredName}
+                          onSaved={() => { void refetch(); }}
+                          compact
+                        />
+                      </PanelTableTd>
                       <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
                       <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={formatClaimSubjectLabel(claim.lossType, claim.productBranch)}>
                         {formatClaimSubjectLabel(claim.lossType, claim.productBranch)}

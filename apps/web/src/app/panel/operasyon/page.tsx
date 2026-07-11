@@ -17,6 +17,7 @@ import {
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel, formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,12 @@ export default function OperasyonPage() {
 
   const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
   const [filterInvoice, setFilterInvoice] = useState('');
+
+  const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
+    setClaims((prev) => prev.map((claim) => (
+      claim.id === claimId ? { ...claim, insuredName } : claim
+    )));
+  }, []);
 
   const loadClaims = useCallback(async () => {
     setClaimsLoading(true);
@@ -336,7 +343,7 @@ export default function OperasyonPage() {
             {missingInsuredHasar.length} hasar dosyasında sigortalı adı soyadı kayıtlı değil.
           </p>
           <p className="text-xs mt-1 text-amber-800">
-            Tabloda <span className="font-medium">Eksik — Ekle</span> bağlantısına tıklayın, adı girip kaydedin; operasyon listesinde görünür.
+            Sigortalı Adı Soyadı sütunundan doğrudan adı girip kaydedin; liste anında güncellenir.
           </p>
         </div>
       )}
@@ -434,18 +441,14 @@ export default function OperasyonPage() {
                     <PanelTableTd colId="customer" className="table-td max-w-[140px] whitespace-nowrap" title={row.customerName}>
                       {row.customerName}
                     </PanelTableTd>
-                    <PanelTableTd colId="insured" className="table-td max-w-[160px] whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
-                      {row.kind === 'hasar' && row.insuredName === '—' ? (
-                        <button
-                          type="button"
-                          className="text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/panel/hasar-dosyalari/${row.id}?sigortali=1`);
-                          }}
-                        >
-                          Eksik — Ekle
-                        </button>
+                    <PanelTableTd colId="insured" className="table-td max-w-[180px] whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                      {row.kind === 'hasar' ? (
+                        <InsuredNameInlineEdit
+                          claimId={row.id}
+                          displayName={row.insuredName}
+                          onSaved={(insuredName) => patchClaimInsuredName(row.id, insuredName)}
+                          compact
+                        />
                       ) : (
                         row.insuredName
                       )}
