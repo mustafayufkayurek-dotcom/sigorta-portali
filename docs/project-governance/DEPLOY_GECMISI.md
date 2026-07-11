@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v274)
+## Canlı durum (11 Temmuz 2026 — v275)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v274-amd64` | healthy |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v272-amd64` | healthy |
-| **Rollback** | Web **v273** / Backend **v272** | manifest `rollbackImages` |
-| **Etiket** | `v274-koyu-tema-tablo-sidebar-logo` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v275-amd64` | healthy |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v275-amd64` | healthy |
+| **Rollback** | Web **v274** / Backend **v272** | manifest `rollbackImages` |
+| **Etiket** | `v275-operasyon-500-ihbar-konusu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v275 — Full (11 Temmuz 2026 akşam)
+
+- Operasyon dosya tıklama **500** düzeltmesi (`claim?.latestRepairReport`)
+- **İhbar konusu** eşlemesi (`resolveClaimIhbarKonusu`); API claimSubject dahil
+- Mail terminoloji normalizasyonu (Cam Kırılması, Dahili Su vb.)
+- Sidebar nav aktif/hover kontrastı; sütun sıra ↑↓ ve genişlik iyileştirmesi
+- Migration yok
+- Commit: `9d26122`
 
 ### v274 — Web-only (11 Temmuz 2026 akşam)
 

@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v274-koyu-tema-tablo-sidebar-logo",
-  "description": "Koyu tema tablo zebra kontrastı; sidebar logo ölçeği, rounded-xl ve dar menü küre çipi kalıcı CSS",
+  "label": "v275-operasyon-500-ihbar-konusu",
+  "description": "Operasyon 500 fix; ihbar konusu eşlemesi; mail terminoloji; sidebar nav; sütun sıra/genişlik",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v272-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v274-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v275-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v275-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v273-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v274-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v272-amd64"
   },
   "mustPassSmokeRoutes": [
