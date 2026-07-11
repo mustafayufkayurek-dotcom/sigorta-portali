@@ -555,7 +555,7 @@ export class CustomersService {
       });
       if (match) {
         const name = this.resolveCustomerDisplayName(match);
-        return { exists: true, field: 'tc' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'tc' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const, entityType: match.entityType } };
       }
     }
 
@@ -572,7 +572,7 @@ export class CustomersService {
       });
       if (match) {
         const name = this.resolveCustomerDisplayName(match);
-        return { exists: true, field: 'taxNumber' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'taxNumber' as const, existingRecord: { id: match.id, fullName: name, type: 'customer' as const, entityType: match.entityType } };
       }
     }
 
@@ -588,7 +588,7 @@ export class CustomersService {
         const name = customerMatch.entityType === 'individual'
           ? `${customerMatch.firstName ?? ''} ${customerMatch.lastName ?? ''}`.trim() || customerMatch.fullName || '—'
           : customerMatch.companyName || '—';
-        return { exists: true, field: 'phone' as const, existingRecord: { id: customerMatch.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'phone' as const, existingRecord: { id: customerMatch.id, fullName: name, type: 'customer' as const, entityType: customerMatch.entityType } };
       }
 
       // ContactInfo tablosunda kontrol
@@ -606,7 +606,7 @@ export class CustomersService {
         const name = c.entityType === 'individual'
           ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.fullName || '—'
           : c.companyName || '—';
-        return { exists: true, field: 'phone' as const, existingRecord: { id: c.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'phone' as const, existingRecord: { id: c.id, fullName: name, type: 'customer' as const, entityType: c.entityType } };
       }
       if (ciMatch?.vendor) {
         return { exists: true, field: 'phone' as const, existingRecord: { id: ciMatch.vendor.id, fullName: `Tedarikçi: ${ciMatch.vendor.name}`, type: 'vendor' as const } };
@@ -634,7 +634,7 @@ export class CustomersService {
         const name = customerMatch.entityType === 'individual'
           ? `${customerMatch.firstName ?? ''} ${customerMatch.lastName ?? ''}`.trim() || customerMatch.fullName || '—'
           : customerMatch.companyName || '—';
-        return { exists: true, field: 'email' as const, existingRecord: { id: customerMatch.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'email' as const, existingRecord: { id: customerMatch.id, fullName: name, type: 'customer' as const, entityType: customerMatch.entityType } };
       }
 
       const ciWhere: any = { type: 'email', value: email };
@@ -651,7 +651,7 @@ export class CustomersService {
         const name = c.entityType === 'individual'
           ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.fullName || '—'
           : c.companyName || '—';
-        return { exists: true, field: 'email' as const, existingRecord: { id: c.id, fullName: name, type: 'customer' as const } };
+        return { exists: true, field: 'email' as const, existingRecord: { id: c.id, fullName: name, type: 'customer' as const, entityType: c.entityType } };
       }
       if (ciMatch?.vendor) {
         return { exists: true, field: 'email' as const, existingRecord: { id: ciMatch.vendor.id, fullName: `Tedarikçi: ${ciMatch.vendor.name}`, type: 'vendor' as const } };

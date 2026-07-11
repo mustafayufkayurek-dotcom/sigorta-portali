@@ -32,6 +32,10 @@ import { InboundRoutingService, InboundRoutingSuggestion } from './inbound-routi
 import { extractHeuristicFields } from './inbound-heuristic-parser';
 import { mapInboundCategoryToMeridyen, mapInboundLossTypeToMeridyen, sanitizeInboundPhone, findInsuredMobilePhoneInText } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
+import {
+  resolveInsuredEmailForInbox,
+  shouldCreateInsuredWithoutEmailOnDuplicate,
+} from './inbound-insured-contact.util';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import {
@@ -912,18 +916,33 @@ export class OperationInboxService {
     fromAddress: string,
   ): Promise<string> {
     const phone = input.phone?.trim() || extracted.phone?.trim() || undefined;
-    const email =
-      input.email?.trim()
-      || extracted.email?.trim()
-      || (!isCorporateInboxSender(fromAddress) ? fromAddress?.trim() : undefined)
-      || undefined;
-
-    const dup = await this.customersService.checkDuplicate({
-      phone,
-      email,
-      firstName: input.firstName,
-      lastName: input.lastName,
+    let email = resolveInsuredEmailForInbox({
+      explicitEmail: input.email,
+      extractedEmail: extracted.email,
+      fromAddress,
     });
+
+    const runDuplicateCheck = () =>
+      this.customersService.checkDuplicate({
+        phone,
+        email,
+        firstName: input.firstName,
+        lastName: input.lastName,
+      });
+
+    let dup = await runDuplicateCheck();
+
+    if (
+      dup.exists
+      && shouldCreateInsuredWithoutEmailOnDuplicate({
+        field: dup.field,
+        entityType: dup.existingRecord?.entityType,
+        creatingEntityType: input.entityType,
+      })
+    ) {
+      email = undefined;
+      dup = await runDuplicateCheck();
+    }
 
     if (dup.exists) {
       const fieldLabels: Record<string, string> = {

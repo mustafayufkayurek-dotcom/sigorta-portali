@@ -316,10 +316,7 @@ export class InboundRoutingService {
         addressInferredFromExistingFile = true;
       }
     }
-    const emailHint = extracted.email?.trim() || message.fromAddress?.trim() || null;
-    if (!extracted.email && emailHint && !emailHint.includes('@safranbh.com')) {
-      extracted.email = emailHint;
-    }
+    // Gönderen e-postası sigortalı eşleşmesinde kullanılmaz (ekspertiz firması karışıklığı).
 
     const customerMatch = await this.resolveCustomer(extracted, message.fromName);
     const assistantCustomerMatch = await this.resolveAssistantCustomer(message.fromAddress);
@@ -543,13 +540,17 @@ export class InboundRoutingService {
     if (email) {
       const dup = await this.customersService.checkDuplicate({ email });
       if (dup.exists && dup.existingRecord?.type === 'customer') {
-        return {
-          status: 'found',
-          customer: {
-            id: dup.existingRecord.id,
-            name: dup.existingRecord.fullName,
-          },
-        };
+        if (dup.existingRecord.entityType === 'corporate') {
+          // Gönderen firma / kurumsal kayıt — sigortalı eşleşmesi değil
+        } else {
+          return {
+            status: 'found',
+            customer: {
+              id: dup.existingRecord.id,
+              name: dup.existingRecord.fullName,
+            },
+          };
+        }
       }
     }
 

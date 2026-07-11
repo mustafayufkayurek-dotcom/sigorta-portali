@@ -1,10 +1,11 @@
 # Canlı Kabul Checklist
 
-**Güncelleme:** 10 Temmuz 2026  
+**Güncelleme:** 11 Temmuz 2026  
 **Canlı:** https://app.meridyen-tr.com  
-**Bilinen iyi sürüm:** Web **v248** + Backend **v248** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
-**Etiket:** `v248-dashboard-delta-hasar-detay`  
-**Rollback:** Web v247 + Backend v247  
+**Bilinen iyi sürüm:** Web **v262** + Backend **v254** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)  
+**Etiket:** `v262-portal-kompakt-header`  
+**Rollback:** Web v261 + Backend v254  
+**Onaylı UI referansı:** `ONAYLI_UI_CHECKLIST.md` (regresyon kalkanı)  
 **Smoke rotaları:** manifest `mustPassSmokeRoutes` ile senkron
 
 Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `❌ FAIL`
@@ -26,8 +27,8 @@ Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `�
 | 13 | Saha tespit kolları | `/panel/ayarlar/saha-tespit-kollari` | 🤖 PASS | ⏳ | Smoke listesinde |
 | 14 | Tedarikçi hizmet kolları | `/panel/ayarlar/tedarikci-hizmet-kollari` | 🤖 PASS | ⏳ | Smoke listesinde |
 | 15 | Entegrasyonlar | `/panel/ayarlar/entegrasyonlar` | 🤖 PASS | ⏳ | Google Places, M365, PayTR ayarları |
-| 16 | Navigasyon / panel | `/panel` | 🤖 PASS | ⏳ | Route 200; sidebar v233+ |
-| 17 | Yönetim Merkezi dashboard | `/panel` (admin) | 🤖 PASS | ⏳ | v248 — Finans Özeti + Operasyon + Haftalık Performans |
+| 16 | Navigasyon / panel | `/panel` | 🤖 PASS | ⏳ | Sidebar v262 — küre PNG dar, tam logo geniş |
+| 17 | Yönetim Merkezi dashboard | `/panel` (admin) | 🤖 PASS | ⏳ | v262 — kompakt KPI + Haftalık Performans compact |
 | 18 | Finans Merkezi | `/panel/finans` | 🤖 PASS | ⏳ | v248 dashboard mockup; alt sayfalar ayrı kabul |
 | 19 | Carilerim | `/panel/carilerim` | 🤖 PASS | ⏳ | Smoke listesinde |
 | 20 | Raporlar | `/panel/raporlar` | 🤖 PASS | ⏳ | Smoke listesinde |
@@ -37,8 +38,8 @@ Durum kodları: `⏳ Bekliyor` | `🤖 Otomatik PASS` | `✅ Mustafa PASS` | `�
 | 24 | Operasyon gelen kutusu | `/panel/operasyon/gelen-kutusu` | 🤖 PASS | ⏳ | T1–T7 test paketi — `inbox/OPERASYON_GELEN_KUTUSU.md` |
 | 25 | Harita | `/panel/harita` | 🤖 PASS | ⏳ | v125+ pinler; Mustafa manuel test ⬜ |
 | 26 | Personel özlük | `/panel/personel-ozluk` | 🤖 PASS | ⏳ | Smoke listesinde |
-| 27 | Eksper portal | `/panel/eksper-portal` | 🤖 PASS | ⏳ | Alt: `/dosyalar`, `/randevular` |
-| 28 | Sigorta portal | `/panel/sigorta-portal` | 🤖 PASS | ⏳ | Alt: `/dosyalar`, `/dosya-akisi` |
+| 27 | Eksper portal | `/panel/eksper-portal` | 🤖 PASS | ⏳ | v262 — PortalCompactHeader, butonlar sağda |
+| 28 | Sigorta portal | `/panel/sigorta-portal` | 🤖 PASS | ⏳ | v262 — kompakt header, eski hero kaldırıldı |
 | 29 | CRM | `/panel/crm` | ⏳ | ⏳ | Route 200; smoke listesinde yok — tam kapsam eksik |
 | 30 | Mail / hoş geldin | davet akışı | ❌ | ⏳ | Smoke login — gerçek test şifresi gerekli |
 | 31 | Statik kılavuz PDF | `/docs/01-personel-kullanim-kilavuzu.pdf` vb. | 🤖 PASS | ⏳ | Smoke listesinde (4 PDF + logo) |

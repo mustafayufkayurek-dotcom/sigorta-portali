@@ -599,9 +599,19 @@ export function InboxOpenFileModal({
                 </select>
               )}
               {routing.customerMatch.status === 'not_found' && (
-                <p className="text-sm text-slate-600 mb-2">
-                  Yeni müşteri: {insuredName || 'Sigortalı adı girin'}
-                </p>
+                <>
+                  <p className="text-sm text-slate-600 mb-2">
+                    Sigortalı müşteri kaydı bulunamadı. Dosyayı müşteri bağlamadan açabilirsiniz.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={!!createNewCustomer}
+                      onChange={(e) => onCreateNewCustomerChange?.(e.target.checked)}
+                    />
+                    Yeni Müşteri Oluştur ({insuredName || 'sigortalı adı'})
+                  </label>
+                </>
               )}
               {(routing.customerMatch.status === 'found' || routing.customerMatch.status === 'ambiguous') && (
                 <label className="flex items-center gap-2 text-sm text-slate-700 mt-2">

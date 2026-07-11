@@ -1,8 +1,9 @@
 # Meridyen AI Governance — Kaynak İndeksi
 
 **Sürüm:** 1.0  
-**Son güncelleme:** 2026-07-09  
-**Cursor kuralı:** `.cursor/rules/ai-governance.mdc` (alwaysApply)
+**Son güncelleme:** 2026-07-11  
+**Cursor kuralı:** `.cursor/rules/ai-governance.mdc` — **DEVRE DIŞI** (`alwaysApply: false`, 2026-07-10 Mustafa talebi)  
+**Onaylı UI kalkanı:** `.cursor/rules/onayli-ui-koruma.mdc` + `canli-kabul/ONAYLI_UI_CHECKLIST.md` (aktif)
 
 Bu indeks, masaüstündeki kaynak belgeler ile repodaki uygulanan kuralı eşler.
 
@@ -25,6 +26,8 @@ Kaynak `.docx` dosyaları repoya kopyalanmaz; güncelleme gerektiğinde Mustafa 
 |--------|-------|--------|
 | AI Governance (üst çerçeve) | `.cursor/rules/ai-governance.mdc` | Rol, regresyon, kırmızı çizgiler, teslim |
 | Deploy güvenliği | `.cursor/rules/deploy-guvenlik.mdc` | Canlı deploy, rollback, smoke |
+| Onaylı UI koruma | `.cursor/rules/onayli-ui-koruma.mdc` | Panel/portal regresyon kalkanı |
+| Onaylı UI checklist | `canli-kabul/ONAYLI_UI_CHECKLIST.md` | Canlı onaylı görünüm tek kaynağı |
 | UI metinleri | `.cursor/rules/turkce-yazim-kulturu.mdc` | Title Case, dosya terimi |
 | Türkçe iletişim | `.cursor/rules/turkce-sesli-giris.mdc` | Sesli giriş, yanıt dili |
 | Proje anayasası | `docs/project-governance/00_PROJE_ANAYASASI.md` | Ürün kararı > kod |

@@ -7,10 +7,11 @@
 
 ```
 canli-kabul/
-  README.md           ← bu dosya
-  CHECKLIST.md        ← modül modül PASS/FAIL
-  otomatik/           ← smoke test çıktıları
-  ekran-goruntuleri/  ← Mustafa screenshot'ları (modül alt klasörleri)
+  README.md                  ← bu dosya
+  ONAYLI_UI_CHECKLIST.md     ← onaylı görünüm + regresyon kalkanı (agent önce okur)
+  CHECKLIST.md               ← modül modül PASS/FAIL
+  otomatik/                  ← smoke test çıktıları
+  ekran-goruntuleri/         ← Mustafa screenshot'ları (modül alt klasörleri)
 ```
 
 ## Mustafa ekran görüntüsü (modül başına 1–2 dk)

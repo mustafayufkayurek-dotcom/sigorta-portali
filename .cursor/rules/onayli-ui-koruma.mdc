@@ -1,0 +1,47 @@
+---
+description: Onaylı UI regresyon kalkanı — panel/layout/portal değişikliklerinde zorunlu
+globs: apps/web/src/app/panel/**/*,apps/web/src/components/panel/**/*,apps/web/src/components/portal/**/*
+alwaysApply: false
+---
+
+# Onaylı UI Koruma
+
+Panel görünümü değiştirirken **önce oku:** `docs/project-governance/canli-kabul/ONAYLI_UI_CHECKLIST.md`
+
+## Altın kural
+
+**Ürün kararı > kod.** Checklist'te `✅ Onaylı` olan davranış, Mustafa onayı olmadan geri alınamaz veya «iyileştirme» adıyla değiştirilemez.
+
+## Zorunlu tek kaynaklar
+
+| Alan | Bileşen / dosya |
+|------|-----------------|
+| Sidebar logo | `PanelSidebarBrand.tsx` + `constants/brand.ts` |
+| Portal ana header | `PortalCompactHeader.tsx` |
+| Portal alt sayfa header | `PortalPageHeader.tsx` |
+| Portal widget'lar | `portal-header-widgets.tsx` |
+| Ayarlar menüsü | `settings-nav.ts` |
+
+## Yasaklar
+
+- Inline mavi gradient hero (`bg-gradient-to-br from-blue-600`) portal sayfalarına geri yazmak
+- Sidebar'da `MeridyenGlobeAnimated` veya eski küre SVG kullanmak
+- `-mx-3 sm:-mx-4` ile layout padding'ine karşı hack eklemek
+- Onaylı alan dışında «yanlışlıkla» layout/navigasyon değiştirmek
+- Eski worktree'den (d272, d276, d278) dosya kopyalamak
+
+## Değişiklik öncesi
+
+1. Checklist'te ilgili maddeyi bul (O/S/A/P/K)
+2. Ortak bileşeni genişlet; sayfa içine kopyalama
+3. Kapsam: yalnızca istenen madde
+
+## Değişiklik sonrası
+
+- Checklist'teki ilgili maddeyi etkilediysen dosyayı güncelle
+- Deploy öncesi «Deploy öncesi görsel kontrol» bölümünü çalıştır
+- Regresyon gördüysen deploy etme; `ONAYLI_UI_CHECKLIST.md` regresyon tablosuna yaz
+
+## Deploy
+
+Web deploy öncesi: `deploy-guvenlik.mdc` + checklist görsel maddeleri. Bilinen iyi: `KNOWN_GOOD_IMAGES.json`.

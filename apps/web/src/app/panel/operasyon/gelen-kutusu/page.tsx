@@ -446,7 +446,19 @@ function InstructionModal({
               </>
             )}
             {routing.customerMatch.status === 'not_found' && (
-              <p className="text-sm text-slate-600 mb-2">Yeni Müşteri Oluşturulacak</p>
+              <>
+                <p className="text-sm text-slate-600 mb-2">
+                  Sigortalı müşteri kaydı bulunamadı. Dosyayı müşteri bağlamadan açabilirsiniz.
+                </p>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={!!createNewCustomer}
+                    onChange={(e) => onCreateNewCustomerChange?.(e.target.checked)}
+                  />
+                  Yeni Müşteri Oluştur ({insuredName || 'sigortalı adı'})
+                </label>
+              </>
             )}
             {(routing.customerMatch.status === 'found' || routing.customerMatch.status === 'ambiguous') && (
               <label className="flex items-center gap-2 text-sm text-slate-700 mt-2">
@@ -684,7 +696,7 @@ export default function GelenKutusuPage() {
       setCreateNewCustomer(false);
     } else if (routing.customerMatch.status === 'not_found') {
       setSelectedCustomerId('');
-      setCreateNewCustomer(true);
+      setCreateNewCustomer(false);
     } else {
       setSelectedCustomerId('');
       setCreateNewCustomer(false);
@@ -955,7 +967,7 @@ export default function GelenKutusuPage() {
         if (kind === 'emergency') await loadAssistantCompanies();
         const ctx = await loadActionContext(messageId, row);
         if (options?.prefillCustomer && ctx?.routing?.customerMatch.status === 'not_found') {
-          setCreateNewCustomer(true);
+          setCreateNewCustomer(false);
         }
       })();
     }
