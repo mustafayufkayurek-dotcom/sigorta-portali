@@ -37,6 +37,18 @@ const DEFAULT_FIELD_CONFIGS: Record<string, Array<{ fieldKey: string; fieldLabel
   ],
 };
 
+/** Hasar onarım / sovtaj / özel müşteri / danışmanlık hatları için varsayılan hasar nedenleri */
+const DEFAULT_REPAIR_FILE_SUBJECTS: Array<{ code: string; name: string; sortOrder: number }> = [
+  { code: 'DAHILI_SU', name: 'Dahili Su', sortOrder: 1 },
+  { code: 'YANGIN', name: 'Yangın', sortOrder: 2 },
+  { code: 'DEPREM', name: 'Deprem', sortOrder: 3 },
+  { code: 'SEL_SEYLAP', name: 'Sel-Seylap', sortOrder: 4 },
+  { code: 'FIRTINA', name: 'Fırtına', sortOrder: 5 },
+  { code: 'DOLU', name: 'Dolu', sortOrder: 6 },
+  { code: 'HIRSIZLIK', name: 'Hırsızlık', sortOrder: 7 },
+  { code: 'ARAC_CARPMA', name: 'Araç Çarpması', sortOrder: 8 },
+];
+
 @Injectable()
 export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
@@ -252,7 +264,10 @@ export class DepartmentsService {
   // ─── File Subjects ────────────────────────────────────────────────────────
 
   async getFileSubjects(departmentId: string) {
-    await this.findOne(departmentId);
+    const dept = await this.findOne(departmentId);
+    if (dept.reportFormat === 'repair') {
+      await this.ensureDefaultRepairFileSubjects(departmentId);
+    }
     return this.prisma.departmentFileSubject.findMany({
       where: { departmentId },
       orderBy: { sortOrder: 'asc' },
@@ -344,6 +359,27 @@ export class DepartmentsService {
     return results;
   }
 
+  /** Operasyon hattında aktif dosya konusu yoksa varsayılan hasar nedenlerini ekler. */
+  private async ensureDefaultRepairFileSubjects(departmentId: string) {
+    const activeCount = await this.prisma.departmentFileSubject.count({
+      where: { departmentId, status: 'active' },
+    });
+    if (activeCount > 0) return;
+
+    for (const subject of DEFAULT_REPAIR_FILE_SUBJECTS) {
+      await this.prisma.departmentFileSubject.upsert({
+        where: { departmentId_code: { departmentId, code: subject.code } },
+        create: {
+          ...subject,
+          departmentId,
+          isSystem: true,
+          status: 'active',
+        },
+        update: { status: 'active', name: subject.name, sortOrder: subject.sortOrder },
+      });
+    }
+  }
+
   // ─── Seed ─────────────────────────────────────────────────────────────────
 
   async seedSystemData() {
@@ -377,23 +413,11 @@ export class DepartmentsService {
       update: {},
     });
 
-    // Seed file subjects for Hasar Onarım
-    const hasarSubjects = [
-      { code: 'DAHILI_SU', name: 'Dahili Su', sortOrder: 1 },
-      { code: 'YANGIN', name: 'Yangın', sortOrder: 2 },
-      { code: 'DEPREM', name: 'Deprem', sortOrder: 3 },
-      { code: 'SEL_SEYLAP', name: 'Sel-Seylap', sortOrder: 4 },
-      { code: 'FIRTINA', name: 'Fırtına', sortOrder: 5 },
-      { code: 'DOLU', name: 'Dolu', sortOrder: 6 },
-      { code: 'HIRSIZLIK', name: 'Hırsızlık', sortOrder: 7 },
-      { code: 'ARAC_CARPMA', name: 'Araç Çarpması', sortOrder: 8 },
-    ];
-
-    for (const s of hasarSubjects) {
+    for (const s of DEFAULT_REPAIR_FILE_SUBJECTS) {
       await this.prisma.departmentFileSubject.upsert({
         where: { departmentId_code: { departmentId: hasarOnarim.id, code: s.code } },
-        create: { ...s, departmentId: hasarOnarim.id, isSystem: true },
-        update: {},
+        create: { ...s, departmentId: hasarOnarim.id, isSystem: true, status: 'active' },
+        update: { status: 'active' },
       });
     }
 
@@ -455,6 +479,9 @@ export class DepartmentsService {
         where: { name: dept.name, status: 'active' },
       });
       if (byName && byName.code !== dept.code) {
+        if (dept.reportFormat === 'repair') {
+          await this.ensureDefaultRepairFileSubjects(byName.id);
+        }
         created.push(byName);
         continue;
       }
@@ -463,6 +490,9 @@ export class DepartmentsService {
         create: { ...dept, isSystem: true, status: 'active' },
         update: { name: dept.name, description: dept.description, color: dept.color, status: 'active' },
       });
+      if (dept.reportFormat === 'repair') {
+        await this.ensureDefaultRepairFileSubjects(row.id);
+      }
       created.push(row);
     }
     return created;

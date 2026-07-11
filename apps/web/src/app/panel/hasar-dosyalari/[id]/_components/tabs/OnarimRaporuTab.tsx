@@ -366,7 +366,7 @@ function YeniRaporWizard({
 
     let cancelled = false;
     setLoadingReasons(true);
-    void loadDamageReasonOptions(activeDept.id, claimContext)
+    void loadDamageReasonOptions(activeDept.id)
       .then((options) => {
         if (!cancelled) setDamageReasons(options);
       })
@@ -381,7 +381,7 @@ function YeniRaporWizard({
     return () => {
       cancelled = true;
     };
-  }, [activeDept, claimContext]);
+  }, [activeDept]);
 
   const damageReasonByCode = useMemo(
     () => new Map(damageReasons.map((reason) => [reason.code, reason])),
@@ -586,7 +586,7 @@ function YeniRaporWizard({
                 <p className="text-sm text-slate-400 py-4 text-center">Hasar nedenleri yükleniyor…</p>
               ) : damageReasons.length === 0 ? (
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Bu dosya ve departman için tanımlı hasar nedeni bulunamadı.
+                  {activeDept?.name ?? 'Bu operasyon hattı'} için tanımlı hasar nedeni bulunamadı.
                   <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
                     Dosya konuları ayarlarından tanımlayın
                   </a>
@@ -621,7 +621,7 @@ function YeniRaporWizard({
                 <p className="text-sm text-slate-400 py-4 text-center">Hasar nedenleri yükleniyor…</p>
               ) : damageReasons.length === 0 ? (
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Bu dosya ve departman için tanımlı hasar nedeni bulunamadı.
+                  {activeDept?.name ?? 'Bu operasyon hattı'} için tanımlı hasar nedeni bulunamadı.
                   <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
                     Dosya konuları ayarlarından tanımlayın
                   </a>

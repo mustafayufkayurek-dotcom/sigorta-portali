@@ -2990,10 +2990,7 @@ export default function RepairReportPage() {
     }
     let cancelled = false;
     setLoadingDamageReasons(true);
-    void resolveDamageReasonOptions(report.departmentId, {
-      lossType: report.claimFile?.lossType,
-      claimSubjectId: report.claimFile?.claimSubjectId,
-    })
+    void resolveDamageReasonOptions(report.departmentId)
       .then((options) => {
         if (!cancelled) setDamageReasonOptions(options);
       })
