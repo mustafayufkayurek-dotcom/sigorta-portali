@@ -27,7 +27,7 @@ export function DashboardHeader({
   isManagement = false,
 }: DashboardHeaderProps) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5 sm:py-4">
+    <div className={`rounded-xl border border-slate-200 bg-white px-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5 ${isManagement ? 'py-2.5 sm:py-3' : 'py-3 sm:py-4'}`}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -40,7 +40,7 @@ export function DashboardHeader({
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400 sm:mt-1 sm:line-clamp-none sm:text-sm">
+          <p className={`mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:mt-1 sm:text-sm ${isManagement ? 'line-clamp-1' : 'line-clamp-2 sm:line-clamp-none'}`}>
             {subtitle}
           </p>
         </div>

@@ -48,16 +48,14 @@ export function PanelSidebarBrand({ href, collapsed, onToggleCollapsed }: PanelS
             }}
           />
         ) : (
-          <span className="flex w-full items-center justify-center rounded-[10px] border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
-            <img
-              src={CORPORATE_LOGO_LIGHT}
-              alt="Meridyen Assistance"
-              className="h-14 w-full object-contain object-left sm:h-[4.25rem]"
-              onError={(e) => {
-                e.currentTarget.src = CORPORATE_LOGO_LIGHT;
-              }}
-            />
-          </span>
+          <img
+            src={CORPORATE_LOGO_LIGHT}
+            alt="Meridyen Assistance"
+            className="h-16 w-full object-contain object-center sm:h-[4.5rem]"
+            onError={(e) => {
+              e.currentTarget.src = CORPORATE_LOGO_LIGHT;
+            }}
+          />
         )}
       </Link>
     </div>

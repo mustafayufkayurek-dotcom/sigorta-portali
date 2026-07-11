@@ -39,8 +39,6 @@ import PortalBottomNav from '@/components/portal/PortalBottomNav';
 import {
   PANEL_MAIN_TOP,
   PANEL_NAVBAR_HEIGHT,
-  PANEL_SIDEBAR_STICKY_TOP,
-  PANEL_SIDEBAR_HEIGHT,
 } from '@/config/panel-layout-spacing';
 import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
@@ -64,8 +62,6 @@ import {
   Users,
   TestTube2,
   UserCog,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -842,7 +838,7 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`z-30 hidden shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT} ${
+      className={`z-30 hidden h-full shrink-0 flex-col self-stretch overflow-hidden border-r border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 ease-in-out md:flex ${
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
@@ -858,21 +854,7 @@ function PanelSidebar({
         </div>
       </nav>
 
-      <div className="shrink-0 border-t border-slate-200 bg-slate-50">
-        <div className="px-2.5 pt-2">
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 ${
-              collapsed ? 'px-2' : 'px-3'
-            }`}
-            aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-            title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            {!collapsed ? <span>Menüyü Daralt</span> : null}
-          </button>
-        </div>
+      <div className="shrink-0">
         <PanelSidebarGuideFooter
           roleCode={roleCode}
           isExpert={isExpert}

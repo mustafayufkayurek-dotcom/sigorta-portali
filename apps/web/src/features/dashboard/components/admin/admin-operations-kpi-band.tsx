@@ -27,20 +27,20 @@ function CompactKpiCard({ icon: Icon, label, value, pct, subtext, color, href }:
   return (
     <Link
       href={href}
-      className="group flex min-h-[88px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+      className="group flex min-h-[72px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
     >
-      <div className="flex items-start justify-between gap-2">
-        <span className={`inline-flex rounded-lg p-1.5 ${color}`}>
-          <Icon className="h-4 w-4 text-white" />
+      <div className="flex items-start justify-between gap-1.5">
+        <span className={`inline-flex rounded-lg p-1 ${color}`}>
+          <Icon className="h-3.5 w-3.5 text-white" />
         </span>
         {pct ? (
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">%{pct}</span>
+          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">%{pct}</span>
         ) : null}
       </div>
       <div>
-        <p className="text-xl font-bold leading-none text-slate-950 dark:text-white">{value}</p>
-        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-        {subtext ? <p className="mt-0.5 text-[11px] text-slate-400">{subtext}</p> : null}
+        <p className="text-lg font-bold leading-none text-slate-950 dark:text-white">{value}</p>
+        <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">{label}</p>
+        {subtext ? <p className="mt-0.5 text-[10px] text-slate-400">{subtext}</p> : null}
       </div>
     </Link>
   );
@@ -72,19 +72,18 @@ export function AdminOperationsKpiBand({ staggerIndex = 0, hideAcil = false }: A
 
   return (
     <section
-      className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4"
+      className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3"
       style={{ transitionDelay: `${staggerIndex * 100}ms` }}
     >
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-slate-950 dark:text-white">Operasyon Özeti</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Dosya akışı ve operasyon metrikleri</p>
+      <div className="mb-2">
+        <h2 className="text-sm font-semibold text-slate-950 dark:text-white sm:text-base">Operasyon Özeti</h2>
       </div>
 
       <WidgetBoundary>
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: hideAcil ? 5 : 6 }).map((_, i) => (
-              <div key={i} className="h-[88px] animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+              <div key={i} className="h-[72px] animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
             ))}
           </div>
         ) : opsFailed && pendingFailed ? (
@@ -92,7 +91,7 @@ export function AdminOperationsKpiBand({ staggerIndex = 0, hideAcil = false }: A
             {formatWidgetErrorMessage(opsQuery.error, 'Operasyon özeti yüklenemedi.')}
           </div>
         ) : (
-          <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${hideAcil ? 'lg:grid-cols-5' : 'lg:grid-cols-6'}`}>
+          <div className={`grid grid-cols-2 gap-1.5 sm:grid-cols-3 ${hideAcil ? 'lg:grid-cols-5' : 'lg:grid-cols-6'}`}>
             <CompactKpiCard
               icon={FileText}
               label="Toplam Operasyon"

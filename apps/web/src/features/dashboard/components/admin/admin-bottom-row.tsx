@@ -42,11 +42,11 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
 
   return (
     <section
-      className="grid grid-cols-1 gap-3 lg:grid-cols-3"
+      className="grid grid-cols-1 gap-2 lg:grid-cols-3"
       style={{ transitionDelay: `${staggerIndex * 100}ms` }}
     >
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-red-500" />
             <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Kritik Uyarılar</h3>
@@ -65,11 +65,11 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
         ) : criticalItems.length === 0 ? (
           <p className="text-sm text-slate-500">Kritik uyarı görünmüyor.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {criticalItems.map((item) => (
               <li
                 key={item.key}
-                className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2 text-sm dark:border-red-900/40 dark:bg-red-950/20"
+                className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-red-900/40 dark:bg-red-950/20"
               >
                 <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
                 <span className="shrink-0 text-xs text-slate-500">{item.meta}</span>
@@ -79,8 +79,8 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-amber-600" />
             <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Finans Darboğazları</h3>
@@ -99,11 +99,11 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
         ) : pendingPayments.length === 0 ? (
           <p className="text-sm text-slate-500">Bekleyen tahsilat görünmüyor.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {pendingPayments.slice(0, 3).map((item) => (
               <li
                 key={`${item.fileNo}-${item.insuranceCompany}`}
-                className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
+                className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
               >
                 <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.fileNo}</span>
                 <span className="shrink-0 font-semibold text-emerald-700 dark:text-emerald-400">
@@ -115,8 +115,8 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-indigo-500" />
             <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Personel Yük Dağılımı</h3>
@@ -131,16 +131,16 @@ export function AdminBottomRow({ staggerIndex = 0 }: AdminBottomRowProps) {
         ) : staffItems.length === 0 ? (
           <p className="text-sm text-slate-500">Atama verisi yok.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {staffItems.map((item) => {
               const widthPct = Math.round((item.activeFiles / maxFiles) * 100);
               return (
                 <li key={item.userId}>
-                  <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <div className="mb-0.5 flex items-center justify-between gap-2 text-xs sm:text-sm">
                     <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.userName}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{item.activeFiles} dosya</span>
+                    <span className="shrink-0 text-[10px] text-slate-500 sm:text-xs">{item.activeFiles} dosya</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
                       className={`h-full rounded-full ${item.criticalFiles > 0 ? 'bg-red-500' : 'bg-indigo-500'}`}
                       style={{ width: `${Math.max(8, widthPct)}%` }}

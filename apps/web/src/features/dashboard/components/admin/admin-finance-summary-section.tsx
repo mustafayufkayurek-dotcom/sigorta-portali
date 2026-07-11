@@ -45,30 +45,28 @@ export function AdminFinanceSummarySection({
 
   return (
     <section
-      className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4"
+      className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3"
       style={{ transitionDelay: `${staggerIndex * 100}ms` }}
     >
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">Finans Özeti</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Gelir, gider ve tahsilat görünümü</p>
-        </div>
+      <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-sm font-semibold text-slate-950 dark:text-white sm:text-base">Finans Özeti</h2>
         <FinancePeriodSelector year={year} month={month} onYearChange={onYearChange} onMonthChange={onMonthChange} />
       </div>
 
       <WidgetBoundary>
         <div
-          className={`grid grid-cols-1 gap-2 transition-all duration-500 sm:grid-cols-2 sm:gap-3 xl:grid-cols-5 ${
+          className={`grid grid-cols-1 gap-1.5 transition-all duration-500 sm:grid-cols-2 sm:gap-2 xl:grid-cols-5 ${
             isLoading ? 'opacity-60' : 'opacity-100'
           }`}
         >
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
             ))
           ) : (
             <>
               <KpiCard
+                compact
                 icon={Banknote}
                 label="Geciken Tahsilat"
                 value={formatCurrency(ops?.overdueCollectionAmount ?? 0)}
@@ -76,6 +74,7 @@ export function AdminFinanceSummarySection({
                 href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
               />
               <KpiCard
+                compact
                 icon={FileText}
                 label="Bekleyen Fatura"
                 value={overdueInvoices > 0 ? overdueInvoices : '—'}
@@ -84,6 +83,7 @@ export function AdminFinanceSummarySection({
                 href="/panel/finans/faturalar"
               />
               <KpiCard
+                compact
                 icon={TrendingDown}
                 label="Aylık Gelir"
                 value={formatCurrency(pl?.totalRevenue ?? 0)}
@@ -92,6 +92,7 @@ export function AdminFinanceSummarySection({
                 href="/panel/finans/karlilik"
               />
               <KpiCard
+                compact
                 icon={Clock}
                 label="Operasyon Gideri"
                 value={formatCurrency(pl?.totalCost ?? 0)}
@@ -99,6 +100,7 @@ export function AdminFinanceSummarySection({
                 href="/panel/finans/masraflar"
               />
               <KpiCard
+                compact
                 icon={CheckCircle2}
                 label="Dağıtım Durumu"
                 value={allocationDone ? 'Tamamlandı' : 'Bekliyor'}

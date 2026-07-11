@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, BookOpen, HelpCircle } from 'lucide-react';
+import { BookOpen, ExternalLink, HelpCircle } from 'lucide-react';
 import { SidebarNavTooltip } from '@/components/ui/SidebarNavTooltip';
 import { PANEL_BACKEND_VERSION, PANEL_WEB_VERSION } from '@/config/panel-build-info';
 import {
@@ -17,15 +17,10 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
   const { collapsed, ...ctx } = props;
   const guide = resolvePanelUserGuide(ctx);
 
-  const versionBlock = (
-    <div
-      className={`text-center text-[10px] font-medium leading-relaxed text-slate-500 ${
-        collapsed ? 'px-1 pb-2' : 'px-2 pb-2'
-      }`}
-    >
-      <p>Yazılım Sürümü · Web {PANEL_WEB_VERSION}</p>
-      <p>Backend {PANEL_BACKEND_VERSION} · Kılavuz {GUIDE_CONTENT_VERSION}</p>
-    </div>
+  const versionLine = (
+    <p className="truncate px-2 pb-1.5 pt-0.5 text-center text-[10px] font-medium text-slate-500">
+      Web {PANEL_WEB_VERSION} · Backend {PANEL_BACKEND_VERSION} · Kılavuz {GUIDE_CONTENT_VERSION}
+    </p>
   );
 
   const link = collapsed ? (
@@ -34,11 +29,9 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
       target="_blank"
       rel="noopener noreferrer"
       title={guide.title}
-      className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+      className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-blue-600">
-        <HelpCircle className="h-5 w-5" />
-      </span>
+      <HelpCircle className="h-5 w-5 text-blue-600" />
       <span className="text-[10px] font-medium">Kılavuz</span>
     </a>
   ) : (
@@ -46,33 +39,21 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
       href={guide.href}
       target="_blank"
       rel="noopener noreferrer"
-      title={`${guide.title} — ${guide.subtitle}`}
-      className="group block rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
+      title={guide.title}
+      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-blue-700"
     >
-      <div className="flex items-start gap-2.5">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-          <BookOpen className="h-5 w-5" />
-        </span>
-        <span className="min-w-0 flex-1 text-left">
-          <span className="block text-sm font-semibold text-slate-900">{guide.title}</span>
-          <span className="mt-0.5 block text-[11px] font-medium leading-snug text-slate-500">
-            {guide.subtitle}
-          </span>
-        </span>
-      </div>
-      <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
-        Kılavuzu Aç
-        <ArrowRight className="h-3.5 w-3.5" />
-      </span>
+      <BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+      <span className="min-w-0 flex-1 truncate">{guide.title}</span>
+      <ExternalLink className="h-3 w-3 shrink-0 text-slate-400" />
     </a>
   );
 
   return (
-    <div className="shrink-0 px-2 pt-2">
+    <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-1.5 py-1.5">
       <SidebarNavTooltip label={guide.title} collapsed={collapsed}>
         {link}
       </SidebarNavTooltip>
-      {versionBlock}
+      {!collapsed ? versionLine : null}
     </div>
   );
 }

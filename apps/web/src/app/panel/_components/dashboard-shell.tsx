@@ -8,7 +8,7 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="mx-auto w-full max-w-[1520px] space-y-3 sm:space-y-5">
+    <div className="mx-auto w-full max-w-[1520px] space-y-2 sm:space-y-3">
       {children}
     </div>
   );
