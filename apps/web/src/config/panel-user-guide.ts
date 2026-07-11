@@ -68,13 +68,13 @@ const GUIDE_BY_ROLE: Record<string, PanelGuideEntry> = {
   },
   manager: {
     href: `${PERSONEL_HTML}#dosya-sorumlusu`,
-    title: 'Dosya Sorumlusu Kılavuzu',
-    subtitle: 'Sahiplik, atama ve operasyon akışı',
+    title: 'Yönetici Kullanım Kılavuzu',
+    subtitle: 'Sistemi verimli kullanmanız için adım adım rehber',
   },
   admin: {
     href: `${PERSONEL_HTML}#operasyon-merkezi`,
     title: 'Yönetici Kullanım Kılavuzu',
-    subtitle: 'Operasyon, sahiplik ve ayarlar',
+    subtitle: 'Sistemi verimli kullanmanız için adım adım rehber',
   },
 };
 

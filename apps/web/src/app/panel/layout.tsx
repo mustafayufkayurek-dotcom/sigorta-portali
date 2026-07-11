@@ -40,6 +40,7 @@ import {
   PANEL_MAIN_TOP,
   PANEL_NAVBAR_HEIGHT,
   PANEL_SIDEBAR_STICKY_TOP,
+  PANEL_SIDEBAR_HEIGHT,
 } from '@/config/panel-layout-spacing';
 import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
@@ -828,33 +829,24 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`relative hidden min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-[#0f172a] text-slate-200 transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${
+      className={`relative z-30 hidden shrink-0 flex-col overflow-hidden border-r border-slate-700/40 bg-gradient-to-b from-[#0b1324] via-[#0f172a] to-[#111c31] text-slate-200 shadow-[6px_0_28px_rgba(15,23,42,0.18)] transition-[width] duration-200 ease-in-out md:flex md:sticky ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT} ${
         collapsed ? 'w-[74px]' : 'w-[286px]'
       }`}
     >
       <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
 
-      <nav className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-2">
-        <div className="min-h-0 flex-1 space-y-0.5 pb-2">
+      <nav className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pb-2 pt-2 [scrollbar-width:thin]">
+        <div className="space-y-0.5">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
       </nav>
 
-      <div className="shrink-0 border-t border-slate-700/80">
-        <PanelSidebarGuideFooter
-          roleCode={roleCode}
-          isExpert={isExpert}
-          isInsuranceCompanyUser={isInsuranceCompanyUser}
-          isFinance={isFinance}
-          isFieldStaff={isFieldStaff}
-          isOfficeStaff={isOfficeStaff}
-          collapsed={collapsed}
-        />
-        <div className="px-2 pb-2.5 sm:px-2.5">
+      <div className="mt-auto shrink-0 border-t border-white/10 bg-[#0b1324]/90 backdrop-blur-sm">
+        <div className="px-2.5 pt-2.5">
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-slate-600/70 bg-slate-800/50 py-2 text-xs font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white ${
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2.5 text-xs font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10 ${
               collapsed ? 'px-2' : 'px-3'
             }`}
             aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
@@ -864,6 +856,15 @@ function PanelSidebar({
             {!collapsed ? <span>Menüyü Daralt</span> : null}
           </button>
         </div>
+        <PanelSidebarGuideFooter
+          roleCode={roleCode}
+          isExpert={isExpert}
+          isInsuranceCompanyUser={isInsuranceCompanyUser}
+          isFinance={isFinance}
+          isFieldStaff={isFieldStaff}
+          isOfficeStaff={isOfficeStaff}
+          collapsed={collapsed}
+        />
       </div>
     </aside>
   );
@@ -1383,7 +1384,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <PanelUserProvider user={user}>
       <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
-        <div className="flex min-h-0 flex-1 overflow-x-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <PanelSidebar
             pathname={pathname}
             roleCode={roleCode}
@@ -1399,7 +1400,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/90">
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
             <div className="mx-auto max-w-screen-2xl">

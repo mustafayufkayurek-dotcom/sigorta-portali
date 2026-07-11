@@ -11,4 +11,5 @@ export const PANEL_MAIN_PT = 'pt-4 sm:pt-6';
 export const PANEL_HEADER_CARD_PT = 'pt-3 sm:pt-4';
 
 export const PANEL_NAVBAR_HEIGHT = 'h-[4.5rem] sm:h-[4.75rem]';
-export const PANEL_SIDEBAR_STICKY_TOP = 'md:top-[4.75rem] md:h-[calc(100vh-4.75rem)]';
+export const PANEL_SIDEBAR_STICKY_TOP = 'md:top-[4.75rem]';
+export const PANEL_SIDEBAR_HEIGHT = 'h-[calc(100vh-4.75rem)]';
