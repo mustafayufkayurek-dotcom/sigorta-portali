@@ -13,6 +13,7 @@ import {
   computeVitrinStats,
   type ClaimFileForMap,
 } from '@/utils/insurance-portal-map-utils';
+import { PortalCompactHeader } from '@/components/panel/PortalCompactHeader';
 
 const VIEW_MODES: { key: InsurancePortalViewMode; label: string; hint: string }[] = [
   { key: 'ours', label: 'Bizim Dosyalar', hint: 'Yalnızca şirket kapsamınızdaki gerçek dosyalar' },
@@ -129,32 +130,23 @@ export default function SigortaPortalPage() {
   const userName = `${String(user?.firstName ?? '')} ${String(user?.lastName ?? '')}`.trim();
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-hidden bg-slate-50 -mx-3 sm:-mx-4 pb-2">
-      <div className="space-y-4 px-4 py-4">
-        {/* Hero — karşılama + harita modu (sayfa menüsü alt çubukta / solda) */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 shadow-lg">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
-            <div className="absolute -bottom-10 -right-6 h-44 w-44 rounded-full bg-indigo-900/30 blur-2xl" />
-          </div>
-          <div className="relative space-y-4">
-            <div>
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-[10px] font-bold tracking-[0.2em] text-blue-200">Meridyen Assistance</span>
-                <span className="h-1 w-1 rounded-full bg-blue-300" />
-                <span className="text-[10px] text-blue-300">Sigorta Portalı</span>
-              </div>
-              <h1 className="text-xl font-bold leading-tight text-white lg:text-2xl">
-                Hoş Geldiniz, <span className="text-blue-100">{userName || 'Kullanıcı'}</span>
-              </h1>
-              <p className="mt-1 text-sm text-blue-200">{companies}</p>
+    <div className="min-w-0 max-w-full space-y-3">
+        <PortalCompactHeader
+          title="Sigorta Portalı"
+          welcomeLabel={userName || 'Kullanıcı'}
+          showRatesAndClock
+          meta={
+            <>
+              <p className="text-sm text-slate-600">{companies}</p>
               {pendingCount > 0 ? (
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-100">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
-                  {pendingCount} onay bekliyor
-                </p>
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                  <span className="text-xs font-semibold text-amber-800">{pendingCount} onay bekliyor</span>
+                </div>
               ) : null}
-            </div>
+            </>
+          }
+          belowActions={
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-md">
               {VIEW_MODES.map((mode) => (
                 <button
@@ -164,16 +156,16 @@ export default function SigortaPortalPage() {
                   title={mode.hint}
                   className={`rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
                     viewMode === mode.key
-                      ? 'bg-white text-blue-700 shadow'
-                      : 'border border-white/20 bg-white/15 text-blue-100 hover:bg-white/25'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   {mode.label}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {missingScope && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-900">
@@ -243,7 +235,6 @@ export default function SigortaPortalPage() {
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

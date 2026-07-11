@@ -9,6 +9,8 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
+import { PortalCompactHeader } from '@/components/panel/PortalCompactHeader';
+import { ExpertPortalContactStrip } from '@/components/panel/portal-header-widgets';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -1044,93 +1046,6 @@ function GaugeChart({
   );
 }
 
-// ─── Clock & Hero widgets ──────────────────────────────────────────────────────
-
-function HeroExchangeRates({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
-  const [usd, setUsd] = useState<number | null>(null);
-  const [eur, setEur] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    fetch(`${API_V1}/widgets/exchange-rates`)
-      .then((r) => r.json())
-      .then((body) => {
-        if (!active) return;
-        const data = body?.data;
-        if (data?.usd) {
-          setUsd((data.usd.buyingRate + data.usd.sellingRate) / 2);
-        }
-        if (data?.eur) {
-          setEur((data.eur.buyingRate + data.eur.sellingRate) / 2);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
-
-  if (loading) {
-    return (
-      <div
-        className={`h-3.5 w-3.5 rounded-full border-2 animate-spin ${
-          tone === 'light' ? 'border-slate-200 border-t-slate-500' : 'border-white/30 border-t-white'
-        }`}
-        aria-hidden="true"
-      />
-    );
-  }
-
-  const labelClass = tone === 'light' ? 'text-slate-500 font-medium' : 'text-blue-200 font-medium';
-  const valueClass = tone === 'light' ? 'text-slate-800 font-semibold' : 'text-white font-semibold';
-  const sepClass = tone === 'light' ? 'text-slate-300' : 'text-blue-300/40';
-
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="text-[11px] tabular-nums">
-        <span className={labelClass}>USD </span>
-        <span className={valueClass}>{usd ? `₺${usd.toFixed(2)}` : '—'}</span>
-      </div>
-      <span className={`${sepClass} select-none`}>|</span>
-      <div className="text-[11px] tabular-nums">
-        <span className={labelClass}>EUR </span>
-        <span className={valueClass}>{eur ? `₺${eur.toFixed(2)}` : '—'}</span>
-      </div>
-    </div>
-  );
-}
-
-const WHATSAPP_SUPPORT_URL = 'https://wa.me/905336330713';
-const WHATSAPP_SUPPORT_PHONE = '0533 633 07 13';
-
-function LiveClock({ compact = false }: { compact?: boolean }) {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const dateStr = now.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  if (compact) {
-    return (
-      <div className="text-right text-[11px] tabular-nums text-slate-500">
-        <p className="font-semibold text-slate-800">{timeStr}</p>
-        <p className="text-[10px] leading-tight">{dateStr}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="text-right">
-      <p className="text-blue-200 text-[10px] leading-tight">{dateStr}</p>
-      <p className="text-white text-lg font-bold tabular-nums tracking-wide">{timeStr}</p>
-    </div>
-  );
-}
-
 // ─── Status helpers ─────────────────────────────────────────────────────────────
 
 function statusLabel(s: string) {
@@ -1296,9 +1211,53 @@ export default function EksperPortalPage() {
   const approvalExpiredCount = expiredCount;
   const activeFileGaugeMax = Math.max(10, assignedCount, approvalPendingCount + approvalExpiredCount);
 
+  const headerActions = (
+    <>
+      <button
+        type="button"
+        onClick={() => setShowIhbarModal(true)}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        Yeni İhbar
+      </button>
+      <Link
+        href="/panel/eksper-portal/dosyalar"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+      >
+        Dosyalarım
+      </Link>
+      <Link
+        href="/panel/eksper-portal/randevular"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+      >
+        Dosya Akışı
+      </Link>
+      <Link
+        href="/panel/eksper-portal/onaylar"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+      >
+        Onay Bekleyen
+        <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-800">
+          {approvalPendingCount}
+        </span>
+      </Link>
+      <Link
+        href="/panel/eksper-portal/onaylar?filter=expired"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+      >
+        Süresi Geçmiş
+        {approvalExpiredCount > 0 ? (
+          <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-100 px-1 text-[10px] font-bold text-red-800">
+            {approvalExpiredCount}
+          </span>
+        ) : null}
+      </Link>
+    </>
+  );
+
   return (
-    <div className="min-w-0 max-w-full overflow-x-hidden bg-slate-50 -mx-3 sm:-mx-4 -mt-4 sm:-mt-6">
-      <div className="px-4 pb-4 space-y-3">
+    <div className="min-w-0 max-w-full space-y-3">
 
         {loadError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1311,104 +1270,28 @@ export default function EksperPortalPage() {
           </div>
         )}
 
-        {/* ── Üst kart: admin header ile uyumlu kompakt karşılama ── */}
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
-          <div className="px-3 py-3 sm:px-5 sm:py-3.5">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl">Eksper Portalı</h1>
-                  <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                    Hoş Geldiniz, {userName}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <span className="text-xs font-semibold text-amber-800">{approvalPendingCount} onay bekliyor</span>
-                  </div>
-                  {approvalExpiredCount > 0 ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                      <span className="text-xs font-semibold text-red-800">{approvalExpiredCount} süresi geçmiş</span>
-                    </div>
-                  ) : null}
-                </div>
+        {/* ── Üst kart: kompakt karşılama ── */}
+        <PortalCompactHeader
+          title="Eksper Portalı"
+          welcomeLabel={userName}
+          showRatesAndClock
+          actions={headerActions}
+          contactStrip={<ExpertPortalContactStrip />}
+          meta={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span className="text-xs font-semibold text-amber-800">{approvalPendingCount} onay bekliyor</span>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                <HeroExchangeRates tone="light" />
-                <LiveClock compact />
-              </div>
+              {approvalExpiredCount > 0 ? (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  <span className="text-xs font-semibold text-red-800">{approvalExpiredCount} süresi geçmiş</span>
+                </div>
+              ) : null}
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                onClick={() => setShowIhbarModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Yeni İhbar
-              </button>
-              <Link
-                href="/panel/eksper-portal/dosyalar"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Dosyalarım
-              </Link>
-              <Link
-                href="/panel/eksper-portal/randevular"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Dosya Akışı
-              </Link>
-              <Link
-                href="/panel/eksper-portal/onaylar"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Onay Bekleyen
-                <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-800">
-                  {approvalPendingCount}
-                </span>
-              </Link>
-              <Link
-                href="/panel/eksper-portal/onaylar?filter=expired"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Süresi Geçmiş
-                {approvalExpiredCount > 0 ? (
-                  <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-100 px-1 text-[10px] font-bold text-red-800">
-                    {approvalExpiredCount}
-                  </span>
-                ) : null}
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/90 px-3 py-2 sm:px-5">
-            <a
-              href={WHATSAPP_SUPPORT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800 transition hover:bg-emerald-100"
-            >
-              WhatsApp Destek · {WHATSAPP_SUPPORT_PHONE}
-            </a>
-            <a
-              href="tel:+908508852555"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
-            >
-              0 850 885 25 55
-            </a>
-            <a
-              href="mailto:info@meridyenassistance.com"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
-            >
-              info@meridyenassistance.com
-            </a>
-          </div>
-        </div>
+          }
+        />
 
         {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1635,8 +1518,6 @@ export default function EksperPortalPage() {
             </div>
           </div>
         </div>
-
-      </div>
 
       {/* ── Sigorta Şirketleri — Alt Partner Bandı ──────────────────────────── */}
       <div className="sticky bottom-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">

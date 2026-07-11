@@ -1443,7 +1443,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         )}
         <main className={`min-w-0 flex-1 overflow-x-hidden ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
-          <div className={`mx-auto min-w-0 max-w-screen-2xl px-3 sm:px-4 ${PANEL_MAIN_TOP}`}>
+          <div className={`mx-auto min-w-0 ${isPortalUser ? 'max-w-none px-2 sm:px-3' : 'max-w-screen-2xl px-3 sm:px-4'} ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
             {contextBackLink && (
               <Link

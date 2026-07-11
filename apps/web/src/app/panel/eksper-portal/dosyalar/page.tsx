@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
 import {
   usePanelTableColumns,
@@ -90,16 +90,15 @@ export default function EksperDosyalarPage() {
 
   return (
     <div className="min-w-0 max-w-full space-y-4">
-      <PortalBreadcrumb
+      <PortalPageHeader
         portalHomeHref={EKSPER_PORTAL_HOME}
         portalHomeLabel={EKSPER_PORTAL_LABEL}
         currentLabel="Dosyalarım"
+        title="Dosyalarım"
+        actions={
+          <span className="w-fit shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">{total} dosya</span>
+        }
       />
-
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Dosyalarım</h2>
-        <span className="w-fit shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">{total} dosya</span>
-      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
-import PortalBreadcrumb from '@/components/portal/PortalBreadcrumb';
+import PortalPageHeader from '@/components/portal/PortalPageHeader';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
 const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
@@ -102,16 +102,15 @@ export default function EksperOnaylarPage() {
 
   return (
     <div className="min-w-0 max-w-full space-y-4">
-      <PortalBreadcrumb
+      <PortalPageHeader
         portalHomeHref={EKSPER_PORTAL_HOME}
         portalHomeLabel={EKSPER_PORTAL_LABEL}
         currentLabel="Bekleyen Onaylar"
+        title="Bekleyen Onaylar"
+        actions={
+          <span className="w-fit shrink-0 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">{approvals.length} onay bekliyor</span>
+        }
       />
-
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Bekleyen Onaylar</h2>
-        <span className="w-fit shrink-0 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">{approvals.length} onay bekliyor</span>
-      </div>
 
       {toast && (
         <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 flex justify-between items-center">
