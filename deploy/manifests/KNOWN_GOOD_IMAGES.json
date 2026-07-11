@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v279-sidebar-logo-scale",
-  "description": "Sidebar logo ölçeklendirme: dar menü beyaz kart h-12 küre; geniş menü 4.5rem tam logo (ade5d73 cilası)",
+  "label": "v280-logo-light-strip",
+  "description": "Logo şeridi koyu temada da beyaz; geniş logo 5.25rem belirgin; dar küre h-11 açık zemin",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v276-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v279-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v280-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v278-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v279-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
   },
   "mustPassSmokeRoutes": [

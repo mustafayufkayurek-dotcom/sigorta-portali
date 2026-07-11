@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v279 web)
+## Canlı durum (11 Temmuz 2026 — v280 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v279-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v280-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v278** / Backend **v276** | manifest `rollbackImages` |
-| **Etiket** | `v279-sidebar-logo-scale` | |
+| **Rollback** | Web **v279** / Backend **v276** | manifest `rollbackImages` |
+| **Etiket** | `v280-logo-light-strip` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v280 — Web-only (11 Temmuz 2026 gece)
+
+- Logo şeridi **koyu temada da beyaz** — dar menü yanıltıcı koyu şerit kaldırıldı
+- Geniş menü logo **5.25rem** belirgin; dar küre h-11
+- Commit: `b98076c`
 
 ### v279 — Web-only (11 Temmuz 2026 gece)
 
