@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v260-portal-tek-logo-kilavuz-kapak",
-  "description": "Web-only: Portal navbar tek logo (md+ sidebar), kılavuz kapak ortalama",
+  "label": "v261-eksper-kure-kilavuz-bosluk",
+  "description": "Web-only: Kurumsal küre sidebar, eksper kompakt header, kılavuz sayfa boşluk düzeltmesi",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v254-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v260-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v261-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v259-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v260-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v254-amd64"
   },
   "mustPassSmokeRoutes": [
