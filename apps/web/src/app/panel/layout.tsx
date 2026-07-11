@@ -764,16 +764,12 @@ function PanelSidebar({
     isFirst = false,
   ) => {
     const active = forceActive ?? isActive(href, exactMatch);
-    const verticalPad = compact
-      ? 'py-1.5 text-xs'
+    const sizeClass = compact
+      ? 'panel-sidebar-nav-link--compact'
       : isFirst
-        ? 'pt-0 pb-2 text-sm'
-        : 'py-2 text-sm';
-    return `group flex items-center justify-between gap-2 rounded-xl px-3 ${verticalPad} font-semibold transition ${
-      active
-        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-    }`;
+        ? 'panel-sidebar-nav-link--first'
+        : 'panel-sidebar-nav-link--default';
+    return `panel-sidebar-nav-link ${sizeClass}${active ? ' panel-sidebar-nav-link--active' : ''}`;
   };
 
   const getNavTooltipLabel = (link: NavigationLink) => {
@@ -792,7 +788,7 @@ function PanelSidebar({
         aria-label={collapsed ? tooltipLabel : undefined}
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
-          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-slate-600" /> : null}
+          {link.icon ? <link.icon className="panel-sidebar-nav-icon" /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
         {!collapsed && link.alertCount && link.alertCount > 0 ? (
@@ -815,7 +811,7 @@ function PanelSidebar({
           {linkNode}
         </SidebarNavTooltip>
         {link.children?.length ? (
-          <div className={collapsed ? 'space-y-0.5' : 'ml-3 space-y-0.5 border-l border-slate-200 pl-2'}>
+          <div className={collapsed ? 'space-y-0.5' : 'panel-sidebar-nav-children'}>
             {link.children.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}

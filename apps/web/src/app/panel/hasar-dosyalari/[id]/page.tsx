@@ -21,7 +21,7 @@ import {
   FinVisConfig,
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
-import { toTitleCaseTR, formatDisplayLabel } from '@/utils/text-helpers';
+import { resolveClaimIhbarKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -200,6 +200,8 @@ function DosyaSayfaUstu({
         claim.propertyAddress.addressLine,
       ].filter(Boolean).join(' · ')
     : null;
+  const ihbarChip = resolveClaimIhbarKonusu(claim);
+  const subInfo = [claim.insuranceCompany?.name, claim.claimNo && `Hasar ${claim.claimNo}`, ihbarChip !== '—' && ihbarChip].filter(Boolean).join(' · ');
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -217,9 +219,7 @@ function DosyaSayfaUstu({
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {[claim.insuranceCompany?.name, claim.claimNo && `Hasar ${claim.claimNo}`, claim.lossType && formatDisplayLabel(String(claim.lossType))].filter(Boolean).join(' · ')}
-          </p>
+          <p className="text-xs text-slate-500 mt-0.5">{subInfo}</p>
         </div>
       </div>
 
@@ -1060,7 +1060,7 @@ export default function ClaimFileDetailPage() {
 
   const isFieldStaff = userRoleCode === 'field_staff';
   const canViewFinancials = claim?.canViewFinancials !== false;
-  const reportEditHref = claim.latestRepairReport?.id
+  const reportEditHref = claim?.latestRepairReport?.id
     ? `/panel/hasar-dosyalari/${id}/onarim-raporu/${claim.latestRepairReport.id}`
     : null;
 

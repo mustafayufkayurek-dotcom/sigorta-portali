@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 
@@ -69,8 +69,9 @@ export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
   if (claim.productBranch?.trim()) {
     supplementary.push({ label: 'Ürün Branşı', value: toTitleCaseTR(claim.productBranch.trim()) });
   }
-  if (claim.lossType?.trim()) {
-    supplementary.push({ label: 'Hasar Konusu', value: toTitleCaseTR(claim.lossType.trim()) });
+  const ihbarKonusu = resolveClaimIhbarKonusu(claim);
+  if (ihbarKonusu !== '—') {
+    supplementary.push({ label: 'İhbar Konusu', value: ihbarKonusu });
   }
   if (claim.sourceChannel?.trim()) {
     supplementary.push({ label: 'Kaynak Kanal', value: toTitleCaseTR(claim.sourceChannel.trim()) });

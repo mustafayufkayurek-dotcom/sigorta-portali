@@ -18,6 +18,7 @@ import {
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
 import { buildVendorNearbyWhere, resolveProvinceDistrictIds } from './vendor-area-match.util';
+import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -320,6 +321,8 @@ export class ClaimFilesService {
           currentStatus: true,
           customer: true,
           assignedBranch: true,
+          claimSubject: { select: { id: true, name: true } },
+          departmentFileSubject: { select: { id: true, name: true } },
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
           assignedAdjuster: {
@@ -384,6 +387,8 @@ export class ClaimFilesService {
         currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         department: { select: { id: true, code: true, name: true, reportFormat: true, color: true } },
+        claimSubject: { select: { id: true, name: true } },
+        departmentFileSubject: { select: { id: true, name: true } },
         statusHistory: {
           include: {
             fromStatus: true,
@@ -542,7 +547,9 @@ export class ClaimFilesService {
     let policyNo = typeof rest.policyNo === 'string' ? rest.policyNo.trim() : '';
     const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
-    const lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
+    let lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
+    const normalizedLossType = mapInboundLossTypeToMeridyen(lossType);
+    if (normalizedLossType) lossType = normalizedLossType;
 
     // Domain Ayrıştırma: claimSubjectId tercih, departmentFileSubjectId backward-compat
     const claimSubjectId = rest.claimSubjectId ?? null;

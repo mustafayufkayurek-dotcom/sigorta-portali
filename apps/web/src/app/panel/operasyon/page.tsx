@@ -15,7 +15,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
-import { formatClaimSubjectLabel, formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
+import { formatDisplayLabel, resolveClaimIhbarKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 
@@ -204,11 +204,7 @@ export default function OperasyonPage() {
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
     const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
-    const subject = formatClaimSubjectLabel(
-      claim.lossType,
-      claim.productBranch,
-      claim.departmentFileSubject?.name,
-    );
+    const subject = resolveClaimIhbarKonusu(claim);
     return {
       kind: 'hasar', id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
@@ -401,15 +397,11 @@ export default function OperasyonPage() {
             <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <PanelTableTh colId="kind" className="table-th">Tür</PanelTableTh>
-                  <PanelTableTh colId="fileNo" className="table-th">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="insured" className="table-th">Sigortalı Adı Soyadı</PanelTableTh>
-                  <PanelTableTh colId="date" className="table-th">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th">İhbar Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th">Durum</PanelTableTh>
-                  <PanelTableTh colId="invoice" className="table-th">Fatura</PanelTableTh>
-                  <PanelTableTh colId="amount" className="table-th">Tutar</PanelTableTh>
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => (
+                    <PanelTableTh key={col.id} colId={col.id} className="table-th">
+                      {col.label}
+                    </PanelTableTh>
+                  ))}
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -425,55 +417,92 @@ export default function OperasyonPage() {
                       )
                     }
                   >
-                    <PanelTableTd colId="kind" className="table-td whitespace-nowrap">
-                      {row.kind === 'hasar' ? (
-                        <span className="badge badge-blue">Hasar</span>
-                      ) : (
-                        <span className="badge badge-orange">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                          Acil
-                        </span>
-                      )}
-                    </PanelTableTd>
-                    <PanelTableTd colId="fileNo" className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
-                      {row.fileNo}
-                    </PanelTableTd>
-                    <PanelTableTd colId="customer" className="table-td max-w-[140px] whitespace-nowrap" title={row.customerName}>
-                      {row.customerName}
-                    </PanelTableTd>
-                    <PanelTableTd colId="insured" className="table-td max-w-[180px] whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
-                      {row.kind === 'hasar' ? (
-                        <InsuredNameInlineEdit
-                          claimId={row.id}
-                          displayName={row.insuredName}
-                          onSaved={(insuredName) => patchClaimInsuredName(row.id, insuredName)}
-                          compact
-                        />
-                      ) : (
-                        row.insuredName
-                      )}
-                    </PanelTableTd>
-                    <PanelTableTd colId="date" className="table-td text-slate-400 whitespace-nowrap">{fmtDate(row.date)}</PanelTableTd>
-                    <PanelTableTd colId="subject" className="table-td text-slate-500 max-w-[160px] whitespace-nowrap" title={row.subject}>
-                      {row.subject}
-                    </PanelTableTd>
-                    <PanelTableTd colId="status" className="table-td whitespace-nowrap">
-                      {row.kind === 'hasar' ? (
-                        <span className="badge badge-blue">{row.statusLabel}</span>
-                      ) : (
-                        <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
-                          {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
-                        </span>
-                      )}
-                    </PanelTableTd>
-                    <PanelTableTd colId="invoice" className="table-td whitespace-nowrap">
-                      <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
-                        {INVOICE_STATUS_LABELS[row.invoiceStatus]}
-                      </span>
-                    </PanelTableTd>
-                    <PanelTableTd colId="amount" className="table-td whitespace-nowrap font-semibold">
-                      {row.amount ?? <span className="text-slate-300">—</span>}
-                    </PanelTableTd>
+                    {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                      switch (col.id) {
+                        case 'kind':
+                          return (
+                            <PanelTableTd key={col.id} colId="kind" className="table-td whitespace-nowrap">
+                              {row.kind === 'hasar' ? (
+                                <span className="badge badge-blue">Hasar</span>
+                              ) : (
+                                <span className="badge badge-orange">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                  Acil
+                                </span>
+                              )}
+                            </PanelTableTd>
+                          );
+                        case 'fileNo':
+                          return (
+                            <PanelTableTd key={col.id} colId="fileNo" className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
+                              {row.fileNo}
+                            </PanelTableTd>
+                          );
+                        case 'customer':
+                          return (
+                            <PanelTableTd key={col.id} colId="customer" className="table-td whitespace-nowrap" title={row.customerName}>
+                              {row.customerName}
+                            </PanelTableTd>
+                          );
+                        case 'insured':
+                          return (
+                            <PanelTableTd key={col.id} colId="insured" className="table-td whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                              {row.kind === 'hasar' ? (
+                                <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                                  <InsuredNameInlineEdit
+                                    claimId={row.id}
+                                    displayName={row.insuredName}
+                                    onSaved={(insuredName) => patchClaimInsuredName(row.id, insuredName)}
+                                    compact
+                                  />
+                                </div>
+                              ) : (
+                                row.insuredName
+                              )}
+                            </PanelTableTd>
+                          );
+                        case 'date':
+                          return (
+                            <PanelTableTd key={col.id} colId="date" className="table-td text-slate-400 whitespace-nowrap">
+                              {fmtDate(row.date)}
+                            </PanelTableTd>
+                          );
+                        case 'subject':
+                          return (
+                            <PanelTableTd key={col.id} colId="subject" className="table-td text-slate-500 whitespace-nowrap" title={row.subject}>
+                              {row.subject}
+                            </PanelTableTd>
+                          );
+                        case 'status':
+                          return (
+                            <PanelTableTd key={col.id} colId="status" className="table-td whitespace-nowrap">
+                              {row.kind === 'hasar' ? (
+                                <span className="badge badge-blue">{row.statusLabel}</span>
+                              ) : (
+                                <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
+                                  {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
+                                </span>
+                              )}
+                            </PanelTableTd>
+                          );
+                        case 'invoice':
+                          return (
+                            <PanelTableTd key={col.id} colId="invoice" className="table-td whitespace-nowrap">
+                              <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
+                                {INVOICE_STATUS_LABELS[row.invoiceStatus]}
+                              </span>
+                            </PanelTableTd>
+                          );
+                        case 'amount':
+                          return (
+                            <PanelTableTd key={col.id} colId="amount" className="table-td whitespace-nowrap font-semibold">
+                              {row.amount ?? <span className="text-slate-300">—</span>}
+                            </PanelTableTd>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                   </tr>
                 ))}
               </tbody>

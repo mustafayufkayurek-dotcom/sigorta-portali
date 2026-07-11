@@ -633,10 +633,14 @@ export class OperationInboxService {
     );
     const receivedAt = message.receivedAt ?? new Date();
     const policyNo = dto.policyNo?.trim() || extracted.policyNo?.trim() || 'Belirtilmedi';
-    const lossType =
+    const lossTypeRaw =
       dto.lossType?.trim()
       || extracted.lossType?.trim()
       || mapInboundCategoryToMeridyen(dto.fileSubject?.trim() || extracted.fileSubject)
+      || '';
+    const lossType =
+      mapInboundLossTypeToMeridyen(lossTypeRaw)
+      || lossTypeRaw
       || 'Belirtilmemiş';
     const claimNo =
       dto.claimNo?.trim()

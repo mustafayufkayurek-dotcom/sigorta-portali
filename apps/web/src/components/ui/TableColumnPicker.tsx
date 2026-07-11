@@ -20,21 +20,33 @@ export interface TableColumnDef {
 }
 
 export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[]) {
+  const defaultOrder = columns.map((c) => c.id);
   const defaultVisible = columns
     .filter((c) => c.defaultVisible !== false)
     .map((c) => c.id);
 
   const [visibleIds, setVisibleIds] = useState<string[]>(defaultVisible);
+  const [columnOrder, setColumnOrder] = useState<string[]>(defaultOrder);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw) as string[];
+      const rawVisible = localStorage.getItem(storageKey);
+      if (rawVisible) {
+        const parsed = JSON.parse(rawVisible) as string[];
         const valid = parsed.filter((id) => columns.some((c) => c.id === id));
         if (valid.length > 0) {
           setVisibleIds(valid);
+        }
+      }
+      const rawOrder = localStorage.getItem(`${storageKey}:order`);
+      if (rawOrder) {
+        const parsedOrder = JSON.parse(rawOrder) as string[];
+        const known = new Set(columns.map((c) => c.id));
+        const validOrder = parsedOrder.filter((id) => known.has(id));
+        const missing = columns.map((c) => c.id).filter((id) => !validOrder.includes(id));
+        if (validOrder.length > 0) {
+          setColumnOrder([...validOrder, ...missing]);
         }
       }
     } catch {
@@ -57,14 +69,41 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
     [storageKey],
   );
 
+  const moveColumn = useCallback(
+    (id: string, direction: -1 | 1) => {
+      setColumnOrder((prev) => {
+        const idx = prev.indexOf(id);
+        if (idx < 0) return prev;
+        const swapIdx = idx + direction;
+        if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+        const next = [...prev];
+        [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+        localStorage.setItem(`${storageKey}:order`, JSON.stringify(next));
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
   const reset = useCallback(() => {
     setVisibleIds(defaultVisible);
+    setColumnOrder(defaultOrder);
     localStorage.setItem(storageKey, JSON.stringify(defaultVisible));
-  }, [defaultVisible, storageKey]);
+    localStorage.setItem(`${storageKey}:order`, JSON.stringify(defaultOrder));
+  }, [defaultOrder, defaultVisible, storageKey]);
 
   const isVisible = useCallback((id: string) => visibleIds.includes(id), [visibleIds]);
 
-  return { visibleIds, isVisible, toggle, reset, ready };
+  const orderedVisibleColumns = useMemo(
+    () =>
+      columnOrder
+        .filter((id) => visibleIds.includes(id))
+        .map((id) => columns.find((c) => c.id === id))
+        .filter((c): c is TableColumnDef => Boolean(c)),
+    [columnOrder, columns, visibleIds],
+  );
+
+  return { visibleIds, columnOrder, orderedVisibleColumns, isVisible, toggle, moveColumn, reset, ready };
 }
 
 function buildDefaultWidths(columns: TableColumnDef[]): Record<string, number> {
@@ -127,6 +166,7 @@ interface ResizableThProps {
   width: number;
   minWidth?: number;
   defaultWidth?: number;
+  fitLabel?: string;
   onResize: (id: string, width: number) => void;
   className?: string;
   children: ReactNode;
@@ -138,6 +178,7 @@ export function ResizableTh({
   width,
   minWidth = 72,
   defaultWidth,
+  fitLabel,
   onResize,
   className = '',
   children,
@@ -181,7 +222,8 @@ export function ResizableTh({
           onMouseDown={startResize}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            onResize(colId, defaultWidth ?? width);
+            const label = fitLabel ?? colId;
+            onResize(colId, estimateColumnContentWidth(label, minWidth, defaultWidth ?? width));
           }}
           className="absolute -right-0.5 top-0 z-20 flex h-full w-4 cursor-col-resize touch-none items-stretch justify-center"
         >
@@ -195,15 +237,25 @@ export function ResizableTh({
 interface TableColumnPickerProps {
   columns: TableColumnDef[];
   visibleIds: string[];
+  columnOrder: string[];
   onToggle: (id: string) => void;
+  onMoveColumn: (id: string, direction: -1 | 1) => void;
   onReset: () => void;
   onResetWidths?: () => void;
+}
+
+export function estimateColumnContentWidth(label: string, minWidth: number, defaultWidth?: number): number {
+  const charBased = Math.round(label.length * 8.5 + 44);
+  const base = defaultWidth ?? minWidth;
+  return Math.min(440, Math.max(minWidth, base, charBased));
 }
 
 export function TableColumnPicker({
   columns,
   visibleIds,
+  columnOrder,
   onToggle,
+  onMoveColumn,
   onReset,
   onResetWidths,
 }: TableColumnPickerProps) {
@@ -230,24 +282,50 @@ export function TableColumnPicker({
       {open && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-800">
+          <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-800">
             <p className="px-2 py-1 text-[11px] font-semibold text-slate-400">Görünür sütunlar</p>
-            {columns.map((col) => (
-              <label
+            {columnOrder.map((id) => {
+              const col = columns.find((c) => c.id === id);
+              if (!col) return null;
+              const visible = visibleIds.includes(id);
+              const orderIndex = columnOrder.indexOf(id);
+              return (
+              <div
                 key={col.id}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                className="flex items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-700/50"
               >
-                <input
-                  type="checkbox"
-                  checked={visibleIds.includes(col.id)}
-                  onChange={() => onToggle(col.id)}
-                  className="rounded border-slate-300"
-                />
-                <span className="text-slate-700 dark:text-slate-200">{col.label}</span>
-              </label>
-            ))}
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1 py-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={visible}
+                    onChange={() => onToggle(col.id)}
+                    className="rounded border-slate-300"
+                  />
+                  <span className="truncate text-slate-700 dark:text-slate-200">{col.label}</span>
+                </label>
+                <button
+                  type="button"
+                  disabled={orderIndex <= 0}
+                  onClick={() => onMoveColumn(col.id, -1)}
+                  className="rounded px-1 text-xs text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"
+                  title="Sola taşı"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={orderIndex >= columnOrder.length - 1}
+                  onClick={() => onMoveColumn(col.id, 1)}
+                  className="rounded px-1 text-xs text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"
+                  title="Sağa taşı"
+                >
+                  ↓
+                </button>
+              </div>
+            );
+            })}
             <p className="mt-2 border-t border-slate-100 px-2 pt-2 text-[10px] leading-4 text-slate-400 dark:border-slate-700">
-              Sütun başlığının sağ kenarından sürükleyerek genişletin veya daraltın.
+              Sütun sırası: ok tuşları. Genişlik: başlık kenarından sürükleyin; çift tık içeriğe göre ayarlar.
             </p>
             <button
               type="button"
@@ -315,7 +393,9 @@ export function PanelTableColumnPicker({ tableColumns }: { tableColumns: PanelTa
     <TableColumnPicker
       columns={tableColumns.columns}
       visibleIds={tableColumns.prefs.visibleIds}
+      columnOrder={tableColumns.prefs.columnOrder}
       onToggle={tableColumns.prefs.toggle}
+      onMoveColumn={tableColumns.prefs.moveColumn}
       onReset={tableColumns.prefs.reset}
       onResetWidths={tableColumns.widths.resetWidths}
     />
@@ -342,6 +422,7 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
       width={ctx.widths.getWidth(colId)}
       minWidth={meta?.minWidth ?? 72}
       defaultWidth={meta?.defaultWidth ?? 140}
+      fitLabel={meta?.label}
       onResize={ctx.widths.setWidth}
       className={className}
       resizable={resizable && meta?.resizable !== false}
@@ -384,7 +465,7 @@ interface PanelTableColGroupProps {
 export function PanelTableColGroup({ leadingWidths = [], trailingWidths = [] }: PanelTableColGroupProps) {
   const ctx = useTableColumnsCtx();
   if (!ctx) return null;
-  const visible = ctx.columns.filter((col) => ctx.prefs.isVisible(col.id));
+  const visible = ctx.prefs.orderedVisibleColumns;
   return (
     <colgroup>
       {leadingWidths.map((width, index) => (
@@ -451,8 +532,8 @@ export function panelTableLayoutStyle(
   const leading = (options?.leadingWidths ?? []).reduce((sum, w) => sum + w, 0);
   const trailing = (options?.trailingWidths ?? []).reduce((sum, w) => sum + w, 0);
   const total =
-    tableColumns.prefs.visibleIds.reduce(
-      (sum, id) => sum + tableColumns.widths.getWidth(id),
+    tableColumns.prefs.orderedVisibleColumns.reduce(
+      (sum, col) => sum + tableColumns.widths.getWidth(col.id),
       0,
     ) + leading + trailing;
   return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${Math.max(total, 720)}px` };
@@ -480,7 +561,7 @@ export function PanelTableSummaryFoot({
   labelClassName = 'px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400',
   valueClassName = 'px-5 py-3 text-right font-bold text-slate-900 dark:text-slate-100',
 }: PanelTableSummaryFootProps) {
-  const visible = tableColumns.columns.filter((c) => tableColumns.prefs.isVisible(c.id));
+  const visible = tableColumns.prefs.orderedVisibleColumns;
   const labelColId = visible[0]?.id;
   let labelShown = false;
 

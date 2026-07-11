@@ -302,6 +302,62 @@
   color: #f8fafc !important;
 }
 
+/* Panel sidebar navigasyon — aktif sayfa ve hover koyu temada belirgin */
+.panel-sidebar-nav-link {
+  @apply flex items-center justify-between gap-2 rounded-xl px-3 font-semibold transition;
+  @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+}
+.panel-sidebar-nav-link--default {
+  @apply py-2 text-sm;
+}
+.panel-sidebar-nav-link--first {
+  @apply pt-0 pb-2 text-sm;
+}
+.panel-sidebar-nav-link--compact {
+  @apply py-1.5 text-xs;
+}
+.panel-sidebar-nav-link--active {
+  @apply bg-blue-50 text-blue-700 ring-1 ring-blue-200;
+}
+.panel-sidebar-nav-icon {
+  @apply h-4 w-4 shrink-0 text-slate-400 transition;
+}
+.panel-sidebar-nav-link:hover .panel-sidebar-nav-icon {
+  @apply text-slate-600;
+}
+.panel-sidebar-nav-link--active .panel-sidebar-nav-icon {
+  @apply text-blue-600;
+}
+.panel-sidebar-nav-children {
+  @apply ml-3 space-y-0.5 border-l border-slate-200 pl-2;
+}
+.dark .panel-sidebar-nav-link {
+  color: #cbd5e1 !important;
+}
+.dark .panel-sidebar-nav-link:hover {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+.dark .panel-sidebar-nav-link--active {
+  background-color: rgba(37, 99, 235, 0.32) !important;
+  color: #e0f2fe !important;
+  box-shadow: inset 3px 0 0 #3b82f6;
+  --tw-ring-color: rgba(96, 165, 250, 0.45);
+}
+.dark .panel-sidebar-nav-link--active:hover {
+  background-color: rgba(37, 99, 235, 0.4) !important;
+  color: #f0f9ff !important;
+}
+.dark .panel-sidebar-nav-link:hover .panel-sidebar-nav-icon {
+  color: #e2e8f0 !important;
+}
+.dark .panel-sidebar-nav-link--active .panel-sidebar-nav-icon {
+  color: #60a5fa !important;
+}
+.dark .panel-sidebar-nav-children {
+  border-color: #334155 !important;
+}
+
 .dark .bg-blue-50 {
   background-color: rgba(37, 99, 235, 0.16) !important;
 }
