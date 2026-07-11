@@ -64,6 +64,8 @@ interface ReportData {
     fileNo: string;
     claimNo: string;
     lossType: string;
+    insuredName?: string | null;
+    commercialTitle?: string | null;
     insuranceCompany?: { name: string } | null;
     customer?: { fullName?: string | null; companyName?: string | null } | null;
     propertyAddress?: { city: string; district?: string | null; addressLine: string } | null;
