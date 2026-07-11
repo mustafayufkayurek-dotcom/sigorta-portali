@@ -178,3 +178,9 @@ Marangoz, boya, seramik, parke, alçı… — lazer metre ölçüsü + fotoğraf
 - [ ] **v153 backend (hazırlık, deploy yok):** Canlı backend **v152**; workspace’te `claim-files.service.ts` — `latestRepairReport` yalnız onaylı rapor (`approved`, `externally_approved`); `CreateClaimFileRevenueDto` — gelir **açıklama** (`description`) zorunlu. Web v162 bu sözleşmeyi UI’da varsayabilir; backend deploy onayı sonrası **backend-only**, migration beklenmiyor.
 - [ ] **Mustafa canlı test (v162):** Hasar dosyası detay — Finans özet, gelir/fatura, gider/bütçe alt sekmeleri; Evraklar 4 alt sekme + sözleşmeler; Onarım raporu / revizyon UX.
 
+---
+
+## Onarım Raporu Yazım Süresi Analitiği (2026-07-11)
+
+- [ ] **Analytics sonra:** `sessionStorage` anahtarı `report-write-started-at` — onarım raporu düzenleme sayfası açıldığında `{ reportId, claimFileId, startedAt }` yazılır. Süre ölçümü ve panel raporlaması için backend/BI entegrasyonu henüz yok.
+

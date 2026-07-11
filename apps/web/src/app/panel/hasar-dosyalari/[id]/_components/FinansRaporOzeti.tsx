@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
@@ -116,14 +117,15 @@ export function FinansRaporOzeti({
   claim,
   summary,
   onOpenFinansTab,
-  onOpenRaporlarTab,
+  reportEditHref,
   compact = false,
 }: {
   claim: any;
   /** financial-summary yanıtı; yoksa claim alanları kullanılır */
   summary?: FinansOzetSummary | null;
   onOpenFinansTab?: () => void;
-  onOpenRaporlarTab?: () => void;
+  /** Onarım raporu düzenleme sayfası — tab değiştirmek yerine doğrudan navigasyon */
+  reportEditHref?: string | null;
   /** Üst bant: yalnızca KPI ızgarası */
   compact?: boolean;
 }) {
@@ -161,14 +163,13 @@ export function FinansRaporOzeti({
               </p>
             </div>
           )}
-          {onOpenRaporlarTab && rapor && (
-            <button
-              type="button"
-              onClick={onOpenRaporlarTab}
+          {reportEditHref && rapor && (
+            <Link
+              href={reportEditHref}
               className="text-xs font-medium text-slate-300 hover:text-white border border-slate-600 hover:border-slate-500 rounded-lg px-2.5 py-1 transition-colors"
             >
               Rapora Git →
-            </button>
+            </Link>
           )}
           {onOpenFinansTab && (
             <button

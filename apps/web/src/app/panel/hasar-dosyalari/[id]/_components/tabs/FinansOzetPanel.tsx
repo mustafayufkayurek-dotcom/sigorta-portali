@@ -83,11 +83,11 @@ function PlBreakdownCard({
 export function FinansOzetPanel({
   claim,
   claimId,
-  onOpenRaporlarTab,
+  reportEditHref,
 }: {
   claim: any;
   claimId: string;
-  onOpenRaporlarTab?: () => void;
+  reportEditHref?: string | null;
 }) {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +126,7 @@ export function FinansOzetPanel({
       <FinansRaporOzeti
         claim={claim}
         summary={loading ? null : s}
-        onOpenRaporlarTab={onOpenRaporlarTab}
+        reportEditHref={reportEditHref}
       />
 
       {loading ? (

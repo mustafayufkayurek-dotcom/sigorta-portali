@@ -40,12 +40,26 @@ function formatPropertyAddress(claim: any): string | null {
   return line || null;
 }
 
+function resolveDosyaEksperi(claim: any): string {
+  const vendorName = claim.assignedInspectorVendor?.name?.trim();
+  if (vendorName) return toTitleCaseTR(vendorName);
+  const inspector = claim.inspector?.trim() || claim.inspectorName?.trim();
+  if (inspector) return toTitleCaseTR(inspector);
+  return '—';
+}
+
+function resolveIhbarTarihi(claim: any): string {
+  if (claim.notificationDate) return fmtDate(claim.notificationDate);
+  if (claim.createdAt) return fmtDate(claim.createdAt);
+  return '—';
+}
+
 export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
   const core: DosyaField[] = [
-    { label: 'Hasar Tarihi', value: fmtDate(claim.incidentDate) },
-    { label: 'İhbar Tarihi', value: fmtDate(claim.notificationDate) },
+    { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
+    { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim) },
   ];
 
   const supplementary: DosyaField[] = [];
@@ -86,10 +100,10 @@ export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
 
 function buildDosyaBilgileriSubtitle(claim: any): string {
   const parts: string[] = [];
-  const notification = fmtDate(claim.notificationDate);
+  const notification = resolveIhbarTarihi(claim);
   if (notification !== '—') parts.push(`İhbar ${notification}`);
-  const incident = fmtDate(claim.incidentDate);
-  if (incident !== '—') parts.push(`Hasar ${incident}`);
+  const eksper = resolveDosyaEksperi(claim);
+  if (eksper !== '—') parts.push(eksper);
   const priority = formatPriority(claim.priority);
   if (priority !== '—') parts.push(priority);
   const sla = fmtDate(claim.slaDueAt);

@@ -13,7 +13,8 @@ import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
-import VendorQuotePopover, {
+import VendorQuoteModal from '@/components/damage-reports/VendorQuoteModal';
+import {
   parseVendorQuoteData,
   buildVendorQuoteMetrajData,
   type VendorQuoteData,
@@ -37,10 +38,71 @@ const ImageAnnotationEditor = dynamic(
   { ssr: false }
 );
 
-/** Mahal/bölge ve benzeri serbest metin — kayıt ve gösterim öncesi Title Case */
+/** Mahal/bölge — Title Case; "Kelime1 - Kelime2" formatı zorunlu */
 function normalizeLocationLabel(value: string): string {
   const trimmed = value.trim();
   return trimmed ? toTitleCaseTR(trimmed) : trimmed;
+}
+
+function formatLocationLabel(value: string): { formatted: string; warning?: string } {
+  const normalized = normalizeLocationLabel(value);
+  if (!normalized) return { formatted: normalized };
+  if (normalized.includes(' - ')) return { formatted: normalized };
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return {
+      formatted: `${words[0]} - Genel`,
+      warning: 'Mahal formatı "Kelime1 - Kelime2" olmalıdır; otomatik düzenlendi.',
+    };
+  }
+  const splitAt = Math.max(1, words.length - 1);
+  return {
+    formatted: `${words.slice(0, splitAt).join(' ')} - ${words.slice(splitAt).join(' ')}`,
+    warning: words.length > 1 ? 'Mahal formatı "Kelime1 - Kelime2" olmalıdır; otomatik düzenlendi.' : undefined,
+  };
+}
+
+function validateAndFormatLocation(value: string): string {
+  return formatLocationLabel(value).formatted;
+}
+
+function readMetrajDetectionScope(metrajData: unknown): string {
+  if (!metrajData || typeof metrajData !== 'object') return '';
+  const scope = (metrajData as Record<string, unknown>).detectionScope;
+  return typeof scope === 'string' ? normalizeLocationLabel(scope) : '';
+}
+
+function sortReportItems(items: any[]): any[] {
+  return [...items].sort((a, b) => {
+    const aScope = readMetrajDetectionScope(a.metrajData);
+    const bScope = readMetrajDetectionScope(b.metrajData);
+    if (aScope !== bScope) return aScope.localeCompare(bScope, 'tr');
+    const aLoc = a.location ?? '';
+    const bLoc = b.location ?? '';
+    if (aLoc !== bLoc) return aLoc.localeCompare(bLoc, 'tr');
+    const aWg = a.workGroup?.name ?? '';
+    const bWg = b.workGroup?.name ?? '';
+    return aWg.localeCompare(bWg, 'tr');
+  });
+}
+
+function recomputeReportTotals(items: any[]) {
+  const totalSupplierCost = items.reduce((s, i) => s + (Number(i.supplierTotal) || 0), 0);
+  const totalSalesAmount = items.reduce((s, i) => {
+    if (i.pricingType === 'lumpsum') return s + (Number(i.lumpSumPrice) || 0);
+    return s + (Number(i.salesTotal) || 0);
+  }, 0);
+  const grossProfit = totalSalesAmount - totalSupplierCost;
+  const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
+  const buildingDamageTotal = items.reduce((s, i) => {
+    if ((i.damageCategory ?? 'bina') !== 'bina') return s;
+    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+  }, 0);
+  const goodsDamageTotal = items.reduce((s, i) => {
+    if (i.damageCategory !== 'esya') return s;
+    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+  }, 0);
+  return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal };
 }
 
 
@@ -208,7 +270,7 @@ type RevHistoryItem = {
   requestedBy: string | null;
 };
 
-function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }) {
+function RevisionHistory({ reportId, embedded = false }: { reportId: string; claimFileId: string; embedded?: boolean }) {
   const [items, setItems] = useState<RevHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -247,8 +309,8 @@ function RevisionHistory({ reportId }: { reportId: string; claimFileId: string }
   const fmtD = (d: string) => fmtDateTime(d, { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+    <div className={embedded ? 'mt-4 pt-4 border-t border-slate-100' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>
+      <div className={`flex items-center justify-between mb-4 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}>
         <h4 className="text-sm font-semibold text-slate-700">Revizyon Geçmişi</h4>
         <a href={`/panel/revizyon-talepleri?reportId=${reportId}`} className="text-xs text-blue-600 hover:text-blue-700">
           Tümünü Gör →
@@ -1171,6 +1233,7 @@ interface EditableItemsTableProps {
 interface RowState {
   workGroupId: string;
   location: string;
+  detectionScope: string;
   jobDescription: string;
   description: string;
   quantity: string;
@@ -1190,6 +1253,7 @@ function rowFromItem(item: any): RowState {
   return {
     workGroupId: item.workGroupId ?? '',
     location: item.location ? normalizeLocationLabel(item.location) : '',
+    detectionScope: readMetrajDetectionScope(item.metrajData),
     jobDescription: item.jobDescription ? normalizeLocationLabel(item.jobDescription) : '',
     description: item.description ? normalizeLocationLabel(item.description) : '',
     quantity: String(item.quantity ?? '1'),
@@ -1205,9 +1269,9 @@ function rowFromItem(item: any): RowState {
   };
 }
 
-function emptyRow(): RowState {
+function emptyRow(location = ''): RowState {
   return {
-    workGroupId: '', location: '', jobDescription: '', description: '', quantity: '1', unit: 'm²',
+    workGroupId: '', location, detectionScope: '', jobDescription: '', description: '', quantity: '1', unit: 'm²',
     salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId: '',
     pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {},
   };
@@ -1339,8 +1403,12 @@ function LocationSelector({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              const trimmed = normalizeLocationLabel(newVal);
-              if (trimmed) { onAddNew(trimmed); onSelect(trimmed); }
+              const { formatted, warning } = formatLocationLabel(newVal);
+              if (formatted) {
+                if (warning) alert(warning);
+                onAddNew(formatted);
+                onSelect(formatted);
+              }
               setAddingNew(false);
               setNewVal('');
             } else if (e.key === 'Escape') {
@@ -1349,8 +1417,12 @@ function LocationSelector({
             }
           }}
           onBlur={() => {
-            const trimmed = normalizeLocationLabel(newVal);
-            if (trimmed) { onAddNew(trimmed); onSelect(trimmed); }
+            const { formatted, warning } = formatLocationLabel(newVal);
+            if (formatted) {
+              if (warning) alert(warning);
+              onAddNew(formatted);
+              onSelect(formatted);
+            }
             setAddingNew(false);
             setNewVal('');
           }}
@@ -1401,10 +1473,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [addingSaving, setAddingSaving] = useState(false);
   const [quickAdding, setQuickAdding] = useState(false);
   const [activeCell, setActiveCell] = useState<{ rowIdx: number | 'new'; col: string } | null>(null);
-  const [subGroups, setSubGroups] = useState<Record<string, any[]>>({}); // workGroupId -> alt gruplar (API önbellek)
+  const [subGroups, setSubGroups] = useState<Record<string, any[]>>({});
   const [loadingSubGroupIds, setLoadingSubGroupIds] = useState<Set<string>>(new Set());
-  const [metrajModalRowId, setMetrajModalRowId] = useState<string | null>(null); // rowId veya 'new'
+  const [metrajModalRowId, setMetrajModalRowId] = useState<string | null>(null);
   const [locationList, setLocationList] = useState<string[]>([]);
+  const [vendorModalRowId, setVendorModalRowId] = useState<string | null>(null);
   // Zam oranı state
   const [zamOraniInput, setZamOraniInput] = useState('');
   const [zamOraniUndoSnapshot, setZamOraniUndoSnapshot] = useState<{ id: string; salesUnitPrice: string; supplierUnitPrice: string }[] | null>(null);
@@ -1424,12 +1497,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, [items]);
 
   const addLocationIfNew = (loc: string) => {
-    const normalized = normalizeLocationLabel(loc);
+    const normalized = validateAndFormatLocation(loc);
     setLocationList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
   };
 
   useEffect(() => {
-    setRows(items.map((item) => ({ ...rowFromItem(item), _id: item.id, _isDirty: false, _savedFlash: false })));
+    setRows(sortReportItems(items).map((item) => ({ ...rowFromItem(item), _id: item.id, _isDirty: false, _savedFlash: false })));
   }, [items]);
 
   useEffect(() => {
@@ -1439,9 +1512,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const buildRowPayload = (row: RowState) => {
     const isLumpsum = row.pricingType === 'lumpsum';
+    const metrajBase = row.metrajData && typeof row.metrajData === 'object' ? { ...row.metrajData } : {};
+    if (row.detectionScope.trim()) {
+      metrajBase.detectionScope = row.detectionScope.trim();
+    } else {
+      delete metrajBase.detectionScope;
+    }
     return {
       workGroupId: row.workGroupId || undefined,
-      location: row.location ? normalizeLocationLabel(row.location) : undefined,
+      location: row.location ? validateAndFormatLocation(row.location) : undefined,
       jobDescription: row.jobDescription,
       description: row.description || undefined,
       quantity: parseFloat(row.quantity) || 1,
@@ -1452,7 +1531,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       lumpSumPrice: isLumpsum ? parseFloat(row.lumpSumPrice) || 0 : undefined,
       damageCategory: row.damageCategory,
       damageTypeId: row.damageTypeId || undefined,
-      metrajData: buildVendorQuoteMetrajData(row.metrajData, row.vendorQuotes),
+      metrajData: buildVendorQuoteMetrajData(metrajBase, row.vendorQuotes),
     };
   };
 
@@ -1546,8 +1625,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     return { id: newWg.id, name: newWg.name };
   };
 
-  const updateRow = (id: string, field: keyof RowState, value: string | VendorQuoteData) => {
-    setRows((prev) => prev.map((r) => r._id === id ? { ...r, [field]: value, _isDirty: true } : r));
+  const updateRow = (id: string, field: keyof RowState, value: string | VendorQuoteData, opts?: { markDirty?: boolean }) => {
+    const markDirty = opts?.markDirty ?? true;
+    setRows((prev) => prev.map((r) => r._id === id ? { ...r, [field]: value, _isDirty: markDirty ? true : r._isDirty } : r));
+  };
+
+  const updateRowCategory = (id: string, patch: Partial<RowState>) => {
+    setRows((prev) => prev.map((r) => r._id === id ? { ...r, ...patch } : r));
   };
 
   const revertRow = (id: string) => {
@@ -1596,7 +1680,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       const isLumpsum = addingRow.pricingType === 'lumpsum';
       await onAdd({
         workGroupId: addingRow.workGroupId,
-        location: addingRow.location || undefined,
+        location: addingRow.location ? validateAndFormatLocation(addingRow.location) : undefined,
         jobDescription: addingRow.jobDescription,
         description: addingRow.description || undefined,
         quantity: parseFloat(addingRow.quantity) || 1,
@@ -1607,6 +1691,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         lumpSumPrice: isLumpsum ? parseFloat(addingRow.lumpSumPrice) || 0 : undefined,
         damageCategory: addingRow.damageCategory,
         damageTypeId: addingRow.damageTypeId || undefined,
+        metrajData: buildRowPayload(addingRow).metrajData,
       });
       setAddingRow(emptyRow());
       setAddingDirty(false);
@@ -1614,13 +1699,24 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     } finally { setAddingSaving(false); }
   };
 
+  const persistAddingRowIfNeeded = async (): Promise<string> => {
+    const carryLocation = addingRow.location;
+    if (!addingDirty || !addingRow.workGroupId || !addingRow.jobDescription.trim()) {
+      return carryLocation;
+    }
+    await saveAddingRow();
+    return carryLocation;
+  };
+
   const quickAddRow = useCallback(async () => {
     if (!isEditable || quickAdding) return;
+
+    const carryLocation = await persistAddingRowIfNeeded();
 
     const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
     let workGroupId = lastRow?.workGroupId ?? '';
     const damageCategory: 'bina' | 'esya' = lastRow?.damageCategory ?? 'bina';
-    const location = lastRow?.location ?? '';
+    const location = carryLocation || lastRow?.location || addingRow.location || '';
     const unit = lastRow?.unit ?? 'm²';
     const pricingType = lastRow?.pricingType ?? 'unit';
     const damageTypeId = lastRow?.damageTypeId ?? '';
@@ -1631,9 +1727,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
     if (!workGroupId) {
       setAddingRow({
-        ...emptyRow(),
+        ...emptyRow(location),
         damageCategory,
-        location,
         unit,
         jobDescription: 'Yeni Kalem',
       });
@@ -1656,10 +1751,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         damageCategory,
         damageTypeId: damageTypeId || undefined,
       });
+      setAddingRow(emptyRow(location));
+      setAddingDirty(false);
     } finally {
       setQuickAdding(false);
     }
-  }, [isEditable, quickAdding, rows, workGroups, onAdd]);
+  }, [isEditable, quickAdding, rows, workGroups, onAdd, addingRow, addingDirty]);
 
   useImperativeHandle(ref, () => ({
     quickAddRow,
@@ -1668,7 +1765,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }), [quickAddRow, saveAllDirtyRows, rows]);
 
 
-  const COLS = ['damageCategory', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
+  const COLS = ['damageCategory', 'detectionScope', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
 
   // Zam Oranı Uygula
   const handleApplyZamOrani = async () => {
@@ -1807,26 +1904,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
 
     if (e.key === 'Tab') {
+      e.preventDefault();
       if (e.shiftKey) {
-        // Shift+Tab: önceki hücre
         if (colIdx > 0) {
-          e.preventDefault();
           focusCell(rowIdx, editableCOLS[colIdx - 1]);
-        } else if (rowIdx !== 'new' && (rowIdx as number) > 0) {
-          e.preventDefault();
+        } else if (rowIdx === 'new') {
+          if (rows.length > 0) focusCell(rows.length - 1, editableCOLS[editableCOLS.length - 1]);
+        } else if ((rowIdx as number) > 0) {
           focusCell((rowIdx as number) - 1, editableCOLS[editableCOLS.length - 1]);
+        } else {
+          focusCell('new', editableCOLS[editableCOLS.length - 1]);
         }
+      } else if (colIdx < editableCOLS.length - 1) {
+        focusCell(rowIdx, editableCOLS[colIdx + 1]);
+      } else if (rowIdx !== 'new') {
+        const nextRowIdx = (rowIdx as number) + 1;
+        if (nextRowIdx < rows.length) focusCell(nextRowIdx, editableCOLS[0]);
+        else focusCell('new', editableCOLS[0]);
       } else {
-        // Tab: sonraki hücre; son kolonda alt satıra geç
-        if (colIdx < editableCOLS.length - 1) {
-          e.preventDefault();
-          focusCell(rowIdx, editableCOLS[colIdx + 1]);
-        } else if (rowIdx !== 'new') {
-          e.preventDefault();
-          const nextRowIdx = (rowIdx as number) + 1;
-          if (nextRowIdx < rows.length) focusCell(nextRowIdx, editableCOLS[0]);
-          else focusCell('new', editableCOLS[0]);
-        }
+        focusCell('new', editableCOLS[0]);
       }
     }
   };
@@ -1917,6 +2013,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           <tr className="bg-slate-50 border-b border-slate-200">
             {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100">#</th>}
             <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Tespit</th>
             <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
             <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
             <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
@@ -1959,11 +2056,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       value={row.damageCategory}
                       tabIndex={getCellTabIndex(rowIdx, 'damageCategory')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'damageCategory' })}
-                      onBlur={() => { setActiveCell(null); saveRow(row._id); }}
+                      onBlur={() => { setActiveCell(null); void saveRow(row._id); }}
                       onChange={(e) => {
-                        updateRow(row._id, 'damageCategory', e.target.value);
-                        updateRow(row._id, 'workGroupId', '');
-                        updateRow(row._id, 'jobDescription', '');
+                        updateRowCategory(row._id, {
+                          damageCategory: e.target.value as 'bina' | 'esya',
+                          workGroupId: '',
+                          jobDescription: '',
+                        });
                       }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'damageCategory', row._id)}
                     >
@@ -1974,6 +2073,29 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     <span className={`px-2 text-xs block py-3 font-medium ${row.damageCategory === 'esya' ? 'text-teal-700' : 'text-orange-700'}`}>
                       {row.damageCategory === 'esya' ? 'Eşya' : 'Bina'}
                     </span>
+                  )}
+                </td>
+                {/* Tespit */}
+                <td className={tdCls(rowIdx, 'detectionScope')}>
+                  {isEditable ? (
+                    <input
+                      data-cell={`${rowIdx}-detectionScope`}
+                      className={cellCls(rowIdx, 'detectionScope', true)}
+                      value={row.detectionScope}
+                      placeholder="Tespit..."
+                      tabIndex={getCellTabIndex(rowIdx, 'detectionScope')}
+                      onFocus={() => setActiveCell({ rowIdx, col: 'detectionScope' })}
+                      onBlur={() => {
+                        setActiveCell(null);
+                        const titleVal = toTitleCaseTR(row.detectionScope.trim());
+                        if (titleVal !== row.detectionScope) updateRow(row._id, 'detectionScope', titleVal);
+                        void saveRow(row._id);
+                      }}
+                      onChange={(e) => updateRow(row._id, 'detectionScope', e.target.value)}
+                      onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'detectionScope', row._id)}
+                    />
+                  ) : (
+                    <span className="px-2 text-xs text-slate-700 block py-3">{row.detectionScope || '—'}</span>
                   )}
                 </td>
                 {/* Mahal/Bölge */}
@@ -2167,20 +2289,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'supplierUnitPrice', row._id)}
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
-                        <VendorQuotePopover
-                          data={row.vendorQuotes}
-                          onChange={(next) => updateRow(row._id, 'vendorQuotes', next)}
-                          onApplyPrice={(price, vendorName) => {
-                            updateRow(row._id, 'supplierUnitPrice', price);
-                            if (vendorName.trim()) {
-                              updateRow(row._id, 'vendorQuotes', {
-                                ...row.vendorQuotes,
-                                preferredVendorName: normalizeLocationLabel(vendorName),
-                              });
-                            }
-                            setTimeout(() => saveRow(row._id), 50);
-                          }}
-                        />
+                        <button
+                          type="button"
+                          title="Tedarikçi Karşılaştır"
+                          onClick={() => setVendorModalRowId(row._id)}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
+                        >
+                          Karşılaştır
+                        </button>
                       </div>
                     ) : (
                       <span className="px-2 text-xs text-slate-500 block py-3 text-right">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
@@ -2200,49 +2316,37 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {isEditable && (
                   <td className="w-20 border-l border-slate-100 text-center px-1">
                     <div className="flex items-center justify-center gap-0.5">
+                      <button
+                        type="button"
+                        disabled={isSaving || !row._isDirty}
+                        onClick={() => void saveRow(row._id)}
+                        className="h-7 w-7 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
+                        title="Kaydet"
+                      >
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      </button>
                       {row._isDirty ? (
-                        <>
-                          <button
-                            type="button"
-                            disabled={isSaving}
-                            onClick={() => saveRow(row._id)}
-                            className="h-7 w-7 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 flex items-center justify-center transition-colors"
-                            title="Kaydet"
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isSaving}
-                            onClick={() => revertRow(row._id)}
-                            className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center transition-colors"
-                            title="Geri Al"
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => revertRow(row._id)}
+                          className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center transition-colors"
+                          title="Geri Al"
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
+                        </button>
                       ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => focusCell(rowIdx, 'workGroup')}
-                            className="h-7 w-7 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
-                            title="Düzenle"
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(row._id)}
-                            className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
-                            title="Sil"
-                          >
-                            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
-                              <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
-                              <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                            </svg>
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(row._id)}
+                          className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
+                          title="Sil"
+                        >
+                          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                            <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
+                            <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                          </svg>
+                        </button>
                       )}
                     </div>
                   </td>
@@ -2272,6 +2376,24 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   <option value="bina">Bina</option>
                   <option value="esya">Eşya</option>
                 </select>
+              </td>
+              {/* Tespit */}
+              <td className={tdCls('new', 'detectionScope')}>
+                <input
+                  data-cell="new-detectionScope"
+                  className={cellCls('new', 'detectionScope', true)}
+                  value={addingRow.detectionScope}
+                  placeholder="Tespit..."
+                  tabIndex={getCellTabIndex('new', 'detectionScope')}
+                  onFocus={() => setActiveCell({ rowIdx: 'new', col: 'detectionScope' })}
+                  onBlur={() => {
+                    setActiveCell(null);
+                    const tv = toTitleCaseTR(addingRow.detectionScope.trim());
+                    if (tv !== addingRow.detectionScope) setAddingRow((p) => ({ ...p, detectionScope: tv }));
+                  }}
+                  onChange={(e) => { setAddingRow((p) => ({ ...p, detectionScope: e.target.value })); setAddingDirty(true); }}
+                  onKeyDown={(e) => handleCellKeyDown(e, 'new', 'detectionScope')}
+                />
               </td>
               {/* Mahal/Bölge */}
               <td className={tdCls('new', 'location')}>
@@ -2435,7 +2557,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => { focusCell('new', 'damageCategory'); quickAddRow(); }}
+            onClick={() => { void quickAddRow(); }}
             className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
           >
             + Kalem Ekle
@@ -2463,6 +2585,33 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           <span className="text-sm">⚠</span>
           <span className="text-xs font-medium">{lossCount} kalemde zarar: Tedarikçi fiyatı satış fiyatından yüksek</span>
         </div>
+      );
+    })()}
+
+    {/* Tedarikçi Karşılaştırma Modal */}
+    {vendorModalRowId !== null && (() => {
+      const activeRow = rows.find((r) => r._id === vendorModalRowId);
+      if (!activeRow) return null;
+      return (
+        <VendorQuoteModal
+          open
+          onClose={() => setVendorModalRowId(null)}
+          data={activeRow.vendorQuotes}
+          workGroupId={activeRow.workGroupId}
+          jobDescription={activeRow.jobDescription}
+          onChange={(next) => updateRow(vendorModalRowId, 'vendorQuotes', next)}
+          onApplyPrice={(price, vendorName) => {
+            updateRow(vendorModalRowId, 'supplierUnitPrice', price);
+            if (vendorName.trim()) {
+              updateRow(vendorModalRowId, 'vendorQuotes', {
+                ...activeRow.vendorQuotes,
+                preferredVendorName: normalizeLocationLabel(vendorName),
+              });
+            }
+            setTimeout(() => void saveRow(vendorModalRowId), 50);
+            setVendorModalRowId(null);
+          }}
+        />
       );
     })()}
 
@@ -2878,6 +3027,8 @@ export default function RepairReportPage() {
   const bulgularTextareaRef = useRef<HTMLTextAreaElement>(null);
   const itemsTableRef = useRef<EditableItemsTableHandle>(null);
   const [dirtyItemCount, setDirtyItemCount] = useState(0);
+  const [sessionSaveCount, setSessionSaveCount] = useState(0);
+  const [sessionCancelCount, setSessionCancelCount] = useState(0);
   // Önerilen kalemler (şablon önerileri)
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [templateSuggestions, setTemplateSuggestions] = useState<any[]>([]);
@@ -2956,6 +3107,28 @@ export default function RepairReportPage() {
   }, [reportId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!reportId || !report) return;
+    const editable = report.status === 'draft' || report.status === 'rejected';
+    if (!editable) return;
+    sessionStorage.setItem('report-write-started-at', JSON.stringify({
+      reportId,
+      claimFileId: claimId,
+      startedAt: new Date().toISOString(),
+    }));
+  }, [report, reportId, claimId]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (Object.keys(pendingFields).length > 0 || dirtyItemCount > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [pendingFields, dirtyItemCount]);
 
   useEffect(() => {
     if (!showShareMenu) return;
@@ -3216,7 +3389,8 @@ export default function RepairReportPage() {
         await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
         setPendingFields({});
       }
-      await load();
+      setSessionSaveCount((n) => n + 1);
+      await loadKeepScroll();
     } catch (e: any) {
       alert(e.response?.data?.message ?? 'Kayıt Başarısız');
     } finally {
@@ -3224,16 +3398,17 @@ export default function RepairReportPage() {
     }
   };
 
-  const hasUnsavedChanges = Object.keys(pendingFields).length > 0 || dirtyItemCount > 0;
+  const hasUnsavedChanges = Object.keys(pendingFields).length > 0;
 
   const handleCancelChanges = () => {
-    if (Object.keys(pendingFields).length === 0) {
+    setSessionCancelCount((n) => n + 1);
+    if (Object.keys(pendingFields).length === 0 && dirtyItemCount === 0) {
       router.push(claimPath);
       return;
     }
     if (!confirm('Kaydedilmemiş değişiklikler var. Değişiklikleri iptal etmek istiyor musunuz?')) return;
     setPendingFields({});
-    load();
+    void loadKeepScroll();
   };
 
   const handleAddDamageType = async () => {
@@ -3263,20 +3438,31 @@ export default function RepairReportPage() {
   }, [load]);
 
   const handleAddItem = async (itemData: any) => {
-    await axios.post(`${API}/repair-reports/${reportId}/items`, itemData, { headers: authHeader() });
-    loadKeepScroll();
+    const res = await axios.post(`${API}/repair-reports/${reportId}/items`, itemData, { headers: authHeader() });
+    const newItem = res.data.data;
+    setReport((prev: any) => {
+      const items = sortReportItems([...(prev?.items ?? []), newItem]);
+      return { ...prev, items, ...recomputeReportTotals(items) };
+    });
   };
 
   const handleUpdateItemMain = async (itemId: string, data: any) => {
-    await axios.put(`${API}/repair-report-items/${itemId}`, data, { headers: authHeader() });
-    loadKeepScroll();
+    const res = await axios.put(`${API}/repair-report-items/${itemId}`, data, { headers: authHeader() });
+    const updatedItem = res.data.data;
+    setReport((prev: any) => {
+      const items = sortReportItems((prev?.items ?? []).map((item: any) => item.id === itemId ? updatedItem : item));
+      return { ...prev, items, ...recomputeReportTotals(items) };
+    });
   };
 
   const handleRemoveItem = async (itemId: string) => {
     if (!confirm('Bu kalemi silmek istediğinizden emin misiniz?')) return;
     try {
       await axios.delete(`${API}/repair-report-items/${itemId}`, { headers: authHeader() });
-      loadKeepScroll();
+      setReport((prev: any) => {
+        const items = (prev?.items ?? []).filter((item: any) => item.id !== itemId);
+        return { ...prev, items, ...recomputeReportTotals(items) };
+      });
     } catch (e) { console.error(e); }
   };
 
@@ -3309,16 +3495,23 @@ export default function RepairReportPage() {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploadingCat(category);
+    const uploaded: any[] = [];
     try {
       for (const file of files) {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', category);
-        await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
+        const res = await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
           headers: authHeader(),
         });
+        if (res.data?.data) uploaded.push(res.data.data);
       }
-      await load();
+      if (uploaded.length > 0) {
+        setReport((prev: any) => ({
+          ...prev,
+          images: [...(prev?.images ?? []), ...uploaded],
+        }));
+      }
     } catch (err: any) {
       alert(err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
@@ -3636,6 +3829,7 @@ export default function RepairReportPage() {
             )}
           </div>
         )}
+        <RevisionHistory reportId={reportId as string} claimFileId={claimId as string} embedded />
       </SectionCard>
 
       <SectionCard title="Hızlı Onarım Türü">
@@ -3759,7 +3953,7 @@ export default function RepairReportPage() {
 
         <EditableItemsTable
           ref={itemsTableRef}
-          items={damageFilter === 'all' ? (report.items ?? []) : (report.items ?? []).filter((i: any) => i.damageTypeId === damageFilter)}
+          items={sortReportItems(damageFilter === 'all' ? (report.items ?? []) : (report.items ?? []).filter((i: any) => i.damageTypeId === damageFilter))}
           workGroups={workGroups}
           damageTypes={report.damageTypes ?? []}
           reportType={report.reportType}
@@ -3897,9 +4091,6 @@ export default function RepairReportPage() {
         )}
       </SectionCard>
 
-      {/* Revizyon Geçmişi */}
-      <RevisionHistory reportId={reportId as string} claimFileId={claimId as string} />
-
       {/* Yasal Notlar */}
       <SectionCard title="Yasal Notlar ve Uyarılar">
         {isEditable && (
@@ -3933,8 +4124,8 @@ export default function RepairReportPage() {
         />
       </SectionCard>
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
-          <div className="hidden lg:flex items-center min-w-0 flex-1">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 sm:gap-4">
+          <div className="hidden lg:flex items-center justify-center min-w-0 flex-1">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 totalSupplierCost={report.totalSupplierCost}
@@ -3945,7 +4136,12 @@ export default function RepairReportPage() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            {isEditable && hasUnsavedChanges && (
+            {isEditable && (
+              <span className="hidden sm:inline text-[11px] text-slate-400 tabular-nums">
+                Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
+              </span>
+            )}
+            {isEditable && (
               <>
                 <button
                   type="button"
@@ -3966,7 +4162,7 @@ export default function RepairReportPage() {
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  {saving ? 'Kaydediliyor...' : `Kaydet (${Object.keys(pendingFields).length + dirtyItemCount})`}
+                  {saving ? 'Kaydediliyor...' : `Kaydet${hasUnsavedChanges ? ` (${Object.keys(pendingFields).length})` : ''}`}
                 </button>
               </>
             )}

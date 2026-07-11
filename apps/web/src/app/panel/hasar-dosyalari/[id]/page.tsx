@@ -149,9 +149,14 @@ function formatPriorityChip(priority: string | null | undefined): string | null 
 }
 
 function DosyaOzetiChipleri({ claim }: { claim: any }) {
+  const ihbarTarihi = claim.notificationDate
+    ? fmtDate(claim.notificationDate)
+    : claim.createdAt
+      ? fmtDate(claim.createdAt)
+      : null;
+
   const chips = [
-    { label: 'İhbar', value: fmtDate(claim.notificationDate) },
-    { label: 'Hasar Tarihi', value: fmtDate(claim.incidentDate) },
+    { label: 'İhbar', value: ihbarTarihi },
     { label: 'Öncelik', value: formatPriorityChip(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
   ].filter((c) => c.value && c.value !== '—');
@@ -177,13 +182,13 @@ function DosyaOzetiChipleri({ claim }: { claim: any }) {
 function DosyaSayfaUstu({
   claim,
   onBack,
-  onOpenRaporlarTab,
+  reportEditHref,
   onClaimUpdated,
   focusSigortali = false,
 }: {
   claim: any;
   onBack: () => void;
-  onOpenRaporlarTab?: () => void;
+  reportEditHref?: string | null;
   onClaimUpdated?: (patch: Partial<any>) => void;
   focusSigortali?: boolean;
 }) {
@@ -271,14 +276,13 @@ function DosyaSayfaUstu({
               Kâr {fmtCurrencyCompact(claim.latestRepairReport.grossProfit)}
             </span>
           </div>
-          {onOpenRaporlarTab && (
-            <button
-              type="button"
-              onClick={onOpenRaporlarTab}
+          {reportEditHref && (
+            <Link
+              href={reportEditHref}
               className="text-xs font-medium text-amber-800 hover:underline shrink-0"
             >
               Rapora Git →
-            </button>
+            </Link>
           )}
         </div>
       )}
@@ -1056,6 +1060,9 @@ export default function ClaimFileDetailPage() {
 
   const isFieldStaff = userRoleCode === 'field_staff';
   const canViewFinancials = claim?.canViewFinancials !== false;
+  const reportEditHref = claim.latestRepairReport?.id
+    ? `/panel/hasar-dosyalari/${id}/onarim-raporu/${claim.latestRepairReport.id}`
+    : null;
 
   useEffect(() => {
     if (!id) return;
@@ -1073,7 +1080,7 @@ export default function ClaimFileDetailPage() {
       <DosyaSayfaUstu
         claim={claim}
         onBack={() => router.push('/panel/hasar-dosyalari')}
-        onOpenRaporlarTab={() => setActiveGroup('raporlar')}
+        reportEditHref={reportEditHref}
         onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
         focusSigortali={focusSigortali}
       />
@@ -1107,7 +1114,7 @@ export default function ClaimFileDetailPage() {
             claim={claim}
             compact
             onOpenFinansTab={() => setActiveGroup('finans')}
-            onOpenRaporlarTab={() => setActiveGroup('raporlar')}
+            reportEditHref={reportEditHref}
           />
         </div>
       )}
@@ -1147,7 +1154,7 @@ export default function ClaimFileDetailPage() {
         <FinansTab
           claim={claim}
           claimId={id!}
-          onOpenRaporlarTab={() => setActiveGroup('raporlar')}
+          reportEditHref={reportEditHref}
         />
       )}
       {activeGroup === 'operasyon' && (
