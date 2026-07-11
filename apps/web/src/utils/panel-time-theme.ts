@@ -1,3 +1,6 @@
+/** Test aşaması: koyu mod kapalı — Mustafa onayı olmadan açılmaz */
+export const PANEL_FORCE_LIGHT_MODE = true;
+
 /** Günün saatine göre panel teması — kullanıcı manuel seçim yapmamışsa */
 export function isDaytimeHour(date = new Date()): boolean {
   const hour = date.getHours();
@@ -10,6 +13,7 @@ export type StoredThemeConfig = {
 };
 
 export function resolvePanelDarkMode(saved: StoredThemeConfig | null): boolean {
+  if (PANEL_FORCE_LIGHT_MODE) return false;
   const mode = saved?.mode ?? 'auto-time';
   if (mode === 'dark') return true;
   if (mode === 'light') return false;
