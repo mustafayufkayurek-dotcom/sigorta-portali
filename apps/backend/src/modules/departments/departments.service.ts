@@ -442,11 +442,27 @@ export class DepartmentsService {
     return { hasarOnarim, acilYardim };
   }
 
-  /** Dosya Konuları sekmeleri için ek departman hatları */
+  /** Dosya Konuları sekmeleri ve rapor sihirbazı için operasyon hatları */
   async ensureKonuTabDepartments() {
     await this.mergeLegacyStajDepartment();
 
     const extras = [
+      {
+        code: 'hasar-onarim',
+        name: 'Hasar Onarım',
+        description: 'Hasar onarım dosyaları ve raporları',
+        color: '#3B82F6',
+        reportFormat: 'repair',
+        sortOrder: 1,
+      },
+      {
+        code: 'acil-yardim',
+        name: 'Acil Yardım',
+        description: 'Acil müdahale ve yardım hizmetleri',
+        color: '#EF4444',
+        reportFormat: 'emergency',
+        sortOrder: 2,
+      },
       {
         code: 'sovtaj',
         name: 'Sovtaj',
@@ -488,7 +504,14 @@ export class DepartmentsService {
       const row = await this.prisma.department.upsert({
         where: { code: dept.code },
         create: { ...dept, isSystem: true, status: 'active' },
-        update: { name: dept.name, description: dept.description, color: dept.color, status: 'active' },
+        update: {
+          name: dept.name,
+          description: dept.description,
+          color: dept.color,
+          reportFormat: dept.reportFormat,
+          sortOrder: dept.sortOrder,
+          status: 'active',
+        },
       });
       if (dept.reportFormat === 'repair') {
         await this.ensureDefaultRepairFileSubjects(row.id);

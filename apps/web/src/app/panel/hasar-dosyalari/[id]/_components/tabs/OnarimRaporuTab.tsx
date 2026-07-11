@@ -16,6 +16,7 @@ import { API, authAxios } from '../claim-detail-utils';
 import { filterLegacyStajDepartments } from '@/utils/department-helpers';
 import {
   departmentReportLabel,
+  resolveOperationLineDepartments,
 } from '@/utils/claim-report-department';
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions as loadDamageReasonOptions } from '@/utils/damage-reason-options';
@@ -24,14 +25,6 @@ import { RevizyonTalepleriPanel } from './RevizyonlarTab';
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
 type FileSubjectOption = { code: string; name: string };
-
-const ORG_DEPARTMENT_CODES = new Set([
-  'hasar-onarim',
-  'acil-yardim',
-  'sovtaj',
-  'ozel-musteri',
-  'danismanlik',
-]);
 
 type StatusFilter = 'all' | 'pending' | 'draft' | 'approved' | 'rejected' | 'revision';
 
@@ -317,10 +310,7 @@ function YeniRaporWizard({
   }, [selectedDept]);
 
   const wizardDepartments = useMemo(
-    () =>
-      filterLegacyStajDepartments(
-        departments.filter((dept) => ORG_DEPARTMENT_CODES.has(dept.code)),
-      ),
+    () => resolveOperationLineDepartments(filterLegacyStajDepartments(departments)),
     [departments],
   );
 

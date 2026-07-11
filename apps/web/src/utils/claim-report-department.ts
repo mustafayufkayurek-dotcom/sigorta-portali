@@ -21,6 +21,32 @@ export const DEPARTMENT_REPORT_LABEL: Record<string, string> = {
   'danismanlik': 'Danışmanlık Raporu',
 };
 
+/** Rapor sihirbazı Adım 1 — onaylı operasyon hatları (sıralı). */
+export const OPERATION_LINE_DEFS = [
+  { code: 'hasar-onarim', name: 'Hasar Onarım', reportFormat: 'repair' },
+  { code: 'acil-yardim', name: 'Acil Yardım', reportFormat: 'emergency' },
+  { code: 'sovtaj', name: 'Sovtaj', reportFormat: 'repair' },
+  { code: 'ozel-musteri', name: 'Özel Müşteri', reportFormat: 'repair' },
+  { code: 'danismanlik', name: 'Danışmanlık', reportFormat: 'repair' },
+] as const;
+
+function matchesOperationLineName(deptName: string, lineName: string): boolean {
+  return deptName.trim().localeCompare(lineName, 'tr', { sensitivity: 'base' }) === 0;
+}
+
+/** Kod veya isimle eşleşen onaylı operasyon hatlarını döner; rapor formatını kanonikleştirir. */
+export function resolveOperationLineDepartments<T extends ReportDeptHint>(
+  departments: T[],
+): Array<T & { code: string; reportFormat: string }> {
+  return OPERATION_LINE_DEFS.flatMap((line) => {
+    const dept =
+      departments.find((d) => d.code === line.code) ??
+      departments.find((d) => matchesOperationLineName(d.name, line.name));
+    if (!dept) return [];
+    return [{ ...dept, code: line.code, reportFormat: line.reportFormat }];
+  });
+}
+
 /** Dosya bağlamından hedef departman kodunu çıkarır. */
 export function inferClaimDepartmentCode(claim: ClaimReportDeptContext): string {
   const deptCode = (claim.department?.code ?? '').trim().toLowerCase();

@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v267-rapor-wizard-manuel-hat",
-  "description": "Rapor sihirbazı onaylı 3 adım akışı: manuel operasyon hattı seçimi, sonra tek/çok hasar",
+  "label": "v268-rapor-hat-listesi",
+  "description": "Rapor sihirbazı Adım 1: 5 operasyon hattı (kod+isim eşleşmesi); ensure-konu-tabs 5 hat garantisi",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v266-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v267-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v268-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v268-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v265-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v267-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v266-amd64"
   },
   "mustPassSmokeRoutes": [
