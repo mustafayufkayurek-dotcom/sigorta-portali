@@ -7,7 +7,7 @@ import { API, authHeader } from '@/utils/api';
 export const DAMAGE_TYPE_OPTIONS = [
   { value: 'FIRE_HOME', label: 'Yangın-Konut' },
   { value: 'FIRE_INDUSTRIAL', label: 'Yangın-Endüstriyel' },
-  { value: 'WATER_INTERNAL', label: 'Dahili Su' },
+  { value: 'WATER_INTERNAL', label: 'Su Hasarı' },
   { value: 'VEHICLE_IMPACT', label: 'Taşıt Çarpması' },
   { value: 'NATURAL_DISASTER', label: 'Doğal Afet' },
   { value: 'EARTHQUAKE', label: 'Deprem' },

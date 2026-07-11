@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
+import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
+import {
+  damageSizeLabel,
+  damageTypeLabel,
+} from '@/components/damage-reports/RepairItemsModal';
+import {
+  inferQuickDamageTypesFromReport,
+} from '@/utils/quick-repair-damage-types';
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Düşük',
@@ -43,8 +51,6 @@ function formatPropertyAddress(claim: any): string | null {
 function resolveDosyaEksperi(claim: any): string {
   const vendorName = claim.assignedInspectorVendor?.name?.trim();
   if (vendorName) return toTitleCaseTR(vendorName);
-  const inspector = claim.inspector?.trim() || claim.inspectorName?.trim();
-  if (inspector) return toTitleCaseTR(inspector);
   return '—';
 }
 
@@ -54,13 +60,42 @@ function resolveIhbarTarihi(claim: any): string {
   return '—';
 }
 
-export function buildDosyaBilgileriFields(claim: any): DosyaField[] {
+function resolveHasarNedeni(claim: any, reportSummary: any | null): string {
+  const damageTypes = reportSummary?.damageTypes ?? claim.latestRepairReport?.damageTypes;
+  if (Array.isArray(damageTypes) && damageTypes.length > 0) {
+    return damageTypes
+      .map((dt: any) => formatDisplayLabel(dt.damageTypeName ?? dt.damageTypeCode ?? ''))
+      .filter(Boolean)
+      .join(' · ');
+  }
+  if (claim.claimSubject?.name?.trim()) return formatDisplayLabel(claim.claimSubject.name.trim());
+  if (claim.lossType?.trim()) return formatDisplayLabel(claim.lossType.trim());
+  return '—';
+}
+
+function resolveQuickRepairSummary(reportSummary: any | null): string {
+  if (!reportSummary) return '—';
+  const stored = reportSummary.quickDamageTypes ?? [];
+  const inferred = inferQuickDamageTypesFromReport(reportSummary);
+  const types = stored.length > 0 ? stored : inferred;
+  if (!types.length) return '—';
+  const size = reportSummary.quickDamageSize ?? 'MEDIUM';
+  return `${types.map(damageTypeLabel).join(' + ')} (${damageSizeLabel(size)})`;
+}
+
+export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null): DosyaField[] {
   const core: DosyaField[] = [
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
+    { label: 'Hasar Nedeni', value: resolveHasarNedeni(claim, reportSummary ?? null) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
     { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim) },
   ];
+
+  const quickRepairValue = resolveQuickRepairSummary(reportSummary ?? null);
+  if (quickRepairValue !== '—') {
+    core.push({ label: 'Hızlı Onarım Türü', value: quickRepairValue, wide: true });
+  }
 
   const supplementary: DosyaField[] = [];
   if (claim.policyNo?.trim()) {
@@ -174,13 +209,36 @@ export function DosyaBilgileriDetay({
   claim,
   onClaimUpdated,
   initialOpen = false,
+  repairReportId,
 }: {
   claim: any;
   onClaimUpdated?: (patch: Partial<any>) => void;
   initialOpen?: boolean;
+  repairReportId?: string | null;
 }) {
   const [open, setOpen] = useState(initialOpen);
-  const fields = buildDosyaBilgileriFields(claim);
+  const [reportSummary, setReportSummary] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!repairReportId) {
+      setReportSummary(null);
+      return;
+    }
+    let cancelled = false;
+    axios
+      .get(`${API}/repair-reports/${repairReportId}`, { headers: authHeader() })
+      .then((r) => {
+        if (!cancelled) setReportSummary(r.data.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setReportSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [repairReportId]);
+
+  const fields = buildDosyaBilgileriFields(claim, reportSummary);
   const subtitle = buildDosyaBilgileriSubtitle(claim);
   const compactFields = fields.filter((field) => !field.wide);
   const wideFields = fields.filter((field) => field.wide);
@@ -235,6 +293,7 @@ export function DosyaBilgileriDetay({
           )}
         </div>
       )}
+      {repairReportId && <RevisionHistoryStrip reportId={repairReportId} embedded />}
     </div>
   );
 }

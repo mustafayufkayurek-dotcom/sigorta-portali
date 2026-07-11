@@ -1,7 +1,6 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { getAccessToken } from '@/utils/auth-session';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -13,6 +12,7 @@ import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
+import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import VendorQuoteModal from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
@@ -119,13 +119,13 @@ type FileExpertInfo = {
 
 function resolveFileExpertDisplay(report: any): FileExpertInfo {
   if (!report) return { name: '—', missing: true };
+  const assignedInspector = report.claimFile?.assignedInspectorVendor?.name?.trim();
   const expertOffice = report.expertOffice?.companyName?.trim();
   const inspector = report.inspectorName?.trim();
-  const assignedInspector = report.claimFile?.assignedInspectorVendor?.name?.trim();
 
+  if (assignedInspector) return { name: assignedInspector, missing: false };
   if (expertOffice) return { name: expertOffice, missing: false };
   if (inspector) return { name: inspector, missing: false };
-  if (assignedInspector) return { name: assignedInspector, missing: false };
   return { name: 'Atanmamış', missing: true };
 }
 
@@ -238,7 +238,11 @@ function parseExpr(expr: string): number {
 const UNITS = ['Adet', 'Maktuen', 'm²', 'm³', 'm/tül', 'Takım', 'Asgari', 'Tam Gün', '1/2 gün', 'Çuval', 'Servis', 'Günlük', 'Yevmiye', 'Saat', 'Kamyon', 'Torba', 'Metre', 'Kutu'];
 
 function Badge({ text, color }: { text: string; color: string }) {
-  return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${color}`}>{text}</span>;
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium leading-none ${color}`}>
+      {text}
+    </span>
+  );
 }
 
 function IconDocumentDownload({ className = 'w-3.5 h-3.5' }: { className?: string }) {
@@ -258,110 +262,7 @@ function IconChevronDown({ className = 'w-3.5 h-3.5' }: { className?: string }) 
   );
 }
 
-// ─── Revizyon Geçmişi Bileşeni ─────────────────────────────────────────────
-type RevHistoryItem = {
-  id: string;
-  version: number;
-  status: string;
-  requestedAt: string | null;
-  completedAt: string | null;
-  reason: string | null;
-  reasonCategory: string | null;
-  requestedBy: string | null;
-};
-
-function RevisionHistory({ reportId, embedded = false }: { reportId: string; claimFileId: string; embedded?: boolean }) {
-  const [items, setItems] = useState<RevHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const token = getAccessToken();
-    fetch(`${API}/repair-reports/${reportId}/versions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((json) => {
-        const versions: any[] = json?.data ?? [];
-        setItems(
-          versions.map((v) => ({
-            id: v.id,
-            version: v.versionNo,
-            status: v.status === 'approved' || v.status === 'externally_approved' ? 'approved' : v.status === 'draft' ? 'draft' : 'revision',
-            requestedAt: v.revisedAt ?? v.createdAt,
-            completedAt: v.status === 'approved' ? v.revisedAt : null,
-            reason: null,
-            reasonCategory: null,
-            requestedBy: v.revisedBy
-              ? `${v.revisedBy.firstName ?? ''} ${v.revisedBy.lastName ?? ''}`.trim()
-              : v.createdBy
-                ? `${v.createdBy.firstName ?? ''} ${v.createdBy.lastName ?? ''}`.trim()
-                : null,
-          })),
-        );
-      })
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
-  }, [reportId]);
-
-  if (loading) return null;
-  if (!items || items.length === 0) return null;
-
-  const fmtD = (d: string) => fmtDateTime(d, { day: 'numeric', month: 'short', year: 'numeric' });
-
-  const statusLabel = (item: RevHistoryItem) =>
-    item.status === 'revision'
-      ? 'Revizyon Talebi'
-      : item.status === 'approved'
-        ? 'Onaylandı'
-        : 'Taslak';
-
-  const statusTone = (item: RevHistoryItem) =>
-    item.status === 'revision'
-      ? 'border-amber-200 bg-amber-50 text-amber-800'
-      : item.status === 'approved'
-        ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-slate-200 bg-slate-50 text-slate-700';
-
-  return (
-    <div className={embedded ? 'mt-4 pt-4 border-t border-slate-100' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>
-      <div className={`flex items-center justify-between mb-3 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}>
-        <h4 className="text-sm font-semibold text-slate-700">Revizyon Geçmişi</h4>
-        <a href={`/panel/revizyon-talepleri?reportId=${reportId}`} className="text-xs text-blue-600 hover:text-blue-700">
-          Tümünü Gör →
-        </a>
-      </div>
-      <div className="flex items-stretch gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {items.map((item, idx) => (
-          <div key={item.id} className="flex items-center gap-2 shrink-0">
-            <div className={`min-w-[148px] max-w-[200px] rounded-xl border px-3 py-2.5 ${statusTone(item)}`}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tabular-nums">v{item.version ?? (idx + 1)}</span>
-                <span className="text-[11px] font-medium truncate">{statusLabel(item)}</span>
-              </div>
-              {item.requestedBy && (
-                <p className="text-[10px] opacity-80 mt-1 truncate">{item.requestedBy}</p>
-              )}
-              <p className="text-[10px] opacity-70 mt-0.5">
-                {item.requestedAt ? fmtD(item.requestedAt) : item.completedAt ? fmtD(item.completedAt) : ''}
-              </p>
-              {item.status === 'revision' && (
-                <a
-                  href={`/panel/revizyon-talepleri/${item.id}`}
-                  className="inline-block mt-1.5 text-[10px] font-medium text-blue-700 hover:underline"
-                >
-                  Detay →
-                </a>
-              )}
-            </div>
-            {idx < items.length - 1 && (
-              <span className="text-slate-300 text-sm shrink-0" aria-hidden>→</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ─── Revizyon Geçmişi → RevisionHistoryStrip (paylaşımlı bileşen)
 
 function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
@@ -414,13 +315,13 @@ function FinancialSummaryBar({
       {metrics.map((metric) => (
         <div
           key={metric.label}
-          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] text-center"
+          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] flex flex-col items-center justify-center text-center"
         >
           <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">{metric.label}</p>
           <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${metric.valueClass}`}>{metric.value}</p>
         </div>
       ))}
-      <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] text-center ${marginChipClass}`}>
+      <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] flex flex-col items-center justify-center text-center ${marginChipClass}`}>
         <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Marj</p>
         <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${marginValueClass}`}>
           %{margin.toFixed(1)}
@@ -1356,13 +1257,14 @@ function CalcInput({
   );
 }
 
-// ─── Mahal/Bölge Seçici ──────────────────────────────────────────────────────
-function LocationSelector({
+// ─── Mahal/Bölge — serbest metin + rapor içi öneriler (datalist)
+function LocationInput({
   value,
-  locations,
-  onSelect,
-  onAddNew,
+  suggestions,
+  onChange,
+  onRegister,
   className,
+  placeholder = 'Mahal/Bölge...',
   'data-cell': dataCell,
   tabIndex,
   onFocus,
@@ -1370,93 +1272,45 @@ function LocationSelector({
   onKeyDown,
 }: {
   value: string;
-  locations: string[];
-  onSelect: (v: string) => void;
-  onAddNew: (v: string) => void;
+  suggestions: string[];
+  onChange: (v: string) => void;
+  onRegister: (v: string) => void;
   className?: string;
+  placeholder?: string;
   'data-cell'?: string;
   tabIndex?: number;
   onFocus?: () => void;
   onBlur?: () => void;
-  onKeyDown?: (e: React.KeyboardEvent) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
-  const [addingNew, setAddingNew] = useState(false);
-  const [newVal, setNewVal] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (addingNew) inputRef.current?.focus();
-  }, [addingNew]);
-
-  if (addingNew) {
-    return (
-      <div className="flex items-center gap-1 px-1 w-full">
-        <input
-          ref={inputRef}
-          type="text"
-          className="flex-1 h-8 border border-blue-300 rounded px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-          placeholder="Mahal adı..."
-          value={newVal}
-          onChange={(e) => setNewVal(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              const { formatted, warning } = formatLocationLabel(newVal);
-              if (formatted) {
-                if (warning) alert(warning);
-                onAddNew(formatted);
-                onSelect(formatted);
-              }
-              setAddingNew(false);
-              setNewVal('');
-            } else if (e.key === 'Escape') {
-              setAddingNew(false);
-              setNewVal('');
-            }
-          }}
-          onBlur={() => {
-            const { formatted, warning } = formatLocationLabel(newVal);
-            if (formatted) {
-              if (warning) alert(warning);
-              onAddNew(formatted);
-              onSelect(formatted);
-            }
-            setAddingNew(false);
-            setNewVal('');
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => { setAddingNew(false); setNewVal(''); }}
-          className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs"
-        >×</button>
-      </div>
-    );
-  }
-
+  const listId = React.useId();
   return (
-    <select
-      data-cell={dataCell}
-      className={className}
-      value={value}
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      onChange={(e) => {
-        if (e.target.value === '__add_new__') {
-          setAddingNew(true);
-        } else {
-          onSelect(normalizeLocationLabel(e.target.value));
-        }
-      }}
-    >
-      <option value="">—</option>
-      {locations.map((loc) => (
-        <option key={loc} value={loc}>{formatDisplayLabel(loc)}</option>
-      ))}
-      <option value="__add_new__">+ Yeni Mahal/Bölge Ekle</option>
-    </select>
+    <>
+      <input
+        type="text"
+        data-cell={dataCell}
+        className={className}
+        value={value}
+        placeholder={placeholder}
+        list={listId}
+        tabIndex={tabIndex}
+        onFocus={onFocus}
+        onBlur={() => {
+          const { formatted, warning } = formatLocationLabel(value);
+          if (formatted && formatted !== value) onChange(formatted);
+          if (formatted) onRegister(formatted);
+          if (warning) console.info(warning);
+          onBlur?.();
+        }}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
+      <datalist id={listId}>
+        {suggestions.map((loc) => (
+          <option key={loc} value={loc} />
+        ))}
+      </datalist>
+    </>
   );
 }
 
@@ -1691,7 +1545,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         damageTypeId: addingRow.damageTypeId || undefined,
         metrajData: buildRowPayload(addingRow).metrajData,
       });
-      setAddingRow(emptyRow());
+      setAddingRow({ ...emptyRow(addingRow.location), detectionScope: addingRow.detectionScope });
       setAddingDirty(false);
       focusCell('new', 'damageCategory');
     } finally { setAddingSaving(false); }
@@ -1715,6 +1569,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     let workGroupId = lastRow?.workGroupId ?? '';
     const damageCategory: 'bina' | 'esya' = lastRow?.damageCategory ?? 'bina';
     const location = carryLocation || lastRow?.location || addingRow.location || '';
+    const detectionScope = lastRow?.detectionScope || addingRow.detectionScope || '';
     const unit = lastRow?.unit ?? 'm²';
     const pricingType = lastRow?.pricingType ?? 'unit';
     const damageTypeId = lastRow?.damageTypeId ?? '';
@@ -1726,6 +1581,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if (!workGroupId) {
       setAddingRow({
         ...emptyRow(location),
+        detectionScope,
         damageCategory,
         unit,
         jobDescription: 'Yeni Kalem',
@@ -1749,7 +1605,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         damageCategory,
         damageTypeId: damageTypeId || undefined,
       });
-      setAddingRow(emptyRow(location));
+      setAddingRow({ ...emptyRow(location), detectionScope });
       setAddingDirty(false);
     } finally {
       setQuickAdding(false);
@@ -1983,18 +1839,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       </div>
     )}
     {rows.length === 0 && isEditable && (
-      <div className="flex flex-col items-center justify-center py-10 px-4 mb-3 border-2 border-dashed border-blue-200 rounded-xl bg-blue-50/30">
-        <p className="text-sm text-slate-500 mb-4">Henüz onarım kalemi eklenmemiş.</p>
+      <div className="flex flex-col items-center justify-center py-8 px-4 mb-3 border border-dashed border-slate-200 rounded-xl bg-slate-50/40">
+        <p className="text-sm text-slate-500 mb-3">Henüz onarım kalemi eklenmemiş.</p>
         <button
           type="button"
           disabled={quickAdding}
-          onClick={quickAddRow}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+          onClick={() => { void quickAddRow(); }}
+          className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:opacity-50"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {quickAdding ? 'Ekleniyor...' : '+ İlk Kalemi Ekle'}
+          {quickAdding ? 'Ekleniyor...' : '+ Kalem Ekle'}
         </button>
       </div>
     )}
@@ -2099,17 +1952,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* Mahal/Bölge */}
                 <td className={tdCls(rowIdx, 'location')}>
                   {isEditable ? (
-                    <LocationSelector
+                    <LocationInput
                       data-cell={`${rowIdx}-location`}
                       className={cellCls(rowIdx, 'location', true)}
                       value={row.location}
-                      locations={locationList}
-                      onSelect={(v) => { updateRow(row._id, 'location', v); setTimeout(() => saveRow(row._id), 50); }}
-                      onAddNew={addLocationIfNew}
+                      suggestions={locationList}
+                      onChange={(v) => updateRow(row._id, 'location', v)}
+                      onRegister={addLocationIfNew}
                       tabIndex={getCellTabIndex(rowIdx, 'location')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'location' })}
-                      onBlur={() => { setActiveCell(null); saveRow(row._id); }}
-                      onKeyDown={(e) => handleCellKeyDown(e as React.KeyboardEvent<HTMLInputElement>, rowIdx, 'location', row._id)}
+                      onBlur={() => { setActiveCell(null); if (row._isDirty) void saveRow(row._id); }}
+                      onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'location', row._id)}
                     />
                   ) : (
                     <span className="px-2 text-xs text-slate-700 block py-3">{row.location ? formatDisplayLabel(row.location) : '—'}</span>
@@ -2295,6 +2148,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         >
                           Karşılaştır
                         </button>
+                        {row.vendorQuotes?.preferredVendorName && (
+                          <span className="text-[9px] text-slate-500 truncate max-w-full leading-tight">
+                            {formatDisplayLabel(row.vendorQuotes.preferredVendorName)}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <span className="px-2 text-xs text-slate-500 block py-3 text-right">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
@@ -2395,17 +2253,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* Mahal/Bölge */}
               <td className={tdCls('new', 'location')}>
-                <LocationSelector
+                <LocationInput
                   data-cell="new-location"
                   className={cellCls('new', 'location', true)}
                   value={addingRow.location}
-                  locations={locationList}
-                  onSelect={(v) => { setAddingRow((p) => ({ ...p, location: v })); setAddingDirty(true); }}
-                  onAddNew={addLocationIfNew}
+                  suggestions={locationList}
+                  onChange={(v) => { setAddingRow((p) => ({ ...p, location: v })); setAddingDirty(true); }}
+                  onRegister={addLocationIfNew}
                   tabIndex={getCellTabIndex('new', 'location')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'location' })}
                   onBlur={() => setActiveCell(null)}
-                  onKeyDown={(e) => handleCellKeyDown(e as React.KeyboardEvent<HTMLInputElement>, 'new', 'location')}
+                  onKeyDown={(e) => handleCellKeyDown(e, 'new', 'location')}
                 />
               </td>
               {/* İş Grubu */}
@@ -3025,6 +2883,9 @@ export default function RepairReportPage() {
   const [dirtyItemCount, setDirtyItemCount] = useState(0);
   const [sessionSaveCount, setSessionSaveCount] = useState(0);
   const [sessionCancelCount, setSessionCancelCount] = useState(0);
+  const [showSaveReminderModal, setShowSaveReminderModal] = useState(false);
+  const [writeElapsedLabel, setWriteElapsedLabel] = useState('');
+  const lastWriteActivityRef = useRef<number>(Date.now());
   // Önerilen kalemler (şablon önerileri)
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [templateSuggestions, setTemplateSuggestions] = useState<any[]>([]);
@@ -3108,6 +2969,48 @@ export default function RepairReportPage() {
       startedAt: new Date().toISOString(),
     }));
   }, [report, reportId, claimId]);
+
+  useEffect(() => {
+    const tick = () => {
+      try {
+        const raw = sessionStorage.getItem('report-write-started-at');
+        if (!raw) {
+          setWriteElapsedLabel('');
+          return;
+        }
+        const parsed = JSON.parse(raw) as { reportId?: string; startedAt?: string };
+        if (parsed.reportId !== reportId || !parsed.startedAt) {
+          setWriteElapsedLabel('');
+          return;
+        }
+        const mins = Math.floor((Date.now() - new Date(parsed.startedAt).getTime()) / 60000);
+        setWriteElapsedLabel(mins < 1 ? '<1 dk' : `${mins} dk`);
+      } catch {
+        setWriteElapsedLabel('');
+      }
+    };
+    tick();
+    const interval = window.setInterval(tick, 30000);
+    return () => window.clearInterval(interval);
+  }, [reportId]);
+
+  useEffect(() => {
+    lastWriteActivityRef.current = Date.now();
+  }, [pendingFields, dirtyItemCount]);
+
+  useEffect(() => {
+    const editable = report?.status === 'draft' || report?.status === 'rejected';
+    if (!editable) return;
+    const interval = window.setInterval(() => {
+      const hasPending = Object.keys(pendingFields).length > 0;
+      const idleMs = Date.now() - lastWriteActivityRef.current;
+      if (hasPending && idleMs >= 3 * 60 * 1000) {
+        setShowSaveReminderModal(true);
+        lastWriteActivityRef.current = Date.now();
+      }
+    }, 30000);
+    return () => window.clearInterval(interval);
+  }, [report?.status, pendingFields]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -3514,7 +3417,10 @@ export default function RepairReportPage() {
   const handleDeleteImage = async (imageId: string) => {
     try {
       await axios.delete(`${API}/report-images/${imageId}`, { headers: authHeader() });
-      load();
+      setReport((prev: any) => ({
+        ...prev,
+        images: (prev?.images ?? []).filter((img: any) => img.id !== imageId),
+      }));
     } catch (e) { console.error(e); }
   };
 
@@ -3576,7 +3482,13 @@ export default function RepairReportPage() {
     <div className="space-y-5 pb-28">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <button type="button" onClick={() => router.push(claimPath)} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
+        <button type="button" onClick={() => {
+          if (hasUnsavedChanges) {
+            setShowSaveReminderModal(true);
+            return;
+          }
+          router.push(claimPath);
+        }} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
         <div>
           <h2 className="text-lg font-bold text-slate-900">{report.reportNo}</h2>
           <p className="text-xs text-slate-400">
@@ -3819,7 +3731,7 @@ export default function RepairReportPage() {
             )}
           </div>
         )}
-        <RevisionHistory reportId={reportId as string} claimFileId={claimId as string} embedded />
+        <RevisionHistoryStrip reportId={reportId as string} embedded />
       </SectionCard>
 
       <SectionCard title="Hızlı Onarım Türü">
@@ -4043,7 +3955,7 @@ export default function RepairReportPage() {
             {(['before', 'damage', 'after'] as const).map((cat) => (
               <label key={cat} className={`cursor-pointer text-xs px-3 py-1.5 rounded-lg transition-colors ${uploadingCat === cat ? 'bg-blue-200 text-blue-700 cursor-wait' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
                 {uploadingCat === cat ? 'Yükleniyor...' : `+ ${imageCats[cat]}`}
-                <input type="file" accept="image/*" multiple className="hidden" disabled={uploadingCat !== null} onChange={(e) => handleImageUpload(e, cat)} />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple className="hidden" disabled={uploadingCat !== null} onChange={(e) => handleImageUpload(e, cat)} />
               </label>
             ))}
           </div>
@@ -4126,6 +4038,11 @@ export default function RepairReportPage() {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+            {isEditable && writeElapsedLabel && (
+              <span className="hidden md:inline text-[10px] text-slate-500 tabular-nums">
+                Süre: {writeElapsedLabel}
+              </span>
+            )}
             {isEditable && (
               <span className="hidden sm:inline text-[11px] text-slate-400 tabular-nums">
                 Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
@@ -4135,7 +4052,13 @@ export default function RepairReportPage() {
               <>
                 <button
                   type="button"
-                  onClick={handleCancelChanges}
+                  onClick={() => {
+                    if (hasUnsavedChanges) {
+                      setShowSaveReminderModal(true);
+                      return;
+                    }
+                    handleCancelChanges();
+                  }}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-500 text-slate-200 text-sm font-medium hover:bg-slate-800 transition-colors"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -4143,17 +4066,19 @@ export default function RepairReportPage() {
                   </svg>
                   İptal
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSaveReport}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
-                >
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {saving ? 'Kaydediliyor...' : `Kaydet${hasUnsavedChanges ? ` (${Object.keys(pendingFields).length})` : ''}`}
-                </button>
+                {hasUnsavedChanges && (
+                  <button
+                    type="button"
+                    onClick={handleSaveReport}
+                    disabled={saving}
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    {saving ? 'Kaydediliyor...' : `Kaydet (${Object.keys(pendingFields).length})`}
+                  </button>
+                )}
               </>
             )}
 
@@ -4760,6 +4685,46 @@ export default function RepairReportPage() {
           onClose={() => setShowReviseModal(false)}
           onConfirm={confirmRevise}
         />
+      )}
+      {showSaveReminderModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-semibold text-slate-800 mb-2">Kaydetmeyi Unutmayın</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Raporda kaydedilmemiş değişiklikler var. Devam etmeden önce kaydetmek ister misiniz?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSaveReminderModal(false);
+                  void handleSaveReport();
+                }}
+                className="w-full rounded-lg bg-emerald-600 text-white py-2 text-sm font-medium hover:bg-emerald-700"
+              >
+                Kaydet
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSaveReminderModal(false);
+                  setPendingFields({});
+                  router.push(claimPath);
+                }}
+                className="w-full rounded-lg border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Kaydetmeden Çık
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSaveReminderModal(false)}
+                className="w-full rounded-lg py-2 text-sm text-slate-500 hover:text-slate-700"
+              >
+                Yazmaya Devam Et
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

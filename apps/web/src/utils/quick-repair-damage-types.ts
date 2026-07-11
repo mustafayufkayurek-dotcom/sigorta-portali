@@ -17,6 +17,7 @@ const REASON_CODE_TO_QUICK_TYPE: Record<string, string> = {
 const REASON_NAME_TO_QUICK_TYPE: Record<string, string> = {
   'konut yangın': 'FIRE_HOME',
   'endüstriyel yangın': 'FIRE_INDUSTRIAL',
+  'su hasarı': 'WATER_INTERNAL',
   'dahili su': 'WATER_INTERNAL',
   'doğal afet': 'NATURAL_DISASTER',
   deprem: 'EARTHQUAKE',

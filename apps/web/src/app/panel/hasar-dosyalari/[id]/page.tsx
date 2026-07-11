@@ -291,6 +291,7 @@ function DosyaSayfaUstu({
         claim={claim}
         onClaimUpdated={onClaimUpdated}
         initialOpen={focusSigortali}
+        repairReportId={claim.latestRepairReport?.id}
       />
     </div>
   );
