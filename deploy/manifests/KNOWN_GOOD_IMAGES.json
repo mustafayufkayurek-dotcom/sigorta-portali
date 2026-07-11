@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-11",
-  "label": "v255-sidebar-collapsed-logo-svg",
-  "description": "Web-only: Dar menüde bozulmayan SVG küre logosu, dikey chevron yerleşimi",
+  "label": "v257-brand-globe-weekly-compact",
+  "description": "Web-only: Dar menüde kurumsal küre (meridyen-globe-square), Haftalık Performans compact layout",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v249-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v255-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v254-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v257-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v253-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v249-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v256-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v254-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

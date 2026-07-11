@@ -92,53 +92,54 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
       icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
+      compact
     >
       {isLoading ? (
-        <WidgetSkeleton variant="card" rows={3} />
+        <WidgetSkeleton variant="card" rows={2} />
       ) : (
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-            <h3 className="text-xs font-semibold text-slate-900 dark:text-white sm:text-sm">Geçen Hafta</h3>
-            <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">{lastWeekLabel()}</p>
-            <dl className="mt-2 space-y-1.5 text-xs sm:text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Kapanan Dosya</dt>
+        <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-white">Geçen Hafta</h3>
+            <p className="text-[10px] text-slate-500">{lastWeekLabel()}</p>
+            <dl className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+              <div className="flex justify-between gap-1">
+                <dt className="text-slate-500">Kapanan</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">{ops?.closedClaims ?? '—'}</dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">SLA Uyumu</dt>
+              <div className="flex justify-between gap-1">
+                <dt className="text-slate-500">SLA</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">
                   {slaCompliancePct !== null ? `%${slaCompliancePct}` : '—'}
                 </dd>
               </div>
-              <div className="flex justify-between gap-2">
+              <div className="flex justify-between gap-1">
                 <dt className="text-slate-500">Tahsilat</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">
                   {ops ? formatCurrency(ops.overdueCollectionAmount) : '—'}
                 </dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Ortalama Kapanış</dt>
+              <div className="flex justify-between gap-1">
+                <dt className="text-slate-500">Kapanış</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">—</dd>
               </div>
             </dl>
-            <TeamWorkloadChart />
+            <TeamWorkloadChart compact />
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-            <h3 className="text-xs font-semibold text-slate-900 dark:text-white sm:text-sm">Bu Hafta Öncelikleri</h3>
+          <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-white">Bu Hafta Öncelikleri</h3>
             {priorities.length === 0 ? (
-              <p className="mt-2 text-xs text-slate-500 sm:text-sm">Kritik öncelik görünmüyor.</p>
+              <p className="mt-1.5 text-xs text-slate-500">Kritik öncelik görünmüyor.</p>
             ) : (
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-1.5 space-y-1.5">
                 {priorities.map((item, idx) => (
-                  <li key={item.label} className="flex items-start gap-2">
+                  <li key={item.label} className="flex items-start gap-1.5">
                     <span
-                      className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${PRIORITY_COLORS[idx % PRIORITY_COLORS.length]}`}
+                      className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white ${PRIORITY_COLORS[idx % PRIORITY_COLORS.length]}`}
                     >
                       {idx + 1}
                     </span>
-                    <Link href={item.href} className="text-xs font-medium text-slate-800 hover:text-blue-700 hover:underline dark:text-slate-100 dark:hover:text-blue-300 sm:text-sm">
+                    <Link href={item.href} className="text-xs font-medium text-slate-800 hover:text-blue-700 hover:underline dark:text-slate-100 dark:hover:text-blue-300">
                       {item.label}
                     </Link>
                   </li>
@@ -147,23 +148,23 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-            <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 dark:text-white sm:text-sm">
-              <Users className="h-3.5 w-3.5 text-indigo-500" />
+          <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+            <h3 className="flex items-center gap-1 text-xs font-semibold text-slate-900 dark:text-white">
+              <Users className="h-3 w-3 text-indigo-500" />
               Personel Yük
             </h3>
             {staffItems.length === 0 ? (
-              <p className="mt-2 text-xs text-slate-500 sm:text-sm">Atama verisi yok.</p>
+              <p className="mt-1.5 text-xs text-slate-500">Atama verisi yok.</p>
             ) : (
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-1.5 space-y-1.5">
                 {staffItems.map((item) => (
-                  <li key={item.userId} className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                  <li key={item.userId} className="flex items-center gap-1.5">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[9px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
                       {staffInitials(item.userName)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-100 sm:text-sm">{item.userName}</p>
-                      <p className="text-[10px] text-slate-500 sm:text-xs">{item.activeFiles} dosya</p>
+                      <p className="truncate text-xs font-medium text-slate-800 dark:text-slate-100">{item.userName}</p>
+                      <p className="text-[10px] text-slate-500">{item.activeFiles} dosya</p>
                     </div>
                   </li>
                 ))}

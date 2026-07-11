@@ -57,14 +57,11 @@ echo '=== docker build web ==='
 docker build -f Dockerfile.web -t $WEB_IMAGE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
 TS=\$(date +%Y%m%d_%H%M%S)
 cp docker-compose.override.yml backups/override_pre_\${TS}.yml
-CURRENT_BACKEND=\$(docker inspect sigorta-backend --format '{{.Config.Image}}' 2>/dev/null || echo 'app-backend:dalga2-agreement-hr-01-v61-amd64')
-cat > docker-compose.override.yml <<EOF
-services:
-  backend:
-    image: \${CURRENT_BACKEND}
-  web:
-    image: $WEB_IMAGE
-EOF
+CURRENT_BACKEND=\$(docker inspect sigorta-backend --format '{{.Config.Image}}' 2>/dev/null | tr -d '\r\n' || true)
+if [ -z \"\$CURRENT_BACKEND\" ]; then
+  CURRENT_BACKEND='app-backend:dalga2-agreement-hr-01-v249-amd64'
+fi
+printf '%s\n' 'services:' '  backend:' \"    image: \${CURRENT_BACKEND}\" '  web:' \"    image: $WEB_IMAGE\" > docker-compose.override.yml
 bash scripts/restart-web-production.sh
 "
 

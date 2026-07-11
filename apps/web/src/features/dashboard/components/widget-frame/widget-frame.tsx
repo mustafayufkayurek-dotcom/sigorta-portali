@@ -12,6 +12,7 @@ interface WidgetFrameProps {
   variant?: 'default' | 'premium' | 'alert';
   staggerIndex?: number;
   isLoaded?: boolean;
+  compact?: boolean;
 }
 
 const variantStyles = {
@@ -31,6 +32,7 @@ export function WidgetFrame({
   variant = 'default',
   staggerIndex = 0,
   isLoaded = true,
+  compact = false,
 }: WidgetFrameProps) {
   return (
     <div
@@ -40,7 +42,9 @@ export function WidgetFrame({
       style={{ transitionDelay: `${staggerIndex * 100}ms` }}
     >
       <div
-        className={`flex items-center justify-between border-b px-5 py-3.5 ${
+        className={`flex items-center justify-between border-b ${
+          compact ? 'px-3 py-2' : 'px-5 py-3.5'
+        } ${
           variant === 'alert'
             ? 'border-red-100 bg-red-50/70 dark:border-red-900/40 dark:bg-red-950/20'
             : 'border-slate-100 dark:border-slate-800'
@@ -65,7 +69,7 @@ export function WidgetFrame({
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
-      <div className="p-5">{children}</div>
+      <div className={compact ? 'p-3' : 'p-5'}>{children}</div>
     </div>
   );
 }

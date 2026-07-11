@@ -18,6 +18,7 @@ interface WidgetShellProps {
   error?: boolean;
   errorMessage?: string;
   onRetry?: () => void;
+  compact?: boolean;
 }
 
 export function WidgetShell({
@@ -26,12 +27,13 @@ export function WidgetShell({
   onRetry,
   isLoaded = true,
   staggerIndex = 0,
+  compact = false,
   children,
   ...frameProps
 }: WidgetShellProps) {
   return (
     <WidgetBoundary>
-      <WidgetFrame {...frameProps} isLoaded={isLoaded} staggerIndex={staggerIndex}>
+      <WidgetFrame {...frameProps} compact={compact} isLoaded={isLoaded} staggerIndex={staggerIndex}>
         {error ? <WidgetError message={errorMessage} onRetry={onRetry} /> : children}
       </WidgetFrame>
     </WidgetBoundary>

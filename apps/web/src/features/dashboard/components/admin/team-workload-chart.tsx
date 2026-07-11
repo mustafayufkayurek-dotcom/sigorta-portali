@@ -11,7 +11,7 @@ function startOfDay(date: Date) {
   return d;
 }
 
-export function TeamWorkloadChart() {
+export function TeamWorkloadChart({ compact = false }: { compact?: boolean }) {
   const { data, isLoading } = useActivityFeed(120);
   const items = Array.isArray(data?.items) ? data.items : [];
 
@@ -35,20 +35,20 @@ export function TeamWorkloadChart() {
 
   if (isLoading) {
     return (
-      <div className="mt-2 h-16 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+      <div className={`mt-1.5 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800 ${compact ? 'h-10' : 'h-16'}`} />
     );
   }
 
   return (
-    <div className="mt-2">
-      <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">Ekip Yoğunluğu</p>
-      <div className="mt-1.5 flex h-16 items-end justify-between gap-1">
+    <div className="mt-1.5">
+      <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Ekip Yoğunluğu</p>
+      <div className={`mt-1 flex items-end justify-between gap-0.5 ${compact ? 'h-10' : 'h-16'}`}>
         {DAY_LABELS.map((label, idx) => {
           const value = counts[idx];
           const heightPct = Math.max(8, Math.round((value / max) * 100));
           return (
             <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
-              <div className="flex h-14 w-full items-end justify-center">
+              <div className={`flex w-full items-end justify-center ${compact ? 'h-8' : 'h-14'}`}>
                 <div
                   className="w-full max-w-[28px] rounded-t-md bg-[#1e3a5f] transition-all dark:bg-blue-800"
                   style={{ height: `${heightPct}%` }}
