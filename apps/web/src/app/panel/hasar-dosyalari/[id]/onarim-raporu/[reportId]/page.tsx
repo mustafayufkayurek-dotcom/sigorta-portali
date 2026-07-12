@@ -1049,6 +1049,130 @@ function WorkDefinitionSelector({
   );
 }
 
+// ─── Tespit Alanı Seçici (inline yeni tanım — sistem ayarlarına kaydedilir) ───
+function DetectionScopeSelector({
+  value,
+  scopes,
+  onSelect,
+  onAddNew,
+  className,
+  'data-cell': dataCell,
+  tabIndex,
+  onFocus,
+  onBlur,
+  onKeyDown,
+}: {
+  value: string;
+  scopes: string[];
+  onSelect: (v: string) => void;
+  onAddNew: (name: string) => Promise<{ name: string }>;
+  className?: string;
+  'data-cell'?: string;
+  tabIndex?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}) {
+  const [addingNew, setAddingNew] = useState(false);
+  const [newVal, setNewVal] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (addingNew) inputRef.current?.focus();
+  }, [addingNew]);
+
+  const commit = async () => {
+    const trimmed = formatDetectionScopeLabel(newVal);
+    if (!trimmed) {
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await onAddNew(trimmed);
+      onSelect(formatDetectionScopeLabel(result?.name ?? trimmed));
+    } catch {
+      /* ignore */
+    } finally {
+      setSaving(false);
+      setAddingNew(false);
+      setNewVal('');
+    }
+  };
+
+  if (addingNew) {
+    return (
+      <div className="flex items-center gap-1 px-1 w-full">
+        <input
+          ref={inputRef}
+          type="text"
+          className="flex-1 h-8 border border-blue-300 rounded px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="Tespit alanı adı..."
+          value={newVal}
+          disabled={saving}
+          onChange={(e) => setNewVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === 'Escape') {
+              setAddingNew(false);
+              setNewVal('');
+            }
+          }}
+          onBlur={() => void commit()}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setAddingNew(false);
+            setNewVal('');
+          }}
+          className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs"
+        >
+          ×
+        </button>
+      </div>
+    );
+  }
+
+  const options = Array.from(
+    new Set([
+      ...scopes,
+      ...(value ? [value] : []),
+    ].map((s) => formatDetectionScopeLabel(s)).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b, 'tr'));
+
+  return (
+    <select
+      data-cell={dataCell}
+      className={className}
+      value={value}
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      onChange={(e) => {
+        if (e.target.value === '__add_new__') {
+          setAddingNew(true);
+        } else {
+          onSelect(formatDetectionScopeLabel(e.target.value));
+        }
+      }}
+    >
+      <option value="">— Tespit Alanı Seç —</option>
+      {options.map((scope) => (
+        <option key={scope} value={scope}>
+          {formatDisplayLabel(scope)}
+        </option>
+      ))}
+      <option value="__add_new__">+ Yeni Tespit Alanı Ekle</option>
+    </select>
+  );
+}
+
 // ─── İş Grubu Seçici (inline yeni ekleme destekli) ───────────────────────────
 function WorkGroupSelector({
   value,
@@ -1427,68 +1551,6 @@ function LocationInput({
   );
 }
 
-// ─── Tespit — öneri listesi (Sigortalı Konut vb.)
-function DetectionScopeInput({
-  value,
-  suggestions,
-  onChange,
-  onRegister,
-  className,
-  placeholder = 'Sigortalı Konut...',
-  'data-cell': dataCell,
-  tabIndex,
-  onFocus,
-  onBlur,
-  onKeyDown,
-}: {
-  value: string;
-  suggestions: string[];
-  onChange: (v: string) => void;
-  onRegister: (v: string) => void;
-  className?: string;
-  placeholder?: string;
-  'data-cell'?: string;
-  tabIndex?: number;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-}) {
-  const listId = React.useId();
-  return (
-    <>
-      <input
-        type="text"
-        data-cell={dataCell}
-        className={className}
-        value={value}
-        placeholder={placeholder}
-        list={listId}
-        tabIndex={tabIndex}
-        onFocus={onFocus}
-        onBlur={() => {
-          const formatted = formatDetectionScopeLabel(value);
-          if (formatted && formatted !== value) onChange(formatted);
-          if (formatted) onRegister(formatted);
-          onBlur?.();
-        }}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Tab' || e.key === 'Enter') {
-            onKeyDown?.(e);
-            return;
-          }
-          onKeyDown?.(e);
-        }}
-      />
-      <datalist id={listId}>
-        {suggestions.map((scope) => (
-          <option key={scope} value={scope} />
-        ))}
-      </datalist>
-    </>
-  );
-}
-
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
   { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onNotify, onConfirm },
   ref,
@@ -1519,8 +1581,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     addingDraftRef.current = addingRow;
   }, [addingRow]);
 
-  // locationList + tespit önerileri
+  // locationList + tespit alanları (sistem tanımları + rapor içi)
   const [detectionScopeList, setDetectionScopeList] = useState<string[]>([...DEFAULT_DETECTION_SCOPES]);
+
+  useEffect(() => {
+    axios
+      .get(`${API}/system-settings/tespit-alanlari`, { headers: authHeader() })
+      .then((res) => {
+        const entries = (res.data?.data ?? res.data ?? []) as { name?: string }[];
+        const names = entries.map((e) => formatDetectionScopeLabel(e.name ?? '')).filter(Boolean);
+        if (names.length > 0) {
+          setDetectionScopeList((prev) => Array.from(new Set([...names, ...prev])));
+        }
+      })
+      .catch(() => { /* varsayılan liste */ });
+  }, []);
+
   useEffect(() => {
     const locs = Array.from(new Set(
       items
@@ -1544,7 +1620,19 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const addDetectionScopeIfNew = (scope: string) => {
     const normalized = formatDetectionScopeLabel(scope);
     if (!normalized) return;
-    setDetectionScopeList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
+    setDetectionScopeList((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
+  };
+
+  const createDetectionScope = async (name: string): Promise<{ name: string }> => {
+    const res = await axios.post(
+      `${API}/system-settings/tespit-alanlari`,
+      { name: toTitleCaseTR(name.trim()) },
+      { headers: authHeader() },
+    );
+    const entry = res.data?.data ?? res.data;
+    const label = formatDetectionScopeLabel(entry?.name ?? name);
+    addDetectionScopeIfNew(label);
+    return { name: label };
   };
 
   useEffect(() => {
@@ -2274,13 +2362,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* Tespit */}
                 <td className={tdCls(rowIdx, 'detectionScope')}>
                   {isEditable ? (
-                    <DetectionScopeInput
+                    <DetectionScopeSelector
                       data-cell={`${rowIdx}-detectionScope`}
                       className={cellCls(rowIdx, 'detectionScope', true)}
                       value={row.detectionScope}
-                      suggestions={detectionScopeList}
-                      onChange={(v) => updateRow(row._id, 'detectionScope', v)}
-                      onRegister={addDetectionScopeIfNew}
+                      scopes={detectionScopeList}
+                      onSelect={(v) => updateRow(row._id, 'detectionScope', v)}
+                      onAddNew={createDetectionScope}
                       tabIndex={getCellTabIndex(rowIdx, 'detectionScope')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'detectionScope' })}
                       onBlur={() => { if (row._isDirty) void saveRow(row._id); }}
@@ -2578,13 +2666,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* Tespit */}
               <td className={tdCls('new', 'detectionScope')}>
-                <DetectionScopeInput
+                <DetectionScopeSelector
                   data-cell="new-detectionScope"
                   className={cellCls('new', 'detectionScope', true)}
                   value={addingRow.detectionScope}
-                  suggestions={detectionScopeList}
-                  onChange={(v) => { setAddingRow((p) => ({ ...p, detectionScope: v })); setAddingDirty(true); }}
-                  onRegister={addDetectionScopeIfNew}
+                  scopes={detectionScopeList}
+                  onSelect={(v) => { setAddingRow((p) => ({ ...p, detectionScope: v })); setAddingDirty(true); }}
+                  onAddNew={createDetectionScope}
                   tabIndex={getCellTabIndex('new', 'detectionScope')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'detectionScope' })}
                   onBlur={() => undefined}

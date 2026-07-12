@@ -182,6 +182,21 @@ const DEFAULT_SAHA_TESPIT_KOLLARI: FieldInspectionBranch[] = [
   { id: 'tespit-on', name: 'Ön İnceleme', isActive: true, sortOrder: 40 },
 ];
 
+export interface TespitAlaniEntry {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+const DEFAULT_TESPIT_ALANLARI: TespitAlaniEntry[] = [
+  { id: 'tespit-alan-sigortali-konut', name: 'Sigortalı Konut', isActive: true, sortOrder: 10 },
+  { id: 'tespit-alan-ortak', name: 'Ortak Alan', isActive: true, sortOrder: 20 },
+  { id: 'tespit-alan-depo', name: 'Depo', isActive: true, sortOrder: 30 },
+  { id: 'tespit-alan-dukkkan', name: 'Dükkan', isActive: true, sortOrder: 40 },
+  { id: 'tespit-alan-ofis', name: 'Ofis', isActive: true, sortOrder: 50 },
+];
+
 export interface FieldRequirementsConfig {
   customerSubTypeRequired: boolean;
 }
@@ -1024,6 +1039,54 @@ export class SystemSettingsService {
   async setSahaTespitKollari(values: FieldInspectionBranch[]): Promise<FieldInspectionBranch[]> {
     await this.set('saha_tespit_kollari', values);
     return values;
+  }
+
+  async getTespitAlanlari(): Promise<TespitAlaniEntry[]> {
+    const value = await this.get('tespit_alanlari');
+    const list = (value as TespitAlaniEntry[] | null) ?? DEFAULT_TESPIT_ALANLARI;
+    return [...list]
+      .filter((e) => e.isActive !== false)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'));
+  }
+
+  private slugTespitAlaniId(name: string): string {
+    const base = name
+      .toLowerCase()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `tespit-alan-${base || 'yeni'}-${Date.now()}`;
+  }
+
+  async appendTespitAlani(name: string): Promise<TespitAlaniEntry> {
+    const trimmed = (name ?? '').trim();
+    if (!trimmed) {
+      throw new BadRequestException('Tespit alanı adı zorunludur.');
+    }
+    const value = await this.get('tespit_alanlari');
+    const list: TespitAlaniEntry[] = [...((value as TespitAlaniEntry[] | null) ?? DEFAULT_TESPIT_ALANLARI)];
+    const normalized = trimmed.replace(/\s+/g, ' ');
+    const existing = list.find(
+      (e) => e.name.localeCompare(normalized, 'tr', { sensitivity: 'base' }) === 0,
+    );
+    if (existing) {
+      return existing;
+    }
+    const maxOrder = list.reduce((m, e) => Math.max(m, e.sortOrder ?? 0), 0);
+    const entry: TespitAlaniEntry = {
+      id: this.slugTespitAlaniId(normalized),
+      name: normalized,
+      isActive: true,
+      sortOrder: maxOrder + 10,
+    };
+    list.push(entry);
+    await this.set('tespit_alanlari', list);
+    return entry;
   }
 
   async getExpertInsuranceLinks(): Promise<ExpertInsuranceLinksConfig> {

@@ -338,6 +338,22 @@ export class SystemSettingsController {
     return { success: true, data };
   }
 
+  @Get('tespit-alanlari')
+  @RequirePermissions('settings.view', 'report.view', 'report.create', 'claim_file.update')
+  @ApiOperation({ summary: 'Onarım raporu tespit alanları listesi' })
+  async getTespitAlanlari() {
+    const data = await this.service.getTespitAlanlari();
+    return { success: true, data };
+  }
+
+  @Post('tespit-alanlari')
+  @RequirePermissions('report.create', 'claim_file.update', 'settings.manage')
+  @ApiOperation({ summary: 'Yeni tespit alanı tanımı ekle' })
+  async appendTespitAlani(@Body() body: { name: string }) {
+    const data = await this.service.appendTespitAlani(body?.name ?? '');
+    return { success: true, data };
+  }
+
   @Get('eksper-sigorta-baglantilari')
   @RequirePermissions('settings.view')
   @ApiOperation({ summary: 'Eksper–sigorta ilişkilerini getir' })
