@@ -61,6 +61,13 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { getAccessToken } from '@/utils/auth-session';
 import { API, authHeader, ensureSessionBeforeMutation, getToken } from '@/utils/api';
+import { CardNotesEditor } from '@/components/card-notes/CardNotesEditor';
+import {
+  emptyCardNoteEntries,
+  serializeCardNotes,
+  validateCardNoteEntries,
+  type CardNoteFormEntry,
+} from '@/utils/card-notes';
 
 async function turmobQuery(taxNumber: string, token: string | null) {
   const r = await axios.get(`${API}/tax-verification/turmob-query?taxNumber=${encodeURIComponent(taxNumber)}`, {
@@ -113,7 +120,7 @@ const emptyForm = () => ({
   neighborhood: '', streetName: '', buildingNo: '', doorNo: '',
   address: '',
   source: '', satisfactionScore: '' as '' | '1' | '2' | '3' | '4' | '5',
-  followUpDate: '', tags: [] as string[], notes: '',
+  followUpDate: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
   serviceType: '' as '' | 'hasar' | 'acil_yardim',
   serviceBranches: [] as string[],
   privateServiceType: '' as string,
@@ -1599,6 +1606,12 @@ export default function MusterilerPage() {
       }
     }
 
+    const cardNotesError = validateCardNoteEntries(form.cardNotes);
+    if (cardNotesError) {
+      errors.cardNotes = cardNotesError;
+      missingLabels.push('Kart Notları');
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       const allLabels = [...missingLabels];
@@ -1610,7 +1623,8 @@ export default function MusterilerPage() {
       showToast('warning', errMsg);
       setSectionErrors(errMsg);
       // Hatalı ilk sayfaya git
-      setActiveSection(0);
+      if (errors.cardNotes) setActiveSection(3);
+      else setActiveSection(0);
       setTimeout(() => {
         if (errors.firstName) firstNameRef.current?.focus();
         else if (errors.lastName) lastNameRef.current?.focus();
@@ -1662,7 +1676,7 @@ export default function MusterilerPage() {
         doorNo: form.doorNo || null,
         address: computedAddress,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
-        notes: form.notes || null, source: form.source || null,
+        notes: serializeCardNotes(form.cardNotes), source: form.source || null,
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
         followUpDate: form.followUpDate || null, tags: form.tags,
         serviceType: form.subType === 'asistan_firmasi'
@@ -3172,8 +3186,13 @@ export default function MusterilerPage() {
                     )}
                   </div>
                   <div className="mt-5">
-                    <FormField label="Kayıt Notu">
-                      <textarea rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="İlk kayıt sırasında kısa not (detaylı görüşme geçmişi CRM modülünde tutulur)..." value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+                    <FormField label="Kart Notları" error={fieldErrors.cardNotes}>
+                      <CardNotesEditor
+                        entries={form.cardNotes}
+                        onChange={(cardNotes) => setForm((p) => ({ ...p, cardNotes }))}
+                        accent="emerald"
+                        error={fieldErrors.cardNotes}
+                      />
                     </FormField>
                   </div>
 

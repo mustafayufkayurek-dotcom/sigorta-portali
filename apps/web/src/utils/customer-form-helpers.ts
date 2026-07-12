@@ -4,6 +4,7 @@ import {
   type OperationAreaCode,
 } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
+import { cardNotesToFormEntries } from '@/utils/card-notes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 export type CustomerType = 'individual' | 'corporate';
@@ -208,7 +209,7 @@ export const CUSTOMER_FORM_SECTIONS = [
 export const CUSTOMER_RELATION_SECTION_TITLE = 'İlişki Özeti';
 
 export const CUSTOMER_RELATION_SECTION_HINT =
-  'Kayıt anında temel ilişki alanlarıdır. Görüşme notları, takip kayıtları ve durum geçmişi için sol menüdeki CRM modülünü kullanın.';
+  'Numaralı notlar müşteri kartında kalıcı olarak görünür. Her not için kimlerin göreceğini seçin.';
 
 /** Adres serbest metin alanları — Title Case (blur beklemeden özet/kayıt/geocode için) */
 export function normalizeCustomerAddressFields(form: {
@@ -322,7 +323,7 @@ export function mapCustomerRecordToForm(
       ? new Date(String(customer.followUpDate)).toISOString().slice(0, 10)
       : '',
     tags,
-    notes: String(customer.notes ?? ''),
+    cardNotes: cardNotesToFormEntries(String(customer.notes ?? '')),
     serviceType,
     serviceBranches,
     privateServiceType: '',

@@ -255,7 +255,7 @@ export const VENDOR_FILE_PAYMENT_RECEIPT_RULE =
 export const VENDOR_RELATION_SECTION_TITLE = 'İlişki Özeti';
 
 export const VENDOR_RELATION_SECTION_HINT =
-  'Kayıt anında temel ilişki alanlarıdır. Görüşme notları, takip kayıtları ve durum geçmişi için sol menüdeki CRM modülünü kullanın.';
+  'Numaralı notlar tedarikçi kartında kalıcı olarak görünür. Her not için kimlerin göreceğini seçin.';
 
 /** Tedarikçi formu sekme başlıkları */
 export const VENDOR_FORM_SECTIONS = [

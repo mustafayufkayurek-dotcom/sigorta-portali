@@ -25,6 +25,7 @@ import {
   type VendorCategory,
   type VendorDocumentTypeRow,
 } from '@/utils/vendor-form-helpers';
+import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 
 
@@ -168,12 +169,8 @@ function ProfilTab({ vendor }: { vendor: any }) {
         </SectionCard>
       </div>
 
-      <SectionCard title="Kayıt Notu" subtitle="Kayıt sırasında girilen not — detaylı CRM geçmişi için sol menüdeki CRM modülünü kullanın">
-        {vendor.notes ? (
-          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{vendor.notes}</p>
-        ) : (
-          <p className="text-sm text-slate-400">Kayıt notu girilmemiş.</p>
-        )}
+      <SectionCard title="Kart Notları" subtitle="Kayıt ve düzenleme sırasında girilen numaralı notlar">
+        <CardNotesDisplay notesRaw={vendor.notes} />
       </SectionCard>
     </div>
   );

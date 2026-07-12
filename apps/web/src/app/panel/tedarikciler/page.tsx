@@ -53,6 +53,14 @@ import {
   type VendorDocumentTypeRow,
   type VendorTypeHizmetMode,
 } from '@/utils/vendor-form-helpers';
+import { CardNotesEditor } from '@/components/card-notes/CardNotesEditor';
+import {
+  cardNotesToFormEntries,
+  emptyCardNoteEntries,
+  serializeCardNotes,
+  validateCardNoteEntries,
+  type CardNoteFormEntry,
+} from '@/utils/card-notes';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
@@ -268,7 +276,7 @@ const emptyForm = () => ({
   identityNo: '', firstName: '', lastName: '', birthDate: '',
   phone: '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: '',
   cityCode: '', city: '', district: '', neighborhood: '', streetName: '', buildingNo: '', doorNo: '', address: '',
-  iban: '', bankName: '', referral: '', tags: [] as string[], notes: '',
+  iban: '', bankName: '', referral: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
   contractStartDate: '', contractEndDate: '', contractNotes: '',
   category: 'hasar' as VendorCategory,
   canActAsInspector: false,
@@ -1441,7 +1449,7 @@ export default function VendorsPage() {
         city: prefill.city ?? '',
         district: prefill.district ?? '',
         address: prefill.address ?? '',
-        notes: prefill.notes ?? '',
+        cardNotes: prefill.notes ? cardNotesToFormEntries(prefill.notes) : emptyCardNoteEntries(),
         category: 'hasar',
       });
 
@@ -1485,7 +1493,7 @@ export default function VendorsPage() {
       neighborhood: v.neighborhood ?? '', streetName: v.streetName ?? '',
       buildingNo: v.buildingNo ?? '', doorNo: v.doorNo ?? '',
       address: v.address ?? '', iban: v.iban ?? '', bankName: v.bankName ?? '',
-      referral: v.referral ?? '', tags: Array.isArray(v.tags) ? v.tags : [], notes: v.notes ?? '',
+      referral: v.referral ?? '', tags: Array.isArray(v.tags) ? v.tags : [], cardNotes: cardNotesToFormEntries(v.notes ?? ''),
       contractStartDate: v.contractStartDate ? v.contractStartDate.split('T')[0] : '',
       contractEndDate: v.contractEndDate ? v.contractEndDate.split('T')[0] : '',
       contractNotes: v.contractNotes ?? '',
@@ -1590,6 +1598,16 @@ export default function VendorsPage() {
       return;
     }
 
+    const cardNotesError = validateCardNoteEntries(form.cardNotes);
+    if (cardNotesError) {
+      errors.cardNotes = cardNotesError;
+      missingLabels.push('Kart Notları');
+      setFieldErrors(errors);
+      showToast('warning', cardNotesError);
+      setActiveSection(3);
+      return;
+    }
+
     // Çakışma varsa onay modalı göster
     if (Object.keys(duplicateConflicts).length > 0) {
       setShowDuplicateModal(true);
@@ -1622,7 +1640,7 @@ export default function VendorsPage() {
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         iban: form.iban || null, bankName: form.bankName || null,
-        referral: form.referral || null, tags: form.tags, notes: form.notes || null,
+        referral: form.referral || null, tags: form.tags, notes: serializeCardNotes(form.cardNotes),
         contractStartDate: form.contractStartDate ? new Date(form.contractStartDate).toISOString() : null,
         contractEndDate: form.contractEndDate ? new Date(form.contractEndDate).toISOString() : null,
         contractNotes: form.contractNotes || null,
@@ -3395,11 +3413,13 @@ export default function VendorsPage() {
                       ))}
                     </div>
                   )}
-                  <FormField label="Kayıt Notu">
-                    <textarea rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      placeholder="İlk kayıt sırasında kısa not (detaylı görüşme geçmişi CRM modülünde tutulur)..."
-                      value={form.notes}
-                      onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+                  <FormField label="Kart Notları" error={fieldErrors.cardNotes}>
+                    <CardNotesEditor
+                      entries={form.cardNotes}
+                      onChange={(cardNotes) => setForm((p) => ({ ...p, cardNotes }))}
+                      accent="indigo"
+                      error={fieldErrors.cardNotes}
+                    />
                   </FormField>
                   </div>
 

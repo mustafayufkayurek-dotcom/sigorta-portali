@@ -2,7 +2,6 @@
 
 import { API, authHeader, getToken } from '@/utils/api';
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
@@ -13,6 +12,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, formatCustomerUpdatedMeta } from '@/utils/customer-form-helpers';
+import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -112,26 +112,6 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'blue' | 'pu
 function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { customer: any; isFieldStaff: boolean; onReload: () => void; onEdit: () => void }) {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
   const subTypeLabel = customerSubTypeLabel(customer.subType);
-
-  // Quick note state
-  const [noteText, setNoteText] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
-  const [noteSuccess, setNoteSuccess] = useState(false);
-
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return;
-    setSavingNote(true);
-    try {
-      const existingNotes = customer.notes ? customer.notes + '\n\n' : '';
-      await axios.patch(`${API}/customers/${customer.id}`, {
-        notes: existingNotes + `[${new Date().toLocaleDateString('tr-TR')}] ${noteText.trim()}`,
-      }, { headers: authHeader() });
-      setNoteText('');
-      setNoteSuccess(true);
-      setTimeout(() => setNoteSuccess(false), 2500);
-      onReload();
-    } catch (e) { console.error(e); } finally { setSavingNote(false); }
-  };
 
   const handleClearLocation = async () => {
     try {
@@ -252,17 +232,6 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
               </div>
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-slate-50">
-            <Link
-              href="/panel/crm"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg border border-emerald-100 transition-colors"
-            >
-              CRM modülünde takip ve not geçmişi
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
         </SectionCard>
 
         {/* İstatistik */}
@@ -289,37 +258,8 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
         </SectionCard>
       </div>
 
-      {/* Notlar + Not Ekle */}
-      <SectionCard title="Notlar" action={
-        <span className="text-xs text-slate-400">Hızlı not ekle</span>
-      }>
-        {customer.notes ? (
-          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mb-4">{customer.notes}</p>
-        ) : (
-          <p className="text-sm text-slate-400 mb-4">Henüz not eklenmemiş.</p>
-        )}
-        <div className="border-t border-slate-50 pt-4">
-          <div className="flex gap-2 items-end">
-            <textarea
-              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none"
-              rows={2}
-              placeholder="Not ekle..."
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={handleAddNote}
-              disabled={savingNote || !noteText.trim()}
-              className="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-            >
-              {savingNote ? 'Ekleniyor...' : 'Not Ekle'}
-            </button>
-          </div>
-          {noteSuccess && (
-            <p className="text-xs text-green-600 mt-1.5">Not başarıyla eklendi.</p>
-          )}
-        </div>
+      <SectionCard title="Kart Notları" subtitle="Kayıt ve düzenleme sırasında girilen numaralı notlar">
+        <CardNotesDisplay notesRaw={customer.notes} />
       </SectionCard>
 
       {/* Hizmet Türü & Branşlar: sigortalı (insured/private_customer) ve kurumsal müşterilerde gizli */}
