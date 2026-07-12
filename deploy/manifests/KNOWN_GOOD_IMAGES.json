@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v299-alt-bant-acik-ton",
-  "description": "Onarım raporu alt bant açık kurumsal ton; web v299 + backend v282",
+  "label": "v302-operasyon-ux",
+  "description": "Operasyon tablo UX, dosya konusu kanonik, çıkış guard, onarım raporu v296-v299; web v302 + backend v302",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v282-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v299-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v302-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v302-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v298-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v281-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v299-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v282-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -21,6 +21,7 @@
     "/panel/raporlar",
     "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
+    "/panel/operasyon",
     "/panel/operasyon/gelen-kutusu",
     "/panel/hasar-dosyalari"
   ]
