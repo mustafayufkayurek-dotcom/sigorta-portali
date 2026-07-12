@@ -64,10 +64,10 @@ export function RevisionHistoryStrip({
 
   if (loading) {
     if (compact) {
-      return <p className="text-[11px] text-slate-400 py-1">Revizyon geçmişi yükleniyor…</p>;
+      return <p className="text-[11px] text-slate-400 py-1">Revizyon Geçmişi yükleniyor…</p>;
     }
     return (
-      <div className={embedded ? 'pt-3' : 'p-5'}>
+      <div className={embedded ? 'pt-2' : 'p-5'}>
         <p className="text-xs text-slate-400">Revizyon Geçmişi yükleniyor…</p>
       </div>
     );
@@ -86,20 +86,20 @@ export function RevisionHistoryStrip({
 
   const dotTone = (item: RevHistoryItem) =>
     item.status === 'revision'
-      ? 'border-amber-400 bg-amber-100 text-amber-900'
+      ? 'border-amber-400 bg-amber-50 text-amber-900'
       : item.status === 'approved'
-        ? 'border-green-500 bg-green-100 text-green-900'
-        : 'border-slate-400 bg-white text-slate-700';
+        ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+        : 'border-slate-300 bg-white text-slate-700';
 
   const lineTone = (item: RevHistoryItem) =>
     item.status === 'revision'
       ? 'bg-amber-300'
       : item.status === 'approved'
-        ? 'bg-green-400'
+        ? 'bg-emerald-400'
         : 'bg-slate-300';
 
-  const dotSize = compact ? 'h-5 w-5 text-[9px]' : 'h-7 w-7 text-[10px]';
-  const lineWidth = compact ? 'w-5 sm:w-8' : 'w-8 sm:w-12';
+  const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
+  const lineWidth = compact ? 'w-6 sm:w-10' : 'w-10 sm:w-14';
 
   const timeline = (
     <div className="flex items-center min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
@@ -110,19 +110,19 @@ export function RevisionHistoryStrip({
             title={[statusLabel(item), item.requestedBy, item.requestedAt ? fmtD(item.requestedAt) : ''].filter(Boolean).join(' · ')}
           >
             <div
-              className={`flex items-center justify-center rounded-full border-2 font-bold tabular-nums ${dotSize} ${dotTone(item)}`}
+              className={`flex items-center justify-center rounded-full border-2 font-semibold tabular-nums shadow-sm ${dotSize} ${dotTone(item)}`}
             >
               {item.version ?? idx + 1}
             </div>
             {!compact && (
-              <span className="mt-1 text-[10px] text-slate-500 whitespace-nowrap max-w-[72px] truncate text-center">
+              <span className="mt-1.5 text-[10px] text-slate-500 whitespace-nowrap max-w-[80px] truncate text-center">
                 {statusLabel(item)}
               </span>
             )}
           </div>
           {idx < items.length - 1 && (
             <span
-              className={`mx-0.5 h-0.5 rounded-full ${lineWidth} ${lineTone(item)}`}
+              className={`mx-1 h-[3px] rounded-full ${lineWidth} ${lineTone(item)}`}
               aria-hidden
             />
           )}
@@ -133,15 +133,17 @@ export function RevisionHistoryStrip({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-1.5 min-w-0 justify-end">
-        <p className="text-[10px] text-slate-400 shrink-0">Revizyon Geçmişi</p>
-        <div className="min-w-0 max-w-[200px]">{timeline}</div>
-        <a
-          href={`/panel/revizyon-talepleri?reportId=${reportId}`}
-          className="text-[10px] text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
-        >
-          Tümünü Gör →
-        </a>
+      <div className="w-full min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="text-[10px] font-semibold text-slate-500">Revizyon Geçmişi</p>
+          <a
+            href={`/panel/revizyon-talepleri?reportId=${reportId}`}
+            className="text-[10px] text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
+          >
+            Tümünü Gör →
+          </a>
+        </div>
+        {timeline}
       </div>
     );
   }

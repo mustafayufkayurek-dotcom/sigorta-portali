@@ -42,10 +42,24 @@ export function resolveRepairReportExpertName(source: RepairReportExpertSource):
   return inspector;
 }
 
+/** Dosya sorumlusu adı eksper olarak kullanılmamalı — legacy rapor verisi temizliği */
+function sanitizeInspectorName(source: RepairReportExpertSource): string | null {
+  const inspector = source.inspectorName?.trim();
+  if (!inspector) return null;
+  const officeName = officeUserFullName(source.claimFile?.assignedOfficeUser);
+  if (officeName && inspector === officeName) return null;
+  const adjusterName = officeUserFullName(source.claimFile?.assignedAdjuster);
+  if (adjusterName && inspector === adjusterName) return null;
+  return inspector;
+}
+
 /** Rapor ve dosya detayında aynı eksper kaynağı — müşteri kartı / vendor / expertOffice zinciri. */
 export function resolveFileExpertDisplay(source: RepairReportExpertSource | null | undefined): FileExpertInfo {
   if (!source) return { name: 'Atanmamış', missing: true };
-  const name = resolveRepairReportExpertName(source);
+  const name = resolveRepairReportExpertName({
+    ...source,
+    inspectorName: sanitizeInspectorName(source) ?? source.inspectorName,
+  });
   if (name) return { name, missing: false };
   return { name: 'Atanmamış', missing: true };
 }

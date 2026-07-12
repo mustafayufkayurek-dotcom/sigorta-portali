@@ -3,6 +3,7 @@ export type ShareRecipient = {
   label: string;
   subtitle?: string;
   phone: string;
+  group?: 'default' | 'vendor';
 };
 
 function normalizeTrPhone(raw: string | null | undefined): string | null {
@@ -21,32 +22,43 @@ function pushRecipient(
   label: string,
   phoneRaw: string | null | undefined,
   subtitle?: string,
+  group: 'default' | 'vendor' = 'default',
 ) {
   const phone = normalizeTrPhone(phoneRaw);
   if (!phone || seen.has(phone)) return;
   seen.add(phone);
-  list.push({ key, label, subtitle, phone });
+  list.push({ key, label, subtitle, phone, group });
 }
 
+export type ClaimVendorSource = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  authorizedPhone?: string | null;
+};
+
 /** Dosya ve rapor verisinden WhatsApp alıcı listesi oluşturur. */
-export function buildRepairReportShareRecipients(report: {
-  claimFile?: {
-    insuredPhone?: string | null;
-    insuredName?: string | null;
-    customer?: {
-      fullName?: string | null;
-      companyName?: string | null;
-      firstName?: string | null;
-      lastName?: string | null;
-      phone?: string | null;
-      contacts?: { name?: string | null; role?: string | null; phone?: string | null; isPrimary?: boolean }[];
+export function buildRepairReportShareRecipients(
+  report: {
+    claimFile?: {
+      insuredPhone?: string | null;
+      insuredName?: string | null;
+      customer?: {
+        fullName?: string | null;
+        companyName?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        phone?: string | null;
+        contacts?: { name?: string | null; role?: string | null; phone?: string | null; isPrimary?: boolean }[];
+      } | null;
+      assignedFieldUser?: { firstName?: string; lastName?: string; phone?: string | null } | null;
+      assignedAdjuster?: { firstName?: string; lastName?: string; phone?: string | null } | null;
+      assignedSupplier?: { id?: string; name?: string | null; phone?: string | null; authorizedPhone?: string | null } | null;
     } | null;
-    assignedFieldUser?: { firstName?: string; lastName?: string; phone?: string | null } | null;
-    assignedOfficeUser?: { firstName?: string; lastName?: string; phone?: string | null } | null;
-    assignedAdjuster?: { firstName?: string; lastName?: string; phone?: string | null } | null;
-  } | null;
-  expertOffice?: { companyName?: string | null; phone?: string | null } | null;
-} | null | undefined): ShareRecipient[] {
+    expertOffice?: { companyName?: string | null; phone?: string | null } | null;
+  } | null | undefined,
+  claimVendors: ClaimVendorSource[] = [],
+): ShareRecipient[] {
   if (!report) return [];
   const cf = report.claimFile;
   const list: ShareRecipient[] = [];
@@ -90,18 +102,6 @@ export function buildRepairReportShareRecipients(report: {
     );
   }
 
-  const officeUser = cf?.assignedOfficeUser;
-  if (officeUser?.phone) {
-    pushRecipient(
-      list,
-      seen,
-      'office-user',
-      'Meridyen Dosya Sorumlusu',
-      officeUser.phone,
-      [officeUser.firstName, officeUser.lastName].filter(Boolean).join(' ') || undefined,
-    );
-  }
-
   const adjuster = cf?.assignedAdjuster;
   if (adjuster?.phone) {
     pushRecipient(
@@ -111,6 +111,31 @@ export function buildRepairReportShareRecipients(report: {
       'Eksper',
       adjuster.phone,
       [adjuster.firstName, adjuster.lastName].filter(Boolean).join(' ') || undefined,
+    );
+  }
+
+  const supplier = cf?.assignedSupplier;
+  if (supplier?.phone || supplier?.authorizedPhone) {
+    pushRecipient(
+      list,
+      seen,
+      `supplier-${supplier.id ?? supplier.name ?? 'assigned'}`,
+      supplier.name ?? 'Tedarikçi',
+      supplier.authorizedPhone ?? supplier.phone,
+      supplier.name ?? undefined,
+      'vendor',
+    );
+  }
+
+  for (const vendor of claimVendors) {
+    pushRecipient(
+      list,
+      seen,
+      `vendor-${vendor.id}`,
+      vendor.name,
+      vendor.authorizedPhone ?? vendor.phone,
+      vendor.name,
+      'vendor',
     );
   }
 

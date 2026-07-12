@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { resolveFileExpertDisplay } from '@sigorta/shared';
-import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel } from '@/utils/text-helpers';
+import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel, formatHasarAdresi } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
@@ -36,17 +36,8 @@ function formatPriority(priority: string | null | undefined): string {
 }
 
 function formatPropertyAddress(claim: any): string | null {
-  const address = claim.propertyAddress;
-  if (!address) return null;
-  const line = [
-    address.city,
-    address.district,
-    address.neighborhood,
-    address.addressLine,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  return line || null;
+  if (!claim.propertyAddress) return null;
+  return formatHasarAdresi(claim.propertyAddress);
 }
 
 export function resolveDosyaEksperi(claim: any, reportSummary?: any | null): string {
@@ -91,7 +82,7 @@ function resolveQuickRepairSummary(reportSummary: any | null): string {
 export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null): DosyaField[] {
   const core: DosyaField[] = [
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
-    { label: 'Hasar Nedeni', value: resolveHasarNedeni(claim, reportSummary ?? null) },
+    { label: 'Hasar Konusu', value: resolveHasarNedeni(claim, reportSummary ?? null) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
     { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim, reportSummary ?? null) },
@@ -106,9 +97,6 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   if (claim.policyNo?.trim()) {
     supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
   }
-  if (claim.productBranch?.trim()) {
-    supplementary.push({ label: 'Ürün Branşı', value: toTitleCaseTR(claim.productBranch.trim()) });
-  }
   const ihbarKonusu = resolveClaimIhbarKonusu(claim);
   if (ihbarKonusu !== '—') {
     supplementary.push({ label: 'İhbar Konusu', value: ihbarKonusu });
@@ -121,9 +109,7 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   }
 
   const propertyAddress = formatPropertyAddress(claim);
-  if (propertyAddress) {
-    supplementary.push({ label: 'Hasar Adresi', value: propertyAddress, wide: true });
-  }
+  supplementary.push({ label: 'Hasar Adresi', value: propertyAddress ?? 'Belirtilmemiş', wide: true });
 
   if (claim.description?.trim()) {
     supplementary.push({

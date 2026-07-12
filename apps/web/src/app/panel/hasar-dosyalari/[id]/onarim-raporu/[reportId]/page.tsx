@@ -4,10 +4,10 @@ import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
+import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu, formatHasarAdresi } from '@/utils/text-helpers';
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
-import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-recipients';
+import { buildRepairReportShareRecipients, type ClaimVendorSource } from '@/utils/repair-report-share-recipients';
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
@@ -39,6 +39,7 @@ import {
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
+import { useToast } from '@/contexts/ToastContext';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -1174,6 +1175,8 @@ interface EditableItemsTableProps {
   onAdd: (data: any) => Promise<void>;
   onDirtyChange?: (count: number) => void;
   onWorkGroupCreated?: (workGroup: any) => void;
+  onNotify?: (type: 'error' | 'warning' | 'success', message: string) => void;
+  onConfirm?: (message: string) => Promise<boolean>;
 }
 
 interface RowState {
@@ -1487,9 +1490,11 @@ function DetectionScopeInput({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated },
+  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onNotify, onConfirm },
   ref,
 ) {
+  const notify = onNotify ?? ((_type: 'error' | 'warning' | 'success', _message: string) => {});
+  const askConfirm = onConfirm ?? (async (_message: string) => window.confirm(_message));
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [addingRow, setAddingRow] = useState<RowState>(emptyRow());
@@ -1719,14 +1724,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if (!row || !row._isDirty) return;
     if (!isRowPersistable(row)) {
       if (!row.detectionScope.trim()) {
-        alert('Tespit Alanı zorunludur.');
+        notify('error', 'Tespit Alanı zorunludur.');
         focusCell(rows.findIndex((r) => r._id === id), 'detectionScope');
       }
       revertRow(id);
       return;
     }
     if (row.location.trim() && !isValidLocationFormat(row.location)) {
-      alert('Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
+      notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
       focusCell(rows.findIndex((r) => r._id === id), 'location');
       return;
     }
@@ -1738,7 +1743,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       const entered = parseFloat(row.supplierUnitPrice || '0');
       if (memoryPrice > 0 && entered > 0 && !isVendorPriceWithinTolerance(entered, memoryPrice)) {
         const memLabel = memoryPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
-        const ok = window.confirm(`Hafızadaki ${memLabel} TL — devam?`);
+        const ok = await askConfirm(`Hafızadaki ${memLabel} TL — devam?`);
         if (!ok) {
           setVendorModalRowId(id);
           return;
@@ -1779,12 +1784,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const saveAddingRow = async () => {
     if (!addingRow.workGroupId || !addingRow.jobDescription) return;
     if (!addingRow.detectionScope.trim()) {
-      alert('Tespit Alanı zorunludur.');
+      notify('error', 'Tespit Alanı zorunludur.');
       focusCell('new', 'detectionScope');
       return;
     }
     if (addingRow.location.trim() && !isValidLocationFormat(addingRow.location)) {
-      alert('Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
+      notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
       focusCell('new', 'location');
       return;
     }
@@ -2874,6 +2879,10 @@ function EmergencyReportEditor({
   onWorkGroupCreated?: (workGroup: any) => void;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
+  const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
+    showToast(type, message);
+  }, [showToast]);
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
   const [uploading, setUploading] = useState(false);
   const [localReport, setLocalReport] = useState(report);
@@ -2926,7 +2935,7 @@ function EmergencyReportEditor({
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     if (!(await ensureSessionBeforeMutation())) {
-      alert('Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       e.target.value = '';
       return;
     }
@@ -2951,7 +2960,7 @@ function EmergencyReportEditor({
         }));
       }
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
+      notify('error', err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
     } finally {
       setUploading(false);
@@ -3228,6 +3237,17 @@ function EmergencyReportEditor({
 export default function RepairReportPage() {
   const { id: claimId, reportId } = useParams<{ id: string; reportId: string }>();
   const router = useRouter();
+  const { showToast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    resolve: (value: boolean) => void;
+  } | null>(null);
+  const askConfirm = useCallback((message: string) => new Promise<boolean>((resolve) => {
+    setConfirmDialog({ message, resolve });
+  }), []);
+  const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
+    showToast(type, message);
+  }, [showToast]);
   const [report, setReport] = useState<any>(null);
   const [workGroups, setWorkGroups] = useState<any[]>([]);
   const handleWorkGroupCreated = useCallback((workGroup: any) => {
@@ -3249,6 +3269,8 @@ export default function RepairReportPage() {
   const [whatsAppPhone, setWhatsAppPhone] = useState('');
   const [whatsAppRecipientKey, setWhatsAppRecipientKey] = useState('');
   const [whatsAppManualMode, setWhatsAppManualMode] = useState(false);
+  const [selectedVendorKeys, setSelectedVendorKeys] = useState<string[]>([]);
+  const [claimVendors, setClaimVendors] = useState<ClaimVendorSource[]>([]);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -3350,9 +3372,30 @@ export default function RepairReportPage() {
           }
         } catch (_) {}
       }
+
+      try {
+        const vcRes = await axios.get(`${API}/vendor-contracts?claimFileId=${claimId}`, { headers: authHeader() });
+        const contracts: any[] = vcRes.data.data ?? [];
+        const vendors: ClaimVendorSource[] = [];
+        const seen = new Set<string>();
+        for (const contract of contracts) {
+          const vendor = contract.vendor;
+          if (!vendor?.id || seen.has(vendor.id)) continue;
+          seen.add(vendor.id);
+          vendors.push({
+            id: vendor.id,
+            name: vendor.name ?? contract.vendorName ?? 'Tedarikçi',
+            phone: vendor.phone ?? contract.vendorPhone,
+            authorizedPhone: vendor.authorizedPhone,
+          });
+        }
+        setClaimVendors(vendors);
+      } catch (_) {
+        setClaimVendors([]);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [reportId]);
+  }, [reportId, claimId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -3484,8 +3527,18 @@ export default function RepairReportPage() {
   }, [showShareMenu]);
 
   const shareRecipients = useMemo(
-    () => (report ? buildRepairReportShareRecipients(report) : []),
-    [report],
+    () => (report ? buildRepairReportShareRecipients(report, claimVendors) : []),
+    [report, claimVendors],
+  );
+
+  const defaultRecipients = useMemo(
+    () => shareRecipients.filter((r) => r.group !== 'vendor'),
+    [shareRecipients],
+  );
+
+  const vendorRecipients = useMemo(
+    () => shareRecipients.filter((r) => r.group === 'vendor'),
+    [shareRecipients],
   );
 
   const pendingInsurancePortalApproval = useMemo(
@@ -3539,13 +3592,14 @@ export default function RepairReportPage() {
   );
 
   const openWhatsAppModal = useCallback(() => {
-    const first = shareRecipients[0];
+    const first = defaultRecipients[0];
     setWhatsAppRecipientKey(first?.key ?? '');
     setWhatsAppPhone(first?.phone ?? '');
-    setWhatsAppManualMode(shareRecipients.length === 0);
+    setWhatsAppManualMode(defaultRecipients.length === 0);
+    setSelectedVendorKeys([]);
     setShowWhatsApp(true);
     setShowShareMenu(false);
-  }, [shareRecipients]);
+  }, [defaultRecipients]);
 
   useEffect(() => {
     if (!report?.departmentId) {
@@ -3580,7 +3634,7 @@ export default function RepairReportPage() {
       setShowReviseModal(false);
       router.push(`/panel/hasar-dosyalari/${claimId}/onarim-raporu/${res.data.data.id}`);
     } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Revizyon Oluşturulamadı');
+      notify('error', e.response?.data?.message ?? 'Revizyon Oluşturulamadı');
     } finally {
       setRevising(false);
     }
@@ -3644,14 +3698,14 @@ export default function RepairReportPage() {
       }
       await loadKeepScroll();
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'Hızlı onarım kalemleri eklenemedi. Lütfen tekrar deneyin.');
+      notify('error', err?.response?.data?.message ?? 'Hızlı onarım kalemleri eklenemedi. Lütfen tekrar deneyin.');
       throw err;
     }
   };
 
   const handleSendExternalApproval = async () => {
     if (!externalApprovalForm.approverName && !externalApprovalForm.approverEmail) {
-      alert('Lütfen En Az Ad Soyad veya E-posta Giriniz'); return;
+      notify('warning', 'Lütfen En Az Ad Soyad veya E-posta Giriniz'); return;
     }
     setSendingExternal(true);
     try {
@@ -3663,9 +3717,9 @@ export default function RepairReportPage() {
       if (externalApprovalForm.channel === 'whatsapp' && whatsappUrl) {
         window.open(whatsappUrl, '_blank');
       } else {
-        alert(`Dış Onay Başarıyla Gönderildi.\nOnay Linki: ${publicUrl}`);
+        notify('success', `Dış Onay Başarıyla Gönderildi. Onay Linki: ${publicUrl}`);
       }
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Gönderim Başarısız'); }
+    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Gönderim Başarısız'); }
     finally { setSendingExternal(false); }
   };
 
@@ -3691,7 +3745,7 @@ export default function RepairReportPage() {
       setConfirmSendWithoutImages(false);
       setItemsApprovalError(null);
       await load();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Hata Oluştu'); }
+    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
     finally { setRequestingApproval(false); }
   };
 
@@ -3718,21 +3772,21 @@ export default function RepairReportPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Raporu onaylamak istediğinizden emin misiniz?')) return;
+    if (!(await askConfirm('Raporu onaylamak istediğinizden emin misiniz?'))) return;
     try {
       await axios.post(`${API}/repair-reports/${reportId}/approve`, {}, { headers: authHeader() });
       load();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Hata Oluştu'); }
+    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) { alert('Lütfen Red Nedeni Giriniz'); return; }
+    if (!rejectReason.trim()) { notify('warning', 'Lütfen Red Nedeni Giriniz'); return; }
     try {
       await axios.post(`${API}/repair-reports/${reportId}/reject`, { reason: rejectReason }, { headers: authHeader() });
       setShowRejectModal(false);
       setRejectReason('');
       load();
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Hata Oluştu'); }
+    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
   };
 
   const handleUpdateField = (field: string, value: string) => {
@@ -3754,7 +3808,7 @@ export default function RepairReportPage() {
       setSessionSaveCount((n) => n + 1);
       await loadKeepScroll();
     } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Kayıt Başarısız');
+      notify('error', e.response?.data?.message ?? 'Kayıt Başarısız');
     } finally {
       setSaving(false);
     }
@@ -3762,13 +3816,13 @@ export default function RepairReportPage() {
 
   const hasUnsavedReportFields = Object.keys(pendingFields).length > 0;
 
-  const handleCancelChanges = () => {
+  const handleCancelChanges = async () => {
     setSessionCancelCount((n) => n + 1);
     if (Object.keys(pendingFields).length === 0 && dirtyItemCount === 0) {
       router.push(claimPath);
       return;
     }
-    if (!confirm('Kaydedilmemiş değişiklikler var. Değişiklikleri iptal etmek istiyor musunuz?')) return;
+    if (!(await askConfirm('Kaydedilmemiş değişiklikler var. Değişiklikleri iptal etmek istiyor musunuz?'))) return;
     setPendingFields({});
     void loadKeepScroll();
   };
@@ -3818,7 +3872,7 @@ export default function RepairReportPage() {
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    if (!confirm('Bu kalemi silmek istediğinizden emin misiniz?')) return;
+    if (!(await askConfirm('Bu kalemi silmek istediğinizden emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/repair-report-items/${itemId}`, { headers: authHeader() });
       setReport((prev: any) => {
@@ -3854,7 +3908,7 @@ export default function RepairReportPage() {
         };
         reader.readAsDataURL(blob);
       } catch (_) {
-        alert('Anotasyon kaydedilemedi.');
+        notify('error', 'Anotasyon kaydedilemedi.');
       }
     }
   };
@@ -3863,7 +3917,7 @@ export default function RepairReportPage() {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     if (!(await ensureSessionBeforeMutation())) {
-      alert('Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       e.target.value = '';
       return;
     }
@@ -3888,7 +3942,7 @@ export default function RepairReportPage() {
         }));
       }
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
+      notify('error', err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
     } finally {
       setUploadingCat(null);
@@ -3907,16 +3961,22 @@ export default function RepairReportPage() {
   };
 
   const handleDownloadPdf = async (view: 'internal' | 'external') => {
+    if (!(await ensureSessionBeforeMutation())) {
+      notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      return;
+    }
     try {
-      const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, {
-        headers: authHeader(), responseType: 'blob',
+      const res = await authAxios<Blob>({
+        method: 'GET',
+        url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
+        responseType: 'blob',
       });
       const contentType = String(res.headers['content-type'] ?? '');
       if (!contentType.includes('pdf')) {
         const text = await (res.data as Blob).text();
         let message = 'PDF indirilemedi.';
         try { message = JSON.parse(text)?.message ?? message; } catch { /* ignore */ }
-        alert(message);
+        notify('error', message);
         return;
       }
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
@@ -3925,8 +3985,18 @@ export default function RepairReportPage() {
       a.href = url; a.download = `hasar-raporu-${suffix}-${reportId}.pdf`;
       a.click(); URL.revokeObjectURL(url);
       setShowShareMenu(false);
+      notify('success', 'PDF indiriliyor…');
     } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'PDF indirilemedi. Lütfen tekrar deneyin.');
+      let message = 'PDF indirilemedi. Lütfen tekrar deneyin.';
+      if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+        try {
+          const text = await e.response.data.text();
+          message = JSON.parse(text)?.message ?? message;
+        } catch { /* ignore */ }
+      } else if (e?.response?.data?.message) {
+        message = e.response.data.message;
+      }
+      notify('error', message);
       console.error(e);
     }
   };
@@ -3963,50 +4033,62 @@ export default function RepairReportPage() {
   return (
     <div className="space-y-5 pb-28">
       {/* Header */}
-      <div className="flex items-start gap-3 flex-wrap">
-        <button type="button" onClick={() => {
-          if (hasUnsavedReportFields || dirtyItemCount > 0) {
-            setShowSaveReminderModal(true);
-            return;
-          }
-          router.push(claimPath);
-        }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
-          {insuredName !== '—' && (
-            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
-          )}
-          {report.claimFile?.insuranceCompany?.name && (
+      <div className="space-y-3">
+        <div className="flex items-start gap-3 flex-wrap">
+          <button type="button" onClick={() => {
+            if (hasUnsavedReportFields || dirtyItemCount > 0) {
+              setShowSaveReminderModal(true);
+              return;
+            }
+            router.push(claimPath);
+          }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
+              {report.claimFile?.insuranceCompany?.name && (
+                <span className="text-xs text-slate-500">
+                  Sigorta Şirketi: <span className="font-semibold text-slate-700">{report.claimFile.insuranceCompany.name}</span>
+                </span>
+              )}
+              <span className="text-xs text-slate-500">
+                Eksper: <span className={`font-semibold ${fileExpert.missing ? 'text-amber-700' : 'text-slate-700'}`}>
+                  {fileExpert.missing ? 'Atanmamış' : fileExpert.name}
+                </span>
+              </span>
+            </div>
+            {insuredName !== '—' && (
+              <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
+            )}
             <p className="text-xs text-slate-400 mt-0.5">
-              {report.claimFile.insuranceCompany.name}
-              {' · '}
               {fmtDateTime(report.reportDate ?? report.createdAt)}
             </p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 min-w-0 max-w-full">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
-              {repairReportStatusLabel(report.status)}
-            </span>
-            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-              Satış {fmtCurrencyCompact(report.totalSalesAmount)}
-            </span>
-            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-              Kâr {fmtCurrencyCompact(report.grossProfit)}
-            </span>
-            {report.versionNo > 1 && (
-              <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
-            )}
-            {pendingInsurancePortalApproval && (
-              <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
-            )}
           </div>
-          <div className="w-full max-w-sm">
-            <RevisionHistoryStrip reportId={reportId as string} compact />
+          <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
+                {repairReportStatusLabel(report.status)}
+              </span>
+              <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                Satış {fmtCurrencyCompact(report.totalSalesAmount)}
+              </span>
+              {effectiveViewMode === 'internal' && !isFieldStaff && (
+                <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+                  Kâr {fmtCurrencyCompact(report.grossProfit)}
+                </span>
+              )}
+              {report.versionNo > 1 && (
+                <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
+              )}
+              {pendingInsurancePortalApproval && (
+                <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
+              )}
+            </div>
+            <div className="w-full max-w-md">
+              <RevisionHistoryStrip reportId={reportId as string} compact />
+            </div>
           </div>
         </div>
-        <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap relative z-10 sm:ml-auto">
+        <div className="flex items-center gap-2 flex-wrap justify-end relative z-10">
           {/* İş akışı */}
           {report.status === 'approved' && (
             <button type="button"
@@ -4181,19 +4263,23 @@ export default function RepairReportPage() {
             { label: 'İhbar Tarihi', value: resolveIhbarTarihi(report.claimFile ?? {}) },
             { label: 'Hasar Konusu', value: resolveClaimIhbarKonusu(report.claimFile ?? {}) },
             { label: 'Dosya Eksperi', value: fileExpert.missing ? 'Atanmamış' : fileExpert.name },
-            { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
+            { label: 'Hasar Adresi', value: formatHasarAdresi(report.claimFile?.propertyAddress), wide: true },
             {
-              label: 'Hasar Nedeni',
+              label: 'Hasar Türü',
               value: report.reportType === 'single'
                 ? (report.damageTypes?.[0]?.damageTypeName ? formatDisplayLabel(report.damageTypes[0].damageTypeName) : undefined)
                 : undefined,
             },
-          ].map((f) => (
+          ].filter((f) => !f.wide).map((f) => (
             <div key={f.label}>
               <p className="text-xs text-slate-400">{f.label}</p>
               <p className="text-sm font-medium text-slate-800">{f.value ?? '—'}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-4">
+          <p className="text-xs text-slate-400">Hasar Adresi</p>
+          <p className="text-sm font-medium text-slate-800">{formatHasarAdresi(report.claimFile?.propertyAddress)}</p>
         </div>
         {report.reportType === 'multi' && (
           <div className="mt-4 pt-4 border-t border-slate-100">
@@ -4218,49 +4304,47 @@ export default function RepairReportPage() {
 
       <SectionCard title="Hızlı Onarım Türü">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Türü</p>
-              <div className="flex flex-wrap gap-2">
-                {quickDamageDisplayOptions.map((option) => {
-                  const active = quickDamageTypes.includes(option.value);
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      disabled={!isEditable}
-                      onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
-                    >
-                      {active ? '✓ ' : ''}{option.label}
-                    </button>
-                  );
-                })}
-                {quickDamageDisplayOptions.length === 0 && (
-                  <p className="text-xs text-slate-400">Dosya konusu / hasar nedeni tanımlı değil.</p>
-                )}
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Türü</p>
+              {quickDamageDisplayOptions.map((option) => {
+                const active = quickDamageTypes.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={!isEditable}
+                    onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
+                  >
+                    {active ? '✓ ' : ''}{option.label}
+                  </button>
+                );
+              })}
+              {quickDamageDisplayOptions.length === 0 && (
+                <p className="text-xs text-slate-400">Dosya konusu / hasar türü tanımlı değil.</p>
+              )}
             </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Büyüklüğü</p>
-              <div className="flex flex-wrap gap-3">
-                {DAMAGE_SIZE_OPTIONS.map((option) => (
-                  <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
-                    {option.label}
-                  </label>
-                ))}
-              </div>
+            <button
+              type="button"
+              disabled={!isEditable || quickDamageTypes.length === 0}
+              onClick={() => setShowQuickRepairModal(true)}
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
+            >
+              ⚡ Hızlı Onarım Türü Ekle
+            </button>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Büyüklüğü</p>
+            <div className="flex flex-wrap gap-3">
+              {DAMAGE_SIZE_OPTIONS.map((option) => (
+                <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
+                  {option.label}
+                </label>
+              ))}
             </div>
           </div>
-          <button
-            type="button"
-            disabled={!isEditable || quickDamageTypes.length === 0}
-            onClick={() => setShowQuickRepairModal(true)}
-            className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            ⚡ Hızlı Onarım Türü Ekle
-          </button>
           {quickDamageTypes.length > 0 && (
             <p className="text-xs text-slate-400">{quickDamageTypes.map((v) => quickDamageTypeDisplayLabel(v, quickDamageTypeLabels)).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
           )}
@@ -4353,6 +4437,8 @@ export default function RepairReportPage() {
           onAdd={handleAddItem}
           onDirtyChange={setDirtyItemCount}
           onWorkGroupCreated={handleWorkGroupCreated}
+          onNotify={notify}
+          onConfirm={askConfirm}
         />
         {itemsApprovalError && (
           <p className="text-xs text-red-500 mt-3">{itemsApprovalError}</p>
@@ -4671,11 +4757,11 @@ export default function RepairReportPage() {
               </div>
             </div>
             <div className="space-y-3">
-              {shareRecipients.length > 0 && !whatsAppManualMode ? (
+              {defaultRecipients.length > 0 && !whatsAppManualMode ? (
                 <div>
                   <label className="text-xs text-slate-500 block mb-2">Alıcı</label>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {shareRecipients.map((recipient) => (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {defaultRecipients.map((recipient) => (
                       <label
                         key={recipient.key}
                         className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${whatsAppRecipientKey === recipient.key ? 'border-green-300 bg-green-50' : 'border-slate-200 hover:bg-slate-50'}`}
@@ -4688,6 +4774,7 @@ export default function RepairReportPage() {
                           onChange={() => {
                             setWhatsAppRecipientKey(recipient.key);
                             setWhatsAppPhone(recipient.phone);
+                            setSelectedVendorKeys([]);
                           }}
                         />
                         <span className="min-w-0 flex-1">
@@ -4722,12 +4809,12 @@ export default function RepairReportPage() {
                       maxLength={10}
                     />
                   </div>
-                  {shareRecipients.length > 0 && (
+                  {defaultRecipients.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
                         setWhatsAppManualMode(false);
-                        const first = shareRecipients[0];
+                        const first = defaultRecipients[0];
                         setWhatsAppRecipientKey(first.key);
                         setWhatsAppPhone(first.phone);
                       }}
@@ -4736,13 +4823,46 @@ export default function RepairReportPage() {
                       Dosyadan Alıcı Seç
                     </button>
                   )}
-                  {shareRecipients.length === 0 && (
+                  {defaultRecipients.length === 0 && vendorRecipients.length === 0 && (
                     <p className="text-xs text-amber-700 mt-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                       Bu dosyada kayıtlı telefon bulunamadı. Numarayı manuel girebilir veya boş bırakarak WhatsApp Web açabilirsiniz.
                     </p>
                   )}
                 </div>
               )}
+
+              {vendorRecipients.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-2">Dosya Tedarikçileri</label>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {vendorRecipients.map((recipient) => (
+                      <label
+                        key={recipient.key}
+                        className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${selectedVendorKeys.includes(recipient.key) ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 text-emerald-600 rounded"
+                          checked={selectedVendorKeys.includes(recipient.key)}
+                          onChange={() => {
+                            setSelectedVendorKeys((prev) => (
+                              prev.includes(recipient.key)
+                                ? prev.filter((k) => k !== recipient.key)
+                                : [...prev, recipient.key]
+                            ));
+                            setWhatsAppRecipientKey('');
+                          }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-slate-800">{recipient.label}</span>
+                          <span className="block text-xs text-slate-400 mt-0.5">+90 {recipient.phone.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4')}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-green-50 rounded-lg p-3 text-xs text-green-800">
                 WhatsApp Web açılır; rapor linki mesaj kutusunda hazır gelir.
               </div>
@@ -4753,14 +4873,23 @@ export default function RepairReportPage() {
                   try {
                     const res = await axios.get(`${API}/repair-reports/${reportId}/share-link`, { headers: authHeader() });
                     const { url } = res.data.data;
-                    const digits = whatsAppPhone.replace(/\D/g, '');
-                    const finalUrl = digits
-                      ? `https://wa.me/90${digits}?text=${encodeURIComponent(`Hasar Onarım Raporu (${report.reportNo}): ${url}`)}`
-                      : `https://wa.me/?text=${encodeURIComponent(`Hasar Onarım Raporu (${report.reportNo}): ${url}`)}`;
-                    window.open(finalUrl, '_blank');
+                    const message = `Hasar Onarım Raporu (${report.reportNo}): ${url}`;
+                    const vendorPhones = vendorRecipients
+                      .filter((r) => selectedVendorKeys.includes(r.key))
+                      .map((r) => r.phone);
+                    const phones = vendorPhones.length > 0
+                      ? vendorPhones
+                      : [whatsAppPhone.replace(/\D/g, '')].filter(Boolean);
+                    if (phones.length === 0) {
+                      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                    } else {
+                      for (const digits of phones) {
+                        window.open(`https://wa.me/90${digits}?text=${encodeURIComponent(message)}`, '_blank');
+                      }
+                    }
                     setShowWhatsApp(false);
                   } catch (e: any) {
-                    alert(e?.response?.data?.message ?? 'Paylaşım linki alınamadı.');
+                    notify('error', e?.response?.data?.message ?? 'Paylaşım linki alınamadı.');
                     console.error(e);
                   }
                 }}
@@ -5224,6 +5353,36 @@ export default function RepairReportPage() {
                 className="w-full rounded-lg py-2 text-sm text-slate-500 hover:text-slate-700"
               >
                 Yazmaya Devam Et
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-semibold text-slate-800 mb-2">Onay</h3>
+            <p className="text-sm text-slate-600 mb-5 whitespace-pre-wrap">{confirmDialog.message}</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  confirmDialog.resolve(true);
+                  setConfirmDialog(null);
+                }}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
+              >
+                Evet
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmDialog.resolve(false);
+                  setConfirmDialog(null);
+                }}
+                className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+              >
+                İptal
               </button>
             </div>
           </div>

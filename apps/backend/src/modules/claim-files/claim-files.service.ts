@@ -35,6 +35,8 @@ const LATEST_REPAIR_REPORT_SELECT = {
   grossProfit: true,
   grossMarginPct: true,
   updatedAt: true,
+  inspectorName: true,
+  expertOffice: { select: { id: true, companyName: true } },
 } as const;
 
 function formatLatestRepairReport(report: {
@@ -46,6 +48,8 @@ function formatLatestRepairReport(report: {
   grossProfit: number;
   grossMarginPct: number;
   updatedAt: Date;
+  inspectorName?: string | null;
+  expertOffice?: { id: string; companyName: string | null } | null;
 }) {
   return {
     id: report.id,
@@ -56,6 +60,8 @@ function formatLatestRepairReport(report: {
     grossProfit: report.grossProfit,
     grossMarginPct: report.grossMarginPct,
     updatedAt: report.updatedAt,
+    inspectorName: report.inspectorName ?? null,
+    expertOffice: report.expertOffice ?? null,
   };
 }
 

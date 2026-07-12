@@ -177,3 +177,17 @@ export function formatClaimSubjectLabel(
     claimSubject: fallbackName ? { name: fallbackName } : null,
   });
 }
+
+/** Hasar adresi — sokak/metin önce, sonra İl · İlçe (eksikte Belirtilmemiş) */
+export function formatHasarAdresi(propertyAddress?: {
+  addressLine?: string | null;
+  neighborhood?: string | null;
+  district?: string | null;
+  city?: string | null;
+} | null): string {
+  if (!propertyAddress) return 'Belirtilmemiş';
+  const street = propertyAddress.addressLine?.trim() || 'Belirtilmemiş';
+  const city = propertyAddress.city?.trim() || 'Belirtilmemiş';
+  const district = propertyAddress.district?.trim() || 'Belirtilmemiş';
+  return `${street} · İl (${city}) · İlçe (${district})`;
+}

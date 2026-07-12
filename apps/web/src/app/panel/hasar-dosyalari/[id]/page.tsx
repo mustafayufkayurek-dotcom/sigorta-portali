@@ -14,7 +14,7 @@ import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { TakipTab } from './_components/tabs/TakipTab';
-import { DosyaBilgileriDetay, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
+import { DosyaBilgileriDetay, resolveDosyaEksperi, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
 import {
@@ -22,7 +22,7 @@ import {
   FinVisConfig,
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
-import { resolveClaimIhbarKonusu, toTitleCaseTR } from '@/utils/text-helpers';
+import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -191,18 +191,11 @@ function DosyaSayfaUstu({
   onClaimUpdated?: (patch: Partial<any>) => void;
   focusSigortali?: boolean;
 }) {
-  const adres = claim.propertyAddress
-    ? [
-        claim.propertyAddress.city,
-        claim.propertyAddress.district,
-        claim.propertyAddress.neighborhood,
-        claim.propertyAddress.addressLine,
-      ].filter(Boolean).join(' · ')
-    : null;
   const ihbarChip = resolveClaimIhbarKonusu(claim);
-  const subInfo = [claim.insuranceCompany?.name, ihbarChip !== '—' && ihbarChip].filter(Boolean).join(' · ');
   const insuredLine = resolveHasarInsuredName(claim);
   const latestReport = claim.latestRepairReport;
+  const dosyaEksperi = resolveDosyaEksperi(claim, null);
+  const sigortaSirketi = claim.insuranceCompany?.name?.trim();
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -211,8 +204,16 @@ function DosyaSayfaUstu({
           ← Geri
         </button>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-lg font-bold text-slate-900">{claim.fileNo}</h2>
+            {sigortaSirketi && (
+              <span className="text-xs text-slate-500">
+                Sigorta Şirketi: <span className="font-semibold text-slate-700">{sigortaSirketi}</span>
+              </span>
+            )}
+            <span className="text-xs text-slate-500">
+              Eksper: <span className={`font-semibold ${dosyaEksperi === 'Atanmamış' ? 'text-amber-700' : 'text-slate-700'}`}>{dosyaEksperi}</span>
+            </span>
             {claim.currentStatus?.name && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                 <span className="w-2 h-2 rounded-full" style={{ background: claim.currentStatus?.color ?? '#6B7280' }} />
@@ -223,10 +224,10 @@ function DosyaSayfaUstu({
           {insuredLine !== '—' && (
             <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredLine}</p>
           )}
-          {subInfo && <p className="text-xs text-slate-500 mt-0.5">{subInfo}</p>}
+          {ihbarChip !== '—' && <p className="text-xs text-slate-500 mt-0.5">{ihbarChip}</p>}
         </div>
         {latestReport && (
-          <div className="flex flex-col items-end gap-1.5 shrink-0 ml-auto min-w-0 max-w-full">
+          <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
                 {repairReportStatusLabel(latestReport.status)}
@@ -247,7 +248,7 @@ function DosyaSayfaUstu({
               )}
             </div>
             {latestReport.id && (
-              <div className="w-full max-w-sm">
+              <div className="w-full max-w-md">
                 <RevisionHistoryStrip reportId={latestReport.id} compact />
               </div>
             )}
@@ -287,10 +288,10 @@ function DosyaSayfaUstu({
         </div>
       )}
 
-      {adres && (
+      {claim.propertyAddress && (
         <div className="px-4 py-2 text-xs text-slate-600 flex items-start gap-2 border-b border-slate-100">
-          <span className="text-slate-400 shrink-0">Hasar Yeri</span>
-          <span className="font-medium">{adres}</span>
+          <span className="text-slate-400 shrink-0">Hasar Adresi</span>
+          <span className="font-medium">{formatHasarAdresi(claim.propertyAddress)}</span>
         </div>
       )}
 
