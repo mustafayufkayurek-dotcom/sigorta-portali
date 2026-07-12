@@ -1,49 +1,57 @@
 # Onarım Raporu — Bekleyen İş Kilidi (12 Temmuz 2026)
 
-**Canlı referans:** Web **v292** · Backend **v279** · Rollback web **v291** / backend **v278**  
-**Deploy hedefi:** Web v292 — **canlıya alındı** (12 Temmuz 2026 ~11:09 TR, web-only)  
+**Canlı referans (SSH doğrulandı — 12 Temmuz 2026 ~12:03 TR):** Web **v294** · Backend **v281** · Rollback web **v293** / backend **v280**  
+**Deploy hedefi:** Web v294 + Backend v281 — **canlıya alındı** (full deploy, commit `db506eb`)  
 **Kural:** Mustafa PASS olmadan «kabul tamam» denmez.
 
 ## Commit ve deploy durumu
 
 | Adım | Durum | Not |
 |------|--------|-----|
-| Git commit | ✅ | `82155ca` — fix(v292) revizyon sağ üst |
-| Pre-deploy safety | ✅ | DB yedeği `pre_v292-revizyon-gecmisi-sag-ust_20260712_110321.sql.gz` |
-| Image'lar | ✅ | `sigorta-web:…-v292-amd64`, `app-backend:…-v279-amd64` (değişmedi) |
+| Git commit | ✅ | `db506eb` — fix(v294) onarım raporu madde 1/5/26/33/39 + v293 batch |
+| Pre-deploy safety | ✅ | DB yedeği `pre_v294-onarim-raporu-madde-batch_20260712_114502.sql.gz` |
+| Image build | ✅ | `sigorta-web:…-v294-amd64`, `app-backend:…-v281-amd64` |
+| Container swap | ✅ | override + restart tamamlandı |
 | Nginx routing | ✅ | `verify-nginx-web` PASS |
-| Kritik path hash | ✅ | `verify-critical-paths.sh --remote` uyumlu |
-| Smoke (genel rotalar) | ⚠️ | Login FAIL (yerel `LOGIN_EMAIL`/`LOGIN_PASSWORD` yok); diğer rotalar PASS |
-| Mustafa ekran PASS | ⏳ | Ctrl+Shift+R + footer **v292** + madde 19/41 revizyon yerleşimi |
+| Prisma migrate | ✅ | `20260712120000_report_write_sessions` uygulandı |
+| Backend health | ✅ | `/api/v1/health` ok |
+| SSH canlı image | ✅ | `docker inspect` → v294 + v281 |
+| Mustafa ekran PASS | ⏳ | Ctrl+Shift+R + footer **v294** / backend **v281** |
 
-**Deploy komutu (kayıt):** `bash scripts/deploy-web-production.sh v292-revizyon-gecmisi-sag-ust`  
-**Migration:** Yok (web-only)
+**Deploy komutu (kayıt):** `BACKEND_VERSION=v281 bash scripts/deploy-full-production.sh v294-onarim-raporu-madde-batch`  
+**Migration:** `20260712120000_report_write_sessions` (ReportWriteSession tablosu)
 
-## Uygulama sırası (P0 → P2)
+## Madde durumu (v294 batch)
 
-| Öncelik | Madde | Risk | Kod durumu (12 Temmuz oturum) |
-|---------|-------|------|-------------------------------|
-| P0 | 21 İhbar tarihi (mail/oluşturma) | Veri gösterimi | ✅ `inboundReceivedAt` + `resolveIhbarTarihi` |
-| P0 | 14/20 Dosya Eksperi rapora yansıma | Yanlış müşteri algısı | ✅ `resolveFileExpertDisplay` shared |
-| P0 | 10 Fotoğraf yükleme | Veri kaybı / sayfa yenileme | ✅ state + `authAxios`, acil editör `localReport.images` |
-| P1 | 1 Üst bant (dosya no, sigortalı, RPT kaldır, rozetler) | UI | ✅ `DosyaSayfaUstu` + rapor header |
-| P1 | 22 Tab → yeni satır; boş satır silme | Akış | ✅ Tab son kolon → yeni satır; `discardEmptyDraft` |
-| P1 | 15 Alt bant buton sağa | UI | ✅ grid `justify-end` (acil + ana) |
-| P1 | 19/41 Revizyon çubuk+nokta, sağ üst (Taslak/Satış/Kâr altı) | UI | ✅ v292 `RevisionHistoryStrip` — Dosya Bilgileri'nden kaldırıldı |
-| P1 | 5 Hızlı onarım kalemleri listesi | Veri/seed | ✅ fallback hasar türü şablon sorgusu |
-| P2 | 2 ek, 18 ek, 28 ek sticky header | UI | ⏳ |
-| P2 | 30 ek «Tespit Alanı» başlık + zorunlu | UI | ⏳ |
-| P2 | 38 ek Alt bant: «Rapor Oluşturma Analizi» + sol süre/sayaç · orta finans · sağ buton | UI | ⏳ |
-| P2 | 33 İPTAL satır karşılaştır + tedarikçi öneri + WhatsApp şablon ayarları | Özellik | 📋 Plan |
-| — | 39 Personel sayfası yazım süresi analizi | Raporlama | 🔔 **Etap bitince Mustafa'ya hatırlat** |
+| Madde | Konu | Kod | Mustafa PASS |
+|-------|------|-----|--------------|
+| 1 | Üst bant (dosya no kalın, sigortalı alt satır, RPT/hasar no kaldır, rozetler sağ üst) | ✅ | ⏳ |
+| 5 | Hızlı onarım FULL (Dahili Su etiketi, kalemler listesi, fallback seed) | ✅ | ⏳ |
+| 26 | Tedarikçi maliyet hafızası (tolerans + confirm + VendorQuoteModal) | ✅ | ⏳ |
+| 33 | Tedarikçi karşılaştır iptal + öneri + WhatsApp şablon zorunlu atama | ✅ | ⏳ |
+| 39 | Personel yazım süresi analizi (write-session + personel tab) | ✅ | ⏳ |
+| v293 | Foto galeri, eksper, ihbar, sticky header, tespit alanı, alt bant | ✅ (934e268 dahil) | ⏳ |
+
+## Uygulama sırası (P0 → P2) — önceki dalgalar
+
+| Öncelik | Madde | Risk | Kod durumu |
+|---------|-------|------|------------|
+| P0 | 21 İhbar tarihi (mail/oluşturma) | Veri gösterimi | ✅ |
+| P0 | 14/20 Dosya Eksperi rapora yansıma | Yanlış müşteri algısı | ✅ |
+| P0 | 10 Fotoğraf yükleme | Veri kaybı / sayfa yenileme | ✅ |
+| P1 | 22 Tab → yeni satır; boş satır silme | Akış | ✅ |
+| P1 | 15 Alt bant buton sağa | UI | ✅ |
+| P1 | 19/41 Revizyon çubuk+nokta | UI | ✅ |
+| P2 | 2/18/28 sticky header | UI | ✅ |
+| P2 | 30 «Tespit Alanı» başlık + zorunlu | UI | ✅ |
+| P2 | 38 Alt bant analiz + süre/sayaç | UI | ✅ |
 | — | 16 Yasal notlar | Mustafa metni bekliyor | ⏸ |
 
-## Madde 26 — plan notu (sonraki dalga)
+## Madde 26 — uygulama (v294)
 
 1. İş grubu satırı kaydedilince `readVendorPriceMemory` ile son tedarikçi fiyatını oku.
-2. Girilen maliyet ± tolerans içindeyse sessiz devam; dışındaysa inline onay («Hafızadaki X TL — devam?»).
+2. Girilen maliyet ±%15 tolerans içindeyse sessiz devam; dışındaysa `window.confirm` («Hafızadaki X TL — devam?»).
 3. Uyumsuz onay reddinde `VendorQuoteModal` / WhatsApp pazarlık akışına yönlendir.
-4. Backend audit log zorunlu değil (web-only); `sessionStorage` + satır `metrajData` yeterli MVP.
 
 ## Kayıp önleme (kod)
 
@@ -51,10 +59,9 @@
 2. Fotoğraf: başarısız yüklemede tam sayfa reload yok
 3. Boş satır: kayıtta işlenmemiş satır API'ye gitmesin / silinsin
 4. Eksper: `resolveFileExpertDisplay` — dosya sorumlusu asla eksper sayılmaz
-5. Migration yok (web-only dalgalar); backend değişirse DB yedeği zorunlu
+5. Full deploy: backend değişti — DB yedeği alındı (pre-deploy-safety)
 
 ## Deploy
 
-- Dalga sonu: `panel-build-info.ts` → **v291** → web (+ backend claim `inboundReceivedAt`) → Mustafa footer doğrular
-- Tek commit mesajında madde numaraları
-- Backend: `claim-files findOne` minimal ekleme — deploy öncesi DB yedeği (alındı)
+- Dalga: `panel-build-info.ts` → **v294** / **v281** → Mustafa footer doğrular
+- Rollback: `scripts/rollback-production.sh` veya override web v293 + backend v280
