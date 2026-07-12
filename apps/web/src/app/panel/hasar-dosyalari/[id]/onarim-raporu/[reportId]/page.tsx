@@ -472,25 +472,23 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
       {/* Başlık — tıklanınca açılır/kapanır */}
       <button
         type="button"
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-indigo-50/40 transition-colors"
+        className="relative w-full flex items-center justify-center px-5 py-3.5 hover:bg-indigo-50/40 transition-colors text-center"
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <span className="w-5 h-5 rounded-md bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">%</span>
           <span className="text-sm font-semibold text-slate-700">Dosya Bütçesi</span>
-        </div>
-        <div className="flex items-center gap-3">
           <span className={`text-sm font-bold ${profitColor(grandProfitPct)}`}>
-            %{grandProfitPct.toFixed(1)} Kar
+            · %{grandProfitPct.toFixed(1)} Kar
           </span>
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-          >
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
         </div>
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`absolute right-5 w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
       </button>
 
       {open && (
@@ -508,10 +506,10 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                 <tr className="bg-slate-50 text-slate-400 text-[10px] tracking-wide">
                   <th className="text-center px-3 py-2 rounded-l-lg">İş Grubu</th>
                   <th className="text-center px-3 py-2">Tedarikçi</th>
-                  <th className="text-right px-3 py-2">Maliyet</th>
-                  <th className="text-right px-3 py-2">Satış Fiyatı</th>
-                  <th className="text-right px-3 py-2">Kar</th>
-                  <th className="text-right px-3 py-2 rounded-r-lg">Kar %</th>
+                  <th className="text-center px-3 py-2">Maliyet</th>
+                  <th className="text-center px-3 py-2">Satış Fiyatı</th>
+                  <th className="text-center px-3 py-2">Kar</th>
+                  <th className="text-center px-3 py-2 rounded-r-lg">Kar %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -519,12 +517,12 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                   <tr key={row.workGroupId} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-3 py-2.5 font-medium text-slate-800 text-center">{formatDisplayLabel(row.workGroupName)}</td>
                     <td className="px-3 py-2.5 text-center text-slate-600 text-[11px] leading-snug max-w-[180px]">{row.vendorSummary}</td>
-                    <td className="px-3 py-2.5 text-right text-slate-500">{fmtCurrency(row.supplierTotal)}</td>
-                    <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtCurrency(row.salesTotal)}</td>
-                    <td className={`px-3 py-2.5 text-right font-semibold ${row.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className="px-3 py-2.5 text-center text-slate-500">{fmtCurrency(row.supplierTotal)}</td>
+                    <td className="px-3 py-2.5 text-center font-semibold text-slate-800">{fmtCurrency(row.salesTotal)}</td>
+                    <td className={`px-3 py-2.5 text-center font-semibold ${row.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {fmtCurrency(row.profit)}
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${profitBg(row.profitPct)} ${profitColor(row.profitPct)}`}>
                         %{row.profitPct.toFixed(1)}
                       </span>
@@ -538,10 +536,10 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                     {grandProfit < 0 ? '⚠ Zarar' : 'Genel Toplam'}
                   </td>
                   <td className="px-3 py-3.5" />
-                  <td className="px-3 py-3.5 text-right text-slate-200 text-sm font-bold">{fmtCurrency(grandSupplier)}</td>
-                  <td className="px-3 py-3.5 text-right text-white text-sm font-bold">{fmtCurrency(grandSales)}</td>
-                  <td className="px-3 py-3.5 text-right text-sm font-bold text-red-200">{fmtCurrency(grandProfit)}</td>
-                  <td className="px-3 py-3.5 text-right rounded-br-lg">
+                  <td className="px-3 py-3.5 text-center text-slate-200 text-sm font-bold">{fmtCurrency(grandSupplier)}</td>
+                  <td className="px-3 py-3.5 text-center text-white text-sm font-bold">{fmtCurrency(grandSales)}</td>
+                  <td className="px-3 py-3.5 text-center text-sm font-bold text-red-200">{fmtCurrency(grandProfit)}</td>
+                  <td className="px-3 py-3.5 text-center rounded-br-lg">
                     <span className={`inline-block px-2.5 py-1 rounded-full text-sm font-extrabold ${grandProfit < 0 ? 'bg-red-900/60 text-red-100' : `${profitBg(grandProfitPct)} ${profitColor(grandProfitPct)}`}`}>
                       %{grandProfitPct.toFixed(1)}
                     </span>
@@ -2410,7 +2408,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         </button>
       </div>
     )}
-    <div ref={tableRef} className="overflow-x-auto rounded-lg border border-slate-200">
+    <div ref={tableRef} className="overflow-auto rounded-lg border border-slate-200 max-h-[min(70vh,720px)]">
       <style>{`
         @keyframes savedFlash {
           0% { background-color: #dcfce7; }
@@ -2419,25 +2417,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         .saved-flash { animation: savedFlash 0.9s ease-out forwards; }
       `}</style>
       <table className="w-full text-xs border-collapse min-w-[800px]">
-        <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
-            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100">#</th>}
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Tespit Alanı <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px]">Açıklama <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20">Miktar</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">Satış Fiyatı</th>
+        <thead className="sticky top-0 z-10">
+          <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
+            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100 bg-slate-50">#</th>}
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Kategori</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Mahal/Bölge</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px] bg-slate-50">İş Grubu</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px] bg-slate-50">İş Tanımı</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px] bg-slate-50">Açıklama <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Miktar</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Birim</th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24 bg-slate-50">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28">
+              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28 bg-slate-50">
                 Maliyet
               </th>
             )}
-            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28">Toplam</th>
-            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
+            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28 bg-slate-50">Toplam</th>
+            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100 bg-slate-50">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -4621,9 +4619,9 @@ export default function RepairReportPage() {
 
       <SectionCard title="Hızlı Onarım Türü">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-4 md:gap-8 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                 <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Türü</p>
                 {quickDamageDisplayOptions.map((option) => {
                   const active = quickDamageTypes.includes(option.value);
@@ -4643,7 +4641,7 @@ export default function RepairReportPage() {
                   <p className="text-xs text-slate-400">Dosya konusu / hasar türü tanımlı değil.</p>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Büyüklüğü</p>
                 {DAMAGE_SIZE_OPTIONS.map((option) => (
                   <label key={option.value} className="flex items-center gap-1.5 text-sm text-slate-700">

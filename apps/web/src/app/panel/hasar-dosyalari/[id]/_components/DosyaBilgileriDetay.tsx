@@ -50,8 +50,9 @@ export function resolveDosyaEksperi(claim: any, reportSummary?: any | null): str
 }
 
 export function resolveIhbarTarihi(claim: any): string {
-  if (claim.notificationDate) return fmtDate(claim.notificationDate);
   if (claim.inboundReceivedAt) return fmtDate(claim.inboundReceivedAt);
+  if (claim.notificationDate) return fmtDate(claim.notificationDate);
+  if (claim.incidentDate) return fmtDate(claim.incidentDate);
   if (claim.createdAt) return fmtDate(claim.createdAt);
   return '—';
 }
