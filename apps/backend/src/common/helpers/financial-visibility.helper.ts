@@ -202,6 +202,16 @@ function looksLikeClaimFile(obj: Record<string, unknown>): boolean {
   return typeof obj.fileNo === 'string' && typeof obj.id === 'string';
 }
 
+/** Date / Buffer gibi plain-object olmayanları recursive walk'tan çıkar */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return false;
+  if (value instanceof Date) return false;
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 /** API yanıtında dosya bazlı finans alanlarını maskele */
 export function applyFinancialVisibility(data: unknown, user: FinancialVisibilityUser | null | undefined): unknown {
   if (!user || data === null || data === undefined) return data;
@@ -210,9 +220,9 @@ export function applyFinancialVisibility(data: unknown, user: FinancialVisibilit
     return data.map((item) => applyFinancialVisibility(item, user));
   }
 
-  if (typeof data !== 'object') return data;
+  if (!isPlainObject(data)) return data;
 
-  const obj = data as Record<string, unknown>;
+  const obj = data;
   let result: Record<string, unknown> = { ...obj };
 
   if (looksLikeClaimFile(obj)) {

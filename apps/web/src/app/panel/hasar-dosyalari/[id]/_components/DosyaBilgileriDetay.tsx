@@ -49,9 +49,18 @@ export function resolveDosyaEksperi(claim: any, reportSummary?: any | null): str
   return missing ? 'Atanmamış' : toTitleCaseTR(name);
 }
 
+/** API Date koruması bozulunca {} gelebilir; yalnızca parse edilebilir değerleri kabul et */
+function asDateInput(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === 'string' && value.trim()) return value;
+  return null;
+}
+
 export function resolveIhbarTarihi(claim: any): string {
-  if (claim?.inboundReceivedAt) return fmtDate(claim.inboundReceivedAt);
-  if (claim?.notificationDate) return fmtDate(claim.notificationDate);
+  const inbound = asDateInput(claim?.inboundReceivedAt);
+  if (inbound) return fmtDate(inbound);
+  const notification = asDateInput(claim?.notificationDate);
+  if (notification) return fmtDate(notification);
   return '—';
 }
 

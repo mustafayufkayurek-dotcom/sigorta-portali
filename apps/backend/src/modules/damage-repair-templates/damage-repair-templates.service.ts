@@ -125,21 +125,15 @@ export class DamageRepairTemplatesService {
         }));
     }
 
-    const workGroup = await this.prisma.workGroup.findFirst({
+    // Ayarlar İş Grubu / İş Alt Grubu kataloğundan öner (eski hizli_onarim yok)
+    let subGroups = await this.prisma.workSubGroup.findMany({
       where: {
-        OR: [{ code: 'hizli_onarim' }, { name: { contains: 'Hızlı Onarım', mode: 'insensitive' } }],
         status: 'active',
+        workGroup: { status: 'active', code: { not: 'hizli_onarim' } },
       },
-      select: { id: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      take: 40,
     });
-
-    let subGroups = workGroup
-      ? await this.prisma.workSubGroup.findMany({
-          where: { workGroupId: workGroup.id, status: 'active' },
-          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-          take: 40,
-        })
-      : [];
 
     if (subGroups.length === 0) {
       subGroups = await this.prisma.workSubGroup.findMany({

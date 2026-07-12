@@ -19,7 +19,11 @@ export function maskPhone(phone: string | null | undefined): string | null {
 export function deepMaskPhones(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) return obj.map(deepMaskPhones);
+  if (obj instanceof Date) return obj;
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(obj)) return obj;
   if (typeof obj === 'object') {
+    const proto = Object.getPrototypeOf(obj);
+    if (proto !== Object.prototype && proto !== null) return obj;
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (['phone', 'contactPhone', 'siteContactPhone'].includes(key) && typeof value === 'string') {

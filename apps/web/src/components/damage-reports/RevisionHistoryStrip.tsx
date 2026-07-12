@@ -93,15 +93,16 @@ export function RevisionHistoryStrip({
 
   const connectorTone = 'bg-red-500';
   const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
-  const connectorWidth = compact ? 'w-8 sm:w-12' : 'w-12 sm:w-16';
   const stemWidth = compact ? 'w-5 sm:w-7' : 'w-7 sm:w-10';
+
+  const multi = items.length > 1;
 
   const timeline = (
     <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-      <div className="relative inline-flex min-w-full items-center py-1">
+      <div className={`relative flex w-full min-w-0 items-center py-1 ${multi ? '' : 'justify-start'}`}>
         {items.map((item, idx) => (
-          <div key={item.id} className="flex shrink-0 items-center">
-            {idx === 0 && (
+          <div key={item.id} className={`flex items-center ${multi && idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}>
+            {idx === 0 && multi && (
               <div
                 className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
                 aria-hidden
@@ -109,7 +110,7 @@ export function RevisionHistoryStrip({
             )}
             {idx > 0 && (
               <div
-                className={`relative z-0 h-0.5 shrink-0 rounded-full ${connectorWidth} ${connectorTone}`}
+                className={`relative z-0 h-0.5 min-w-[2rem] flex-1 rounded-full ${connectorTone}`}
                 aria-hidden
               />
             )}
@@ -128,7 +129,7 @@ export function RevisionHistoryStrip({
                 </span>
               )}
             </div>
-            {idx === items.length - 1 && (
+            {idx === items.length - 1 && multi && (
               <div
                 className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
                 aria-hidden

@@ -31,36 +31,46 @@ const REPAIR_ITEM_COST_FIELDS = [
   'materialCost',
 ];
 
+function isPlainObject(obj: unknown): obj is Record<string, any> {
+  if (obj === null || typeof obj !== 'object') return false;
+  if (Array.isArray(obj)) return false;
+  if (obj instanceof Date) return false;
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(obj)) return false;
+  const proto = Object.getPrototypeOf(obj);
+  return proto === Object.prototype || proto === null;
+}
+
 function stripCostFields(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(stripCostFields);
   }
-  if (obj !== null && typeof obj === 'object') {
-    const result: Record<string, any> = {};
-    for (const key of Object.keys(obj)) {
-      if (CLAIM_FILE_COST_FIELDS.includes(key)) {
-        continue; // gizle
-      }
-      // Onarım kalemleri (repairItems / items) için birim fiyat ve toplam maskeleme
-      if (key === 'repairItems' || key === 'items') {
-        result[key] = (Array.isArray(obj[key]) ? obj[key] : []).map(
-          (item: any) => {
-            const cleaned: Record<string, any> = {};
-            for (const k of Object.keys(item)) {
-              if (!REPAIR_ITEM_COST_FIELDS.includes(k)) {
-                cleaned[k] = item[k];
-              }
-            }
-            return cleaned;
-          },
-        );
-      } else {
-        result[key] = stripCostFields(obj[key]);
-      }
-    }
-    return result;
+  if (!isPlainObject(obj)) {
+    return obj;
   }
-  return obj;
+  const result: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    if (CLAIM_FILE_COST_FIELDS.includes(key)) {
+      continue; // gizle
+    }
+    // Onarım kalemleri (repairItems / items) için birim fiyat ve toplam maskeleme
+    if (key === 'repairItems' || key === 'items') {
+      result[key] = (Array.isArray(obj[key]) ? obj[key] : []).map(
+        (item: any) => {
+          if (!isPlainObject(item)) return item;
+          const cleaned: Record<string, any> = {};
+          for (const k of Object.keys(item)) {
+            if (!REPAIR_ITEM_COST_FIELDS.includes(k)) {
+              cleaned[k] = item[k];
+            }
+          }
+          return cleaned;
+        },
+      );
+    } else {
+      result[key] = stripCostFields(obj[key]);
+    }
+  }
+  return result;
 }
 
 @Injectable()

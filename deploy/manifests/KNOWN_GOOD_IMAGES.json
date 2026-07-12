@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v324-onarim-hizli-grup-ihbar-revizyon",
-  "description": "Hızlı Onarım Türü modal gruplu liste, İhbar Tarihi gelen kutu, Revizyon Geçmişi kırmızı bağlayıcı çizgi (v324); backend v319",
+  "label": "v325-is-grubu-ihbar-revizyon",
+  "description": "Hızlı Onarım Ayarlar iş grubu entegrasyonu, İhbar Tarihi Date koruması, Revizyon Geçmişi tek rozet sola (v325 web+backend)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v319-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v324-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v325-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v325-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v323-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v303-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v324-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v319-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

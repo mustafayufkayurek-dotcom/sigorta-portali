@@ -691,26 +691,71 @@ async function main() {
   console.log(`✅ Created/updated ${subGroupTotal} work sub groups`);
 
 
-  // ── Damage Type Repair Templates ─────────────────────────────────────────
-  const quickRepairGroup = await prisma.workGroup.upsert({
+  // ── Damage Type Repair Templates (Ayarlar İş Grubu / İş Alt Grubu hiyerarşisi) ──
+  // Eski sentetik "hizli_onarim" grubu artık kullanılmaz; kalemler gerçek iş gruplarına bağlanır.
+  await prisma.workGroup.updateMany({
     where: { code: 'hizli_onarim' },
-    update: { name: 'Hızlı Onarım Türü', sortOrder: 28 },
-    create: { code: 'hizli_onarim', name: 'Hızlı Onarım Türü', sortOrder: 28, isSystem: true },
+    data: { status: 'inactive', name: 'Hızlı Onarım Türü (Eski)' },
   });
+
+  /** Hızlı onarım kod öneki → Ayarlar work_groups.code */
+  const quickRepairGroupByCodePrefix: Record<string, string> = {
+    BOYA: 'boya_isleri',
+    CEPHE: 'boya_isleri',
+    SIVA: 'siva_isleri',
+    ELK: 'elektrik',
+    KAPI: 'pvc_dograma',
+    PNC: 'pvc_dograma',
+    TMZ: 'temizlik',
+    KUF: 'temizlik',
+    DOLAP: 'mobilya',
+    CATI: 'cati',
+    OLUK: 'cati',
+    YAP: 'diger',
+    KOLON: 'diger',
+    TEM: 'diger',
+    SONDURME: 'diger',
+    BAHC: 'diger',
+    NEM: 'teknik_temizlik',
+    TST: 'sihhi_tesisat',
+    ZEMIN: 'parke',
+    DUV: 'duvar_isleri',
+    BARI: 'demir_dograma',
+    CAM: 'cam_isleri',
+    YALT: 'izolasyon_yalitim',
+    IZOL: 'izolasyon_yalitim',
+    MAK: 'mekanik',
+  };
+
+  const resolveQuickRepairGroupCode = (itemCode: string): string => {
+    const prefix = itemCode.split('_')[0] ?? '';
+    return quickRepairGroupByCodePrefix[prefix] ?? 'diger';
+  };
+
   const damageRepairTemplates = [
-    ['FIRE_HOME','BOYA_001','Boya','m2',30,80,200],['FIRE_HOME','SIVA_001','Sıva','m2',20,50,150],['FIRE_HOME','ELK_001','Elektrik tesisatı kontrolü','adet',1,1,1],['FIRE_HOME','KAPI_001','Kapı değişimi','adet',1,3,8],['FIRE_HOME','PNC_001','Pencere değişimi','adet',1,3,8],['FIRE_HOME','TMZ_001','Temizlik / dezenfeksiyon','m2',30,80,200],['FIRE_HOME','DOLAP_001','Mutfak / banyo dolabı değişimi','adet',0,2,5],['FIRE_HOME','CATI_001','Çatı onarımı (konut)','m2',10,30,100],
-    ['FIRE_INDUSTRIAL','YAP_001','Yapısal kontrol','adet',1,2,5],['FIRE_INDUSTRIAL','ELK_002','Elektrik tesisatı yenileme','metre',50,200,1000],['FIRE_INDUSTRIAL','BOYA_002','Boya (endüstriyel)','m2',100,500,2000],['FIRE_INDUSTRIAL','CATI_002','Çatı onarımı (endüstriyel)','m2',50,200,800],['FIRE_INDUSTRIAL','MAK_001','Makine parça değişimi','adet',1,3,10],['FIRE_INDUSTRIAL','SONDURME_001','Yangın söndürme sistemi bakımı','adet',1,1,2],['FIRE_INDUSTRIAL','IZOL_001','Isı/yangın izolasyonu','m2',50,200,800],
-    ['WATER_INTERNAL','NEM_001','Nem alma/kurutma','m2',20,60,150],['WATER_INTERNAL','BOYA_001','Boya','m2',20,60,150],['WATER_INTERNAL','TST_001','Tesisat onarımı','metre',5,15,40],['WATER_INTERNAL','ZEMIN_001','Zemin kaplama değişimi','m2',15,40,100],['WATER_INTERNAL','SIVA_001','Sıva','m2',15,40,100],['WATER_INTERNAL','ELK_003','Elektrik kontrolü','adet',1,1,2],['WATER_INTERNAL','KUF_001','Küf önleme/temizlik','m2',20,60,150],
-    ['VEHICLE_IMPACT','DUV_001','Duvar onarımı (çarpma)','m2',2,10,30],['VEHICLE_IMPACT','KAPI_002','Kapı değişimi (çarpma)','adet',1,2,5],['VEHICLE_IMPACT','BOYA_004','Boya (çarpma)','m2',5,20,50],['VEHICLE_IMPACT','ZEMIN_002','Zemin kaplama değişimi (çarpma)','m2',2,8,20],['VEHICLE_IMPACT','YAP_002','Yapısal kontrol (çarpma)','adet',1,1,2],['VEHICLE_IMPACT','BARI_001','Bariyer/korkuluk onarımı','metre',2,8,20],
-    ['NATURAL_DISASTER','CATI_003','Çatı onarımı/değişimi (doğal afet)','m2',30,100,500],['NATURAL_DISASTER','CEPHE_001','Dış cephe boya','m2',50,200,800],['NATURAL_DISASTER','CAM_001','Cam değişimi (doğal afet)','m2',5,20,80],['NATURAL_DISASTER','YALT_001','Su yalıtımı','m2',30,100,500],['NATURAL_DISASTER','BAHC_001','Bahçe/çevre düzenleme','m2',50,200,1000],['NATURAL_DISASTER','OLUK_001','Oluk/su tahliye sistemi','metre',10,30,100],
-    ['EARTHQUAKE','YAP_003','Yapısal kontrol (deprem)','adet',1,2,5],['EARTHQUAKE','DUV_002','Duvar onarımı (deprem)','m2',20,80,300],['EARTHQUAKE','CATI_004','Çatı onarımı (deprem)','m2',30,100,400],['EARTHQUAKE','KOLON_001','Kolon/kiriş kontrolü','adet',1,3,10],['EARTHQUAKE','ZEMIN_003','Zemin kaplama değişimi (deprem)','m2',30,100,400],['EARTHQUAKE','CAM_002','Cam/kapı/pencere değişimi (deprem)','adet',3,10,30],['EARTHQUAKE','TEM_001','Temel kontrolü','adet',1,1,2],
+    ['FIRE_HOME','BOYA_001','Boya','m2',30,80,200],['FIRE_HOME','SIVA_001','Sıva','m2',20,50,150],['FIRE_HOME','ELK_001','Elektrik Tesisatı Kontrolü','adet',1,1,1],['FIRE_HOME','KAPI_001','Kapı Değişimi','adet',1,3,8],['FIRE_HOME','PNC_001','Pencere Değişimi','adet',1,3,8],['FIRE_HOME','TMZ_001','Temizlik / Dezenfeksiyon','m2',30,80,200],['FIRE_HOME','DOLAP_001','Mutfak / Banyo Dolabı Değişimi','adet',0,2,5],['FIRE_HOME','CATI_001','Çatı Onarımı (Konut)','m2',10,30,100],
+    ['FIRE_INDUSTRIAL','YAP_001','Yapısal Kontrol','adet',1,2,5],['FIRE_INDUSTRIAL','ELK_002','Elektrik Tesisatı Yenileme','metre',50,200,1000],['FIRE_INDUSTRIAL','BOYA_002','Boya (Endüstriyel)','m2',100,500,2000],['FIRE_INDUSTRIAL','CATI_002','Çatı Onarımı (Endüstriyel)','m2',50,200,800],['FIRE_INDUSTRIAL','MAK_001','Makine Parça Değişimi','adet',1,3,10],['FIRE_INDUSTRIAL','SONDURME_001','Yangın Söndürme Sistemi Bakımı','adet',1,1,2],['FIRE_INDUSTRIAL','IZOL_001','Isı/Yangın İzolasyonu','m2',50,200,800],
+    ['WATER_INTERNAL','NEM_001','Nem Alma/Kurutma','m2',20,60,150],['WATER_INTERNAL','BOYA_001','Boya','m2',20,60,150],['WATER_INTERNAL','TST_001','Tesisat Onarımı','metre',5,15,40],['WATER_INTERNAL','ZEMIN_001','Zemin Kaplama Değişimi','m2',15,40,100],['WATER_INTERNAL','SIVA_001','Sıva','m2',15,40,100],['WATER_INTERNAL','ELK_003','Elektrik Kontrolü','adet',1,1,2],['WATER_INTERNAL','KUF_001','Küf Önleme/Temizlik','m2',20,60,150],
+    ['VEHICLE_IMPACT','DUV_001','Duvar Onarımı (Çarpma)','m2',2,10,30],['VEHICLE_IMPACT','KAPI_002','Kapı Değişimi (Çarpma)','adet',1,2,5],['VEHICLE_IMPACT','BOYA_004','Boya (Çarpma)','m2',5,20,50],['VEHICLE_IMPACT','ZEMIN_002','Zemin Kaplama Değişimi (Çarpma)','m2',2,8,20],['VEHICLE_IMPACT','YAP_002','Yapısal Kontrol (Çarpma)','adet',1,1,2],['VEHICLE_IMPACT','BARI_001','Bariyer/Korkuluk Onarımı','metre',2,8,20],
+    ['NATURAL_DISASTER','CATI_003','Çatı Onarımı/Değişimi (Doğal Afet)','m2',30,100,500],['NATURAL_DISASTER','CEPHE_001','Dış Cephe Boya','m2',50,200,800],['NATURAL_DISASTER','CAM_001','Cam Değişimi (Doğal Afet)','m2',5,20,80],['NATURAL_DISASTER','YALT_001','Su Yalıtımı','m2',30,100,500],['NATURAL_DISASTER','BAHC_001','Bahçe/Çevre Düzenleme','m2',50,200,1000],['NATURAL_DISASTER','OLUK_001','Oluk/Su Tahliye Sistemi','metre',10,30,100],
+    ['EARTHQUAKE','YAP_003','Yapısal Kontrol (Deprem)','adet',1,2,5],['EARTHQUAKE','DUV_002','Duvar Onarımı (Deprem)','m2',20,80,300],['EARTHQUAKE','CATI_004','Çatı Onarımı (Deprem)','m2',30,100,400],['EARTHQUAKE','KOLON_001','Kolon/Kiriş Kontrolü','adet',1,3,10],['EARTHQUAKE','ZEMIN_003','Zemin Kaplama Değişimi (Deprem)','m2',30,100,400],['EARTHQUAKE','CAM_002','Cam/Kapı/Pencere Değişimi (Deprem)','adet',3,10,30],['EARTHQUAKE','TEM_001','Temel Kontrolü','adet',1,1,2],
   ] as const;
+
+  const workGroupIdByCode = new Map<string, string>();
+  for (const wg of await prisma.workGroup.findMany({ select: { id: true, code: true } })) {
+    workGroupIdByCode.set(wg.code, wg.id);
+  }
+
   for (let i = 0; i < damageRepairTemplates.length; i++) {
     const [damageType, code, name, unitType, small, medium, large] = damageRepairTemplates[i];
+    const targetGroupCode = resolveQuickRepairGroupCode(code);
+    const workGroupId = workGroupIdByCode.get(targetGroupCode) ?? workGroupIdByCode.get('diger');
+    if (!workGroupId) continue;
+
     const subGroup = await prisma.workSubGroup.upsert({
       where: { code },
-      update: { name, unitType, workGroupId: quickRepairGroup.id },
-      create: { code, name, unitType, workGroupId: quickRepairGroup.id, sortOrder: i + 1 },
+      update: { name, unitType, workGroupId, sortOrder: i + 1 },
+      create: { code, name, unitType, workGroupId, sortOrder: i + 1 },
     });
     const existingTemplate = await prisma.damageTypeRepairTemplate.findFirst({ where: { damageType, workSubGroupId: subGroup.id, fileId: null } });
     if (existingTemplate) {
