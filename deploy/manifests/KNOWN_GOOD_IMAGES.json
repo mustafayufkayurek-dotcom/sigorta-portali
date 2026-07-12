@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v307-son-satir-kaydet",
-  "description": "Onarım raporu son satır kaydet uyarısı; web v307 (v306 dahil, önceki canlı web v303) + backend v303",
+  "label": "v318-ui-kabul-batch",
+  "description": "Onarım raporu UI, toplantı sayfası, operasyon formları, foto galeri",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v303-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v307-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v318-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v303-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v307-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v302-amd64"
   },
   "mustPassSmokeRoutes": [
