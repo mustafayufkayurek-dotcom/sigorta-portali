@@ -10,11 +10,13 @@ export function InsuredNameInlineEdit({
   displayName,
   onSaved,
   compact = false,
+  align = 'left',
 }: {
   claimId: string;
   displayName: string;
   onSaved: (insuredName: string) => void;
   compact?: boolean;
+  align?: 'left' | 'center';
 }) {
   const missing = displayName === '—';
   const [editing, setEditing] = useState(missing);
@@ -44,11 +46,14 @@ export function InsuredNameInlineEdit({
     }
   };
 
+  const textAlignClass = align === 'center' ? 'text-center' : 'text-left';
+  const wrapperAlignClass = align === 'center' ? 'items-center mx-auto' : '';
+
   if (!editing && !missing) {
     return (
       <button
         type="button"
-        className="text-left truncate max-w-full hover:text-blue-700"
+        className={`${textAlignClass} truncate max-w-full hover:text-blue-700`}
         title={`${displayName} — düzenlemek için tıklayın`}
         onClick={(e) => {
           e.stopPropagation();
@@ -65,7 +70,7 @@ export function InsuredNameInlineEdit({
     return (
       <button
         type="button"
-        className="text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2"
+        className={`text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2 ${textAlignClass}`}
         onClick={(e) => {
           e.stopPropagation();
           setEditing(true);
@@ -78,7 +83,7 @@ export function InsuredNameInlineEdit({
 
   return (
     <div
-      className={`flex flex-col gap-1 ${compact ? 'min-w-[140px]' : 'min-w-[160px]'}`}
+      className={`flex flex-col gap-1 ${compact ? 'min-w-[140px]' : 'min-w-[160px]'} ${wrapperAlignClass}`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex gap-1">

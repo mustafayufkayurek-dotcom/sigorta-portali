@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type DragEvent,
   type ReactNode,
 } from 'react';
 
@@ -189,6 +190,13 @@ interface ResizableThProps {
   className?: string;
   children: ReactNode;
   resizable?: boolean;
+  dragProps?: {
+    draggable: boolean;
+    onDragStart: () => void;
+    onDragOver: (e: DragEvent) => void;
+    onDrop: () => void;
+    onDragEnd: () => void;
+  };
 }
 
 export function ResizableTh({
@@ -202,6 +210,7 @@ export function ResizableTh({
   className = '',
   children,
   resizable = true,
+  dragProps,
 }: ResizableThProps) {
   const startResize = (e: React.MouseEvent) => {
     if (!resizable) return;
@@ -228,17 +237,23 @@ export function ResizableTh({
 
   return (
     <th
-      style={{ width, minWidth: width }}
+      style={{ width, minWidth: width, maxWidth: width }}
       className={`group relative box-border select-none overflow-hidden !text-center ${className}`}
+      {...(dragProps ?? {})}
     >
-      <span className="flex min-w-0 items-center justify-center truncate px-1 pr-3">{children}</span>
+      <span className={`flex min-w-0 items-center justify-center truncate px-1 pr-3 ${dragProps ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+        {children}
+      </span>
       {resizable && (
         <span
           role="separator"
           aria-orientation="vertical"
           aria-label="Sütun genişliğini ayarla"
           title="Sürükleyerek genişlet/daralt — çift tıkla varsayılan"
-          onMouseDown={startResize}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            startResize(e);
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation();
             const label = fitLabel ?? colId;
@@ -366,7 +381,7 @@ export function TableColumnPicker({
             );
             })}
             <p className="mt-2 border-t border-slate-100 px-2 pt-2 text-[10px] leading-4 text-slate-400 dark:border-slate-700">
-              Sütun sırası: sürükle-bırak veya ok tuşları. Genişlik: başlık kenarından sürükleyin; çift tık satır içeriğine göre ayarlar.
+              Sütun sırası: tablo başlığından veya buradan sürükle-bırak. Genişlik: başlık kenarından sürükleyin; çift tık satır içeriğine göre ayarlar.
             </p>
             <button
               type="button"
@@ -383,7 +398,7 @@ export function TableColumnPicker({
 }
 
 export function tableCellStyle(width: number) {
-  return { width, minWidth: width };
+  return { width, minWidth: width, maxWidth: width };
 }
 
 // ── Panel tablo context (sütun göster/gizle + genişlik) ─────────────────────
@@ -394,6 +409,14 @@ export interface PanelTableColumnsValue {
   prefs: ReturnType<typeof useTableColumnPrefs>;
   widths: ReturnType<typeof useTableColumnWidths>;
   resetAll: () => void;
+  headerDragProps: (colId: string) => {
+    draggable: true;
+    onDragStart: () => void;
+    onDragOver: (e: DragEvent) => void;
+    onDrop: () => void;
+    onDragEnd: () => void;
+    className?: string;
+  };
 }
 
 const TableColumnsContext = createContext<PanelTableColumnsValue | null>(null);
@@ -401,13 +424,34 @@ const TableColumnsContext = createContext<PanelTableColumnsValue | null>(null);
 export function usePanelTableColumns(storageKey: string, columns: TableColumnDef[]) {
   const prefs = useTableColumnPrefs(storageKey, columns);
   const widths = useTableColumnWidths(storageKey, columns);
+  const [headerDragId, setHeaderDragId] = useState<string | null>(null);
   const resetAll = useCallback(() => {
     prefs.reset();
     widths.resetWidths();
   }, [prefs, widths]);
+
+  const headerDragProps = useCallback(
+    (colId: string) => ({
+      draggable: true as const,
+      onDragStart: () => setHeaderDragId(colId),
+      onDragOver: (e: DragEvent) => {
+        e.preventDefault();
+      },
+      onDrop: () => {
+        if (headerDragId && headerDragId !== colId) {
+          prefs.reorderColumn(headerDragId, colId);
+        }
+        setHeaderDragId(null);
+      },
+      onDragEnd: () => setHeaderDragId(null),
+      className: headerDragId === colId ? 'opacity-50' : undefined,
+    }),
+    [headerDragId, prefs],
+  );
+
   return useMemo(
-    () => ({ storageKey, columns, prefs, widths, resetAll }),
-    [storageKey, columns, prefs, widths, resetAll],
+    () => ({ storageKey, columns, prefs, widths, resetAll, headerDragProps }),
+    [storageKey, columns, prefs, widths, resetAll, headerDragProps],
   );
 }
 
@@ -450,15 +494,17 @@ interface PanelTableThProps {
   children: ReactNode;
   resizable?: boolean;
   fitSamples?: string[];
+  draggable?: boolean;
 }
 
-export function PanelTableTh({ colId, className = '', children, resizable = true, fitSamples }: PanelTableThProps) {
+export function PanelTableTh({ colId, className = '', children, resizable = true, fitSamples, draggable = true }: PanelTableThProps) {
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   if (!ctx) {
     return <th className={`text-center ${className}`}>{children}</th>;
   }
   const meta = colMeta(ctx, colId);
+  const dragProps = draggable ? ctx.headerDragProps(colId) : undefined;
   return (
     <ResizableTh
       colId={colId}
@@ -468,8 +514,9 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
       fitLabel={meta?.label}
       fitSamples={fitSamples}
       onResize={ctx.widths.setWidth}
-      className={className}
+      className={`${className} ${dragProps?.className ?? ''}`.trim()}
       resizable={resizable && meta?.resizable !== false}
+      dragProps={dragProps}
     >
       {children}
     </ResizableTh>
@@ -481,19 +528,29 @@ interface PanelTableTdProps {
   className?: string;
   children: ReactNode;
   title?: string;
+  /** Kurumsal tablo hizası — operasyon listelerinde varsayılan center */
+  align?: 'left' | 'center' | 'right';
 }
 
-export function PanelTableTd({ colId, className = '', children, title }: PanelTableTdProps) {
+export function PanelTableTd({ colId, className = '', children, title, align = 'left' }: PanelTableTdProps) {
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   const width = ctx?.widths.getWidth(colId);
+  const alignClass =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+  const innerClass =
+    align === 'center'
+      ? 'flex min-w-0 justify-center'
+      : align === 'right'
+        ? 'flex min-w-0 justify-end'
+        : 'min-w-0';
   return (
     <td
-      className={`max-w-0 overflow-hidden align-top ${className}`}
+      className={`max-w-0 overflow-hidden align-middle ${alignClass} ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >
-      <div className="min-w-0">{children}</div>
+      <div className={innerClass}>{children}</div>
     </td>
   );
 }
@@ -580,7 +637,8 @@ export function panelTableLayoutStyle(
       (sum, col) => sum + tableColumns.widths.getWidth(col.id),
       0,
     ) + leading + trailing;
-  return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${Math.max(total, 720)}px` };
+  const totalPx = Math.max(total, 720);
+  return { tableLayout: 'fixed' as const, width: `${totalPx}px`, minWidth: `${totalPx}px` };
 }
 
 interface PanelTableSummaryFootProps {

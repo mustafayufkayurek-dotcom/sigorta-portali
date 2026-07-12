@@ -10,6 +10,7 @@ import { SESSION_KEEPALIVE_MS } from '@/utils/api';
 import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
+import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
 import { LoadingScreen } from '@/components/ui/LoadingIndicator';
@@ -882,6 +883,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       }),
   );
   const router = useRouter();
+  const tryNavigateRef = useRef<(proceed: () => void, intent?: 'leave' | 'logout') => void>((proceed) => proceed());
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -1195,9 +1197,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   };
 
   const handleLogout = () => {
-    clearAuth();
-    sessionStorage.clear();
-    router.push('/giris');
+    tryNavigateRef.current(() => {
+      clearAuth();
+      sessionStorage.clear();
+      router.push('/giris');
+    }, 'logout');
   };
 
   const notifTypeColor = (type: string) => {
@@ -1364,6 +1368,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   return (
     <QueryClientProvider client={queryClient}>
       <PanelUserProvider user={user}>
+      <NavigationGuardProvider tryNavigateRef={tryNavigateRef}>
       <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
         <Navbar {...navbarProps} />
         <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -1465,6 +1470,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <SessionTimeoutBar />
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
+      </NavigationGuardProvider>
       </PanelUserProvider>
     </QueryClientProvider>
   );

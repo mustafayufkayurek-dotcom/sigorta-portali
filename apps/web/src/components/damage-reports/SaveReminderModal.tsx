@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 
 export type SaveReminderDetail = 'both' | 'fields' | 'items' | 'none';
 
+export type SaveReminderIntent = 'leave' | 'logout';
+
 const DEFAULT_COUNTDOWN = 20;
 
 function detailSuffix(detail: SaveReminderDetail): string {
@@ -45,6 +47,7 @@ function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
 
 export default function SaveReminderModal({
   open,
+  intent = 'leave',
   detail = 'none',
   saving = false,
   countdownSeconds = DEFAULT_COUNTDOWN,
@@ -53,6 +56,7 @@ export default function SaveReminderModal({
   onContinue,
 }: {
   open: boolean;
+  intent?: SaveReminderIntent;
   detail?: SaveReminderDetail;
   saving?: boolean;
   countdownSeconds?: number;
@@ -82,8 +86,14 @@ export default function SaveReminderModal({
 
   if (!open) return null;
 
+  const isLogout = intent === 'logout';
+  const discardLabel = isLogout ? 'Kaydetmeden Çıkış Yap' : 'Kaydetmeden Çık';
+  const bodyExtra = isLogout
+    ? ' Oturumu kapatmadan önce kaydetmenizi öneririz.'
+    : ' Yazımı tamamladıysanız kaydetmenizi öneririz.';
+
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-[70] p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-[90] p-4">
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200/80"
         role="dialog"
@@ -97,7 +107,7 @@ export default function SaveReminderModal({
               Kayıt Hatırlatması
             </p>
             <h3 id="save-reminder-title" className="text-base font-semibold text-white leading-snug">
-              Kaydetmeyi Unutmayın
+              {isLogout ? 'Çıkmadan Önce Kaydedin' : 'Kaydetmeyi Unutmayın'}
             </h3>
             <p className="text-xs text-slate-400 mt-1 tabular-nums">
               Otomatik kapanma: {secondsLeft} sn
@@ -107,7 +117,7 @@ export default function SaveReminderModal({
 
         <div className="px-5 py-4">
           <p id="save-reminder-desc" className="text-sm text-slate-600 leading-relaxed">
-            Raporda kaydedilmemiş değişiklikler var{detailSuffix(detail)}. Yazımı tamamladıysanız kaydetmenizi öneririz.
+            Raporda kaydedilmemiş değişiklikler var{detailSuffix(detail)}.{bodyExtra}
           </p>
         </div>
 
@@ -125,7 +135,7 @@ export default function SaveReminderModal({
             onClick={onDiscard}
             className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
           >
-            Kaydetmeden Çık
+            {discardLabel}
           </button>
           <button
             type="button"

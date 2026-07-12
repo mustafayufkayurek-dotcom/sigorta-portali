@@ -20,7 +20,7 @@ import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { fmtDate } from '@/utils/date-helpers';
-import { formatClaimSubjectLabel } from '@/utils/text-helpers';
+import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 
 
 const fmtAmount = (n: number | undefined | null) => {
@@ -116,7 +116,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 100 },
   { id: 'insured', label: 'Sigortalı', defaultWidth: 140, minWidth: 100 },
   { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
-  { id: 'subject', label: 'İhbar Konusu', defaultWidth: 140, minWidth: 100 },
+  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100 },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
@@ -183,6 +183,17 @@ function ClaimFilesPageContent() {
     '/claim-files/statuses',
   );
   const claimStatuses = useMemo(() => asList<ClaimStatus>(claimStatusesResponse), [claimStatusesResponse]);
+
+  const { data: dosyaKonusuResponse } = useApiQuery<unknown>(
+    ['dosya-konusu-catalog'],
+    '/system-settings/ihbar-konulari',
+  );
+  const dosyaKonusuCatalog = useMemo(() => {
+    const payload = (dosyaKonusuResponse as { data?: { hasar?: string[]; acil?: string[] } } | null)?.data
+      ?? (dosyaKonusuResponse as { hasar?: string[]; acil?: string[] } | null);
+    return [...(payload?.hasar ?? []), ...(payload?.acil ?? [])]
+      .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+  }, [dosyaKonusuResponse]);
 
   // URL status code → status filter (auto-select on first load)
   useEffect(() => {
@@ -474,7 +485,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
                   <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
                   <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th-center">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
                   <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
@@ -594,7 +605,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
                   <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
                   <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th-center">İhbar Konusu</PanelTableTh>
+                  <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
                   <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
@@ -638,8 +649,8 @@ function ClaimFilesPageContent() {
                         />
                       </PanelTableTd>
                       <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={formatClaimSubjectLabel(claim.lossType, claim.productBranch)}>
-                        {formatClaimSubjectLabel(claim.lossType, claim.productBranch)}
+                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                        {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
                       <PanelTableTd colId="status" className="table-td whitespace-nowrap">
                         <ClaimStatusBadge status={claim.currentStatus} />

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearAuth, ensureValidSession, getAccessToken, isRememberMeSession } from '@/utils/auth-session';
+import { useNavigationGuardOptional } from '@/contexts/NavigationGuardContext';
 import { API } from '@/utils/api';
 
 /** Beni Hatırla kapalı oturumlarda hareketsizlik süresi */
@@ -12,6 +13,7 @@ const ACTIVITY_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
 
 export default function SessionTimeoutBar() {
   const router = useRouter();
+  const navigationGuard = useNavigationGuardOptional();
   const rememberMe = isRememberMeSession();
   const [remainingMs, setRemainingMs] = useState(SESSION_DURATION_MS);
   const [visible, setVisible] = useState(false);
@@ -41,9 +43,16 @@ export default function SessionTimeoutBar() {
   }, [router]);
 
   const doLogout = useCallback(() => {
-    clearAuth({ preserveRememberedEmail: true });
-    router.push('/giris?reason=timeout');
-  }, [router]);
+    const proceed = () => {
+      clearAuth({ preserveRememberedEmail: true });
+      router.push('/giris?reason=timeout');
+    };
+    if (navigationGuard) {
+      navigationGuard.tryNavigate(proceed, 'logout');
+    } else {
+      proceed();
+    }
+  }, [router, navigationGuard]);
 
   useEffect(() => {
     if (rememberMe) return;

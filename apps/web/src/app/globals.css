@@ -155,6 +155,11 @@
   @apply px-4 py-3.5 text-sm text-slate-700 text-center align-middle;
 }
 
+/* Kurumsal tablo — durum/kategori pill'leri hücre ortasında */
+.table-td-center .badge {
+  @apply justify-center;
+}
+
 /* Sayfa Header */
 .page-header {
   @apply mb-5 flex flex-col items-stretch gap-3 sm:mb-7 sm:flex-row sm:items-start sm:justify-between sm:gap-4;

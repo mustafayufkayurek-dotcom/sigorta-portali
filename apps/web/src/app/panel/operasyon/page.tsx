@@ -16,9 +16,11 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
-import { formatDisplayLabel, resolveClaimIhbarKonusu, toTitleCaseTR } from '@/utils/text-helpers';
+import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
+import { API, authHeader } from '@/utils/api';
+import axios from 'axios';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +122,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'customer', label: 'Sigorta Şirketi', defaultWidth: 140, minWidth: 100 },
   { id: 'insured', label: 'Sigortalı Adı Soyadı', defaultWidth: 160, minWidth: 120 },
   { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
-  { id: 'subject', label: 'İhbar Konusu', defaultWidth: 160, minWidth: 100 },
+  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 160, minWidth: 100 },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
@@ -128,7 +130,9 @@ const TABLE_COLUMNS: TableColumnDef[] = [
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon-v2', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:operasyon-v3', TABLE_COLUMNS);
+
+  const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
   const [claims, setClaims] = useState<any[]>([]);
   const [claimsTotal, setClaimsTotal] = useState(0);
@@ -198,6 +202,15 @@ export default function OperasyonPage() {
     loadClaims();
     loadCases();
     loadStats();
+    axios
+      .get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() })
+      .then((res) => {
+        const payload = res.data?.data ?? res.data;
+        const names = [...(payload?.hasar ?? []), ...(payload?.acil ?? [])]
+          .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0);
+        setDosyaKonusuCatalog(names);
+      })
+      .catch(() => {});
   }, [loadClaims, loadCases, loadStats]);
 
   const emergencyOpenCount = cases.filter((c) => c.status !== 'FATURALANDILDI').length;
@@ -205,7 +218,7 @@ export default function OperasyonPage() {
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
     const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
-    const subject = resolveClaimIhbarKonusu(claim);
+    const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
     return {
       kind: 'hasar', id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
@@ -221,7 +234,8 @@ export default function OperasyonPage() {
     kind: 'acil', id: c.id, fileNo: c.caseNo,
     customerName: '—',
     insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
-    date: c.createdAt, subject: formatDisplayLabel(c.issueType ?? c.notes),
+    date: c.createdAt,
+    subject: resolveClaimDosyaKonusu({ lossType: c.issueType }, dosyaKonusuCatalog),
     statusCode: c.status,
     invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
     amount: null,
@@ -420,7 +434,7 @@ export default function OperasyonPage() {
                     <PanelTableTh
                       key={col.id}
                       colId={col.id}
-                      className="table-th"
+                      className="table-th-center"
                       fitSamples={columnFitSamples[col.id]}
                     >
                       {col.label}
@@ -445,11 +459,11 @@ export default function OperasyonPage() {
                       switch (col.id) {
                         case 'kind':
                           return (
-                            <PanelTableTd key={col.id} colId="kind" className="table-td whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="kind" align="center" className="table-td-center whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue">Hasar</span>
+                                <span className="badge badge-blue justify-center">Hasar</span>
                               ) : (
-                                <span className="badge badge-orange">
+                                <span className="badge badge-orange justify-center">
                                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                                   Acil
                                 </span>
@@ -458,19 +472,19 @@ export default function OperasyonPage() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" className="table-td font-mono font-semibold text-slate-800 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="fileNo" align="center" className="table-td-center font-mono font-semibold text-slate-800 whitespace-nowrap">
                               {row.fileNo}
                             </PanelTableTd>
                           );
                         case 'customer':
                           return (
-                            <PanelTableTd key={col.id} colId="customer" className="table-td whitespace-nowrap" title={row.customerName}>
+                            <PanelTableTd key={col.id} colId="customer" align="center" className="table-td-center whitespace-nowrap" title={row.customerName}>
                               {row.customerName}
                             </PanelTableTd>
                           );
                         case 'insured':
                           return (
-                            <PanelTableTd key={col.id} colId="insured" className="table-td whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                            <PanelTableTd key={col.id} colId="insured" align="center" className="table-td-center whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
                               {row.kind === 'hasar' ? (
                                 <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                   <InsuredNameInlineEdit
@@ -478,6 +492,7 @@ export default function OperasyonPage() {
                                     displayName={row.insuredName}
                                     onSaved={(insuredName) => patchClaimInsuredName(row.id, insuredName)}
                                     compact
+                                    align="center"
                                   />
                                 </div>
                               ) : (
@@ -487,23 +502,23 @@ export default function OperasyonPage() {
                           );
                         case 'date':
                           return (
-                            <PanelTableTd key={col.id} colId="date" className="table-td text-slate-400 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="date" align="center" className="table-td-center text-slate-400 whitespace-nowrap">
                               {fmtDate(row.date)}
                             </PanelTableTd>
                           );
                         case 'subject':
                           return (
-                            <PanelTableTd key={col.id} colId="subject" className="table-td text-slate-500 whitespace-nowrap" title={row.subject}>
+                            <PanelTableTd key={col.id} colId="subject" align="center" className="table-td-center text-slate-500 whitespace-nowrap" title={row.subject}>
                               {row.subject}
                             </PanelTableTd>
                           );
                         case 'status':
                           return (
-                            <PanelTableTd key={col.id} colId="status" className="table-td whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="status" align="center" className="table-td-center whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue">{row.statusLabel}</span>
+                                <span className="badge badge-blue justify-center">{row.statusLabel}</span>
                               ) : (
-                                <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
+                                <span className={`${EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'} justify-center`}>
                                   {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
                                 </span>
                               )}
@@ -511,15 +526,15 @@ export default function OperasyonPage() {
                           );
                         case 'invoice':
                           return (
-                            <PanelTableTd key={col.id} colId="invoice" className="table-td whitespace-nowrap">
-                              <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
+                            <PanelTableTd key={col.id} colId="invoice" align="center" className="table-td-center whitespace-nowrap">
+                              <span className={`${INVOICE_STATUS_COLORS[row.invoiceStatus]} justify-center`}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
                             </PanelTableTd>
                           );
                         case 'amount':
                           return (
-                            <PanelTableTd key={col.id} colId="amount" className="table-td whitespace-nowrap font-semibold">
+                            <PanelTableTd key={col.id} colId="amount" align="center" className="table-td-center whitespace-nowrap font-semibold tabular-nums">
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
@@ -535,28 +550,6 @@ export default function OperasyonPage() {
         )}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
           {filteredRows.length} dosya gösteriliyor &bull; Toplam {claimsTotal + cases.length} kayıt
-        </div>
-      </div>
-
-      {/* Hızlı Butonlar */}
-      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-5">
-        <div className="section-heading">
-          <span className="section-heading-bar" />
-          <span className="section-heading-text">Hızlı İşlemler</span>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/panel/hasar-dosyalari" className="btn-secondary">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            Tüm Hasar Dosyaları
-          </Link>
-          <Link href="/panel/acil-yardim" className="btn-secondary">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-            Tüm Acil Dosyaları
-          </Link>
-          <Link href="/panel/finans/faturalar" className="btn-secondary">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M7 7h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" /></svg>
-            Faturalar
-          </Link>
         </div>
       </div>
     </div>

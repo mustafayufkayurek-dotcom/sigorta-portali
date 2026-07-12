@@ -13,7 +13,6 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import ReportImageGallery from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
-import SaveReminderModal from '@/components/damage-reports/SaveReminderModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
@@ -41,6 +40,7 @@ import {
 } from '@/utils/repair-report-status';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
+import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 
 const ImageAnnotationEditor = dynamic(
   () => import('@/components/ImageAnnotationEditor'),
@@ -3352,6 +3352,7 @@ export default function RepairReportPage() {
   const { id: claimId, reportId } = useParams<{ id: string; reportId: string }>();
   const router = useRouter();
   const { showToast } = useToast();
+  const { registerGuard, tryNavigate, showSaveReminder, allowUnloadRef } = useNavigationGuard();
   const [confirmDialog, setConfirmDialog] = useState<{
     message: string;
     resolve: (value: boolean) => void;
@@ -3416,7 +3417,6 @@ export default function RepairReportPage() {
   const [dirtyItemCount, setDirtyItemCount] = useState(0);
   const [sessionSaveCount, setSessionSaveCount] = useState(0);
   const [sessionCancelCount, setSessionCancelCount] = useState(0);
-  const [showSaveReminderModal, setShowSaveReminderModal] = useState(false);
   const [writeElapsedLabel, setWriteElapsedLabel] = useState('');
   const lastWriteActivityRef = useRef<number>(Date.now());
   // Önerilen kalemler (şablon önerileri)
@@ -3606,20 +3606,21 @@ export default function RepairReportPage() {
       const hasPending = Object.keys(pendingFields).length > 0;
       const idleMs = Date.now() - lastWriteActivityRef.current;
       if (hasPending && idleMs >= 2 * 60 * 1000) {
-        setShowSaveReminderModal(true);
+        showSaveReminder();
         lastWriteActivityRef.current = Date.now();
       }
       const hasDirtyItems = dirtyItemCount > 0;
       if (!hasPending && hasDirtyItems && idleMs >= 3 * 60 * 1000) {
-        setShowSaveReminderModal(true);
+        showSaveReminder();
         lastWriteActivityRef.current = Date.now();
       }
     }, 30000);
     return () => window.clearInterval(interval);
-  }, [report?.status, pendingFields, dirtyItemCount]);
+  }, [report?.status, pendingFields, dirtyItemCount, showSaveReminder]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (allowUnloadRef.current) return;
       if (Object.keys(pendingFields).length > 0 || dirtyItemCount > 0) {
         e.preventDefault();
         e.returnValue = '';
@@ -3627,7 +3628,7 @@ export default function RepairReportPage() {
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [pendingFields, dirtyItemCount]);
+  }, [pendingFields, dirtyItemCount, allowUnloadRef]);
 
   useEffect(() => {
     if (!showShareMenu) return;
@@ -3930,6 +3931,13 @@ export default function RepairReportPage() {
 
   const hasUnsavedReportFields = Object.keys(pendingFields).length > 0;
 
+  const saveReminderDetail = useMemo(() => {
+    if (hasUnsavedReportFields && dirtyItemCount > 0) return 'both' as const;
+    if (hasUnsavedReportFields) return 'fields' as const;
+    if (dirtyItemCount > 0) return 'items' as const;
+    return 'none' as const;
+  }, [hasUnsavedReportFields, dirtyItemCount]);
+
   const handleCancelChanges = async () => {
     setSessionCancelCount((n) => n + 1);
     if (Object.keys(pendingFields).length === 0 && dirtyItemCount === 0) {
@@ -3966,6 +3974,20 @@ export default function RepairReportPage() {
     await load();
     requestAnimationFrame(() => { window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior }); });
   }, [load]);
+
+  useEffect(() => {
+    registerGuard({
+      hasUnsaved: () => Object.keys(pendingFields).length > 0 || dirtyItemCount > 0,
+      detail: saveReminderDetail,
+      saving,
+      onSave: handleSaveReport,
+      onDiscard: async () => {
+        setPendingFields({});
+        await loadKeepScroll();
+      },
+    });
+    return () => registerGuard(null);
+  }, [pendingFields, dirtyItemCount, saving, saveReminderDetail, registerGuard, handleSaveReport, loadKeepScroll]);
 
   const handleAddItem = async (itemData: any) => {
     const res = await axios.post(`${API}/repair-reports/${reportId}/items`, itemData, { headers: authHeader() });
@@ -4150,11 +4172,7 @@ export default function RepairReportPage() {
       <div className="space-y-3">
         <div className="flex items-start gap-3 flex-wrap">
           <button type="button" onClick={() => {
-            if (hasUnsavedReportFields || dirtyItemCount > 0) {
-              setShowSaveReminderModal(true);
-              return;
-            }
-            router.push(claimPath);
+            tryNavigate(() => router.push(claimPath), 'leave');
           }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -5425,29 +5443,6 @@ export default function RepairReportPage() {
           onConfirm={confirmRevise}
         />
       )}
-      <SaveReminderModal
-        open={showSaveReminderModal}
-        detail={
-          hasUnsavedReportFields && dirtyItemCount > 0
-            ? 'both'
-            : hasUnsavedReportFields
-              ? 'fields'
-              : dirtyItemCount > 0
-                ? 'items'
-                : 'none'
-        }
-        saving={saving}
-        onSave={() => {
-          setShowSaveReminderModal(false);
-          void handleSaveReport();
-        }}
-        onDiscard={() => {
-          setShowSaveReminderModal(false);
-          setPendingFields({});
-          router.push(claimPath);
-        }}
-        onContinue={() => setShowSaveReminderModal(false)}
-      />
       {confirmDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">

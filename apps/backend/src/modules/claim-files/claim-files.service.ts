@@ -22,6 +22,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
+import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konusu.helper';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
 
@@ -568,7 +569,7 @@ export class ClaimFilesService {
 
     // Domain Ayrıştırma: claimSubjectId tercih, departmentFileSubjectId backward-compat
     let claimSubjectId = rest.claimSubjectId ?? null;
-    const departmentFileSubjectId = rest.departmentFileSubjectId ?? null;
+    let departmentFileSubjectId = rest.departmentFileSubjectId ?? null;
     const departmentId = rest.departmentId ?? null;
 
     if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
@@ -651,6 +652,21 @@ export class ClaimFilesService {
         assignedOfficeUserId = resolved.officeUserId;
         if (!resolvedDepartmentId && resolved.departmentId) {
           resolvedDepartmentId = resolved.departmentId;
+        }
+      }
+
+      if (!departmentFileSubjectId && lossType !== 'Belirtilmemiş') {
+        const deptSubject = await resolveDepartmentFileSubjectByLabel(
+          this.prisma,
+          lossType,
+          resolvedDepartmentId,
+        );
+        if (deptSubject) {
+          departmentFileSubjectId = deptSubject.id;
+          lossType = deptSubject.name;
+          if (!claimSubjectId) {
+            claimSubjectId = await resolveClaimSubjectIdByLabel(this.prisma, lossType);
+          }
         }
       }
 
@@ -772,7 +788,7 @@ export class ClaimFilesService {
   }
 
   async update(id: string, data: any, requestingUser?: { id: string; roleCode?: string | null }) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
 
     if (data.financialVisibilityConfig !== undefined) {
       if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
@@ -799,6 +815,21 @@ export class ClaimFilesService {
     if (typeof data.insuredName === 'string') {
       const trimmed = data.insuredName.trim();
       data.insuredName = trimmed || null;
+    }
+
+    if (typeof data.lossType === 'string') {
+      data.lossType = sanitizeInboundLossType(data.lossType.trim());
+      if (!data.departmentFileSubjectId && data.lossType !== 'Belirtilmemiş') {
+        const deptSubject = await resolveDepartmentFileSubjectByLabel(
+          this.prisma,
+          data.lossType,
+          data.departmentId ?? (existing as { departmentId?: string | null }).departmentId ?? null,
+        );
+        if (deptSubject) {
+          data.departmentFileSubjectId = deptSubject.id;
+          data.lossType = deptSubject.name;
+        }
+      }
     }
 
     const updated = await this.prisma.claimFile.update({

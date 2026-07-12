@@ -144,25 +144,56 @@ export type ClaimIhbarKonusuSource = {
   departmentFileSubject?: { name?: string | null } | null;
 };
 
-/** İhbar konusu — canonical ayar konusu veya eşlenmiş hasar türü (ihbar notu değil) */
 export function resolveClaimIhbarKonusu(claim: ClaimIhbarKonusuSource): string {
-  const mappedLoss = mapInboundLossTypeToMeridyen(claim.lossType);
-  if (mappedLoss) return mappedLoss;
+  return resolveClaimDosyaKonusu(claim);
+}
 
-  const subjectRaw =
-    claim.claimSubject?.name?.trim()
-    || claim.departmentFileSubject?.name?.trim();
-  if (subjectRaw && !isInboundIhbarNoteText(subjectRaw)) {
-    const mappedSubject =
-      mapInboundLossTypeToMeridyen(subjectRaw)
-      ?? mapInboundCategoryKnown(subjectRaw);
-    if (mappedSubject) return mappedSubject;
-    if (subjectRaw.length <= 40 && !subjectRaw.includes('\n')) {
-      return formatDisplayLabel(subjectRaw);
+/**
+ * Dosya konusu — Ayarlar → Dosya Konuları kanonik adı öncelikli.
+ * Müşteri/personel hatalı serbest metin girmişse katalog veya terminoloji eşlemesiyle düzeltilir.
+ */
+export function resolveClaimDosyaKonusu(
+  claim: ClaimIhbarKonusuSource,
+  catalogNames?: string[],
+): string {
+  const deptName = claim.departmentFileSubject?.name?.trim();
+  if (deptName && !isInboundIhbarNoteText(deptName)) {
+    return matchCatalogName(deptName, catalogNames) ?? toTitleCaseTR(deptName);
+  }
+
+  const subjectName = claim.claimSubject?.name?.trim();
+  if (subjectName && !isInboundIhbarNoteText(subjectName)) {
+    return matchCatalogName(subjectName, catalogNames) ?? toTitleCaseTR(subjectName);
+  }
+
+  const lossRaw = claim.lossType?.trim();
+  if (lossRaw && !isInboundIhbarNoteText(lossRaw)) {
+    const fromCatalog = matchCatalogName(lossRaw, catalogNames);
+    if (fromCatalog) return fromCatalog;
+
+    const mapped =
+      mapInboundLossTypeToMeridyen(lossRaw)
+      ?? mapInboundCategoryKnown(lossRaw);
+    if (mapped) return mapped;
+
+    if (lossRaw.length <= 48 && !lossRaw.includes('\n')) {
+      return formatDisplayLabel(lossRaw);
     }
   }
 
   return '—';
+}
+
+function matchCatalogName(raw: string, catalogNames?: string[]): string | undefined {
+  if (!catalogNames?.length) return undefined;
+  const norm = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+  const key = norm(raw);
+  const codeKey = sanitizeCode(raw);
+  const hit = catalogNames.find((name) => {
+    const n = norm(name);
+    return n === key || sanitizeCode(name) === codeKey;
+  });
+  return hit ? toTitleCaseTR(hit) : undefined;
 }
 
 /** Hasar dosyası konu/branş etiketi — geriye dönük imza */
