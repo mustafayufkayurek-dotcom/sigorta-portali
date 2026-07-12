@@ -7,7 +7,17 @@ export const DEFAULT_ASSIGNMENT_TEMPLATE =
 export const TEMPLATE_TYPES = {
   SMS_ASSIGNMENT: 'sms_assignment',
   WHATSAPP_ASSIGNMENT: 'whatsapp_assignment',
+  WHATSAPP_VENDOR_ASSIGNMENT: 'whatsapp_vendor_assignment',
 } as const;
+
+const TEMPLATE_NAMES: Record<string, string> = {
+  [TEMPLATE_TYPES.SMS_ASSIGNMENT]: 'Atama SMS Şablonu',
+  [TEMPLATE_TYPES.WHATSAPP_ASSIGNMENT]: 'Atama WhatsApp Şablonu',
+  [TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT]: 'Tedarikçi Atama WhatsApp Şablonu',
+};
+
+const DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE =
+  'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.';
 
 @Injectable()
 export class MessageTemplateService {
@@ -25,12 +35,14 @@ export class MessageTemplateService {
     });
 
     if (!template) {
-      // İlk çalıştırmada varsayılan şablonu oluştur
+      const defaultContent = type === TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT
+        ? DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE
+        : DEFAULT_ASSIGNMENT_TEMPLATE;
       return this.prisma.messageTemplate.create({
         data: {
           type,
-          name: type === TEMPLATE_TYPES.SMS_ASSIGNMENT ? 'Atama SMS Şablonu' : 'Atama WhatsApp Şablonu',
-          content: DEFAULT_ASSIGNMENT_TEMPLATE,
+          name: TEMPLATE_NAMES[type] ?? 'Mesaj Şablonu',
+          content: defaultContent,
           isActive: true,
         },
       });
@@ -43,11 +55,14 @@ export class MessageTemplateService {
     const existing = await this.prisma.messageTemplate.findUnique({ where: { type } });
 
     if (!existing) {
+      const defaultContent = type === TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT
+        ? DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE
+        : DEFAULT_ASSIGNMENT_TEMPLATE;
       return this.prisma.messageTemplate.create({
         data: {
           type,
-          name: type === TEMPLATE_TYPES.SMS_ASSIGNMENT ? 'Atama SMS Şablonu' : 'Atama WhatsApp Şablonu',
-          content: data.content,
+          name: TEMPLATE_NAMES[type] ?? 'Mesaj Şablonu',
+          content: data.content || defaultContent,
           isActive: data.isActive ?? true,
         },
       });
@@ -72,12 +87,18 @@ export class MessageTemplateService {
       dosyaNo?: string;
       sirketAdi?: string;
       sirketTelefon?: string;
+      tedarikciAdi?: string;
+      isTanimi?: string;
+      hasarAdresi?: string;
     },
   ): string {
     return template
       .replace(/\{musteriAdi\}/g, vars.musteriAdi ?? '')
       .replace(/\{dosyaNo\}/g, vars.dosyaNo ?? '')
       .replace(/\{sirketAdi\}/g, vars.sirketAdi ?? '')
-      .replace(/\{sirketTelefon\}/g, vars.sirketTelefon ?? '');
+      .replace(/\{sirketTelefon\}/g, vars.sirketTelefon ?? '')
+      .replace(/\{tedarikciAdi\}/g, vars.tedarikciAdi ?? '')
+      .replace(/\{isTanimi\}/g, vars.isTanimi ?? '')
+      .replace(/\{hasarAdresi\}/g, vars.hasarAdresi ?? '');
   }
 }

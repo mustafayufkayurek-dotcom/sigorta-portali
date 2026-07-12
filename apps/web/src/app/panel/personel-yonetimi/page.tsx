@@ -330,7 +330,18 @@ const LEVEL_CONFIG: Record<EscalationLevel, { label: string; rowCls: string; bad
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type Tab = 'workload' | 'approvals' | 'rules' | 'assign' | 'overdue';
+type Tab = 'workload' | 'approvals' | 'rules' | 'assign' | 'overdue' | 'report-write';
+
+interface ReportWriteUserStat {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  sessionCount: number;
+  totalDurationSec: number;
+  avgDurationSec: number;
+  lastSessionAt: string;
+}
 
 const APPROVALS_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
@@ -397,6 +408,9 @@ export default function PersonelYonetimiPage() {
   const [approvingAll, setApprovingAll] = useState(false);
   const [approvalAction, setApprovalAction] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const [writeStats, setWriteStats] = useState<ReportWriteUserStat[]>([]);
+  const [writeStatsLoading, setWriteStatsLoading] = useState(false);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -466,6 +480,18 @@ export default function PersonelYonetimiPage() {
     }
   }, []);
 
+  const loadWriteStats = useCallback(async () => {
+    setWriteStatsLoading(true);
+    try {
+      const r = await axios.get(`${API}/repair-reports/write-analytics?days=30`, { headers: authHeader() });
+      setWriteStats(r.data.data?.byUser ?? []);
+    } catch {
+      setWriteStats([]);
+    } finally {
+      setWriteStatsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadWorkload();
     loadApprovals();
@@ -474,7 +500,8 @@ export default function PersonelYonetimiPage() {
   useEffect(() => {
     if (activeTab === 'rules') { loadRules(); loadJobGroups(); }
     if (activeTab === 'overdue') { loadOverdue(); }
-  }, [activeTab, loadRules, loadJobGroups, loadOverdue]);
+    if (activeTab === 'report-write') { loadWriteStats(); }
+  }, [activeTab, loadRules, loadJobGroups, loadOverdue, loadWriteStats]);
 
   // ── Search files for quick assign ───────────────────────────────────────────
 
@@ -649,6 +676,15 @@ export default function PersonelYonetimiPage() {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'report-write' as Tab,
+      label: 'Rapor Yazım Süresi',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6m3 6V7m3 10v-4" />
         </svg>
       ),
     },
@@ -1333,6 +1369,63 @@ export default function PersonelYonetimiPage() {
                 </TableColumnsProvider>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── TAB: Rapor Yazım Süresi ─────────────────────────────────────── */}
+        {activeTab === 'report-write' && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Onarım Raporu Yazım Süresi Analizi</p>
+                <p className="text-xs text-slate-500 mt-0.5">Son 30 gün — personel bazında ortalama süre</p>
+              </div>
+              <button type="button" onClick={loadWriteStats} className="btn-secondary text-xs">Yenile</button>
+            </div>
+            {writeStatsLoading ? (
+              <p className="text-sm text-slate-400 py-10 text-center">Yükleniyor...</p>
+            ) : writeStats.length === 0 ? (
+              <p className="text-sm text-slate-400 py-10 text-center">Henüz kayıtlı yazım oturumu yok.</p>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs font-semibold text-slate-500">
+                      <th className="px-4 py-3 text-left">Personel</th>
+                      <th className="px-4 py-3 text-center">Oturum</th>
+                      <th className="px-4 py-3 text-center">Ort. Süre</th>
+                      <th className="px-4 py-3 text-center">Toplam Süre</th>
+                      <th className="px-4 py-3 text-right">Son Oturum</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {writeStats.map((row) => (
+                      <tr key={row.userId} className="hover:bg-slate-50/60">
+                        <td className="px-4 py-3 font-medium text-slate-800">
+                          {row.firstName} {row.lastName}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums">{row.sessionCount}</td>
+                        <td className="px-4 py-3 text-center tabular-nums">
+                          {row.avgDurationSec >= 60
+                            ? `${Math.round(row.avgDurationSec / 60)} dk`
+                            : `${row.avgDurationSec} sn`}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums">
+                          {row.totalDurationSec >= 3600
+                            ? `${(row.totalDurationSec / 3600).toFixed(1)} sa`
+                            : row.totalDurationSec >= 60
+                              ? `${Math.round(row.totalDurationSec / 60)} dk`
+                              : `${row.totalDurationSec} sn`}
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs text-slate-500 tabular-nums">
+                          {new Date(row.lastSessionAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

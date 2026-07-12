@@ -1405,7 +1405,11 @@ export class ClaimFilesService {
   async assignSupplier(fileId: string, supplierId: string, actor: any, note?: string) {
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
-      include: { assignedSupplier: true },
+      include: {
+        assignedSupplier: true,
+        propertyAddress: true,
+        claimSubject: { select: { name: true } },
+      },
     });
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
 
@@ -1427,7 +1431,7 @@ export class ClaimFilesService {
 
     const updated = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
-      include: { assignedSupplier: true, currentStatus: true },
+      include: { assignedSupplier: true, currentStatus: true, propertyAddress: true },
     });
     if (!updated) throw new NotFoundException('Dosya bulunamadı.');
 
@@ -1457,7 +1461,36 @@ export class ClaimFilesService {
       }
     } catch {}
 
-    return updated;
+    let assignmentWhatsApp: { phone: string | null; message: string; url: string } | null = null;
+    if (this.templateService) {
+      try {
+        const template = await this.templateService.getByType(TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT);
+        if (template.isActive) {
+          const addr = file.propertyAddress;
+          const hasarAdresi = [
+            addr?.addressLine,
+            addr?.district,
+            addr?.city,
+          ].filter(Boolean).join(', ') || 'Adres dosyada tanımlı değil';
+          const message = this.templateService.interpolate(template.content, {
+            musteriAdi: file.insuredName?.trim() || '—',
+            dosyaNo: file.fileNo,
+            tedarikciAdi: vendor.name,
+            isTanimi: file.claimSubject?.name ?? file.lossType ?? 'Hasar Onarım',
+            hasarAdresi,
+          });
+          const phone = (vendor.authorizedPhone ?? vendor.phone ?? '').replace(/\D/g, '');
+          const url = phone
+            ? `https://wa.me/90${phone.replace(/^90/, '')}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/?text=${encodeURIComponent(message)}`;
+          assignmentWhatsApp = { phone: phone || null, message, url };
+        }
+      } catch (err: any) {
+        this.logger.warn(`[ClaimFiles] Tedarikçi WhatsApp şablonu: ${err?.message}`);
+      }
+    }
+
+    return { ...updated, assignmentWhatsApp };
   }
 
   async createFileAppointment(fileId: string, body: { scheduledDate: string; notes?: string }, actor: any) {

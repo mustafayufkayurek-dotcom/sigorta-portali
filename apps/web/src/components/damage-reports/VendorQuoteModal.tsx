@@ -95,7 +95,7 @@ export default function VendorQuoteModal({
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">Tedarikçi Karşılaştırma</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Tedarikçi Pazarlık</h3>
             {jobDescription && (
               <p className="text-xs text-slate-500 mt-0.5">{toTitleCaseTR(jobDescription)}</p>
             )}

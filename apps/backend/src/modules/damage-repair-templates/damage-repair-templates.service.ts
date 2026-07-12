@@ -97,6 +97,8 @@ export class DamageRepairTemplatesService {
 
   /** Şablon kaydı yoksa hasar türüne göre hızlı onarım kalemlerinden öneri üretir. */
   private async fallbackQuickRepairSuggestions(damageTypes: string[], damageSize?: string) {
+    const qtyForSize = (size?: string) => (size === 'SMALL' ? 1 : size === 'LARGE' ? 3 : 2);
+
     const templates = await this.prisma.damageTypeRepairTemplate.findMany({
       where: {
         damageType: { in: damageTypes },
@@ -106,8 +108,6 @@ export class DamageRepairTemplatesService {
       orderBy: [{ sortOrder: 'asc' }, { usageCount: 'desc' }],
       take: 40,
     });
-
-    const qtyForSize = (size?: string) => (size === 'SMALL' ? 1 : size === 'LARGE' ? 3 : 2);
 
     if (templates.length > 0) {
       return templates
@@ -132,13 +132,22 @@ export class DamageRepairTemplatesService {
       },
       select: { id: true },
     });
-    if (!workGroup) return [];
 
-    const subGroups = await this.prisma.workSubGroup.findMany({
-      where: { workGroupId: workGroup.id, status: 'active' },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      take: 40,
-    });
+    let subGroups = workGroup
+      ? await this.prisma.workSubGroup.findMany({
+          where: { workGroupId: workGroup.id, status: 'active' },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          take: 40,
+        })
+      : [];
+
+    if (subGroups.length === 0) {
+      subGroups = await this.prisma.workSubGroup.findMany({
+        where: { status: 'active' },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        take: 40,
+      });
+    }
 
     return subGroups.map((sg) => ({
       templateId: `fallback-${sg.id}`,

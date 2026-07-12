@@ -365,4 +365,32 @@ export class RepairReportsController {
     }
     return this.approvalContext.getReportApprovalContext(id);
   }
+
+  // ── Rapor yazım süresi (madde 39) ─────────────────────────────────────────
+
+  @Post('repair-reports/:id/write-session')
+  async upsertWriteSession(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { startedAt: string; claimFileId?: string },
+  ) {
+    const data = await this.service.upsertWriteSession(id, user.id, body);
+    return { data };
+  }
+
+  @Post('repair-reports/:id/write-session/close')
+  async closeWriteSession(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { endedAt?: string },
+  ) {
+    const data = await this.service.closeWriteSession(id, user.id, body.endedAt);
+    return { data };
+  }
+
+  @Get('repair-reports/write-analytics')
+  async getWriteAnalytics(@Query('days') days?: string) {
+    const data = await this.service.getWriteAnalytics({ days: days ? Number(days) : 30 });
+    return { data };
+  }
 }

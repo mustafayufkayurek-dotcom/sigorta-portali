@@ -16,6 +16,14 @@ const PLACEHOLDERS = [
   { key: '{sirketTelefon}', desc: 'Şirket telefon numarası' },
 ];
 
+const WHATSAPP_VENDOR_PLACEHOLDERS = [
+  { key: '{tedarikciAdi}', desc: 'Atanan tedarikçi adı' },
+  { key: '{dosyaNo}', desc: 'Hasar dosya numarası' },
+  { key: '{musteriAdi}', desc: 'Sigortalı adı' },
+  { key: '{isTanimi}', desc: 'İş / hasar konusu' },
+  { key: '{hasarAdresi}', desc: 'Hasar adresi' },
+];
+
 interface SmsTemplate {
   id: string;
   type: string;
@@ -55,6 +63,12 @@ export default function SmsBildirimleriPage() {
   const [testSuccess, setTestSuccess] = useState('');
   const [testError, setTestError] = useState('');
 
+  const [vendorWaContent, setVendorWaContent] = useState('');
+  const [vendorWaActive, setVendorWaActive] = useState(true);
+  const [vendorWaSaving, setVendorWaSaving] = useState(false);
+  const [vendorWaSaveOk, setVendorWaSaveOk] = useState(false);
+  const [vendorWaSaveErr, setVendorWaSaveErr] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -72,6 +86,21 @@ export default function SmsBildirimleriPage() {
         );
       } finally {
         setLoading(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/notifications/sms/templates/whatsapp_vendor_assignment`, {
+          headers: authHeader(),
+        });
+        const t: SmsTemplate = res.data;
+        setVendorWaContent(t.content);
+        setVendorWaActive(t.isActive);
+      } catch {
+        setVendorWaContent(
+          'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.',
+        );
       }
     })();
 
@@ -108,6 +137,28 @@ export default function SmsBildirimleriPage() {
       setSaveError(e.response?.data?.message ?? 'Kaydedilemedi.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveVendorWa = async () => {
+    if (!vendorWaContent.trim()) {
+      setVendorWaSaveErr('Şablon içeriği boş olamaz.');
+      return;
+    }
+    setVendorWaSaving(true);
+    setVendorWaSaveOk(false);
+    setVendorWaSaveErr('');
+    try {
+      await axios.patch(
+        `${API}/notifications/sms/templates/whatsapp_vendor_assignment`,
+        { content: vendorWaContent, isActive: vendorWaActive },
+        { headers: authHeader() },
+      );
+      setVendorWaSaveOk(true);
+    } catch (e: any) {
+      setVendorWaSaveErr(e.response?.data?.message ?? 'Kaydedilemedi.');
+    } finally {
+      setVendorWaSaving(false);
     }
   };
 
@@ -181,8 +232,8 @@ export default function SmsBildirimleriPage() {
 
   return (
     <SettingsPageLayout
-      title="SMS / Mesaj Bildirimleri"
-      description="Atama bildirim şablonları, test SMS ve gönderim geçmişi"
+      title="SMS / WhatsApp Bildirimleri"
+      description="Atama SMS, tedarikçi WhatsApp şablonları ve gönderim geçmişi"
     >
       <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3">
         <p className="text-sm text-slate-600">
@@ -289,6 +340,64 @@ export default function SmsBildirimleriPage() {
                 <span className="text-sm text-green-600 font-medium">Şablon kaydedildi.</span>
               )}
               {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+            </div>
+          </div>
+
+          {/* Tedarikçi Atama WhatsApp Şablonu */}
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
+            <div className="flex items-start justify-between mb-4 pb-3 border-b border-slate-50">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700">Tedarikçi Atama WhatsApp Şablonu</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Dosyaya tedarikçi atandığında zorunlu WhatsApp mesajı (Ayarlar → SMS Bildirimleri)
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs text-slate-500">Aktif</span>
+                <div
+                  onClick={() => setVendorWaActive((v) => !v)}
+                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${vendorWaActive ? 'bg-green-500' : 'bg-slate-200'}`}
+                >
+                  <div
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${vendorWaActive ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </div>
+              </label>
+            </div>
+            <textarea
+              rows={6}
+              className={`${inputCls} resize-none`}
+              value={vendorWaContent}
+              onChange={(e) => {
+                setVendorWaContent(e.target.value);
+                setVendorWaSaveOk(false);
+                setVendorWaSaveErr('');
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-3">
+              {WHATSAPP_VENDOR_PLACEHOLDERS.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setVendorWaContent((prev) => prev + p.key)}
+                  title={p.desc}
+                  className="text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full hover:bg-green-100 transition-colors font-mono"
+                >
+                  {p.key}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
+              <button
+                type="button"
+                onClick={handleSaveVendorWa}
+                disabled={vendorWaSaving}
+                className="bg-green-600 text-white text-sm px-6 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+              >
+                {vendorWaSaving ? 'Kaydediliyor...' : 'WhatsApp Şablonunu Kaydet'}
+              </button>
+              {vendorWaSaveOk && <span className="text-sm text-green-600 font-medium">Kaydedildi.</span>}
+              {vendorWaSaveErr && <span className="text-sm text-red-600">{vendorWaSaveErr}</span>}
             </div>
           </div>
 

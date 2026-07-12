@@ -332,6 +332,8 @@ function DosyadaKimlerVarCard({
   const [currentSupplier, setCurrentSupplier] = useState(claim.assignedSupplier);
 
   const [vendors, setVendors] = useState<any[]>([]);
+  const [vendorSuggestions, setVendorSuggestions] = useState<any[]>([]);
+  const [vendorSuggLoading, setVendorSuggLoading] = useState(false);
   const [inspectorVendors, setInspectorVendors] = useState<any[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [inspectorVendorsLoading, setInspectorVendorsLoading] = useState(false);
@@ -404,15 +406,35 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     if (!canAssign || activePanel !== 'supplier' || !claim?.id) return;
     setVendorsLoading(true);
-    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() })
-      .then((r) => setVendors(r.data.data ?? []))
+    setVendorSuggLoading(true);
+    const city = claim?.propertyAddress?.city ?? '';
+    Promise.all([
+      axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() }),
+      axios.get(`${API}/vendors/suggest?city=${encodeURIComponent(city)}`, { headers: authHeader() }),
+    ])
+      .then(([nearbyRes, suggestRes]) => {
+        const nearby = nearbyRes.data.data ?? [];
+        const suggested = suggestRes.data.data ?? [];
+        setVendors(nearby.length > 0 ? nearby : suggested);
+        setVendorSuggestions(suggested);
+      })
       .catch(() => {
         axios.get(`${API}/vendors?status=active&limit=50`, { headers: authHeader() })
-          .then((r2) => setVendors(r2.data.data?.vendors ?? r2.data.data ?? []))
-          .catch(() => setVendors([]));
+          .then((r2) => {
+            const list = r2.data.data?.vendors ?? r2.data.data ?? [];
+            setVendors(list);
+            setVendorSuggestions(list);
+          })
+          .catch(() => {
+            setVendors([]);
+            setVendorSuggestions([]);
+          });
       })
-      .finally(() => setVendorsLoading(false));
-  }, [canAssign, activePanel, claim?.id]);
+      .finally(() => {
+        setVendorsLoading(false);
+        setVendorSuggLoading(false);
+      });
+  }, [canAssign, activePanel, claim?.id, claim?.propertyAddress?.city]);
 
   useEffect(() => {
     if (!canAssign || activePanel !== 'field' || !claim?.id) return;
@@ -533,8 +555,12 @@ function DosyadaKimlerVarCard({
           supplierAssignedAt: updated?.supplierAssignedAt,
         });
       }
+      const wa = updated?.assignmentWhatsApp;
+      if (wa?.url) {
+        window.open(wa.url, '_blank', 'noopener,noreferrer');
+      }
       setActivePanel(null);
-      setAssignSuccess('Tedarikçi güncellendi.');
+      setAssignSuccess(wa?.url ? 'Tedarikçi güncellendi — WhatsApp şablonu açıldı.' : 'Tedarikçi güncellendi.');
     } catch (e: any) {
       setAssignError(e?.response?.data?.message ?? 'Tedarikçi atanamadı.');
     } finally {
@@ -848,7 +874,7 @@ function DosyadaKimlerVarCard({
           {regionLabel ? (
             <p className="text-[11px] text-slate-500 mb-3">Bölge: {regionLabel}</p>
           ) : null}
-          {vendorsLoading ? (
+          {vendorsLoading || vendorSuggLoading ? (
             <p className="text-xs text-slate-400">Tedarikçiler yükleniyor...</p>
           ) : vendors.length === 0 ? (
             <p className="text-xs text-slate-500">
@@ -858,6 +884,26 @@ function DosyadaKimlerVarCard({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {vendorSuggestions.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen Tedarikçiler (Maliyet / Kalite / Bölge)</p>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                    {vendorSuggestions.slice(0, 8).map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVendorId(v.id)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${selectedVendorId === v.id ? 'border-purple-400 bg-purple-100 text-purple-900' : 'border-slate-200 bg-white hover:border-purple-200'}`}
+                      >
+                        <span className="font-medium">{v.name}</span>
+                        {v.stats?.completedJobs != null && (
+                          <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
                 <select
                   className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"

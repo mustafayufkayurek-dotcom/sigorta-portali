@@ -1234,6 +1234,14 @@ function resolveMemorySupplierPrice(data: VendorQuoteData): string | null {
   return first?.unitPrice.trim() ?? null;
 }
 
+const VENDOR_PRICE_TOLERANCE = 0.15;
+
+function isVendorPriceWithinTolerance(entered: number, memoryPrice: number): boolean {
+  if (!memoryPrice || memoryPrice <= 0 || !entered || entered <= 0) return true;
+  const diff = Math.abs(entered - memoryPrice) / memoryPrice;
+  return diff <= VENDOR_PRICE_TOLERANCE;
+}
+
 function persistVendorMemoryFromRow(row: RowState) {
   if (!row.workGroupId || !row.jobDescription.trim()) return;
   const price = row.supplierUnitPrice?.trim();
@@ -1722,6 +1730,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       focusCell(rows.findIndex((r) => r._id === id), 'location');
       return;
     }
+
+    if (row.workGroupId && row.jobDescription.trim()) {
+      const stored = readVendorPriceMemory(row.workGroupId, row.jobDescription);
+      const memoryPriceRaw = stored ? resolveMemorySupplierPrice(stored) : null;
+      const memoryPrice = memoryPriceRaw ? parseFloat(memoryPriceRaw) : 0;
+      const entered = parseFloat(row.supplierUnitPrice || '0');
+      if (memoryPrice > 0 && entered > 0 && !isVendorPriceWithinTolerance(entered, memoryPrice)) {
+        const memLabel = memoryPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+        const ok = window.confirm(`Hafızadaki ${memLabel} TL — devam?`);
+        if (!ok) {
+          setVendorModalRowId(id);
+          return;
+        }
+      }
+    }
+
     addingDraftRef.current = { ...addingDraftRef.current, ...addingRow };
     setSavingId(id);
     try {
@@ -2717,7 +2741,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {isEditable && (
                 <td className="min-w-[108px] border-l border-slate-100 text-center px-1 py-1">
-                  <div className="flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-0.5">
                     <button
                       type="button"
                       tabIndex={-1}
@@ -2729,17 +2753,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                       ↵
                     </button>
-                    {viewMode === 'internal' && (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setVendorModalRowId('new')}
-                        className="w-full px-1 py-0.5 rounded text-[10px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 truncate max-w-[96px]"
-                        title="Tedarikçi fiyatlarını karşılaştır"
-                      >
-                        Tedarikçi
-                      </button>
-                    )}
                   </div>
                 </td>
               )}
@@ -2791,31 +2804,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     })()}
 
     {/* Tedarikçi Karşılaştırma Modal */}
-    {vendorModalRowId !== null && (() => {
-      if (vendorModalRowId === 'new') {
-        return (
-          <VendorQuoteModal
-            open
-            onClose={() => setVendorModalRowId(null)}
-            data={addingRow.vendorQuotes}
-            workGroupId={addingRow.workGroupId}
-            jobDescription={addingRow.jobDescription}
-            onChange={(next) => { setAddingRow((p) => ({ ...p, vendorQuotes: next })); setAddingDirty(true); }}
-            onApplyPrice={(price, vendorName) => {
-              setAddingRow((p) => ({
-                ...p,
-                supplierUnitPrice: price,
-                vendorQuotes: {
-                  ...p.vendorQuotes,
-                  preferredVendorName: vendorName.trim() ? normalizeLocationLabel(vendorName) : p.vendorQuotes.preferredVendorName,
-                },
-              }));
-              setAddingDirty(true);
-              setVendorModalRowId(null);
-            }}
-          />
-        );
-      }
+    {/* Tedarikçi pazarlık modalı (maliyet hafızası uyumsuzluğunda) */}
+    {vendorModalRowId !== null && vendorModalRowId !== 'new' && (() => {
       const activeRow = rows.find((r) => r._id === vendorModalRowId);
       if (!activeRow) return null;
       return (
@@ -3376,9 +3366,37 @@ export default function RepairReportPage() {
       claimFileId: claimId,
       startedAt,
       lastActivityAt: startedAt,
-      // Personel analitiği için ileride backend/BI tüketecek (B-21)
     }));
+    void axios.post(`${API}/repair-reports/${reportId}/write-session`, {
+      startedAt,
+      claimFileId: claimId,
+    }, { headers: authHeader() }).catch(() => {});
   }, [report, reportId, claimId]);
+
+  useEffect(() => {
+    if (!reportId) return;
+    const closeSession = () => {
+      try {
+        const raw = sessionStorage.getItem('report-write-started-at');
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { reportId?: string };
+        if (parsed.reportId !== reportId) return;
+        const endedAt = new Date().toISOString();
+        navigator.sendBeacon?.(
+          `${API}/repair-reports/${reportId}/write-session/close`,
+          new Blob([JSON.stringify({ endedAt })], { type: 'application/json' }),
+        );
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('beforeunload', closeSession);
+    return () => {
+      closeSession();
+      window.removeEventListener('beforeunload', closeSession);
+      void axios.post(`${API}/repair-reports/${reportId}/write-session/close`, {
+        endedAt: new Date().toISOString(),
+      }, { headers: authHeader() }).catch(() => {});
+    };
+  }, [reportId]);
 
   const touchWriteActivity = useCallback(() => {
     lastWriteActivityRef.current = Date.now();
@@ -3958,11 +3976,13 @@ export default function RepairReportPage() {
           {insuredName !== '—' && (
             <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
           )}
-          <p className="text-xs text-slate-400 mt-0.5">
-            {report.reportType === 'single' ? 'Tek Hasarlı' : report.reportType === 'emergency' ? 'Acil Yardım' : 'Çok Hasarlı'}
-            {' · '}
-            {fmtDateTime(report.reportDate ?? report.createdAt)}
-          </p>
+          {report.claimFile?.insuranceCompany?.name && (
+            <p className="text-xs text-slate-400 mt-0.5">
+              {report.claimFile.insuranceCompany.name}
+              {' · '}
+              {fmtDateTime(report.reportDate ?? report.createdAt)}
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 min-w-0 max-w-full">
           <div className="flex flex-wrap items-center justify-end gap-2">

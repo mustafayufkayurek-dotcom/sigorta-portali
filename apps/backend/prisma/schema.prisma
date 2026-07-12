@@ -199,6 +199,7 @@ model User {
   vendorDiscoverySessions  VendorDiscoverySession[]
   createdFieldSurveyBriefs FieldSurveyBrief[]
   activitySessions         ActivitySession[]
+  reportWriteSessions      ReportWriteSession[]
 
   // Operasyonel erişim izinleri (vekalet)
   operationalAccessGrantsAsGrantee   OperationalAccessGrant[] @relation("GranteeUser")
@@ -361,6 +362,7 @@ model ClaimFile {
   budgetVersions       BudgetVersion[]
   costEntries          CostEntry[]
   repairReports        RepairReport[]
+  reportWriteSessions  ReportWriteSession[]
   invoices             Invoice[]
   payments             Payment[]
   financialSummary     ClaimFinancialSummary?
@@ -1233,6 +1235,7 @@ model RepairReport {
   fileRevenues   ClaimFileRevenue[]
   // Tedarikçi Sözleşmeleri
   vendorContracts VendorContract[]
+  writeSessions   ReportWriteSession[]
 
   @@index([claimFileId])
   @@index([status])
@@ -1685,6 +1688,27 @@ model ActivitySession {
   @@unique([userId, sessionDate])
   @@index([sessionDate])
   @@map("activity_sessions")
+}
+
+model ReportWriteSession {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  reportId    String    @map("report_id")
+  claimFileId String    @map("claim_file_id")
+  startedAt   DateTime  @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  durationSec Int?      @map("duration_sec")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    RepairReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  claimFile ClaimFile    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([reportId])
+  @@index([startedAt])
+  @@map("report_write_sessions")
 }
 
 // ─── Müşteri Erişim Güvenlik Altyapısı ───────────────────────────────────────

@@ -1308,4 +1308,127 @@ export class RepairReportsService {
       this.logger.error(`Risk analysis failed for report ${reportId}: ${err}`);
     }
   }
+
+  // ─── Rapor Yazım Süresi Analitiği (madde 39) ─────────────────────────────
+
+  async upsertWriteSession(
+    reportId: string,
+    userId: string,
+    payload: { startedAt: string; claimFileId?: string },
+  ) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, claimFileId: true },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+
+    const startedAt = new Date(payload.startedAt);
+    const open = await this.prisma.reportWriteSession.findFirst({
+      where: { reportId, userId, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    if (open) {
+      return this.prisma.reportWriteSession.update({
+        where: { id: open.id },
+        data: { startedAt },
+      });
+    }
+
+    return this.prisma.reportWriteSession.create({
+      data: {
+        userId,
+        reportId,
+        claimFileId: payload.claimFileId ?? report.claimFileId,
+        startedAt,
+      },
+    });
+  }
+
+  async closeWriteSession(reportId: string, userId: string, endedAt?: string) {
+    const open = await this.prisma.reportWriteSession.findFirst({
+      where: { reportId, userId, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (!open) return null;
+
+    const end = endedAt ? new Date(endedAt) : new Date();
+    const durationSec = Math.max(0, Math.floor((end.getTime() - open.startedAt.getTime()) / 1000));
+
+    return this.prisma.reportWriteSession.update({
+      where: { id: open.id },
+      data: { endedAt: end, durationSec },
+    });
+  }
+
+  async getWriteAnalytics(query: { days?: number }) {
+    const days = query.days && query.days > 0 ? query.days : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const sessions = await this.prisma.reportWriteSession.findMany({
+      where: {
+        startedAt: { gte: since },
+        durationSec: { not: null },
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        report: { select: { id: true, reportNo: true, claimFileId: true } },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 500,
+    });
+
+    const byUser = new Map<string, {
+      userId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      sessionCount: number;
+      totalDurationSec: number;
+      avgDurationSec: number;
+      lastSessionAt: string;
+    }>();
+
+    for (const s of sessions) {
+      const key = s.userId;
+      const existing = byUser.get(key);
+      const dur = s.durationSec ?? 0;
+      if (!existing) {
+        byUser.set(key, {
+          userId: s.userId,
+          firstName: s.user.firstName,
+          lastName: s.user.lastName,
+          email: s.user.email,
+          sessionCount: 1,
+          totalDurationSec: dur,
+          avgDurationSec: dur,
+          lastSessionAt: s.startedAt.toISOString(),
+        });
+      } else {
+        existing.sessionCount += 1;
+        existing.totalDurationSec += dur;
+        existing.avgDurationSec = Math.round(existing.totalDurationSec / existing.sessionCount);
+        if (s.startedAt.toISOString() > existing.lastSessionAt) {
+          existing.lastSessionAt = s.startedAt.toISOString();
+        }
+      }
+    }
+
+    return {
+      days,
+      sessions: sessions.map((s) => ({
+        id: s.id,
+        userId: s.userId,
+        userName: `${s.user.firstName} ${s.user.lastName}`.trim(),
+        reportId: s.reportId,
+        reportNo: s.report.reportNo,
+        claimFileId: s.claimFileId,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        durationSec: s.durationSec,
+      })),
+      byUser: Array.from(byUser.values()).sort((a, b) => b.totalDurationSec - a.totalDurationSec),
+    };
+  }
 }
