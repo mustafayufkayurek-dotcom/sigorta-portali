@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { formatDisplayLabel } from '@/utils/text-helpers';
 
 export const DAMAGE_TYPE_OPTIONS = [
   { value: 'FIRE_HOME', label: 'Yangın-Konut' },
@@ -32,6 +33,97 @@ type Suggestion = {
 
 export type SelectedRepairItem = Suggestion & { quantity: number; note?: string };
 
+type SubGroupMeta = {
+  workGroupId: string;
+  workGroupName: string;
+  workGroupSortOrder: number;
+  subGroupName: string;
+  subGroupSortOrder: number;
+};
+
+type GroupedSubGroup = {
+  workSubGroupId: string;
+  subGroupName: string;
+  subGroupSortOrder: number;
+  items: Suggestion[];
+};
+
+type GroupedWorkGroup = {
+  workGroupId: string;
+  workGroupName: string;
+  workGroupSortOrder: number;
+  subGroups: GroupedSubGroup[];
+};
+
+const UNKNOWN_GROUP_ID = '__unknown__';
+
+function buildSubGroupLookup(workGroups: any[]): Map<string, SubGroupMeta> {
+  const map = new Map<string, SubGroupMeta>();
+  for (const wg of workGroups) {
+    for (const sg of wg.workSubGroups ?? []) {
+      map.set(sg.id, {
+        workGroupId: wg.id,
+        workGroupName: wg.name ?? '',
+        workGroupSortOrder: wg.sortOrder ?? 0,
+        subGroupName: sg.name ?? '',
+        subGroupSortOrder: sg.sortOrder ?? 0,
+      });
+    }
+  }
+  return map;
+}
+
+function groupSuggestions(items: Suggestion[], workGroups: any[]): GroupedWorkGroup[] {
+  const lookup = buildSubGroupLookup(workGroups);
+  const byWorkGroup = new Map<string, GroupedWorkGroup>();
+
+  for (const item of items) {
+    const meta = lookup.get(item.workSubGroupId);
+    const workGroupId = meta?.workGroupId ?? UNKNOWN_GROUP_ID;
+    const workGroupName = meta?.workGroupName ?? 'Diğer';
+    const workGroupSortOrder = meta?.workGroupSortOrder ?? 9999;
+    const subGroupName = meta?.subGroupName ?? item.name;
+    const subGroupSortOrder = meta?.subGroupSortOrder ?? 9999;
+
+    if (!byWorkGroup.has(workGroupId)) {
+      byWorkGroup.set(workGroupId, {
+        workGroupId,
+        workGroupName,
+        workGroupSortOrder,
+        subGroups: [],
+      });
+    }
+
+    const group = byWorkGroup.get(workGroupId)!;
+    let subGroup = group.subGroups.find((sg) => sg.workSubGroupId === item.workSubGroupId);
+    if (!subGroup) {
+      subGroup = {
+        workSubGroupId: item.workSubGroupId,
+        subGroupName,
+        subGroupSortOrder,
+        items: [],
+      };
+      group.subGroups.push(subGroup);
+    }
+    subGroup.items.push(item);
+  }
+
+  return Array.from(byWorkGroup.values())
+    .sort((a, b) => {
+      const orderDiff = a.workGroupSortOrder - b.workGroupSortOrder;
+      if (orderDiff !== 0) return orderDiff;
+      return a.workGroupName.localeCompare(b.workGroupName, 'tr-TR');
+    })
+    .map((group) => ({
+      ...group,
+      subGroups: [...group.subGroups].sort((a, b) => {
+        const orderDiff = a.subGroupSortOrder - b.subGroupSortOrder;
+        if (orderDiff !== 0) return orderDiff;
+        return a.subGroupName.localeCompare(b.subGroupName, 'tr-TR');
+      }),
+    }));
+}
+
 export function damageTypeLabel(value: string) {
   return DAMAGE_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value;
 }
@@ -40,12 +132,57 @@ export function damageSizeLabel(value: string) {
   return DAMAGE_SIZE_OPTIONS.find((option) => option.value === value)?.label ?? value;
 }
 
+function RepairItemRow({
+  item,
+  checked,
+  quantity,
+  note,
+  onToggle,
+  onQuantityChange,
+  onNoteChange,
+}: {
+  item: Suggestion;
+  checked: boolean;
+  quantity: number;
+  note: string;
+  onToggle: () => void;
+  onQuantityChange: (value: number) => void;
+  onNoteChange: (value: string) => void;
+}) {
+  return (
+    <div className={`grid gap-3 rounded-xl border p-3 md:grid-cols-[32px_1fr_90px_120px_1fr_110px] md:items-center ${checked ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 bg-slate-50'}`}>
+      <input type="checkbox" checked={checked} onChange={onToggle} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
+      <div>
+        <p className="text-sm font-semibold text-slate-800">{formatDisplayLabel(item.name)}</p>
+        <p className="text-xs text-slate-400">{item.code}</p>
+      </div>
+      <span className="text-xs font-medium text-slate-500">{item.unitType}</span>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={quantity}
+        onChange={(event) => onQuantityChange(Number(event.target.value))}
+        className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+      />
+      <input
+        value={note}
+        onChange={(event) => onNoteChange(event.target.value)}
+        placeholder="Opsiyonel not"
+        className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+      />
+      <span className="rounded-full bg-white px-2 py-1 text-center text-[11px] text-slate-500">{item.usageCount} kez kullanıldı</span>
+    </div>
+  );
+}
+
 export default function RepairItemsModal({
   open,
   damageTypes,
   damageSize,
   fileId,
   damageTypeLabels,
+  workGroups: workGroupsProp,
   onClose,
   onAdd,
 }: {
@@ -54,10 +191,12 @@ export default function RepairItemsModal({
   damageSize: string;
   fileId?: string;
   damageTypeLabels?: Record<string, string>;
+  workGroups?: any[];
   onClose: () => void;
   onAdd: (items: SelectedRepairItem[]) => Promise<void>;
 }) {
   const [items, setItems] = useState<Suggestion[]>([]);
+  const [workGroups, setWorkGroups] = useState<any[]>(workGroupsProp ?? []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -65,6 +204,17 @@ export default function RepairItemsModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (workGroupsProp?.length) {
+      setWorkGroups(workGroupsProp);
+      return;
+    }
+    axios.get(`${API}/work-groups`, { headers: authHeader() })
+      .then((res) => setWorkGroups(res.data.data ?? []))
+      .catch(() => setWorkGroups([]));
+  }, [open, workGroupsProp]);
 
   useEffect(() => {
     if (!open || damageTypes.length === 0) return;
@@ -90,9 +240,20 @@ export default function RepairItemsModal({
     return items.filter((item) => `${item.name} ${item.code}`.toLocaleLowerCase('tr-TR').includes(term));
   }, [items, search]);
 
+  const grouped = useMemo(() => groupSuggestions(filtered, workGroups), [filtered, workGroups]);
+
   if (!open) return null;
 
   const labelForType = (value: string) => damageTypeLabels?.[value] ?? damageTypeLabel(value);
+
+  const toggleItem = (workSubGroupId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(workSubGroupId)) next.delete(workSubGroupId);
+      else next.add(workSubGroupId);
+      return next;
+    });
+  };
 
   const handleAdd = async () => {
     const selectedItems = items
@@ -127,23 +288,37 @@ export default function RepairItemsModal({
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading ? <p className="py-10 text-center text-sm text-slate-400">Öneriler yükleniyor...</p> : error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p> : (
-            <div className="space-y-2">
-              {filtered.map((item) => {
-                const checked = selected.has(item.workSubGroupId);
-                return (
-                  <div key={item.workSubGroupId} className={`grid gap-3 rounded-xl border p-3 md:grid-cols-[32px_1fr_90px_120px_1fr_110px] md:items-center ${checked ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 bg-slate-50'}`}>
-                    <input type="checkbox" checked={checked} onChange={() => setSelected((prev) => { const next = new Set(prev); next.has(item.workSubGroupId) ? next.delete(item.workSubGroupId) : next.add(item.workSubGroupId); return next; })} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">{item.name}</p>
-                      <p className="text-xs text-slate-400">{item.code}</p>
-                    </div>
-                    <span className="text-xs font-medium text-slate-500">{item.unitType}</span>
-                    <input type="number" min="0" step="0.01" value={quantities[item.workSubGroupId] ?? 1} onChange={(event) => setQuantities((prev) => ({ ...prev, [item.workSubGroupId]: Number(event.target.value) }))} className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
-                    <input value={notes[item.workSubGroupId] ?? ''} onChange={(event) => setNotes((prev) => ({ ...prev, [item.workSubGroupId]: event.target.value }))} placeholder="Opsiyonel not" className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
-                    <span className="rounded-full bg-white px-2 py-1 text-center text-[11px] text-slate-500">{item.usageCount} kez kullanıldı</span>
+            <div className="space-y-6">
+              {grouped.map((group) => (
+                <section key={group.workGroupId}>
+                  <h4 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-1.5">
+                    {formatDisplayLabel(group.workGroupName)}
+                  </h4>
+                  <div className="mt-3 space-y-4">
+                    {group.subGroups.map((subGroup) => (
+                      <div key={subGroup.workSubGroupId}>
+                        <p className="text-xs font-medium text-slate-500 mb-2 pl-1">
+                          {formatDisplayLabel(subGroup.subGroupName)}
+                        </p>
+                        <div className="space-y-2">
+                          {subGroup.items.map((item) => (
+                            <RepairItemRow
+                              key={item.workSubGroupId}
+                              item={item}
+                              checked={selected.has(item.workSubGroupId)}
+                              quantity={quantities[item.workSubGroupId] ?? item.suggestedQuantity ?? 1}
+                              note={notes[item.workSubGroupId] ?? ''}
+                              onToggle={() => toggleItem(item.workSubGroupId)}
+                              onQuantityChange={(value) => setQuantities((prev) => ({ ...prev, [item.workSubGroupId]: value }))}
+                              onNoteChange={(value) => setNotes((prev) => ({ ...prev, [item.workSubGroupId]: value }))}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
+                </section>
+              ))}
               {filtered.length === 0 && <p className="py-10 text-center text-sm text-slate-400">Eşleşen kalem bulunamadı.</p>}
             </div>
           )}

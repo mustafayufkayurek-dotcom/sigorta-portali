@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { resolveFileExpertDisplay } from '@sigorta/shared';
@@ -50,11 +50,19 @@ export function resolveDosyaEksperi(claim: any, reportSummary?: any | null): str
 }
 
 export function resolveIhbarTarihi(claim: any): string {
-  if (claim.inboundReceivedAt) return fmtDate(claim.inboundReceivedAt);
-  if (claim.notificationDate) return fmtDate(claim.notificationDate);
-  if (claim.incidentDate) return fmtDate(claim.incidentDate);
-  if (claim.createdAt) return fmtDate(claim.createdAt);
+  if (claim?.inboundReceivedAt) return fmtDate(claim.inboundReceivedAt);
+  if (claim?.notificationDate) return fmtDate(claim.notificationDate);
   return '—';
+}
+
+function mergeClaimIhbarFields(claim: any, reportSummary?: any | null): any {
+  const fromReport = reportSummary?.claimFile;
+  if (!fromReport) return claim;
+  return {
+    ...claim,
+    inboundReceivedAt: claim.inboundReceivedAt ?? fromReport.inboundReceivedAt ?? null,
+    notificationDate: claim.notificationDate ?? fromReport.notificationDate ?? null,
+  };
 }
 
 function resolveHasarNedeni(claim: any, reportSummary: any | null): string {
@@ -227,13 +235,18 @@ export function DosyaBilgileriDetay({
     };
   }, [repairReportId]);
 
-  const fields = buildDosyaBilgileriFields(claim, reportSummary);
+  const effectiveClaim = useMemo(
+    () => mergeClaimIhbarFields(claim, reportSummary),
+    [claim, reportSummary],
+  );
+
+  const fields = buildDosyaBilgileriFields(effectiveClaim, reportSummary);
   const subtitleParts: string[] = [];
-  const hasarNedeni = resolveHasarNedeni(claim, reportSummary);
+  const hasarNedeni = resolveHasarNedeni(effectiveClaim, reportSummary);
   if (hasarNedeni !== '—') subtitleParts.push(hasarNedeni);
   const quickRepair = resolveQuickRepairSummary(reportSummary);
   if (quickRepair !== '—') subtitleParts.push(quickRepair);
-  const baseSubtitle = buildDosyaBilgileriSubtitle(claim, reportSummary);
+  const baseSubtitle = buildDosyaBilgileriSubtitle(effectiveClaim, reportSummary);
   if (baseSubtitle) subtitleParts.push(baseSubtitle);
   const subtitle = subtitleParts.join(' · ');
   const compactFields = fields.filter((field) => !field.wide);

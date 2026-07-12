@@ -5642,6 +5642,7 @@ export default function RepairReportPage() {
         damageSize={quickDamageSize}
         fileId={claimId}
         damageTypeLabels={quickDamageTypeLabels}
+        workGroups={workGroups}
         onClose={() => setShowQuickRepairModal(false)}
         onAdd={handleAddQuickRepairItems}
       />

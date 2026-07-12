@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v323-onarim-raporu-ux",
-  "description": "Onarım raporu sticky kalem tablosu, Dosya Bütçesi ortalama, İhbar Tarihi gelen kutu önceliği, Hızlı Onarım yan yana (v323); backend v319",
+  "label": "v324-onarim-hizli-grup-ihbar",
+  "description": "Hızlı Onarım Türü modal İş Grubu/Alt Grup gruplu liste, İhbar Tarihi gelen kutu önceliği düzeltmesi (v324); backend v319",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v319-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v323-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v324-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v322-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v323-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v303-amd64"
   },
   "mustPassSmokeRoutes": [
