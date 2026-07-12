@@ -1,12 +1,12 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v319-pazartesi-operasyon-backend-foto",
-  "description": "Web v319: Pazartesi toplantısı not odaklı sayfa, operasyon tablo estetiği. Backend v319: onarım raporu foto kategori (migration yok).",
+  "label": "v319-pazartesi-operasyon",
+  "description": "Pazartesi not odaklı sayfa, operasyon tablo estetiği, backend foto kategori",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v319-amd64",
+    "backend": "app-backend:dalga2-agreement-hr-01-v319-backend-foto-kategori-amd64",
     "web": "sigorta-web:dalga2-agreement-hr-01-v319-amd64"
   },
   "rollbackImages": {
