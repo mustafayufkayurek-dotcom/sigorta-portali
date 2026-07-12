@@ -1,8 +1,22 @@
 # Onarım Raporu — Bekleyen İş Kilidi (12 Temmuz 2026)
 
-**Canlı referans:** Web v290 · Rollback v289  
-**Deploy hedefi:** Web v291 (kod hazır, Mustafa PASS bekliyor)  
-**Kural:** Mustafa PASS olmadan «canlıda» denmez.
+**Canlı referans:** Web **v291** · Backend **v279** · Rollback web **v290** / backend **v278**  
+**Deploy hedefi:** Web v291 — **canlıya alındı** (12 Temmuz 2026 ~10:35 TR)  
+**Kural:** Mustafa PASS olmadan «kabul tamam» denmez.
+
+## Commit ve deploy durumu
+
+| Adım | Durum | Not |
+|------|--------|-----|
+| Git commit | ✅ | `c0fcd84` — fix(v291) Grup 1-11 |
+| Pre-deploy safety | ✅ | DB yedeği `pre_v291-onarim-raporu-kabul_20260712_102056.sql.gz` |
+| Image'lar | ✅ | `sigorta-web:…-v291-amd64`, `app-backend:…-v279-amd64` |
+| Nginx routing | ✅ | `verify-nginx-web` PASS |
+| Smoke (genel rotalar) | ✅ | Login hariç PASS (ortam kimlik bilgisi yok) |
+| Mustafa ekran PASS | ⏳ | Ctrl+Shift+R + footer **v291** + Grup 1-11 kontrol listesi |
+
+**Deploy komutu (kayıt):** `BACKEND_VERSION=v279 bash scripts/deploy-full-production.sh v291-onarim-raporu-kabul`  
+**Script çıkışı:** Yerel oturum ~20 dk sonra `exit 4` (log kesildi); sunucuda konteynerler healthy.
 
 ## Uygulama sırası (P0 → P2)
 
@@ -42,4 +56,4 @@
 
 - Dalga sonu: `panel-build-info.ts` → **v291** → web (+ backend claim `inboundReceivedAt`) → Mustafa footer doğrular
 - Tek commit mesajında madde numaraları
-- Backend: `claim-files findOne` minimal ekleme — deploy öncesi DB yedeği
+- Backend: `claim-files findOne` minimal ekleme — deploy öncesi DB yedeği (alındı)

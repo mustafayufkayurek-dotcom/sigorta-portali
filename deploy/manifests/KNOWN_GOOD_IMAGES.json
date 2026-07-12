@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v290-onarim-raporu-kabul-durumu",
-  "description": "Onarım raporu v290 + Mustafa kabul kaydı; Grup 1-5 durumu dokümante",
+  "label": "v291-onarim-raporu-grup11-kabul",
+  "description": "Onarım raporu Grup 1-11 düzeltmeleri; web v291 + backend v279 (ihbar/eksper/şablon)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v278-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v290-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v279-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v291-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v289-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v290-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v278-amd64"
   },
   "mustPassSmokeRoutes": [
