@@ -32,6 +32,8 @@ Dosya: `apps/web/src/app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/pag
 - [ ] Satır doldurulunca Kaydet/Geri Al hemen aktif (başka satıra geçmeye gerek yok)
 - [ ] İş Grubu seçip İş Tanımı seçmeden blur → satır geri alınmaz, Kaydet aktif kalır
 - [ ] Kaydet butonu tüm alanları (fiyat dahil) kaydeder
+- [ ] Son satır (+) kısmen dolu → Kaydet aktif; tıklanınca eksik alan uyarısı; alt bant Kaydet eksik satırı atlayıp devam eder
+- [ ] Tamamen boş son satır sessizce atlanır
 
 ## Yasaklar
 

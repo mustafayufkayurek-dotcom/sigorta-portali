@@ -1310,6 +1310,7 @@ function filterWorkGroupsByCategory(workGroups: any[], damageCategory: string): 
 export interface EditableItemsTableHandle {
   quickAddRow: () => Promise<void>;
   saveAllDirtyRows: () => Promise<void>;
+  prepareGlobalSave: () => Promise<void>;
   discardEmptyDraft: () => void;
   hasDirtyRows: () => boolean;
 }
@@ -1375,6 +1376,35 @@ function emptyRow(location = ''): RowState {
     salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId: '',
     pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {},
   };
+}
+
+function isRowPersistableFields(row: RowState) {
+  return Boolean(row.workGroupId && row.jobDescription.trim() && row.detectionScope.trim());
+}
+
+function isAddingRowMeaningfullyEmpty(row: RowState) {
+  const sales = parseFloat(row.salesUnitPrice || '0') || 0;
+  const supplier = parseFloat(row.supplierUnitPrice || '0') || 0;
+  return !row.detectionScope.trim()
+    && !row.location.trim()
+    && !row.workGroupId
+    && !row.jobDescription.trim()
+    && !row.description.trim()
+    && sales === 0
+    && supplier === 0;
+}
+
+function describeAddingRowGap(row: RowState): { message: string; focusCol: string } | null {
+  if (!row.detectionScope.trim()) {
+    return { message: 'Tespit Alanı zorunludur.', focusCol: 'detectionScope' };
+  }
+  if (!row.workGroupId) {
+    return { message: 'İş Grubu zorunludur.', focusCol: 'workGroup' };
+  }
+  if (!row.jobDescription.trim()) {
+    return { message: 'İş Tanımı zorunludur.', focusCol: 'jobDescription' };
+  }
+  return null;
 }
 
 function resolveMemorySupplierPrice(data: VendorQuoteData): string | null {
@@ -1863,8 +1893,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   };
 
-  const isRowPersistable = (row: RowState) =>
-    Boolean(row.workGroupId && row.jobDescription.trim() && row.detectionScope.trim());
+  const isRowPersistable = (row: RowState) => isRowPersistableFields(row);
 
   const saveRow = async (
     id: string,
@@ -1953,19 +1982,20 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, [rows, onSave]);
 
   const saveAddingRow = async () => {
-    if (!addingRow.workGroupId || !addingRow.jobDescription) return;
-    if (!addingRow.detectionScope.trim()) {
+    const draft = addingDraftRef.current;
+    if (!draft.workGroupId || !draft.jobDescription) return;
+    if (!draft.detectionScope.trim()) {
       notify('error', 'Tespit Alanı zorunludur.');
       focusCell('new', 'detectionScope');
       return;
     }
-    if (addingRow.location.trim() && !isValidLocationFormat(addingRow.location)) {
+    if (draft.location.trim() && !isValidLocationFormat(draft.location)) {
       notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
       focusCell('new', 'location');
       return;
     }
     setAddingSaving(true);
-    const draftSnapshot = { ...addingRow };
+    const draftSnapshot = { ...draft };
     addingDraftRef.current = draftSnapshot;
     const preservedLocation = draftSnapshot.location.trim()
       || rows[rows.length - 1]?.location?.trim()
@@ -2009,8 +2039,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   };
 
   const persistAddingRowIfNeeded = async (): Promise<string> => {
-    const carryLocation = addingRow.location;
-    if (!addingDirty || !addingRow.workGroupId || !addingRow.jobDescription.trim()) {
+    const draft = addingDraftRef.current;
+    const carryLocation = draft.location;
+    if (!addingDirty || !isRowPersistableFields(draft)) {
       return carryLocation;
     }
     await saveAddingRow();
@@ -2052,21 +2083,68 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   }, [isEditable, quickAdding, displayRows, addingRow, saveAllDirtyRows, persistAddingRowIfNeeded]);
 
-  const discardEmptyDraft = useCallback(() => {
-    if (addingRow.workGroupId || addingRow.jobDescription.trim()) return;
-    const preservedLocation = addingRow.location.trim();
+  const resetAddingDraft = useCallback((preservedLocation = '') => {
     const nextAddingRow = emptyRow(preservedLocation);
     addingDraftRef.current = nextAddingRow;
     setAddingRow(nextAddingRow);
     setAddingDirty(false);
-  }, [addingRow]);
+  }, []);
+
+  const explicitSaveAddingRow = async () => {
+    flushActiveCellEdits();
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    const draft = addingDraftRef.current;
+    if (isAddingRowMeaningfullyEmpty(draft)) return;
+    const gap = describeAddingRowGap(draft);
+    if (gap) {
+      notify('warning', `${gap.message} Satır kaydedilmedi.`);
+      focusCell('new', gap.focusCol);
+      return;
+    }
+    if (draft.location.trim() && !isValidLocationFormat(draft.location)) {
+      notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
+      focusCell('new', 'location');
+      return;
+    }
+    await saveAddingRow();
+  };
+
+  const prepareGlobalSave = useCallback(async () => {
+    flushActiveCellEdits();
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    const draft = addingDraftRef.current;
+    if (!addingDirty) return;
+    if (isAddingRowMeaningfullyEmpty(draft)) {
+      resetAddingDraft(draft.location.trim());
+      return;
+    }
+    if (isRowPersistableFields(draft)) {
+      await saveAddingRow();
+      return;
+    }
+    const gap = describeAddingRowGap(draft);
+    notify(
+      'warning',
+      gap
+        ? `Son satır eksik (${gap.message.replace(/\.$/, '')}). Bu satır kaydedilmedi; diğer kayıtlar devam ediyor.`
+        : 'Son satır eksik bırakıldı. Bu satır kaydedilmedi; diğer kayıtlar devam ediyor.',
+    );
+    resetAddingDraft(draft.location.trim());
+  }, [addingDirty, notify, resetAddingDraft]);
+
+  const discardEmptyDraft = useCallback(() => {
+    const draft = addingDraftRef.current;
+    if (!isAddingRowMeaningfullyEmpty(draft)) return;
+    resetAddingDraft(draft.location.trim());
+  }, [resetAddingDraft]);
 
   useImperativeHandle(ref, () => ({
     quickAddRow,
     saveAllDirtyRows,
+    prepareGlobalSave,
     discardEmptyDraft,
-    hasDirtyRows: () => rows.some((r) => r._isDirty),
-  }), [quickAddRow, saveAllDirtyRows, discardEmptyDraft, rows]);
+    hasDirtyRows: () => rows.some((r) => r._isDirty) || addingDirty,
+  }), [quickAddRow, saveAllDirtyRows, prepareGlobalSave, discardEmptyDraft, rows, addingDirty]);
 
 
   const COLS = ['damageCategory', 'detectionScope', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
@@ -2162,7 +2240,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       if (rowIdx === 'new') {
-        if (addingDirty) void saveAddingRow();
+        void explicitSaveAddingRow();
         return;
       }
       if (rowId) explicitSaveRow(rowId);
@@ -2172,9 +2250,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if (e.key === 'Enter') {
       e.preventDefault();
       if (rowIdx === 'new') {
-        const canSave = addingDirty && addingRow.workGroupId && addingRow.jobDescription.trim();
+        const canSave = addingDirty;
         if (canSave && colIdx === editableCOLS.length - 1) {
-          void saveAddingRow();
+          void explicitSaveAddingRow();
           return;
         }
       }
@@ -2925,8 +3003,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     <button
                       type="button"
                       tabIndex={-1}
-                      disabled={addingSaving || !addingDirty || !addingRow.workGroupId || !addingRow.jobDescription.trim()}
-                      onClick={() => void saveAddingRow()}
+                      disabled={addingSaving || !addingDirty}
+                      onClick={() => void explicitSaveAddingRow()}
                       className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
                       title="Satırı Kaydet (Ctrl+Enter)"
                     >
@@ -4016,7 +4094,7 @@ export default function RepairReportPage() {
     setFindingsError(null);
     setSaving(true);
     try {
-      itemsTableRef.current?.discardEmptyDraft();
+      await itemsTableRef.current?.prepareGlobalSave();
       await itemsTableRef.current?.saveAllDirtyRows();
       if (Object.keys(pendingFields).length > 0) {
         await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
