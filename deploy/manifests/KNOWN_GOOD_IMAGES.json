@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v324-onarim-hizli-grup-ihbar",
-  "description": "Hızlı Onarım Türü modal İş Grubu/Alt Grup gruplu liste, İhbar Tarihi gelen kutu önceliği düzeltmesi (v324); backend v319",
+  "label": "v324-onarim-hizli-grup-ihbar-revizyon",
+  "description": "Hızlı Onarım Türü modal gruplu liste, İhbar Tarihi gelen kutu, Revizyon Geçmişi kırmızı bağlayıcı çizgi (v324); backend v319",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",

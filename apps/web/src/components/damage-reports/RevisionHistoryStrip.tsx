@@ -91,32 +91,25 @@ export function RevisionHistoryStrip({
         ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
         : 'border-slate-300 bg-white text-slate-700';
 
-  const segmentTone = (item: RevHistoryItem) =>
-    item.status === 'revision'
-      ? 'bg-amber-400'
-      : item.status === 'approved'
-        ? 'bg-emerald-500'
-        : 'bg-slate-300';
-
+  const connectorTone = 'bg-red-500';
   const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
   const connectorWidth = compact ? 'w-8 sm:w-12' : 'w-12 sm:w-16';
-  const nodeRadiusPx = compact ? 12 : 16;
+  const stemWidth = compact ? 'w-5 sm:w-7' : 'w-7 sm:w-10';
 
   const timeline = (
     <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
       <div className="relative inline-flex min-w-full items-center py-1">
-        {items.length > 1 && (
-          <div
-            className="pointer-events-none absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-slate-200"
-            style={{ left: nodeRadiusPx, right: nodeRadiusPx }}
-            aria-hidden
-          />
-        )}
         {items.map((item, idx) => (
           <div key={item.id} className="flex shrink-0 items-center">
+            {idx === 0 && (
+              <div
+                className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
+                aria-hidden
+              />
+            )}
             {idx > 0 && (
               <div
-                className={`relative z-0 h-0.5 shrink-0 ${connectorWidth} ${segmentTone(items[idx - 1])}`}
+                className={`relative z-0 h-0.5 shrink-0 rounded-full ${connectorWidth} ${connectorTone}`}
                 aria-hidden
               />
             )}
@@ -135,6 +128,12 @@ export function RevisionHistoryStrip({
                 </span>
               )}
             </div>
+            {idx === items.length - 1 && (
+              <div
+                className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
+                aria-hidden
+              />
+            )}
           </div>
         ))}
       </div>
