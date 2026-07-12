@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v295-onarim-raporu-ux-11",
-  "description": "Onarım raporu UX 11 madde; web v295 + backend v282",
+  "label": "v299-alt-bant-acik-ton",
+  "description": "Onarım raporu alt bant açık kurumsal ton; web v299 + backend v282",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v282-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v295-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v299-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v294-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v298-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v281-amd64"
   },
   "mustPassSmokeRoutes": [
