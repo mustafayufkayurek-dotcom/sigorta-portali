@@ -3958,22 +3958,27 @@ export default function RepairReportPage() {
             {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto shrink-0">
-          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
-            {repairReportStatusLabel(report.status)}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-            Satış {fmtCurrencyCompact(report.totalSalesAmount)}
-          </span>
-          <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-            Kâr {fmtCurrencyCompact(report.grossProfit)}
-          </span>
-          {report.versionNo > 1 && (
-            <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
-          )}
-          {pendingInsurancePortalApproval && (
-            <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
-          )}
+        <div className="flex flex-col items-end gap-1.5 ml-auto shrink-0 min-w-0 max-w-full">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
+              {repairReportStatusLabel(report.status)}
+            </span>
+            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+              Satış {fmtCurrencyCompact(report.totalSalesAmount)}
+            </span>
+            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+              Kâr {fmtCurrencyCompact(report.grossProfit)}
+            </span>
+            {report.versionNo > 1 && (
+              <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
+            )}
+            {pendingInsurancePortalApproval && (
+              <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
+            )}
+          </div>
+          <div className="w-full max-w-sm">
+            <RevisionHistoryStrip reportId={reportId as string} compact />
+          </div>
         </div>
         <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap relative z-10 sm:ml-auto">
           {/* İş akışı */}
@@ -4163,9 +4168,6 @@ export default function RepairReportPage() {
               <p className="text-sm font-medium text-slate-800">{f.value ?? '—'}</p>
             </div>
           ))}
-        </div>
-      <div className="mt-4">
-          <RevisionHistoryStrip reportId={reportId as string} embedded compact />
         </div>
         {report.reportType === 'multi' && (
           <div className="mt-4 pt-4 border-t border-slate-100">

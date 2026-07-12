@@ -28,7 +28,7 @@
 | P1 | 1 Üst bant (dosya no, sigortalı, RPT kaldır, rozetler) | UI | ✅ `DosyaSayfaUstu` + rapor header |
 | P1 | 22 Tab → yeni satır; boş satır silme | Akış | ✅ Tab son kolon → yeni satır; `discardEmptyDraft` |
 | P1 | 15 Alt bant buton sağa | UI | ✅ grid `justify-end` (acil + ana) |
-| P1 | 19/41 Revizyon çubuk+nokta yatay, Dosya Bilgileri | UI | ✅ `RevisionHistoryStrip` nokta timeline |
+| P1 | 19/41 Revizyon çubuk+nokta, sağ üst (Taslak/Satış/Kâr altı) | UI | ✅ v292 `RevisionHistoryStrip` — Dosya Bilgileri'nden kaldırıldı |
 | P1 | 5 Hızlı onarım kalemleri listesi | Veri/seed | ✅ fallback hasar türü şablon sorgusu |
 | P2 | 2 ek, 18 ek, 28 ek sticky header | UI | ⏳ |
 | P2 | 30 ek «Tespit Alanı» başlık + zorunlu | UI | ⏳ |

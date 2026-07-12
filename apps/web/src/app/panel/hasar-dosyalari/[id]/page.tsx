@@ -28,6 +28,7 @@ import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBrief
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
+import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -225,23 +226,30 @@ function DosyaSayfaUstu({
           {subInfo && <p className="text-xs text-slate-500 mt-0.5">{subInfo}</p>}
         </div>
         {latestReport && (
-          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 ml-auto">
-            <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
-              {repairReportStatusLabel(latestReport.status)}
-            </span>
-            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-              Satış {fmtCurrencyCompact(latestReport.totalSalesAmount)}
-            </span>
-            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-              Kâr {fmtCurrencyCompact(latestReport.grossProfit)}
-            </span>
-            {reportEditHref && (
-              <Link
-                href={reportEditHref}
-                className="text-xs font-medium text-amber-800 hover:underline whitespace-nowrap"
-              >
-                Rapora Git →
-              </Link>
+          <div className="flex flex-col items-end gap-1.5 shrink-0 ml-auto min-w-0 max-w-full">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
+                {repairReportStatusLabel(latestReport.status)}
+              </span>
+              <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                Satış {fmtCurrencyCompact(latestReport.totalSalesAmount)}
+              </span>
+              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+                Kâr {fmtCurrencyCompact(latestReport.grossProfit)}
+              </span>
+              {reportEditHref && (
+                <Link
+                  href={reportEditHref}
+                  className="text-xs font-medium text-amber-800 hover:underline whitespace-nowrap"
+                >
+                  Rapora Git →
+                </Link>
+              )}
+            </div>
+            {latestReport.id && (
+              <div className="w-full max-w-sm">
+                <RevisionHistoryStrip reportId={latestReport.id} compact />
+              </div>
             )}
           </div>
         )}

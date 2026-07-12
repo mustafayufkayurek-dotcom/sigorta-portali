@@ -57,7 +57,7 @@
 | 17 | **YAPILMIŞ** | Dosya Bütçesi; Dahili kalktı |
 | 18 | **YAPILMIŞ** | Tedarikçi kıyaslama |
 | 18 ek | **YENİ TALEP** | Dosya Bütçesi başlık/satır/Genel Toplam ortalı |
-| 19 | **KISMEN** | Revizyon modal var; çubuk+nokta + Dosya Bilgileri konumu eksik |
+| 19 | **YENİ TALEP UYGULANDI (v292)** | Çubuk+nokta şerit; sağ üst Taslak/Satış/Kâr rozetlerinin **altında**; Dosya Bilgileri'nden kaldırıldı — Mustafa PASS |
 | 20 | **OLMAMIŞ** | = 14, Dosya Bilgileri eksper |
 
 ---
@@ -123,7 +123,7 @@
 
 | # | Durum | Not |
 |---|--------|-----|
-| 41 | **YAPILMIŞ** | Revizyon geçmişi Dosya Bilgileri'nde; sayfa yenileme davranışı düzeltildi (v291 kodunda) |
+| 41 | **YENİ TALEP UYGULANDI (v292)** | Revizyon geçmişi sağ üst (rozetler altı); sayfa yenileme düzeltildi — Mustafa PASS |
 
 ---
 
@@ -133,7 +133,7 @@ Mustafa geri bildirimi Grup 1–11 bitti.
 
 ### Güncel kalan liste (YAPILMIŞ çıkarıldı)
 
-**Deploy sonrası sizden PASS istenecek (v291 kodunda):** 1, 5, 10, 14, 15, 19, 20, 21, 22, 41
+**Deploy sonrası sizden PASS istenecek:** 1, 5, 10, 14, 15, 20, 21, 22 (v291) · **19, 41** (v292 revizyon yerleşimi)
 
 **Henüz kodlanmayan / ek talep:** 2 ek, 18 ek, 26, 28 ek, 30 ek, 33, 38 ek
 
@@ -143,6 +143,6 @@ Mustafa geri bildirimi Grup 1–11 bitti.
 
 ## Deploy notu (12 Temmuz 2026)
 
-- **Canlı şimdi:** Web v290
-- **Kod hazır, commit/deploy bekliyor:** Web v291 (+ backend ihbar tarihi minimal)
-- **Rollback:** v290
+- **Canlı:** Web **v291** · Backend **v279**
+- **Repoda hazır, deploy bekliyor:** Web **v292** (revizyon geçmişi sağ üst)
+- **Rollback:** Web v291 · Backend v278

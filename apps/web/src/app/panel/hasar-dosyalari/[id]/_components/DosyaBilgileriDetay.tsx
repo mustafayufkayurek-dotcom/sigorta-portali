@@ -7,7 +7,6 @@ import { resolveFileExpertDisplay } from '@sigorta/shared';
 import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
-import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import {
   damageSizeLabel,
   damageTypeLabel,
@@ -284,16 +283,6 @@ export function DosyaBilgileriDetay({
                   <p className="text-xs font-medium text-slate-800 mt-0.5">{field.value}</p>
                 </div>
               ))}
-              {repairReportId && (
-                <div className="col-span-2 sm:col-span-3 lg:col-span-5 border-t border-slate-100/80 pt-2 mt-1">
-                  <RevisionHistoryStrip reportId={repairReportId} embedded compact />
-                </div>
-              )}
-            </div>
-          )}
-          {!compactFields.length && repairReportId && (
-            <div className="pt-3">
-              <RevisionHistoryStrip reportId={repairReportId} embedded compact />
             </div>
           )}
           {wideFields.length > 0 && (

@@ -98,6 +98,9 @@ export function RevisionHistoryStrip({
         ? 'bg-green-400'
         : 'bg-slate-300';
 
+  const dotSize = compact ? 'h-5 w-5 text-[9px]' : 'h-7 w-7 text-[10px]';
+  const lineWidth = compact ? 'w-5 sm:w-8' : 'w-8 sm:w-12';
+
   const timeline = (
     <div className="flex items-center min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
       {items.map((item, idx) => (
@@ -107,7 +110,7 @@ export function RevisionHistoryStrip({
             title={[statusLabel(item), item.requestedBy, item.requestedAt ? fmtD(item.requestedAt) : ''].filter(Boolean).join(' · ')}
           >
             <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums ${dotTone(item)}`}
+              className={`flex items-center justify-center rounded-full border-2 font-bold tabular-nums ${dotSize} ${dotTone(item)}`}
             >
               {item.version ?? idx + 1}
             </div>
@@ -119,7 +122,7 @@ export function RevisionHistoryStrip({
           </div>
           {idx < items.length - 1 && (
             <span
-              className={`mx-1 h-0.5 w-8 sm:w-12 rounded-full ${lineTone(item)}`}
+              className={`mx-0.5 h-0.5 rounded-full ${lineWidth} ${lineTone(item)}`}
               aria-hidden
             />
           )}
@@ -130,9 +133,9 @@ export function RevisionHistoryStrip({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2 min-w-0">
-        <p className="text-[11px] text-slate-400 shrink-0">Revizyon Geçmişi</p>
-        <div className="flex-1 min-w-0">{timeline}</div>
+      <div className="flex items-center gap-1.5 min-w-0 justify-end">
+        <p className="text-[10px] text-slate-400 shrink-0">Revizyon Geçmişi</p>
+        <div className="min-w-0 max-w-[200px]">{timeline}</div>
         <a
           href={`/panel/revizyon-talepleri?reportId=${reportId}`}
           className="text-[10px] text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
