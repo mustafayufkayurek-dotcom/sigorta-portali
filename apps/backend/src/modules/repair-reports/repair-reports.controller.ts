@@ -260,6 +260,14 @@ export class RepairReportsController {
     return this.service.deleteImage(id);
   }
 
+  @Get('report-images/:id/file')
+  async streamImageFile(@Param('id') id: string, @Res() res: Response) {
+    const { filePath, mimeType } = await this.service.streamImageFile(id);
+    res.set('Content-Type', mimeType);
+    res.set('Cache-Control', 'private, max-age=3600');
+    require('fs').createReadStream(filePath).pipe(res);
+  }
+
   // ── WhatsApp Download Token ───────────────────────────────────────────────
 
   @Post('repair-reports/:id/download-token')

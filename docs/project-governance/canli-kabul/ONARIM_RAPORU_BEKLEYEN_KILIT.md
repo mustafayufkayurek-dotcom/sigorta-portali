@@ -1,22 +1,23 @@
 # Onarım Raporu — Bekleyen İş Kilidi (12 Temmuz 2026)
 
-**Canlı referans:** Web **v291** · Backend **v279** · Rollback web **v290** / backend **v278**  
-**Deploy hedefi:** Web v291 — **canlıya alındı** (12 Temmuz 2026 ~10:35 TR)  
+**Canlı referans:** Web **v292** · Backend **v279** · Rollback web **v291** / backend **v278**  
+**Deploy hedefi:** Web v292 — **canlıya alındı** (12 Temmuz 2026 ~11:09 TR, web-only)  
 **Kural:** Mustafa PASS olmadan «kabul tamam» denmez.
 
 ## Commit ve deploy durumu
 
 | Adım | Durum | Not |
 |------|--------|-----|
-| Git commit | ✅ | `c0fcd84` — fix(v291) Grup 1-11 |
-| Pre-deploy safety | ✅ | DB yedeği `pre_v291-onarim-raporu-kabul_20260712_102056.sql.gz` |
-| Image'lar | ✅ | `sigorta-web:…-v291-amd64`, `app-backend:…-v279-amd64` |
+| Git commit | ✅ | `82155ca` — fix(v292) revizyon sağ üst |
+| Pre-deploy safety | ✅ | DB yedeği `pre_v292-revizyon-gecmisi-sag-ust_20260712_110321.sql.gz` |
+| Image'lar | ✅ | `sigorta-web:…-v292-amd64`, `app-backend:…-v279-amd64` (değişmedi) |
 | Nginx routing | ✅ | `verify-nginx-web` PASS |
-| Smoke (genel rotalar) | ✅ | Login hariç PASS (ortam kimlik bilgisi yok) |
-| Mustafa ekran PASS | ⏳ | Ctrl+Shift+R + footer **v291** + Grup 1-11 kontrol listesi |
+| Kritik path hash | ✅ | `verify-critical-paths.sh --remote` uyumlu |
+| Smoke (genel rotalar) | ⚠️ | Login FAIL (yerel `LOGIN_EMAIL`/`LOGIN_PASSWORD` yok); diğer rotalar PASS |
+| Mustafa ekran PASS | ⏳ | Ctrl+Shift+R + footer **v292** + madde 19/41 revizyon yerleşimi |
 
-**Deploy komutu (kayıt):** `BACKEND_VERSION=v279 bash scripts/deploy-full-production.sh v291-onarim-raporu-kabul`  
-**Script çıkışı:** Yerel oturum ~20 dk sonra `exit 4` (log kesildi); sunucuda konteynerler healthy.
+**Deploy komutu (kayıt):** `bash scripts/deploy-web-production.sh v292-revizyon-gecmisi-sag-ust`  
+**Migration:** Yok (web-only)
 
 ## Uygulama sırası (P0 → P2)
 

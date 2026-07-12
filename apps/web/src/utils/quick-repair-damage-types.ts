@@ -1,4 +1,5 @@
 import { DAMAGE_TYPE_OPTIONS } from '@/components/damage-reports/RepairItemsModal';
+import { formatDisplayLabel } from '@/utils/text-helpers';
 
 /** Dosya konusu / hasar nedeni kodundan hızlı onarım hasar türüne eşleme */
 const REASON_CODE_TO_QUICK_TYPE: Record<string, string> = {
@@ -74,6 +75,59 @@ export function inferQuickDamageTypesFromReport(report: {
 export function filterQuickDamageTypeOptions(allowedValues: string[]) {
   if (!allowedValues.length) return DAMAGE_TYPE_OPTIONS;
   return DAMAGE_TYPE_OPTIONS.filter((opt) => allowedValues.includes(opt.value));
+}
+
+export type QuickDamageDisplayOption = { value: string; label: string };
+
+/** Hasar türü etiketleri — dosya konusu / hasar nedeni adından; hardcoded enum etiketi kullanılmaz. */
+export function buildQuickDamageDisplayOptions(report: {
+  damageTypes?: Array<{ damageTypeCode?: string | null; damageTypeName?: string | null }>;
+  claimFile?: { lossType?: string | null; claimSubject?: { code?: string | null; name?: string | null } | null } | null;
+} | null | undefined): QuickDamageDisplayOption[] {
+  if (!report) return [];
+
+  const options = new Map<string, string>();
+
+  const claimSubject = report.claimFile?.claimSubject;
+  if (claimSubject?.code || claimSubject?.name) {
+    const mapped = mapDamageReasonToQuickType(claimSubject.code ?? claimSubject.name ?? '');
+    if (mapped) {
+      options.set(mapped, formatDisplayLabel(claimSubject.name ?? claimSubject.code ?? ''));
+    }
+  }
+
+  for (const dt of report.damageTypes ?? []) {
+    const code = mapDamageReasonToQuickType(dt.damageTypeCode ?? '');
+    const name = mapDamageReasonToQuickType(dt.damageTypeName ?? '');
+    const value = code ?? name;
+    if (!value) continue;
+    const label = formatDisplayLabel(dt.damageTypeName ?? dt.damageTypeCode ?? '');
+    if (label && label !== '—') options.set(value, label);
+  }
+
+  if (report.claimFile?.lossType) {
+    const mapped = mapDamageReasonToQuickType(report.claimFile.lossType);
+    if (mapped && !options.has(mapped)) {
+      options.set(mapped, formatDisplayLabel(report.claimFile.lossType));
+    }
+  }
+
+  const inferred = inferQuickDamageTypesFromReport(report);
+  for (const value of inferred) {
+    if (!options.has(value)) {
+      const enumLabel = DAMAGE_TYPE_OPTIONS.find((opt) => opt.value === value)?.label;
+      options.set(value, enumLabel ? formatDisplayLabel(enumLabel) : value);
+    }
+  }
+
+  return Array.from(options.entries()).map(([value, label]) => ({ value, label }));
+}
+
+export function quickDamageTypeDisplayLabel(
+  value: string,
+  labels: Record<string, string>,
+): string {
+  return labels[value] ?? formatDisplayLabel(value);
 }
 
 export const REPORT_IMAGE_CATEGORY_LABELS: Record<string, string> = {

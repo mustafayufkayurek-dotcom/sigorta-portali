@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v291-onarim-raporu-grup11-kabul",
-  "description": "Onarım raporu Grup 1-11 düzeltmeleri; web v291 + backend v279 (ihbar/eksper/şablon)",
+  "label": "v293-onarim-raporu-kabul-batch",
+  "description": "Onarım raporu Mustafa kabul batch — hızlı onarım etiketleri, foto galeri, eksper, alt bant, sticky header, tespit alanı; web v293 + backend v280",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v279-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v291-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v280-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v293-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v290-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v278-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v292-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v279-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

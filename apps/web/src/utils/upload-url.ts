@@ -8,13 +8,28 @@ export function getUploadsBaseUrl(): string {
   return trimmed.replace(/\/api\/v1\/?$/, '') || 'http://localhost:3000';
 }
 
-/** Onarım raporu fotoğrafları — Nest static /uploads/report-images/{key} */
+function buildReportImagePath(storageKey: string): string {
+  const key = storageKey.replace(/^\/+/, '');
+  if (key.startsWith('uploads/')) return key;
+  const fileName = key.split('/').pop() ?? key;
+  return `uploads/report-images/${encodeURIComponent(fileName)}`;
+}
+
+/** Onarım raporu fotoğrafları — nginx /uploads/ → backend static */
 export function getReportImageUrl(storageKey: string | null | undefined): string {
   if (!storageKey) return '';
   if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
     return storageKey;
   }
-  const key = storageKey.replace(/^\/+/, '');
-  const path = key.startsWith('uploads/') ? key : `uploads/report-images/${encodeURIComponent(key)}`;
+  const path = buildReportImagePath(storageKey);
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/${path}`;
+  }
   return `${getUploadsBaseUrl()}/${path}`;
+}
+
+/** JWT ile korumalı stream — doğrudan URL başarısız olursa galeri fallback */
+export function getReportImageStreamUrl(imageId: string): string {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+  return `${apiBase.replace(/\/$/, '')}/report-images/${imageId}/file`;
 }

@@ -551,6 +551,17 @@ export class RepairReportsService {
     return { message: 'Fotoğraf silindi' };
   }
 
+  async streamImageFile(imageId: string): Promise<{ filePath: string; mimeType: string }> {
+    const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
+    if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
+    const key = img.hasAnnotation && img.annotatedKey ? img.annotatedKey : img.storageKey;
+    const filePath = path.join(this.uploadDir, path.basename(key));
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('Fotoğraf dosyası bulunamadı');
+    }
+    return { filePath, mimeType: img.mimeType ?? 'image/jpeg' };
+  }
+
   // ── Damage Summary ─────────────────────────────────────────────────────────
 
   async getDamageSummary(reportId: string) {

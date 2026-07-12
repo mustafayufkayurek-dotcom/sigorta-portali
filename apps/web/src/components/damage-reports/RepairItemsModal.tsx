@@ -45,6 +45,7 @@ export default function RepairItemsModal({
   damageTypes,
   damageSize,
   fileId,
+  damageTypeLabels,
   onClose,
   onAdd,
 }: {
@@ -52,6 +53,7 @@ export default function RepairItemsModal({
   damageTypes: string[];
   damageSize: string;
   fileId?: string;
+  damageTypeLabels?: Record<string, string>;
   onClose: () => void;
   onAdd: (items: SelectedRepairItem[]) => Promise<void>;
 }) {
@@ -90,6 +92,8 @@ export default function RepairItemsModal({
 
   if (!open) return null;
 
+  const labelForType = (value: string) => damageTypeLabels?.[value] ?? damageTypeLabel(value);
+
   const handleAdd = async () => {
     const selectedItems = items
       .filter((item) => selected.has(item.workSubGroupId))
@@ -111,7 +115,7 @@ export default function RepairItemsModal({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-slate-900">Hızlı Onarım Türü</h3>
-              <p className="mt-1 text-xs text-slate-500">{damageTypes.map(damageTypeLabel).join(' + ')} ({damageSizeLabel(damageSize)})</p>
+              <p className="mt-1 text-xs text-slate-500">{damageTypes.map(labelForType).join(' + ')} ({damageSizeLabel(damageSize)})</p>
             </div>
             <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700">×</button>
           </div>

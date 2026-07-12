@@ -11,6 +11,7 @@ import { buildRepairReportShareRecipients } from '@/utils/repair-report-share-re
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
+import ReportImageGallery from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
@@ -24,12 +25,12 @@ import { resolveFileExpertDisplay } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
-  damageTypeLabel,
   damageSizeLabel,
 } from '@/components/damage-reports/RepairItemsModal';
 import {
   inferQuickDamageTypesFromReport,
-  filterQuickDamageTypeOptions,
+  buildQuickDamageDisplayOptions,
+  quickDamageTypeDisplayLabel,
   REPORT_IMAGE_CATEGORY_LABELS,
 } from '@/utils/quick-repair-damage-types';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
@@ -477,7 +478,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               <thead>
                 <tr className="bg-slate-50 text-slate-400 text-[10px] tracking-wide">
                   <th className="text-center px-3 py-2 rounded-l-lg">İş Grubu</th>
-                  <th className="text-left px-3 py-2">Tedarikçi</th>
+                  <th className="text-center px-3 py-2">Tedarikçi</th>
                   <th className="text-right px-3 py-2">Maliyet</th>
                   <th className="text-right px-3 py-2">Satış Fiyatı</th>
                   <th className="text-right px-3 py-2">Kar</th>
@@ -487,8 +488,8 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               <tbody className="divide-y divide-slate-50">
                 {rows.map((row) => (
                   <tr key={row.workGroupId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-3 py-2.5 font-medium text-slate-800">{formatDisplayLabel(row.workGroupName)}</td>
-                    <td className="px-3 py-2.5 text-left text-slate-600 text-[11px] leading-snug max-w-[180px]">{row.vendorSummary}</td>
+                    <td className="px-3 py-2.5 font-medium text-slate-800 text-center">{formatDisplayLabel(row.workGroupName)}</td>
+                    <td className="px-3 py-2.5 text-center text-slate-600 text-[11px] leading-snug max-w-[180px]">{row.vendorSummary}</td>
                     <td className="px-3 py-2.5 text-right text-slate-500">{fmtCurrency(row.supplierTotal)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-slate-800">{fmtCurrency(row.salesTotal)}</td>
                     <td className={`px-3 py-2.5 text-right font-semibold ${row.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -504,7 +505,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
               </tbody>
               <tfoot>
                 <tr className={`font-bold ${grandProfit < 0 ? 'loss-flash' : 'bg-slate-700'}`}>
-                  <td className="px-3 py-3.5 text-white text-xs font-semibold rounded-bl-lg">
+                  <td className="px-3 py-3.5 text-white text-xs font-semibold rounded-bl-lg text-center">
                     {grandProfit < 0 ? '⚠ Zarar' : 'Genel Toplam'}
                   </td>
                   <td className="px-3 py-3.5" />
@@ -1703,12 +1704,16 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   };
 
   const isRowPersistable = (row: RowState) =>
-    Boolean(row.workGroupId && row.jobDescription.trim());
+    Boolean(row.workGroupId && row.jobDescription.trim() && row.detectionScope.trim());
 
   const saveRow = async (id: string) => {
     const row = rows.find((r) => r._id === id);
     if (!row || !row._isDirty) return;
     if (!isRowPersistable(row)) {
+      if (!row.detectionScope.trim()) {
+        alert('Tespit Alanı zorunludur.');
+        focusCell(rows.findIndex((r) => r._id === id), 'detectionScope');
+      }
       revertRow(id);
       return;
     }
@@ -1749,6 +1754,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const saveAddingRow = async () => {
     if (!addingRow.workGroupId || !addingRow.jobDescription) return;
+    if (!addingRow.detectionScope.trim()) {
+      alert('Tespit Alanı zorunludur.');
+      focusCell('new', 'detectionScope');
+      return;
+    }
     if (addingRow.location.trim() && !isValidLocationFormat(addingRow.location)) {
       alert('Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
       focusCell('new', 'location');
@@ -2121,7 +2131,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         </button>
       </div>
     )}
-    <div ref={tableRef} className="overflow-x-auto rounded-lg border border-slate-200">
+    <div ref={tableRef} className="overflow-x-auto overflow-y-auto max-h-[min(70vh,720px)] rounded-lg border border-slate-200">
       <style>{`
         @keyframes savedFlash {
           0% { background-color: #dcfce7; }
@@ -2130,25 +2140,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         .saved-flash { animation: savedFlash 0.9s ease-out forwards; }
       `}</style>
       <table className="w-full text-xs border-collapse min-w-[800px]">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
           <tr className="bg-slate-50 border-b border-slate-200">
-            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100">#</th>}
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Tespit</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px]">Açıklama <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20">Miktar</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">Satış Fiyatı</th>
+            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100 bg-slate-50">#</th>}
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Kategori</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Mahal/Bölge</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px] bg-slate-50">İş Grubu</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px] bg-slate-50">İş Tanımı</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px] bg-slate-50">Açıklama <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Miktar</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Birim</th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24 bg-slate-50">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28">
+              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28 bg-slate-50">
                 Maliyet
               </th>
             )}
-            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28">Toplam</th>
-            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
+            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28 bg-slate-50">Toplam</th>
+            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100 bg-slate-50">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -2472,56 +2482,41 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </td>
                 {isEditable && (
                   <td className="min-w-[108px] border-l border-slate-100 text-center px-1 py-1">
-                    <div className="flex flex-col items-center justify-center gap-1">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          disabled={isSaving || !row._isDirty}
-                          onClick={() => void saveRow(row._id)}
-                          className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
-                          title="Satırı Kaydet (Ctrl+Enter)"
-                        >
-                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                          ↵
-                        </button>
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          disabled={isSaving || !row._isDirty}
-                          onClick={() => revertRow(row._id)}
-                          className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
-                          title="Geri Al"
-                        >
-                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
-                        </button>
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          disabled={isSaving || row._isDirty}
-                          onClick={() => onDelete(row._id)}
-                          className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
-                          title="Sil"
-                        >
-                          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
-                            <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
-                            <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                          </svg>
-                        </button>
-                      </div>
-                      {viewMode === 'internal' && (
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setVendorModalRowId(row._id)}
-                          className="w-full px-1 py-0.5 rounded text-[10px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 truncate max-w-[96px]"
-                          title={row.vendorQuotes?.preferredVendorName ? formatDisplayLabel(row.vendorQuotes.preferredVendorName) : 'Tedarikçi fiyatlarını karşılaştır'}
-                        >
-                          {row.vendorQuotes?.preferredVendorName
-                            ? formatDisplayLabel(row.vendorQuotes.preferredVendorName)
-                            : 'Tedarikçi'}
-                        </button>
-                      )}
+                    <div className="flex items-center justify-center gap-0.5">
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        disabled={isSaving || !row._isDirty}
+                        onClick={() => void saveRow(row._id)}
+                        className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
+                        title="Satırı Kaydet (Ctrl+Enter)"
+                      >
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        ↵
+                      </button>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        disabled={isSaving || !row._isDirty}
+                        onClick={() => revertRow(row._id)}
+                        className="h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
+                        title="Geri Al"
+                      >
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        disabled={isSaving || row._isDirty}
+                        onClick={() => onDelete(row._id)}
+                        className="h-7 w-7 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center transition-colors"
+                        title="Sil"
+                      >
+                        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                          <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
+                          <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 )}
@@ -3499,10 +3494,21 @@ export default function RepairReportPage() {
     [report?.claimFile],
   );
 
-  const quickDamageTypeOptions = useMemo(() => {
+  const quickDamageDisplayOptions = useMemo(
+    () => buildQuickDamageDisplayOptions(report),
+    [report],
+  );
+
+  const quickDamageTypeLabels = useMemo(
+    () => Object.fromEntries(quickDamageDisplayOptions.map((opt) => [opt.value, opt.label])),
+    [quickDamageDisplayOptions],
+  );
+
+  useEffect(() => {
+    if (!report || quickDamageTypes.length > 0) return;
     const inferred = inferQuickDamageTypesFromReport(report);
-    return filterQuickDamageTypeOptions(inferred);
-  }, [report]);
+    if (inferred.length > 0) setQuickDamageTypes(inferred);
+  }, [report, quickDamageTypes.length]);
 
   const latestSubmission = useMemo(
     () => approvalHistory.find((h) => h.action === 'pending_approval'),
@@ -4192,34 +4198,39 @@ export default function RepairReportPage() {
 
       <SectionCard title="Hızlı Onarım Türü">
         <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Türü</p>
-            <div className="flex flex-wrap gap-2">
-              {quickDamageTypeOptions.map((option) => {
-                const active = quickDamageTypes.includes(option.value);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    disabled={!isEditable}
-                    onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
-                  >
-                    {active ? '✓ ' : ''}{option.label}
-                  </button>
-                );
-              })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Türü</p>
+              <div className="flex flex-wrap gap-2">
+                {quickDamageDisplayOptions.map((option) => {
+                  const active = quickDamageTypes.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={!isEditable}
+                      onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
+                    >
+                      {active ? '✓ ' : ''}{option.label}
+                    </button>
+                  );
+                })}
+                {quickDamageDisplayOptions.length === 0 && (
+                  <p className="text-xs text-slate-400">Dosya konusu / hasar nedeni tanımlı değil.</p>
+                )}
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Büyüklüğü</p>
-            <div className="flex flex-wrap gap-3">
-              {DAMAGE_SIZE_OPTIONS.map((option) => (
-                <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
-                  <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
-                  {option.label}
-                </label>
-              ))}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Büyüklüğü</p>
+              <div className="flex flex-wrap gap-3">
+                {DAMAGE_SIZE_OPTIONS.map((option) => (
+                  <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <button
@@ -4231,7 +4242,7 @@ export default function RepairReportPage() {
             ⚡ Hızlı Onarım Türü Ekle
           </button>
           {quickDamageTypes.length > 0 && (
-            <p className="text-xs text-slate-400">{quickDamageTypes.map(damageTypeLabel).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
+            <p className="text-xs text-slate-400">{quickDamageTypes.map((v) => quickDamageTypeDisplayLabel(v, quickDamageTypeLabels)).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
           )}
         </div>
       </SectionCard>
@@ -4419,33 +4430,14 @@ export default function RepairReportPage() {
         {!(report.images?.length) ? (
           <p className="text-slate-400 text-sm">Henüz Fotoğraf Eklenmemiş.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {report.images.map((img: any) => (
-              <div key={img.id} className="relative group rounded-xl overflow-hidden border border-slate-100 bg-slate-50 aspect-square">
-                <img
-                  src={getReportImageUrl(img.hasAnnotation && img.annotatedKey ? img.annotatedKey : img.storageKey)}
-                  alt={img.caption ?? img.category}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%239ca3af" font-size="12">Yüklenemedi</text></svg>'; }}
-                />
-                <div className="absolute top-1.5 right-1.5">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shadow-sm ${catColor[img.category] ?? 'bg-slate-100 text-slate-600'}`}>
-                    {imageCats[img.category] ?? img.category}
-                  </span>
-                </div>
-                {img.hasAnnotation && (
-                  <div className="absolute top-1.5 left-1.5">
-                    <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">✎</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                  <button type="button" onClick={() => setShowAnnotation(img)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700">İşaretle</button>
-                  {isEditable && <button type="button" onClick={() => handleDeleteImage(img.id)} className="text-xs bg-red-600 text-white px-2 py-1 rounded-lg hover:bg-red-700">Sil</button>}
-                </div>
-                {img.caption && <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 truncate">{img.caption}</p>}
-              </div>
-            ))}
-          </div>
+          <ReportImageGallery
+            images={report.images}
+            categoryLabels={imageCats}
+            categoryColors={catColor}
+            isEditable={isEditable}
+            onDelete={(imageId) => void handleDeleteImage(imageId)}
+            onAnnotate={(img) => setShowAnnotation(img)}
+          />
         )}
       </SectionCard>
 
@@ -4503,17 +4495,20 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-          <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-400 tabular-nums min-w-0">
-            {isEditable && writeElapsedLabel && (
-              <span>Süre: {writeElapsedLabel}</span>
-            )}
-            {isEditable && (
-              <span>Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}</span>
-            )}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-8 py-3 z-30">
+        <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+          <div className="hidden lg:flex flex-col gap-0.5 min-w-0 lg:flex-1">
+            <p className="text-[10px] font-semibold text-slate-300 tracking-wide">Rapor Oluşturma Analizi</p>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 tabular-nums">
+              {isEditable && writeElapsedLabel && (
+                <span>Süre: {writeElapsedLabel}</span>
+              )}
+              {isEditable && (
+                <span>Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}</span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center justify-center min-w-0">
+          <div className="flex items-center justify-center min-w-0 lg:flex-shrink-0">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 totalSupplierCost={report.totalSupplierCost}
@@ -4523,7 +4518,7 @@ export default function RepairReportPage() {
               />
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 flex-shrink-0 lg:ml-auto lg:min-w-[280px]">
             {isEditable && (
               <span className="lg:hidden text-[11px] text-slate-400 tabular-nums mr-1">
                 {writeElapsedLabel && `${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
@@ -5153,6 +5148,7 @@ export default function RepairReportPage() {
         damageTypes={quickDamageTypes}
         damageSize={quickDamageSize}
         fileId={claimId}
+        damageTypeLabels={quickDamageTypeLabels}
         onClose={() => setShowQuickRepairModal(false)}
         onAdd={handleAddQuickRepairItems}
       />

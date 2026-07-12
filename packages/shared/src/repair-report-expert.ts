@@ -20,7 +20,7 @@ function officeUserFullName(
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
 }
 
-/** Dosya eksperi: atanmış eksper firması veya expertOffice; dosya sorumlusu eksper sayılmaz. */
+/** Dosya eksperi: tespitçi vendor → expertOffice → atanmış eksper → inspectorName (sorumlu filtreli). */
 export function resolveRepairReportExpertName(source: RepairReportExpertSource): string | null {
   const vendor = source.claimFile?.assignedInspectorVendor?.name?.trim();
   if (vendor) return vendor;
@@ -28,14 +28,16 @@ export function resolveRepairReportExpertName(source: RepairReportExpertSource):
   const expertOffice = source.expertOffice?.companyName?.trim();
   if (expertOffice) return expertOffice;
 
+  const assignedAdjuster = officeUserFullName(source.claimFile?.assignedAdjuster);
+  if (assignedAdjuster) return assignedAdjuster;
+
   const inspector = source.inspectorName?.trim();
   if (!inspector) return null;
 
   const officeName = officeUserFullName(source.claimFile?.assignedOfficeUser);
   if (officeName && inspector === officeName) return null;
 
-  const adjusterName = officeUserFullName(source.claimFile?.assignedAdjuster);
-  if (adjusterName && inspector === adjusterName) return null;
+  if (assignedAdjuster && inspector === assignedAdjuster) return null;
 
   return inspector;
 }

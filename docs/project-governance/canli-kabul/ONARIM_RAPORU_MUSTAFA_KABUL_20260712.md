@@ -1,7 +1,7 @@
 # Onarım Raporu — Mustafa Kabul Durumu (12 Temmuz 2026)
 
 **Kaynak:** Mustafa'nın orijinal notları + 4'erli grup test geri bildirimi (Grup 1–5).  
-**Canlı referans:** Web v289 (12 Temmuz sabah footer); deploy hedefi v290.  
+**Canlı referans:** Web **v292** (12 Temmuz 2026) · Backend v279 · Rollback web v291  
 **B-1 (Rapora Git akışı):** İptal — dokunulmayacak.
 
 ## Altın kural (kalıcı)
@@ -143,6 +143,5 @@ Mustafa geri bildirimi Grup 1–11 bitti.
 
 ## Deploy notu (12 Temmuz 2026)
 
-- **Canlı:** Web **v291** · Backend **v279**
-- **Repoda hazır, deploy bekliyor:** Web **v292** (revizyon geçmişi sağ üst)
+- **Canlı:** Web **v292** · Backend **v279**
 - **Rollback:** Web v291 · Backend v278

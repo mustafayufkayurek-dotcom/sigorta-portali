@@ -9,10 +9,11 @@ import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
   damageSizeLabel,
-  damageTypeLabel,
 } from '@/components/damage-reports/RepairItemsModal';
 import {
   inferQuickDamageTypesFromReport,
+  buildQuickDamageDisplayOptions,
+  quickDamageTypeDisplayLabel,
 } from '@/utils/quick-repair-damage-types';
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -78,11 +79,13 @@ function resolveHasarNedeni(claim: any, reportSummary: any | null): string {
 function resolveQuickRepairSummary(reportSummary: any | null): string {
   if (!reportSummary) return '—';
   const stored = reportSummary.quickDamageTypes ?? [];
+  const displayOptions = buildQuickDamageDisplayOptions(reportSummary);
+  const labelMap = Object.fromEntries(displayOptions.map((o) => [o.value, o.label]));
   const inferred = inferQuickDamageTypesFromReport(reportSummary);
   const types = stored.length > 0 ? stored : inferred;
   if (!types.length) return '—';
   const size = reportSummary.quickDamageSize ?? 'MEDIUM';
-  return `${types.map(damageTypeLabel).join(' + ')} (${damageSizeLabel(size)})`;
+  return `${types.map((v: string) => quickDamageTypeDisplayLabel(v, labelMap)).join(' + ')} (${damageSizeLabel(size)})`;
 }
 
 export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null): DosyaField[] {
