@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v294-onarim-raporu-madde-batch",
-  "description": "Onarım raporu madde 1/5/26/33/39 + v293 batch; web v294 + backend v281",
+  "label": "v295-onarim-raporu-ux-11",
+  "description": "Onarım raporu UX 11 madde; web v295 + backend v282",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v281-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v294-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v282-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v295-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v293-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v280-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v294-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v281-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
