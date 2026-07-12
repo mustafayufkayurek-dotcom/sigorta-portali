@@ -1,13 +1,13 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v306-onarim-raporu-kaydet-fiyat",
-  "description": "Onarım raporu satış fiyatı ve satır kaydet; web v306 + backend v303 (web-only)",
+  "label": "v307-son-satir-kaydet",
+  "description": "Onarım raporu son satır kaydet uyarısı; web v307 (v306 dahil, önceki canlı web v303) + backend v303",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v303-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v306-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v307-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v303-amd64",
