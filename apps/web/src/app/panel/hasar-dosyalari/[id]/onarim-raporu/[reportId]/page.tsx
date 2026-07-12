@@ -300,48 +300,73 @@ function FinancialSummaryBar({
   totalSalesAmount,
   grossProfit,
   grossMarginPct,
+  tone = 'light',
 }: {
   totalSupplierCost?: number | null;
   totalSalesAmount?: number | null;
   grossProfit?: number | null;
   grossMarginPct?: number | null;
+  tone?: 'dark' | 'light';
 }) {
+  const isLight = tone === 'light';
   const margin = grossMarginPct ?? 0;
   const profit = grossProfit ?? 0;
-  const marginValueClass = margin >= 20 ? 'text-emerald-300' : margin >= 10 ? 'text-amber-300' : 'text-rose-300';
-  const marginChipClass = margin >= 20
-    ? 'bg-emerald-500/15 border-emerald-400/30'
-    : margin >= 10
-      ? 'bg-amber-500/15 border-amber-400/30'
-      : 'bg-rose-500/15 border-rose-400/30';
+  const marginValueClass = isLight
+    ? margin >= 20
+      ? 'text-emerald-700'
+      : margin >= 10
+        ? 'text-amber-700'
+        : 'text-rose-700'
+    : margin >= 20
+      ? 'text-emerald-300'
+      : margin >= 10
+        ? 'text-amber-300'
+        : 'text-rose-300';
+  const marginChipClass = isLight
+    ? margin >= 20
+      ? 'bg-emerald-50 border-emerald-200'
+      : margin >= 10
+        ? 'bg-amber-50 border-amber-200'
+        : 'bg-rose-50 border-rose-200'
+    : margin >= 20
+      ? 'bg-emerald-500/15 border-emerald-400/30'
+      : margin >= 10
+        ? 'bg-amber-500/15 border-amber-400/30'
+        : 'bg-rose-500/15 border-rose-400/30';
+
+  const chipClass = isLight
+    ? 'rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] flex flex-col items-center justify-center text-center'
+    : 'rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] flex flex-col items-center justify-center text-center';
+  const labelClass = isLight ? 'text-[10px] font-medium text-slate-500 leading-none mb-1' : 'text-[10px] font-medium text-slate-400 leading-none mb-1';
+  const valueBase = isLight ? 'text-slate-800' : 'text-white';
+  const profitClass = isLight
+    ? profit >= 0 ? 'text-emerald-700' : 'text-rose-700'
+    : profit >= 0 ? 'text-emerald-300' : 'text-rose-300';
 
   const metrics = [
-    { label: 'Maliyet', value: fmtCurrency(totalSupplierCost), valueClass: 'text-white' },
-    { label: 'Satış', value: fmtCurrency(totalSalesAmount), valueClass: 'text-white' },
+    { label: 'Maliyet', value: fmtCurrency(totalSupplierCost), valueClass: valueBase },
+    { label: 'Satış', value: fmtCurrency(totalSalesAmount), valueClass: valueBase },
     {
       label: 'Kâr',
       value: fmtCurrency(grossProfit),
-      valueClass: profit >= 0 ? 'text-emerald-300' : 'text-rose-300',
+      valueClass: profitClass,
     },
   ];
 
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap min-w-0">
       <div className="hidden md:flex items-center gap-2 pr-1 flex-shrink-0">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
-        <span className="text-xs font-semibold text-slate-300 tracking-wide">Finansal Özet</span>
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+        <span className={`text-xs font-semibold tracking-wide ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Finansal Özet</span>
       </div>
       {metrics.map((metric) => (
-        <div
-          key={metric.label}
-          className="rounded-lg bg-white/10 border border-white/15 px-3 py-2 min-w-[6.5rem] sm:min-w-[7.5rem] flex flex-col items-center justify-center text-center"
-        >
-          <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">{metric.label}</p>
+        <div key={metric.label} className={chipClass}>
+          <p className={labelClass}>{metric.label}</p>
           <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${metric.valueClass}`}>{metric.value}</p>
         </div>
       ))}
       <div className={`rounded-lg border px-3 py-2 min-w-[5.5rem] sm:min-w-[6rem] flex flex-col items-center justify-center text-center ${marginChipClass}`}>
-        <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Marj</p>
+        <p className={labelClass}>Marj</p>
         <p className={`text-sm sm:text-base font-bold leading-none tabular-nums ${marginValueClass}`}>
           %{margin.toFixed(1)}
         </p>
@@ -4690,11 +4715,11 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 lg:px-8 py-3 z-30">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-emerald-500/35 bg-white/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(15,23,42,0.12)] px-4 sm:px-6 lg:px-8 py-3">
         <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
           <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start">
-            <p className="text-[10px] font-semibold text-slate-300 tracking-wide">Rapor Oluşturma Analizi</p>
-            <div className="flex items-center gap-3 text-[11px] text-slate-400 tabular-nums">
+            <p className="text-[10px] font-semibold text-slate-600 tracking-wide">Rapor Oluşturma Analizi</p>
+            <div className="flex items-center gap-3 text-[11px] text-slate-500 tabular-nums">
               {isEditable && writeElapsedLabel && (
                 <span>Süre: {writeElapsedLabel}</span>
               )}
@@ -4706,6 +4731,7 @@ export default function RepairReportPage() {
           <div className="flex items-center justify-center min-w-0 justify-self-center w-full lg:w-auto">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
+                tone="light"
                 totalSupplierCost={report.totalSupplierCost}
                 totalSalesAmount={report.totalSalesAmount}
                 grossProfit={report.grossProfit}
@@ -4715,7 +4741,7 @@ export default function RepairReportPage() {
           </div>
           <div className="flex items-center justify-end gap-2 flex-shrink-0 justify-self-end w-full lg:w-auto">
             {isEditable && (
-              <span className="lg:hidden text-[11px] text-slate-400 tabular-nums mr-1">
+              <span className="lg:hidden text-[11px] text-slate-500 tabular-nums mr-1">
                 {writeElapsedLabel && `${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
               </span>
             )}
@@ -4725,7 +4751,7 @@ export default function RepairReportPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => handleCancelChanges()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-500 text-slate-200 text-sm font-medium hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -4739,8 +4765,8 @@ export default function RepairReportPage() {
                   disabled={saving || !hasUnsavedReportFields}
                   className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
                     hasUnsavedReportFields
-                      ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                      : 'bg-slate-700 text-slate-400 cursor-default'
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      : 'bg-slate-200 text-slate-400 cursor-default'
                   } disabled:opacity-50`}
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
