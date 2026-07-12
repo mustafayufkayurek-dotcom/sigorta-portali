@@ -114,6 +114,14 @@ function StatCard({
   return content;
 }
 
+function resolveClaimDisplayDate(claim: {
+  notificationDate?: string | null;
+  lossDate?: string | null;
+  createdAt?: string | null;
+}): string {
+  return claim.notificationDate ?? claim.lossDate ?? claim.createdAt ?? '';
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABLE_COLUMNS: TableColumnDef[] = [
@@ -121,16 +129,16 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
   { id: 'customer', label: 'Sigorta Şirketi', defaultWidth: 140, minWidth: 100 },
   { id: 'insured', label: 'Sigortalı Adı Soyadı', defaultWidth: 160, minWidth: 120 },
-  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
-  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 160, minWidth: 100 },
+  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88, defaultVisible: false },
+  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 280, minWidth: 120, flex: true },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
-  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
-  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
 ];
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon-v3', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:operasyon-v4', TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
@@ -223,7 +231,7 @@ export default function OperasyonPage() {
       kind: 'hasar', id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
       customerName, insuredName: resolveHasarInsuredName(claim),
-      date: claim.createdAt, subject,
+      date: resolveClaimDisplayDate(claim), subject,
       statusLabel: claim.currentStatus?.name ?? 'N/A',
       invoiceStatus: invStatus,
       amount: claim.totalAmount != null ? `${Number(claim.totalAmount).toLocaleString('tr-TR')} ₺` : null,
@@ -377,12 +385,12 @@ export default function OperasyonPage() {
       )}
       <div className="table-container">
         {/* Tablo başlık + filtreler */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
-          <div className="section-heading mb-0">
+        <div className="flex flex-nowrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 overflow-x-auto">
+          <div className="section-heading mb-0 shrink-0">
             <span className="section-heading-bar" />
             <span className="section-heading-text">Tüm Dosyalar</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2 shrink-0">
             {/* Tür filtresi */}
             <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden text-xs font-medium">
               {(['all', 'hasar', 'acil'] as const).map((t) => (

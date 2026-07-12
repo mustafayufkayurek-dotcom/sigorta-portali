@@ -18,6 +18,8 @@ export interface TableColumnDef {
   defaultWidth?: number;
   minWidth?: number;
   resizable?: boolean;
+  /** Kalan tablo genişliğini doldurur (colgroup width atanmaz) */
+  flex?: boolean;
 }
 
 export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[]) {
@@ -573,7 +575,10 @@ export function PanelTableColGroup({ leadingWidths = [], trailingWidths = [] }: 
         <col key={`leading-${index}`} style={{ width }} />
       ))}
       {visible.map((col) => (
-        <col key={col.id} style={{ width: ctx.widths.getWidth(col.id) }} />
+        <col
+          key={col.id}
+          style={col.flex ? undefined : { width: ctx.widths.getWidth(col.id) }}
+        />
       ))}
       {trailingWidths.map((width, index) => (
         <col key={`trailing-${index}`} style={{ width }} />
@@ -638,7 +643,7 @@ export function panelTableLayoutStyle(
       0,
     ) + leading + trailing;
   const totalPx = Math.max(total, 720);
-  return { tableLayout: 'fixed' as const, width: `${totalPx}px`, minWidth: `${totalPx}px` };
+  return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${totalPx}px` };
 }
 
 interface PanelTableSummaryFootProps {

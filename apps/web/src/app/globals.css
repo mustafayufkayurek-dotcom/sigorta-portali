@@ -157,7 +157,7 @@
 
 /* Kurumsal tablo — durum/kategori pill'leri hücre ortasında */
 .table-td-center .badge {
-  @apply justify-center;
+  @apply inline-flex items-center justify-center text-center;
 }
 
 /* Sayfa Header */
