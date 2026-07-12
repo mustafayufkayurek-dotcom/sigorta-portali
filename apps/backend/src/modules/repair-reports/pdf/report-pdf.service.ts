@@ -75,6 +75,8 @@ interface ReportData {
   } | null;
   items?: ReportItem[];
   damageTypes?: Array<{ id: string; damageTypeName: string }>;
+  quickDamageTypes?: string[];
+  quickDamageSize?: string | null;
   images?: ReportImage[];
 }
 
@@ -93,6 +95,31 @@ function escHtml(s: string | null | undefined): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+const QUICK_DAMAGE_TYPE_LABELS: Record<string, string> = {
+  FIRE_HOME: 'Konut Yangını',
+  FIRE_INDUSTRIAL: 'Endüstriyel Yangın',
+  WATER_INTERNAL: 'Su Hasarı',
+  NATURAL_DISASTER: 'Doğal Afet',
+  EARTHQUAKE: 'Deprem',
+  VEHICLE_IMPACT: 'Taşıt Çarpması',
+};
+
+const QUICK_DAMAGE_SIZE_LABELS: Record<string, string> = {
+  SMALL: 'Küçük',
+  MEDIUM: 'Orta',
+  LARGE: 'Büyük',
+};
+
+function formatQuickRepairSummary(report: ReportData): string | null {
+  const types = report.quickDamageTypes ?? [];
+  if (!types.length) return null;
+  const labels = types.map((t) => QUICK_DAMAGE_TYPE_LABELS[t] ?? t.replace(/_/g, ' '));
+  const size = report.quickDamageSize
+    ? QUICK_DAMAGE_SIZE_LABELS[report.quickDamageSize] ?? report.quickDamageSize
+    : null;
+  return size ? `${labels.join(' + ')} (${size})` : labels.join(' + ');
 }
 
 const LEGAL_NOTES_DEFAULT = [
@@ -867,6 +894,11 @@ export class ReportPdfService {
     <span class="info-label">Hasar Konusu</span>
     <span class="info-value">${escHtml(cf?.lossType) || '—'}</span>
   </div>
+  ${formatQuickRepairSummary(report) ? `
+  <div class="info-row-full">
+    <span class="info-label">Hızlı Onarım Türü</span>
+    <span class="info-value">${escHtml(formatQuickRepairSummary(report))}</span>
+  </div>` : ''}
   <div class="info-row-full">
     <span class="info-label">Adres</span>
     <span class="info-value">${addr}</span>

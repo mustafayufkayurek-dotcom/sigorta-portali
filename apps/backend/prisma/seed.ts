@@ -694,8 +694,8 @@ async function main() {
   // ── Damage Type Repair Templates ─────────────────────────────────────────
   const quickRepairGroup = await prisma.workGroup.upsert({
     where: { code: 'hizli_onarim' },
-    update: { name: 'Hızlı Onarım Kalemleri', sortOrder: 28 },
-    create: { code: 'hizli_onarim', name: 'Hızlı Onarım Kalemleri', sortOrder: 28, isSystem: true },
+    update: { name: 'Hızlı Onarım Türü', sortOrder: 28 },
+    create: { code: 'hizli_onarim', name: 'Hızlı Onarım Türü', sortOrder: 28, isSystem: true },
   });
   const damageRepairTemplates = [
     ['FIRE_HOME','BOYA_001','Boya','m2',30,80,200],['FIRE_HOME','SIVA_001','Sıva','m2',20,50,150],['FIRE_HOME','ELK_001','Elektrik tesisatı kontrolü','adet',1,1,1],['FIRE_HOME','KAPI_001','Kapı değişimi','adet',1,3,8],['FIRE_HOME','PNC_001','Pencere değişimi','adet',1,3,8],['FIRE_HOME','TMZ_001','Temizlik / dezenfeksiyon','m2',30,80,200],['FIRE_HOME','DOLAP_001','Mutfak / banyo dolabı değişimi','adet',0,2,5],['FIRE_HOME','CATI_001','Çatı onarımı (konut)','m2',10,30,100],

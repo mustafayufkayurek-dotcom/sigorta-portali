@@ -59,7 +59,9 @@ bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
 echo '=== docker build backend ==='
 docker build -f Dockerfile.backend -t $BACKEND_IMAGE .
 echo '=== docker build web ==='
-docker build -f Dockerfile.web -t $WEB_IMAGE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
+WEB_BUILD_FLAGS=''
+if [ \"\${NO_CACHE:-}\" = '1' ]; then WEB_BUILD_FLAGS='--no-cache'; fi
+docker build -f Dockerfile.web -t $WEB_IMAGE \$WEB_BUILD_FLAGS --build-arg NEXT_PUBLIC_API_URL=$API_URL .
 TS=\$(date +%Y%m%d_%H%M%S)
 cp -f docker-compose.override.yml backups/override_pre_\${TS}.yml
 cat > docker-compose.override.yml <<EOF
