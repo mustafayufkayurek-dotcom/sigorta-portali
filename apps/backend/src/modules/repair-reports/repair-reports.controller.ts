@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   Res,
+  Req,
   UseInterceptors,
   UploadedFile,
   Optional,
@@ -43,7 +44,7 @@ function buildPdfFilename(opts: {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { randomUUID } from 'crypto';
 import { RepairReportsService } from './repair-reports.service';
 import { FileValidationPipe } from '@/common/pipes/file-validation.pipe';
@@ -230,10 +231,10 @@ export class RepairReportsController {
   async addImage(
     @Param('id') id: string,
     @UploadedFile(new FileValidationPipe()) file: Express.Multer.File,
-    @Body('category') category: string,
-    @Body('caption') caption: string,
+    @Req() req: Request,
   ) {
-    const data = await this.service.addImage(id, file, category, caption);
+    const body = req.body as { category?: string; caption?: string };
+    const data = await this.service.addImage(id, file, body.category, body.caption);
     return { data };
   }
 

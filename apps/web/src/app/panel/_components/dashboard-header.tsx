@@ -66,13 +66,13 @@ export function DashboardHeader({
                       Yeni Acil
                     </Link>
                   ) : null}
-                  <a
-                    href="#pazartesi-toplantisi"
+                  <Link
+                    href="/panel/pazartesi-toplantisi"
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:text-sm"
                   >
                     <CalendarDays className="h-4 w-4 text-blue-600" />
                     Pazartesi Toplantısı
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 <>

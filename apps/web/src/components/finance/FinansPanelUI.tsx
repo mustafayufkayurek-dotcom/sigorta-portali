@@ -61,11 +61,11 @@ export function FinansPanelCard({
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/80">
-        <div className="min-w-0">
-          <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-slate-100 bg-slate-50/80 px-4 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <h4 className="shrink-0 text-sm font-semibold text-slate-800">{title}</h4>
           {subtitle && (
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{subtitle}</p>
+            <span className="text-xs text-slate-500">{subtitle}</span>
           )}
         </div>
         {action && <FinansActionButton {...action} />}

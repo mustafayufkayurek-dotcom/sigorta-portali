@@ -11,7 +11,7 @@ import { buildRepairReportShareRecipients, type ClaimVendorSource } from '@/util
 import dynamic from 'next/dynamic';
 import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
-import ReportImageGallery from '@/components/damage-reports/ReportImageGallery';
+import ReportImageGallery, { type PendingReportImageUpload } from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
@@ -32,6 +32,7 @@ import {
   buildQuickDamageDisplayOptions,
   quickDamageTypeDisplayLabel,
   REPORT_IMAGE_CATEGORY_LABELS,
+  REPORT_IMAGE_CATEGORY_KEYS,
 } from '@/utils/quick-repair-damage-types';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
@@ -287,8 +288,8 @@ function IconChevronDown({ className = 'w-3.5 h-3.5' }: { className?: string }) 
 function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
     <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
-        <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 pb-2">
+        <h4 className="shrink-0 text-sm font-semibold text-slate-700">{title}</h4>
         {action}
       </div>
       {children}
@@ -2409,7 +2410,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         </button>
       </div>
     )}
-    <div ref={tableRef} className="overflow-x-auto overflow-y-auto max-h-[min(70vh,720px)] rounded-lg border border-slate-200">
+    <div ref={tableRef} className="overflow-x-auto rounded-lg border border-slate-200">
       <style>{`
         @keyframes savedFlash {
           0% { background-color: #dcfce7; }
@@ -2418,25 +2419,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         .saved-flash { animation: savedFlash 0.9s ease-out forwards; }
       `}</style>
       <table className="w-full text-xs border-collapse min-w-[800px]">
-        <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+        <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
-            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100 bg-slate-50">#</th>}
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Kategori</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Tespit Alanı <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Mahal/Bölge</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px] bg-slate-50">İş Grubu</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px] bg-slate-50">İş Tanımı</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px] bg-slate-50">Açıklama <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Miktar</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Birim</th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24 bg-slate-50">Satış Fiyatı</th>
+            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100">#</th>}
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Kategori</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px]">Mahal/Bölge</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px]">İş Grubu</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px]">İş Tanımı</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px]">Açıklama <span className="text-red-500">*</span></th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20">Miktar</th>
+            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20">Birim</th>
+            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28 bg-slate-50">
+              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28">
                 Maliyet
               </th>
             )}
-            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28 bg-slate-50">Toplam</th>
-            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100 bg-slate-50">İşlem</th>}
+            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28">Toplam</th>
+            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -3137,9 +3138,9 @@ function EmergencyReportEditor({
     showToast(type, message);
   }, [showToast]);
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
-  const [uploading, setUploading] = useState(false);
+  const [uploadingCat, setUploadingCat] = useState<string | null>(null);
+  const [pendingImageUploads, setPendingImageUploads] = useState<PendingReportImageUpload[]>([]);
   const [localReport, setLocalReport] = useState(report);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const findingsTextareaRef = useRef<HTMLTextAreaElement>(null);
   const itemsTableRef = useRef<EditableItemsTableHandle>(null);
   const claimPath = `/panel/hasar-dosyalari/${claimId}`;
@@ -3184,7 +3185,7 @@ function EmergencyReportEditor({
     } catch (e) { console.error(e); }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: string) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     if (!(await ensureSessionBeforeMutation())) {
@@ -3192,31 +3193,38 @@ function EmergencyReportEditor({
       e.target.value = '';
       return;
     }
-    setUploading(true);
-    const uploaded: any[] = [];
+    const queue = files.map((file, index) => ({
+      tempId: `upload-${Date.now()}-${index}-${file.name}`,
+      category,
+    }));
+    setPendingImageUploads((prev) => [...prev, ...queue]);
+    setUploadingCat(category);
     try {
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const { tempId } = queue[i];
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('category', 'damage');
+        fd.append('category', category);
         const res = await authAxios<{ data: any }>({
           method: 'POST',
           url: `${API}/repair-reports/${reportId}/images`,
           data: fd,
         });
-        if (res.data?.data) uploaded.push(res.data.data);
-      }
-      if (uploaded.length > 0) {
-        setLocalReport((prev: any) => ({
-          ...prev,
-          images: [...(prev?.images ?? []), ...uploaded],
-        }));
+        if (res.data?.data) {
+          setLocalReport((prev: any) => ({
+            ...prev,
+            images: [...(prev?.images ?? []), res.data.data],
+          }));
+        }
+        setPendingImageUploads((prev) => prev.filter((p) => p.tempId !== tempId));
       }
     } catch (err: any) {
       notify('error', err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
     } finally {
-      setUploading(false);
+      setUploadingCat(null);
+      setPendingImageUploads((prev) => prev.filter((p) => !queue.some((q) => q.tempId === p.tempId)));
     }
     e.target.value = '';
   };
@@ -3357,38 +3365,36 @@ function EmergencyReportEditor({
           </SectionCard>
 
           {/* Fotoğraflar */}
-          <SectionCard
-            title="Fotoğraflar"
-            action={
-              isEditable ? (
-                <>
-                  <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-                  <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className={`text-xs text-white px-3 py-1.5 rounded-lg ${uploading ? 'bg-slate-400 cursor-wait' : 'bg-slate-600 hover:bg-slate-700'}`}>{uploading ? 'Yükleniyor...' : '+ Fotoğraf'}</button>
-                </>
-              ) : undefined
-            }
-          >
-            {!localReport.images?.length ? (
-              <div className="text-center py-6 text-slate-400 text-sm">Fotoğraf Yok.</div>
-            ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {localReport.images.map((img: any) => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden border border-slate-100">
-                    <img
-                      src={getReportImageUrl(img.storageKey)}
-                      alt={img.fileName ?? img.category}
-                      className="w-full h-28 object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" fill="%239ca3af" font-size="12">Yüklenemedi</text></svg>'; }}
+          <SectionCard title="Fotoğraflar">
+            {isEditable && (
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {REPORT_IMAGE_CATEGORY_KEYS.map((cat) => (
+                  <label
+                    key={cat}
+                    className={`cursor-pointer text-xs px-3 py-1.5 rounded-lg transition-colors ${uploadingCat === cat ? 'bg-blue-200 text-blue-700 cursor-wait' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                  >
+                    {uploadingCat === cat ? 'Yükleniyor...' : `+ ${REPORT_IMAGE_CATEGORY_LABELS[cat]}`}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+                      multiple
+                      className="hidden"
+                      disabled={uploadingCat !== null}
+                      onChange={(e) => handleImageUpload(e, cat)}
                     />
-                    {isEditable && (
-                      <button type="button"
-                        onClick={() => handleDeleteImage(img.id)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >×</button>
-                    )}
-                  </div>
+                  </label>
                 ))}
               </div>
+            )}
+            {!localReport.images?.length && !pendingImageUploads.length ? (
+              <div className="text-center py-6 text-slate-400 text-sm">Fotoğraf Yok.</div>
+            ) : (
+              <ReportImageGallery
+                images={localReport.images ?? []}
+                pendingUploads={pendingImageUploads}
+                isEditable={isEditable}
+                onDelete={(imageId) => void handleDeleteImage(imageId)}
+              />
             )}
           </SectionCard>
 
@@ -3550,6 +3556,7 @@ export default function RepairReportPage() {
   const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [uploadingCat, setUploadingCat] = useState<string | null>(null);
+  const [pendingImageUploads, setPendingImageUploads] = useState<PendingReportImageUpload[]>([]);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const bulgularTextareaRef = useRef<HTMLTextAreaElement>(null);
   const itemsTableRef = useRef<EditableItemsTableHandle>(null);
@@ -4237,10 +4244,16 @@ export default function RepairReportPage() {
       e.target.value = '';
       return;
     }
+    const queue = files.map((file, index) => ({
+      tempId: `upload-${Date.now()}-${index}-${file.name}`,
+      category,
+    }));
+    setPendingImageUploads((prev) => [...prev, ...queue]);
     setUploadingCat(category);
-    const uploaded: any[] = [];
     try {
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const { tempId } = queue[i];
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', category);
@@ -4249,19 +4262,20 @@ export default function RepairReportPage() {
           url: `${API}/repair-reports/${reportId}/images`,
           data: fd,
         });
-        if (res.data?.data) uploaded.push(res.data.data);
-      }
-      if (uploaded.length > 0) {
-        setReport((prev: any) => ({
-          ...prev,
-          images: [...(prev?.images ?? []), ...uploaded],
-        }));
+        if (res.data?.data) {
+          setReport((prev: any) => ({
+            ...prev,
+            images: [...(prev?.images ?? []), res.data.data],
+          }));
+        }
+        setPendingImageUploads((prev) => prev.filter((p) => p.tempId !== tempId));
       }
     } catch (err: any) {
       notify('error', err?.response?.data?.message ?? 'Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
       console.error(err);
     } finally {
       setUploadingCat(null);
+      setPendingImageUploads((prev) => prev.filter((p) => !queue.some((q) => q.tempId === p.tempId)));
     }
     e.target.value = '';
   };
@@ -4320,7 +4334,6 @@ export default function RepairReportPage() {
   if (loading || !report) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
 
   const imageCats = REPORT_IMAGE_CATEGORY_LABELS;
-  const catColor: Record<string, string> = { before: 'bg-blue-100 text-blue-700', damage: 'bg-red-100 text-red-700', after: 'bg-green-100 text-green-700' };
 
   // Saha personeli maliyet gizleme
   const normalizedRoleCode = String(currentUser?.role?.code ?? currentUser?.roleCode ?? '').toLowerCase();
@@ -4349,173 +4362,53 @@ export default function RepairReportPage() {
   return (
     <div className="space-y-5 pb-28">
       {/* Header */}
-      <div className="space-y-3">
-        <div className="flex items-start gap-3 flex-wrap">
-          <button type="button" onClick={() => {
-            tryNavigate(() => router.push(claimPath), 'leave');
-          }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
-              {report.claimFile?.insuranceCompany?.name && (
-                <span className="text-xs text-slate-500">
-                  Sigorta Şirketi: <span className="font-semibold text-slate-700">{report.claimFile.insuranceCompany.name}</span>
-                </span>
-              )}
+      <div className="flex items-start gap-3 flex-wrap">
+        <button type="button" onClick={() => {
+          tryNavigate(() => router.push(claimPath), 'leave');
+        }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
+            {report.claimFile?.insuranceCompany?.name && (
               <span className="text-xs text-slate-500">
-                Eksper: <span className={`font-semibold ${fileExpert.missing ? 'text-amber-700' : 'text-slate-700'}`}>
-                  {fileExpert.missing ? 'Atanmamış' : fileExpert.name}
-                </span>
+                Sigorta Şirketi: <span className="font-semibold text-slate-700">{report.claimFile.insuranceCompany.name}</span>
               </span>
-            </div>
-            {insuredName !== '—' && (
-              <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
             )}
-            <p className="text-xs text-slate-400 mt-0.5">
-              {fmtDateTime(report.reportDate ?? report.createdAt)}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
-                {repairReportStatusLabel(report.status)}
+            <span className="text-xs text-slate-500">
+              Eksper: <span className={`font-semibold ${fileExpert.missing ? 'text-amber-700' : 'text-slate-700'}`}>
+                {fileExpert.missing ? 'Atanmamış' : fileExpert.name}
               </span>
-              <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-                Satış {fmtCurrencyCompact(report.totalSalesAmount)}
-              </span>
-              {effectiveViewMode === 'internal' && !isFieldStaff && (
-                <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-                  Kâr {fmtCurrencyCompact(report.grossProfit)}
-                </span>
-              )}
-              {report.versionNo > 1 && (
-                <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
-              )}
-              {pendingInsurancePortalApproval && (
-                <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
-              )}
-            </div>
-            <div className="w-full max-w-md">
-              <RevisionHistoryStrip reportId={reportId as string} compact />
-            </div>
+            </span>
           </div>
+          {insuredName !== '—' && (
+            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
+          )}
+          <p className="text-xs text-slate-400 mt-0.5">
+            {fmtDateTime(report.reportDate ?? report.createdAt)}
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end relative z-10">
-          {/* İş akışı */}
-          {report.status === 'approved' && (
-            <button type="button"
-              onClick={handleRevise}
-              className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
-            >
-              Revize Et
-            </button>
-          )}
-          {(report.status === 'draft' || report.status === 'rejected') && (
-            <button type="button"
-              onClick={beginRequestApproval}
-              className="text-xs bg-yellow-500 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-600"
-            >
-              Onaya Gönder
-            </button>
-          )}
-          {report.status === 'pending_approval' && canManageApproval && (
-            <>
-              <button type="button"
-                onClick={handleApprove}
-                className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
-              >
-                Onayla
-              </button>
-              <button type="button"
-                onClick={() => setShowRejectModal(true)}
-                className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
-              >
-                Reddet
-              </button>
-            </>
-          )}
-          {showExternalChannelButton && (
-            <button type="button"
-              onClick={() => {
-                setExternalApprovalForm((f) => ({
-                  ...f,
-                  approverType: 'expert',
-                  channel: 'email',
-                  approverName: report.expertOffice?.companyName ?? '',
-                }));
-                setShowExternalApprovalModal(true);
-              }}
-              className="text-xs border border-blue-200 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-100"
-            >
-              E-posta / WhatsApp ile Gönder
-            </button>
-          )}
-
-          <div className="hidden sm:block h-6 w-px bg-slate-200" aria-hidden />
-
-          {/* Görünüm */}
-          {!isFieldStaff && (
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden text-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('internal')}
-                className={`px-3 py-1.5 transition-colors ${effectiveViewMode === 'internal' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                title="TDR, Marj ve Kâr sütunları görünür (şirket içi kullanım)"
-              >
-                Tam Görünüm
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('external')}
-                className={`px-3 py-1.5 border-l border-slate-200 transition-colors ${effectiveViewMode === 'external' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                title="TDR, Marj ve Kâr gizli — müşteriye gösterilecek görünüm"
-              >
-                Müşteri Görünümü
-              </button>
-            </div>
-          )}
-
-          {/* Paylaş */}
-          <div className="relative" ref={shareMenuRef}>
-            <button
-              type="button"
-              onClick={() => setShowShareMenu((v) => !v)}
-              className="text-xs bg-slate-700 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 flex items-center gap-1.5"
-            >
-              <IconDocumentDownload />
-              Paylaş
-              <IconChevronDown />
-            </button>
-            {showShareMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-xl z-20">
-                <button
-                  type="button"
-                  onClick={() => void handleDownloadPdf('external')}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
-                >
-                  <IconDocumentDownload className="w-4 h-4 text-slate-500" />
-                  PDF (Müşteri)
-                </button>
-                {!isFieldStaff && (
-                  <button
-                    type="button"
-                    onClick={() => void handleDownloadPdf('internal')}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
-                  >
-                    <IconDocumentDownload className="w-4 h-4 text-indigo-500" />
-                    PDF (İç)
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={openWhatsAppModal}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-green-700 hover:bg-green-50"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                  WhatsApp
-                </button>
-              </div>
+        <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
+              {repairReportStatusLabel(report.status)}
+            </span>
+            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+              Satış {fmtCurrencyCompact(report.totalSalesAmount)}
+            </span>
+            {effectiveViewMode === 'internal' && !isFieldStaff && (
+              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+                Kâr {fmtCurrencyCompact(report.grossProfit)}
+              </span>
             )}
+            {report.versionNo > 1 && (
+              <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
+            )}
+            {pendingInsurancePortalApproval && (
+              <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
+            )}
+          </div>
+          <div className="w-full max-w-md">
+            <RevisionHistoryStrip reportId={reportId as string} compact />
           </div>
         </div>
       </div>
@@ -4563,9 +4456,121 @@ export default function RepairReportPage() {
       <SectionCard
         title="Dosya Bilgileri"
         action={
-          report.reportType === 'multi' && isEditable ? (
-            <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Hasar Nedeni</button>
-          ) : undefined
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {report.reportType === 'multi' && isEditable && (
+              <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Hasar Nedeni</button>
+            )}
+            {report.status === 'approved' && (
+              <button type="button"
+                onClick={handleRevise}
+                className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+              >
+                Revize Et
+              </button>
+            )}
+            {(report.status === 'draft' || report.status === 'rejected') && (
+              <button type="button"
+                onClick={beginRequestApproval}
+                className="text-xs bg-yellow-500 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-600"
+              >
+                Onaya Gönder
+              </button>
+            )}
+            {report.status === 'pending_approval' && canManageApproval && (
+              <>
+                <button type="button"
+                  onClick={handleApprove}
+                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+                >
+                  Onayla
+                </button>
+                <button type="button"
+                  onClick={() => setShowRejectModal(true)}
+                  className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
+                >
+                  Reddet
+                </button>
+              </>
+            )}
+            {showExternalChannelButton && (
+              <button type="button"
+                onClick={() => {
+                  setExternalApprovalForm((f) => ({
+                    ...f,
+                    approverType: 'expert',
+                    channel: 'email',
+                    approverName: report.expertOffice?.companyName ?? '',
+                  }));
+                  setShowExternalApprovalModal(true);
+                }}
+                className="text-xs border border-blue-200 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-100"
+              >
+                E-posta / WhatsApp ile Gönder
+              </button>
+            )}
+            <div className="hidden sm:block h-6 w-px bg-slate-200" aria-hidden />
+            {!isFieldStaff && (
+              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('internal')}
+                  className={`px-3 py-1.5 transition-colors ${effectiveViewMode === 'internal' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  title="TDR, Marj ve Kâr sütunları görünür (şirket içi kullanım)"
+                >
+                  Tam Görünüm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('external')}
+                  className={`px-3 py-1.5 border-l border-slate-200 transition-colors ${effectiveViewMode === 'external' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  title="TDR, Marj ve Kâr gizli — müşteriye gösterilecek görünüm"
+                >
+                  Müşteri Görünümü
+                </button>
+              </div>
+            )}
+            <div className="relative" ref={shareMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowShareMenu((v) => !v)}
+                className="text-xs bg-slate-700 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 flex items-center gap-1.5"
+              >
+                <IconDocumentDownload />
+                Paylaş
+                <IconChevronDown />
+              </button>
+              {showShareMenu && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-xl z-20">
+                  <button
+                    type="button"
+                    onClick={() => void handleDownloadPdf('external')}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    <IconDocumentDownload className="w-4 h-4 text-slate-500" />
+                    PDF (Müşteri)
+                  </button>
+                  {!isFieldStaff && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDownloadPdf('internal')}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                    >
+                      <IconDocumentDownload className="w-4 h-4 text-indigo-500" />
+                      PDF (İç)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={openWhatsAppModal}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-green-700 hover:bg-green-50"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         }
       >
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -4615,27 +4620,38 @@ export default function RepairReportPage() {
       </SectionCard>
 
       <SectionCard title="Hızlı Onarım Türü">
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Türü</p>
-              {quickDamageDisplayOptions.map((option) => {
-                const active = quickDamageTypes.includes(option.value);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    disabled={!isEditable}
-                    onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
-                  >
-                    {active ? '✓ ' : ''}{option.label}
-                  </button>
-                );
-              })}
-              {quickDamageDisplayOptions.length === 0 && (
-                <p className="text-xs text-slate-400">Dosya konusu / hasar türü tanımlı değil.</p>
-              )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Türü</p>
+                {quickDamageDisplayOptions.map((option) => {
+                  const active = quickDamageTypes.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={!isEditable}
+                      onClick={() => setQuickDamageTypes((prev) => active ? prev.filter((value) => value !== option.value) : [...prev, option.value])}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} disabled:opacity-60`}
+                    >
+                      {active ? '✓ ' : ''}{option.label}
+                    </button>
+                  );
+                })}
+                {quickDamageDisplayOptions.length === 0 && (
+                  <p className="text-xs text-slate-400">Dosya konusu / hasar türü tanımlı değil.</p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Büyüklüğü</p>
+                {DAMAGE_SIZE_OPTIONS.map((option) => (
+                  <label key={option.value} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
             </div>
             <button
               type="button"
@@ -4645,17 +4661,6 @@ export default function RepairReportPage() {
             >
               ⚡ Hızlı Onarım Türü Ekle
             </button>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold text-slate-600">Hasar Büyüklüğü</p>
-            <div className="flex flex-wrap gap-3">
-              {DAMAGE_SIZE_OPTIONS.map((option) => (
-                <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
-                  <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
-                  {option.label}
-                </label>
-              ))}
-            </div>
           </div>
           {quickDamageTypes.length > 0 && (
             <p className="text-xs text-slate-400">{quickDamageTypes.map((v) => quickDamageTypeDisplayLabel(v, quickDamageTypeLabels)).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
@@ -4837,7 +4842,7 @@ export default function RepairReportPage() {
       <SectionCard title="Fotoğraflar">
         {isEditable && (
           <div className="flex gap-2 mb-4 flex-wrap">
-            {(['before', 'damage', 'after'] as const).map((cat) => (
+            {REPORT_IMAGE_CATEGORY_KEYS.map((cat) => (
               <label key={cat} className={`cursor-pointer text-xs px-3 py-1.5 rounded-lg transition-colors ${uploadingCat === cat ? 'bg-blue-200 text-blue-700 cursor-wait' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
                 {uploadingCat === cat ? 'Yükleniyor...' : `+ ${imageCats[cat]}`}
                 <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple className="hidden" disabled={uploadingCat !== null} onChange={(e) => handleImageUpload(e, cat)} />
@@ -4845,13 +4850,12 @@ export default function RepairReportPage() {
             ))}
           </div>
         )}
-        {!(report.images?.length) ? (
+        {!(report.images?.length) && !pendingImageUploads.length ? (
           <p className="text-slate-400 text-sm">Henüz Fotoğraf Eklenmemiş.</p>
         ) : (
           <ReportImageGallery
-            images={report.images}
-            categoryLabels={imageCats}
-            categoryColors={catColor}
+            images={report.images ?? []}
+            pendingUploads={pendingImageUploads}
             isEditable={isEditable}
             onDelete={(imageId) => void handleDeleteImage(imageId)}
             onAnnotate={(img) => setShowAnnotation(img)}

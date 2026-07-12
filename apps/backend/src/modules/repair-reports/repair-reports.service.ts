@@ -15,6 +15,7 @@ import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection
 import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
+import { normalizeReportImageCategory } from './report-image-category';
 import {
   CreateRepairReportDto,
   UpdateRepairReportDto,
@@ -496,7 +497,7 @@ export class RepairReportsService {
   async addImage(
     reportId: string,
     file: Express.Multer.File,
-    category: string,
+    category?: string,
     caption?: string,
   ) {
     const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
@@ -509,7 +510,7 @@ export class RepairReportsService {
         fileName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
-        category: category ?? 'damage',
+        category: normalizeReportImageCategory(category),
         caption,
         sortOrder: count,
       },
@@ -528,7 +529,11 @@ export class RepairReportsService {
   async updateImage(imageId: string, dto: { category?: string; caption?: string }) {
     const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
     if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
-    return this.prisma.reportImage.update({ where: { id: imageId }, data: dto });
+    const data = {
+      ...dto,
+      ...(dto.category !== undefined ? { category: normalizeReportImageCategory(dto.category) } : {}),
+    };
+    return this.prisma.reportImage.update({ where: { id: imageId }, data });
   }
 
   async saveAnnotation(imageId: string, annotationData: Record<string, unknown>) {

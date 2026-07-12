@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
@@ -306,6 +306,38 @@ function DosyaSayfaUstu({
 }
 
 // ─── Senaryo B: Bu Dosyada Kimler Var? (Komuta Merkezi) ─────────────────────
+
+function AssignPopover({
+  title,
+  accent,
+  children,
+  wide = false,
+  align = 'left',
+}: {
+  title: string;
+  accent: 'blue' | 'teal' | 'purple';
+  children: React.ReactNode;
+  wide?: boolean;
+  align?: 'left' | 'right';
+}) {
+  const frame = {
+    blue: 'border-blue-200 bg-white shadow-xl ring-1 ring-blue-100',
+    teal: 'border-teal-200 bg-white shadow-xl ring-1 ring-teal-100',
+    purple: 'border-purple-200 bg-white shadow-xl ring-1 ring-purple-100',
+  }[accent];
+
+  return (
+    <div
+      className={`absolute top-full z-50 mt-2 rounded-xl border p-3 ${frame} ${wide ? 'w-[min(100%,24rem)] max-h-[min(70vh,28rem)]' : 'w-[min(100%,20rem)] max-h-[min(70vh,22rem)]'} overflow-y-auto ${align === 'right' ? 'right-0' : 'left-0'}`}
+      role="dialog"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="mb-2 text-sm font-semibold text-slate-800">{title}</p>
+      {children}
+    </div>
+  );
+}
+
 function DosyadaKimlerVarCard({
   claim,
   userRoleCode,
@@ -349,6 +381,18 @@ function DosyadaKimlerVarCard({
   const [manualOfficeId, setManualOfficeId] = useState('');
   const [manualFieldId, setManualFieldId] = useState('');
   const [activePanel, setActivePanel] = useState<'office' | 'field' | 'supplier' | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activePanel) return;
+    const onDown = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setActivePanel(null);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [activePanel]);
 
   const normalizeRoleCodeLocal = (code?: string | null) =>
     String(code ?? '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
@@ -653,9 +697,9 @@ function DosyadaKimlerVarCard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div ref={panelRef} className="relative grid grid-cols-1 gap-3 overflow-visible md:grid-cols-2 lg:grid-cols-3">
         {/* Dosya Sorumlusu */}
-        <div className={`rounded-xl border p-3 flex flex-col min-h-[88px] ${activePanel === 'office' ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50/70' : 'border-slate-200 bg-slate-50/70'}`}>
+        <div className={`relative overflow-visible rounded-xl border p-3 flex flex-col min-h-[88px] ${activePanel === 'office' ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50/70' : 'border-slate-200 bg-slate-50/70'}`}>
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] font-medium text-slate-500">Dosya Sorumlusu</p>
             {canAssign && (
@@ -676,18 +720,30 @@ function DosyadaKimlerVarCard({
               {formatUserName(currentOfficeUser)}
             </p>
           </div>
-          {activePanel === 'office' && (
-            <p className="mt-2 text-[11px] font-medium text-blue-600">Atama paneli açık ↓</p>
-          )}
           {claim.activeDelegation && (
             <div className="mt-2.5">
               <DelegationBanner delegation={claim.activeDelegation} />
             </div>
           )}
+          {canAssign && activePanel === 'office' && (
+            <AssignPopover title="Dosya Sorumlusu Seç" accent="blue">
+              {renderStaffAssignBlock(
+                officeSuggestions,
+                officeSuggLoading,
+                currentOfficeUser?.id,
+                assigningOffice,
+                handleAssignOffice,
+                staffPool.office,
+                manualOfficeId,
+                setManualOfficeId,
+                'bg-blue-600',
+              )}
+            </AssignPopover>
+          )}
         </div>
 
         {/* Saha Tespitçisi */}
-        <div className={`rounded-xl border p-3 flex flex-col min-h-[88px] ${activePanel === 'field' ? 'border-teal-400 ring-2 ring-teal-200 bg-teal-50/70' : 'border-teal-200 bg-teal-50/50'}`}>
+        <div className={`relative overflow-visible rounded-xl border p-3 flex flex-col min-h-[88px] ${activePanel === 'field' ? 'border-teal-400 ring-2 ring-teal-200 bg-teal-50/70' : 'border-teal-200 bg-teal-50/50'}`}>
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] font-medium text-slate-500">Saha Tespitçisi</p>
             {canAssign && (
@@ -732,13 +788,66 @@ function DosyadaKimlerVarCard({
               />
             </div>
           )}
-          {activePanel === 'field' && (
-            <p className="mt-2 text-[11px] font-medium text-teal-600">Atama paneli açık ↓</p>
+          {canAssign && activePanel === 'field' && (
+            <AssignPopover title="Saha Personeli Seç" accent="teal" wide>
+              {regionLabel ? (
+                <p className="mb-2 text-[11px] text-slate-500">Bölge: {regionLabel}</p>
+              ) : null}
+              {renderStaffAssignBlock(
+                fieldSuggestions,
+                fieldSuggLoading,
+                currentFieldUser?.id,
+                assigningField,
+                handleAssignField,
+                staffPool.field,
+                manualFieldId,
+                setManualFieldId,
+                'bg-teal-600',
+              )}
+              <div className="mt-3 border-t border-teal-100 pt-3">
+                <p className="mb-1 text-sm font-semibold text-slate-800">Tespitçi Tedarikçi Seç</p>
+                <p className="mb-2 text-[11px] text-slate-500">
+                  Tedarikçi kaydında &quot;Tespitçi Olarak Görevlendir&quot; işaretli firmalar listelenir.
+                </p>
+                {inspectorVendorsLoading ? (
+                  <p className="text-xs text-slate-400">Tespitçi tedarikçiler yükleniyor...</p>
+                ) : inspectorVendors.length === 0 ? (
+                  <p className="text-xs text-slate-500">
+                    {regionLabel
+                      ? `${regionLabel} bölgesinde tespitçi tedarikçi bulunamadı.`
+                      : 'Uygun tespitçi tedarikçi bulunamadı.'}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                    <select
+                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+                      value={selectedInspectorVendorId}
+                      onChange={(e) => setSelectedInspectorVendorId(e.target.value)}
+                    >
+                      <option value="">Tespitçi tedarikçi seç...</option>
+                      {inspectorVendors.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAssignInspectorVendor}
+                      disabled={assigningInspectorVendor || !selectedInspectorVendorId}
+                      className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 shrink-0"
+                    >
+                      {assigningInspectorVendor ? 'Atanıyor...' : 'Ata'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </AssignPopover>
           )}
         </div>
 
-        {/* Tedarikçi — md: 2+1 düzeni */}
-        <div className={`rounded-xl border p-3 flex flex-col min-h-[88px] md:col-span-2 lg:col-span-1 ${activePanel === 'supplier' ? 'border-purple-400 ring-2 ring-purple-200 bg-purple-50/70' : 'border-purple-200 bg-purple-50/50'}`}>
+        {/* Tedarikçi */}
+        <div className={`relative overflow-visible rounded-xl border p-3 flex flex-col min-h-[88px] md:col-span-2 lg:col-span-1 ${activePanel === 'supplier' ? 'border-purple-400 ring-2 ring-purple-200 bg-purple-50/70' : 'border-purple-200 bg-purple-50/50'}`}>
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] font-medium text-slate-500">Tedarikçi</p>
             {canAssign && (
@@ -783,160 +892,75 @@ function DosyadaKimlerVarCard({
               />
             </div>
           )}
-
-          {activePanel === 'supplier' && (
-            <p className="mt-2 text-[11px] font-medium text-purple-600">Atama paneli açık ↓</p>
+          {canAssign && activePanel === 'supplier' && (
+            <AssignPopover title="Tedarikçi Seç" accent="purple" align="right">
+              {regionLabel ? (
+                <p className="mb-2 text-[11px] text-slate-500">Bölge: {regionLabel}</p>
+              ) : null}
+              {vendorsLoading || vendorSuggLoading ? (
+                <p className="text-xs text-slate-400">Tedarikçiler yükleniyor...</p>
+              ) : vendors.length === 0 ? (
+                <p className="text-xs text-slate-500">
+                  {claim?.propertyAddress?.city
+                    ? `${claim.propertyAddress.city} bölgesinde uygun tedarikçi yok.`
+                    : 'Uygun tedarikçi bulunamadı.'}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {vendorSuggestions.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen Tedarikçiler (Maliyet / Kalite / Bölge)</p>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                        {vendorSuggestions.slice(0, 8).map((v) => (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => setSelectedVendorId(v.id)}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${selectedVendorId === v.id ? 'border-purple-400 bg-purple-100 text-purple-900' : 'border-slate-200 bg-white hover:border-purple-200'}`}
+                          >
+                            <span className="font-medium">{v.name}</span>
+                            {v.stats?.completedJobs != null && (
+                              <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                    <select
+                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      value={selectedVendorId}
+                      onChange={(e) => setSelectedVendorId(e.target.value)}
+                    >
+                      <option value="">Tedarikçi seç...</option>
+                      {vendors.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAssignSupplier}
+                      disabled={assigningSupplier || !selectedVendorId}
+                      className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-60 shrink-0"
+                    >
+                      {assigningSupplier ? 'Atanıyor...' : 'Ata'}
+                    </button>
+                  </div>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    value={assignNote}
+                    onChange={(e) => setAssignNote(e.target.value)}
+                    placeholder="Not (opsiyonel)..."
+                  />
+                </div>
+              )}
+            </AssignPopover>
           )}
         </div>
       </div>
-
-      {canAssign && activePanel === 'office' && (
-        <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4">
-          <p className="text-sm font-semibold text-slate-800 mb-3">Dosya Sorumlusu Seç</p>
-          {renderStaffAssignBlock(
-            officeSuggestions,
-            officeSuggLoading,
-            currentOfficeUser?.id,
-            assigningOffice,
-            handleAssignOffice,
-            staffPool.office,
-            manualOfficeId,
-            setManualOfficeId,
-            'bg-blue-600',
-          )}
-        </div>
-      )}
-
-      {canAssign && activePanel === 'field' && (
-        <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/40 p-4 space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-800 mb-1">Saha Personeli Seç</p>
-            {regionLabel ? (
-              <p className="text-[11px] text-slate-500 mb-3">Bölge: {regionLabel}</p>
-            ) : null}
-            {renderStaffAssignBlock(
-              fieldSuggestions,
-              fieldSuggLoading,
-              currentFieldUser?.id,
-              assigningField,
-              handleAssignField,
-              staffPool.field,
-              manualFieldId,
-              setManualFieldId,
-              'bg-teal-600',
-            )}
-          </div>
-          <div className="border-t border-teal-100 pt-4">
-            <p className="text-sm font-semibold text-slate-800 mb-1">Tespitçi Tedarikçi Seç</p>
-            <p className="text-[11px] text-slate-500 mb-3">
-              Tedarikçi kaydında &quot;Tespitçi Olarak Görevlendir&quot; işaretli firmalar listelenir.
-            </p>
-            {inspectorVendorsLoading ? (
-              <p className="text-xs text-slate-400">Tespitçi tedarikçiler yükleniyor...</p>
-            ) : inspectorVendors.length === 0 ? (
-              <p className="text-xs text-slate-500">
-                {regionLabel
-                  ? `${regionLabel} bölgesinde tespitçi tedarikçi bulunamadı.`
-                  : 'Uygun tespitçi tedarikçi bulunamadı.'}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-                  <select
-                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-400"
-                    value={selectedInspectorVendorId}
-                    onChange={(e) => setSelectedInspectorVendorId(e.target.value)}
-                  >
-                    <option value="">Tespitçi tedarikçi seç...</option>
-                    {inspectorVendors.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAssignInspectorVendor}
-                    disabled={assigningInspectorVendor || !selectedInspectorVendorId}
-                    className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 shrink-0"
-                  >
-                    {assigningInspectorVendor ? 'Atanıyor...' : 'Ata'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {canAssign && activePanel === 'supplier' && (
-        <div className="mt-3 rounded-xl border border-purple-200 bg-purple-50/40 p-4">
-          <p className="text-sm font-semibold text-slate-800 mb-1">Tedarikçi Seç</p>
-          {regionLabel ? (
-            <p className="text-[11px] text-slate-500 mb-3">Bölge: {regionLabel}</p>
-          ) : null}
-          {vendorsLoading || vendorSuggLoading ? (
-            <p className="text-xs text-slate-400">Tedarikçiler yükleniyor...</p>
-          ) : vendors.length === 0 ? (
-            <p className="text-xs text-slate-500">
-              {claim?.propertyAddress?.city
-                ? `${claim.propertyAddress.city} bölgesinde uygun tedarikçi yok.`
-                : 'Uygun tedarikçi bulunamadı.'}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {vendorSuggestions.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen Tedarikçiler (Maliyet / Kalite / Bölge)</p>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                    {vendorSuggestions.slice(0, 8).map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => setSelectedVendorId(v.id)}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${selectedVendorId === v.id ? 'border-purple-400 bg-purple-100 text-purple-900' : 'border-slate-200 bg-white hover:border-purple-200'}`}
-                      >
-                        <span className="font-medium">{v.name}</span>
-                        {v.stats?.completedJobs != null && (
-                          <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-                <select
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  value={selectedVendorId}
-                  onChange={(e) => setSelectedVendorId(e.target.value)}
-                >
-                  <option value="">Tedarikçi seç...</option>
-                  {vendors.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAssignSupplier}
-                  disabled={assigningSupplier || !selectedVendorId}
-                  className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-60 shrink-0"
-                >
-                  {assigningSupplier ? 'Atanıyor...' : 'Ata'}
-                </button>
-              </div>
-              <input
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                value={assignNote}
-                onChange={(e) => setAssignNote(e.target.value)}
-                placeholder="Not (opsiyonel)..."
-              />
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 
@@ -970,7 +994,7 @@ function DosyaKomutaPaneli({
           <DosyaOzetiChipleri claim={claim} />
         </div>
       </div>
-      <div className="p-4">
+      <div className="overflow-visible p-4">
         <DosyadaKimlerVarCard
           claim={claim}
           userRoleCode={userRoleCode}

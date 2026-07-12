@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as fabric from 'fabric';
+import { authHeader } from '@/utils/api';
+import { getReportImageStreamUrl } from '@/utils/upload-url';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -128,12 +130,18 @@ const TOOLS: { id: ToolType; label: string }[] = [
 
 export default function ImageAnnotationEditor({
   imageUrl,
+  imageId,
   onSave,
   onClose,
 }: ImageAnnotationEditorProps) {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [tool, setTool] = useState<ToolType>('select');
   const [color, setColor] = useState('#EF4444');
@@ -167,6 +175,54 @@ export default function ImageAnnotationEditor({
   useEffect(() => { strokeWidthRef.current = strokeWidth; }, [strokeWidth]);
   useEffect(() => { numberedCountRef.current = numberedCount; }, [numberedCount]);
   useEffect(() => { selectedStampRef.current = selectedStamp; }, [selectedStamp]);
+
+  // ─── Görsel kaynağı — JWT stream öncelikli (galeri ile aynı) ───────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoadingImage(true);
+      setLoadError(false);
+      setResolvedUrl(null);
+
+      if (imageId) {
+        try {
+          const res = await fetch(getReportImageStreamUrl(imageId), { headers: authHeader() });
+          if (res.ok) {
+            const blob = await res.blob();
+            if (cancelled) return;
+            const objectUrl = URL.createObjectURL(blob);
+            blobUrlRef.current = objectUrl;
+            setResolvedUrl(objectUrl);
+            setLoadingImage(false);
+            return;
+          }
+        } catch {
+          /* doğrudan URL'ye düş */
+        }
+      }
+
+      if (cancelled) return;
+      if (imageUrl) {
+        setResolvedUrl(imageUrl);
+        setLoadingImage(false);
+        return;
+      }
+
+      setLoadError(true);
+      setLoadingImage(false);
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [imageId, imageUrl]);
 
   // ─── History helpers ────────────────────────────────────────────────────────
   const pushHistory = useCallback(() => {
@@ -219,11 +275,13 @@ export default function ImageAnnotationEditor({
 
   // ─── Canvas init ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!canvasElRef.current || !containerRef.current) return;
+    if (!resolvedUrl || !canvasElRef.current || !containerRef.current) return;
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
+    const isBlob = resolvedUrl.startsWith('blob:');
+    if (!isBlob) img.crossOrigin = 'anonymous';
+
+    const initCanvas = () => {
       const maxW = Math.min(window.innerWidth - 280, 1400);
       const maxH = window.innerHeight - 120;
       const scale = Math.min(maxW / img.width, maxH / img.height, 1);
@@ -238,13 +296,14 @@ export default function ImageAnnotationEditor({
       });
       fabricRef.current = fc;
 
-      // Background image
-      fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' }).then((fimg) => {
+      const loadOpts = isBlob ? {} : { crossOrigin: 'anonymous' as const };
+      fabric.FabricImage.fromURL(resolvedUrl, loadOpts).then((fimg) => {
         fimg.set({ left: 0, top: 0, scaleX: w / img.width, scaleY: h / img.height, selectable: false, evented: false });
         fc.backgroundImage = fimg;
         fc.renderAll();
-        // initial snapshot
         historyRef.current = [JSON.stringify(fc.toJSON())];
+      }).catch(() => {
+        setLoadError(true);
       });
 
       // ── Mouse event handlers ────────────────────────────────────────────────
@@ -586,14 +645,17 @@ export default function ImageAnnotationEditor({
         setSelectedObj(null);
       });
     };
-    img.src = imageUrl;
+
+    img.onload = initCanvas;
+    img.onerror = () => setLoadError(true);
+    img.src = resolvedUrl;
 
     return () => {
       fabricRef.current?.dispose();
       fabricRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageUrl]);
+  }, [resolvedUrl]);
 
   // Update canvas mode when tool changes
   useEffect(() => {
@@ -848,10 +910,21 @@ export default function ImageAnnotationEditor({
         {/* ── Canvas Area ──────────────────────────────────────────────────── */}
         <div
           ref={containerRef}
-          className="flex-1 flex items-center justify-center overflow-auto p-4"
+          className="flex-1 flex items-center justify-center overflow-auto p-4 relative"
           style={{ background: '#0f1117' }}
         >
-          <canvas ref={canvasElRef} style={{ display: 'block' }} />
+          {loadingImage && (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
+              Fotoğraf yükleniyor...
+            </div>
+          )}
+          {loadError && !loadingImage && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-6">
+              <p className="text-sm text-red-300">Fotoğraf yüklenemedi.</p>
+              <p className="text-xs text-gray-500">Oturumunuz açık mı kontrol edin veya sayfayı yenileyip tekrar deneyin.</p>
+            </div>
+          )}
+          <canvas ref={canvasElRef} className={loadingImage || loadError ? 'invisible' : 'block'} />
         </div>
       </div>
     </div>

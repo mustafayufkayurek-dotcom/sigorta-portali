@@ -12,14 +12,14 @@ export function IletisimTab({ claimId }: { claimId: string }) {
 
       <FinansPanelCard
         title="WhatsApp Yazışmaları"
-        subtitle="Yüklenen sohbet arşivleri"
+        subtitle="Sohbet arşivi"
       >
         <YazismalarTab claimId={claimId} embedded />
       </FinansPanelCard>
 
       <FinansPanelCard
         title="Gelen E-Posta"
-        subtitle="Dosyaya bağlı gelen e-postalar"
+        subtitle="Dosyaya bağlı e-postalar"
         noPadding
       >
         <InboundEmailCorrespondencePanel claimFileId={claimId} />

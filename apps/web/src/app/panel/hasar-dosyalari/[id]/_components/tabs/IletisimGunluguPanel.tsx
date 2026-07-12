@@ -194,8 +194,8 @@ export function IletisimGunluguPanel({ claimId }: { claimId: string }) {
 
   return (
     <div className="space-y-4">
-      <FinansPanelCard title="Kayıt Ekle" subtitle="Talimat veya dosya notu ekleyin">
-        <div className="space-y-3">
+      <FinansPanelCard title="Kayıt Ekle" subtitle="Talimat veya dosya notu">
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
           <div>
             <FinansFieldLabel>Kayıt Türü</FinansFieldLabel>
             <select
@@ -236,7 +236,7 @@ export function IletisimGunluguPanel({ claimId }: { claimId: string }) {
               </div>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end md:col-span-2">
             <button
               type="button"
               onClick={handleSave}

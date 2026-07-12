@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '../claim-detail-utils';
+import { FinansFormPanel, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 
 // ─── Tab: Randevular ──────────────────────────────────────────────────────────
 
@@ -121,66 +122,68 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">Randevular</h3>
-        <button type="button" onClick={() => setShowForm(!showForm)} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          {showForm ? 'İptal' : '+ Randevu Ekle'}
-        </button>
-      </div>
-
+    <div className="space-y-3">
+      <FinansPanelCard
+        title="Randevular"
+        subtitle="Planlanan ziyaret ve toplantılar"
+        action={{
+          label: showForm ? 'Formu Kapat' : '+ Randevu Ekle',
+          onClick: () => setShowForm(!showForm),
+          active: showForm,
+        }}
+      >
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
-          <h4 className="text-sm font-semibold text-slate-700">Yeni Randevu</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FinansFormPanel
+          title="Yeni Randevu"
+          onCancel={() => setShowForm(false)}
+          onSubmit={handleSave}
+          saving={saving}
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Randevu Tipi</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <label className="mb-1 block text-xs text-slate-500">Randevu Tipi</label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 {Object.entries(APPOINTMENT_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Başlangıç Tarih/Saat</label>
-              <input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              <label className="mb-1 block text-xs text-slate-500">Başlangıç Tarih/Saat</label>
+              <input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Bitiş Tarih/Saat (opsiyonel)</label>
-              <input type="datetime-local" value={form.scheduledEnd} onChange={(e) => setForm({ ...form, scheduledEnd: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              <label className="mb-1 block text-xs text-slate-500">Bitiş Tarih/Saat (Opsiyonel)</label>
+              <input type="datetime-local" value={form.scheduledEnd} onChange={(e) => setForm({ ...form, scheduledEnd: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Sorumlu Personel</label>
-              <select value={form.assignedUserId} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <label className="mb-1 block text-xs text-slate-500">Sorumlu Personel</label>
+              <select value={form.assignedUserId} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 <option value="">— Seçiniz —</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Tedarikçi (opsiyonel)</label>
-              <select value={form.vendorId} onChange={(e) => setForm({ ...form, vendorId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <label className="mb-1 block text-xs text-slate-500">Tedarikçi (Opsiyonel)</label>
+              <select value={form.vendorId} onChange={(e) => setForm({ ...form, vendorId: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 <option value="">— Seçiniz —</option>
                 {vendors.map((v) => <option key={v.id} value={v.id}>{v.name} {v.stats?.activeJobs != null ? `(${v.stats.activeJobs} aktif iş)` : ''}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Konum</label>
-              <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Adres veya Konum" />
+              <label className="mb-1 block text-xs text-slate-500">Konum</label>
+              <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Adres veya Konum" />
             </div>
-            <div className="md:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Notlar</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({ ...form, notes: v }); }} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none" />
+            <div>
+              <label className="mb-1 block text-xs text-slate-500">Notlar</label>
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm({ ...form, notes: v }); }} rows={2} className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {loading ? (
-        <div className="text-slate-400 py-8 text-center">Yükleniyor...</div>
+        <div className="py-8 text-center text-sm text-slate-400">Yükleniyor...</div>
       ) : appointments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">Henüz Randevu Eklenmemiş</div>
+        <div className="rounded-lg border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">Henüz Randevu Eklenmemiş</div>
       ) : (
         <div className="space-y-3">
           {appointments.map((appt) => (
@@ -276,6 +279,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
           ))}
         </div>
       )}
+      </FinansPanelCard>
     </div>
   );
 }

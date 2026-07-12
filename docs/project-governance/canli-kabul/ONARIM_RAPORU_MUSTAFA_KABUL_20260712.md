@@ -1,7 +1,7 @@
 # Onarım Raporu — Mustafa Kabul Durumu (12 Temmuz 2026)
 
 **Kaynak:** Mustafa'nın orijinal notları + 4'erli grup test geri bildirimi (Grup 1–5).  
-**Canlı referans:** Web **v292** (12 Temmuz 2026) · Backend v279 · Rollback web v291  
+**Canlı referans:** Web **v294** · Backend **v281** (12 Temmuz 2026, SSH doğrulandı) · Rollback web v293 / backend v280  
 **B-1 (Rapora Git akışı):** İptal — dokunulmayacak.
 
 ## Altın kural (kalıcı)
@@ -114,7 +114,7 @@
 | 37 | **YAPILMIŞ** | Kaydetme hatırlatma pop-up ✓ |
 | 38 | **YAPILMIŞ** | Kaydet/İptal sabit + sayaç ✓ |
 | 38 ek | **YENİ TALEP** | Sol: Süre + Kayıt/İptal · Orta: Finansal Özet · Sağ: Kaydet/İptal. Süre üstü başlık: **«Rapor Oluşturma Analizi»** (disiplin) |
-| 39 | **NOT ALINDI** | Yazım süresi hesaplanıyor; personel sayfası analizi **bu etap bitince Mustafa'ya hatırlatılacak** |
+| 39 | **KODDA (v294)** | Personel Yönetimi → «Rapor Yazım Süresi» tab — Mustafa PASS |
 | 40 | **YAPILMIŞ / EKSİK** | Düzen var; 38 ek ile tamamlanacak |
 
 ---
@@ -137,11 +137,11 @@ Mustafa geri bildirimi Grup 1–11 bitti.
 
 **Henüz kodlanmayan / ek talep:** 2 ek, 18 ek, 26, 28 ek, 30 ek, 33, 38 ek
 
-**Beklemede:** 16 (siz yazacaksınız), 39 (personel analizi — hatırlatılacak), 11 portal testi
+**Beklemede:** 16 (siz yazacaksınız), 11 portal testi
 
 ---
 
 ## Deploy notu (12 Temmuz 2026)
 
-- **Canlı:** Web **v292** · Backend **v279**
-- **Rollback:** Web v291 · Backend v278
+- **Canlı:** Web **v294** · Backend **v281** — final test turu
+- **Rollback:** Web v293 · Backend v280

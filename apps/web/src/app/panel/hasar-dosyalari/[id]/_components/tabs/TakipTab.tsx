@@ -69,7 +69,7 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
   return (
     <FinansPanelCard
       title="Hareket Geçmişi"
-      subtitle="Atama, randevu, tespit ve durum değişiklikleri otomatik kaydedilir"
+      subtitle="Otomatik işlem kaydı"
     >
       {loading ? (
         <p className="text-sm text-slate-400 py-8 text-center">Yükleniyor…</p>
@@ -126,19 +126,15 @@ export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
 
   return (
     <div className="space-y-4">
-      <FinansPanelCard
-        title="Dosya Operasyonu"
-        subtitle="Görevler, iletişim günlüğü, randevular, süreç durumu ve hareket geçmişi tek merkezden yönetilir"
-        noPadding
-      >
-        <div className="sticky top-[52px] z-10 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-100">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="sticky top-[52px] z-10 border-b border-slate-100 bg-white/95 px-4 py-1.5 backdrop-blur-sm">
           <div className="flex gap-1 overflow-x-auto">
             {OPERASYON_SUB_TABS.map((tab) => (
               <button
                 type="button"
                 key={tab.id}
                 onClick={() => setSubTab(tab.id)}
-                className={`shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                className={`shrink-0 border-b-2 -mb-px whitespace-nowrap px-4 py-2 text-sm font-medium transition-colors ${
                   subTab === tab.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -149,7 +145,7 @@ export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
             ))}
           </div>
         </div>
-      </FinansPanelCard>
+      </div>
 
       {subTab === 'gorevler' && <GorevlerTab claimId={claimId} claim={claim} />}
       {subTab === 'iletisim' && <IletisimTab claimId={claimId} />}

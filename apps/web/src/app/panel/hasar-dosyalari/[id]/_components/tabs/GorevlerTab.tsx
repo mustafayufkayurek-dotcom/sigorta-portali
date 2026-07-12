@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authAxios } from '../claim-detail-utils';
+import { FinansFormPanel } from '@/components/finance/FinansPanelUI';
 import { Badge, CollapsibleSectionCard } from '../claim-detail-ui';
 
 // ─── Tab: Dosya Görevleri & Hatırlatmalar ─────────────────────────────────────
@@ -466,72 +467,63 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     grouped.overdue.length + grouped.today.length + grouped.upcoming.length + grouped.completed.length > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-base font-semibold text-slate-800">Dosya Görevleri & Hatırlatmalar</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-xl">
-            Dosya sürecinde yapılacak işleri ve kişisel hatırlatmaları kaydedin; geciken ve bugünkü görevleri buradan takip edin.
-          </p>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+            Açık <span className="font-semibold">{counts.open}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+            Bugün <span className="font-semibold">{counts.today}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+            Gecikmiş <span className="font-semibold">{counts.overdue}</span>
+          </span>
+          <span className="hidden h-4 w-px bg-slate-200 sm:inline" aria-hidden />
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilter(tab.id)}
+              className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                filter === tab.id
+                  ? 'bg-slate-800 font-medium text-white'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
         <button
           type="button"
           onClick={() => (showForm ? setShowForm(false) : openCreateForm())}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shrink-0"
+          className="shrink-0 rounded-lg bg-blue-600 px-3.5 py-2 text-sm text-white hover:bg-blue-700"
         >
           {showForm ? 'Formu Kapat' : '+ Hatırlatma Ekle'}
         </button>
       </div>
 
-      {/* Summary chips */}
-      <div className="flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-          Açık <span className="font-semibold">{counts.open}</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-          Bugün <span className="font-semibold">{counts.today}</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100">
-          Gecikmiş <span className="font-semibold">{counts.overdue}</span>
-        </span>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-100 pb-1">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setFilter(tab.id)}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              filter === tab.id
-                ? 'bg-slate-800 text-white font-medium'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Create form */}
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
-          <h4 className="text-sm font-semibold text-slate-700">Yeni Hatırlatma / Görev</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Başlık</label>
+        <FinansFormPanel
+          title="Yeni Hatırlatma / Görev"
+          onCancel={() => setShowForm(false)}
+          onSubmit={handleSave}
+          saving={saving}
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-slate-500">Başlık</label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 placeholder="Örn. Tespitçi ile tekrar görüş"
               />
             </div>
-            <div className="md:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Açıklama (Opsiyonel)</label>
+            <div>
+              <label className="mb-1 block text-xs text-slate-500">Açıklama (Opsiyonel)</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -540,18 +532,18 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
                   if (v) setForm({ ...form, description: v });
                 }}
                 rows={2}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none"
+                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Hatırlatma Tarihi</label>
+              <label className="mb-1 block text-xs text-slate-500">Hatırlatma Tarihi</label>
               <input
                 type="datetime-local"
                 value={form.dueAt}
                 onChange={(e) => setForm({ ...form, dueAt: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {([
                   ['today', 'Bugün'],
                   ['tomorrow', 'Yarın'],
@@ -562,7 +554,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
                     key={preset}
                     type="button"
                     onClick={() => setForm({ ...form, dueAt: applyDatePreset(preset) })}
-                    className="px-2 py-1 text-xs border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50"
+                    className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
                   >
                     {label}
                   </button>
@@ -570,11 +562,11 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
               </div>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Görev Tipi</label>
+              <label className="mb-1 block text-xs text-slate-500">Görev Tipi</label>
               <select
                 value={form.taskType}
                 onChange={(e) => setForm({ ...form, taskType: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {Object.entries(TASK_TYPE_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -582,11 +574,11 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Öncelik</label>
+              <label className="mb-1 block text-xs text-slate-500">Öncelik</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {Object.entries(PRIORITY_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -594,11 +586,11 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Sorumlu Kişi</label>
+              <label className="mb-1 block text-xs text-slate-500">Sorumlu Kişi</label>
               <select
                 value={form.assignedUserId}
                 onChange={(e) => setForm({ ...form, assignedUserId: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 <option value="">— Seçiniz —</option>
                 {users.map((u) => (
@@ -607,24 +599,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
               </select>
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
-            >
-              İptal
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? 'Kaydediliyor...' : 'Kaydet'}
-            </button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {/* List */}

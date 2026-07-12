@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { CalendarDays, Users } from 'lucide-react';
 import { WidgetShell, WidgetSkeleton } from '../widget-frame';
 import { TeamWorkloadChart } from './team-workload-chart';
-import { MondayMeetingNotes } from './monday-meeting-notes';
 import {
   useApprovalDelays,
   useDashboardOperations,
@@ -175,7 +174,6 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
           </div>
         </div>
       )}
-      <MondayMeetingNotes />
     </WidgetShell>
   );
 }
