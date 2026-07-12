@@ -8,6 +8,8 @@
 ```
 canli-kabul/
   README.md                  ← bu dosya
+  KABUL_PROTOKOLU.md         ← kalıcı: yalnızca Mustafa PASS verir
+  ONARIM_RAPORU_MUSTAFA_KABUL_*.md  ← madde madde OLMUŞ/OLMAMIŞ kaydı
   ONAYLI_UI_CHECKLIST.md     ← onaylı görünüm + regresyon kalkanı (agent önce okur)
   CHECKLIST.md               ← modül modül PASS/FAIL
   otomatik/                  ← smoke test çıktıları

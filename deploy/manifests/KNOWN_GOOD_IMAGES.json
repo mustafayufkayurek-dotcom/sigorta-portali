@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v289-dosya-bilgileri-revizyon-eksper",
-  "description": "Revizyon compact grid içi yatay şerit; Dosya Eksperi fallback; onarım raporu 41-madde UX",
+  "label": "v290-onarim-raporu-kabul-durumu",
+  "description": "Onarım raporu v290 + Mustafa kabul kaydı; Grup 1-5 durumu dokümante",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v278-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v289-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v290-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v288-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v277-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v289-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v278-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
