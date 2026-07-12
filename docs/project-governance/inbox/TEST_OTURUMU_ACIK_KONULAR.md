@@ -4,47 +4,51 @@
 
 ---
 
-## AK-001 — Operasyonel İstihbarat Yayını (Tedarikçi + Müşteri CRM Notları)
+## AK-001 — Müşteri / Tedarikçi Kart Notları (Numaralı + Görünürlük)
 
-**Tarih:** 2026-07-12  
+**Tarih:** 2026-07-12 (teyit güncellemesi)  
 **Kaynak:** Onarım raporu / fotoğraf testi sırasında Mustafa sorusu  
-**Durum:** 🟡 Karar bekliyor (KARAR_GEREKLI)  
+**Durum:** 🟡 Teyit bekliyor — implementasyon Mustafa onayı sonrası  
 **Öncelik:** P1 (maliyet doğrudan etkileniyor)
 
+> **2026-07-12 düzeltmesi:** Önceki «CRM + iş atama anında popup/banner» yorumu **yanlıştı**. Bu madde CRM modülüne dayanmaz; tedarikçi tarafında CRM notu anlamsızdır. Notlar müşteri/tedarikçi kartında kalır.
+
 ### Sorun
-- CRM'de tedarikçi ve müşteri kartlarında notlar var; ancak **iş atama / tedarikçi seçimi anında** personele düşmüyor.
-- İl/ilçede iş yaptırırken «uygun maliyetli tedarikçi», «fazla iş yönlendiren», «avantajlı/dezavantajlı müşteri» gibi tespitler **duyuru olarak yayınlanmıyor**.
-- Tedarikçi önerisi (`/vendors/suggest`) var ama yalnızca **konum + iş sayısı + ortalama tutar** skorluyor; CRM görüş/not taşımıyor.
+- Müşteri ve tedarikçi hakkında operasyonel tespitler («uygun maliyetli tedarikçi», «fazla iş yönlendiren», «avantajlı/dezavantajlı müşteri» vb.) **kart üzerinde yapılandırılmış biçimde tutulmuyor**.
+- Mevcut tek alanlı / dağınık not yapısı **birden fazla numaralı not** ve **not başına görünürlük** desteklemiyor.
+- Bilgi iş atama anında ayrı bir banner/popup ile değil; personelin **müşteri veya tedarikçi kartına baktığında** okunabilir olmalı.
 
 ### Mevcut sistem (doğrulandı)
 | Parça | Var mı? | Nerede? | Eksik |
 |-------|---------|---------|-------|
-| CRM notları | ✅ | `/panel/crm` | Sadece CRM ekranında; atama anında yok |
-| Operasyon hafızası | ✅ | CRM `memory` API | Dosya/tedarikçi seçiminde gösterilmiyor |
-| Tedarikçi önerisi | ✅ | `VendorSuggestPanel`, `GET /vendors/suggest` | Not/uyarı yok |
-| Tedarikçi risk skoru | ✅ | CRM listesi, `VendorRiskScore` | Öneri panelinde yok |
-| Müşteri kart notu | ✅ | `customer.notes` alanı | Bağlamsal uyarı yok |
+| Müşteri kayıt sihirbazı | ✅ | Adım 4 «İlişki Özeti» | Kayıt Notu alanı tek parça; numaralı not + görünürlük yok |
+| Tedarikçi kayıt sihirbazı | ✅ | Adım 4 «İlişki Özeti» | Aynı — Kayıt Notu alanı genişletilmeli |
+| Müşteri kartı (detay) | ✅ | Müşteri detay görünümü | Notlar kart üzerinde kalıcı gösterilmiyor / yapı eksik |
+| Tedarikçi kartı (detay) | ✅ | Tedarikçi detay görünümü | Aynı |
+| CRM modülü notları | ⚠️ | `/panel/crm` | **Bu özellik için kaynak değil** — özellikle tedarikçi tarafında anlamsız |
 
-### Önerilen özellik (taslak — Mustafa onayı gerekir)
-**Ad:** Operasyonel İstihbarat / Karar Anı Uyarıları
+### Önerilen özellik (taslak — Mustafa teyidi gerekir)
+**Ad:** Kart Notları — Numaralı Kayıt Notu + Kimler Görsün
 
-1. CRM notuna **«İş atamada göster»** bayrağı + isteğe bağlı **il/ilçe kapsamı**
-2. Not türleri genişlet: `Maliyet Avantajı`, `Maliyet Riski`, `İş Baskısı`, `Müşteri Davranışı`
-3. **Tetikleme noktaları:**
-   - Dosyada tedarikçi atama / `VendorSuggestPanel`
-   - Acil yardım tedarikçi seçimi
-   - Müşterili yeni dosya / müşteri seçimi
-4. UI: Sarı/kırmızı kompakt banner — «Son operasyon notu: …» (tıkla → CRM)
+1. **Konum:** Müşteri ve Tedarikçi sihirbazı **Adım 4 «İlişki Özeti»** içindeki **Kayıt Notu** alanı (ekran görüntülerindeki gibi).
+2. **Kartta kalıcılık:** Girilen notlar ilgili **müşteri / tedarikçi kartının detay görünümünde** listelenir; ayrı CRM ekranına veya atama popup'ına taşınmaz.
+3. **Numaralı notlar:** Birden fazla not — `1. Not`, `2. Not`, `3. Not` … sıralı liste.
+4. **Görünürlük (zorunlu):** Her not satırında **«Kimler görsün»** seçici; kayıt sırasında ve düzenlemede zorunlu alan.
+5. **Kapsam dışı (eski yanlış yorum):** İş atama / tedarikçi seçimi anında CRM kaynaklı sarı-kırmızı banner veya popup **yapılmayacak**.
 
 ### Mustafa'dan netleştirilecekler
-- [ ] Notlar sadece yöneticiler mi görsün, yoksa tüm operasyon personeli mi?
-- [ ] İl/ilçe kapsamı zorunlu mu, yoksa tedarikçi/müşteri bazlı yeterli mi?
-- [ ] Eski notlar süre sınırı (ör. 6 ay) ile mi düşsün?
-- [ ] Müşteri tarafında sigorta şirketi personeline görünür olmamalı — onay?
+- [ ] **«Kimler görsün» seçenek listesi** — önerilen adaylar (teyit gerekir):
+  - Yalnızca yöneticiler
+  - Operasyon personeli (genel)
+  - Dosya sorumlusu
+  - Sigorta şirketi personeli **görmesin** (müşteri notları için varsayılan?)
+  - Diğer / rol bazlı (liste genişletilecek mi?)
+- [ ] Not düzenleme / silme yetkisi kimde?
+- [ ] Maksimum not sayısı veya karakter sınırı var mı?
 
 ### Test akışı etkisi
-Bu madde **onarım raporu / fotoğraf testinden** ayrı bir ürün kararı. Teste devam ederken bu konuyu implemente etme; önce yukarıdaki 4 soruyu netleştir.
+Bu madde **onarım raporu / fotoğraf testinden** ayrı bir ürün kararı. **Implementasyon, Mustafa'nın bu teyidi onaylamasına kadar bekletilir.** Teste devam ederken bu konuyu kodlamaya başlama.
 
 ---
 
-*Son güncelleme: 2026-07-12 — Cursor oturumu*
+*Son güncelleme: 2026-07-12 — AK-001 teyit düzeltmesi (CRM/atama popup kaldırıldı)*
