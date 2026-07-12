@@ -79,41 +79,60 @@ export function RevisionHistoryStrip({
 
   const statusLabel = (item: RevHistoryItem) =>
     item.status === 'revision'
-      ? 'Revizyon Talebi'
+      ? 'Revizyon'
       : item.status === 'approved'
         ? 'Onaylandı'
         : 'Taslak';
 
-  const statusTone = (item: RevHistoryItem) =>
+  const dotTone = (item: RevHistoryItem) =>
     item.status === 'revision'
-      ? 'border-amber-200 bg-amber-50 text-amber-800'
+      ? 'border-amber-400 bg-amber-100 text-amber-900'
       : item.status === 'approved'
-        ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-slate-200 bg-white text-slate-700';
+        ? 'border-green-500 bg-green-100 text-green-900'
+        : 'border-slate-400 bg-white text-slate-700';
+
+  const lineTone = (item: RevHistoryItem) =>
+    item.status === 'revision'
+      ? 'bg-amber-300'
+      : item.status === 'approved'
+        ? 'bg-green-400'
+        : 'bg-slate-300';
+
+  const timeline = (
+    <div className="flex items-center min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
+      {items.map((item, idx) => (
+        <div key={item.id} className="flex items-center shrink-0">
+          <div
+            className="group relative flex flex-col items-center"
+            title={[statusLabel(item), item.requestedBy, item.requestedAt ? fmtD(item.requestedAt) : ''].filter(Boolean).join(' · ')}
+          >
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] font-bold tabular-nums ${dotTone(item)}`}
+            >
+              {item.version ?? idx + 1}
+            </div>
+            {!compact && (
+              <span className="mt-1 text-[10px] text-slate-500 whitespace-nowrap max-w-[72px] truncate text-center">
+                {statusLabel(item)}
+              </span>
+            )}
+          </div>
+          {idx < items.length - 1 && (
+            <span
+              className={`mx-1 h-0.5 w-8 sm:w-12 rounded-full ${lineTone(item)}`}
+              aria-hidden
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   if (compact) {
     return (
       <div className="flex items-center gap-2 min-w-0">
         <p className="text-[11px] text-slate-400 shrink-0">Revizyon Geçmişi</p>
-        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-          {items.map((item, idx) => (
-            <div key={item.id} className="flex items-center gap-1 shrink-0">
-              <div
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${statusTone(item)}`}
-                title={item.requestedBy ?? undefined}
-              >
-                <span className="font-bold tabular-nums">v{item.version ?? idx + 1}</span>
-                <span className="font-medium">{statusLabel(item)}</span>
-                {item.requestedBy && (
-                  <span className="opacity-75 truncate max-w-[88px] hidden sm:inline">{item.requestedBy}</span>
-                )}
-              </div>
-              {idx < items.length - 1 && (
-                <span className="text-slate-300 text-xs shrink-0" aria-hidden>→</span>
-              )}
-            </div>
-          ))}
-        </div>
+        <div className="flex-1 min-w-0">{timeline}</div>
         <a
           href={`/panel/revizyon-talepleri?reportId=${reportId}`}
           className="text-[10px] text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap"
@@ -127,7 +146,7 @@ export function RevisionHistoryStrip({
   return (
     <div className={embedded ? '' : 'bg-white rounded-xl border border-slate-100 shadow-sm p-5'}>
       <div
-        className={`flex items-center justify-between mb-2 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}
+        className={`flex items-center justify-between mb-3 ${embedded ? '' : 'border-b border-slate-100 pb-2'}`}
       >
         <h4 className="text-xs font-semibold text-slate-600">Revizyon Geçmişi</h4>
         <a
@@ -137,43 +156,17 @@ export function RevisionHistoryStrip({
           Tümünü Gör →
         </a>
       </div>
-      <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-        {items.map((item, idx) => (
-          <div key={item.id} className="flex items-center gap-2 shrink-0">
-            <div
-              className={`min-w-[148px] max-w-[200px] rounded-xl border px-3 py-2.5 ${statusTone(item)}`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tabular-nums">v{item.version ?? idx + 1}</span>
-                <span className="text-[11px] font-medium truncate">{statusLabel(item)}</span>
-              </div>
-              {item.requestedBy && (
-                <p className="text-[10px] opacity-80 mt-1 truncate">{item.requestedBy}</p>
-              )}
-              <p className="text-[10px] opacity-70 mt-0.5">
-                {item.requestedAt
-                  ? fmtD(item.requestedAt)
-                  : item.completedAt
-                    ? fmtD(item.completedAt)
-                    : ''}
-              </p>
-              {item.status === 'revision' && (
-                <a
-                  href={`/panel/revizyon-talepleri/${item.id}`}
-                  className="inline-block mt-1.5 text-[10px] font-medium text-blue-700 hover:underline"
-                >
-                  Detay →
-                </a>
-              )}
-            </div>
-            {idx < items.length - 1 && (
-              <span className="text-slate-300 text-sm shrink-0" aria-hidden>
-                →
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      {timeline}
+      {!compact && items.some((item) => item.requestedBy || item.requestedAt) && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+          {items.map((item) => (
+            <span key={`${item.id}-meta`}>
+              v{item.version}: {item.requestedBy ?? '—'}
+              {item.requestedAt ? ` · ${fmtD(item.requestedAt)}` : ''}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

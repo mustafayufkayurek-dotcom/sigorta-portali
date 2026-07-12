@@ -1,6 +1,6 @@
 'use client';
 
-import { API, authHeader } from '@/utils/api';
+import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -20,7 +20,7 @@ import {
   type VendorQuoteData,
 } from '@/components/damage-reports/VendorQuotePopover';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveRepairReportExpertName } from '@sigorta/shared';
+import { resolveFileExpertDisplay } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -32,7 +32,11 @@ import {
   filterQuickDamageTypeOptions,
   REPORT_IMAGE_CATEGORY_LABELS,
 } from '@/utils/quick-repair-damage-types';
-import { resolveInsuredDisplayName } from '@/utils/insured-display';
+import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import {
+  repairReportStatusBadge,
+  repairReportStatusLabel,
+} from '@/utils/repair-report-status';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 
 const ImageAnnotationEditor = dynamic(
@@ -131,32 +135,14 @@ function recomputeReportTotals(items: any[]) {
 }
 
 
+function fmtCurrencyCompact(n: number | null | undefined) {
+  if (n == null) return '—';
+  return n.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' TL';
+}
+
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
-}
-
-type FileExpertInfo = {
-  name: string;
-  office?: string;
-  missing: boolean;
-};
-
-function resolveFileExpertDisplay(report: any): FileExpertInfo {
-  if (!report) return { name: '—', missing: true };
-  const name = resolveRepairReportExpertName({
-    inspectorName: report.inspectorName,
-    expertOffice: report.expertOffice,
-    claimFile: report.claimFile,
-  });
-  if (name) return { name, missing: false };
-  const vendor = report.claimFile?.assignedInspectorVendor?.name?.trim();
-  if (vendor) return { name: vendor, missing: false };
-  const adjuster = report.claimFile?.assignedAdjuster
-    ? `${report.claimFile.assignedAdjuster.firstName ?? ''} ${report.claimFile.assignedAdjuster.lastName ?? ''}`.trim()
-    : '';
-  if (adjuster) return { name: adjuster, missing: false };
-  return { name: 'Atanmamış', missing: true };
 }
 
 function approvalActorName(user: any) {
@@ -1171,6 +1157,7 @@ function filterWorkGroupsByCategory(workGroups: any[], damageCategory: string): 
 export interface EditableItemsTableHandle {
   quickAddRow: () => Promise<void>;
   saveAllDirtyRows: () => Promise<void>;
+  discardEmptyDraft: () => void;
   hasDirtyRows: () => boolean;
 }
 
@@ -1715,11 +1702,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   };
 
+  const isRowPersistable = (row: RowState) =>
+    Boolean(row.workGroupId && row.jobDescription.trim());
+
   const saveRow = async (id: string) => {
     const row = rows.find((r) => r._id === id);
     if (!row || !row._isDirty) return;
-    if (!row.workGroupId || !row.jobDescription.trim()) {
-      alert('Kaydetmek için İş Grubu ve İş Tanımı zorunludur.');
+    if (!isRowPersistable(row)) {
+      revertRow(id);
       return;
     }
     if (row.location.trim() && !isValidLocationFormat(row.location)) {
@@ -1740,7 +1730,10 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const saveAllDirtyRows = useCallback(async () => {
     const dirty = rows.filter((r) => r._isDirty);
     for (const row of dirty) {
-      if (!row.workGroupId || !row.jobDescription.trim()) continue;
+      if (!isRowPersistable(row)) {
+        revertRow(row._id);
+        continue;
+      }
       setSavingId(row._id);
       try {
         await onSave(row._id, buildRowPayload(row));
@@ -1849,11 +1842,21 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   }, [isEditable, quickAdding, displayRows, addingRow, saveAllDirtyRows, persistAddingRowIfNeeded]);
 
+  const discardEmptyDraft = useCallback(() => {
+    if (addingRow.workGroupId || addingRow.jobDescription.trim()) return;
+    const preservedLocation = addingRow.location.trim();
+    const nextAddingRow = emptyRow(preservedLocation);
+    addingDraftRef.current = nextAddingRow;
+    setAddingRow(nextAddingRow);
+    setAddingDirty(false);
+  }, [addingRow]);
+
   useImperativeHandle(ref, () => ({
     quickAddRow,
     saveAllDirtyRows,
+    discardEmptyDraft,
     hasDirtyRows: () => rows.some((r) => r._isDirty),
-  }), [quickAddRow, saveAllDirtyRows, rows]);
+  }), [quickAddRow, saveAllDirtyRows, discardEmptyDraft, rows]);
 
 
   const COLS = ['damageCategory', 'detectionScope', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
@@ -2024,11 +2027,23 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         }
       } else if (colIdx < editableCOLS.length - 1) {
         focusCell(rowIdx, editableCOLS[colIdx + 1]);
-      } else if (rowIdx !== 'new') {
-        const nextRowIdx = (rowIdx as number) + 1;
-        if (nextRowIdx < rows.length) focusCell(nextRowIdx, editableCOLS[0]);
-        else focusCell('new', editableCOLS[0]);
       } else {
+        const sourceRow = rowIdx === 'new' ? addingRow : rows[rowIdx as number];
+        if (rowIdx !== 'new' && rowId && rows.find((r) => r._id === rowId)?._isDirty) {
+          void saveRow(rowId);
+        }
+        const nextAddingRow = {
+          ...emptyRow(sourceRow?.location?.trim() || ''),
+          detectionScope: sourceRow?.detectionScope?.trim() || '',
+          damageCategory: (sourceRow?.damageCategory ?? 'bina') as 'bina' | 'esya',
+          workGroupId: sourceRow?.workGroupId ?? '',
+          unit: sourceRow?.unit ?? 'm²',
+          damageTypeId: sourceRow?.damageTypeId ?? '',
+          pricingType: sourceRow?.pricingType ?? 'unit',
+        };
+        addingDraftRef.current = nextAddingRow;
+        setAddingRow(nextAddingRow);
+        setAddingDirty(false);
         focusCell('new', editableCOLS[0]);
       }
     }
@@ -2925,6 +2940,11 @@ function EmergencyReportEditor({
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
+    if (!(await ensureSessionBeforeMutation())) {
+      alert('Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     const uploaded: any[] = [];
     try {
@@ -2932,7 +2952,11 @@ function EmergencyReportEditor({
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', 'damage');
-        const res = await axios.post(`${API}/repair-reports/${reportId}/images`, fd, { headers: authHeader() });
+        const res = await authAxios<{ data: any }>({
+          method: 'POST',
+          url: `${API}/repair-reports/${reportId}/images`,
+          data: fd,
+        });
         if (res.data?.data) uploaded.push(res.data.data);
       }
       if (uploaded.length > 0) {
@@ -3097,11 +3121,11 @@ function EmergencyReportEditor({
               ) : undefined
             }
           >
-            {!report.images?.length ? (
+            {!localReport.images?.length ? (
               <div className="text-center py-6 text-slate-400 text-sm">Fotoğraf Yok.</div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
-                {report.images.map((img: any) => (
+                {localReport.images.map((img: any) => (
                   <div key={img.id} className="relative group rounded-lg overflow-hidden border border-slate-100">
                     <img
                       src={getReportImageUrl(img.storageKey)}
@@ -3185,16 +3209,18 @@ function EmergencyReportEditor({
       </div>
 
       {/* Sticky Bottom Bar — Emergency */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg px-6 py-3 z-30">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 flex-wrap">
-          {viewMode === 'internal' && (
-            <div className="flex items-center gap-4 flex-1 flex-wrap text-sm">
-              <span className="text-slate-500">Satış: <strong className="text-slate-800">{fmtCurrency(report.totalSalesAmount ?? totalSalesAmount)}</strong></span>
-              <span className="text-slate-500">Kâr: <strong className={grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{fmtCurrency(report.grossProfit ?? grossProfit)}</strong></span>
-            </div>
-          )}
-          {viewMode === 'external' && <div className="flex-1" />}
-          <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg px-4 sm:px-6 py-3 z-30">
+        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <div className="hidden lg:block" />
+          <div className="flex items-center justify-center min-w-0">
+            {viewMode === 'internal' && (
+              <div className="flex items-center gap-4 flex-wrap text-sm">
+                <span className="text-slate-500">Satış: <strong className="text-slate-800">{fmtCurrency(localReport.totalSalesAmount ?? totalSalesAmount)}</strong></span>
+                <span className="text-slate-500">Kâr: <strong className={grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{fmtCurrency(localReport.grossProfit ?? grossProfit)}</strong></span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-end gap-2 flex-shrink-0">
             <button type="button" onClick={() => router.push(claimPath)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
               ← Geri
@@ -3459,10 +3485,17 @@ export default function RepairReportPage() {
     [externalApprovals],
   );
 
-  const fileExpert = useMemo(() => resolveFileExpertDisplay(report), [report]);
+  const fileExpert = useMemo(
+    () => resolveFileExpertDisplay(report ? {
+      inspectorName: report.inspectorName,
+      expertOffice: report.expertOffice,
+      claimFile: report.claimFile,
+    } : null),
+    [report],
+  );
 
   const insuredName = useMemo(
-    () => resolveInsuredDisplayName(report?.claimFile),
+    () => resolveHasarInsuredName(report?.claimFile ?? {}),
     [report?.claimFile],
   );
 
@@ -3688,6 +3721,7 @@ export default function RepairReportPage() {
     setFindingsError(null);
     setSaving(true);
     try {
+      itemsTableRef.current?.discardEmptyDraft();
       await itemsTableRef.current?.saveAllDirtyRows();
       if (Object.keys(pendingFields).length > 0) {
         await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
@@ -3804,6 +3838,11 @@ export default function RepairReportPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: string) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
+    if (!(await ensureSessionBeforeMutation())) {
+      alert('Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      e.target.value = '';
+      return;
+    }
     setUploadingCat(category);
     const uploaded: any[] = [];
     try {
@@ -3811,8 +3850,10 @@ export default function RepairReportPage() {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('category', category);
-        const res = await axios.post(`${API}/repair-reports/${reportId}/images`, fd, {
-          headers: authHeader(),
+        const res = await authAxios<{ data: any }>({
+          method: 'POST',
+          url: `${API}/repair-reports/${reportId}/images`,
+          data: fd,
         });
         if (res.data?.data) uploaded.push(res.data.data);
       }
@@ -3898,49 +3939,43 @@ export default function RepairReportPage() {
   return (
     <div className="space-y-5 pb-28">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-start gap-3 flex-wrap">
         <button type="button" onClick={() => {
           if (hasUnsavedReportFields || dirtyItemCount > 0) {
             setShowSaveReminderModal(true);
             return;
           }
           router.push(claimPath);
-        }} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">{report.reportNo}</h2>
-          <p className="text-xs text-slate-400">
-            {report.reportType === 'single' ? 'Tek Hasarlı' : 'Çok Hasarlı'} · {fmtDateTime(report.reportDate ?? report.createdAt)}
+        }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
+          {insuredName !== '—' && (
+            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
+          )}
+          <p className="text-xs text-slate-400 mt-0.5">
+            {report.reportType === 'single' ? 'Tek Hasarlı' : report.reportType === 'emergency' ? 'Acil Yardım' : 'Çok Hasarlı'}
+            {' · '}
+            {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
         </div>
-        <Badge
-          text={
-            report.status === 'draft' ? 'Taslak' :
-            report.status === 'pending_approval' ? 'Onay Bekliyor' :
-            report.status === 'approved' ? 'Onaylandı' :
-            report.status === 'rejected' ? 'Reddedildi' :
-            report.status === 'sent_for_external_approval' ? 'Dış Onay Bekliyor' :
-            report.status === 'externally_approved' ? 'Dışarıdan Onaylandı' :
-            report.status === 'externally_rejected' ? 'Dışarıdan Reddedildi' :
-            'Sunuldu'
-          }
-          color={
-            report.status === 'draft' ? 'bg-slate-100 text-slate-600' :
-            report.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-700' :
-            report.status === 'approved' ? 'bg-green-100 text-green-700' :
-            report.status === 'rejected' ? 'bg-red-100 text-red-700' :
-            report.status === 'sent_for_external_approval' ? 'bg-indigo-100 text-indigo-700' :
-            report.status === 'externally_approved' ? 'bg-emerald-100 text-emerald-700' :
-            report.status === 'externally_rejected' ? 'bg-rose-100 text-rose-700' :
-            'bg-blue-100 text-blue-700'
-          }
-        />
-        {report.versionNo > 1 && (
-          <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">v{report.versionNo}</span>
-        )}
-        {pendingInsurancePortalApproval && (
-          <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
-        )}
-        <div className="ml-auto flex items-center gap-2 flex-wrap relative z-10">
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto shrink-0">
+          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
+            {repairReportStatusLabel(report.status)}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+            Satış {fmtCurrencyCompact(report.totalSalesAmount)}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+            Kâr {fmtCurrencyCompact(report.grossProfit)}
+          </span>
+          {report.versionNo > 1 && (
+            <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
+          )}
+          {pendingInsurancePortalApproval && (
+            <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
+          )}
+        </div>
+        <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap relative z-10 sm:ml-auto">
           {/* İş akışı */}
           {report.status === 'approved' && (
             <button type="button"
@@ -4114,7 +4149,6 @@ export default function RepairReportPage() {
             { label: 'Hasar Dosya No', value: report.claimFile?.fileNo },
             { label: 'İhbar Tarihi', value: resolveIhbarTarihi(report.claimFile ?? {}) },
             { label: 'Hasar Konusu', value: resolveClaimIhbarKonusu(report.claimFile ?? {}) },
-            { label: 'Sigortalı', value: insuredName },
             { label: 'Dosya Eksperi', value: fileExpert.missing ? 'Atanmamış' : fileExpert.name },
             { label: 'Hasar Adresi', value: report.claimFile?.propertyAddress ? `${report.claimFile.propertyAddress.addressLine}, ${report.claimFile.propertyAddress.city}` : undefined },
             {

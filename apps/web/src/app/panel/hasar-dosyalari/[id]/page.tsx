@@ -14,7 +14,8 @@ import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { TakipTab } from './_components/tabs/TakipTab';
-import { DosyaBilgileriDetay } from './_components/DosyaBilgileriDetay';
+import { DosyaBilgileriDetay, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
+import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
 import {
   collectOfficeAssignees,
@@ -149,14 +150,11 @@ function formatPriorityChip(priority: string | null | undefined): string | null 
 }
 
 function DosyaOzetiChipleri({ claim }: { claim: any }) {
-  const ihbarTarihi = claim.notificationDate
-    ? fmtDate(claim.notificationDate)
-    : claim.createdAt
-      ? fmtDate(claim.createdAt)
-      : null;
+  const ihbarTarihi = resolveIhbarTarihi(claim);
+  const ihbarDisplay = ihbarTarihi !== '—' ? ihbarTarihi : null;
 
   const chips = [
-    { label: 'İhbar', value: ihbarTarihi },
+    { label: 'İhbar', value: ihbarDisplay },
     { label: 'Öncelik', value: formatPriorityChip(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
   ].filter((c) => c.value && c.value !== '—');
@@ -201,12 +199,14 @@ function DosyaSayfaUstu({
       ].filter(Boolean).join(' · ')
     : null;
   const ihbarChip = resolveClaimIhbarKonusu(claim);
-  const subInfo = [claim.insuranceCompany?.name, claim.claimNo && `Hasar ${claim.claimNo}`, ihbarChip !== '—' && ihbarChip].filter(Boolean).join(' · ');
+  const subInfo = [claim.insuranceCompany?.name, ihbarChip !== '—' && ihbarChip].filter(Boolean).join(' · ');
+  const insuredLine = resolveHasarInsuredName(claim);
+  const latestReport = claim.latestRepairReport;
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100">
-        <button type="button" onClick={onBack} className="text-slate-400 hover:text-slate-700 text-sm shrink-0">
+      <div className="px-4 py-3 flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-slate-100">
+        <button type="button" onClick={onBack} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-0.5">
           ← Geri
         </button>
         <div className="min-w-0 flex-1">
@@ -219,8 +219,32 @@ function DosyaSayfaUstu({
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">{subInfo}</p>
+          {insuredLine !== '—' && (
+            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredLine}</p>
+          )}
+          {subInfo && <p className="text-xs text-slate-500 mt-0.5">{subInfo}</p>}
         </div>
+        {latestReport && (
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 ml-auto">
+            <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
+              {repairReportStatusLabel(latestReport.status)}
+            </span>
+            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+              Satış {fmtCurrencyCompact(latestReport.totalSalesAmount)}
+            </span>
+            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
+              Kâr {fmtCurrencyCompact(latestReport.grossProfit)}
+            </span>
+            {reportEditHref && (
+              <Link
+                href={reportEditHref}
+                className="text-xs font-medium text-amber-800 hover:underline whitespace-nowrap"
+              >
+                Rapora Git →
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {claim.customer && (
@@ -259,31 +283,6 @@ function DosyaSayfaUstu({
         <div className="px-4 py-2 text-xs text-slate-600 flex items-start gap-2 border-b border-slate-100">
           <span className="text-slate-400 shrink-0">Hasar Yeri</span>
           <span className="font-medium">{adres}</span>
-        </div>
-      )}
-
-      {claim.latestRepairReport && (
-        <div className="px-4 py-2.5 bg-amber-50/50 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="text-[10px] font-medium text-slate-500">Onarım Raporu</span>
-            <span className="text-sm font-semibold text-slate-800">{claim.latestRepairReport.reportNo}</span>
-            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${repairReportStatusBadge(claim.latestRepairReport.status)}`}>
-              {repairReportStatusLabel(claim.latestRepairReport.status)}
-            </span>
-            <span className="text-xs text-slate-500 tabular-nums">
-              Satış {fmtCurrencyCompact(claim.latestRepairReport.totalSalesAmount)}
-              {' · '}
-              Kâr {fmtCurrencyCompact(claim.latestRepairReport.grossProfit)}
-            </span>
-          </div>
-          {reportEditHref && (
-            <Link
-              href={reportEditHref}
-              className="text-xs font-medium text-amber-800 hover:underline shrink-0"
-            >
-              Rapora Git →
-            </Link>
-          )}
         </div>
       )}
 

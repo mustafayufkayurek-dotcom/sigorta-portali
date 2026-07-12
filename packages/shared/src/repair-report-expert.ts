@@ -8,6 +8,11 @@ export type RepairReportExpertSource = {
   } | null;
 };
 
+export type FileExpertInfo = {
+  name: string;
+  missing: boolean;
+};
+
 function officeUserFullName(
   user?: { firstName?: string | null; lastName?: string | null } | null,
 ): string {
@@ -23,14 +28,22 @@ export function resolveRepairReportExpertName(source: RepairReportExpertSource):
   const expertOffice = source.expertOffice?.companyName?.trim();
   if (expertOffice) return expertOffice;
 
-  const adjuster = officeUserFullName(source.claimFile?.assignedAdjuster);
-  if (adjuster) return adjuster;
-
   const inspector = source.inspectorName?.trim();
   if (!inspector) return null;
 
   const officeName = officeUserFullName(source.claimFile?.assignedOfficeUser);
   if (officeName && inspector === officeName) return null;
 
+  const adjusterName = officeUserFullName(source.claimFile?.assignedAdjuster);
+  if (adjusterName && inspector === adjusterName) return null;
+
   return inspector;
+}
+
+/** Rapor ve dosya detayında aynı eksper kaynağı — müşteri kartı / vendor / expertOffice zinciri. */
+export function resolveFileExpertDisplay(source: RepairReportExpertSource | null | undefined): FileExpertInfo {
+  if (!source) return { name: 'Atanmamış', missing: true };
+  const name = resolveRepairReportExpertName(source);
+  if (name) return { name, missing: false };
+  return { name: 'Atanmamış', missing: true };
 }

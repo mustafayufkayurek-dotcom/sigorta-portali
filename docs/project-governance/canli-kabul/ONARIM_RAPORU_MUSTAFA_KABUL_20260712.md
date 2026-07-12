@@ -62,12 +62,87 @@
 
 ---
 
-## Sonraki dalga (Grup 6–11 — test durduruldu)
+## Grup 6 (12 Temmuz 2026)
 
-Grup 6–11 Mustafa onayı sonrası, **v290+ canlı** ve footer doğrulandıktan sonra devam edilecek.
+| # | Durum | Not |
+|---|--------|-----|
+| 21 | **OLMAMIŞ** | İhbar Tarihi boş (`—`); mailin gelme tarihi yansıtılmamış. Hasar Tarihi kalkmış görünüyor |
+| 22 | **EKSİK / YENİ TALEP** | Tab/İleri işlem biten satırın **başına** gidiyor; **yeni satır** açılıp oranın başına gelmeli. Boş satırda işlem yapılmadan kaydedilirse satır **silinmeli**, raporda boş kalmasın |
+| 23 | **YAPILMIŞ** | Satırda kaydet + Enter ile satır ekleme ✓ |
+| 24 | **YAPILMIŞ** | Tedarikçi fiyat davranışı ✓ |
+
+---
+
+## Grup 7 (12 Temmuz 2026)
+
+| # | Durum | Not |
+|---|--------|-----|
+| 25 | **YAPILMIŞ** | Satır eklerken sayfa yenilenmiyor ✓ |
+| 26 | **YENİ TALEP (detaylı)** | İş grubu bitince hafızadaki tedarikçi maliyetiyle karşılaştır; uyumlu/uyumsuz onay sor; uyumsuzda WhatsApp pazarlık. Test edilemedi — uygulama bekliyor |
+| 27 | **YAPILMIŞ** | Önceki satır mahal kaybolmuyor ✓ |
+| 28 | **YAPILMIŞ** | Mahal + iş grubu sıralama ✓ |
+| 28 ek | **YENİ TALEP** | Tablo başlıkları sabit, satırlar kaydırılabilir (sticky header) |
+
+---
+
+## Grup 8 (12 Temmuz 2026)
+
+| # | Durum | Not |
+|---|--------|-----|
+| 29 | **YAPILMIŞ** | Mahal/Bölge ` - ` formatı ✓ |
+| 30 | **YAPILMIŞ / YENİ TALEP** | Tespit sütunu var; başlık **«Tespit Alanı»** olmalı; seçim **zorunlu** |
+| 31 | **YAPILMIŞ** | Kayıtta yeni satır mahal silinmiyor ✓ |
+| 32 | **YAPILMIŞ** | İleri/Tab kaydet butonuna gitmiyor ✓ |
+
+---
+
+## Grup 9 (12 Temmuz 2026)
+
+| # | Durum | Not |
+|---|--------|-----|
+| 33 | **İPTAL + YENİ TALEP** | Satırdaki «Tedarikçi Karşılaştır» kalksın. Tedarikçi atamada maliyet/kalite ile bölgesel öneri sırası. WhatsApp zorunlu şablon (tedarikçi atayınca); Ayarlar’da WhatsApp mesaj şablonları; kime ne gideceği belirli; SMS ile sınırlama yok |
+| 34 | **YAPILMIŞ** | Satırda kaydet emaresi ✓ |
+| 35 | **YAPILMIŞ** | + Kalem Ekle’de satır sıfırlanmıyor ✓ |
+| 36 | **YAPILMIŞ** | Kategori seçince alt bant kaydet belirginleşmesi ✓ |
+
+---
+
+## Grup 10 (12 Temmuz 2026)
+
+| # | Durum | Not |
+|---|--------|-----|
+| 37 | **YAPILMIŞ** | Kaydetme hatırlatma pop-up ✓ |
+| 38 | **YAPILMIŞ** | Kaydet/İptal sabit + sayaç ✓ |
+| 38 ek | **YENİ TALEP** | Sol: Süre + Kayıt/İptal · Orta: Finansal Özet · Sağ: Kaydet/İptal. Süre üstü başlık: **«Rapor Oluşturma Analizi»** (disiplin) |
+| 39 | **NOT ALINDI** | Yazım süresi hesaplanıyor; personel sayfası analizi **bu etap bitince Mustafa'ya hatırlatılacak** |
+| 40 | **YAPILMIŞ / EKSİK** | Düzen var; 38 ek ile tamamlanacak |
+
+---
+
+## Grup 11 (12 Temmuz 2026) — son madde
+
+| # | Durum | Not |
+|---|--------|-----|
+| 41 | **YAPILMIŞ** | Revizyon geçmişi Dosya Bilgileri'nde; sayfa yenileme davranışı düzeltildi (v291 kodunda) |
+
+---
+
+## Tüm gruplar tamamlandı (12 Temmuz 2026)
+
+Mustafa geri bildirimi Grup 1–11 bitti.
+
+### Güncel kalan liste (YAPILMIŞ çıkarıldı)
+
+**Deploy sonrası sizden PASS istenecek (v291 kodunda):** 1, 5, 10, 14, 15, 19, 20, 21, 22, 41
+
+**Henüz kodlanmayan / ek talep:** 2 ek, 18 ek, 26, 28 ek, 30 ek, 33, 38 ek
+
+**Beklemede:** 16 (siz yazacaksınız), 39 (personel analizi — hatırlatılacak), 11 portal testi
+
+---
 
 ## Deploy notu (12 Temmuz 2026)
 
-- **Kapsam:** web-only v290 (commit `75cb60e`); migration yok.
-- **Rollback:** web v289, backend v278.
-- **Deploy sonrası:** Ctrl+Shift+R; footer **Web v290** beklenir.
+- **Canlı şimdi:** Web v290
+- **Kod hazır, commit/deploy bekliyor:** Web v291 (+ backend ihbar tarihi minimal)
+- **Rollback:** v290

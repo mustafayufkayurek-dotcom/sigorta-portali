@@ -95,10 +95,41 @@ export class DamageRepairTemplatesService {
     return { items };
   }
 
-  /** Şablon kaydı yoksa hızlı onarım iş kalemlerinden öneri üretir. */
+  /** Şablon kaydı yoksa hasar türüne göre hızlı onarım kalemlerinden öneri üretir. */
   private async fallbackQuickRepairSuggestions(damageTypes: string[], damageSize?: string) {
+    const templates = await this.prisma.damageTypeRepairTemplate.findMany({
+      where: {
+        damageType: { in: damageTypes },
+        OR: [{ isGlobal: true }, { fileId: null }],
+      },
+      include: { workSubGroup: true },
+      orderBy: [{ sortOrder: 'asc' }, { usageCount: 'desc' }],
+      take: 40,
+    });
+
+    const qtyForSize = (size?: string) => (size === 'SMALL' ? 1 : size === 'LARGE' ? 3 : 2);
+
+    if (templates.length > 0) {
+      return templates
+        .filter((t) => t.workSubGroup?.status === 'active')
+        .map((template) => ({
+          templateId: template.id,
+          workSubGroupId: template.workSubGroupId,
+          code: template.workSubGroup.code,
+          name: template.workSubGroup.name,
+          unitType: template.workSubGroup.unitType,
+          unitPrice: template.workSubGroup.unitPrice ? Number(template.workSubGroup.unitPrice) : 0,
+          suggestedQuantity: this.getQuantityBySize(template, damageSize) || qtyForSize(damageSize),
+          usageCount: template.usageCount,
+          damageType: template.damageType,
+        }));
+    }
+
     const workGroup = await this.prisma.workGroup.findFirst({
-      where: { code: 'hizli_onarim', status: 'active' },
+      where: {
+        OR: [{ code: 'hizli_onarim' }, { name: { contains: 'Hızlı Onarım', mode: 'insensitive' } }],
+        status: 'active',
+      },
       select: { id: true },
     });
     if (!workGroup) return [];
@@ -108,8 +139,6 @@ export class DamageRepairTemplatesService {
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       take: 40,
     });
-
-    const qtyForSize = (size?: string) => (size === 'SMALL' ? 1 : size === 'LARGE' ? 3 : 2);
 
     return subGroups.map((sg) => ({
       templateId: `fallback-${sg.id}`,

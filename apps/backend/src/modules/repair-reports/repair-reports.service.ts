@@ -167,9 +167,19 @@ export class RepairReportsService {
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
+    const earliestInbound = await this.prisma.inboundMessage.findFirst({
+      where: { claimFileId: report.claimFileId },
+      orderBy: { receivedAt: 'asc' },
+      select: { receivedAt: true },
+    });
+
     const claim = report.claimFile as {
       assignedInspectorVendor?: { name?: string | null } | null;
+      inboundReceivedAt?: Date | null;
     } | null;
+    if (claim) {
+      claim.inboundReceivedAt = earliestInbound?.receivedAt ?? null;
+    }
     const vendorName = claim?.assignedInspectorVendor?.name?.trim();
     if (!report.inspectorName?.trim() && vendorName) {
       return { ...report, inspectorName: vendorName };

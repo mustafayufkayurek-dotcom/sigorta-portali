@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { resolveRepairReportExpertName } from '@sigorta/shared';
+import { resolveFileExpertDisplay } from '@sigorta/shared';
 import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
@@ -49,24 +49,18 @@ function formatPropertyAddress(claim: any): string | null {
   return line || null;
 }
 
-function resolveDosyaEksperi(claim: any, reportSummary?: any | null): string {
-  const name = resolveRepairReportExpertName({
+export function resolveDosyaEksperi(claim: any, reportSummary?: any | null): string {
+  const { name, missing } = resolveFileExpertDisplay({
     claimFile: claim,
     inspectorName: reportSummary?.inspectorName ?? claim.latestRepairReport?.inspectorName,
     expertOffice: reportSummary?.expertOffice ?? claim.latestRepairReport?.expertOffice,
   });
-  if (name) return toTitleCaseTR(name);
-  const vendor = claim.assignedInspectorVendor?.name?.trim();
-  if (vendor) return toTitleCaseTR(vendor);
-  const adjuster = claim.assignedAdjuster
-    ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim()
-    : '';
-  if (adjuster) return toTitleCaseTR(adjuster);
-  return 'Atanmamış';
+  return missing ? 'Atanmamış' : toTitleCaseTR(name);
 }
 
 export function resolveIhbarTarihi(claim: any): string {
   if (claim.notificationDate) return fmtDate(claim.notificationDate);
+  if (claim.inboundReceivedAt) return fmtDate(claim.inboundReceivedAt);
   if (claim.createdAt) return fmtDate(claim.createdAt);
   return '—';
 }
@@ -123,9 +117,6 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   if (claim.fileType?.trim()) {
     supplementary.push({ label: 'Dosya Tipi', value: toTitleCaseTR(claim.fileType.trim()) });
   }
-
-  const insuredName = resolveHasarInsuredName(claim);
-  supplementary.push({ label: 'Sigortalı Ad Soyad', value: insuredName, wide: true });
 
   const propertyAddress = formatPropertyAddress(claim);
   if (propertyAddress) {

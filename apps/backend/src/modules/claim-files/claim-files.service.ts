@@ -478,8 +478,15 @@ export class ClaimFilesService {
         )
       : null;
 
+    const earliestInbound = await this.prisma.inboundMessage.findFirst({
+      where: { claimFileId: id },
+      orderBy: { receivedAt: 'asc' },
+      select: { receivedAt: true },
+    });
+
     return {
       ...claimFile,
+      inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
       activeDelegation,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
