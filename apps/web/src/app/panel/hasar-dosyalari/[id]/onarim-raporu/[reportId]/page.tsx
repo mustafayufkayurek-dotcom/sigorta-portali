@@ -4689,9 +4689,9 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-8 py-3 z-30">
-        <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-          <div className="hidden lg:flex flex-col gap-0.5 min-w-0 lg:flex-1">
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 shadow-[0_-8px_30px_rgba(15,23,42,0.35)] px-4 sm:px-6 lg:px-8 py-3 z-30">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
+          <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start">
             <p className="text-[10px] font-semibold text-slate-300 tracking-wide">Rapor Oluşturma Analizi</p>
             <div className="flex items-center gap-3 text-[11px] text-slate-400 tabular-nums">
               {isEditable && writeElapsedLabel && (
@@ -4702,7 +4702,7 @@ export default function RepairReportPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center justify-center min-w-0 lg:flex-shrink-0">
+          <div className="flex items-center justify-center min-w-0 justify-self-center w-full lg:w-auto">
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 totalSupplierCost={report.totalSupplierCost}
@@ -4712,7 +4712,7 @@ export default function RepairReportPage() {
               />
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 flex-shrink-0 lg:ml-auto lg:min-w-[280px]">
+          <div className="flex items-center justify-end gap-2 flex-shrink-0 justify-self-end w-full lg:w-auto">
             {isEditable && (
               <span className="lg:hidden text-[11px] text-slate-400 tabular-nums mr-1">
                 {writeElapsedLabel && `${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
