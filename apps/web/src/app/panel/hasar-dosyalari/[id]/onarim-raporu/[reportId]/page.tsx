@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, u
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu, formatHasarAdresi } from '@/utils/text-helpers';
-import { fmtDateTime } from '@/utils/date-helpers';
+import { fmtDateTime, formatReportDuration } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import { buildRepairReportShareRecipients, type ClaimVendorSource } from '@/utils/repair-report-share-recipients';
 import dynamic from 'next/dynamic';
@@ -38,6 +38,7 @@ import {
   repairReportStatusBadge,
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
+import { editingDraftFromCellValue, normalizeCellNumericInput } from '@/utils/repair-report-number-input';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
@@ -1453,25 +1454,41 @@ function CalcInput({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const committingRef = useRef(false);
   const isFormula = /[\+\-\*\/\(\)]/.test(value) && !/^-?\d+(\.\d+)?$/.test(value.trim());
 
   const handleFocus = () => {
-    setDraft(value);
+    const initialDraft = editingDraftFromCellValue(value);
+    setDraft(initialDraft);
     setEditing(true);
     onFocus?.();
-    // Focus anında tüm metni seç; böylece 0 veya mevcut değerin üzerine direkt yazılabilir
-    setTimeout(() => inputRef.current?.select(), 0);
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      if (initialDraft === '') {
+        el.setSelectionRange(0, 0);
+      } else {
+        el.select();
+      }
+    });
   };
 
   const commit = (raw: string) => {
+    if (committingRef.current) return;
+    committingRef.current = true;
     setEditing(false);
     const evaluated = evaluateExpression(raw);
-    const final = evaluated !== null ? evaluated.toString() : raw;
+    const base = evaluated !== null ? evaluated.toString() : raw;
+    const final = normalizeCellNumericInput(base);
     onChange(final);
     onCommit(final);
+    requestAnimationFrame(() => {
+      committingRef.current = false;
+    });
   };
 
   const handleBlur = () => {
+    if (committingRef.current || !editing) return;
     commit(draft);
   };
 
@@ -1601,6 +1618,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [zamApplying, setZamApplying] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const addingDraftRef = useRef<RowState>(emptyRow());
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const [descriptionErrors, setDescriptionErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -1819,8 +1838,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     setRows((prev) => prev.map((r) => r._id === id ? { ...r, [field]: value, _isDirty: markDirty ? true : r._isDirty } : r));
   };
 
+  const updateRowFields = (id: string, patch: Partial<RowState>, opts?: { markDirty?: boolean }) => {
+    const markDirty = opts?.markDirty ?? true;
+    setRows((prev) => prev.map((r) => r._id === id ? { ...r, ...patch, _isDirty: markDirty ? true : r._isDirty } : r));
+  };
+
   const updateRowCategory = (id: string, patch: Partial<RowState>) => {
-    setRows((prev) => prev.map((r) => r._id === id ? { ...r, ...patch, _isDirty: true } : r));
+    updateRowFields(id, patch);
+  };
+
+  const isRowDirty = (id: string) => Boolean(rowsRef.current.find((r) => r._id === id)?._isDirty);
+
+  const flushActiveCellEdits = () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && tableRef.current?.contains(active)) {
+      active.blur();
+    }
   };
 
   const revertRow = (id: string) => {
@@ -1833,20 +1866,33 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const isRowPersistable = (row: RowState) =>
     Boolean(row.workGroupId && row.jobDescription.trim() && row.detectionScope.trim());
 
-  const saveRow = async (id: string) => {
-    const row = rows.find((r) => r._id === id);
-    if (!row || !row._isDirty) return;
+  const saveRow = async (
+    id: string,
+    fieldOverrides?: Partial<RowState>,
+    opts?: { explicit?: boolean; skipRevertIfIncomplete?: boolean },
+  ) => {
+    const baseRow = rowsRef.current.find((r) => r._id === id);
+    if (!baseRow) return;
+    const row = fieldOverrides ? { ...baseRow, ...fieldOverrides, _isDirty: true } : baseRow;
+    if (!row._isDirty) return;
     if (!isRowPersistable(row)) {
       if (!row.detectionScope.trim()) {
-        notify('error', 'Tespit Alanı zorunludur.');
-        focusCell(rows.findIndex((r) => r._id === id), 'detectionScope');
+        if (opts?.explicit) {
+          notify('error', 'Tespit Alanı zorunludur.');
+          focusCell(rowsRef.current.findIndex((r) => r._id === id), 'detectionScope');
+        }
+      } else if (opts?.explicit && !row.jobDescription.trim()) {
+        notify('error', 'İş Tanımı zorunludur.');
+        focusCell(rowsRef.current.findIndex((r) => r._id === id), 'jobDescription');
       }
+      if (opts?.skipRevertIfIncomplete) return;
+      if (opts?.explicit) return;
       revertRow(id);
       return;
     }
     if (row.location.trim() && !isValidLocationFormat(row.location)) {
       notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
-      focusCell(rows.findIndex((r) => r._id === id), 'location');
+      focusCell(rowsRef.current.findIndex((r) => r._id === id), 'location');
       return;
     }
 
@@ -1873,6 +1919,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       setRows((prev) => prev.map((r) => r._id === id ? { ...r, _isDirty: false, _savedFlash: true } : r));
       setTimeout(() => setRows((prev) => prev.map((r) => r._id === id ? { ...r, _savedFlash: false } : r)), 900);
     } finally { setSavingId(null); }
+  };
+
+  const tryAutoSaveRow = (id: string, fieldOverrides?: Partial<RowState>) => {
+    void saveRow(id, fieldOverrides, { skipRevertIfIncomplete: true });
+  };
+
+  const explicitSaveRow = (id: string) => {
+    flushActiveCellEdits();
+    setTimeout(() => {
+      void saveRow(id, undefined, { explicit: true });
+    }, 0);
   };
 
   const saveAllDirtyRows = useCallback(async () => {
@@ -2108,7 +2165,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         if (addingDirty) void saveAddingRow();
         return;
       }
-      if (rowId) void saveRow(rowId);
+      if (rowId) explicitSaveRow(rowId);
       return;
     }
 
@@ -2182,8 +2239,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         focusCell(rowIdx, editableCOLS[colIdx + 1]);
       } else {
         const sourceRow = rowIdx === 'new' ? addingRow : rows[rowIdx as number];
-        if (rowIdx !== 'new' && rowId && rows.find((r) => r._id === rowId)?._isDirty) {
-          void saveRow(rowId);
+        if (rowIdx !== 'new' && rowId && isRowDirty(rowId)) {
+          tryAutoSaveRow(rowId);
         }
         const nextAddingRow = {
           ...emptyRow(sourceRow?.location?.trim() || ''),
@@ -2366,7 +2423,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       value={row.damageCategory}
                       tabIndex={getCellTabIndex(rowIdx, 'damageCategory')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'damageCategory' })}
-                      onBlur={() => { void saveRow(row._id); }}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
                       onChange={(e) => {
                         updateRowCategory(row._id, {
                           damageCategory: e.target.value as 'bina' | 'esya',
@@ -2397,7 +2454,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onAddNew={createDetectionScope}
                       tabIndex={getCellTabIndex(rowIdx, 'detectionScope')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'detectionScope' })}
-                      onBlur={() => { if (row._isDirty) void saveRow(row._id); }}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'detectionScope', row._id)}
                     />
                   ) : (
@@ -2416,7 +2473,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onRegister={addLocationIfNew}
                       tabIndex={getCellTabIndex(rowIdx, 'location')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'location' })}
-                      onBlur={() => { if (row._isDirty) void saveRow(row._id); }}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'location', row._id)}
                     />
                   ) : (
@@ -2433,11 +2490,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       workGroups={filterWorkGroupsByCategory(workGroups, row.damageCategory)}
                       tabIndex={getCellTabIndex(rowIdx, 'workGroup')}
                       onFocus={() => { setActiveCell({ rowIdx, col: 'workGroup' }); loadSubGroups(row.workGroupId); }}
-                      onBlur={() => { saveRow(row._id); }}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
                       onSelect={(workGroupId) => {
-                        updateRow(row._id, 'workGroupId', workGroupId);
-                        updateRow(row._id, 'jobDescription', '');
-                        updateRow(row._id, 'unit', 'm²');
+                        updateRowFields(row._id, {
+                          workGroupId,
+                          jobDescription: '',
+                          unit: 'm²',
+                        });
                         void loadSubGroups(workGroupId);
                       }}
                       onAddNew={createWorkGroup}
@@ -2462,7 +2521,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         workGroupId={row.workGroupId}
                         tabIndex={getCellTabIndex(rowIdx, 'jobDescription')}
                         onFocus={() => setActiveCell({ rowIdx, col: 'jobDescription' })}
-                        onBlur={() => { saveRow(row._id); }}
+                        onBlur={() => { tryAutoSaveRow(row._id); }}
                         onSelect={(v, unit) => {
                           setRows((prev) => prev.map((r) => {
                             if (r._id !== row._id) return r;
@@ -2496,13 +2555,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       tabIndex={getCellTabIndex(rowIdx, 'description')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'description' })}
                       onBlur={() => {
-                        const titleVal = toTitleCaseTR(row.description.trim());
-                        if (titleVal !== row.description) updateRow(row._id, 'description', titleVal);
-                        if (!row.description.trim()) {
+                        const current = rowsRef.current.find((r) => r._id === row._id);
+                        const desc = current?.description ?? row.description;
+                        const titleVal = toTitleCaseTR(desc.trim());
+                        if (titleVal !== desc) updateRow(row._id, 'description', titleVal);
+                        if (!desc.trim()) {
                           setDescriptionErrors((prev) => new Set([...prev, row._id]));
                         } else {
                           setDescriptionErrors((prev) => { const n = new Set(prev); n.delete(row._id); return n; });
-                          saveRow(row._id);
+                          tryAutoSaveRow(row._id);
                         }
                       }}
                       onChange={(e) => {
@@ -2524,7 +2585,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
                         value={row.quantity}
                         onChange={(v) => updateRow(row._id, 'quantity', v)}
-                        onCommit={() => setTimeout(() => saveRow(row._id), 50)}
+                        onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { quantity: v }), 50)}
                         tabIndex={getCellTabIndex(rowIdx, 'quantity')}
                         onFocus={() => setActiveCell({ rowIdx, col: 'quantity' })}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'quantity', row._id)}
@@ -2551,7 +2612,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       value={row.unit}
                       tabIndex={getCellTabIndex(rowIdx, 'unit')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'unit' })}
-                      onBlur={() => { saveRow(row._id); }}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
                       onChange={(e) => updateRow(row._id, 'unit', e.target.value)}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'unit', row._id)}
                     >
@@ -2570,7 +2631,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-right pr-10 ${isLoss ? '!ring-2 !ring-inset !ring-red-400 !rounded' : ''}`}
                         value={row.salesUnitPrice}
                         onChange={(v) => updateRow(row._id, 'salesUnitPrice', v)}
-                        onCommit={() => setTimeout(() => saveRow(row._id), 50)}
+                        onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { salesUnitPrice: v }), 50)}
                         tabIndex={getCellTabIndex(rowIdx, 'salesUnitPrice')}
                         onFocus={() => setActiveCell({ rowIdx, col: 'salesUnitPrice' })}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'salesUnitPrice', row._id)}
@@ -2594,7 +2655,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           className={`${cellCls(rowIdx, 'supplierUnitPrice', true)} text-right pr-8 text-slate-500 ${isLoss ? '!ring-2 !ring-inset !ring-orange-400 !rounded' : ''}`}
                           value={row.supplierUnitPrice}
                           onChange={(v) => updateRow(row._id, 'supplierUnitPrice', v)}
-                          onCommit={() => setTimeout(() => saveRow(row._id), 50)}
+                          onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { supplierUnitPrice: v }), 50)}
                           tabIndex={getCellTabIndex(rowIdx, 'supplierUnitPrice')}
                           onFocus={() => setActiveCell({ rowIdx, col: 'supplierUnitPrice' })}
                           onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'supplierUnitPrice', row._id)}
@@ -2630,7 +2691,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         type="button"
                         tabIndex={-1}
                         disabled={isSaving || !row._isDirty}
-                        onClick={() => void saveRow(row._id)}
+                        onClick={() => explicitSaveRow(row._id)}
                         className="h-7 px-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-0.5 transition-colors text-[10px] font-medium"
                         title="Satırı Kaydet (Ctrl+Enter)"
                       >
@@ -2943,7 +3004,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 preferredVendorName: normalizeLocationLabel(vendorName),
               });
             }
-            setTimeout(() => void saveRow(vendorModalRowId), 50);
+            setTimeout(() => tryAutoSaveRow(vendorModalRowId), 50);
             setVendorModalRowId(null);
           }}
         />
@@ -2965,7 +3026,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             setAddingDirty(true);
           } else {
             updateRow(metrajModalRowId, 'quantity', deger);
-            setTimeout(() => saveRow(metrajModalRowId), 50);
+            setTimeout(() => tryAutoSaveRow(metrajModalRowId, { quantity: deger }), 50);
           }
         }}
       />
@@ -3700,6 +3761,47 @@ export default function RepairReportPage() {
     () => approvalHistory.find((h) => h.action === 'pending_approval'),
     [approvalHistory],
   );
+
+  /** Rapor oluşturma → onaya sunum süresi (revizyon sonrası döngü bazlı) */
+  const reportCycleStartAt = useMemo(() => {
+    if (!report) return null;
+    return (report.revisedAt ?? report.createdAt) as string;
+  }, [report]);
+
+  const reportCycleSubmission = useMemo(() => {
+    if (!reportCycleStartAt) return null;
+    const startMs = new Date(reportCycleStartAt).getTime();
+    let latest: (typeof approvalHistory)[number] | null = null;
+    for (const h of approvalHistory) {
+      if (h.action !== 'pending_approval') continue;
+      const ts = new Date(h.createdAt).getTime();
+      if (ts < startMs - 2000) continue;
+      if (!latest || ts > new Date(latest.createdAt).getTime()) latest = h;
+    }
+    return latest;
+  }, [approvalHistory, reportCycleStartAt]);
+
+  const [creationToApprovalLabel, setCreationToApprovalLabel] = useState('');
+
+  useEffect(() => {
+    if (!reportCycleStartAt) {
+      setCreationToApprovalLabel('');
+      return undefined;
+    }
+    const update = () => {
+      const startMs = new Date(reportCycleStartAt).getTime();
+      if (reportCycleSubmission) {
+        const endMs = new Date(reportCycleSubmission.createdAt).getTime();
+        setCreationToApprovalLabel(formatReportDuration(endMs - startMs));
+        return;
+      }
+      setCreationToApprovalLabel(formatReportDuration(Date.now() - startMs));
+    };
+    update();
+    if (reportCycleSubmission) return undefined;
+    const id = window.setInterval(update, 30_000);
+    return () => window.clearInterval(id);
+  }, [reportCycleStartAt, reportCycleSubmission]);
 
   const latestApprovalDecision = useMemo(
     () => approvalHistory.find((h) => h.action === 'approved' || h.action === 'rejected'),
@@ -4735,15 +4837,32 @@ export default function RepairReportPage() {
       </SectionCard>
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-emerald-500/35 bg-white/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(15,23,42,0.12)] px-4 sm:px-6 lg:px-8 py-3">
         <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
-          <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start">
+          <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start max-w-[280px]">
             <p className="text-[10px] font-semibold text-slate-600 tracking-wide">Rapor Oluşturma Analizi</p>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500 tabular-nums">
-              {isEditable && writeElapsedLabel && (
-                <span>Süre: {writeElapsedLabel}</span>
+            <div className="flex flex-col gap-0.5 text-[11px] text-slate-500 tabular-nums leading-snug">
+              {creationToApprovalLabel && (
+                <span className="font-medium text-slate-700">
+                  {reportCycleSubmission
+                    ? `Oluşturma → Onay: ${creationToApprovalLabel}`
+                    : `Oluşturma: ${creationToApprovalLabel}`}
+                  {!reportCycleSubmission && (
+                    <span className="font-normal text-slate-400"> · Onay bekliyor</span>
+                  )}
+                </span>
               )}
-              {isEditable && (
-                <span>Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}</span>
-              )}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0">
+                {isEditable && writeElapsedLabel && (
+                  <span>Oturum: {writeElapsedLabel}</span>
+                )}
+                {isEditable && (
+                  <span>Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}</span>
+                )}
+                {reportCycleSubmission && (
+                  <span className="text-[10px] text-slate-400">
+                    {fmtDateTime(reportCycleSubmission.createdAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-center min-w-0 justify-self-center w-full lg:w-auto">
@@ -4759,8 +4878,20 @@ export default function RepairReportPage() {
           </div>
           <div className="flex items-center justify-end gap-2 flex-shrink-0 justify-self-end w-full lg:w-auto">
             {isEditable && (
+              <span className="lg:hidden text-[11px] text-slate-500 tabular-nums mr-1 leading-tight">
+                {creationToApprovalLabel && (
+                  <span className="block">
+                    {reportCycleSubmission
+                      ? `Oluşturma → Onay: ${creationToApprovalLabel}`
+                      : `Oluşturma: ${creationToApprovalLabel}`}
+                  </span>
+                )}
+                {writeElapsedLabel && `Oturum: ${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
+              </span>
+            )}
+            {!isEditable && creationToApprovalLabel && reportCycleSubmission && (
               <span className="lg:hidden text-[11px] text-slate-500 tabular-nums mr-1">
-                {writeElapsedLabel && `${writeElapsedLabel} · `}Kayıt: {sessionSaveCount} · İptal: {sessionCancelCount}
+                Oluşturma → Onay: {creationToApprovalLabel}
               </span>
             )}
             {isEditable && (

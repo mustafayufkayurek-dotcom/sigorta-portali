@@ -1,0 +1,43 @@
+---
+description: Onarım raporu fiyat/miktar girişi regresyon kilidi — CalcInput davranışı
+globs: apps/web/src/app/panel/hasar-dosyalari/**/onarim-raporu/**/*
+alwaysApply: false
+---
+
+# Onarım Raporu Fiyat Girişi
+
+## Altın kural
+
+**Satış Fiyatı** alanına `5` yazınca değer `5` kalmalı; `0` üzerine yazımda `05` veya `50` oluşmamalı.
+
+## CalcInput davranışı (onaylı)
+
+Dosya: `apps/web/src/app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx`
+
+1. **Focus:** `editingDraftFromCellValue()` ile `0` / boş hücreyi boş taslak yap; `requestAnimationFrame` ile seçim (boş → imleç başta, dolu → tümünü seç).
+2. **Commit:** `evaluateExpression` sonrası `normalizeCellNumericInput()` uygula; baştaki sıfırları (`05` → `5`) temizle.
+3. **Çift commit yok:** `committingRef` ile Tab/Enter + blur çift kaydı engelle.
+4. **saveRow:** `rowsRef.current` kullan; CalcInput `onCommit` ile `fieldOverrides` geç (stale closure önlemi).
+5. **Satır kaydet:** Eksik satırda `onBlur` otomatik kayıt `revertRow` çağırmamalı (`skipRevertIfIncomplete`). Kaydet butonu `explicitSaveRow` ile önce aktif hücreyi flush eder.
+6. **İşlem butonları:** `_isDirty` yalnızca düzenlenen satırda aktif; başka satıra geçince önceki satırın dirty durumu korunur.
+
+## Manuel QA kontrol listesi
+
+- [ ] Satış Fiyatı `0` iken focus → `5` yaz → `5` kalır (50 değil)
+- [ ] Mevcut değer `125` iken focus → `5` yaz → `5` kalır (1255 değil)
+- [ ] Tab ile sonraki hücreye geçince değer bir kez commit edilir
+- [ ] Blur ile çıkınca normalize edilir (`05` → `5`, boş → `0`)
+- [ ] Miktar ve Tedarikçi Fiyatı alanlarında aynı davranış
+- [ ] Formül girişi (`10+5`) hâlâ çalışır
+- [ ] Satır doldurulunca Kaydet/Geri Al hemen aktif (başka satıra geçmeye gerek yok)
+- [ ] İş Grubu seçip İş Tanımı seçmeden blur → satır geri alınmaz, Kaydet aktif kalır
+- [ ] Kaydet butonu tüm alanları (fiyat dahil) kaydeder
+
+## Yasaklar
+
+- Focus'ta `setTimeout(select)` geri getirmek
+- `saveRow` içinde yalnızca closure `rows` kullanmak
+- Sıfır normalizasyonunu kaldırmak
+- Eksik satırda `onBlur` otomatik kayıtta `revertRow` çağırmak
+
+Yardımcılar: `apps/web/src/utils/repair-report-number-input.ts`

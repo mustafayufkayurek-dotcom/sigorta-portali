@@ -28,6 +28,17 @@ export function fmtDateTime(
   return dt ? dt.toLocaleString('tr-TR', options) : '—';
 }
 
+/** Rapor oluşturma / onaya sunum süresi — alt bant analizi */
+export function formatReportDuration(ms: number): string {
+  const safe = Math.max(0, ms);
+  if (safe < 60_000) return '<1 dk';
+  const totalMin = Math.floor(safe / 60_000);
+  if (totalMin < 60) return `${totalMin} dk`;
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  return mins > 0 ? `${hours} sa ${mins} dk` : `${hours} sa`;
+}
+
 export function relativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
