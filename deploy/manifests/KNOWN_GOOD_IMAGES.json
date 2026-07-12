@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v302-operasyon-ux",
-  "description": "Operasyon tablo UX, dosya konusu kanonik, çıkış guard, onarım raporu v296-v299; web v302 + backend v302",
+  "label": "v303-pazartesi-notlari",
+  "description": "Pazartesi toplantısı notları, mutatap konular; web v303 + backend v303",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v302-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v302-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v303-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v303-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v299-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v282-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v302-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v302-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
