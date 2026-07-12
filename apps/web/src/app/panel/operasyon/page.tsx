@@ -95,17 +95,17 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 ${accentClass ?? 'card-accent-blue'}`}>
+    <div className={`flex flex-col items-center justify-center text-center gap-2 bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 ${accentClass ?? 'card-accent-blue'}`}>
       {icon && (
         <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${iconBg ?? 'bg-blue-50'}`}>
           {icon}
         </div>
       )}
-      <div className="flex flex-col min-w-0">
-        <p className="text-[11px] font-medium text-slate-400 tracking-wide leading-none truncate">{label}</p>
-        <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums">{value}</span>
+      <div className="flex flex-col items-center min-w-0 w-full">
+        <p className="text-[11px] font-medium text-slate-400 tracking-wide leading-snug">{label}</p>
+        <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums mt-1">{value}</span>
         {badge && (
-          <span className="badge badge-blue self-start mt-0.5">{badge}</span>
+          <span className="badge badge-blue inline-flex items-center justify-center text-center mt-0.5">{badge}</span>
         )}
       </div>
     </div>
@@ -469,9 +469,9 @@ export default function OperasyonPage() {
                           return (
                             <PanelTableTd key={col.id} colId="kind" align="center" className="table-td-center whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue justify-center">Hasar</span>
+                                <span className="badge badge-blue inline-flex items-center justify-center text-center">Hasar</span>
                               ) : (
-                                <span className="badge badge-orange justify-center">
+                                <span className="badge badge-orange inline-flex items-center justify-center text-center">
                                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                                   Acil
                                 </span>
@@ -524,9 +524,9 @@ export default function OperasyonPage() {
                           return (
                             <PanelTableTd key={col.id} colId="status" align="center" className="table-td-center whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue justify-center">{row.statusLabel}</span>
+                                <span className="badge badge-blue inline-flex items-center justify-center text-center">{row.statusLabel}</span>
                               ) : (
-                                <span className={`${EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'} justify-center`}>
+                                <span className={`${EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'} inline-flex items-center justify-center text-center`}>
                                   {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
                                 </span>
                               )}
@@ -535,7 +535,7 @@ export default function OperasyonPage() {
                         case 'invoice':
                           return (
                             <PanelTableTd key={col.id} colId="invoice" align="center" className="table-td-center whitespace-nowrap">
-                              <span className={`${INVOICE_STATUS_COLORS[row.invoiceStatus]} justify-center`}>
+                              <span className={`${INVOICE_STATUS_COLORS[row.invoiceStatus]} inline-flex items-center justify-center text-center`}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
                             </PanelTableTd>
