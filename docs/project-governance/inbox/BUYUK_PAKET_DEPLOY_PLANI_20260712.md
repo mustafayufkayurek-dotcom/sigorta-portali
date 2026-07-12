@@ -2,7 +2,7 @@
 
 **Durum:** Planlama — **canlıya alınmadı** (Mustafa onayı bekleniyor)  
 **Dal:** `safety/pre-v318-kilit-20260712`  
-**Canlı referans:** Web v318 / Backend v303 (`deploy/manifests/KNOWN_GOOD_IMAGES.json`)
+**Canlı referans:** Web **v320** / Backend **v319** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`) — web-only deploy 12.07.2026
 
 ---
 
@@ -13,6 +13,24 @@ Post-v164 operasyon + finans paketi: PayTR online tahsilat, operasyon gelen kutu
 **Bu belge deploy yapmaz** — sıra, risk ve rollback rehberidir.
 
 ---
+
+
+---
+
+## Canlı Prisma kontrolü (12 Temmuz 2026)
+
+**Komut:** `docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate status'`
+
+| Alan | Değer |
+|------|--------|
+| Canlı backend image | `app-backend:dalga2-agreement-hr-01-v319-amd64` |
+| Migration envanteri (Prisma) | 91 |
+| Durum | **Database schema is up to date!** |
+| Bekleyen migration | **0** |
+
+**Dal (`apps/backend/prisma/migrations`):** 91 migration klasörü (+ `migration_lock.toml`) — sayı canlı Prisma çıktısı ile uyumlu. Büyük paket backend deploy'u öncesi komutu tekrar çalıştır; dalda yeni migration commit edilirse bekleyen sayı artabilir.
+
+**Not:** Üstteki «Dal vs canlı farkı» tablosu özellik/kod kapsamı içindir; canlı DB şema migration kuyruğu şu an boş görünüyor (v319 backend image ile senkron).
 
 ## Dal vs canlı farkı (özet)
 
@@ -118,7 +136,7 @@ Post-v164 operasyon + finans paketi: PayTR online tahsilat, operasyon gelen kutu
 
 | Bileşen | Geri dönüş |
 |---------|------------|
-| Web | `sigorta-web:dalga2-agreement-hr-01-v318-amd64` |
+| Web | `sigorta-web:dalga2-agreement-hr-01-v319-amd64` (bilinen iyi önceki; güncel rollback v320→v319) |
 | Backend | `app-backend:dalga2-agreement-hr-01-v303-amd64` (veya foto deploy sonrası v319-backend) |
 | DB | Migration geri alınamaz — `scripts/rollback-production.sh` + yedekten restore (onaylı) |
 
