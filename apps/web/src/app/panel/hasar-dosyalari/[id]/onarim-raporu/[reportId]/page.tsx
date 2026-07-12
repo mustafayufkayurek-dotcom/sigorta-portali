@@ -13,6 +13,7 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import ReportImageGallery from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
+import SaveReminderModal from '@/components/damage-reports/SaveReminderModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
@@ -5398,54 +5399,29 @@ export default function RepairReportPage() {
           onConfirm={confirmRevise}
         />
       )}
-      {showSaveReminderModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-semibold text-slate-800 mb-2">Kaydetmeyi Unutmayın</h3>
-            <p className="text-sm text-slate-600 mb-4">
-              Raporda kaydedilmemiş değişiklikler var
-              {hasUnsavedReportFields && dirtyItemCount > 0
-                ? ' (metin alanları ve tablo satırları)'
-                : hasUnsavedReportFields
-                  ? ' (metin alanları)'
-                  : dirtyItemCount > 0
-                    ? ' (tablo satırları)'
-                    : ''}.
-              Yazımı tamamladıysanız kaydetmenizi öneririz.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSaveReminderModal(false);
-                  void handleSaveReport();
-                }}
-                className="w-full rounded-lg bg-emerald-600 text-white py-2 text-sm font-medium hover:bg-emerald-700"
-              >
-                Kaydet
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSaveReminderModal(false);
-                  setPendingFields({});
-                  router.push(claimPath);
-                }}
-                className="w-full rounded-lg border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
-              >
-                Kaydetmeden Çık
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSaveReminderModal(false)}
-                className="w-full rounded-lg py-2 text-sm text-slate-500 hover:text-slate-700"
-              >
-                Yazmaya Devam Et
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveReminderModal
+        open={showSaveReminderModal}
+        detail={
+          hasUnsavedReportFields && dirtyItemCount > 0
+            ? 'both'
+            : hasUnsavedReportFields
+              ? 'fields'
+              : dirtyItemCount > 0
+                ? 'items'
+                : 'none'
+        }
+        saving={saving}
+        onSave={() => {
+          setShowSaveReminderModal(false);
+          void handleSaveReport();
+        }}
+        onDiscard={() => {
+          setShowSaveReminderModal(false);
+          setPendingFields({});
+          router.push(claimPath);
+        }}
+        onContinue={() => setShowSaveReminderModal(false)}
+      />
       {confirmDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
