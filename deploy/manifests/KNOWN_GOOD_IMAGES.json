@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-12",
-  "label": "v288-onarim-41-madde",
-  "description": "41-madde onarım raporu UX tam paketi (Tespit sütunu, eksper, revizyon yatay şerit, alt bant, operasyon)",
+  "label": "v289-dosya-bilgileri-revizyon-eksper",
+  "description": "Revizyon compact grid içi yatay şerit; Dosya Eksperi fallback; onarım raporu 41-madde UX",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v277-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v288-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v278-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v289-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v287-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v276-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v288-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v277-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
