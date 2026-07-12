@@ -522,6 +522,55 @@ const DEFAULT_CONTRACT_TEMPLATES: ContractTemplate[] = [
   },
 ];
 
+// ── Pazartesi Toplantısı Notları ─────────────────────────────────────────────
+
+export interface MondayMeetingTemplate {
+  id: string;
+  text: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface MondayMeetingNote {
+  id: string;
+  text: string;
+  completed: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  weekKey: string;
+  templateId: string | null;
+}
+
+export interface MondayMeetingData {
+  templates: MondayMeetingTemplate[];
+  notes: MondayMeetingNote[];
+  initialized: boolean;
+}
+
+const DEFAULT_MONDAY_MEETING_TEMPLATES: MondayMeetingTemplate[] = [
+  { id: 'mm-tpl-1', text: 'Geçen Hafta Kapanan Dosya Sayısı ve SLA Uyumu', sortOrder: 10, active: true },
+  { id: 'mm-tpl-2', text: 'Bu Hafta Öncelikli SLA Riskleri', sortOrder: 20, active: true },
+  { id: 'mm-tpl-3', text: 'Geciken Tahsilat ve Fatura Durumu', sortOrder: 30, active: true },
+  { id: 'mm-tpl-4', text: 'Onay Gecikmeleri (Revizyon / Rapor)', sortOrder: 40, active: true },
+  { id: 'mm-tpl-5', text: 'Personel Yük Dağılımı ve Kapasite', sortOrder: 50, active: true },
+  { id: 'mm-tpl-6', text: 'Gelen Kutu Bekleyen Kayıtlar', sortOrder: 60, active: true },
+  { id: 'mm-tpl-7', text: 'Finans Özeti (Ciro / Gider)', sortOrder: 70, active: true },
+  { id: 'mm-tpl-8', text: 'Yeni Süreç veya Sistem Geliştirmeleri', sortOrder: 80, active: true },
+];
+
+function mondayWeekKey(date = new Date()): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + offset);
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+function newMondayId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 @Injectable()
 export class SystemSettingsService {
   constructor(private prisma: PrismaService) {}
@@ -1102,5 +1151,122 @@ export class SystemSettingsService {
     const normalized = { links };
     await this.set('eksper_sigorta_baglantilari', normalized);
     return normalized;
+  }
+
+  // ── Pazartesi Toplantısı ───────────────────────────────────────────────────
+
+  private normalizeMondayMeeting(raw: unknown): MondayMeetingData {
+    const data = (raw ?? {}) as Partial<MondayMeetingData>;
+    const templates = Array.isArray(data.templates) && data.templates.length > 0
+      ? data.templates
+      : DEFAULT_MONDAY_MEETING_TEMPLATES;
+    const notes = Array.isArray(data.notes) ? data.notes : [];
+    return {
+      templates: templates.map((t, idx) => ({
+        id: String(t.id ?? `mm-tpl-${idx}`),
+        text: String(t.text ?? '').trim(),
+        sortOrder: typeof t.sortOrder === 'number' ? t.sortOrder : idx * 10,
+        active: t.active !== false,
+      })).filter((t) => t.text.length > 0),
+      notes: notes.map((n) => ({
+        id: String(n.id),
+        text: String(n.text ?? '').trim(),
+        completed: Boolean(n.completed),
+        completedAt: n.completedAt ? String(n.completedAt) : null,
+        createdAt: String(n.createdAt ?? new Date().toISOString()),
+        weekKey: String(n.weekKey ?? mondayWeekKey()),
+        templateId: n.templateId ? String(n.templateId) : null,
+      })).filter((n) => n.text.length > 0 && n.id),
+      initialized: Boolean(data.initialized),
+    };
+  }
+
+  private ensureCurrentWeekNotes(data: MondayMeetingData, weekKey: string): MondayMeetingData {
+    const hasWeek = data.notes.some((n) => n.weekKey === weekKey);
+    if (hasWeek) return data;
+
+    const now = new Date().toISOString();
+    const seeded = data.templates
+      .filter((t) => t.active)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((t) => ({
+        id: newMondayId('mm-note'),
+        text: t.text,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        weekKey,
+        templateId: t.id,
+      }));
+
+    return { ...data, notes: [...data.notes, ...seeded] };
+  }
+
+  async getMondayMeeting(): Promise<MondayMeetingData & { weekKey: string }> {
+    const weekKey = mondayWeekKey();
+    const raw = await this.get('monday_meeting');
+    let data = this.normalizeMondayMeeting(raw);
+    const beforeLen = data.notes.length;
+    data = this.ensureCurrentWeekNotes(data, weekKey);
+    const needsPersist = !data.initialized || data.notes.length !== beforeLen;
+    if (needsPersist) {
+      data.initialized = true;
+      await this.set('monday_meeting', data);
+    }
+    return { ...data, weekKey };
+  }
+
+  async updateMondayMeetingTemplates(templates: MondayMeetingTemplate[]): Promise<MondayMeetingData & { weekKey: string }> {
+    const current = await this.getMondayMeeting();
+    const normalized = templates
+      .map((t, idx) => ({
+        id: t.id || newMondayId('mm-tpl'),
+        text: String(t.text ?? '').trim(),
+        sortOrder: typeof t.sortOrder === 'number' ? t.sortOrder : idx * 10,
+        active: t.active !== false,
+      }))
+      .filter((t) => t.text.length > 0);
+    if (normalized.length === 0) {
+      throw new BadRequestException('En az bir mutatap konu gerekli');
+    }
+    const next = { ...current, templates: normalized };
+    const { weekKey: _wk, ...persist } = next;
+    await this.set('monday_meeting', persist);
+    return this.getMondayMeeting();
+  }
+
+  async toggleMondayMeetingNote(noteId: string): Promise<MondayMeetingData & { weekKey: string }> {
+    const current = await this.getMondayMeeting();
+    const idx = current.notes.findIndex((n) => n.id === noteId);
+    if (idx < 0) throw new BadRequestException('Not bulunamadı');
+    const note = current.notes[idx];
+    const completed = !note.completed;
+    const notes = [...current.notes];
+    notes[idx] = {
+      ...note,
+      completed,
+      completedAt: completed ? new Date().toISOString() : null,
+    };
+    const { weekKey: _wk, ...persist } = current;
+    await this.set('monday_meeting', { ...persist, notes });
+    return this.getMondayMeeting();
+  }
+
+  async addMondayMeetingNote(text: string): Promise<MondayMeetingData & { weekKey: string }> {
+    const trimmed = String(text ?? '').trim();
+    if (!trimmed) throw new BadRequestException('Not metni zorunludur');
+    const current = await this.getMondayMeeting();
+    const note: MondayMeetingNote = {
+      id: newMondayId('mm-note'),
+      text: trimmed,
+      completed: false,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      weekKey: current.weekKey,
+      templateId: null,
+    };
+    const { weekKey: _wk, ...persist } = current;
+    await this.set('monday_meeting', { ...persist, notes: [...current.notes, note] });
+    return this.getMondayMeeting();
   }
 }

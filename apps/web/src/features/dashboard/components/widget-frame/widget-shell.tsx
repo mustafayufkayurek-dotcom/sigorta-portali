@@ -19,6 +19,7 @@ interface WidgetShellProps {
   errorMessage?: string;
   onRetry?: () => void;
   compact?: boolean;
+  sectionId?: string;
 }
 
 export function WidgetShell({

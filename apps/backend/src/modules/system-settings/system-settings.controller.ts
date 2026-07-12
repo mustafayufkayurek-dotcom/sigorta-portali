@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Put, Post, Body, Patch, Param, Delete, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig, M365GraphConfig, FieldInspectionBranch, ExpertInsuranceLinksConfig } from './system-settings.service';
+import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig, M365GraphConfig, FieldInspectionBranch, ExpertInsuranceLinksConfig, MondayMeetingTemplate } from './system-settings.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Public } from '@/common/decorators/public.decorator';
@@ -335,6 +335,38 @@ export class SystemSettingsController {
   @ApiOperation({ summary: 'Saha tespit kollarını güncelle' })
   async setSahaTespitKollari(@Body() body: { values: FieldInspectionBranch[] }) {
     const data = await this.service.setSahaTespitKollari(body.values ?? []);
+    return { success: true, data };
+  }
+
+  @Get('monday-meeting')
+  @RequirePermissions('dashboard.view')
+  @ApiOperation({ summary: 'Pazartesi toplantısı notları ve mutatap konuları' })
+  async getMondayMeeting() {
+    const data = await this.service.getMondayMeeting();
+    return { success: true, data };
+  }
+
+  @Put('monday-meeting/templates')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Pazartesi toplantısı mutatap konularını güncelle' })
+  async updateMondayMeetingTemplates(@Body() body: { templates: MondayMeetingTemplate[] }) {
+    const data = await this.service.updateMondayMeetingTemplates(body.templates ?? []);
+    return { success: true, data };
+  }
+
+  @Patch('monday-meeting/notes/:id/toggle')
+  @RequirePermissions('dashboard.view')
+  @ApiOperation({ summary: 'Toplantı notunu tamamla / geri al' })
+  async toggleMondayMeetingNote(@Param('id') id: string) {
+    const data = await this.service.toggleMondayMeetingNote(id);
+    return { success: true, data };
+  }
+
+  @Post('monday-meeting/notes')
+  @RequirePermissions('dashboard.view')
+  @ApiOperation({ summary: 'Toplantı notu ekle' })
+  async addMondayMeetingNote(@Body() body: { text: string }) {
+    const data = await this.service.addMondayMeetingNote(body.text);
     return { success: true, data };
   }
 

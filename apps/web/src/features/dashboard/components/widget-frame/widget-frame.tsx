@@ -13,6 +13,7 @@ interface WidgetFrameProps {
   staggerIndex?: number;
   isLoaded?: boolean;
   compact?: boolean;
+  sectionId?: string;
 }
 
 const variantStyles = {
@@ -33,9 +34,11 @@ export function WidgetFrame({
   staggerIndex = 0,
   isLoaded = true,
   compact = false,
+  sectionId,
 }: WidgetFrameProps) {
   return (
     <div
+      id={sectionId}
       className={`overflow-hidden rounded-lg border shadow-sm transition-all duration-500 ease-out hover:shadow-md ${
         isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
       } ${variantStyles[variant]} ${className}`}
