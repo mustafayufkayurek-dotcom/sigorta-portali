@@ -248,7 +248,11 @@ export function DosyaBilgileriDetay({
   const [open, setOpen] = useState(initialOpen);
   const [editOpen, setEditOpen] = useState(false);
   const [reportSummary, setReportSummary] = useState<any | null>(null);
-  const canEdit = canEditDosyaBilgileri();
+  const [canEdit, setCanEdit] = useState(false);
+
+  useEffect(() => {
+    setCanEdit(canEditDosyaBilgileri());
+  }, []);
 
   useEffect(() => {
     if (!repairReportId) {
