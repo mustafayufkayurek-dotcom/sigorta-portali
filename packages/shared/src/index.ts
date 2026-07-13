@@ -6,3 +6,5 @@ export * from './inbound-mail-terminology';
 export * from './inbound-form-fields';
 export * from './file-no-normalize';
 export * from './repair-report-expert';
+export * from './repair-report-revision';
+export * from './claim-file-stage';

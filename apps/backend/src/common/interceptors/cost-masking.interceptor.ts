@@ -78,9 +78,19 @@ export class CostMaskingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+    const url = String(request.url ?? request.originalUrl ?? '');
+    // @Res() ile pipe edilen binary/stream yanıtlarında JSON maskeleme bozar
+    if (
+      /\/report-images\/[^/]+\/file(?:\?|$)/.test(url) ||
+      /\/repair-reports\/download\//.test(url) ||
+      /\/repair-reports\/[^/]+\/pdf/.test(url)
+    ) {
+      return next.handle();
+    }
 
     return next.handle().pipe(
       map((response) => {
+        if (response === undefined || response === null) return response;
         if (!user) return response;
 
         let payload = response;

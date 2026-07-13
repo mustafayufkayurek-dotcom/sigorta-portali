@@ -16,6 +16,12 @@ import {
   CompleteRevisionDto,
   RevisionStatus,
 } from './dto/revision-requests.dto';
+import {
+  REPAIR_REPORT_INITIAL_VERSION,
+  REPAIR_REPORT_MAX_REVISION_MESSAGE,
+  canCreateRepairReportRevision,
+  nextRepairReportVersionNo,
+} from '@sigorta/shared';
 
 @Injectable()
 export class RevisionRequestsService {
@@ -239,8 +245,14 @@ export class RevisionRequestsService {
       },
       select: { versionNo: true },
     });
-    const maxVersion = allVersions.reduce((max, v) => Math.max(max, v.versionNo), 1);
-    const newVersionNo = maxVersion + 1;
+    const maxVersion = allVersions.reduce(
+      (max, v) => Math.max(max, v.versionNo),
+      REPAIR_REPORT_INITIAL_VERSION,
+    );
+    if (!canCreateRepairReportRevision(maxVersion)) {
+      throw new BadRequestException(REPAIR_REPORT_MAX_REVISION_MESSAGE);
+    }
+    const newVersionNo = nextRepairReportVersionNo(maxVersion)!;
 
     const baseReportNo = report.reportNo.replace(/-R\d+$/, '');
     const newReportNo = `${baseReportNo}-R${newVersionNo}`;

@@ -41,7 +41,8 @@ export class DashboardController {
   @Get('dashboard/budget-efficiency')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Bütçe verimlilik ölçümleri' })
-  async getBudgetEfficiency(@Query() filters: DashboardFiltersDto) {
+  async getBudgetEfficiency(@Query() filters: DashboardFiltersDto, @CurrentUser() user: any) {
+    this.assertDashboardFinanceAccess(user);
     const data = await this.dashboardService.getBudgetEfficiency(filters);
     return { success: true, data };
   }
@@ -57,7 +58,8 @@ export class DashboardController {
   @Get('dashboard/finance')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Finans dashboard verileri' })
-  async getFinanceDashboard() {
+  async getFinanceDashboard(@CurrentUser() user: any) {
+    this.assertDashboardFinanceAccess(user);
     const data = await this.dashboardService.getFinanceDashboard();
     return { success: true, data };
   }
@@ -188,10 +190,7 @@ export class DashboardController {
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Kişi başı dosya yükü' })
   async getOwnershipLoad(@CurrentUser() user: any) {
-    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-    if (roleCode === 'office_staff') {
-      throw new ForbiddenException('Personel iş yükü raporu yalnızca yönetici kullanıcılar içindir');
-    }
+    this.assertDashboardFinanceAccess(user, 'Personel iş yükü raporu yalnızca yönetici kullanıcılar içindir');
     try {
       return { success: true, data: await this.dashboardService.getOwnershipLoad() };
     } catch { return { success: true, data: { items: [] } }; }
@@ -200,7 +199,8 @@ export class DashboardController {
   @Get('dashboard/finance-bottlenecks')
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Finans darboğazları' })
-  async getFinanceBottlenecks() {
+  async getFinanceBottlenecks(@CurrentUser() user: any) {
+    this.assertDashboardFinanceAccess(user);
     try {
       return { success: true, data: await this.dashboardService.getFinanceBottlenecks() };
     } catch { return { success: true, data: { pendingPayments: [], totalPendingAmount: 0, overdueInvoices: 0 } }; }
@@ -214,5 +214,50 @@ export class DashboardController {
       const take = Math.min(parseInt(limit || '20', 10) || 20, 50);
       return { success: true, data: await this.dashboardService.getActivityFeed(take) };
     } catch { return { success: true, data: { items: [] } }; }
+  }
+
+  @Get('dashboard/daily-flow')
+  @RequirePermissions('dashboard.view')
+  @ApiOperation({ summary: 'Günün akışı + ekip yoğunluğu + geçen hafta özeti (Admin A3/A4)' })
+  async getDailyFlow(@CurrentUser() user: any) {
+    this.assertDashboardFinanceAccess(user);
+    try {
+      return { success: true, data: await this.dashboardService.getDailyFlow() };
+    } catch {
+      return {
+        success: true,
+        data: {
+          today: { newClaims: 0, newEmergencies: 0, plannedOperations: 0, completedOperations: 0 },
+          teamDensity: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((label, dayIndex) => ({
+            dayIndex,
+            label,
+            count: 0,
+          })),
+          lastWeek: {
+            closedClaims: 0,
+            collectionAmount: 0,
+            avgCloseDays: null,
+            slaCompliancePct: null,
+            rangeStart: new Date().toISOString(),
+            rangeEnd: new Date().toISOString(),
+          },
+        },
+      };
+    }
+  }
+
+  /**
+   * UI ile uyumlu: ofis/saha finans özetine erişemez.
+   * İzin: admin, manager, finance (+ ops_manager).
+   */
+  private assertDashboardFinanceAccess(user: any, message?: string) {
+    const roleCode = String(user?.role?.code ?? user?.roleCode ?? '')
+      .toLowerCase()
+      .replace(/-/g, '_');
+    const allowed = new Set(['admin', 'manager', 'finance', 'finans', 'accountant', 'ops_manager']);
+    if (allowed.has(roleCode)) return;
+    throw new ForbiddenException(
+      message ?? 'Finans özeti yalnızca yönetici ve finans rolleri içindir',
+    );
   }
 }

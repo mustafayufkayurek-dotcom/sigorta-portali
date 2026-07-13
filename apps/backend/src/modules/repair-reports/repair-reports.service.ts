@@ -16,7 +16,13 @@ import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
-import { isExpertFirmCustomer } from '@sigorta/shared';
+import {
+  isExpertFirmCustomer,
+  REPAIR_REPORT_INITIAL_VERSION,
+  REPAIR_REPORT_MAX_REVISION_MESSAGE,
+  canCreateRepairReportRevision,
+  nextRepairReportVersionNo,
+} from '@sigorta/shared';
 import {
   CreateRepairReportDto,
   UpdateRepairReportDto,
@@ -43,6 +49,7 @@ const REPORT_INCLUDE = {
   claimFile: {
     include: {
       insuranceCompany: true,
+      currentStatus: { select: { id: true, code: true, name: true, color: true } },
       customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
       propertyAddress: true,
       claimSubject: { select: { id: true, code: true, name: true } },
@@ -179,6 +186,7 @@ export class RepairReportsService {
         departmentId: dto.departmentId,
         expertOfficeId: autoExpertOfficeId,
         createdByUserId: userId,
+        versionNo: REPAIR_REPORT_INITIAL_VERSION,
       },
       include: REPORT_INCLUDE,
     });
@@ -996,15 +1004,21 @@ export class RepairReportsService {
       throw new BadRequestException('Bu rapor için zaten açık bir revizyon mevcut');
     }
 
-    // En yüksek versionNo'yu bul
+    // En yüksek versionNo'yu bul (0..3; 4. revizyon yok)
     const allVersions = await this.prisma.repairReport.findMany({
       where: {
         OR: [{ id: originalId }, { originalReportId: originalId }],
       },
       select: { versionNo: true },
     });
-    const maxVersion = allVersions.reduce((max, v) => Math.max(max, v.versionNo), 1);
-    const newVersionNo = maxVersion + 1;
+    const maxVersion = allVersions.reduce(
+      (max, v) => Math.max(max, v.versionNo),
+      REPAIR_REPORT_INITIAL_VERSION,
+    );
+    if (!canCreateRepairReportRevision(maxVersion)) {
+      throw new BadRequestException(REPAIR_REPORT_MAX_REVISION_MESSAGE);
+    }
+    const newVersionNo = nextRepairReportVersionNo(maxVersion)!;
 
     // Yeni reportNo: temel numara + "-R" + yeni versiyon
     const baseReportNo = report.reportNo.replace(/-R\d+$/, '');

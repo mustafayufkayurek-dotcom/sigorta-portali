@@ -1233,7 +1233,7 @@ model RepairReport {
   departmentId        String?  @map("department_id")
   expertOfficeId      String?  @map("expert_office_id")
   createdByUserId     String   @map("created_by_user_id")
-  versionNo           Int      @default(1) @map("version_no")
+  versionNo           Int      @default(0) @map("version_no")
   originalReportId    String?  @map("original_report_id")
   revisedAt           DateTime? @map("revised_at")
   revisedByUserId     String?  @map("revised_by_user_id")

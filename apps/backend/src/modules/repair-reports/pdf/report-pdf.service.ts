@@ -188,7 +188,7 @@ export class ReportPdfService {
       : '—';
 
     // ── FEATURE 6: Revizyon bilgisi ──
-    const isRevision = (report.versionNo ?? 1) > 1;
+    const isRevision = (report.versionNo ?? 0) > 0;
     let revisionInfoHtml = '';
     if (isRevision) {
       const originalCreatedAt = report.originalReport?.createdAt

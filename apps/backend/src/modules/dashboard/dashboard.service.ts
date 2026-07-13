@@ -8,6 +8,7 @@ import { OperationalAccessGrantsService } from '@/modules/operational-access-gra
 import {
   DASHBOARD_APPROVAL_DELAYS_TTL_SEC,
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
+  DASHBOARD_DAILY_FLOW_TTL_SEC,
   DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC,
   DASHBOARD_OWNERSHIP_LOAD_TTL_SEC,
   DASHBOARD_OPS_TTL_SEC,
@@ -1543,5 +1544,179 @@ export class DashboardService {
         createdAt: h.changedAt,
       })),
     };
+  }
+
+  /**
+   * Admin A3/A4: bugünkü akış metrikleri + Pzt–Paz ekip yoğunluğu + geçen hafta özeti.
+   * Yoğunluk = status history hareket sayısı (gün bazlı, limit yok).
+   */
+  async getDailyFlow() {
+    const cacheKey = this.cache.buildKey({ resource: 'dashboard:daily-flow', role: 'shared' });
+    type DailyFlowResult = {
+      today: {
+        newClaims: number;
+        newEmergencies: number;
+        plannedOperations: number;
+        completedOperations: number;
+      };
+      teamDensity: Array<{ dayIndex: number; label: string; count: number }>;
+      lastWeek: {
+        closedClaims: number;
+        collectionAmount: number;
+        avgCloseDays: number | null;
+        slaCompliancePct: number | null;
+        rangeStart: string;
+        rangeEnd: string;
+      };
+    };
+    const cached = await this.cache.get<DailyFlowResult>(cacheKey);
+    if (cached !== null) return cached;
+
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    // ISO hafta: pazartesi = 0
+    const dayOfWeek = (todayStart.getDay() + 6) % 7;
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - dayOfWeek);
+
+    const lastWeekEnd = new Date(weekStart);
+    const lastWeekStart = new Date(weekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+    const closedEmergencyStatuses: EmergencyStatus[] = [
+      EmergencyStatus.COZULDU,
+      EmergencyStatus.FATURALANDILDI,
+    ];
+
+    const [
+      newClaims,
+      newEmergencies,
+      plannedFileAppts,
+      plannedAppts,
+      plannedTasks,
+      completedClaims,
+      completedEmergencies,
+      completedTasks,
+      dayCounts,
+      lastWeekClosed,
+      lastWeekClosedRows,
+      lastWeekCollections,
+    ] = await Promise.all([
+      this.prisma.claimFile.count({
+        where: { createdAt: { gte: todayStart, lt: tomorrowStart } },
+      }),
+      this.prisma.emergencyCase.count({
+        where: { createdAt: { gte: todayStart, lt: tomorrowStart } },
+      }),
+      this.prisma.fileAppointment.count({
+        where: {
+          scheduledDate: { gte: todayStart, lt: tomorrowStart },
+          status: { notIn: ['cancelled', 'completed', 'done'] },
+        },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          scheduledAt: { gte: todayStart, lt: tomorrowStart },
+          status: { notIn: ['cancelled', 'completed', 'done'] },
+        },
+      }),
+      this.prisma.task.count({
+        where: {
+          status: 'pending',
+          OR: [
+            { dueAt: { gte: todayStart, lt: tomorrowStart } },
+            { dueAt: null, createdAt: { gte: todayStart, lt: tomorrowStart } },
+          ],
+        },
+      }),
+      this.prisma.claimFile.count({
+        where: { closedAt: { gte: todayStart, lt: tomorrowStart } },
+      }),
+      this.prisma.emergencyCase.count({
+        where: {
+          status: { in: closedEmergencyStatuses },
+          OR: [
+            { resolvedAt: { gte: todayStart, lt: tomorrowStart } },
+            { resolvedAt: null, updatedAt: { gte: todayStart, lt: tomorrowStart } },
+          ],
+        },
+      }),
+      this.prisma.task.count({
+        where: { completedAt: { gte: todayStart, lt: tomorrowStart } },
+      }),
+      Promise.all(
+        Array.from({ length: 7 }, (_, i) => {
+          const dayStart = new Date(weekStart);
+          dayStart.setDate(dayStart.getDate() + i);
+          const dayEnd = new Date(dayStart);
+          dayEnd.setDate(dayEnd.getDate() + 1);
+          return this.prisma.claimStatusHistory.count({
+            where: { changedAt: { gte: dayStart, lt: dayEnd } },
+          });
+        }),
+      ),
+      this.prisma.claimFile.count({
+        where: { closedAt: { gte: lastWeekStart, lt: lastWeekEnd } },
+      }),
+      this.prisma.claimFile.findMany({
+        where: { closedAt: { gte: lastWeekStart, lt: lastWeekEnd } },
+        select: { createdAt: true, closedAt: true, slaDueAt: true },
+        take: 500,
+      }),
+      this.prisma.payment.aggregate({
+        where: {
+          paymentType: 'incoming',
+          status: 'completed',
+          paymentDate: { gte: lastWeekStart, lt: lastWeekEnd },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const DAY_LABELS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'] as const;
+
+    let avgCloseDays: number | null = null;
+    if (lastWeekClosedRows.length > 0) {
+      const sum = lastWeekClosedRows.reduce((acc, f) => {
+        if (!f.closedAt) return acc;
+        return acc + (f.closedAt.getTime() - f.createdAt.getTime()) / 86400000;
+      }, 0);
+      avgCloseDays = Math.round((sum / lastWeekClosedRows.length) * 10) / 10;
+    }
+
+    const slaRows = lastWeekClosedRows.filter((f) => f.slaDueAt && f.closedAt);
+    const slaOkCount = slaRows.filter(
+      (f) => f.closedAt!.getTime() <= f.slaDueAt!.getTime(),
+    ).length;
+    const slaTotal = slaRows.length;
+
+    const result: DailyFlowResult = {
+      today: {
+        newClaims,
+        newEmergencies,
+        plannedOperations: plannedFileAppts + plannedAppts + plannedTasks,
+        completedOperations: completedClaims + completedEmergencies + completedTasks,
+      },
+      teamDensity: DAY_LABELS.map((label, dayIndex) => ({
+        dayIndex,
+        label,
+        count: dayCounts[dayIndex] ?? 0,
+      })),
+      lastWeek: {
+        closedClaims: lastWeekClosed,
+        collectionAmount: lastWeekCollections._sum.amount ?? 0,
+        avgCloseDays,
+        slaCompliancePct: slaTotal > 0 ? Math.round((slaOkCount / slaTotal) * 100) : null,
+        rangeStart: lastWeekStart.toISOString(),
+        rangeEnd: new Date(lastWeekEnd.getTime() - 1).toISOString(),
+      },
+    };
+
+    this.cache.set(cacheKey, result, DASHBOARD_DAILY_FLOW_TTL_SEC).catch(() => {});
+    return result;
   }
 }
