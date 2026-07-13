@@ -1,3 +1,3 @@
 /** Canlı panel sürüm etiketi — deploy sonrası manifest ile eşleştir */
-export const PANEL_WEB_VERSION = 'v325';
+export const PANEL_WEB_VERSION = 'v326';
 export const PANEL_BACKEND_VERSION = 'v325-is-grubu-ihbar-revizyon';

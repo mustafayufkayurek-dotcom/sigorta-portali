@@ -101,7 +101,12 @@ export function RevisionHistoryStrip({
     <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
       <div className={`relative flex w-full min-w-0 items-center py-1 ${multi ? '' : 'justify-start'}`}>
         {items.map((item, idx) => (
-          <div key={item.id} className={`flex items-center ${multi && idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}>
+          <div
+            key={item.id}
+            className={`flex items-center ${
+              !multi || idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'
+            }`}
+          >
             {idx === 0 && multi && (
               <div
                 className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
@@ -129,9 +134,12 @@ export function RevisionHistoryStrip({
                 </span>
               )}
             </div>
-            {idx === items.length - 1 && multi && (
+            {/* Tek adımda sol stem yok (rozet solda), sağda kırmızı çizgi zorunlu */}
+            {idx === items.length - 1 && (
               <div
-                className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
+                className={`relative z-0 h-0.5 rounded-full ${connectorTone} ${
+                  multi ? `shrink-0 ${stemWidth}` : 'min-w-[3rem] flex-1'
+                }`}
                 aria-hidden
               />
             )}

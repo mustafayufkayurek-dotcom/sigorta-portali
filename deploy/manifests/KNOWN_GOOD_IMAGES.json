@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-12",
-  "label": "v325-is-grubu-ihbar-revizyon",
-  "description": "Hızlı Onarım Ayarlar iş grubu entegrasyonu, İhbar Tarihi Date koruması, Revizyon Geçmişi tek rozet sola (v325 web+backend)",
+  "updatedAt": "2026-07-13",
+  "label": "v326-revizyon-cizgi-geri",
+  "description": "Web-only: Revizyon Geçmişi tek adımda rozet solda + sağda kırmızı ilerleme çizgisi (v326); backend v325",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v325-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v325-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v326-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v324-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v325-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v319-amd64"
   },
   "mustPassSmokeRoutes": [
