@@ -17,7 +17,12 @@ import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
-import { buildVendorNearbyWhere, resolveProvinceDistrictIds } from './vendor-area-match.util';
+import {
+  buildVendorNearbyWhere,
+  normalizeLocationLabel,
+  resolveProvinceDistrictIds,
+} from './vendor-area-match.util';
+import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
 import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
@@ -789,53 +794,170 @@ export class ClaimFilesService {
 
   async update(id: string, data: any, requestingUser?: { id: string; roleCode?: string | null }) {
     const existing = await this.findOne(id);
+    const existingAny = existing as {
+      departmentId?: string | null;
+      propertyAddressId?: string | null;
+      propertyAddress?: {
+        id: string;
+        city?: string | null;
+        district?: string | null;
+        addressLine?: string | null;
+      } | null;
+      assignedOfficeUserId?: string | null;
+    };
 
-    if (data.financialVisibilityConfig !== undefined) {
+    const {
+      city: rawCity,
+      district: rawDistrict,
+      propertyAddress: rawPropertyAddress,
+      addressLine: rawAddressLine,
+      ...rest
+    } = data ?? {};
+
+    if (rest.financialVisibilityConfig !== undefined) {
       if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
         throw new ForbiddenException('Finansal görünürlük ayarını yalnızca yönetici değiştirebilir');
       }
-      data.financialVisibilityConfig = normalizeFinancialVisibilityConfig(data.financialVisibilityConfig);
-      data.hideFinancialFromAssignees = false;
+      rest.financialVisibilityConfig = normalizeFinancialVisibilityConfig(rest.financialVisibilityConfig);
+      rest.hideFinancialFromAssignees = false;
     }
 
-    if (data.hideFinancialFromAssignees !== undefined && data.hideFinancialFromAssignees !== false) {
+    if (rest.hideFinancialFromAssignees !== undefined && rest.hideFinancialFromAssignees !== false) {
       if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
         throw new ForbiddenException('Finansal görünürlük ayarını yalnızca yönetici değiştirebilir');
       }
     }
 
     // fileNo değiştirilmeye çalışılıyorsa çakışma kontrolü
-    if (data.fileNo?.trim()) {
-      const { exists } = await this.checkFileNo(data.fileNo.trim(), id, 'hasar');
+    if (rest.fileNo?.trim()) {
+      const { exists } = await this.checkFileNo(rest.fileNo.trim(), id, 'hasar');
       if (exists) {
         throw new ConflictException('Bu dosya numarası zaten kullanılıyor');
       }
     }
 
-    if (typeof data.insuredName === 'string') {
-      const trimmed = data.insuredName.trim();
-      data.insuredName = trimmed || null;
+    if (typeof rest.insuredName === 'string') {
+      const trimmed = rest.insuredName.trim();
+      rest.insuredName = trimmed || null;
     }
 
-    if (typeof data.lossType === 'string') {
-      data.lossType = sanitizeInboundLossType(data.lossType.trim());
-      if (!data.departmentFileSubjectId && data.lossType !== 'Belirtilmemiş') {
+    if (typeof rest.insuredPhone === 'string') {
+      const digits = rest.insuredPhone.replace(/\D/g, '');
+      rest.insuredPhone = digits || null;
+    }
+
+    if (typeof rest.policyNo === 'string') {
+      rest.policyNo = rest.policyNo.trim();
+    }
+
+    if (typeof rest.description === 'string') {
+      rest.description = rest.description.trim() || null;
+    }
+
+    if (typeof rest.priority === 'string') {
+      const p = rest.priority.trim().toLowerCase();
+      rest.priority = p || undefined;
+    }
+
+    if (typeof rest.lossType === 'string') {
+      rest.lossType = sanitizeInboundLossType(rest.lossType.trim());
+      if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
         const deptSubject = await resolveDepartmentFileSubjectByLabel(
           this.prisma,
-          data.lossType,
-          data.departmentId ?? (existing as { departmentId?: string | null }).departmentId ?? null,
+          rest.lossType,
+          rest.departmentId ?? existingAny.departmentId ?? null,
         );
         if (deptSubject) {
-          data.departmentFileSubjectId = deptSubject.id;
-          data.lossType = deptSubject.name;
+          rest.departmentFileSubjectId = deptSubject.id;
+          rest.lossType = deptSubject.name;
         }
+      }
+      if (!rest.claimSubjectId && rest.lossType && rest.lossType !== 'Belirtilmemiş') {
+        const subjectId = await resolveClaimSubjectIdByLabel(this.prisma, rest.lossType);
+        if (subjectId) rest.claimSubjectId = subjectId;
       }
     }
 
+    const addressTouched =
+      rawCity !== undefined || rawDistrict !== undefined || rawPropertyAddress !== undefined || rawAddressLine !== undefined;
+    if (addressTouched) {
+      const nextCity =
+        typeof rawCity === 'string'
+          ? rawCity.trim()
+          : (existingAny.propertyAddress?.city ?? '');
+      const nextDistrict =
+        typeof rawDistrict === 'string'
+          ? rawDistrict.trim() || null
+          : (existingAny.propertyAddress?.district ?? null);
+      const nextLineRaw =
+        typeof rawPropertyAddress === 'string'
+          ? rawPropertyAddress
+          : typeof rawAddressLine === 'string'
+            ? rawAddressLine
+            : (existingAny.propertyAddress?.addressLine ?? '');
+      const nextLine = String(nextLineRaw).trim();
+
+      if (existingAny.propertyAddressId) {
+        await this.prisma.address.update({
+          where: { id: existingAny.propertyAddressId },
+          data: {
+            city: nextCity || 'Belirtilmemiş',
+            district: nextDistrict || null,
+            ...(nextLine ? { addressLine: nextLine } : {}),
+          },
+        });
+      } else if (nextLine || nextCity) {
+        const createdAddress = await this.prisma.address.create({
+          data: {
+            city: nextCity || 'Belirtilmemiş',
+            district: nextDistrict || undefined,
+            addressLine: nextLine || [nextCity, nextDistrict].filter(Boolean).join(' / ') || 'Belirtilmemiş',
+          },
+        });
+        rest.propertyAddressId = createdAddress.id;
+      }
+    }
+
+    if (rest.assignedOfficeUserId !== undefined) {
+      const officeId =
+        typeof rest.assignedOfficeUserId === 'string' && rest.assignedOfficeUserId.trim()
+          ? rest.assignedOfficeUserId.trim()
+          : null;
+      rest.assignedOfficeUserId = officeId;
+      if (officeId && officeId !== existingAny.assignedOfficeUserId) {
+        rest.currentResponsibleRole = 'operasyon_sorumlusu';
+        rest.currentResponsibleUserId = officeId;
+      }
+    }
+
+    if (rest.customerId !== undefined) {
+      rest.customerId =
+        typeof rest.customerId === 'string' && rest.customerId.trim()
+          ? rest.customerId.trim()
+          : null;
+    }
+
+    // Prisma'ya gitmeyen / sahte alanları temizle
+    delete rest.approvalStatus;
+    delete rest.rejectionReason;
+    delete rest.propertyAddress;
+    delete rest.customer;
+    delete rest.assignedOfficeUser;
+    delete rest.claimSubject;
+    delete rest.departmentFileSubject;
+    delete rest.currentStatus;
+
     const updated = await this.prisma.claimFile.update({
       where: { id },
-      data,
-      include: { currentStatus: true },
+      data: rest,
+      include: {
+        currentStatus: true,
+        propertyAddress: true,
+        customer: true,
+        assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        claimSubject: { select: { id: true, name: true } },
+        departmentFileSubject: { select: { id: true, name: true } },
+      },
     });
     this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
     return updated;
@@ -1658,8 +1780,38 @@ export class ClaimFilesService {
     });
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
 
-    const city = file.propertyAddress?.city;
-    const districtName = file.propertyAddress?.district;
+    let city = normalizeLocationLabel(file.propertyAddress?.city);
+    let districtName = normalizeLocationLabel(file.propertyAddress?.district);
+    const addressLine = file.propertyAddress?.addressLine?.trim() || '';
+
+    // city placeholder / boşsa adres satırından il-ilçe parse (v331 backfill kaçırılan dosyalar)
+    if ((!city || !districtName) && addressLine) {
+      const parsed = await resolveCityDistrictFromAddress(this.prisma, addressLine);
+      if (!city && parsed.city) city = parsed.city;
+      if (!districtName && parsed.district) districtName = parsed.district;
+
+      // Kalıcı iyileştirme: Belirtilmemiş / boş city'yi parse sonucuna yaz
+      if (
+        file.propertyAddress
+        && parsed.city
+        && !normalizeLocationLabel(file.propertyAddress.city)
+      ) {
+        try {
+          await this.prisma.address.update({
+            where: { id: file.propertyAddress.id },
+            data: {
+              city: parsed.city,
+              ...(parsed.district && !normalizeLocationLabel(file.propertyAddress.district)
+                ? { district: parsed.district }
+                : {}),
+            },
+          });
+        } catch (err: any) {
+          this.logger.warn(`[ClaimFiles] Adres bölge backfill başarısız: ${err?.message}`);
+        }
+      }
+    }
+
     const { provinceId, districtId } = await resolveProvinceDistrictIds(
       this.prisma,
       city,
@@ -1681,7 +1833,7 @@ export class ClaimFilesService {
         city: true, district: true, category: true, canActAsInspector: true,
         serviceAreas: { include: { province: true, district: true } },
       },
-      take: 30,
+      take: 100,
       orderBy: { name: 'asc' },
     });
 

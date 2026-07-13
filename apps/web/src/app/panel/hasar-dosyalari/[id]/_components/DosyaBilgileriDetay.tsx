@@ -15,13 +15,31 @@ import {
   buildQuickDamageDisplayOptions,
   quickDamageTypeDisplayLabel,
 } from '@/utils/quick-repair-damage-types';
+import { DosyaBilgileriEditModal } from './DosyaBilgileriEditModal';
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Düşük',
   normal: 'Normal',
+  medium: 'Orta',
   high: 'Yüksek',
   critical: 'Kritik',
 };
+
+function userHasPermission(code: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = localStorage.getItem('user') ?? localStorage.getItem('currentUser');
+    if (!raw) return false;
+    const u = JSON.parse(raw);
+    return Array.isArray(u?.permissions) && u.permissions.includes(code);
+  } catch {
+    return false;
+  }
+}
+
+function canEditDosyaBilgileri(): boolean {
+  return userHasPermission('claim_file.update');
+}
 
 type DosyaField = {
   label: string;
@@ -105,6 +123,11 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
     { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim, reportSummary ?? null) },
   ];
+
+  const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
+  if (insuredPhone) {
+    core.push({ label: 'Sigortalı Telefon', value: insuredPhone });
+  }
 
   const quickRepairValue = resolveQuickRepairSummary(reportSummary ?? null);
   if (quickRepairValue !== '—') {
@@ -223,7 +246,9 @@ export function DosyaBilgileriDetay({
   repairReportId?: string | null;
 }) {
   const [open, setOpen] = useState(initialOpen);
+  const [editOpen, setEditOpen] = useState(false);
   const [reportSummary, setReportSummary] = useState<any | null>(null);
+  const canEdit = canEditDosyaBilgileri();
 
   useEffect(() => {
     if (!repairReportId) {
@@ -264,19 +289,39 @@ export function DosyaBilgileriDetay({
 
   return (
     <div className="border-t border-slate-100">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-slate-50/80 transition-colors"
-      >
-        <div className="min-w-0">
+      <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="min-w-0 flex-1 text-left hover:opacity-90 transition-opacity"
+        >
           <p className="text-[11px] font-semibold text-slate-600">Dosya Bilgileri</p>
           {!open && subtitle && (
             <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
           )}
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit && onClaimUpdated && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                setEditOpen(true);
+              }}
+              className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50"
+            >
+              Düzenle
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            {open ? 'Gizle' : 'Detay'}
+          </button>
         </div>
-        <span className="text-xs font-medium text-blue-600 shrink-0">{open ? 'Gizle' : 'Detay'}</span>
-      </button>
+      </div>
       {open && (
         <div className="px-4 pb-3 pt-0 border-t border-slate-100 bg-slate-50/40">
           {insuredMissing && onClaimUpdated && (
@@ -310,6 +355,16 @@ export function DosyaBilgileriDetay({
             </div>
           )}
         </div>
+      )}
+      {editOpen && onClaimUpdated && (
+        <DosyaBilgileriEditModal
+          claim={claim}
+          onClose={() => setEditOpen(false)}
+          onSaved={(patch) => {
+            onClaimUpdated(patch);
+            setEditOpen(false);
+          }}
+        />
       )}
     </div>
   );
