@@ -168,13 +168,29 @@ export class ClaimFilesController {
 
   @Post(':id/assign-supplier')
   @RequirePermissions('claim_file.assign')
-  @ApiOperation({ summary: 'Dosyaya tedarikçi ata' })
+  @ApiOperation({ summary: 'Dosyaya tedarikçi ata (tekil veya çoklu)' })
   async assignSupplier(
     @Param('id') id: string,
-    @Body() body: { supplierId: string; note?: string },
+    @Body() body: { supplierId?: string; supplierIds?: string[]; note?: string },
     @CurrentUser() user: any,
   ) {
-    const data = await this.claimFilesService.assignSupplier(id, body.supplierId, user, body.note);
+    const ids = [
+      ...(Array.isArray(body.supplierIds) ? body.supplierIds : []),
+      ...(body.supplierId ? [body.supplierId] : []),
+    ];
+    const data = await this.claimFilesService.assignSupplier(id, ids, user, body.note);
+    return { success: true, data };
+  }
+
+  @Delete(':id/suppliers/:vendorId')
+  @RequirePermissions('claim_file.assign')
+  @ApiOperation({ summary: 'Dosyadan tedarikçi kaldır' })
+  async removeSupplier(
+    @Param('id') id: string,
+    @Param('vendorId') vendorId: string,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.claimFilesService.removeSupplier(id, vendorId, user);
     return { success: true, data };
   }
 

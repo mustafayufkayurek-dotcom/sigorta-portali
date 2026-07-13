@@ -54,6 +54,8 @@ export function buildRepairReportShareRecipients(
       assignedFieldUser?: { firstName?: string; lastName?: string; phone?: string | null } | null;
       assignedAdjuster?: { firstName?: string; lastName?: string; phone?: string | null } | null;
       assignedSupplier?: { id?: string; name?: string | null; phone?: string | null; authorizedPhone?: string | null } | null;
+      assignedSuppliers?: { id?: string; name?: string | null; phone?: string | null; authorizedPhone?: string | null }[] | null;
+      supplierAssignments?: { vendor?: { id?: string; name?: string | null; phone?: string | null; authorizedPhone?: string | null } | null }[] | null;
     } | null;
     expertOffice?: { companyName?: string | null; phone?: string | null } | null;
   } | null | undefined,
@@ -123,6 +125,23 @@ export function buildRepairReportShareRecipients(
       supplier.name ?? 'Tedarikçi',
       supplier.authorizedPhone ?? supplier.phone,
       supplier.name ?? undefined,
+      'vendor',
+    );
+  }
+
+  const multiFromFlat = cf?.assignedSuppliers ?? [];
+  const multiFromJoin = (cf?.supplierAssignments ?? [])
+    .map((s) => s.vendor)
+    .filter(Boolean) as ClaimVendorSource[];
+  for (const vendor of [...multiFromFlat, ...multiFromJoin]) {
+    if (!vendor?.id && !vendor?.name) continue;
+    pushRecipient(
+      list,
+      seen,
+      `supplier-${vendor.id ?? vendor.name}`,
+      vendor.name ?? 'Tedarikçi',
+      vendor.authorizedPhone ?? vendor.phone,
+      vendor.name ?? undefined,
       'vendor',
     );
   }

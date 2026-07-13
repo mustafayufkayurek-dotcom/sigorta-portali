@@ -22,6 +22,7 @@ const OPERASYON_SUB_TABS: { id: OperasyonSubTab; label: string }[] = [
 
 const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   SUPPLIER_ASSIGNED: 'Tedarikçi Atandı',
+  SUPPLIER_REMOVED: 'Tedarikçi Kaldırıldı',
   APPOINTMENT_SCHEDULED: 'Randevu Planlandı',
   APPOINTMENT_UPDATED: 'Randevu Güncellendi',
   INSPECTION_DONE: 'Tespit Yapıldı',

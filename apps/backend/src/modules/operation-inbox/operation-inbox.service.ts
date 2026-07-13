@@ -35,12 +35,13 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { resolveInsuredPhoneForInbox } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
   shouldCreateInsuredWithoutEmailOnDuplicate,
 } from './inbound-insured-contact.util';
+import { resolveCityDistrictFromAddress } from './inbound-location.util';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import {
@@ -621,12 +622,17 @@ export class OperationInboxService {
     this.assertCanOpenClaim(message);
 
     const extracted = this.enrichExtracted(message, this.parseExtracted(message.aiExtractedJson));
-    const customerId = await this.resolveCustomerForOpen(
-      dto,
-      extracted,
-      message.fromName,
-      message.fromAddress,
-    );
+    // Hasar dosyasında customer = eksper ofisi (ClaimNewForm ile aynı semantik)
+    const customerId = await this.resolveExpertOfficeForClaim(dto, message.fromAddress);
+    // Opsiyonel: sigortalı için ayrı CRM kartı — claim.customerId'yi ezmez
+    if (dto.createCustomer) {
+      await this.createCustomerFromInbox(
+        dto.createCustomer,
+        extracted,
+        message.fromName,
+        message.fromAddress,
+      );
+    }
     const insuredName = this.resolveInsuredName(dto.insuredName, extracted, message.fromName, message.fromAddress);
     const insuredPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
     const fileNo = await this.resolveUniqueFileNo(
@@ -653,19 +659,36 @@ export class OperationInboxService {
       dto.claimNo?.trim()
       || extracted.claimNo?.trim()
       || fileNo;
+    const propertyAddressText =
+      dto.insuredAddress?.trim() || extracted.address?.trim() || undefined;
+    const { city, district } = await resolveCityDistrictFromAddress(
+      this.prisma,
+      propertyAddressText,
+    );
     const description = [
       `Gelen kutusu ihbarı: ${message.subject}`,
-      message.aiSummary,
+      message.aiSummary?.trim() || null,
+      dto.description?.trim() || null,
+      dto.instruction.trim() ? `Talimat: ${dto.instruction.trim()}` : null,
     ]
       .filter(Boolean)
       .join('\n');
 
-    const assigneeId = dto.assignedUserId ?? message.assignedUserId ?? undefined;
+    // UI «Dosya Sorumlusu» seçimi her zaman ofis sorumlusu; AI field önerisi yalnızca
+    // açık seçim yokken otomatik field atamasına uygulanır.
     const routing = this.parseRouting(message.aiExtractedJson);
-    const officeAssignee =
-      routing?.suggestedAssigneeRole === 'field' ? undefined : (assigneeId ?? routing?.suggestedAssigneeId ?? undefined);
-    const fieldAssignee =
-      routing?.suggestedAssigneeRole === 'field' ? (assigneeId ?? routing?.suggestedAssigneeId ?? undefined) : undefined;
+    const explicitAssigneeId = dto.assignedUserId?.trim() || undefined;
+    const autoAssigneeId =
+      message.assignedUserId ?? routing?.suggestedAssigneeId ?? undefined;
+    let officeAssignee: string | undefined;
+    let fieldAssignee: string | undefined;
+    if (explicitAssigneeId) {
+      officeAssignee = explicitAssigneeId;
+    } else if (routing?.suggestedAssigneeRole === 'field' && autoAssigneeId) {
+      fieldAssignee = autoAssigneeId;
+    } else if (autoAssigneeId) {
+      officeAssignee = autoAssigneeId;
+    }
 
     const claimPayload: Record<string, unknown> = {
       fileNo,
@@ -691,8 +714,10 @@ export class OperationInboxService {
       claimPayload.customerId = customerId;
     }
 
-    if (dto.insuredAddress?.trim() || extracted.address?.trim()) {
-      claimPayload.propertyAddress = dto.insuredAddress?.trim() || extracted.address!.trim();
+    if (propertyAddressText) {
+      claimPayload.propertyAddress = propertyAddressText;
+      if (city) claimPayload.city = city;
+      if (district) claimPayload.district = district;
     }
 
     if (officeAssignee) {
@@ -909,21 +934,31 @@ export class OperationInboxService {
     }
   }
 
-  private async resolveCustomerForOpen(
-    dto: OpenClaimFileDto | OpenEmergencyFileDto,
-    extracted: AiExtractedFields,
-    fromName: string | null,
+  private async resolveExpertOfficeForClaim(
+    dto: OpenClaimFileDto,
     fromAddress: string,
   ): Promise<string | undefined> {
     if (dto.customerId?.trim()) {
-      await this.customersService.findOne(dto.customerId.trim());
-      return dto.customerId.trim();
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: dto.customerId.trim() },
+        select: {
+          id: true,
+          entityType: true,
+          type: true,
+          subType: true,
+          companyName: true,
+          fullName: true,
+        },
+      });
+      if (customer && isExpertFirmCustomer(customer)) {
+        return customer.id;
+      }
     }
 
-    if (dto.createCustomer) {
-      return this.createCustomerFromInbox(dto.createCustomer, extracted, fromName, fromAddress);
-    }
+    const fromSender = await this.resolveExpertOfficeBySenderEmail(fromAddress);
+    if (fromSender) return fromSender;
 
+    // Sigortalı birey createCustomer / eşleşmesi eksper ofisi değildir — yazma.
     return undefined;
   }
 
@@ -939,6 +974,10 @@ export class OperationInboxService {
       extractedEmail: extracted.email,
       fromAddress,
     });
+    const subType = input.subType?.trim();
+    if (!subType) {
+      throw new BadRequestException('Müşteri tipi (alt tip) seçimi zorunludur.');
+    }
 
     const runDuplicateCheck = () =>
       this.customersService.checkDuplicate({
@@ -991,6 +1030,7 @@ export class OperationInboxService {
       const lastName = input.lastName?.trim() || split.lastName || 'Belirtilmemiş';
       const customer = await this.customersService.create({
         entityType: 'individual',
+        subType,
         firstName,
         lastName,
         phone,
@@ -1011,12 +1051,45 @@ export class OperationInboxService {
       'Belirtilmemiş';
     const customer = await this.customersService.create({
       entityType: 'corporate',
+      subType,
       companyName,
       phone,
       email,
       status: 'active',
     });
     return customer.id;
+  }
+
+  private async resolveExpertOfficeBySenderEmail(
+    fromAddress: string,
+  ): Promise<string | undefined> {
+    const email = fromAddress?.trim().toLowerCase();
+    if (!email || !email.includes('@')) return undefined;
+
+    const customer = await this.prisma.customer.findFirst({
+      where: {
+        email: { equals: email, mode: 'insensitive' },
+        OR: [
+          { entityType: 'corporate' },
+          { type: 'corporate' },
+          { subType: { in: ['eksper_firmasi', 'eksper'] } },
+        ],
+      },
+      select: {
+        id: true,
+        entityType: true,
+        type: true,
+        subType: true,
+        companyName: true,
+        fullName: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (customer && isExpertFirmCustomer(customer)) {
+      return customer.id;
+    }
+    return undefined;
   }
 
   private enrichExtracted(message: InboundMessage, extracted: AiExtractedFields): AiExtractedFields {

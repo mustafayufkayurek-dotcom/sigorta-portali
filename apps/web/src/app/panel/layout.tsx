@@ -1387,7 +1387,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
-          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/90">
+          {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
+          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90">
         <GlobalActivityStrip />
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
@@ -1443,7 +1444,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         )}
-        <main className={`min-w-0 flex-1 overflow-x-hidden ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
+        <main className={`min-w-0 flex-1 overflow-x-clip ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
           <div className={`mx-auto min-w-0 ${isPortalUser ? 'max-w-none px-2 sm:px-3' : 'max-w-screen-2xl px-3 sm:px-4'} ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
             {contextBackLink && (
@@ -1456,7 +1457,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               </Link>
             )}
             <ToastProvider>
-              <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-hidden' : undefined}>
+              <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-clip' : undefined}>
                 {children}
               </div>
             </ToastProvider>

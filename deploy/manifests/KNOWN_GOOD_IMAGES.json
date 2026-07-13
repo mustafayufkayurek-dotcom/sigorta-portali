@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-13",
-  "label": "v328-kalem-sticky-gercek",
-  "description": "Web-only: Onarım kalem tablosu sticky thead — sayfa scroll (Option B); max-h/overflow-auto kaldırıldı; backend v325",
+  "label": "v335-coklu-tedarikci",
+  "description": "Full+migration: claim_file_suppliers N:M çoklu tedarikçi + Dosya Bilgileri düzenle (v334) aynı image; rollback v333",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v325-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v328-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v335-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v335-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v327-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v319-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v333-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v333-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

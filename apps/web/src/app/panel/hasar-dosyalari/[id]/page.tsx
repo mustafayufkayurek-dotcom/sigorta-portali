@@ -193,6 +193,7 @@ function DosyaSayfaUstu({
 }) {
   const ihbarChip = resolveClaimIhbarKonusu(claim);
   const insuredLine = resolveHasarInsuredName(claim);
+  const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
   const latestReport = claim.latestRepairReport;
   const dosyaEksperi = resolveDosyaEksperi(claim, null);
   const sigortaSirketi = claim.insuranceCompany?.name?.trim();
@@ -222,7 +223,24 @@ function DosyaSayfaUstu({
             )}
           </div>
           {insuredLine !== '—' && (
-            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredLine}</p>
+            <p className="text-sm font-medium text-slate-700 mt-0.5">
+              {insuredLine}
+              {insuredPhone && (
+                <>
+                  <span className="text-slate-300 mx-1.5">·</span>
+                  <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="text-slate-600 hover:text-blue-700 hover:underline tabular-nums">
+                    {insuredPhone}
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+          {insuredLine === '—' && insuredPhone && (
+            <p className="text-sm font-medium text-slate-700 mt-0.5">
+              <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="text-slate-600 hover:text-blue-700 hover:underline tabular-nums">
+                {insuredPhone}
+              </a>
+            </p>
           )}
           {ihbarChip !== '—' && <p className="text-xs text-slate-500 mt-0.5">{ihbarChip}</p>}
         </div>
@@ -362,7 +380,12 @@ function DosyadaKimlerVarCard({
   const [currentOfficeUser, setCurrentOfficeUser] = useState(claim.assignedOfficeUser);
   const [currentFieldUser, setCurrentFieldUser] = useState(claim.assignedFieldUser);
   const [currentInspectorVendor, setCurrentInspectorVendor] = useState(claim.assignedInspectorVendor);
-  const [currentSupplier, setCurrentSupplier] = useState(claim.assignedSupplier);
+  const [currentSuppliers, setCurrentSuppliers] = useState<any[]>(() => {
+    if (Array.isArray(claim.assignedSuppliers) && claim.assignedSuppliers.length > 0) {
+      return claim.assignedSuppliers;
+    }
+    return claim.assignedSupplier ? [claim.assignedSupplier] : [];
+  });
 
   const [vendors, setVendors] = useState<any[]>([]);
   const [vendorSuggestions, setVendorSuggestions] = useState<any[]>([]);
@@ -370,9 +393,10 @@ function DosyadaKimlerVarCard({
   const [inspectorVendors, setInspectorVendors] = useState<any[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [inspectorVendorsLoading, setInspectorVendorsLoading] = useState(false);
-  const [selectedVendorId, setSelectedVendorId] = useState(claim.assignedSupplierId ?? '');
+  const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
   const [selectedInspectorVendorId, setSelectedInspectorVendorId] = useState(claim.assignedInspectorVendorId ?? '');
   const [assigningSupplier, setAssigningSupplier] = useState(false);
+  const [removingSupplierId, setRemovingSupplierId] = useState<string | null>(null);
   const [assigningInspectorVendor, setAssigningInspectorVendor] = useState(false);
   const [assignNote, setAssignNote] = useState('');
   const [assignError, setAssignError] = useState('');
@@ -401,13 +425,38 @@ function DosyadaKimlerVarCard({
     setCurrentOfficeUser(claim.assignedOfficeUser);
     setCurrentFieldUser(claim.assignedFieldUser);
     setCurrentInspectorVendor(claim.assignedInspectorVendor);
-    setCurrentSupplier(claim.assignedSupplier);
-    setSelectedVendorId(claim.assignedSupplierId ?? '');
+    const nextSuppliers = Array.isArray(claim.assignedSuppliers) && claim.assignedSuppliers.length > 0
+      ? claim.assignedSuppliers
+      : (claim.assignedSupplier ? [claim.assignedSupplier] : []);
+    setCurrentSuppliers(nextSuppliers);
     setSelectedInspectorVendorId(claim.assignedInspectorVendorId ?? '');
-  }, [claim.id, claim.assignedOfficeUser, claim.assignedFieldUser, claim.assignedInspectorVendor, claim.assignedInspectorVendorId, claim.assignedSupplier, claim.assignedSupplierId]);
+  }, [
+    claim.id,
+    claim.assignedOfficeUser,
+    claim.assignedFieldUser,
+    claim.assignedInspectorVendor,
+    claim.assignedInspectorVendorId,
+    claim.assignedSupplier,
+    claim.assignedSupplierId,
+    claim.assignedSuppliers,
+  ]);
 
-  const regionLabel = claim?.propertyAddress?.city
-    ? `${claim.propertyAddress.city}${claim.propertyAddress.district ? ` / ${claim.propertyAddress.district}` : ''}`
+  const assignedSupplierIdSet = new Set(currentSuppliers.map((s) => s.id));
+
+  const resolvedCity = claim?.propertyAddress?.city?.trim()
+    && !['belirtilmemiş', 'belirtilmemis', 'belirtilmedi'].includes(
+      claim.propertyAddress.city.trim().toLocaleLowerCase('tr-TR'),
+    )
+    ? claim.propertyAddress.city.trim()
+    : null;
+  const resolvedDistrict = claim?.propertyAddress?.district?.trim()
+    && !['belirtilmemiş', 'belirtilmemis', 'belirtilmedi'].includes(
+      claim.propertyAddress.district.trim().toLocaleLowerCase('tr-TR'),
+    )
+    ? claim.propertyAddress.district.trim()
+    : null;
+  const regionLabel = resolvedCity
+    ? `${resolvedCity}${resolvedDistrict ? ` / ${resolvedDistrict}` : ''}`
     : null;
 
   const whatsappTespitçi = buildClaimAssignmentWhatsAppMessage(claim, 'Tespitçi');
@@ -452,34 +501,45 @@ function DosyadaKimlerVarCard({
     if (!canAssign || activePanel !== 'supplier' || !claim?.id) return;
     setVendorsLoading(true);
     setVendorSuggLoading(true);
-    const city = claim?.propertyAddress?.city ?? '';
+    const city = resolvedCity ?? '';
+    const loadAllActive = () =>
+      axios.get(`${API}/vendors?status=active&limit=100`, { headers: authHeader() })
+        .then((r2) => {
+          const list = r2.data.data?.vendors ?? r2.data.data ?? [];
+          setVendors(Array.isArray(list) ? list : []);
+          setVendorSuggestions(Array.isArray(list) ? list : []);
+        })
+        .catch(() => {
+          setVendors([]);
+          setVendorSuggestions([]);
+        });
+
     Promise.all([
       axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() }),
       axios.get(`${API}/vendors/suggest?city=${encodeURIComponent(city)}`, { headers: authHeader() }),
     ])
-      .then(([nearbyRes, suggestRes]) => {
+      .then(async ([nearbyRes, suggestRes]) => {
         const nearby = nearbyRes.data.data ?? [];
         const suggested = suggestRes.data.data ?? [];
-        setVendors(nearby.length > 0 ? nearby : suggested);
-        setVendorSuggestions(suggested);
+        if (nearby.length > 0) {
+          setVendors(nearby);
+          setVendorSuggestions(suggested);
+          return;
+        }
+        if (suggested.length > 0) {
+          setVendors(suggested);
+          setVendorSuggestions(suggested);
+          return;
+        }
+        // Bölge yok / eşleşme yok: operasyon atayabilsin diye tüm aktifler
+        await loadAllActive();
       })
-      .catch(() => {
-        axios.get(`${API}/vendors?status=active&limit=50`, { headers: authHeader() })
-          .then((r2) => {
-            const list = r2.data.data?.vendors ?? r2.data.data ?? [];
-            setVendors(list);
-            setVendorSuggestions(list);
-          })
-          .catch(() => {
-            setVendors([]);
-            setVendorSuggestions([]);
-          });
-      })
+      .catch(() => loadAllActive())
       .finally(() => {
         setVendorsLoading(false);
         setVendorSuggLoading(false);
       });
-  }, [canAssign, activePanel, claim?.id, claim?.propertyAddress?.city]);
+  }, [canAssign, activePanel, claim?.id, resolvedCity]);
 
   useEffect(() => {
     if (!canAssign || activePanel !== 'field' || !claim?.id) return;
@@ -580,37 +640,90 @@ function DosyadaKimlerVarCard({
   };
 
   const handleAssignSupplier = async () => {
-    if (!selectedVendorId) { setAssignError('Tedarikçi seçiniz.'); return; }
+    const toAssign = selectedVendorIds.filter((id) => !assignedSupplierIdSet.has(id));
+    if (toAssign.length === 0) {
+      setAssignError(selectedVendorIds.length > 0
+        ? 'Seçilen tedarikçiler zaten atanmış.'
+        : 'En az bir tedarikçi seçiniz.');
+      return;
+    }
     setAssigningSupplier(true);
     setAssignError('');
     setAssignSuccess('');
     try {
       const r = await axios.post(
         `${API}/claim-files/${claim.id}/assign-supplier`,
-        { supplierId: selectedVendorId, note: assignNote },
+        { supplierIds: toAssign, note: assignNote },
         { headers: authHeader() },
       );
       const updated = r.data?.data ?? r.data;
-      const supplier = updated?.assignedSupplier ?? vendors.find((v) => v.id === selectedVendorId);
-      if (supplier) {
-        setCurrentSupplier(supplier);
-        onClaimUpdated?.({
-          assignedSupplier: supplier,
-          assignedSupplierId: updated?.assignedSupplierId ?? selectedVendorId,
-          supplierAssignedAt: updated?.supplierAssignedAt,
-        });
-      }
-      const wa = updated?.assignmentWhatsApp;
+      const suppliers: any[] = Array.isArray(updated?.assignedSuppliers) && updated.assignedSuppliers.length > 0
+        ? updated.assignedSuppliers
+        : (updated?.assignedSupplier ? [updated.assignedSupplier] : currentSuppliers);
+      setCurrentSuppliers(suppliers);
+      setSelectedVendorIds([]);
+      onClaimUpdated?.({
+        assignedSupplier: suppliers[0] ?? null,
+        assignedSupplierId: updated?.assignedSupplierId ?? suppliers[0]?.id ?? null,
+        assignedSuppliers: suppliers,
+        supplierAssignments: updated?.supplierAssignments,
+        supplierAssignedAt: updated?.supplierAssignedAt,
+      });
+      const waList = Array.isArray(updated?.assignmentWhatsApps) ? updated.assignmentWhatsApps : [];
+      const wa = updated?.assignmentWhatsApp ?? waList[0];
       if (wa?.url) {
         window.open(wa.url, '_blank', 'noopener,noreferrer');
       }
-      setActivePanel(null);
-      setAssignSuccess(wa?.url ? 'Tedarikçi güncellendi — WhatsApp şablonu açıldı.' : 'Tedarikçi güncellendi.');
+      // Ek WhatsApp'ları kısa aralıkla aç (tarayıcı engeli riski — ilk yeterli)
+      for (const extra of waList.slice(1, 3)) {
+        if (extra?.url) window.open(extra.url, '_blank', 'noopener,noreferrer');
+      }
+      setAssignSuccess(
+        toAssign.length === 1
+          ? (wa?.url ? 'Tedarikçi atandı — WhatsApp şablonu açıldı.' : 'Tedarikçi atandı.')
+          : `${toAssign.length} tedarikçi atandı.`,
+      );
     } catch (e: any) {
       setAssignError(e?.response?.data?.message ?? 'Tedarikçi atanamadı.');
     } finally {
       setAssigningSupplier(false);
     }
+  };
+
+  const handleRemoveSupplier = async (vendorId: string) => {
+    setRemovingSupplierId(vendorId);
+    setAssignError('');
+    setAssignSuccess('');
+    try {
+      const r = await axios.delete(
+        `${API}/claim-files/${claim.id}/suppliers/${vendorId}`,
+        { headers: authHeader() },
+      );
+      const updated = r.data?.data ?? r.data;
+      const suppliers: any[] = Array.isArray(updated?.assignedSuppliers)
+        ? updated.assignedSuppliers
+        : (updated?.assignedSupplier ? [updated.assignedSupplier] : []);
+      setCurrentSuppliers(suppliers);
+      onClaimUpdated?.({
+        assignedSupplier: suppliers[0] ?? null,
+        assignedSupplierId: updated?.assignedSupplierId ?? suppliers[0]?.id ?? null,
+        assignedSuppliers: suppliers,
+        supplierAssignments: updated?.supplierAssignments,
+        supplierAssignedAt: updated?.supplierAssignedAt ?? null,
+      });
+      setAssignSuccess('Tedarikçi kaldırıldı.');
+    } catch (e: any) {
+      setAssignError(e?.response?.data?.message ?? 'Tedarikçi kaldırılamadı.');
+    } finally {
+      setRemovingSupplierId(null);
+    }
+  };
+
+  const toggleVendorSelect = (vendorId: string) => {
+    if (assignedSupplierIdSet.has(vendorId)) return;
+    setSelectedVendorIds((prev) =>
+      prev.includes(vendorId) ? prev.filter((id) => id !== vendorId) : [...prev, vendorId],
+    );
   };
 
   const renderStaffAssignBlock = (
@@ -792,7 +905,11 @@ function DosyadaKimlerVarCard({
             <AssignPopover title="Saha Personeli Seç" accent="teal" wide>
               {regionLabel ? (
                 <p className="mb-2 text-[11px] text-slate-500">Bölge: {regionLabel}</p>
-              ) : null}
+              ) : (
+                <p className="mb-2 text-[11px] text-amber-700">
+                  Bölge Belirtilmemiş — Bölge Filtresi Uygulanmıyor
+                </p>
+              )}
               {renderStaffAssignBlock(
                 fieldSuggestions,
                 fieldSuggLoading,
@@ -815,7 +932,7 @@ function DosyadaKimlerVarCard({
                   <p className="text-xs text-slate-500">
                     {regionLabel
                       ? `${regionLabel} bölgesinde tespitçi tedarikçi bulunamadı.`
-                      : 'Uygun tespitçi tedarikçi bulunamadı.'}
+                      : 'Uygun Tespitçi Tedarikçi Bulunamadı.'}
                   </p>
                 ) : (
                   <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
@@ -846,10 +963,12 @@ function DosyadaKimlerVarCard({
           )}
         </div>
 
-        {/* Tedarikçi */}
+        {/* Tedarikçi (çoklu — teklif toplama) */}
         <div className={`relative overflow-visible rounded-xl border p-3 flex flex-col min-h-[88px] md:col-span-2 lg:col-span-1 ${activePanel === 'supplier' ? 'border-purple-400 ring-2 ring-purple-200 bg-purple-50/70' : 'border-purple-200 bg-purple-50/50'}`}>
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[11px] font-medium text-slate-500">Tedarikçi</p>
+            <p className="text-[11px] font-medium text-slate-500">
+              Tedarikçi{currentSuppliers.length > 1 ? `ler (${currentSuppliers.length})` : ''}
+            </p>
             {canAssign && (
               <button
                 type="button"
@@ -860,100 +979,158 @@ function DosyadaKimlerVarCard({
               </button>
             )}
           </div>
-          <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
-            {currentSupplier ? (
-              <>
-                <div className="w-9 h-9 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
-                  {currentSupplier.name.charAt(0)}
+          <div className="mt-1.5 min-w-0 space-y-2">
+            {currentSuppliers.length > 0 ? (
+              currentSuppliers.map((s) => (
+                <div key={s.id} className="flex items-start gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+                    {s.name?.charAt(0) ?? '?'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-purple-900 truncate">{s.name}</p>
+                    {vendorPhone(s) && (
+                      <div className="mt-1">
+                        <PhoneContactActions
+                          phone={vendorPhone(s)}
+                          whatsappMessage={whatsappTedarikçi}
+                          accent="purple"
+                          size="sm"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-base font-semibold text-purple-900 truncate">{currentSupplier.name}</p>
-                  {claim.supplierAssignedAt && (
-                    <p className="text-[11px] text-purple-600">
-                      {new Date(claim.supplierAssignedAt).toLocaleDateString('tr-TR')}
-                    </p>
-                  )}
-                </div>
-              </>
+              ))
             ) : (
-              <>
+              <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-400 text-sm font-bold flex items-center justify-center shrink-0">—</div>
                 <p className="text-base font-semibold text-slate-400 italic">Atanmamış</p>
-              </>
+              </div>
             )}
           </div>
-          {currentSupplier && vendorPhone(currentSupplier) && (
-            <div className="mt-2">
-              <PhoneContactActions
-                phone={vendorPhone(currentSupplier)}
-                whatsappMessage={whatsappTedarikçi}
-                accent="purple"
-                size="sm"
-              />
-            </div>
-          )}
           {canAssign && activePanel === 'supplier' && (
             <AssignPopover title="Tedarikçi Seç" accent="purple" align="right">
               {regionLabel ? (
                 <p className="mb-2 text-[11px] text-slate-500">Bölge: {regionLabel}</p>
-              ) : null}
+              ) : (
+                <p className="mb-2 text-[11px] text-amber-700">
+                  Bölge Belirtilmemiş — Tüm Aktif Tedarikçiler Listeleniyor
+                </p>
+              )}
+              {currentSuppliers.length > 0 && (
+                <div className="mb-3 rounded-lg border border-purple-100 bg-purple-50/80 p-2">
+                  <p className="mb-1.5 text-[11px] font-medium text-slate-600">Atanmış Tedarikçiler</p>
+                  <ul className="space-y-1 max-h-28 overflow-y-auto">
+                    {currentSuppliers.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-purple-900 truncate">{s.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSupplier(s.id)}
+                          disabled={removingSupplierId === s.id}
+                          className="shrink-0 text-[11px] font-medium text-red-600 hover:text-red-800 disabled:opacity-50"
+                        >
+                          {removingSupplierId === s.id ? 'Kaldırılıyor...' : 'Kaldır'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {vendorsLoading || vendorSuggLoading ? (
                 <p className="text-xs text-slate-400">Tedarikçiler yükleniyor...</p>
               ) : vendors.length === 0 ? (
                 <p className="text-xs text-slate-500">
-                  {claim?.propertyAddress?.city
-                    ? `${claim.propertyAddress.city} bölgesinde uygun tedarikçi yok.`
-                    : 'Uygun tedarikçi bulunamadı.'}
+                  {regionLabel
+                    ? `${regionLabel} bölgesinde uygun tedarikçi yok.`
+                    : 'Uygun Tedarikçi Bulunamadı.'}
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {vendorSuggestions.length > 0 && (
+                  {vendorSuggestions.length > 0 && regionLabel && (
                     <div>
                       <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen Tedarikçiler (Maliyet / Kalite / Bölge)</p>
                       <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                        {vendorSuggestions.slice(0, 8).map((v) => (
-                          <button
-                            key={v.id}
-                            type="button"
-                            onClick={() => setSelectedVendorId(v.id)}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${selectedVendorId === v.id ? 'border-purple-400 bg-purple-100 text-purple-900' : 'border-slate-200 bg-white hover:border-purple-200'}`}
-                          >
-                            <span className="font-medium">{v.name}</span>
-                            {v.stats?.completedJobs != null && (
-                              <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
-                            )}
-                          </button>
-                        ))}
+                        {vendorSuggestions.slice(0, 8).map((v) => {
+                          const already = assignedSupplierIdSet.has(v.id);
+                          const selected = selectedVendorIds.includes(v.id);
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              disabled={already}
+                              onClick={() => toggleVendorSelect(v.id)}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs disabled:opacity-60 ${
+                                already
+                                  ? 'border-purple-200 bg-purple-50 text-purple-700'
+                                  : selected
+                                    ? 'border-purple-400 bg-purple-100 text-purple-900'
+                                    : 'border-slate-200 bg-white hover:border-purple-200'
+                              }`}
+                            >
+                              <span className="font-medium">{v.name}</span>
+                              {already && <span className="text-[10px] text-purple-500">Atandı</span>}
+                              {v.stats?.completedJobs != null && (
+                                <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-                    <select
-                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-                      value={selectedVendorId}
-                      onChange={(e) => setSelectedVendorId(e.target.value)}
-                    >
-                      <option value="">Tedarikçi seç...</option>
-                      {vendors.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}{v.city ? ` · ${v.city}` : ''}{v.district ? ` / ${v.district}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAssignSupplier}
-                      disabled={assigningSupplier || !selectedVendorId}
-                      className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-60 shrink-0"
-                    >
-                      {assigningSupplier ? 'Atanıyor...' : 'Ata'}
-                    </button>
+                  <div>
+                    <p className="text-[11px] font-medium text-slate-500 mb-1.5">Listeden Seç (Çoklu)</p>
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100 bg-white">
+                      {vendors.map((v) => {
+                        const already = assignedSupplierIdSet.has(v.id);
+                        const selected = selectedVendorIds.includes(v.id);
+                        return (
+                          <label
+                            key={v.id}
+                            className={`flex items-start gap-2.5 px-3 py-2 text-sm ${
+                              already ? 'bg-purple-50/60 cursor-default' : 'cursor-pointer hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-slate-300 text-purple-600 focus:ring-purple-400"
+                              checked={already || selected}
+                              disabled={already}
+                              onChange={() => toggleVendorSelect(v.id)}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium text-slate-800 truncate">{v.name}</span>
+                              <span className="block text-[11px] text-slate-400 truncate">
+                                {[v.city, v.district].filter(Boolean).join(' / ') || '—'}
+                                {already ? ' · Atandı' : ''}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleAssignSupplier}
+                    disabled={assigningSupplier || selectedVendorIds.filter((id) => !assignedSupplierIdSet.has(id)).length === 0}
+                    className="w-full px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
+                  >
+                    {assigningSupplier
+                      ? 'Atanıyor...'
+                      : selectedVendorIds.filter((id) => !assignedSupplierIdSet.has(id)).length > 1
+                        ? `Seçilenleri Ata (${selectedVendorIds.filter((id) => !assignedSupplierIdSet.has(id)).length})`
+                        : 'Seçileni Ata'}
+                  </button>
+                  <p className="text-[10px] text-slate-400">
+                    {vendors.length} tedarikçi listeleniyor. Dosyaya birden fazla tedarikçi atanabilir (mobilyacı, boyacı, sıvacı…).
+                  </p>
                   <input
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
                     value={assignNote}
                     onChange={(e) => setAssignNote(e.target.value)}
-                    placeholder="Not (opsiyonel)..."
+                    placeholder="Not (Opsiyonel)..."
                   />
                 </div>
               )}
@@ -1203,7 +1380,12 @@ export default function ClaimFileDetailPage() {
         onClose={() => setFieldSurveyOpen(false)}
         claimFileId={id!}
         claimFileNo={claim.fileNo}
-        defaultPhone={claim.assignedSupplier?.phone ?? claim.customer?.phone ?? null}
+        defaultPhone={
+          claim.assignedSuppliers?.[0]?.phone
+          ?? claim.assignedSupplier?.phone
+          ?? claim.customer?.phone
+          ?? null
+        }
         onSaved={() => setFieldSurveyRefreshKey((k) => k + 1)}
       />
 

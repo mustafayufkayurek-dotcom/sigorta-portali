@@ -393,6 +393,17 @@ export class ClaimFilesService {
         assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
         assignedSupplier: { select: { id: true, name: true, city: true, district: true, type: true, phone: true, authorizedPhone: true } },
+        supplierAssignments: {
+          orderBy: [{ sortOrder: 'asc' }, { assignedAt: 'asc' }],
+          include: {
+            vendor: {
+              select: {
+                id: true, name: true, city: true, district: true, type: true,
+                phone: true, authorizedPhone: true,
+              },
+            },
+          },
+        },
         assignedInspectorVendor: {
           select: {
             id: true, name: true, city: true, district: true, type: true,
@@ -498,6 +509,7 @@ export class ClaimFilesService {
 
     return {
       ...claimFile,
+      assignedSuppliers: (claimFile.supplierAssignments ?? []).map((s) => s.vendor),
       inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
       activeDelegation,
@@ -1561,67 +1573,135 @@ export class ClaimFilesService {
     return updated;
   }
 
-  async assignSupplier(fileId: string, supplierId: string, actor: any, note?: string) {
+  private readonly supplierVendorSelect = {
+    id: true,
+    name: true,
+    city: true,
+    district: true,
+    type: true,
+    phone: true,
+    authorizedPhone: true,
+  } as const;
+
+  private supplierAssignmentsInclude() {
+    return {
+      orderBy: [{ sortOrder: 'asc' as const }, { assignedAt: 'asc' as const }],
+      include: { vendor: { select: this.supplierVendorSelect } },
+    };
+  }
+
+  /** Birincil alan (assignedSupplierId) = join’deki ilk tedarikçi */
+  private async syncPrimarySupplier(fileId: string) {
+    const first = await this.prisma.claimFileSupplier.findFirst({
+      where: { claimFileId: fileId },
+      orderBy: [{ sortOrder: 'asc' }, { assignedAt: 'asc' }],
+    });
+    await this.prisma.claimFile.update({
+      where: { id: fileId },
+      data: {
+        assignedSupplierId: first?.vendorId ?? null,
+        supplierAssignedAt: first?.assignedAt ?? null,
+      },
+    });
+  }
+
+  private async loadClaimWithSuppliers(fileId: string) {
+    return this.prisma.claimFile.findUnique({
+      where: { id: fileId },
+      include: {
+        assignedSupplier: { select: this.supplierVendorSelect },
+        supplierAssignments: this.supplierAssignmentsInclude(),
+        currentStatus: true,
+        propertyAddress: true,
+      },
+    });
+  }
+
+  /**
+   * Dosyaya bir veya birden fazla tedarikçi ekler (teklif toplama).
+   * Geriye uyum: supplierId tekil; supplierIds çoklu. İkisi birleştirilir.
+   */
+  async assignSupplier(
+    fileId: string,
+    supplierIdOrIds: string | string[],
+    actor: any,
+    note?: string,
+  ) {
+    const supplierIds = (Array.isArray(supplierIdOrIds) ? supplierIdOrIds : [supplierIdOrIds])
+      .map((id) => String(id ?? '').trim())
+      .filter(Boolean);
+    const uniqueIds = [...new Set(supplierIds)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException('En az bir tedarikçi seçiniz.');
+    }
+
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
       include: {
         assignedSupplier: true,
         propertyAddress: true,
         claimSubject: { select: { name: true } },
+        supplierAssignments: { select: { vendorId: true, sortOrder: true } },
       },
     });
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
 
-    const vendor = await this.prisma.vendor.findUnique({ where: { id: supplierId } });
-    if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı.');
-
-    await this.prisma.claimFile.update({
-      where: { id: fileId },
-      data: {
-        assignedSupplierId: supplierId,
-        supplierAssignedAt: new Date(),
-      },
+    const vendors = await this.prisma.vendor.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { ...this.supplierVendorSelect, status: true },
     });
+    if (vendors.length !== uniqueIds.length) {
+      throw new NotFoundException('Bir veya daha fazla tedarikçi bulunamadı.');
+    }
 
-    await this.applyWorkflowStatus(fileId, 'SUPPLIER_ASSIGNED', actor.id, {
-      note: `Tedarikçi atandı: ${vendor.name}`,
-      responsibleRole: 'saha_personeli',
-    });
+    const existingIds = new Set(file.supplierAssignments.map((s) => s.vendorId));
+    const toAdd = vendors.filter((v) => !existingIds.has(v.id));
+    const maxSort = file.supplierAssignments.reduce((m, s) => Math.max(m, s.sortOrder), -1);
+    const now = new Date();
 
-    const updated = await this.prisma.claimFile.findUnique({
-      where: { id: fileId },
-      include: { assignedSupplier: true, currentStatus: true, propertyAddress: true },
-    });
+    if (toAdd.length > 0) {
+      await this.prisma.claimFileSupplier.createMany({
+        data: toAdd.map((v, i) => ({
+          claimFileId: fileId,
+          vendorId: v.id,
+          assignedAt: now,
+          note: note?.trim() || null,
+          sortOrder: maxSort + 1 + i,
+        })),
+        skipDuplicates: true,
+      });
+      await this.syncPrimarySupplier(fileId);
+
+      const names = toAdd.map((v) => v.name).join(', ');
+      await this.applyWorkflowStatus(fileId, 'SUPPLIER_ASSIGNED', actor.id, {
+        note: toAdd.length === 1
+          ? `Tedarikçi atandı: ${names}`
+          : `Tedarikçiler atandı: ${names}`,
+        responsibleRole: 'saha_personeli',
+      });
+
+      await this.logActivity({
+        claimFileId: fileId,
+        action: 'SUPPLIER_ASSIGNED',
+        actorId: actor.id,
+        actorRole: actor.role?.code ?? 'unknown',
+        description: toAdd.length === 1
+          ? `Tedarikçi "${names}" atandı.`
+          : `${toAdd.length} tedarikçi atandı: ${names}.`,
+        metadata: {
+          supplierIds: toAdd.map((v) => v.id),
+          supplierNames: toAdd.map((v) => v.name),
+          note,
+        },
+      });
+    }
+
+    const updated = await this.loadClaimWithSuppliers(fileId);
     if (!updated) throw new NotFoundException('Dosya bulunamadı.');
 
-    await this.logActivity({
-      claimFileId: fileId,
-      action: 'SUPPLIER_ASSIGNED',
-      actorId: actor.id,
-      actorRole: actor.role?.code ?? 'unknown',
-      description: `Tedarikçi "${vendor.name}" atandı.`,
-      metadata: { supplierId, supplierName: vendor.name, note },
-    });
-
-    // Tedarikçinin kullanıcısına bildirim gönder (user.vendorId alanı varsa)
-    try {
-      const vendorUser = await this.prisma.user.findFirst({
-        where: { status: 'active' },
-        select: { id: true },
-      });
-      if (vendorUser) {
-        await this.createInAppNotification({
-          userId: vendorUser.id,
-          type: 'supplier_assigned',
-          title: 'Yeni Dosya Atandı',
-          body: `${file.fileNo} numaralı dosya size atandı.`,
-          relatedEntityId: fileId,
-        });
-      }
-    } catch {}
-
     let assignmentWhatsApp: { phone: string | null; message: string; url: string } | null = null;
-    if (this.templateService) {
+    const assignmentWhatsApps: { vendorId: string; vendorName: string; phone: string | null; message: string; url: string }[] = [];
+    if (this.templateService && toAdd.length > 0) {
       try {
         const template = await this.templateService.getByType(TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT);
         if (template.isActive) {
@@ -1631,25 +1711,66 @@ export class ClaimFilesService {
             addr?.district,
             addr?.city,
           ].filter(Boolean).join(', ') || 'Adres dosyada tanımlı değil';
-          const message = this.templateService.interpolate(template.content, {
-            musteriAdi: file.insuredName?.trim() || '—',
-            dosyaNo: file.fileNo,
-            tedarikciAdi: vendor.name,
-            isTanimi: file.claimSubject?.name ?? file.lossType ?? 'Hasar Onarım',
-            hasarAdresi,
-          });
-          const phone = (vendor.authorizedPhone ?? vendor.phone ?? '').replace(/\D/g, '');
-          const url = phone
-            ? `https://wa.me/90${phone.replace(/^90/, '')}?text=${encodeURIComponent(message)}`
-            : `https://wa.me/?text=${encodeURIComponent(message)}`;
-          assignmentWhatsApp = { phone: phone || null, message, url };
+          for (const vendor of toAdd) {
+            const message = this.templateService.interpolate(template.content, {
+              musteriAdi: file.insuredName?.trim() || '—',
+              dosyaNo: file.fileNo,
+              tedarikciAdi: vendor.name,
+              isTanimi: file.claimSubject?.name ?? file.lossType ?? 'Hasar Onarım',
+              hasarAdresi,
+            });
+            const phone = (vendor.authorizedPhone ?? vendor.phone ?? '').replace(/\D/g, '');
+            const url = phone
+              ? `https://wa.me/90${phone.replace(/^90/, '')}?text=${encodeURIComponent(message)}`
+              : `https://wa.me/?text=${encodeURIComponent(message)}`;
+            const item = { vendorId: vendor.id, vendorName: vendor.name, phone: phone || null, message, url };
+            assignmentWhatsApps.push(item);
+            if (!assignmentWhatsApp) assignmentWhatsApp = { phone: item.phone, message: item.message, url: item.url };
+          }
         }
       } catch (err: any) {
         this.logger.warn(`[ClaimFiles] Tedarikçi WhatsApp şablonu: ${err?.message}`);
       }
     }
 
-    return { ...updated, assignmentWhatsApp };
+    const assignedSuppliers = updated.supplierAssignments.map((s) => s.vendor);
+    return {
+      ...updated,
+      assignedSuppliers,
+      newlyAssignedCount: toAdd.length,
+      assignmentWhatsApp,
+      assignmentWhatsApps,
+    };
+  }
+
+  async removeSupplier(fileId: string, vendorId: string, actor: any) {
+    const file = await this.prisma.claimFile.findUnique({ where: { id: fileId } });
+    if (!file) throw new NotFoundException('Dosya bulunamadı.');
+
+    const link = await this.prisma.claimFileSupplier.findUnique({
+      where: { claimFileId_vendorId: { claimFileId: fileId, vendorId } },
+      include: { vendor: { select: { id: true, name: true } } },
+    });
+    if (!link) throw new NotFoundException('Bu tedarikçi dosyaya atanmamış.');
+
+    await this.prisma.claimFileSupplier.delete({ where: { id: link.id } });
+    await this.syncPrimarySupplier(fileId);
+
+    await this.logActivity({
+      claimFileId: fileId,
+      action: 'SUPPLIER_REMOVED',
+      actorId: actor.id,
+      actorRole: actor.role?.code ?? 'unknown',
+      description: `Tedarikçi "${link.vendor.name}" dosyadan kaldırıldı.`,
+      metadata: { supplierId: vendorId, supplierName: link.vendor.name },
+    });
+
+    const updated = await this.loadClaimWithSuppliers(fileId);
+    if (!updated) throw new NotFoundException('Dosya bulunamadı.');
+    return {
+      ...updated,
+      assignedSuppliers: updated.supplierAssignments.map((s) => s.vendor),
+    };
   }
 
   async createFileAppointment(fileId: string, body: { scheduledDate: string; notes?: string }, actor: any) {

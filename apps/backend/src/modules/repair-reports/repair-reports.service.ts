@@ -16,6 +16,7 @@ import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
+import { isExpertFirmCustomer } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
   UpdateRepairReportDto,
@@ -50,6 +51,12 @@ const REPORT_INCLUDE = {
       assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
       assignedInspectorVendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
       assignedSupplier: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
+      supplierAssignments: {
+        orderBy: [{ sortOrder: 'asc' as const }, { assignedAt: 'asc' as const }],
+        include: {
+          vendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
+        },
+      },
     },
   },
   createdBy: { select: { id: true, firstName: true, lastName: true } },
@@ -123,6 +130,16 @@ export class RepairReportsService {
         assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
         assignedInspectorVendor: { select: { id: true, name: true } },
+        customer: {
+          select: {
+            id: true,
+            type: true,
+            entityType: true,
+            subType: true,
+            companyName: true,
+            fullName: true,
+          },
+        },
       },
     });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
@@ -136,8 +153,13 @@ export class RepairReportsService {
 
     // Eksper: dto veya atanmış eksper firması; dosya sorumlusu (assignedOfficeUser) asla eksper adı olmaz
     const autoInspectorName = dto.inspectorName
-      ?? (claimFile as any).assignedInspectorVendor?.name
+      ?? claimFile.assignedInspectorVendor?.name
       ?? undefined;
+
+    // Müşteri kartı (ekspertiz firması) → expertOffice; dto öncelikli
+    const autoExpertOfficeId =
+      dto.expertOfficeId
+      ?? (isExpertFirmCustomer(claimFile.customer) ? claimFile.customer!.id : undefined);
 
     const count = await this.prisma.repairReport.count({ where: { claimFileId } });
     const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;
@@ -155,7 +177,7 @@ export class RepairReportsService {
         quickDamageTypes: dto.quickDamageTypes ?? [],
         quickDamageSize: dto.quickDamageSize,
         departmentId: dto.departmentId,
-        expertOfficeId: dto.expertOfficeId,
+        expertOfficeId: autoExpertOfficeId,
         createdByUserId: userId,
       },
       include: REPORT_INCLUDE,

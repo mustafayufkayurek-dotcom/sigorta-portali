@@ -270,6 +270,7 @@ export class VendorsService {
     const [
       costCount,
       assignedFiles,
+      supplierLinks,
       statementCount,
       contractCount,
       paymentCount,
@@ -277,6 +278,7 @@ export class VendorsService {
     ] = await Promise.all([
       this.prisma.costEntry.count({ where: { vendorId: id } }),
       this.prisma.claimFile.count({ where: { assignedSupplierId: id } }),
+      this.prisma.claimFileSupplier.count({ where: { vendorId: id } }),
       this.prisma.vendorPaymentStatement.count({ where: { vendorId: id } }),
       this.prisma.vendorContract.count({ where: { vendorId: id } }),
       this.prisma.payment.count({ where: { payerId: id, payerType: 'vendor' } }),
@@ -285,7 +287,10 @@ export class VendorsService {
 
     const blockers: string[] = [];
     if (costCount > 0) blockers.push(`${costCount} maliyet kaydı`);
-    if (assignedFiles > 0) blockers.push(`${assignedFiles} atanmış hasar dosyası`);
+    if (assignedFiles > 0 || supplierLinks > 0) {
+      const totalAssigned = Math.max(assignedFiles, supplierLinks);
+      blockers.push(`${totalAssigned} atanmış hasar dosyası`);
+    }
     if (statementCount > 0) blockers.push(`${statementCount} ekstre`);
     if (contractCount > 0) blockers.push(`${contractCount} sözleşme`);
     if (paymentCount > 0) blockers.push(`${paymentCount} ödeme kaydı`);
@@ -301,6 +306,7 @@ export class VendorsService {
       await tx.appointment.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
       await tx.budgetItem.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
       await tx.repairItemAnomalyFlag.updateMany({ where: { vendorId: id }, data: { vendorId: null } });
+      await tx.claimFileSupplier.deleteMany({ where: { vendorId: id } });
       await tx.claimFile.updateMany({ where: { assignedSupplierId: id }, data: { assignedSupplierId: null } });
       await tx.vendorDisputeAlert.deleteMany({ where: { vendorId: id } });
       await tx.vendorStatementDispute.deleteMany({ where: { vendorId: id } });
@@ -492,11 +498,15 @@ export class VendorsService {
   }
 
   async suggest(params: { provinceId?: string; city?: string; workGroupId?: string; category?: string }) {
-    const { provinceId, city, workGroupId, category } = params;
+    const { provinceId, workGroupId, category } = params;
+    const cityRaw = typeof params.city === 'string' ? params.city.trim() : '';
+    const cityUnresolved = !cityRaw
+      || ['belirtilmemiş', 'belirtilmemis', 'belirtilmedi'].includes(cityRaw.toLocaleLowerCase('tr-TR'));
+    const city = cityUnresolved ? undefined : cityRaw;
 
     const where: any = { status: 'active' };
 
-    // Filter by service area (province by id or city name)
+    // Filter by service area (province by id or city name) — Belirtilmemiş şehir filtrelemez
     if (provinceId || city) {
       where.serviceAreas = {
         some: provinceId

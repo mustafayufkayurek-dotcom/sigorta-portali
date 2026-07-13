@@ -498,7 +498,12 @@ export class CrmService {
 
     const [claimFiles, emergencyCases, contracts] = await Promise.all([
       this.prisma.claimFile.findMany({
-        where: { assignedSupplierId: id },
+        where: {
+          OR: [
+            { assignedSupplierId: id },
+            { supplierAssignments: { some: { vendorId: id } } },
+          ],
+        },
         select: { id: true, fileNo: true, priority: true, updatedAt: true, currentStatus: { select: { name: true } } },
         orderBy: { updatedAt: 'desc' },
         take: 5,

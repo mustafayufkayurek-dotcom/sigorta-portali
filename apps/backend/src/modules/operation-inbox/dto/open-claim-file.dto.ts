@@ -53,6 +53,11 @@ export class OpenClaimFileDto {
   @IsOptional()
   fileSubject?: string;
 
+  /** Mail formu / hasar açıklaması — İhbar İçeriği alanına yazılır */
+  @IsString()
+  @IsOptional()
+  description?: string;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => CreateCustomerFromInboxDto)

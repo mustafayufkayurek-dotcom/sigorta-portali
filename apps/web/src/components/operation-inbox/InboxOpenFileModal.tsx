@@ -2,6 +2,12 @@
 
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import type { InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+import {
+  CUSTOMER_TYPE_OPTIONS,
+  DEFAULT_CUSTOMER_SUB_TYPES,
+  customerSubTypesForPicker,
+  type CustomerType,
+} from '@/utils/customer-form-helpers';
 
 interface InsuranceCompany {
   id: string;
@@ -124,6 +130,68 @@ function FieldInput({
   );
 }
 
+function NewCustomerTypeFields({
+  entityType,
+  subType,
+  onEntityTypeChange,
+  onSubTypeChange,
+  disabled,
+}: {
+  entityType: CustomerType;
+  subType: string;
+  onEntityTypeChange: (v: CustomerType) => void;
+  onSubTypeChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const subOptions = customerSubTypesForPicker(DEFAULT_CUSTOMER_SUB_TYPES, entityType);
+
+  return (
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+          Müşteri Tipi
+          <span className="text-red-500 ml-0.5">*</span>
+        </label>
+        <select
+          value={entityType}
+          onChange={(e) => {
+            const next = e.target.value as CustomerType;
+            onEntityTypeChange(next);
+            const nextSubs = customerSubTypesForPicker(DEFAULT_CUSTOMER_SUB_TYPES, next);
+            const keep = nextSubs.some((s) => s.value === subType);
+            if (!keep) {
+              onSubTypeChange(next === 'individual' ? 'insured' : (nextSubs[0]?.value ?? ''));
+            }
+          }}
+          disabled={disabled}
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+        >
+          {CUSTOMER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.val} value={opt.val}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1.5">
+          Alt Tip
+          <span className="text-red-500 ml-0.5">*</span>
+        </label>
+        <select
+          value={subType}
+          onChange={(e) => onSubTypeChange(e.target.value)}
+          disabled={disabled}
+          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+        >
+          <option value="">Alt tip seçin…</option>
+          {subOptions.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export function InboxOpenFileModal({
   open,
   kind,
@@ -142,6 +210,10 @@ export function InboxOpenFileModal({
   onCustomerChange,
   createNewCustomer,
   onCreateNewCustomerChange,
+  newCustomerEntityType = 'individual',
+  onNewCustomerEntityTypeChange,
+  newCustomerSubType = 'insured',
+  onNewCustomerSubTypeChange,
   insuredName,
   onInsuredNameChange,
   insuredPhone,
@@ -194,6 +266,10 @@ export function InboxOpenFileModal({
   onCustomerChange?: (v: string) => void;
   createNewCustomer?: boolean;
   onCreateNewCustomerChange?: (v: boolean) => void;
+  newCustomerEntityType?: CustomerType;
+  onNewCustomerEntityTypeChange?: (v: CustomerType) => void;
+  newCustomerSubType?: string;
+  onNewCustomerSubTypeChange?: (v: string) => void;
   insuredName: string;
   onInsuredNameChange: (v: string) => void;
   insuredPhone: string;
@@ -237,14 +313,26 @@ export function InboxOpenFileModal({
   const insuredOk = !!insuredName.trim();
   const assistantOk = kind !== 'emergency' || !!selectedAssistantCustomerId?.trim();
   const instructionOk = instruction.trim().length >= 3;
+  const newCustomerTypeOk =
+    !createNewCustomer
+    || (!!newCustomerEntityType && !!newCustomerSubType?.trim());
   const canConfirm =
-    !loading && instructionOk && insuranceOk && insuredOk && assistantOk;
+    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk;
 
   const confirmBlockers: string[] = [];
   if (!instructionOk) confirmBlockers.push('Talimat en az 3 karakter olmalı');
   if (!insuredOk) confirmBlockers.push('Sigortalı adı soyadı gerekli');
   if (kind === 'emergency' && !assistantOk) confirmBlockers.push('Asistan firması seçilmeli');
   if (kind === 'claim' && !insuranceOk) confirmBlockers.push('Sigorta şirketi seçilmeli');
+  if (createNewCustomer && !newCustomerTypeOk) {
+    confirmBlockers.push('Müşteri tipi ve alt tip seçilmeli');
+  }
+
+  const enableCreateCustomerToggle = !!onCreateNewCustomerChange;
+  const showTypeFields =
+    !!createNewCustomer
+    && !!onNewCustomerEntityTypeChange
+    && !!onNewCustomerSubTypeChange;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -576,7 +664,52 @@ export function InboxOpenFileModal({
             </div>
           )}
 
-          {(routing || onCustomerChange) && onCustomerChange && routing && (
+          {kind === 'claim' && (
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 space-y-2">
+              <div>
+                <p className="text-xs font-medium text-slate-600 mb-1">Eksper Ofisi</p>
+                <p className="text-sm text-slate-600">
+                  Gönderen e-posta ile eksper ofisi otomatik bağlanır (müşteri kartı eşleşirse).
+                  Sigortalı bilgileri yukarıdaki alanlardan dosyaya yazılır.
+                </p>
+              </div>
+              {enableCreateCustomerToggle && (
+                <div className="pt-1 border-t border-slate-200/80">
+                  <p className="text-xs font-medium text-slate-600 mb-1.5">Sigortalı Müşteri Kartı</p>
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    İsteğe bağlı: sigortalı için ayrı CRM kartı oluşturur. Dosyanın eksper ofisi bağlantısını değiştirmez.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={!!createNewCustomer}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        onCreateNewCustomerChange?.(checked);
+                        if (checked) {
+                          onNewCustomerEntityTypeChange?.('individual');
+                          onNewCustomerSubTypeChange?.('insured');
+                        }
+                      }}
+                      disabled={loading || usersLoading}
+                    />
+                    Yeni Müşteri Oluştur ({insuredName || 'sigortalı adı'})
+                  </label>
+                  {showTypeFields && (
+                    <NewCustomerTypeFields
+                      entityType={newCustomerEntityType}
+                      subType={newCustomerSubType}
+                      onEntityTypeChange={onNewCustomerEntityTypeChange}
+                      onSubTypeChange={onNewCustomerSubTypeChange}
+                      disabled={loading || usersLoading}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {kind === 'emergency' && (routing || onCustomerChange) && onCustomerChange && routing && (
             <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
               <p className="text-xs font-medium text-slate-600 mb-2">Müşteri</p>
               {routing.customerMatch.status === 'found' && routing.customerMatch.customer && (
@@ -614,7 +747,14 @@ export function InboxOpenFileModal({
                     <input
                       type="checkbox"
                       checked={!!createNewCustomer}
-                      onChange={(e) => onCreateNewCustomerChange?.(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        onCreateNewCustomerChange?.(checked);
+                        if (checked) {
+                          onNewCustomerEntityTypeChange?.('individual');
+                          onNewCustomerSubTypeChange?.('insured');
+                        }
+                      }}
                     />
                     Yeni Müşteri Oluştur ({insuredName || 'sigortalı adı'})
                   </label>
@@ -625,10 +765,23 @@ export function InboxOpenFileModal({
                   <input
                     type="radio"
                     checked={!!createNewCustomer}
-                    onChange={() => onCreateNewCustomerChange?.(true)}
+                    onChange={() => {
+                      onCreateNewCustomerChange?.(true);
+                      onNewCustomerEntityTypeChange?.('individual');
+                      onNewCustomerSubTypeChange?.('insured');
+                    }}
                   />
                   Yeni Müşteri Oluştur
                 </label>
+              )}
+              {showTypeFields && (
+                <NewCustomerTypeFields
+                  entityType={newCustomerEntityType}
+                  subType={newCustomerSubType}
+                  onEntityTypeChange={onNewCustomerEntityTypeChange}
+                  onSubTypeChange={onNewCustomerSubTypeChange}
+                  disabled={loading || usersLoading}
+                />
               )}
             </div>
           )}

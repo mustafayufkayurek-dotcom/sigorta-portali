@@ -21,6 +21,7 @@ import { buildInboxFileOpenDraft, buildInboxFileOpenDraftFromRow, type InboxFile
 import { sanitizeInboundPhone } from '@sigorta/shared';
 import { parseAssigneeAssistantScope } from '@/utils/inbox-assignee-assistant-scope';
 import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import type { CustomerType } from '@/utils/customer-form-helpers';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import type { EmergencyCase } from '@/utils/emergencyApi';
@@ -580,6 +581,8 @@ export default function GelenKutusuPage() {
   const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [createNewCustomer, setCreateNewCustomer] = useState(false);
+  const [newCustomerEntityType, setNewCustomerEntityType] = useState<CustomerType>('individual');
+  const [newCustomerSubType, setNewCustomerSubType] = useState('insured');
   const [insuredNameInput, setInsuredNameInput] = useState('');
   const [insuredPhoneInput, setInsuredPhoneInput] = useState('');
   const [insuredAddressInput, setInsuredAddressInput] = useState('');
@@ -945,6 +948,8 @@ export default function GelenKutusuPage() {
     setSelectedAssigneeId('');
     setSelectedCustomerId('');
     setCreateNewCustomer(false);
+    setNewCustomerEntityType('individual');
+    setNewCustomerSubType('insured');
     setSelectedAssistantCustomerId('');
     setAssigneeAssistantScopeLabel('');
 
@@ -988,6 +993,8 @@ export default function GelenKutusuPage() {
         const ctx = await loadActionContext(messageId, row);
         if (options?.prefillCustomer && ctx?.routing?.customerMatch.status === 'not_found') {
           setCreateNewCustomer(true);
+          setNewCustomerEntityType('individual');
+          setNewCustomerSubType('insured');
         }
       })();
     }
@@ -1002,6 +1009,8 @@ export default function GelenKutusuPage() {
     setSelectedAssigneeId('');
     setSelectedCustomerId('');
     setCreateNewCustomer(false);
+    setNewCustomerEntityType('individual');
+    setNewCustomerSubType('insured');
     setSelectedAssistantCustomerId('');
     setAssigneeAssistantScopeLabel('');
     setInsuredNameInput('');
@@ -1206,28 +1215,22 @@ export default function GelenKutusuPage() {
         claimNo: claimNoInput.trim() || undefined,
         lossType: toTitleCaseTR(lossTypeInput.trim()) || undefined,
         fileSubject: toTitleCaseTR(fileSubjectInput.trim()) || undefined,
+        description: actionDraft?.description?.trim() || undefined,
       };
       const { firstName, lastName } = parseSenderPersonName(insuredName);
-      const matchedCustomerId =
-        actionRouting?.customerMatch.status === 'found' && actionRouting.customerMatch.customer?.id
-          ? actionRouting.customerMatch.customer.id
-          : selectedCustomerId.trim() || undefined;
-      const customerPayload =
-        matchedCustomerId && (actionRouting?.customerMatch.status === 'found' || !createNewCustomer)
-          ? { customerId: matchedCustomerId }
-          : createNewCustomer
-            ? {
-                createCustomer: {
-                  entityType: 'individual' as const,
-                  firstName: firstName || undefined,
-                  lastName: lastName || undefined,
-                  phone: insuredPhoneInput.trim() || undefined,
-                  address: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
-                },
-              }
-            : matchedCustomerId
-              ? { customerId: matchedCustomerId }
-              : {};
+      const createCustomerPayload =
+        createNewCustomer && newCustomerEntityType && newCustomerSubType.trim()
+          ? {
+              createCustomer: {
+                entityType: newCustomerEntityType,
+                subType: newCustomerSubType.trim(),
+                firstName: firstName || undefined,
+                lastName: lastName || undefined,
+                phone: insuredPhoneInput.trim() || undefined,
+                address: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
+              },
+            }
+          : {};
 
       if (actionModal.kind === 'claim') {
         const res = await apiClient.post<OpenClaimResult>(
@@ -1236,7 +1239,7 @@ export default function GelenKutusuPage() {
             instruction: trimmed,
             insuranceCompanyId: insuranceCompanyId || undefined,
             ...assigneePayload,
-            ...customerPayload,
+            ...createCustomerPayload,
             ...fileFieldsPayload,
           },
         );
@@ -1425,6 +1428,10 @@ export default function GelenKutusuPage() {
         onCustomerChange={setSelectedCustomerId}
         createNewCustomer={createNewCustomer}
         onCreateNewCustomerChange={setCreateNewCustomer}
+        newCustomerEntityType={newCustomerEntityType}
+        onNewCustomerEntityTypeChange={setNewCustomerEntityType}
+        newCustomerSubType={newCustomerSubType}
+        onNewCustomerSubTypeChange={setNewCustomerSubType}
         insuredName={insuredNameInput}
         onInsuredNameChange={setInsuredNameInput}
         insuredPhone={insuredPhoneInput}

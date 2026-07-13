@@ -376,6 +376,8 @@ model ClaimFile {
   overheadAllocations  OverheadAllocation[]
   // Tedarikçi Sözleşmeleri
   vendorContracts      VendorContract[]
+  // Çoklu tedarikçi ataması (teklif toplama)
+  supplierAssignments  ClaimFileSupplier[]
   // Dosya Evrak & Fatura Talebi
   fileDocuments        FileDocument[]
   invoiceRequests      InvoiceRequest[]
@@ -398,6 +400,27 @@ model ClaimFile {
   @@index([assignedOfficeUserId])
   @@index([assignedAdjusterId])
   @@map("claim_files")
+}
+
+/// Hasar dosyası ↔ tedarikçi (N:M). Teklif toplama için mobilyacı+boyacı+sıvacı vb.
+/// assignedSupplierId geriye uyum için birincil (ilk) tedarikçiyi tutar.
+model ClaimFileSupplier {
+  id          String   @id @default(uuid())
+  claimFileId String   @map("claim_file_id")
+  vendorId    String   @map("vendor_id")
+  assignedAt  DateTime @default(now()) @map("assigned_at")
+  note        String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  vendor    Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([claimFileId, vendorId])
+  @@index([claimFileId])
+  @@index([vendorId])
+  @@map("claim_file_suppliers")
 }
 
 model ClaimStatus {
@@ -935,6 +958,7 @@ model Vendor {
   // Ofis-Saha: Atanmış Dosyalar
   assignedClaimFiles       ClaimFile[]     @relation("AssignedSupplier")
   inspectorAssignedClaimFiles ClaimFile[]  @relation("AssignedInspectorVendor")
+  claimFileSupplierLinks   ClaimFileSupplier[]
   importedDiscoveryCandidates VendorDiscoveryCandidate[] @relation("ImportedDiscoveryVendor")
 
   @@index([status])

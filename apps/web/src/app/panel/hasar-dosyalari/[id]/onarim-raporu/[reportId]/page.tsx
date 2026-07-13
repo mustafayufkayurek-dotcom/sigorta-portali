@@ -2409,11 +2409,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       </div>
     )}
     {/*
-      Sticky kök neden (v327 yetmedi): thead sticky tablo İÇİ overflow-auto + max-h scrollport'una bağlıydı.
-      Az satırda max-h dolmaz → iç scroll yok → sticky görünmez; Mustafa sayfa (panel overflow-y-auto) kaydırır.
-      Option B: max-h / overflow-auto yok → sticky panel sayfa scroll'una bağlanır.
-      Dikkat: overflow-x-auto da sticky'yi kırar (scrollport oluşturur); yatay sarıcı yok.
-      border-collapse sticky'yi kırar → border-separate.
+      Mustafa UX (v329): tablo üzerinde mouse wheel → SAYFA değil TABLO kayar;
+      satırlar kolon başlıklarının ALTINA girer (sticky thead).
+      v328 Option B yanlıştır: max-h yok → sayfa scroll → sticky hissedilmez.
+      Kök: tablo kendi max-h + overflow-y-auto scrollport’u; sticky th bu porta bağlı.
+      border-collapse sticky’yi kırar → border-separate. overscroll-contain: zincirleme sayfa kaymasını keser.
     */}
     <div ref={tableRef} className="rounded-lg border border-slate-200">
       <style>{`
@@ -2423,26 +2423,30 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         }
         .saved-flash { animation: savedFlash 0.9s ease-out forwards; }
       `}</style>
+      <div
+        data-kalem-scrollport="v329"
+        className="max-h-[50vh] overflow-y-auto overflow-x-auto overscroll-contain"
+      >
       <table className="w-full text-xs border-separate border-spacing-0 min-w-[800px]">
         <thead>
           <tr className="bg-slate-50">
-            {isEditable && <th className="sticky top-0 z-20 w-8 px-2 py-2 text-center text-slate-400 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">#</th>}
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Kategori</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Tespit Alanı <span className="text-red-500">*</span></th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Mahal/Bölge</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[120px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Grubu</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[160px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Tanımı</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Açıklama <span className="text-red-500">*</span></th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Miktar</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Birim</th>
-            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-24 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Satış Fiyatı</th>
+            {isEditable && <th className="sticky top-0 z-30 w-8 px-2 py-2 text-center text-slate-400 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">#</th>}
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Kategori</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Mahal/Bölge</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[120px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Grubu</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[160px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Tanımı</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Açıklama <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Miktar</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Birim</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-24 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
                 Maliyet
               </th>
             )}
-            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Toplam</th>
-            {isEditable && <th className="sticky top-0 z-20 min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-b border-l border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İşlem</th>}
+            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Toplam</th>
+            {isEditable && <th className="sticky top-0 z-30 min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-b border-l border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -3024,8 +3028,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           )}
         </tbody>
       </table>
+      </div>
       {isEditable && (
-        <div className="mt-2 flex flex-wrap items-center gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-3 px-1">
           <button
             type="button"
             tabIndex={-1}
@@ -4386,7 +4391,20 @@ export default function RepairReportPage() {
             </span>
           </div>
           {insuredName !== '—' && (
-            <p className="text-sm font-medium text-slate-700 mt-0.5">{insuredName}</p>
+            <p className="text-sm font-medium text-slate-700 mt-0.5">
+              {insuredName}
+              {typeof report?.claimFile?.insuredPhone === 'string' && report.claimFile.insuredPhone.trim() && (
+                <>
+                  <span className="text-slate-300 mx-1.5">·</span>
+                  <a
+                    href={`tel:${report.claimFile.insuredPhone.replace(/\s/g, '')}`}
+                    className="text-slate-600 hover:text-blue-700 hover:underline tabular-nums"
+                  >
+                    {report.claimFile.insuredPhone.trim()}
+                  </a>
+                </>
+              )}
+            </p>
           )}
           <p className="text-xs text-slate-400 mt-0.5">
             {fmtDateTime(report.reportDate ?? report.createdAt)}

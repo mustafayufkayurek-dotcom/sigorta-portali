@@ -11,6 +11,7 @@ import { ClaimFilesService } from '../claim-files/claim-files.service';
 import { CustomersService } from '../customers/customers.service';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
+import { resolveCityDistrictFromAddress } from './inbound-location.util';
 
 export interface CustomerMatchCandidate {
   id: string;
@@ -578,38 +579,7 @@ export class InboundRoutingService {
   }
 
   private async resolveLocation(address?: string | null): Promise<{ city: string | null; district: string | null }> {
-    if (!address?.trim()) return { city: null, district: null };
-
-    const text = address.trim();
-    const provinces = await this.prisma.province.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: 'asc' },
-    });
-
-    let matchedProvince: { id: string; name: string } | null = null;
-    for (const p of provinces) {
-      if (text.toLowerCase().includes(p.name.toLowerCase())) {
-        matchedProvince = p;
-        break;
-      }
-    }
-    if (!matchedProvince) return { city: null, district: null };
-
-    const districts = await this.prisma.district.findMany({
-      where: { provinceId: matchedProvince.id },
-      select: { name: true },
-      orderBy: { name: 'asc' },
-    });
-
-    let matchedDistrict: string | null = null;
-    for (const d of districts) {
-      if (text.toLowerCase().includes(d.name.toLowerCase())) {
-        matchedDistrict = d.name;
-        break;
-      }
-    }
-
-    return { city: matchedProvince.name, district: matchedDistrict };
+    return resolveCityDistrictFromAddress(this.prisma, address);
   }
 
   private async resolveInsuranceCompanyId(policyNo?: string | null): Promise<string | null> {
