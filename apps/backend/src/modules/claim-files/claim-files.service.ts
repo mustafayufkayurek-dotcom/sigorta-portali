@@ -1491,7 +1491,7 @@ export class ClaimFilesService {
 
   private async logActivity(params: {
     claimFileId: string;
-    action: 'SUPPLIER_ASSIGNED' | 'APPOINTMENT_SCHEDULED' | 'APPOINTMENT_UPDATED' | 'INSPECTION_DONE' | 'COST_REPORT_SUBMITTED' | 'ATTACHMENT_ADDED' | 'STATUS_CHANGED' | 'NOTE_ADDED';
+    action: 'SUPPLIER_ASSIGNED' | 'SUPPLIER_REMOVED' | 'APPOINTMENT_SCHEDULED' | 'APPOINTMENT_UPDATED' | 'INSPECTION_DONE' | 'COST_REPORT_SUBMITTED' | 'ATTACHMENT_ADDED' | 'STATUS_CHANGED' | 'NOTE_ADDED';
     actorId: string;
     actorRole: string;
     description: string;
