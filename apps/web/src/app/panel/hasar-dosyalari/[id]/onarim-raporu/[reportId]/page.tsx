@@ -2416,26 +2416,27 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         }
         .saved-flash { animation: savedFlash 0.9s ease-out forwards; }
       `}</style>
-      <table className="w-full text-xs border-collapse min-w-[800px]">
-        <thead className="sticky top-0 z-10">
-          <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
-            {isEditable && <th className="w-8 px-2 py-2 text-center text-slate-400 font-medium border-r border-slate-100 bg-slate-50">#</th>}
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Kategori</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Tespit Alanı <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[90px] bg-slate-50">Mahal/Bölge</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[120px] bg-slate-50">İş Grubu</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[160px] bg-slate-50">İş Tanımı</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 min-w-[140px] bg-slate-50">Açıklama <span className="text-red-500">*</span></th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Miktar</th>
-            <th className="px-2 py-2 text-center text-slate-500 font-medium border-r border-slate-100 w-20 bg-slate-50">Birim</th>
-            <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-24 bg-slate-50">Satış Fiyatı</th>
+      {/* border-collapse sticky'yi kırar (Chrome/Safari); sticky th + border-separate gerekir */}
+      <table className="w-full text-xs border-separate border-spacing-0 min-w-[800px]">
+        <thead>
+          <tr className="bg-slate-50 shadow-sm">
+            {isEditable && <th className="sticky top-0 z-20 w-8 px-2 py-2 text-center text-slate-400 font-medium border-b border-r border-slate-200 bg-slate-50">#</th>}
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50">Kategori</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50">Mahal/Bölge</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[120px] bg-slate-50">İş Grubu</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[160px] bg-slate-50">İş Tanımı</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50">Açıklama <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50">Miktar</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50">Birim</th>
+            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-24 bg-slate-50">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="px-2 py-2 text-right text-slate-500 font-medium border-r border-slate-100 w-28 bg-slate-50">
+              <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-28 bg-slate-50">
                 Maliyet
               </th>
             )}
-            <th className="px-2 py-2 text-right text-slate-500 font-medium w-28 bg-slate-50">Toplam</th>
-            {isEditable && <th className="min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-l border-slate-100 bg-slate-50">İşlem</th>}
+            <th className="sticky top-0 z-20 px-2 py-2 text-right text-slate-500 font-medium border-b border-slate-200 w-28 bg-slate-50">Toplam</th>
+            {isEditable && <th className="sticky top-0 z-20 min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-b border-l border-slate-200 bg-slate-50">İşlem</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
