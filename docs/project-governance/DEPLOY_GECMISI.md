@@ -8,27 +8,34 @@
 
 ---
 
-## Canlı durum (14 Temmuz 2026 — v349 backend + v348 web)
+## Canlı durum (14 Temmuz 2026 — v350 web + v349 backend)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v348-amd64` | healthy |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v350-amd64` | healthy |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v349-amd64` | healthy |
-| **Rollback** | Web **v346** / Backend **v348** | manifest `rollbackImages` |
-| **Etiket** | `v349-guvenlik-finans-api-guard` | backend-only |
+| **Rollback** | Web **v348** / Backend **v348** | manifest `rollbackImages` |
+| **Etiket** | `v350-logo-sidebar-topbar` + `v349-guvenlik-finans-api-guard` | |
 
-> **v349 (14 Tem):** Finans API guard (ofis/saha 403) + cost-masking binary skip + repair `version_no` 0–3. Web v348. Disk ~11G — prune `-af` yok. **v350** logo/sidebar/topbar web-only sırada. PayTR büyük paket: Mustafa onayı bekliyor.
+> **v350 (14 Tem):** Logo/sidebar/topbar SVG (224/70, header 56); kalıcı sağ kılavuz yok. **v349:** Finans API guard. Disk ~6G — prune `-af` yasak. PayTR büyük paket: **Mustafa onayı bekliyor**.
 
 ---
 
 ## Son deploy kronolojisi
+
+### v350 — Web-only (14 Temmuz 2026) — Logo / Sidebar / Topbar
+
+- **Kapsam:** web-only · migration yok · rollback web v348 / backend v348
+- Sidebar 224 / 70; header `h-14`; brand SVG (`public/brand/meridyen-*.svg`); PNG arşiv korunur
+- Topbar’da logo; Yardım ikon; kalıcı sağ kılavuz kaldırıldı
+- Smoke: route PASS; login credential eksik (yerel smoke FAIL beklenen)
 
 ### v349 — Backend-only (14 Temmuz 2026) — Finans API Guard
 
 - **Kapsam:** backend-only · migration: şema up-to-date (`20260713190000_repair_report_version_0_to_3` paketinde) · rollback backend v348 / web v348
 - `assertDashboardFinanceAccess` — finance/budget/bottlenecks/ownership/daily-flow
 - Cost-masking: report PDF/image binary pipe atlanır
-- Web değişmedi (v348)
+- Web sonraki turda v350 aldı
 
 ### P1 kapanış notu — Doküman (13 Temmuz 2026) — *deploy yok*
 
