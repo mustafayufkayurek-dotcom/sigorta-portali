@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-14",
-  "label": "v349-guvenlik-finans-api-guard",
-  "description": "Backend-only: Dashboard finans API guard (ofis/saha Forbidden) + cost-masking binary skip + repair version_no 0–3. Web hâlâ v348. Rollback backend v348 / web v348.",
+  "label": "v350-logo-sidebar-topbar",
+  "description": "Web-only: Logo/sidebar/topbar SVG kabuk (224/70, header 56), kalıcı sağ kılavuz kaldırıldı. Backend v349 finans API guard. Migration yok (web). Rollback web v348 / backend v348.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v349-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v348-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v350-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v346-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v348-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v348-amd64"
   },
   "mustPassSmokeRoutes": [

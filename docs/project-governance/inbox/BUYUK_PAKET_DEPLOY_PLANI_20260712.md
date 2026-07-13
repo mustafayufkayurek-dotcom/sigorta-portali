@@ -2,7 +2,8 @@
 
 **Durum:** Planlama — **canlıya alınmadı** (Mustafa onayı bekleniyor)  
 **Dal:** `safety/pre-v318-kilit-20260712`  
-**Canlı referans:** Web **v320** / Backend **v319** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`) — web-only deploy 12.07.2026
+**Canlı referans:** Web **v350** / Backend **v349** (`deploy/manifests/KNOWN_GOOD_IMAGES.json`) — 14.07.2026  
+**Son soru (14 Tem):** PayTR deploy onayı?
 
 ---
 
