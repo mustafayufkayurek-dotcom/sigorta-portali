@@ -10,6 +10,11 @@ export const PANEL_MAIN_PT = 'pt-4 sm:pt-6';
 /** DashboardHeader kart üst padding — py-3 sm:py-4 */
 export const PANEL_HEADER_CARD_PT = 'pt-3 sm:pt-4';
 
-export const PANEL_NAVBAR_HEIGHT = 'h-[4.5rem] sm:h-[4.75rem]';
-export const PANEL_SIDEBAR_STICKY_TOP = 'md:top-[4.75rem]';
-export const PANEL_SIDEBAR_HEIGHT = 'h-[calc(100vh-4.75rem)]';
+/** Topbar yüksekliği — logo-sidebar-topbar revizyon: 48–56px */
+export const PANEL_NAVBAR_HEIGHT = 'h-14';
+export const PANEL_SIDEBAR_STICKY_TOP = 'md:top-14';
+export const PANEL_SIDEBAR_HEIGHT = 'h-[calc(100vh-3.5rem)]';
+
+/** Sidebar genişlik — mockup: 220–230 açık / 68–72 kapalı */
+export const PANEL_SIDEBAR_WIDTH_EXPANDED = 'w-[224px]';
+export const PANEL_SIDEBAR_WIDTH_COLLAPSED = 'w-[70px]';

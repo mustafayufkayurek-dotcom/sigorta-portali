@@ -4,6 +4,40 @@
 
 ---
 
+## P1-DASH — Dashboard P1 paket kapanış (13 Temmuz 2026)
+
+**Durum:** ✅ Implementasyon KAPANDI · ⏳ Mustafa canlı PASS  
+**Canlı:** Web **v348** + Backend **v348** (`v348-dashboard-faz6-admin-a3a4`)  
+**Rollback:** Web **v346** / Backend **v342**  
+**v349:** Yok (A5 zaten `AdminBottomRow`)
+
+### Roller — ne test edilir?
+
+| Rol | Route | Beklenen |
+|-----|-------|----------|
+| **Admin / manager** | `/panel` | Operasyon Yönetim Merkezi; Finans + Operasyon KPI; Haftalık Performans (bar + personel yük); Günün Akışı + Gider; alt 3’lü (Kritik / Finans / Personel Yük); sağ kılavuz |
+| **Dosya sorumlusu (D0)** | `/panel` | Dosya Sorumlusu Merkezi; finans/admin yok; Operasyon + Akış + Onay Gecikmesi + alt 3’lü |
+| **Saha (F0)** | `/panel` | Saha Operasyon Merkezi; Saha Özeti 6 KPI; finans/onay yok; alt 3’lü SLA/Bekleyen/Açık |
+
+### Bilinen gap (engelleyici değil)
+
+- S7 menü gruplama (5 grup) — backlog / ayrı karar
+- Pixel-perfect mockup (eski lacivert sidebar) — P1 talimat dili yeterli
+- Login smoke FAIL yerel credential yoksa beklenen
+
+### Sonraki büyük iş
+
+- **Büyük paket** (PayTR canlı / envanter B7) — **bu turda başlatılmadı**
+- Önce: Mustafa’nın admin / D0 / saha screenshot PASS’leri
+
+### Referans
+
+- `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md`
+- `DEPLOY_GECMISI.md` (v344–v348 + kapanış notu)
+- `ONAYLI_UI_CHECKLIST.md`
+
+---
+
 ## AK-001 — Müşteri / Tedarikçi Kart Notları (Numaralı + Görünürlük)
 
 **Tarih:** 2026-07-12 (teyit güncellemesi)  
@@ -51,4 +85,4 @@ Bu madde **onarım raporu / fotoğraf testinden** ayrı bir ürün kararı. **Im
 
 ---
 
-*Son güncelleme: 2026-07-12 — AK-001 teyit düzeltmesi (CRM/atama popup kaldırıldı)*
+*Son güncelleme: 2026-07-13 — P1 Dashboard kapanış notu eklendi; AK-001 teyit bekliyor*

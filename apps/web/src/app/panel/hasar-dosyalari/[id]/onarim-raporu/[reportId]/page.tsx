@@ -14,6 +14,7 @@ import { getReportImageUrl } from '@/utils/upload-url';
 import ReportImageGallery, { type PendingReportImageUpload } from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
+import { ClaimStageStrip } from '@/components/damage-reports/ClaimStageStrip';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
@@ -21,7 +22,7 @@ import {
   type VendorQuoteData,
 } from '@/components/damage-reports/VendorQuotePopover';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_VERSION, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, isRepairReportRevision } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -139,11 +140,6 @@ function recomputeReportTotals(items: any[]) {
   return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal };
 }
 
-
-function fmtCurrencyCompact(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' TL';
-}
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
@@ -478,9 +474,6 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
         <div className="flex items-center justify-center gap-2">
           <span className="w-5 h-5 rounded-md bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">%</span>
           <span className="text-sm font-semibold text-slate-700">Dosya Bütçesi</span>
-          <span className={`text-sm font-bold ${profitColor(grandProfitPct)}`}>
-            · %{grandProfitPct.toFixed(1)} Kar
-          </span>
         </div>
         <svg
           viewBox="0 0 20 20"
@@ -547,31 +540,6 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
                 </tr>
               </tfoot>
             </table>
-          </div>
-
-          {/* Genel Analiz */}
-          <div className="mt-4 border-t border-indigo-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 tracking-wider text-center mb-3">Genel Analiz</p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <div className="text-center">
-                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Satış</p>
-                <p className="text-sm font-bold text-slate-800">{fmtCurrency(grandSales)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Tedarikçi</p>
-                <p className="text-sm font-bold text-slate-600">{fmtCurrency(grandSupplier)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Toplam Kar</p>
-                <p className={`text-sm font-bold ${grandProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtCurrency(grandProfit)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-slate-400 tracking-wide mb-0.5">Kar Oranı</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-extrabold ${profitBg(grandProfitPct)} ${profitColor(grandProfitPct)}`}>
-                  %{grandProfitPct.toFixed(1)}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -3933,9 +3901,19 @@ export default function RepairReportPage() {
     };
   }, [report?.departmentId, report?.claimFile?.lossType, report?.claimFile?.claimSubjectId]);
 
-  const handleRevise = () => setShowReviseModal(true);
+  const handleRevise = () => {
+    if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
+      notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
+      return;
+    }
+    setShowReviseModal(true);
+  };
 
   const confirmRevise = async (payload: ReviseReportPayload) => {
+    if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
+      notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
+      return;
+    }
     setRevising(true);
     try {
       const res = await axios.post(
@@ -4409,21 +4387,22 @@ export default function RepairReportPage() {
           <p className="text-xs text-slate-400 mt-0.5">
             {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
+          <div className="mt-2 max-w-xl">
+            <ClaimStageStrip
+              source={{
+                reportStatus: report.status,
+                claimFile: report.claimFile,
+              }}
+              compact
+            />
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
               {repairReportStatusLabel(report.status)}
             </span>
-            <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-              Satış {fmtCurrencyCompact(report.totalSalesAmount)}
-            </span>
-            {effectiveViewMode === 'internal' && !isFieldStaff && (
-              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-                Kâr {fmtCurrencyCompact(report.grossProfit)}
-              </span>
-            )}
-            {report.versionNo > 1 && (
+            {isRepairReportRevision(report.versionNo) && (
               <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
             )}
             {pendingInsurancePortalApproval && (
@@ -4486,9 +4465,17 @@ export default function RepairReportPage() {
             {report.status === 'approved' && (
               <button type="button"
                 onClick={handleRevise}
-                className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+                disabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
+                title={
+                  canCreateRepairReportRevision(report.versionNo ?? 0)
+                    ? undefined
+                    : REPAIR_REPORT_MAX_REVISION_MESSAGE
+                }
+                className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
               >
-                Revize Et
+                {canCreateRepairReportRevision(report.versionNo ?? 0)
+                  ? 'Revize Et'
+                  : `Revize Et (Max v${REPAIR_REPORT_MAX_VERSION})`}
               </button>
             )}
             {(report.status === 'draft' || report.status === 'rejected') && (

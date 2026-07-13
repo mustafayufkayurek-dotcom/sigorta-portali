@@ -20,6 +20,11 @@ import {
   AdminOperationsKpiBand,
   AdminDailyFlowSection,
   AdminBottomRow,
+  OfficeDailyFlowSection,
+  OfficeBottomRow,
+  FieldOperationsKpiBand,
+  FieldDailyFlowSection,
+  FieldBottomRow,
 } from '@/features/dashboard/components/admin';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 
@@ -61,11 +66,13 @@ export default function PanelPage() {
     : isOfficeStaff
       ? 'Dosya Sorumlusu Merkezi'
       : isManagement
-        ? 'Yönetim Merkezi'
+        ? 'Operasyon Yönetim Merkezi'
         : 'Operasyon Merkezi';
 
   const subtitle = isFieldStaff
-    ? 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+    ? scopeLabel
+      ? `${scopeLabel} kapsamındaki atanan dosyalarınız, SLA riskleri ve saha aksiyonları.`
+      : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
     : isOfficeStaff
       ? scopeLabel
         ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
@@ -76,7 +83,7 @@ export default function PanelPage() {
 
   const hideAcil = !showAcilYardim;
 
-  /** Admin / müdür: onaylı mockup — tam şablon düzeni */
+  /** Admin / müdür: onaylı mockup — tam şablon düzeni (v345) */
   if (isManagement) {
     return (
       <DashboardShell>
@@ -106,42 +113,82 @@ export default function PanelPage() {
     );
   }
 
+  /** Dosya sorumlusu: aynı görsel dil; finans / admin bölümleri yok (D0) */
+  if (isOfficeStaff) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          title={title}
+          subtitle={subtitle}
+          showAcilAction={showAcilYardim}
+          isOfficeStaff
+        />
+
+        <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
+
+        <OfficeDailyFlowSection staggerIndex={1} hideAcil={hideAcil} />
+
+        <ApprovalDelayWidget staggerIndex={2} compact />
+
+        <OfficeBottomRow staggerIndex={3} />
+      </DashboardShell>
+    );
+  }
+
+  /** Saha: D0-paralel kabuk; finans / onay yok — my-performance + claim-files (v347) */
+  if (isFieldStaff) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          title={title}
+          subtitle={subtitle}
+          showAcilAction={showAcilYardim}
+          isFieldStaff
+        />
+
+        <FieldOperationsKpiBand staggerIndex={0} />
+
+        <FieldDailyFlowSection staggerIndex={1} />
+
+        <FieldBottomRow staggerIndex={2} />
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
       <DashboardHeader
         title={title}
         subtitle={subtitle}
-        showAcilAction={showAcilYardim && !isOfficeStaff}
-        singlePrimaryAction={isOfficeStaff}
+        showAcilAction={showAcilYardim}
+        singlePrimaryAction={false}
       />
 
       <PrimaryKpiGroup staggerIndex={0} hideFinance={!showFinanceWidgets} hideAcil={hideAcil} />
 
-      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} isOfficeStaff={isOfficeStaff} />
+      <OperationFlowStrip hideFinance={!showFinanceWidgets} hideAcil={hideAcil} isOfficeStaff={false} />
 
-      {isOfficeStaff && <ApprovalDelayWidget staggerIndex={2} />}
+      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={2} />}
 
-      {showFinanceWidgets && <OverheadAllocationReminderWidget staggerIndex={isOfficeStaff ? 3 : 2} />}
+      <CriticalAlertsWidget staggerIndex={showFinanceWidgets ? 3 : 2} />
 
-      <CriticalAlertsWidget staggerIndex={isOfficeStaff ? 4 : 3} />
-
-      <PendingActionsWidget staggerIndex={isOfficeStaff ? 5 : 4} />
+      <PendingActionsWidget staggerIndex={showFinanceWidgets ? 4 : 3} />
 
       <DashboardGrid>
-        <SlaRiskWidget staggerIndex={isOfficeStaff ? 6 : 5} />
-        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={7} />}
+        <SlaRiskWidget staggerIndex={showFinanceWidgets ? 5 : 4} />
+        {showFinanceWidgets && <OwnershipLoadWidget staggerIndex={6} />}
       </DashboardGrid>
 
       {showFinanceWidgets && (
         <DashboardGrid>
-          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={8} />
-          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={9} />
+          <FinanceBottleneckWidget onNavigate={handleNavigate} staggerIndex={7} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={8} />
         </DashboardGrid>
       )}
 
       {!showFinanceWidgets && (
         <DashboardGrid>
-          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={isOfficeStaff ? 7 : 5} />
+          <ActivityFeedWidget onNavigate={handleNavigate} staggerIndex={5} />
         </DashboardGrid>
       )}
     </DashboardShell>

@@ -141,7 +141,7 @@ function ApprovalPageInner({ token }: { token: string }) {
             <div>
               <p className="text-xs text-gray-400">Hasar Onarım Raporu Onay Talebi</p>
               <h1 className="text-xl font-bold text-gray-900">{report?.reportNo}</h1>
-              {data?.versionNo > 1 && (
+              {data?.versionNo > 0 && (
                 <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
                   v{report?.versionNo}
                 </span>

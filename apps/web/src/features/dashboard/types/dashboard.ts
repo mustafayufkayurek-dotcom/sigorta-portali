@@ -115,3 +115,39 @@ export type PortfolioPLResponse = {
   outstandingBalance: number;
   netMarginPct: number;
 };
+
+/** `/dashboard/my-performance` — atanmış ofis/saha dosyaları */
+export type MyPerformanceResponse = {
+  totalFiles: number;
+  openFiles: number;
+  closedFiles: number;
+  thisMonthClosed: number;
+  avgCloseDays: number;
+  slaComplianceRate: number;
+  capacityUsageRate: number;
+  satisfactionScore: number | null;
+  slaViolations: number;
+  delayRate: number;
+  avgDelayDays: number;
+  revisionRate: number;
+  riskScore: number;
+};
+
+/** `/dashboard/daily-flow` — Admin A3/A4 */
+export type DailyFlowResponse = {
+  today: {
+    newClaims: number;
+    newEmergencies: number;
+    plannedOperations: number;
+    completedOperations: number;
+  };
+  teamDensity: Array<{ dayIndex: number; label: string; count: number }>;
+  lastWeek: {
+    closedClaims: number;
+    collectionAmount: number;
+    avgCloseDays: number | null;
+    slaCompliancePct: number | null;
+    rangeStart: string;
+    rangeEnd: string;
+  };
+};

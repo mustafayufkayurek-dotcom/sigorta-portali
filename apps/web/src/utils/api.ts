@@ -7,6 +7,8 @@ import {
   persistTokens,
 } from './auth-session';
 
+export { ensureValidSession };
+
 const _base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 export const API = _base.endsWith('/api/v1') ? _base : `${_base}/api/v1`;
 

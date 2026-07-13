@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { authHeader } from '@/utils/api';
+import { API, authHeader, ensureValidSession } from '@/utils/api';
 import {
   reportImageCategoryColor,
   reportImageCategoryLabel,
@@ -61,11 +61,18 @@ function LoadingPlaceholder({ label = 'Yükleniyor...' }: { label?: string }) {
 }
 
 async function fetchImageBlob(imageId: string): Promise<Blob | null> {
+  await ensureValidSession(API);
   for (const delay of STREAM_RETRY_DELAYS_MS) {
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     try {
       const res = await fetch(getReportImageStreamUrl(imageId), { headers: authHeader() });
-      if (res.ok) return await res.blob();
+      if (res.ok) {
+        const blob = await res.blob();
+        // JSON hata gövdesi (Nest NotFound) image sanılmasın
+        if (blob.type && blob.type.includes('application/json')) continue;
+        if (blob.size === 0) continue;
+        return blob;
+      }
     } catch {
       /* sonraki deneme */
     }

@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { API } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
 import { fmtDateTime } from '@/utils/date-helpers';
+import {
+  REPAIR_REPORT_MAX_VERSION,
+  REPAIR_REPORT_VERSION_SLOTS,
+} from '@sigorta/shared';
 
 type RevHistoryItem = {
   id: string;
@@ -74,6 +78,7 @@ export function RevisionHistoryStrip({
   }
   if (!items || items.length === 0) return null;
 
+  const byVersion = new Map(items.map((item) => [item.version, item]));
   const fmtD = (d: string) =>
     fmtDateTime(d, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -84,67 +89,73 @@ export function RevisionHistoryStrip({
         ? 'Onaylandı'
         : 'Taslak';
 
-  const dotTone = (item: RevHistoryItem) =>
-    item.status === 'revision'
-      ? 'border-amber-400 bg-amber-50 text-amber-900'
-      : item.status === 'approved'
-        ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
-        : 'border-slate-300 bg-white text-slate-700';
+  const dotTone = (item: RevHistoryItem | undefined) => {
+    if (!item) return 'border-slate-200 bg-slate-50 text-slate-400';
+    if (item.status === 'revision') return 'border-amber-400 bg-amber-50 text-amber-900';
+    if (item.status === 'approved') return 'border-emerald-500 bg-emerald-50 text-emerald-900';
+    return 'border-slate-300 bg-white text-slate-700';
+  };
 
   const connectorTone = 'bg-red-500';
   const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
   const stemWidth = compact ? 'w-5 sm:w-7' : 'w-7 sm:w-10';
-
-  const multi = items.length > 1;
+  const maxReached = items.some((item) => item.version >= REPAIR_REPORT_MAX_VERSION);
 
   const timeline = (
     <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-      <div className={`relative flex w-full min-w-0 items-center py-1 ${multi ? '' : 'justify-start'}`}>
-        {items.map((item, idx) => (
-          <div
-            key={item.id}
-            className={`flex items-center ${
-              !multi || idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'
-            }`}
-          >
-            {idx === 0 && multi && (
-              <div
-                className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
-                aria-hidden
-              />
-            )}
-            {idx > 0 && (
-              <div
-                className={`relative z-0 h-0.5 min-w-[2rem] flex-1 rounded-full ${connectorTone}`}
-                aria-hidden
-              />
-            )}
+      <div className="relative flex w-full min-w-0 items-center py-1">
+        {REPAIR_REPORT_VERSION_SLOTS.map((slot, idx) => {
+          const item = byVersion.get(slot);
+          const isLast = idx === REPAIR_REPORT_VERSION_SLOTS.length - 1;
+          return (
             <div
-              className="group relative z-10 flex shrink-0 flex-col items-center"
-              title={[statusLabel(item), item.requestedBy, item.requestedAt ? fmtD(item.requestedAt) : ''].filter(Boolean).join(' · ')}
+              key={`slot-${slot}`}
+              className={`flex items-center ${idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}
             >
+              {idx === 0 && (
+                <div
+                  className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
+                  aria-hidden
+                />
+              )}
+              {idx > 0 && (
+                <div
+                  className={`relative z-0 h-0.5 min-w-[1.25rem] flex-1 rounded-full ${connectorTone}`}
+                  aria-hidden
+                />
+              )}
               <div
-                className={`flex items-center justify-center rounded-full border-2 font-semibold tabular-nums shadow-sm ring-2 ring-white ${dotSize} ${dotTone(item)}`}
+                className="group relative z-10 flex shrink-0 flex-col items-center"
+                title={
+                  item
+                    ? [statusLabel(item), item.requestedBy, item.requestedAt ? fmtD(item.requestedAt) : '']
+                        .filter(Boolean)
+                        .join(' · ')
+                    : `Revizyon ${slot} — henüz yok`
+                }
               >
-                {item.version ?? idx + 1}
+                <div
+                  className={`flex items-center justify-center rounded-full border-2 font-semibold tabular-nums shadow-sm ring-2 ring-white ${dotSize} ${dotTone(item)} ${
+                    item ? '' : 'border-dashed'
+                  }`}
+                >
+                  {slot}
+                </div>
+                {!compact && (
+                  <span className="mt-1.5 max-w-[88px] truncate text-center text-[10px] text-slate-500 whitespace-nowrap">
+                    {item ? statusLabel(item) : '—'}
+                  </span>
+                )}
               </div>
-              {!compact && (
-                <span className="mt-1.5 max-w-[88px] truncate text-center text-[10px] text-slate-500 whitespace-nowrap">
-                  {statusLabel(item)}
-                </span>
+              {isLast && (
+                <div
+                  className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
+                  aria-hidden
+                />
               )}
             </div>
-            {/* Tek adımda sol stem yok (rozet solda), sağda kırmızı çizgi zorunlu */}
-            {idx === items.length - 1 && (
-              <div
-                className={`relative z-0 h-0.5 rounded-full ${connectorTone} ${
-                  multi ? `shrink-0 ${stemWidth}` : 'min-w-[3rem] flex-1'
-                }`}
-                aria-hidden
-              />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -162,6 +173,9 @@ export function RevisionHistoryStrip({
           </a>
         </div>
         {timeline}
+        {maxReached && (
+          <p className="mt-1 text-[10px] text-rose-600">0–3 Tamamlandı · 4. Revizyon Yok</p>
+        )}
       </div>
     );
   }
@@ -180,6 +194,9 @@ export function RevisionHistoryStrip({
         </a>
       </div>
       {timeline}
+      {maxReached && (
+        <p className="mt-2 text-[11px] text-rose-600">Revizyon Geçmişi 0–3 ile tamamlandı; 4. Revizyon Oluşturulamaz.</p>
+      )}
       {items.some((item) => item.requestedBy || item.requestedAt) && (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
           {items.map((item) => (

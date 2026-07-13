@@ -2,21 +2,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import ProcessTimeline from '@/components/timeline/ProcessTimeline';
 import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { API, authAxios } from '../claim-detail-utils';
-import { SectionCard } from '../claim-detail-ui';
 import { GorevlerTab } from './GorevlerTab';
 import { IletisimTab } from './IletisimTab';
 import { RandevularTab } from './RandevularTab';
 
-type OperasyonSubTab = 'gorevler' | 'iletisim' | 'randevular' | 'surec' | 'gecmis';
+type OperasyonSubTab = 'gorevler' | 'iletisim' | 'randevular' | 'gecmis';
 
 const OPERASYON_SUB_TABS: { id: OperasyonSubTab; label: string }[] = [
   { id: 'gorevler', label: 'Görevler & Hatırlatmalar' },
   { id: 'iletisim', label: 'İletişim & Günlük' },
   { id: 'randevular', label: 'Randevular' },
-  { id: 'surec', label: 'Süreç Durumu' },
   { id: 'gecmis', label: 'Hareket Geçmişi' },
 ];
 
@@ -151,11 +148,6 @@ export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
       {subTab === 'gorevler' && <GorevlerTab claimId={claimId} claim={claim} />}
       {subTab === 'iletisim' && <IletisimTab claimId={claimId} />}
       {subTab === 'randevular' && <RandevularTab claimId={claimId} claim={claim} />}
-      {subTab === 'surec' && (
-        <SectionCard title="Süreç Durumu">
-          <ProcessTimeline claimFileId={claimId} />
-        </SectionCard>
-      )}
       {subTab === 'gecmis' && <HareketGecmisiPanel claimId={claimId} />}
     </div>
   );

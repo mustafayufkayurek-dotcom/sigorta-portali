@@ -1,6 +1,6 @@
 'use client';
 
-import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
+import { CORPORATE_LOGO_DARK, CORPORATE_LOGO_LIGHT } from '@/constants/brand';
 
 export type BrandLogoVariant = 'navbar' | 'login' | 'card' | 'portal' | 'panel';
 
@@ -22,11 +22,10 @@ const variantStyles: Record<BrandLogoVariant, { shell: string; img: string }> = 
     shell: 'inline-flex shrink-0 items-center justify-start',
     img: 'block h-8 w-auto max-w-[min(128px,32vw)] object-contain object-left sm:h-9 sm:max-w-[160px]',
   },
-  /** Panel navbar — logo çerçeveye tam oturur, mobil/masaüstü ölçek tutarlı */
+  /** Panel topbar — 48–56 px logo; kart/çerçeve yok (marka rolü) */
   panel: {
-    shell:
-      'inline-flex h-11 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-slate-200/90 bg-white pl-2 pr-3 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:h-12 sm:pl-2.5 sm:pr-3.5',
-    img: 'block h-9 w-auto max-w-[min(190px,44vw)] object-contain object-center sm:h-11 sm:max-w-[240px]',
+    shell: 'inline-flex h-12 shrink-0 items-center justify-center overflow-visible sm:h-14',
+    img: 'block h-10 w-auto max-w-[min(220px,48vw)] object-contain object-left sm:h-12 sm:max-w-[260px]',
   },
   login: {
     shell:
@@ -49,20 +48,13 @@ export function BrandLogoMark({
   className = '',
 }: BrandLogoMarkProps) {
   const styles = variantStyles[variant];
-  const displaySrc = src || CORPORATE_LOGO_LIGHT;
+  const lightSrc = src || CORPORATE_LOGO_LIGHT;
+  const darkSrc = CORPORATE_LOGO_DARK;
 
   const inner = (
     <span className={`${styles.shell} ${className}`.trim()}>
-      <img
-        src={displaySrc}
-        alt={alt}
-        className={styles.img}
-        onError={(e) => {
-          if (e.currentTarget.src !== CORPORATE_LOGO_LIGHT) {
-            e.currentTarget.src = CORPORATE_LOGO_LIGHT;
-          }
-        }}
-      />
+      <img src={lightSrc} alt={alt} className={`${styles.img} dark:hidden`} />
+      <img src={darkSrc} alt={alt} className={`${styles.img} hidden dark:block`} />
     </span>
   );
 

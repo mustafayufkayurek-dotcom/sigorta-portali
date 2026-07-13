@@ -11,10 +11,14 @@ interface DashboardHeaderProps {
   actions?: ReactNode;
   hideDefaultActions?: boolean;
   showAcilAction?: boolean;
-  /** Dosya sorumlusu vb.: tek birincil CTA (Yeni Hasar) */
+  /** Dosya sorumlusu vb.: tek birincil CTA (Yeni Hasar) — Acil kapsama göre ayrı */
   singlePrimaryAction?: boolean;
   /** Admin yönetim merkezi mockup düzeni */
   isManagement?: boolean;
+  /** Dosya sorumlusu merkezi — admin görsel dili, finans CTA yok */
+  isOfficeStaff?: boolean;
+  /** Saha operasyon merkezi — D0-paralel kabuk, saha CTA */
+  isFieldStaff?: boolean;
 }
 
 export function DashboardHeader({
@@ -25,9 +29,17 @@ export function DashboardHeader({
   showAcilAction = true,
   singlePrimaryAction = false,
   isManagement = false,
+  isOfficeStaff = false,
+  isFieldStaff = false,
 }: DashboardHeaderProps) {
+  const compactChrome = isManagement || isOfficeStaff || isFieldStaff;
+
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white px-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5 ${isManagement ? 'py-2.5 sm:py-3' : 'py-3 sm:py-4'}`}>
+    <div
+      className={`rounded-xl border border-slate-200 bg-white px-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5 ${
+        compactChrome ? 'py-2.5 sm:py-3' : 'py-3 sm:py-4'
+      }`}
+    >
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -39,8 +51,22 @@ export function DashboardHeader({
                 Admin
               </span>
             ) : null}
+            {isOfficeStaff ? (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                Dosya Sorumlusu
+              </span>
+            ) : null}
+            {isFieldStaff ? (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                Saha
+              </span>
+            ) : null}
           </div>
-          <p className={`mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:mt-1 sm:text-sm ${isManagement ? 'line-clamp-1' : 'line-clamp-2 sm:line-clamp-none'}`}>
+          <p
+            className={`mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:mt-1 sm:text-sm ${
+              compactChrome ? 'line-clamp-1' : 'line-clamp-2 sm:line-clamp-none'
+            }`}
+          >
             {subtitle}
           </p>
         </div>
@@ -52,31 +78,79 @@ export function DashboardHeader({
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/panel/hasar-dosyalari?yeni=1"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-blue-700 sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
                   >
-                    <HASAR_OPERATION_ICON className="h-4 w-4" />
+                    <span className="text-sm font-semibold leading-none">+</span>
                     Yeni Hasar
                   </Link>
                   {showAcilAction ? (
                     <Link
                       href="/panel/acil-yardim?yeni=1"
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-red-200/60 transition-colors hover:bg-red-700 sm:text-sm"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#DC2626] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-red-200/60 transition-colors hover:bg-red-700 sm:text-sm"
                     >
-                      <ACIL_OPERATION_ICON className="h-4 w-4" />
+                      <span className="text-sm font-semibold leading-none">+</span>
                       Yeni Acil
                     </Link>
                   ) : null}
                   <Link
                     href="/panel/pazartesi-toplantisi"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#2563EB] bg-white px-3 py-2 text-xs font-medium text-[#1E40AF] transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
                   >
-                    <CalendarDays className="h-4 w-4 text-blue-600" />
+                    <CalendarDays className="h-4 w-4 text-[#2563EB]" />
                     Pazartesi Toplantısı
                   </Link>
                 </div>
+              ) : isOfficeStaff ? (
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <Link
+                    href="/panel/hasar-dosyalari?yeni=1"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
+                  >
+                    <span className="text-sm font-semibold leading-none">+</span>
+                    Yeni Hasar
+                  </Link>
+                  {showAcilAction ? (
+                    <Link
+                      href="/panel/acil-yardim?yeni=1"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#DC2626] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-red-200/60 transition-colors hover:bg-red-700 sm:text-sm"
+                    >
+                      <span className="text-sm font-semibold leading-none">+</span>
+                      Yeni Acil
+                    </Link>
+                  ) : null}
+                </div>
+              ) : isFieldStaff ? (
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <Link
+                    href="/panel/hasar-dosyalari?status=open"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
+                  >
+                    <HASAR_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Dosyalarıma Git
+                  </Link>
+                  <Link
+                    href="/panel/carilerim"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#2563EB] bg-white px-3 py-2 text-xs font-medium text-[#1E40AF] transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
+                  >
+                    Carilerim
+                  </Link>
+                  {showAcilAction ? (
+                    <Link
+                      href="/panel/acil-yardim"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#DC2626] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-red-200/60 transition-colors hover:bg-red-700 sm:text-sm"
+                    >
+                      <ACIL_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      Acil Dosyalar
+                    </Link>
+                  ) : null}
+                </div>
               ) : (
                 <>
-                  <div className={`grid w-full gap-2 sm:flex sm:w-auto ${!singlePrimaryAction && showAcilAction ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div
+                    className={`grid w-full gap-2 sm:flex sm:w-auto ${
+                      !singlePrimaryAction && showAcilAction ? 'grid-cols-2' : 'grid-cols-1'
+                    }`}
+                  >
                     <Link
                       href="/panel/hasar-dosyalari?yeni=1"
                       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
@@ -100,7 +174,7 @@ export function DashboardHeader({
                   </div>
                   <div className="hidden items-center gap-2 text-xs text-slate-400 lg:flex">
                     <Activity className="h-3.5 w-3.5" />
-                    <span>Son güncelleme: şimdi</span>
+                    <span>Son Güncelleme: Şimdi</span>
                   </div>
                 </>
               )}

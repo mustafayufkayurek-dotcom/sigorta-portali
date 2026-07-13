@@ -26,9 +26,11 @@ function formatWaitingLabel(hours: number) {
 
 interface ApprovalDelayWidgetProps {
   staggerIndex?: number;
+  /** Dosya sorumlusu merkezi: admin kart diline yakın kompakt boşluk */
+  compact?: boolean;
 }
 
-export function ApprovalDelayWidget({ staggerIndex = 0 }: ApprovalDelayWidgetProps) {
+export function ApprovalDelayWidget({ staggerIndex = 0, compact = false }: ApprovalDelayWidgetProps) {
   const { data, isLoading, isError, error, refetch, isFetching } = useApprovalDelays();
   const summary = data?.summary;
   const items = Array.isArray(data?.items) ? data.items : [];
@@ -37,9 +39,10 @@ export function ApprovalDelayWidget({ staggerIndex = 0 }: ApprovalDelayWidgetPro
   return (
     <WidgetShell
       title="Onay Gecikmeleri"
-      subtitle="24 saat üzeri bekleyen onarım raporu onayları"
+      subtitle="24 Saat Üzeri Bekleyen Onarım Raporu Onayları"
       variant="alert"
       staggerIndex={staggerIndex}
+      compact={compact}
       isLoaded={!isLoading}
       error={isError}
       errorMessage={formatWidgetErrorMessage(error, 'Onay gecikmeleri alınamadı.')}

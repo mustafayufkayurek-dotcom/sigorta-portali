@@ -37,6 +37,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
 
   rsync -avz --delete \
     --exclude node_modules --exclude dist --exclude .DS_Store --exclude '._*' \
+    --exclude uploads --exclude 'uploads/**' \
     "$PROJECT_DIR/apps/backend/" "$REMOTE_HOST:$REMOTE_APP/apps/backend/"
 
   rsync -avz --delete \
@@ -46,7 +47,12 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz \
     "$PROJECT_DIR/Dockerfile.backend" \
     "$PROJECT_DIR/Dockerfile.web" \
+    "$PROJECT_DIR/docker-compose.prod.yml" \
     "$REMOTE_HOST:$REMOTE_APP/"
+
+  rsync -avz \
+    "$PROJECT_DIR/nginx/nginx.conf" \
+    "$REMOTE_HOST:$REMOTE_APP/nginx/nginx.conf"
 
   rsync -avz \
     "$SCRIPT_DIR/"*.sh \

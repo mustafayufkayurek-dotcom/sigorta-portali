@@ -1,37 +1,34 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useActivityFeed } from '../../hooks/use-dashboard-data';
+import { useDailyFlow } from '../../hooks/use-dashboard-data';
 
-const DAY_LABELS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'] as const;
+type DensityPoint = { dayIndex: number; label: string; count: number };
 
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+type TeamWorkloadChartProps = {
+  compact?: boolean;
+  /** Parent zaten daily-flow çekiyorsa prop ver; yoksa hook kullanılır */
+  density?: DensityPoint[];
+  isLoading?: boolean;
+};
 
-export function TeamWorkloadChart({ compact = false }: { compact?: boolean }) {
-  const { data, isLoading } = useActivityFeed(120);
-  const items = Array.isArray(data?.items) ? data.items : [];
+export function TeamWorkloadChart({
+  compact = false,
+  density: densityProp,
+  isLoading: loadingProp,
+}: TeamWorkloadChartProps) {
+  const query = useDailyFlow();
+  const fromApi = densityProp ?? query.data?.teamDensity ?? [];
+  const isLoading = loadingProp ?? (densityProp === undefined && query.isLoading);
 
-  const { counts, max } = useMemo(() => {
-    const today = startOfDay(new Date());
-    const weekStart = new Date(today);
-    weekStart.setDate(weekStart.getDate() - 6);
-
-    const dayCounts = new Array(7).fill(0) as number[];
-    for (const item of items) {
-      if (!item.createdAt) continue;
-      const created = new Date(item.createdAt);
-      if (created < weekStart) continue;
-      const dayIdx = (created.getDay() + 6) % 7;
-      dayCounts[dayIdx] += 1;
-    }
-
-    const peak = Math.max(...dayCounts, 1);
-    return { counts: dayCounts, max: peak };
-  }, [items]);
+  const counts = fromApi.map((d) => d.count);
+  const max = Math.max(...counts, 1);
+  const labels = fromApi.length === 7
+    ? fromApi
+    : ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((label, dayIndex) => ({
+        dayIndex,
+        label,
+        count: 0,
+      }));
 
   if (isLoading) {
     return (
@@ -43,19 +40,28 @@ export function TeamWorkloadChart({ compact = false }: { compact?: boolean }) {
     <div className="mt-1.5">
       <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Ekip Yoğunluğu</p>
       <div className={`mt-1 flex items-end justify-between gap-0.5 ${compact ? 'h-10' : 'h-16'}`}>
-        {DAY_LABELS.map((label, idx) => {
-          const value = counts[idx];
-          const heightPct = Math.max(8, Math.round((value / max) * 100));
+        {labels.map((item) => {
+          const heightPct = Math.max(8, Math.round((item.count / max) * 100));
+          const isToday =
+            item.dayIndex === ((new Date().getDay() + 6) % 7);
           return (
-            <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
+            <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
               <div className={`flex w-full items-end justify-center ${compact ? 'h-8' : 'h-14'}`}>
                 <div
-                  className="w-full max-w-[28px] rounded-t-md bg-[#1e3a5f] transition-all dark:bg-blue-800"
+                  className={`w-full max-w-[28px] rounded-t-md transition-all ${
+                    isToday ? 'bg-[#2563EB]' : 'bg-[#1e3a5f] dark:bg-blue-800'
+                  }`}
                   style={{ height: `${heightPct}%` }}
-                  title={`${label}: ${value} hareket`}
+                  title={`${item.label}: ${item.count} hareket`}
                 />
               </div>
-              <span className="text-[10px] font-medium text-slate-500">{label}</span>
+              <span
+                className={`text-[10px] font-medium ${
+                  isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
+                }`}
+              >
+                {item.label}
+              </span>
             </div>
           );
         })}

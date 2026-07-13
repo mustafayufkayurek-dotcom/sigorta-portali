@@ -4,12 +4,11 @@ import Link from 'next/link';
 import {
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
-import { fmtCurrency, fmtCurrencyCompact } from './claim-detail-utils';
+import { fmtCurrency } from './claim-detail-utils';
 
 type FinansMetrik = {
   label: string;
   value: string;
-  fullValue?: string;
   accent?: string;
   highlight?: boolean;
 };
@@ -31,10 +30,9 @@ export function FinansMetrikHucre({ metrik }: { metrik: FinansMetrik }) {
     >
       <p className="text-[11px] font-medium text-slate-500 leading-none">{metrik.label}</p>
       <p
-        className={`mt-1.5 text-lg font-semibold tabular-nums tracking-tight leading-none ${
-          metrik.accent ?? 'text-slate-900'
+        className={`mt-1.5 text-base font-semibold tabular-nums tracking-tight leading-none ${
+          metrik.accent ?? 'text-slate-800'
         }`}
-        title={metrik.fullValue}
       >
         {metrik.value}
       </p>
@@ -50,8 +48,7 @@ function metrikFromAmount(
   const n = amount ?? 0;
   return {
     label,
-    value: fmtCurrencyCompact(n),
-    fullValue: fmtCurrency(n),
+    value: fmtCurrency(n),
     highlight: opts?.highlight,
     accent: opts?.accent,
   };
@@ -147,10 +144,10 @@ export function FinansRaporOzeti({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className={`flex items-center justify-between gap-3 px-5 py-3 ${compact ? 'bg-slate-800 py-2.5' : 'bg-slate-900'}`}>
+      <div className={`flex items-center justify-between gap-3 px-5 py-3 ${compact ? 'bg-slate-800 py-2.5' : 'bg-slate-800'}`}>
         <div>
           <p className="text-[11px] font-medium text-slate-400 leading-none">Finans Özeti</p>
-          <p className={`font-semibold text-white mt-1 ${compact ? 'text-xs' : 'text-sm'}`}>
+          <p className={`font-medium text-slate-100 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}>
             {rapor ? `${rapor.reportNo} · ${repairReportStatusLabel(rapor.status)}` : 'Dosya Mali Durumu'}
           </p>
         </div>

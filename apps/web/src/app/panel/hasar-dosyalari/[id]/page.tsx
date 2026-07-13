@@ -29,6 +29,15 @@ import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
+import { ClaimStageStrip } from '@/components/damage-reports/ClaimStageStrip';
+import {
+  ClipboardList,
+  FileText,
+  FolderOpen,
+  Settings2,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -74,27 +83,16 @@ function fmtDate(d: string | null | undefined) {
   const dt = new Date(d);
   return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('tr-TR');
 }
-function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
-}
-function fmtCurrencyCompact(n: number | null | undefined) {
-  if (n == null) return '—';
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `₺${(n / 1_000_000).toFixed(1)}M`;
-  if (abs >= 10_000) return `₺${(n / 1_000).toFixed(0)}K`;
-  return fmtCurrency(n);
-}
 
 // ─── Gruplandırılmış Tab Yapısı ───────────────────────────────────────────────
 type GroupTab = 'genel-bilgiler' | 'raporlar' | 'evraklar' | 'finans' | 'operasyon';
 
-const GROUP_TABS: { id: GroupTab; label: string; icon: string }[] = [
-  { id: 'genel-bilgiler', label: 'Genel Bilgiler', icon: '📋' },
-  { id: 'raporlar',       label: 'Raporlar',       icon: '📊' },
-  { id: 'evraklar',       label: 'Evraklar',        icon: '📁' },
-  { id: 'finans',         label: 'Finans',           icon: '💰' },
-  { id: 'operasyon',      label: 'Operasyon',        icon: '⚙️' },
+const GROUP_TABS: { id: GroupTab; label: string; Icon: LucideIcon }[] = [
+  { id: 'genel-bilgiler', label: 'Genel Bilgiler', Icon: ClipboardList },
+  { id: 'raporlar',       label: 'Raporlar',       Icon: FileText },
+  { id: 'evraklar',       label: 'Evraklar',        Icon: FolderOpen },
+  { id: 'finans',         label: 'Finans',           Icon: Wallet },
+  { id: 'operasyon',      label: 'Operasyon',        Icon: Settings2 },
 ];
 
 
@@ -242,6 +240,16 @@ function DosyaSayfaUstu({
               </a>
             </p>
           )}
+          <div className="mt-2 max-w-xl">
+            <ClaimStageStrip
+              source={{
+                reportStatus: latestReport?.status ?? null,
+                claimStatusCode: claim.currentStatus?.code ?? null,
+                claimFile: claim,
+              }}
+              compact
+            />
+          </div>
           {ihbarChip !== '—' && <p className="text-xs text-slate-500 mt-0.5">{ihbarChip}</p>}
         </div>
         {latestReport && (
@@ -249,12 +257,6 @@ function DosyaSayfaUstu({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
                 {repairReportStatusLabel(latestReport.status)}
-              </span>
-              <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
-                Satış {fmtCurrencyCompact(latestReport.totalSalesAmount)}
-              </span>
-              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 tabular-nums">
-                Kâr {fmtCurrencyCompact(latestReport.grossProfit)}
               </span>
               {reportEditHref && (
                 <Link
@@ -1407,12 +1409,16 @@ export default function ClaimFileDetailPage() {
           if (isFieldStaff && tab.id === 'finans') return false;
           if (tab.id === 'finans' && !canViewFinancials) return false;
           return true;
-        }).map((tab) => (
-          <button type="button" key={tab.id} onClick={() => setActiveGroup(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeGroup === tab.id ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-            <span>{tab.icon}</span>
+        }).map((tab) => {
+          const Icon = tab.Icon;
+          const active = activeGroup === tab.id;
+          return (
+          <button type="button" key={tab.id} onClick={() => setActiveGroup(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${active ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Icon className={`h-3.5 w-3.5 ${active ? 'text-slate-700' : 'text-slate-400'}`} strokeWidth={1.75} />
             {tab.label}
           </button>
-        ))}
+          );
+        })}
         </div>
       </div>
 

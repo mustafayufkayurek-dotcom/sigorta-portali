@@ -54,7 +54,7 @@ export default function RepairReportReviseModal({
         <div className="px-6 py-4 border-b border-slate-100">
           <h3 className="text-base font-semibold text-slate-900">Rapor Revizyonu</h3>
           <p className="text-xs text-slate-500 mt-1">
-            {reportNo}{versionNo ? ` · v${versionNo}` : ''} — onaylı sürüm arşivlenir; yeni taslak açılır ve revizyon geçmişine kaydedilir.
+            {reportNo}{versionNo != null ? ` · v${versionNo}` : ''} — onaylı sürüm arşivlenir; yeni taslak açılır ve revizyon geçmişine kaydedilir (0–3; 4. Revizyon Yok).
           </p>
         </div>
         <div className="px-6 py-4 space-y-4">

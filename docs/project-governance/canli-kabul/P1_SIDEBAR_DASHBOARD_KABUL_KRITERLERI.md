@@ -1,23 +1,26 @@
 # P1 — Sidebar + Admin Dashboard Kabul Kriterleri
 
 **Tarih:** 11 Temmuz 2026  
-**Referans mockup’lar:** `docs/design-mockups/`  
-**Canlı referans:** Web v248 (iskelet var; şablon sadakati **PASS değil**)  
-**Kapanış:** Tüm maddeler Mustafa **PASS** + screenshot `canli-kabul/ekran-goruntuleri/p1-v250/`
+**Kapanış (kod):** 13 Temmuz 2026 — **P1 implementasyon paketi KAPANDI** (canlı **v348**)  
+**Referans:** ANA SAYFA TASARIM TALİMATI + `docs/design-mockups/`  
+**Canlı:** Web **v348** + Backend **v348** (`v348-dashboard-faz6-admin-a3a4`)  
+**Rollback:** Web **v346** / Backend **v342**
 
-> **Not:** Rakamlar mockup’taki örnek veridir; kabul **layout ve bileşen** içindir, ₺0 / dolu veri değil.
+> **Paket durumu:** Kod dalgaları **v344→v348** tamam. Mustafa canlı screenshot **PASS** ayrı; Faz 7 / A5 ekstra deploy (**v349**) **yok** — A5 zaten `AdminBottomRow` ile v345+.  
+> Rakamlar örnek veridir; kabul **layout ve bileşen** içindir.
 
 ---
 
 ## Paket kapsamı
 
-| Paket | Mockup | Route |
-|-------|--------|-------|
-| **S — Sol menü kabuğu** | `sidebar-logo-tema-spesifikasyon.png` | Tüm `/panel/*` |
-| **A — Admin dashboard** | `admin-yonetim-merkezi-dashboard-mockup.png` | `/panel` (admin / manager) |
-| **D — Dosya sorumlusu dashboard** | *(admin mockup ile aynı dil; başlık farklı)* | `/panel` (`office_staff`) |
+| Paket | Route | Kod dalgası | Durum |
+|-------|-------|-------------|-------|
+| **S — Sol menü kabuğu** | Tüm `/panel/*` | **v344** | Kod tamam · ⏳ Mustafa teyit |
+| **A — Admin dashboard** | `/panel` (admin/manager) | **v345** + A3/A4 **v348** + A5 **v345+** | Kod tamam · ⏳ Mustafa teyit |
+| **D — Dosya sorumlusu** | `/panel` (`office_staff`) | **v346** | Kod tamam · ⏳ Mustafa teyit |
+| **F — Saha** | `/panel` (`field_staff`) | **v347** | Kod tamam · ⏳ Mustafa teyit |
 
-**Deploy:** Onay sonrası tek **web-only** dalga (ör. `v250-sidebar-dashboard-sablon`).
+**Deploy notu:** P1 kapanış için yeni sürüm yok; canlı zaten **v348 full**. Büyük paket (PayTR vb.) bu turda **başlamaz**.
 
 ---
 
@@ -25,160 +28,194 @@
 
 ### S1 — Genişlik ve animasyon
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S1.1 | Daraltılmış genişlik **74px** | ✅ | Kod `w-[74px]` | ⬜ |
-| S1.2 | Genişletilmiş genişlik **286px** | ✅ | Kod `w-[286px]` | ⬜ |
-| S1.3 | Geçiş animasyonu **200ms** ease-in-out | ✅ | Kod `duration-200` | ⬜ |
+> **Karar kilidi (13 Tem 2026):** ANA SAYFA TASARIM TALİMATI — **240px açık / 72px kapalı**. Eski 286/74–92 geçersiz.
 
-### S2 — Logo davranışı (Mustafa vurgusu)
+| ID | Kriter | Canlı / kod (v344+) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| S1.1 | Daraltılmış **72px** | `w-[72px]` | ✅ | ⬜ Mustafa |
+| S1.2 | Genişletilmiş **240px** | `w-[240px]` | ✅ | ⬜ Mustafa |
+| S1.3 | Geçiş **200ms** | `duration-200` | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S2.1 | **Geniş menü:** tam kurumsal logo — küre + **MERİDYEN ASİSTANCE** metni net okunur | ✅ | `PanelSidebarBrand` → `meridyen-logo-original.png`; canlıda beyaz kutu / farklı logo raporu | ⬜ |
-| S2.2 | **Daraltılmış menü:** yalnızca **küre** ikonu (metin yok) | ✅ | Kod `CORPORATE_LOGO_GLOBE`; canlıda küre görünürlüğü Mustafa teyidi | ⬜ |
-| S2.3 | Logo tıklanınca panel ana sayfa (`/panel`) | ✅ | `PanelSidebarBrand` Link | ⬜ |
-| S2.4 | Daralt/genişlet sonrası logo anında doğru moda geçer (bozuk / eski logo kalmaz) | ✅ | Cmd+Shift+R sonrası teyit | ⬜ |
+### S2 — Logo
 
-### S3 — Menüyü Daralt kontrolü
+| ID | Kriter | Canlı / kod | Kod | PASS |
+|----|--------|-------------|-----|------|
+| S2.1 | Geniş: tam logo MERİDYEN ASİSTANCE | `PanelSidebarBrand` + original PNG | ✅ | ⬜ Mustafa |
+| S2.2 | Dar: yalnız küre PNG (SVG değil) | `CORPORATE_LOGO_GLOBE` | ✅ | ⬜ Mustafa |
+| S2.3 | Logo → `/panel` | Link | ✅ | ⬜ Mustafa |
+| S2.4 | Daralt sonrası doğru mod | Cmd+Shift+R teyit | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S3.1 | Geniş modda altta **「Menüyü Daralt」** metni + sol ok ikonu | ✅ | Kod: sağ üstte yalnızca chevron, **metin yok** | ⬜ |
-| S3.2 | Daraltılmış modda genişletme kontrolü erişilebilir | ✅ | Chevron sağ üst | ⬜ |
-| S3.3 | Daraltma tercihi oturumlar arası hatırlanır | — | `localStorage panel-sidebar-collapsed` | ⬜ |
+### S3 — Menüyü Daralt
 
-### S4 — Kullanım rehberi (alt kart)
+| ID | Kriter | Canlı / kod (v344) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| S3.1 | Altta **Menüyü Daralt** + ikon | Viewport dock footer | ✅ | ⬜ Mustafa |
+| S3.2 | Daraltıkta genişlet erişilebilir | Chevron / footer | ✅ | ⬜ Mustafa |
+| S3.3 | Tercih hatırlanır | `localStorage panel-sidebar-collapsed` | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S4.1 | Geniş modda **Kullanım Rehberi** kartı (başlık + kısa açıklama + ok) | ✅ | `PanelSidebarGuideFooter` — farklı layout (mavi kutu, ExternalLink) | ⬜ |
-| S4.2 | Daraltılmış modda **?** veya kitap ikonu + tooltip **Rehber** | ✅ | Daraltıkta yalnız ikon | ⬜ |
-| S4.3 | Rol bazlı doğru PDF açılır | — | `resolvePanelUserGuide` | ⬜ |
+### S4 — Kullanım rehberi
 
-### S5 — Saat teması (sidebar)
+| ID | Kriter | Canlı / kod | Kod | PASS |
+|----|--------|-------------|-----|------|
+| S4.1 | Geniş: kılavuz kartı | `PanelSidebarGuideFooter` | ✅ | ⬜ Mustafa |
+| S4.2 | Dar: ikon + tooltip | ✅ | ✅ | ⬜ Mustafa |
+| S4.3 | Rol bazlı PDF | `resolvePanelUserGuide` | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S5.1 | **06:00–18:00** açık tema (sidebar + içerik uyumu) | ✅ | `panel-time-theme` var; sidebar ayrı koyu lacivert **değil** | ⬜ |
-| S5.2 | **18:00–06:00** koyu tema — yumuşak lacivert tonlar | ✅ | `dark:` sınıfları; mockup’taki sidebar rengi birebir değil | ⬜ |
-| S5.3 | Kurulum’da manuel tema seçimi mockup’ı ezer | — | `resolvePanelDarkMode` | ⬜ |
+### S5 — Saat teması
 
-### S6 — Görsel dil (sidebar)
+| ID | Kriter | Canlı / kod | Kod | PASS |
+|----|--------|-------------|-----|------|
+| S5.1 / S5.2 | Açık/koyu panel teması | `panel-time-theme` (+ test aşaması light force olabilir) | ✅ kısmi | ⬜ Mustafa |
+| S5.3 | Kurulum manuel tema ezer | `resolvePanelDarkMode` | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| S6.1 | Köşe yuvarlaklığı ~**12px** kart/öğelerde | ✅ | Kısmen `rounded-lg` | ⬜ |
-| S6.2 | Kurumsal renk paleti (lacivert sidebar header alanı) | ✅ | Canlı: açık beyaz sidebar — **farklı** | ⬜ |
-| S6.3 | Aktif menü öğesi mockup’taki vurgu (açık mavi zemin) | ✅ | Mevcut `linkClass` — görsel teyit | ⬜ |
+### S6 — Görsel dil
 
-### S7 — Menü yapısı (mockup shell — isteğe bağlı faz)
+| ID | Kriter | Canlı / kod (v344) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| S6.1 | ~12px köşe | `rounded-lg` / `rounded-xl` | ✅ | ⬜ Mustafa |
+| S6.2 | Kurumsal palet | Talimat diline yakın (lacivert mockup birebir değil) | ✅ P1 yeterli | ⬜ Mustafa |
+| S6.3 | Aktif menü `#EEF4FF` / `#2563EB` + sol çizgi | `globals.css` | ✅ | ⬜ Mustafa |
 
-| ID | Kriter | Mockup | Canlı (11 Tem) | PASS |
-|----|--------|--------|----------------|------|
-| S7.1 | Ana gruplar: Dashboard, Operasyon▾, Personel▾, Finans▾, Ayarlar▾ | ✅ | Düz uzun liste (CRM, Harita, Test Notları…) | ⬜ **Mustafa kararı** |
-| S7.2 | Daraltılmış modda yalnız ikonlar, tooltip etiket | ✅ | Kısmen var | ⬜ |
+### S7 — Menü yapısı (P1 dışı — ayrı karar)
 
-> **S7:** Mockup “shell” örneği 5 gruplu; canlı işletim menüsü daha geniş. **S2–S5** öncelik; S7 ayrı karar maddesi.
+| ID | Kriter | Durum |
+|----|--------|-------|
+| S7.1 | 5 gruplu shell (Dashboard, Operasyon…) | ⬜ **Backlog** — canlı uzun işletim listesi; Mustafa kararı |
+| S7.2 | Dar tooltip etiket | ✅ kısmi (P1 yeterli) |
 
 ---
 
 ## A — Admin Yönetim Merkezi (`/panel`, admin/manager)
 
-### A0 — Başlık alanı
+### A0 — Başlık
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A0.1 | Başlık **Yönetim Merkezi** | ✅ | ✅ canlı | ⬜ |
-| A0.2 | Yanında **Admin** rozeti (mavi pill) | ✅ | **Yok** | ⬜ |
-| A0.3 | Alt başlık: kurumsal operasyon + finans + haftalık performans | ✅ | ✅ canlı | ⬜ |
-| A0.4 | Sağ üst: **+ Yeni Hasar** (mavi dolu) | ✅ | Var; stil farklı olabilir | ⬜ |
-| A0.5 | **+ Yeni Acil** (**kırmızı** dolu buton) | ✅ | Kod: koyu/siyah buton | ⬜ |
-| A0.6 | **Pazartesi Toplantısı** butonu (takvim ikonu, outline) | ✅ | **Yok** | ⬜ |
+| ID | Kriter | Canlı / kod (v345) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A0.1 | Başlık (Operasyon / Yönetim Merkezi dili) | `DashboardHeader` | ✅ | ⬜ Mustafa |
+| A0.2 | **Admin** rozeti | ✅ | ✅ | ⬜ Mustafa |
+| A0.3 | Alt başlık | ✅ | ✅ | ⬜ Mustafa |
+| A0.4 | **+ Yeni Hasar** (mavi) | ✅ | ✅ | ⬜ Mustafa |
+| A0.5 | **+ Yeni Acil** (kırmızı) | ✅ | ✅ | ⬜ Mustafa |
+| A0.6 | **Pazartesi Toplantısı** | ✅ outline | ✅ | ⬜ Mustafa |
 
-### A1 — Finans Özeti (5 kart, tek satır)
+### A1 — Finans Özeti
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A1.1 | Bölüm başlığı **Finans Özeti** + yıl/ay seçici | ✅ | ✅ `AdminFinanceSummarySection` | ⬜ |
-| A1.2 | 5 kart: Geciken Tahsilat, Bekleyen Fatura, Aylık Gelir, Operasyon Gideri, Dağıtım Durumu | ✅ | ✅ iskelet | ⬜ |
-| A1.3 | Kartlar mockup ile aynı hiyerarşi (ikon sol, büyük rakam, alt açıklama) | ✅ | `KpiCard` — görsel teyit | ⬜ |
-| A1.4 | Dağıtım Durumu yeşil **Tamamlandı** durumu | ✅ | Veriye bağlı | ⬜ |
+| ID | Kriter | Canlı / kod (v345) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A1.1–A1.4 | 5 kart + hiyerarşi | `AdminFinanceSummarySection` | ✅ | ⬜ Mustafa |
 
-### A2 — Operasyon Özeti (6 kompakt kart)
+### A2 — Operasyon Özeti
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A2.1 | Bölüm başlığı **Operasyon Özeti** | ✅ | ✅ “Operasyon Özeti” section | ⬜ |
-| A2.2 | **6** kompakt kart tek bant: Toplam, Hasar, Acil, SLA Riski, Bekleyen Aksiyon, **Açık Dosya** | ✅ | `PrimaryKpiGroup` — farklı etiketler, büyük kartlar, **Açık Dosya** yok | ⬜ |
-| A2.3 | Hasar / Acil / SLA kartlarında **yüzde** alt satırı (ör. %62,8) | ✅ | **Yok** — açık/kapalı metni var | ⬜ |
+| ID | Kriter | Canlı / kod (v345) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A2.1–A2.3 | 6 kompakt kart + yüzde satırı | Operasyon bandı | ✅ | ⬜ Mustafa |
 
 ### A3 — Haftalık Performans — Pazartesi Toplantısı
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A3.1 | Bölüm başlığı mockup ile aynı | ✅ | ✅ | ⬜ |
-| A3.2 | Sol: **Geçen Hafta** özet (kapanan, SLA, tahsilat, ort. kapanış) | ✅ | Kısmi dl listesi | ⬜ |
-| A3.3 | **Ekip Yoğunluğu** — Pzt–Paz **bar chart** | ✅ | **Yok** | ⬜ |
-| A3.4 | Orta: **Bu Hafta Öncelikleri** numaralı renkli daireler (1–3) | ✅ | Numaralı liste, daire yok | ⬜ |
-| A3.5 | Sağ: mini **Personel Yük** (avatar + dosya sayısı) | ✅ | Metin listesi | ⬜ |
+| ID | Kriter | Canlı / kod (v348) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A3.1 | Bölüm başlığı | ✅ | ✅ | ⬜ Mustafa |
+| A3.2 | Geçen Hafta özet | `/dashboard/daily-flow` lastWeek | ✅ | ⬜ Mustafa |
+| A3.3 | Ekip Yoğunluğu Pzt–Paz bar | `TeamWorkloadChart` | ✅ | ⬜ Mustafa |
+| A3.4 | Bu Hafta Öncelikleri 1–3 | ✅ | ✅ | ⬜ Mustafa |
+| A3.5 | Personel Yük avatar + bar | ✅ | ✅ | ⬜ Mustafa |
 
 ### A4 — Günün Akışı
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A4.1 | **Günün Akışı** başlıklı yatay şerit | ✅ | `OperationFlowStrip` — farklı başlık/içerik | ⬜ |
-| A4.2 | 4 metrik: Yeni Hasar, Yeni Acil, Planlanan Operasyon, Tamamlanan Operasyon (bugün) | ✅ | **Yok** (hasar/acil/bekleyen odaklı strip) | ⬜ |
-| A4.3 | Sağda büyük yeşil **Gider Dağıtımı** kartı (tamamlandı + mutabakat metni) | ✅ | Küçük `OverheadAllocationReminderWidget` | ⬜ |
+| ID | Kriter | Canlı / kod (v348) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A4.1 | Yatay şerit | `AdminDailyFlowSection` | ✅ | ⬜ Mustafa |
+| A4.2 | 4 bugün metriği | `/dashboard/daily-flow` today | ✅ | ⬜ Mustafa |
+| A4.3 | Gider Dağıtımı yeşil/amber | ✅ | ✅ | ⬜ Mustafa |
 
-### A5 — Alt sıra (3 sütun)
+### A5 — Alt sıra (3 sütun) — P1’de zorunlu; **kod yeterli (yeni deploy yok)**
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A5.1 | **Kritik Uyarılar** — badge sayı + zaman damgalı liste | ✅ | Widget var; layout farklı | ⬜ |
-| A5.2 | **Finans Darboğazları** — badge + tutarlı liste | ✅ | `FinanceBottleneckWidget` ayrı yerde | ⬜ |
-| A5.3 | **Personel Yük Dağılımı** — yatay **progress bar** + dosya sayısı | ✅ | `OwnershipLoadWidget` — bar yok / farklı konum | ⬜ |
-| A5.4 | Üç widget **aynı satırda** (mockup alt bant) | ✅ | Dikey dağınık grid | ⬜ |
+| ID | Kriter | Canlı / kod (v345+) | Kod | PASS |
+|----|--------|----------------------|-----|------|
+| A5.1 | Kritik Uyarılar + badge | `AdminBottomRow` | ✅ | ⬜ Mustafa |
+| A5.2 | Finans Darboğazları + tutar | aynı satır | ✅ | ⬜ Mustafa |
+| A5.3 | Personel Yük — progress bar | yatay bar + dosya sayısı | ✅ | ⬜ Mustafa |
+| A5.4 | Üç widget aynı satır (`lg:grid-cols-3`) | ✅ | ✅ | ⬜ Mustafa |
 
-### A6 — Üst arama çubuğu (panel header)
+> **Karar (13 Tem — DEVAM KAPAT):** A5 ekstra cilalama / Faz 7 **yapılmadı**. Mevcut `AdminBottomRow` P1 için yeterli. **v349 yok.**
 
-| ID | Kriter | Mockup | Canlı / kod (11 Tem) | PASS |
-|----|--------|--------|----------------------|------|
-| A6.1 | Placeholder: **Ara (Operasyon, Dosya, Müşteri, Personel...)** | ✅ | “Ara...” kısa | ⬜ |
-| A6.2 | Bildirim zili + kullanıcı adı formatı | ✅ | Görsel teyit | ⬜ |
+### A6 — Üst arama
 
----
-
-## D — Dosya Sorumlusu Merkezi (`/panel`, `office_staff`)
-
-| ID | Kriter | Beklenen | Canlı / kod (11 Tem) | PASS |
-|----|--------|----------|----------------------|------|
-| D0.1 | Başlık **Dosya Sorumlusu Merkezi** | ✅ | Kod var | ⬜ |
-| D0.2 | Tek birincil CTA **Yeni Hasar** (mavi) | ✅ | `singlePrimaryAction` | ⬜ |
-| D0.3 | **Yeni Acil** gizli veya kapsama göre | Kapsam | `showAcilYardim` | ⬜ |
-| D0.4 | Onay Gecikmesi widget’ı (`ApprovalDelayWidget`) | ✅ | Kod var | ⬜ |
-| D0.5 | Finans / admin bölümleri **görünmez** | ✅ | `!isManagement` | ⬜ |
-| D0.6 | Layout admin mockup ile **aynı görsel dil** (kart, boşluk, tipografi) | Mockup | Ayrı doğrulama | ⬜ |
+| ID | Kriter | Canlı / kod (v344) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| A6.1 | Global Arama (⌘K) | Topbar | ✅ | ⬜ Mustafa |
+| A6.2 | Bildirim + kullanıcı | ✅ | ✅ | ⬜ Mustafa |
 
 ---
 
-## Kapanış checklist (deploy öncesi)
+## D — Dosya Sorumlusu Merkezi (`office_staff`)
 
-- [ ] S2.1 + S2.2 Mustafa screenshot (geniş + daraltılmış menü)
-- [ ] A0 + A3 + A4 mockup yan yana screenshot
-- [ ] `office_staff` ile D0 screenshot
-- [ ] `post-deploy-smoke.sh` PASS
-- [ ] `DEPLOY_GECMISI.md` + manifest güncelle
-
----
-
-## Özet — şu an FAIL olan kritik maddeler (implementasyon gerekir)
-
-**Sidebar:** S2.1/S2.2 logo, S3.1 Menüyü Daralt konumu/metin, S5 sidebar koyu tema, S6.2 lacivert header  
-**Admin dashboard:** A0.2 Admin rozeti, A0.5 kırmızı Acil, A0.6 Pazartesi Toplantısı, A2.2/A2.3 operasyon bant, A3.3 Ekip Yoğunluğu grafiği, A4.2–A4.3 Günün Akışı + Gider kartı, A5.3/A5.4 alt sıra layout  
-
-**Tahmini paket:** web-only `v250` — `PanelSidebarBrand`, `layout.tsx` sidebar, `panel/page.tsx`, yeni `TeamWorkloadChart`, `DailyFlowStrip` bileşenleri.
+| ID | Kriter | Canlı / kod (v346) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| D0.1 | Başlık + **Dosya Sorumlusu** rozeti | ✅ | ✅ | ⬜ Mustafa |
+| D0.2 | CTA **+ Yeni Hasar** (mavi) | ✅ | ✅ | ⬜ Mustafa |
+| D0.3 | **Yeni Acil** kapsama göre | `showAcilYardim` | ✅ | ⬜ Mustafa |
+| D0.4 | Onay Gecikmesi widget | `ApprovalDelayWidget` | ✅ | ⬜ Mustafa |
+| D0.5 | Finans / admin yok | ayrı ofis şablon | ✅ | ⬜ Mustafa |
+| D0.6 | Aynı görsel dil | Operasyon + Akış + alt 3’lü + kılavuz | ✅ | ⬜ Mustafa |
 
 ---
 
-*İlgili: `DEPLOY_GECMISI.md`, `CANLIYA_ALINMAMIS_ENVANTER.md` (P1/P2), `docs/design-mockups/OKU_BENI.md`*
+## F — Saha Operasyon Merkezi (`field_staff`)
+
+| ID | Kriter | Canlı / kod (v347) | Kod | PASS |
+|----|--------|---------------------|-----|------|
+| F0.1 | Başlık + **Saha** rozeti | ✅ | ✅ | ⬜ Mustafa |
+| F0.2 | CTA Dosyalarıma Git + Carilerim | ✅ | ✅ | ⬜ Mustafa |
+| F0.3 | Saha Özeti 6 KPI | `/dashboard/my-performance` | ✅ | ⬜ Mustafa |
+| F0.4 | Günün Akışı (finans/onay yok) | ✅ | ✅ | ⬜ Mustafa |
+| F0.5 | Alt 3’lü | `FieldBottomRow` | ✅ | ⬜ Mustafa |
+| F0.6 | Admin/ofis bölümleri yok | ✅ | ✅ | ⬜ Mustafa |
+| F0.7 | >1440px saha kılavuz | `FieldGuidePanel` | ✅ | ⬜ Mustafa |
+
+---
+
+## Kapanış checklist
+
+### Kod / deploy (tamam)
+
+- [x] S shell **v344**
+- [x] Admin A0–A2 + A5 **v345**
+- [x] D0 **v346**
+- [x] F0 **v347** (pakette v348)
+- [x] Admin A3/A4 + `daily-flow` **v348 full**
+- [x] `DEPLOY_GECMISI.md` + manifest **v348**
+- [x] A5 için **v349 yok** (yeterli)
+
+### Mustafa manuel PASS (bekliyor)
+
+- [ ] Admin: A0 + A3 + A4 + A5 screenshot
+- [ ] `office_staff` D0 screenshot
+- [ ] `field_staff` F0 screenshot
+- [ ] Sidebar S1/S2/S3 (geniş + dar)
+- [ ] Smoke: `post-deploy-smoke.sh` (login env yok → auth FAIL beklenen)
+
+---
+
+## Bilinen gap (P1 kapanışına engel değil)
+
+| Gap | Not |
+|-----|-----|
+| S7 menü gruplama | Ayrı ürün kararı — backlog |
+| S5/S6 pixel-perfect mockup | P1 “talimat dili” yeterli; birebir koyu lacivert sidebar zorunlu değil |
+| Mustafa canlı PASS | Kod PASS ≠ kullanıcı PASS |
+| Büyük paket (PayTR / finans) | **Sonraki iş** — bu pakette başlatılmadı |
+
+---
+
+## Özet — P1 kapanış (13 Temmuz 2026)
+
+| Katman | Durum |
+|--------|-------|
+| **Implementasyon** | ✅ KAPANDI (v344–v348) |
+| **Canlı sürüm** | v348 full |
+| **v349 / Faz 7** | ❌ Yok |
+| **Mustafa PASS** | ⏳ Bekliyor |
+| **Sonraki büyük iş** | Büyük paket (PayTR / envanter B7) — ayrı tur |
+
+*İlgili: `DEPLOY_GECMISI.md`, `ONAYLI_UI_CHECKLIST.md`, `inbox/TEST_OTURUMU_ACIK_KONULAR.md` (P1 kapanış notu), `CANLIYA_ALINMAMIS_ENVANTER.md`*

@@ -264,43 +264,39 @@
   color: #e2e8f0 !important;
 }
 
-/* Panel sidebar marka — sabit yükseklik şerit; logo alan içinde scale ile belirgin */
+/* Panel sidebar marka — logo merkez; açık %80–85 / kapalı küre SVG */
 .panel-sidebar-brand {
-  @apply relative shrink-0 border-b border-slate-200 bg-white box-border;
+  @apply relative shrink-0 border-b border-slate-200 bg-white box-border dark:border-slate-800 dark:bg-slate-950;
 }
 .panel-sidebar-brand--collapsed {
-  @apply h-[3.25rem] px-2;
+  @apply h-14 px-2;
 }
 .panel-sidebar-brand--expanded {
-  @apply h-[3.5rem] px-2.5;
+  @apply h-[4.5rem] px-3;
 }
 .panel-sidebar-brand-link {
-  @apply flex h-full items-center overflow-hidden;
+  @apply flex h-full w-full items-center justify-center overflow-hidden;
 }
 .panel-sidebar-brand-link--collapsed {
-  @apply justify-center pl-0.5;
+  @apply justify-center;
 }
 .panel-sidebar-brand-link--expanded {
-  @apply justify-start;
+  @apply justify-center;
 }
 .panel-sidebar-brand-globe__img {
-  @apply h-9 w-9 object-contain;
-  transform: scale(1.1);
-  transform-origin: center center;
+  @apply h-10 w-10 object-contain;
 }
 .panel-sidebar-brand-full__img {
-  @apply block h-10 w-full max-w-full object-contain object-left;
-  transform: scale(1.08);
-  transform-origin: left center;
+  @apply block h-11 w-[82%] max-w-[82%] object-contain object-center;
 }
-.panel-sidebar-brand-toggle {
-  @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800;
+.dark .panel-sidebar-brand-full__img {
+  filter: brightness(1.08);
 }
 
-/* Panel sidebar navigasyon — aktif sayfa ve hover koyu temada belirgin */
+/* Panel sidebar navigasyon — ANA SAYFA TASARIM TALİMATI aktif: #EEF4FF / #2563EB */
 .panel-sidebar-nav-link {
-  @apply flex items-center justify-between gap-2 rounded-xl px-3 font-semibold transition;
-  @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  @apply relative flex items-center justify-between gap-2 rounded-lg px-3 font-semibold transition duration-150 ease-in-out;
+  @apply text-[#1F2937] hover:bg-[#F8FAFC] hover:text-[#1F2937];
 }
 .panel-sidebar-nav-link--default {
   @apply py-2 text-sm;
@@ -312,19 +308,21 @@
   @apply py-1.5 text-xs;
 }
 .panel-sidebar-nav-link--active {
-  @apply bg-blue-50 text-blue-700 ring-1 ring-blue-200;
+  background-color: #EEF4FF;
+  color: #2563EB;
+  box-shadow: inset 4px 0 0 #2563EB;
 }
 .panel-sidebar-nav-icon {
-  @apply h-4 w-4 shrink-0 text-slate-400 transition;
+  @apply h-4 w-4 shrink-0 text-[#64748B] transition;
 }
 .panel-sidebar-nav-link:hover .panel-sidebar-nav-icon {
-  @apply text-slate-600;
+  @apply text-[#64748B];
 }
 .panel-sidebar-nav-link--active .panel-sidebar-nav-icon {
-  @apply text-blue-600;
+  color: #2563EB;
 }
 .panel-sidebar-nav-children {
-  @apply ml-3 space-y-0.5 border-l border-slate-200 pl-2;
+  @apply ml-3 space-y-0.5 border-l border-[#F1F5F9] pl-2;
 }
 .dark .panel-sidebar-nav-link {
   color: #cbd5e1 !important;
@@ -336,8 +334,7 @@
 .dark .panel-sidebar-nav-link--active {
   background-color: rgba(37, 99, 235, 0.32) !important;
   color: #e0f2fe !important;
-  box-shadow: inset 3px 0 0 #3b82f6;
-  --tw-ring-color: rgba(96, 165, 250, 0.45);
+  box-shadow: inset 4px 0 0 #3b82f6;
 }
 .dark .panel-sidebar-nav-link--active:hover {
   background-color: rgba(37, 99, 235, 0.4) !important;

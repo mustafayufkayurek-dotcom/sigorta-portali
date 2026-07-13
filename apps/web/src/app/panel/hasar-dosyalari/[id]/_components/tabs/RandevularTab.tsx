@@ -127,7 +127,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
         title="Randevular"
         subtitle="Planlanan ziyaret ve toplantılar"
         action={{
-          label: showForm ? 'Formu Kapat' : '+ Randevu Ekle',
+          label: showForm ? 'Formu Kapat' : 'Randevu Ekle',
           onClick: () => setShowForm(!showForm),
           active: showForm,
         }}

@@ -21,6 +21,7 @@ import {
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions as loadDamageReasonOptions } from '@/utils/damage-reason-options';
 import { RevizyonTalepleriPanel } from './RevizyonlarTab';
+import { isRepairReportRevision } from '@sigorta/shared';
 
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
@@ -114,7 +115,7 @@ function groupReportsIntoChains(reports: RepairReportListItem[]): ReportChain[] 
   return Array.from(byRoot.entries())
     .map(([rootId, versions]) => {
       const sorted = [...versions].sort(
-        (a, b) => (b.versionNo ?? 1) - (a.versionNo ?? 1),
+        (a, b) => (b.versionNo ?? 0) - (a.versionNo ?? 0),
       );
       return {
         rootId,
@@ -145,7 +146,8 @@ function ReportChainRow({
   const [expanded, setExpanded] = useState(chain.older.length > 0);
   const report = chain.latest;
   const needsAction = isPendingStatus(report.status) || report.status === 'draft';
-  const showVersionBadge = (report.versionNo ?? 1) > 1 || (report.revisionCount ?? 0) > 0;
+  const showVersionBadge = isRepairReportRevision(report.versionNo) || (report.revisionCount ?? 0) > 0;
+
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
@@ -161,7 +163,7 @@ function ReportChainRow({
               <p className="font-medium text-slate-800 text-sm">{report.reportNo}</p>
               {showVersionBadge && (
                 <span className="text-[10px] font-medium text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
-                  v{report.versionNo ?? 1}
+                  v{report.versionNo ?? 0}
                 </span>
               )}
               <span
@@ -225,7 +227,7 @@ function ReportChainRow({
                 >
                   <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <span className="text-[10px] font-medium text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
-                      v{v.versionNo ?? 1}
+                      v{v.versionNo ?? 0}
                     </span>
                     <span className="text-sm text-slate-700">{v.reportNo}</span>
                     <span

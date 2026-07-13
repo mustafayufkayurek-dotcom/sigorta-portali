@@ -40,23 +40,30 @@ import PortalBottomNav from '@/components/portal/PortalBottomNav';
 import {
   PANEL_MAIN_TOP,
   PANEL_NAVBAR_HEIGHT,
+  PANEL_SIDEBAR_WIDTH_COLLAPSED,
+  PANEL_SIDEBAR_WIDTH_EXPANDED,
 } from '@/config/panel-layout-spacing';
 import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
   getExpertPortalNav,
   getInsurancePortalNav,
 } from '@/config/portal-nav';
+import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
   BookOpen,
   Building2,
+  CalendarDays,
+  ChevronDown,
   ClipboardList,
   FileText,
   GitBranch,
+  HelpCircle,
   MapPin,
   MonitorCheck,
   PackageCheck,
+  Plus,
   Receipt,
   Settings,
   ShieldCheck,
@@ -380,10 +387,12 @@ function Navbar({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileDropRef = useRef<HTMLDivElement>(null);
+  const quickActionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -407,6 +416,7 @@ function Navbar({
       const target = e.target as Node | null;
       if (!target) return;
       if (profileDropRef.current && !profileDropRef.current.contains(target)) setProfileDropOpen(false);
+      if (quickActionRef.current && !quickActionRef.current.contains(target)) setQuickActionOpen(false);
       if (notifRef.current && !notifRef.current.contains(target)) onNotifClose();
     };
     document.addEventListener('pointerdown', handler);
@@ -432,12 +442,17 @@ function Navbar({
         ? '/panel/finans'
         : '/panel';
 
+  const canCreateHasar = !isPortalUser && canSee('/panel/hasar-dosyalari');
+  const canCreateAcil = !isPortalUser && showAcilYardim;
+  const canOpenMonday = !isPortalUser && canSee('/panel/pazartesi-toplantisi');
+  const showQuickActions = canCreateHasar || canCreateAcil || canOpenMonday;
+
   return (
-    <header className="bg-white border-b border-slate-200/80 sticky top-0 z-50 shadow-navbar dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
+    <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className="w-full px-2 sm:px-3 lg:px-5">
         <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          <div className="flex min-w-0 shrink-0 items-center md:hidden">
-            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel ana sayfa">
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel Ana Sayfa">
               <BrandLogoMark
                 alt="Meridyen Assistance"
                 src={CORPORATE_LOGO_LIGHT}
@@ -446,21 +461,23 @@ function Navbar({
             </Link>
           </div>
 
-          {/* Right side */}
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          {/* Center + right */}
+          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
 
-            {/* Arama Butonu */}
+            {/* Global Arama */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex items-center gap-2 min-w-[220px] lg:min-w-[260px] px-3 py-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
-              title="Ara (Ctrl+K)"
+              className="hidden md:flex min-w-0 flex-1 items-center gap-2 max-w-xl px-3 py-2 rounded-lg border border-[#E5E7EB] text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
+              title="Global Arama (⌘K)"
             >
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="flex-1 text-left text-xs text-slate-400">Ara (Operasyon, Dosya, Müşteri, Personel...)</span>
-              <kbd className="hidden lg:flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium text-slate-300 bg-slate-100 rounded border border-slate-200">
+              <span className="flex-1 truncate text-left text-xs text-slate-400">
+                Global Arama... (Dosya, Müşteri, Poliçe, Tedarikçi, İşlem...)
+              </span>
+              <kbd className="hidden lg:flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium text-slate-400 bg-slate-100 rounded border border-slate-200">
                 ⌘K
               </kbd>
             </button>
@@ -479,6 +496,63 @@ function Navbar({
 
             {/* Global Search Modal */}
             <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+            {/* + Hızlı İşlem */}
+            {showQuickActions ? (
+              <div className="relative" ref={quickActionRef}>
+                <button
+                  type="button"
+                  onClick={() => setQuickActionOpen((v) => !v)}
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1E40AF]"
+                  aria-expanded={quickActionOpen}
+                  aria-haspopup="menu"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Hızlı İşlem</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition ${quickActionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {quickActionOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-slate-100 bg-white py-1.5 shadow-xl"
+                  >
+                    {canCreateHasar ? (
+                      <Link
+                        href="/panel/hasar-dosyalari?yeni=1"
+                        role="menuitem"
+                        className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        onClick={() => setQuickActionOpen(false)}
+                      >
+                        <HASAR_OPERATION_ICON className="h-4 w-4 text-blue-600" />
+                        Yeni Hasar
+                      </Link>
+                    ) : null}
+                    {canCreateAcil ? (
+                      <Link
+                        href="/panel/acil-yardim?yeni=1"
+                        role="menuitem"
+                        className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setQuickActionOpen(false)}
+                      >
+                        <ACIL_OPERATION_ICON className="h-4 w-4 text-red-600" />
+                        Yeni Acil
+                      </Link>
+                    ) : null}
+                    {canOpenMonday ? (
+                      <Link
+                        href="/panel/pazartesi-toplantisi"
+                        role="menuitem"
+                        className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        onClick={() => setQuickActionOpen(false)}
+                      >
+                        <CalendarDays className="h-4 w-4 text-blue-600" />
+                        Pazartesi Toplantısı
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* Bildirim */}
             <div className="relative" ref={notifRef}>
@@ -556,6 +630,38 @@ function Navbar({
                 </>
               )}
             </div>
+
+            {/* Yardım — topbar; kalıcı sağ kılavuz yok */}
+            {userGuide ? (
+              <a
+                href={userGuide.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700 dark:border-slate-700 dark:hover:bg-slate-800"
+                title={userGuide.title}
+                aria-label="Yardım"
+              >
+                <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+              </a>
+            ) : (
+              <span
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400"
+                title="Yardım"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </span>
+            )}
+
+            {/* Operasyon durumu */}
+            {!isPortalUser ? (
+              <div
+                className="hidden xl:inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                title="Sistem Operasyon Durumu"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" aria-hidden="true" />
+                Operasyon Aktif
+              </div>
+            ) : null}
 
             {/* Profil Dropdown */}
             <div className="relative" ref={profileDropRef}>
@@ -822,17 +928,13 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`z-30 hidden h-full shrink-0 flex-col self-stretch overflow-hidden border-r border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 ease-in-out md:flex ${
-        collapsed ? 'w-[92px]' : 'w-[286px]'
+      className={`z-30 hidden h-full shrink-0 flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#1F2937] transition-[width] duration-200 ease-in-out md:flex ${
+        collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
     >
-      <PanelSidebarBrand
-        href={panelLogoHref}
-        collapsed={collapsed}
-        onToggleCollapsed={onToggleCollapsed}
-      />
+      <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
 
-      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-2 pb-2 [scrollbar-width:thin]">
+      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pt-2 pb-2 [scrollbar-width:thin]">
         <div className="space-y-0.5">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
@@ -847,6 +949,7 @@ function PanelSidebar({
           isFieldStaff={isFieldStaff}
           isOfficeStaff={isOfficeStaff}
           collapsed={collapsed}
+          onToggleCollapsed={onToggleCollapsed}
         />
       </div>
     </aside>

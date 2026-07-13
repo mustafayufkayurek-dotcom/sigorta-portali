@@ -52,13 +52,16 @@ Bu dosya **“canlıda yok”** ile **“canlıda var ama kabul/test eksik”** 
 
 ---
 
-## P — Onaylı şablon henüz birebir uygulanmadı (deploy değil, UI işi)
+## P — Onaylı şablon (P1 Dashboard) — implementasyon kapandı
 
-| # | Konu | Canlıda ne var | Eksik (mockup) |
-|---|------|----------------|----------------|
-| P0 | **Sol menü kabuğu** (logo, daralt, tema) | Genişlik 74/286 kodda; **mockup görseli canlıda yok** | Tam liste: `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md` — **S2–S6** |
-| P1 | Admin **Yönetim Merkezi** | `/panel` iskelet (v248) | Aynı dosya — **A0–A5** |
-| P2 | **Dosya sorumlusu** merkezi | Başlık + widget’lar (kısmi) | Aynı dosya — **D0** |
+| # | Konu | Canlı | Durum |
+|---|------|-------|-------|
+| P0 | Sol menü kabuğu (240/72, logo, daralt, topbar) | **v344** | ✅ Kod · ⏳ Mustafa PASS |
+| P1 | Admin Yönetim Merkezi (A0–A5 + A3/A4) | **v345** + **v348** | ✅ Kod · ⏳ Mustafa PASS |
+| P2 | Dosya sorumlusu merkezi (D0) | **v346** | ✅ Kod · ⏳ Mustafa PASS |
+| P3 | Saha Operasyon Merkezi (F0) | **v347** (pakette v348) | ✅ Kod · ⏳ Mustafa PASS |
+
+> Detay: `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md` — **13 Tem P1 kapanış**. v349 yok. Büyük paket (PayTR) ayrı tur.
 
 ---
 
@@ -124,13 +127,12 @@ Aşağıdakiler bilinen iyi sürümde (**web v248 + backend v249**) **canlıda**
 
 ---
 
-## Önerilen sıradaki adım (11 Temmuz 2026)
+## Önerilen sıradaki adım (13 Temmuz 2026)
 
-1. **P1 — Admin dashboard şablon paketi** (web-only, tek dalga): mockup → kabul kriteri → kod → yerel önizleme → Mustafa PASS → deploy
-2. **P2 — Dosya sorumlusu şablon** (P1 kapandıktan sonra veya paralel mockup onayı)
-3. **D2 backfill** (ops, 15 dk): SELECT → onay → UPDATE
-4. **A paketi** (deploy yok): tek 30 dk oturum — A3 gelen kutusu + A6 harita öncelik
-5. **B paketi:** PayTR canlı **veya** CRM — P1 bitene kadar ertele
+1. **Mustafa P1 canlı PASS** — admin / D0 / saha screenshot (`TEST_OTURUMU` P1-DASH)
+2. **Büyük paket** — PayTR canlı (B7) **veya** Mustafa’nın seçtiği sonraki paket
+3. **A paketi** (deploy yok): A3 gelen kutusu + A6 harita manuel test (ayrı işler)
+4. **S7 menü gruplama** — yalnızca Mustafa kararı sonrası
 
 ---
 

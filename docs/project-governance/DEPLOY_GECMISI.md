@@ -2,24 +2,89 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 11 Temmuz 2026 akşam
+**Son güncelleme:** 14 Temmuz 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (11 Temmuz 2026 — v282 web)
+## Canlı durum (14 Temmuz 2026 — v349 backend + v348 web)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v282-amd64` | healthy |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v276-amd64` | healthy |
-| **Rollback** | Web **v281** / Backend **v276** | manifest `rollbackImages` |
-| **Etiket** | `v282-sidebar-logo-compact` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v348-amd64` | healthy |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v349-amd64` | healthy |
+| **Rollback** | Web **v346** / Backend **v348** | manifest `rollbackImages` |
+| **Etiket** | `v349-guvenlik-finans-api-guard` | backend-only |
+
+> **v349 (14 Tem):** Finans API guard (ofis/saha 403) + cost-masking binary skip + repair `version_no` 0–3. Web v348. Disk ~11G — prune `-af` yok. **v350** logo/sidebar/topbar web-only sırada. PayTR büyük paket: Mustafa onayı bekliyor.
 
 ---
 
 ## Son deploy kronolojisi
+
+### v349 — Backend-only (14 Temmuz 2026) — Finans API Guard
+
+- **Kapsam:** backend-only · migration: şema up-to-date (`20260713190000_repair_report_version_0_to_3` paketinde) · rollback backend v348 / web v348
+- `assertDashboardFinanceAccess` — finance/budget/bottlenecks/ownership/daily-flow
+- Cost-masking: report PDF/image binary pipe atlanır
+- Web değişmedi (v348)
+
+### P1 kapanış notu — Doküman (13 Temmuz 2026) — *deploy yok*
+
+- **Kapsam:** doküman-only · canlı sürüm değişmedi (**v348**)
+- P1 Sidebar + Dashboard implementasyon paketi **kapandı** (S/A/D/F + A3/A4/A5)
+- A5 P1 için yeterli (`AdminBottomRow` 3 sütun) → eski «v349-dashboard-p1» yok; etiket **güvenlik** için yeniden kullanıldı
+- Kabul: `canli-kabul/P1_SIDEBAR_DASHBOARD_KABUL_KRITERLERI.md` · not: `inbox/TEST_OTURUMU_ACIK_KONULAR.md`
+
+### v348 — Full (13 Temmuz 2026) — Dashboard Admin A3/A4 Faz 6
+
+- **Kapsam:** full (web + backend) · migration: schema up-to-date · rollback web v346 / backend v342
+- A3: Ekip Yoğunluğu Pzt–Paz bar chart; Geçen Hafta gerçek haftalık; Personel Yükü avatar + bar
+- A4: Günün Akışı 4 bugün metriği + Gider Dağıtımı yeşil/amber kart
+- Backend: `GET /dashboard/daily-flow` (today + teamDensity + lastWeek)
+- Pakette: Saha v347 + D0 v346 şablonları
+- Shell v344 / Admin KPI v345 korunur
+- Smoke: panel route’ları PASS (login env yok → auth FAIL beklenen)
+
+### v347 — Web-only (13 Temmuz 2026) — Dashboard Saha Operasyon Merkezi Faz 5 (F0) — *v348 ile canlıya alındı*
+
+- Başlık **Saha Operasyon Merkezi** + **Saha** rozeti
+- CTA: Dosyalarıma Git (mavi) + Carilerim (outline); Acil kapsama göre
+- Saha Özeti 6 KPI (`/dashboard/my-performance`) + Günün Akışı (finans/onay yok)
+- Alt 3’lü: SLA Riskleri / Bekleyen Aksiyonlar / Açık Dosyalarım (`claim-files` saha kapsamı)
+- >1440px Saha Kullanım Kılavuzu paneli
+- Admin v345 / Dosya Sorumlusu v346 şablonları dokunulmadı; shell v344 / backend v342 korunur
+
+### v346 — Web-only (13 Temmuz 2026) — Dashboard Dosya Sorumlusu Merkezi Faz 4 (D0)
+
+- Başlık **Dosya Sorumlusu Merkezi** + Dosya Sorumlusu rozeti
+- CTA: + Yeni Hasar (mavi); + Yeni Acil yalnızca kapsama göre
+- Operasyon Özeti kompakt band + Günün Akışı (finans kartı yok) + Onay Gecikmeleri
+- Alt 3’lü: Kritik Uyarılar / Bekleyen Aksiyonlar / Son Aktiviteler
+- >1440px Ofis Kullanım Kılavuzu paneli (finans linki yok)
+- Admin v345 şablonu dokunulmadı; backend v342 korunur
+
+### v345 — Web-only (13 Temmuz 2026) — Dashboard Admin KPI Faz 3
+
+- Başlık **Operasyon Yönetim Merkezi** + Admin rozeti
+- CTA: + Yeni Hasar (mavi), + Yeni Acil (kırmızı), Pazartesi Toplantısı (mavi outline)
+- Finans Özeti 5 KPI (tam ₺ format); Operasyon Özeti 6 kompakt metrik
+- Haftalık Performans + Günün Akışı; >1440px Kullanım Kılavuzu paneli (300px)
+- Shell v344 dokunulmadı (sidebar 240/72, Hızlı İşlem, Operasyon Aktif)
+- Backend değişmedi (v342)
+
+### v344 — Web-only (13 Temmuz 2026) — Dashboard shell Faz 2
+
+- Sidebar **240px / 72px** (ANA SAYFA TASARIM TALİMATI kilidi; 286/92 geri alındı)
+- Aktif menü `#EEF4FF` / `#2563EB` + sol 4px çizgi
+- Topbar: Global Arama (⌘K), **+ Hızlı İşlem**, bildirim, Kullanım Kılavuzu, **Operasyon Aktif**
+- Alt footer: Menüyü Daralt + kılavuz; navigasyon maddeleri korunur
+- Backend değişmedi (v342)
+
+### v343 — Web-only (önceki)
+
+- Finans Özeti tam ₺ tutar; tab ikon; randevu/süreç düzenlemeleri
 
 ### v282 — Web-only (11 Temmuz 2026 gece) — logo konusu kapatıldı
 

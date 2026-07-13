@@ -262,7 +262,7 @@ export default function RevisionDetailPage() {
             </span>
           </div>
           <p className="text-sm text-slate-400 mt-0.5">
-            v{detail.report?.versionNo ?? 1}
+            v{detail.report?.versionNo ?? 0}
             {detail.newReport && <span className="ml-2">→ v{detail.newReport.versionNo} ({detail.newReport.reportNo})</span>}
           </p>
         </div>

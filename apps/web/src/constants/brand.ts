@@ -1,10 +1,19 @@
-/** Kurumsal marka — Mustafa onaylı orijinal logo (küre + MERİDYEN ASİSTANCE) */
-export const CORPORATE_LOGO_LIGHT = '/meridyen-logo-original.png';
-export const CORPORATE_LOGO_DARK = '/meridyen-logo-original.png';
-/** Sidebar geniş: tam kurumsal logo */
-export const CORPORATE_LOGO_FULL = '/meridyen-logo-original.png';
-/** Sidebar dar: yalnızca küre (metin yok) — ONAYLI_UI_CHECKLIST S2 */
-export const CORPORATE_LOGO_GLOBE = '/meridyen-globe-square.png';
-/** Küre yedek (globe-square yüklenemezse) */
-export const CORPORATE_LOGO_GLOBE_FALLBACK = '/meridyen-logo-globe.png';
+/** Kurumsal marka — orijinal PNG korunur; panel UI SVG varyasyon kullanır */
+
+/** Arşiv / yedek — replace edilmez */
+export const CORPORATE_LOGO_ORIGINAL_PNG = '/meridyen-logo-original.png';
+export const CORPORATE_LOGO_GLOBE_PNG = '/meridyen-globe-square.png';
+
+/** Panel / header: yatay wordmark SVG */
+export const CORPORATE_LOGO_LIGHT = '/brand/meridyen-wordmark.svg';
+export const CORPORATE_LOGO_DARK = '/brand/meridyen-wordmark-dark.svg';
+
+/** Sidebar geniş: üst üste (küre + metin) SVG */
+export const CORPORATE_LOGO_FULL = '/brand/meridyen-stacked.svg';
+export const CORPORATE_LOGO_FULL_DARK = '/brand/meridyen-stacked.svg';
+
+/** Sidebar dar / ikon: yalnız küre SVG */
+export const CORPORATE_LOGO_GLOBE = '/brand/meridyen-globe.svg';
+export const CORPORATE_LOGO_GLOBE_FALLBACK = CORPORATE_LOGO_GLOBE_PNG;
+
 export const CORPORATE_LOGO_TEXT = '/meridyen-logo-text.png';

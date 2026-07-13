@@ -77,9 +77,15 @@ export function AdminFinanceSummarySection({
                 compact
                 icon={FileText}
                 label="Bekleyen Fatura"
-                value={overdueInvoices > 0 ? overdueInvoices : '—'}
+                value={formatCurrency(bottlenecks?.totalPendingAmount ?? 0)}
                 color="bg-amber-600"
-                subtext={formatCurrency(bottlenecks?.totalPendingAmount ?? 0)}
+                subtext={
+                  overdueInvoices > 0
+                    ? `${overdueInvoices} fatura`
+                    : (bottlenecks?.pendingPayments?.length
+                        ? `${bottlenecks.pendingPayments.length} bekleyen`
+                        : 'Bekleyen yok')
+                }
                 href="/panel/finans/faturalar"
               />
               <KpiCard
@@ -105,7 +111,7 @@ export function AdminFinanceSummarySection({
                 label="Dağıtım Durumu"
                 value={allocationDone ? 'Tamamlandı' : 'Bekliyor'}
                 color={allocationDone ? 'bg-emerald-600' : 'bg-amber-600'}
-                subtext={overhead?.needsSync ? 'Senkron gerekli' : undefined}
+                subtext={overhead?.needsSync ? 'Senkron gerekli' : allocationDone ? 'Mutabakat sağlandı' : 'Dağıtım bekliyor'}
                 href="/panel/finans/sabit-giderler"
               />
             </>

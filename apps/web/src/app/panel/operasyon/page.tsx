@@ -95,15 +95,15 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div className={`flex flex-col items-center justify-center text-center gap-2 bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 ${accentClass ?? 'card-accent-blue'}`}>
+    <div className={`flex flex-col items-center justify-center text-center gap-1 bg-white rounded-xl border border-slate-200/70 shadow-card px-3 py-2 ${accentClass ?? 'card-accent-blue'}`}>
       {icon && (
-        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${iconBg ?? 'bg-blue-50'}`}>
+        <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center ${iconBg ?? 'bg-blue-50'}`}>
           {icon}
         </div>
       )}
       <div className="flex flex-col items-center min-w-0 w-full">
-        <p className="text-[11px] font-medium text-slate-400 tracking-wide leading-snug">{label}</p>
-        <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums mt-1">{value}</span>
+        <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-tight">{label}</p>
+        <span className="text-base font-bold text-slate-900 leading-none tabular-nums mt-0.5">{value}</span>
         {badge && (
           <span className="badge badge-blue inline-flex items-center justify-center text-center mt-0.5">{badge}</span>
         )}
@@ -320,13 +320,13 @@ export default function OperasyonPage() {
       </div>
 
       {/* Özet Kartları */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         <StatCard
           label="Gelen Kutu (Bekleyen)"
           value={inboxPendingCount ?? '—'}
           accentClass="card-accent-purple"
           iconBg="bg-violet-50"
-          icon={<svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
           href="/panel/operasyon/gelen-kutusu"
         />
         <StatCard
@@ -334,7 +334,7 @@ export default function OperasyonPage() {
           value={openCount ?? claimsTotal}
           accentClass="card-accent-blue"
           iconBg="bg-blue-50"
-          icon={<svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
           href="/panel/hasar-dosyalari?status=open"
         />
         <StatCard
@@ -342,7 +342,7 @@ export default function OperasyonPage() {
           value={emergencyOpenCount}
           accentClass="card-accent-amber"
           iconBg="bg-amber-50"
-          icon={<svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
           href="/panel/acil-yardim"
         />
         <StatCard
@@ -350,7 +350,7 @@ export default function OperasyonPage() {
           value={todayCount ?? '—'}
           accentClass="card-accent-green"
           iconBg="bg-emerald-50"
-          icon={<svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
           href="/panel/hasar-dosyalari"
         />
         <StatCard
@@ -358,7 +358,7 @@ export default function OperasyonPage() {
           value={invoicePendingCount ?? '—'}
           accentClass="card-accent-amber"
           iconBg="bg-amber-50"
-          icon={<svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M7 7h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M7 7h10a2 2 0 012 2v9a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" /></svg>}
           href="/panel/hasar-dosyalari?invoiceStatus=none"
         />
         <StatCard
@@ -366,7 +366,7 @@ export default function OperasyonPage() {
           value={overdueCount ?? '—'}
           accentClass="card-accent-red"
           iconBg="bg-red-50"
-          icon={<svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          icon={<svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           href="/panel/hasar-dosyalari?status=sla_exceeded"
         />
       </div>
@@ -442,7 +442,7 @@ export default function OperasyonPage() {
                     <PanelTableTh
                       key={col.id}
                       colId={col.id}
-                      className="table-th-center"
+                      className="table-th !py-2.5 text-xs"
                       fitSamples={columnFitSamples[col.id]}
                     >
                       {col.label}
@@ -467,11 +467,11 @@ export default function OperasyonPage() {
                       switch (col.id) {
                         case 'kind':
                           return (
-                            <PanelTableTd key={col.id} colId="kind" align="center" className="table-td-center whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="kind" className="table-td !py-2 text-xs whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue inline-flex items-center justify-center text-center">Hasar</span>
+                                <span className="badge badge-blue">Hasar</span>
                               ) : (
-                                <span className="badge badge-orange inline-flex items-center justify-center text-center">
+                                <span className="badge badge-orange">
                                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                                   Acil
                                 </span>
@@ -480,19 +480,19 @@ export default function OperasyonPage() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" align="center" className="table-td-center font-mono font-semibold text-slate-800 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="fileNo" className="table-td !py-2 font-mono text-xs font-semibold text-slate-800 whitespace-nowrap">
                               {row.fileNo}
                             </PanelTableTd>
                           );
                         case 'customer':
                           return (
-                            <PanelTableTd key={col.id} colId="customer" align="center" className="table-td-center whitespace-nowrap" title={row.customerName}>
+                            <PanelTableTd key={col.id} colId="customer" className="table-td !py-2 text-xs whitespace-nowrap" title={row.customerName}>
                               {row.customerName}
                             </PanelTableTd>
                           );
                         case 'insured':
                           return (
-                            <PanelTableTd key={col.id} colId="insured" align="center" className="table-td-center whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                            <PanelTableTd key={col.id} colId="insured" className="table-td !py-2 text-xs whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
                               {row.kind === 'hasar' ? (
                                 <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                   <InsuredNameInlineEdit
@@ -500,7 +500,6 @@ export default function OperasyonPage() {
                                     displayName={row.insuredName}
                                     onSaved={(insuredName) => patchClaimInsuredName(row.id, insuredName)}
                                     compact
-                                    align="center"
                                   />
                                 </div>
                               ) : (
@@ -510,23 +509,23 @@ export default function OperasyonPage() {
                           );
                         case 'date':
                           return (
-                            <PanelTableTd key={col.id} colId="date" align="center" className="table-td-center text-slate-400 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="date" className="table-td !py-2 text-xs text-slate-400 whitespace-nowrap">
                               {fmtDate(row.date)}
                             </PanelTableTd>
                           );
                         case 'subject':
                           return (
-                            <PanelTableTd key={col.id} colId="subject" align="center" className="table-td-center text-slate-500 whitespace-nowrap" title={row.subject}>
+                            <PanelTableTd key={col.id} colId="subject" className="table-td !py-2 text-xs text-slate-500 whitespace-nowrap" title={row.subject}>
                               {row.subject}
                             </PanelTableTd>
                           );
                         case 'status':
                           return (
-                            <PanelTableTd key={col.id} colId="status" align="center" className="table-td-center whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="status" className="table-td !py-2 text-xs whitespace-nowrap">
                               {row.kind === 'hasar' ? (
-                                <span className="badge badge-blue inline-flex items-center justify-center text-center">{row.statusLabel}</span>
+                                <span className="badge badge-blue">{row.statusLabel}</span>
                               ) : (
-                                <span className={`${EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'} inline-flex items-center justify-center text-center`}>
+                                <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
                                   {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
                                 </span>
                               )}
@@ -534,15 +533,15 @@ export default function OperasyonPage() {
                           );
                         case 'invoice':
                           return (
-                            <PanelTableTd key={col.id} colId="invoice" align="center" className="table-td-center whitespace-nowrap">
-                              <span className={`${INVOICE_STATUS_COLORS[row.invoiceStatus]} inline-flex items-center justify-center text-center`}>
+                            <PanelTableTd key={col.id} colId="invoice" className="table-td !py-2 text-xs whitespace-nowrap">
+                              <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
                             </PanelTableTd>
                           );
                         case 'amount':
                           return (
-                            <PanelTableTd key={col.id} colId="amount" align="center" className="table-td-center whitespace-nowrap font-semibold tabular-nums">
+                            <PanelTableTd key={col.id} colId="amount" className="table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums">
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
