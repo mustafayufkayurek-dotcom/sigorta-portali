@@ -1,13 +1,13 @@
 {
   "updatedAt": "2026-07-13",
-  "label": "v335-coklu-tedarikci",
-  "description": "Full+migration: claim_file_suppliers N:M çoklu tedarikçi + Dosya Bilgileri düzenle (v334) aynı image; rollback v333",
+  "label": "v334-dosya-bilgileri-duzenle",
+  "description": "Full: Hasar dosyası Dosya Bilgileri düzenleme (il/adres/ihbar/sorumlu/eksper ofisi) — mail kaynaklı dosyalar dahil (rollback v333)",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v335-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v335-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v334-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v334-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v333-amd64",
