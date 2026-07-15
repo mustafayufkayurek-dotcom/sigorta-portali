@@ -28,8 +28,19 @@ import {
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
 import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konusu.helper';
+import {
+  APPROVAL_WAITING_REPORT_STATUSES,
+  CLOSED_CLAIM_STATUS_CODES,
+  FINANCE_TRANSFER_STATUS_CODES,
+  deriveOperationStage,
+  hoursSince,
+  isApproval72hExceeded,
+  isApprovalWaitingReport,
+  type OperationPreset,
+} from '@sigorta/shared';
 
 const APPROVED_REPAIR_REPORT_STATUSES = ['approved', 'externally_approved'] as const;
+const APPROVAL_72H_MS = 72 * 60 * 60 * 1000;
 
 const LATEST_REPAIR_REPORT_SELECT = {
   id: true,
@@ -271,11 +282,108 @@ export class ClaimFilesService {
     return this.findAll({ ...params, customerId }, requestingUser);
   }
 
+  private startOfUtcDay(dateStr?: string): Date {
+    if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return new Date(`${dateStr}T00:00:00.000Z`);
+    }
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  }
+
+  private endOfUtcDay(dateStr?: string): Date {
+    const start = this.startOfUtcDay(dateStr);
+    return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  }
+
+  private parseSort(sort?: string): Record<string, 'asc' | 'desc'> {
+    const raw = String(sort ?? 'createdAt:desc').trim();
+    const [fieldRaw, dirRaw] = raw.split(':');
+    const dir = dirRaw === 'asc' ? 'asc' : 'desc';
+    const field = fieldRaw === 'lossDate' ? 'incidentDate' : fieldRaw;
+    const allowed = new Set(['createdAt', 'updatedAt', 'fileNo', 'notificationDate', 'incidentDate', 'priority']);
+    if (!allowed.has(field)) return { createdAt: 'desc' };
+    return { [field]: dir };
+  }
+
+  private applyOpsPresetWhere(
+    baseWhere: Record<string, unknown>,
+    preset: OperationPreset | string | undefined,
+    requestingUser?: { id: string; roleCode: string },
+  ): void {
+    if (!preset) return;
+    const now = new Date();
+    const seventyTwoAgo = new Date(now.getTime() - APPROVAL_72H_MS);
+    const awaitingReport = {
+      some: { status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] } },
+    };
+
+    switch (preset) {
+      case 'approval_pending':
+      case 'report_approval':
+        baseWhere.repairReports = awaitingReport;
+        break;
+      case 'approval_72h':
+        baseWhere.repairReports = {
+          some: {
+            status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] },
+            updatedAt: { lte: seventyTwoAgo },
+          },
+        };
+        break;
+      case 'report_writing':
+        baseWhere.OR = [
+          { currentStatus: { code: 'budget_preparing' } },
+          { repairReports: { some: { status: { in: ['draft', 'rejected'] } } } },
+        ];
+        break;
+      case 'finance_transfer':
+        baseWhere.currentStatus = { code: { in: [...FINANCE_TRANSFER_STATUS_CODES] } };
+        break;
+      case 'delay_risk':
+        baseWhere.OR = [
+          { slaDueAt: { lt: now } },
+          {
+            repairReports: {
+              some: {
+                status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] },
+                updatedAt: { lte: seventyTwoAgo },
+              },
+            },
+          },
+        ];
+        break;
+      case 'opened_today': {
+        const from = this.startOfUtcDay();
+        const to = this.endOfUtcDay();
+        baseWhere.createdAt = { gte: from, lte: to };
+        break;
+      }
+      case 'assigned_to_me':
+        if (requestingUser?.id) {
+          baseWhere.OR = [
+            { assignedOfficeUserId: requestingUser.id },
+            { assignedFieldUserId: requestingUser.id },
+            { currentResponsibleUserId: requestingUser.id },
+          ];
+        }
+        break;
+      case 'urgent':
+        baseWhere.priority = { in: ['urgent', 'high', 'acil'] };
+        break;
+      case 'open':
+        baseWhere.currentStatus = { code: { notIn: [...CLOSED_CLAIM_STATUS_CODES] } };
+        break;
+      default:
+        break;
+    }
+  }
+
   async findAll(params?: {
     page?: number;
     limit?: number;
     customerId?: string;
     statusId?: string;
+    statusCode?: string;
     insuranceCompanyId?: string;
     assignedFieldUserId?: string;
     assignedOfficeUserId?: string;
@@ -283,9 +391,15 @@ export class ClaimFilesService {
     insuranceCompanyIds?: string[];
     invoiceStatus?: string;
     repairReportStatus?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    slaExceeded?: string | boolean;
+    sort?: string;
+    opsPreset?: string;
+    search?: string;
   }, requestingUser?: { id: string; roleCode: string }) {
     const page = Number(params?.page) || 1;
-    const limit = Number(params?.limit) || 20;
+    const limit = Math.min(Number(params?.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const baseWhere: Record<string, unknown> = {};
@@ -311,6 +425,36 @@ export class ClaimFilesService {
       baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
 
+    const statusCode = String(params?.statusCode ?? '').trim().toLowerCase();
+    if (statusCode === 'open') {
+      baseWhere.currentStatus = { code: { notIn: [...CLOSED_CLAIM_STATUS_CODES] } };
+    } else if (statusCode) {
+      baseWhere.currentStatus = { code: statusCode };
+    }
+
+    if (params?.dateFrom || params?.dateTo) {
+      const createdAt: Record<string, Date> = {};
+      if (params.dateFrom) createdAt.gte = this.startOfUtcDay(params.dateFrom);
+      if (params.dateTo) createdAt.lte = this.endOfUtcDay(params.dateTo);
+      baseWhere.createdAt = createdAt;
+    }
+
+    const slaFlag = params?.slaExceeded === true || params?.slaExceeded === 'true' || params?.slaExceeded === '1';
+    if (slaFlag) {
+      baseWhere.slaDueAt = { lt: new Date() };
+    }
+
+    if (params?.search?.trim()) {
+      const q = params.search.trim();
+      baseWhere.OR = [
+        { fileNo: { contains: q, mode: 'insensitive' } },
+        { claimNo: { contains: q, mode: 'insensitive' } },
+        { insuredName: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    this.applyOpsPresetWhere(baseWhere, params?.opsPreset, requestingUser);
+
     const normalizedUser = normalizeRequestUser(requestingUser);
     if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
       const delegationWhere = await this.operationalAccessGrants.buildClaimFileDelegationScope(
@@ -326,20 +470,36 @@ export class ClaimFilesService {
       params?.insuranceCompanyIds,
     ) as any;
 
+    const orderBy = this.parseSort(params?.sort);
+
+    // select: yerel DB’de henüz migrate edilmemiş skaler kolonlara (ör. assigned_inspector_vendor_id) dayanmamak için
     const [data, total] = await Promise.all([
       this.prisma.claimFile.findMany({
         where,
         skip,
         take: limit,
-        include: {
-          insuranceCompany: true,
-          currentStatus: true,
-          customer: true,
-          assignedBranch: true,
+        select: {
+          id: true,
+          fileNo: true,
+          claimNo: true,
+          insuredName: true,
+          priority: true,
+          lossType: true,
+          notificationDate: true,
+          incidentDate: true,
+          createdAt: true,
+          updatedAt: true,
+          slaDueAt: true,
+          invoicedAmount: true,
+          insuranceCompany: { select: { id: true, name: true } },
+          currentStatus: { select: { id: true, code: true, name: true, color: true } },
+          customer: { select: { id: true, fullName: true, companyName: true, firstName: true, lastName: true } },
+          assignedBranch: { select: { id: true, name: true } },
           claimSubject: { select: { id: true, name: true } },
           departmentFileSubject: { select: { id: true, name: true } },
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+          currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
           assignedAdjuster: {
             select: {
               id: true, firstName: true, lastName: true,
@@ -350,17 +510,136 @@ export class ClaimFilesService {
             select: { id: true, status: true, invoiceType: true, totalAmount: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.claimFile.count({ where }),
     ]);
 
     const dataWithReports = await this.attachLatestRepairReports(data);
+    const enriched = await this.enrichOperationFields(dataWithReports);
 
     return {
-      data: dataWithReports,
+      data: enriched,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  private async countForOpsPreset(
+    opsPreset: OperationPreset,
+    requestingUser?: { id: string; roleCode: string },
+  ): Promise<number> {
+    const baseWhere: Record<string, unknown> = {};
+    this.applyOpsPresetWhere(baseWhere, opsPreset, requestingUser);
+
+    const normalizedUser = normalizeRequestUser(requestingUser);
+    if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
+      const delegationWhere = await this.operationalAccessGrants.buildClaimFileDelegationScope(
+        normalizedUser.id,
+        normalizedUser.roleCode,
+      );
+      Object.assign(baseWhere, delegationWhere);
+    }
+
+    const where = applyClaimFileListScope(baseWhere, requestingUser) as any;
+    return this.prisma.claimFile.count({ where });
+  }
+
+  /** Operasyon sayfası KPI sayaçları — tek round-trip */
+  async getOperationStats(requestingUser?: { id: string; roleCode: string }) {
+    const [
+      open,
+      urgent,
+      openedToday,
+      approvalPending,
+      reportWriting,
+      financeTransfer,
+      delayRisk,
+      approval72h,
+    ] = await Promise.all([
+      this.countForOpsPreset('open', requestingUser),
+      this.countForOpsPreset('urgent', requestingUser),
+      this.countForOpsPreset('opened_today', requestingUser),
+      this.countForOpsPreset('approval_pending', requestingUser),
+      this.countForOpsPreset('report_writing', requestingUser),
+      this.countForOpsPreset('finance_transfer', requestingUser),
+      this.countForOpsPreset('delay_risk', requestingUser),
+      this.countForOpsPreset('approval_72h', requestingUser),
+    ]);
+
+    return {
+      open,
+      urgent,
+      openedToday,
+      approvalPending,
+      reportWriting,
+      financeTransfer,
+      delayRisk,
+      approval72h,
+    };
+  }
+
+  private async enrichOperationFields<T extends { id: string; currentStatus?: { code?: string; name?: string } | null; priority?: string | null; slaDueAt?: Date | null; assignedOfficeUser?: { firstName?: string; lastName?: string } | null; assignedFieldUser?: { firstName?: string; lastName?: string } | null; currentResponsibleUser?: { firstName?: string; lastName?: string } | null; latestRepairReport?: { status?: string; updatedAt?: Date | string } | null; updatedAt?: Date }>(
+    claims: T[],
+  ) {
+    if (!claims.length) return claims;
+    const now = new Date();
+    const reportIds = claims
+      .map((c) => (c as any).latestRepairReport?.id as string | undefined)
+      .filter((id): id is string => Boolean(id));
+
+    const awaitingByReport = new Map<string, Date>();
+    if (reportIds.length) {
+      const histories = await this.prisma.reportApprovalHistory.findMany({
+        where: {
+          reportId: { in: reportIds },
+          action: { in: ['pending_approval', 'submitted'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { reportId: true, createdAt: true },
+      });
+      for (const h of histories) {
+        if (!awaitingByReport.has(h.reportId)) awaitingByReport.set(h.reportId, h.createdAt);
+      }
+    }
+
+    return claims.map((claim) => {
+      const report = (claim as any).latestRepairReport as { id?: string; status?: string; updatedAt?: Date | string } | null;
+      const claimCode = claim.currentStatus?.code ?? null;
+      const stage = deriveOperationStage({
+        claimStatusCode: claimCode,
+        reportStatus: report?.status ?? null,
+      });
+      const awaitingSince =
+        report?.id && isApprovalWaitingReport(report.status)
+          ? (awaitingByReport.get(report.id) ?? (report.updatedAt ? new Date(report.updatedAt) : null))
+          : null;
+      const approval72hExceeded = Boolean(
+        awaitingSince && isApproval72hExceeded(awaitingSince, now),
+      );
+      const approvalWaitingHours = hoursSince(awaitingSince, now);
+      const assignee =
+        claim.assignedOfficeUser
+          ? `${claim.assignedOfficeUser.firstName ?? ''} ${claim.assignedOfficeUser.lastName ?? ''}`.trim()
+          : claim.currentResponsibleUser
+            ? `${claim.currentResponsibleUser.firstName ?? ''} ${claim.currentResponsibleUser.lastName ?? ''}`.trim()
+            : claim.assignedFieldUser
+              ? `${claim.assignedFieldUser.firstName ?? ''} ${claim.assignedFieldUser.lastName ?? ''}`.trim()
+              : null;
+      const delayRisk =
+        approval72hExceeded
+        || (claim.slaDueAt != null && new Date(claim.slaDueAt).getTime() < now.getTime());
+
+      return {
+        ...claim,
+        operationStage: stage,
+        operationStatusLabel: stage.label,
+        nextAction: approval72hExceeded ? 'Onay Talep Et' : stage.nextAction,
+        approval72hExceeded,
+        approvalWaitingHours,
+        assigneeName: assignee || null,
+        delayRisk,
+      };
+    });
   }
 
   private async attachLatestRepairReports<T extends { id: string }>(claims: T[]) {
@@ -947,6 +1226,20 @@ export class ClaimFilesService {
         typeof rest.customerId === 'string' && rest.customerId.trim()
           ? rest.customerId.trim()
           : null;
+    }
+
+    // Eşzamanlı düzenleme koruması (optimistic concurrency)
+    const expectedUpdatedAt = rest.expectedUpdatedAt ?? rest.expected_updated_at;
+    delete rest.expectedUpdatedAt;
+    delete rest.expected_updated_at;
+    if (expectedUpdatedAt) {
+      const expectedMs = new Date(String(expectedUpdatedAt)).getTime();
+      const currentMs = new Date((existing as { updatedAt?: Date }).updatedAt as Date).getTime();
+      if (!Number.isNaN(expectedMs) && currentMs !== expectedMs) {
+        throw new ConflictException(
+          'Bu dosya başka bir kullanıcı tarafından güncellendi. Sayfayı yenileyip tekrar deneyin.',
+        );
+      }
     }
 
     // Prisma'ya gitmeyen / sahte alanları temizle

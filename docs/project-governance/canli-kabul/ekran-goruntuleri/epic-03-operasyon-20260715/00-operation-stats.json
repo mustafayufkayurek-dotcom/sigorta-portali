@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "open": 6,
+    "urgent": 0,
+    "openedToday": 0,
+    "approvalPending": 0,
+    "reportWriting": 6,
+    "financeTransfer": 0,
+    "delayRisk": 0,
+    "approval72h": 0
+  }
+}

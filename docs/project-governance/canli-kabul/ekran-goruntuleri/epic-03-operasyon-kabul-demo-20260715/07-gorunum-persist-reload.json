@@ -1,0 +1,21 @@
+{
+  "feature": "gorunum-kaydetme",
+  "url": "http://localhost:3001/panel/operasyon",
+  "zoom": "100%",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/07-gorunum-persist-reload.png",
+  "at": "2026-07-15T13:26:41.443Z",
+  "prefsBefore": {
+    "visible": null,
+    "order": null
+  },
+  "prefsAfter": {
+    "visible": null,
+    "order": null
+  },
+  "persistOk": false,
+  "stillHidden": ""
+}

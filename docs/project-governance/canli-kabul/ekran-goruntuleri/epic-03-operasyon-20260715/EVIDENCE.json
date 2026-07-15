@@ -1,0 +1,71 @@
+{
+  "epic": "EPIC-03",
+  "at": "2026-07-15T13:18:21.264Z",
+  "base": "http://localhost:3001",
+  "checks": [
+    {
+      "status": "PASS",
+      "detail": "operation-stats HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "detail": "page title Operasyon"
+    },
+    {
+      "status": "PASS",
+      "detail": "operasyon KPI labels 8/8"
+    },
+    {
+      "status": "PASS",
+      "detail": "enterprise columns visible in chrome"
+    },
+    {
+      "status": "PASS",
+      "detail": "table section present"
+    },
+    {
+      "status": "PASS",
+      "detail": "İşlemler column header"
+    },
+    {
+      "status": "PASS",
+      "detail": "double delete step 1 modal"
+    },
+    {
+      "status": "PASS",
+      "detail": "preset chip Onay Bekleyen"
+    },
+    {
+      "status": "PASS",
+      "detail": "column picker interaction attempted"
+    },
+    {
+      "status": "PASS",
+      "detail": "72s Geçen preset chip"
+    },
+    {
+      "status": "PASS",
+      "detail": "no finance KPI on operasyon page"
+    }
+  ],
+  "shots": [
+    "01-operasyon-overview-1440.png",
+    "04-double-delete-step1.png",
+    "02-preset-onay-bekleyen.png",
+    "03-column-picker.png",
+    "05-final-state.png"
+  ],
+  "summary": {
+    "pass": 11,
+    "fail": 0,
+    "total": 11
+  },
+  "notes": [
+    "base=http://localhost:3001",
+    "api=http://127.0.0.1:3000/api/v1",
+    "auth: API login OK",
+    "auth page: http://localhost:3001/panel"
+  ],
+  "typecheck": "PASS (ran separately)",
+  "build": "PASS (ran separately)"
+}

@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ClaimFilesService } from './claim-files.service';
+import { Approval72hScheduler } from './approval-72h.scheduler';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { PhoneMaskingInterceptor } from '@/common/interceptors/phone-masking.interceptor';
@@ -29,7 +30,10 @@ import { extractIntakeDocumentFieldsFromImage } from './document-intake-scan.uti
 @UseGuards(PermissionsGuard)
 @UseInterceptors(PhoneMaskingInterceptor, CostMaskingInterceptor)
 export class ClaimFilesController {
-  constructor(private readonly claimFilesService: ClaimFilesService) {}
+  constructor(
+    private readonly claimFilesService: ClaimFilesService,
+    private readonly approval72hScheduler: Approval72hScheduler,
+  ) {}
 
   @Get()
   @RequirePermissions('claim_file.view')
@@ -55,6 +59,25 @@ export class ClaimFilesController {
   @ApiOperation({ summary: 'Hasar dosyası durum listesi' })
   async findStatuses() {
     const data = await this.claimFilesService.findStatuses();
+    return { success: true, data };
+  }
+
+  @Get('operation-stats')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: 'Operasyon sayfası KPI sayaçları' })
+  async operationStats(@CurrentUser() user: any) {
+    const data = await this.claimFilesService.getOperationStats({
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
+    return { success: true, data };
+  }
+
+  @Post('approval-72h-check')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: '72 saat onay kuralını manuel çalıştır (test / ops)' })
+  async runApproval72hCheck() {
+    const data = await this.approval72hScheduler.handleHourlyCheck();
     return { success: true, data };
   }
 

@@ -1,0 +1,19 @@
+{
+  "feature": "filtreler",
+  "url": "http://localhost:3001/panel/operasyon",
+  "zoom": "100%",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/08-filtre-chipler.png",
+  "at": "2026-07-15T13:26:44.196Z",
+  "chipHits": 0,
+  "chipsWanted": [
+    "Onay Bekleyen",
+    "72s Geçen",
+    "Rapor Yazılıyor",
+    "Gecikme Riski",
+    "Bugün Açılan"
+  ]
+}

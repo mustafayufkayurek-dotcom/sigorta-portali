@@ -8,3 +8,4 @@ export * from './file-no-normalize';
 export * from './repair-report-expert';
 export * from './repair-report-revision';
 export * from './claim-file-stage';
+export * from './operation-status';

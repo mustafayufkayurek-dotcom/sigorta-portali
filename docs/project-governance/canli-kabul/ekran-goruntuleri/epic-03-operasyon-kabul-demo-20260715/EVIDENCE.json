@@ -1,0 +1,128 @@
+{
+  "epic": "EPIC-03",
+  "demo": "kabul-demo",
+  "at": "2026-07-15T13:26:44.236Z",
+  "localUrl": "http://localhost:3001/panel/operasyon",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "features": [
+    {
+      "id": 1,
+      "name": "72 saat kuralı (badge/görünüm)",
+      "status": "PARTIAL",
+      "detail": "UI bayrağı yok; stats.approval72h=1"
+    },
+    {
+      "id": 2,
+      "name": "Onay Talep Et durumu",
+      "status": "PARTIAL",
+      "detail": "72s satırı görünmedi"
+    },
+    {
+      "id": 3,
+      "name": "Dosya sorumlusu uyarısı",
+      "status": "PARTIAL",
+      "detail": "Operasyon listesinde ayrı satır uyarısı yok; 72s bildirim Notification.type=approval_72h_exceeded → dosya sorumlusu + yönetici. UI: header bildirim paneli. Bildirim paneli açılamadı; API’de bildirim mevcut olduğu API smoke ile doğrulandı."
+    },
+    {
+      "id": 4,
+      "name": "Yeni operasyon durumları (rozetler)",
+      "status": "PARTIAL",
+      "detail": "Örnek rozetler: yok"
+    },
+    {
+      "id": 5,
+      "name": "Sütun sürükle-bırak",
+      "status": "FAIL",
+      "detail": "Picker açık; reorder doğrulanamadı (↑↓ / DnD)"
+    },
+    {
+      "id": 6,
+      "name": "Sütun gizle/göster",
+      "status": "FAIL",
+      "detail": "Checkbox etkileşimi denendi (0 cb)"
+    },
+    {
+      "id": 7,
+      "name": "Görünüm kaydetme (persist)",
+      "status": "PARTIAL",
+      "detail": "Prefs yazılmadı veya eşleşmedi"
+    },
+    {
+      "id": 8,
+      "name": "Filtreler (hazır filtre chip’ler)",
+      "status": "FAIL",
+      "detail": "0/5 chip görünür; Onay Bekleyen tıklandı"
+    },
+    {
+      "id": 9,
+      "name": "Satır aksiyonları (menü açık)",
+      "status": "FAIL",
+      "detail": "Satır aksiyonu yok"
+    }
+  ],
+  "shots": [
+    {
+      "name": "01-72s-kural.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/01-72s-kural.png"
+    },
+    {
+      "name": "02-onay-talep-et.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/02-onay-talep-et.png"
+    },
+    {
+      "name": "03-dosya-sorumlusu-uyarisi.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/03-dosya-sorumlusu-uyarisi.png"
+    },
+    {
+      "name": "04-operasyon-durum-rozetleri.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/04-operasyon-durum-rozetleri.png"
+    },
+    {
+      "name": "05a-sutun-picker-acik.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/05a-sutun-picker-acik.png"
+    },
+    {
+      "name": "06-sutun-gizle-goster.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/06-sutun-gizle-goster.png"
+    },
+    {
+      "name": "07-gorunum-persist-reload.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/07-gorunum-persist-reload.png"
+    },
+    {
+      "name": "08-filtre-chipler.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/08-filtre-chipler.png"
+    },
+    {
+      "name": "09-satir-aksiyonlari-menu.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/09-satir-aksiyonlari-menu.png"
+    },
+    {
+      "name": "10-operasyon-overview.png",
+      "absolutePath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic-03-operasyon-kabul-demo-20260715/10-operasyon-overview.png"
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "partial": 5,
+    "fail": 4,
+    "total": 9
+  },
+  "notes": [
+    "base=http://localhost:3001",
+    "api=http://127.0.0.1:3000/api/v1",
+    "commit/push/deploy: YOK",
+    "canlı: başlamadı",
+    "auth: API login OK",
+    "operation-stats approval72h=1",
+    "local URL: http://localhost:3001/panel/operasyon"
+  ],
+  "governance": {
+    "commit": false,
+    "push": false,
+    "deploy": false,
+    "production": false,
+    "seed": "local DB only — repair_reports pending_approval +80h (reason=EPIC03_LOCAL_DEMO_20260715)"
+  }
+}
