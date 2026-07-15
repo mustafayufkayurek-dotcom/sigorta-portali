@@ -11,12 +11,15 @@ export function InsuredNameInlineEdit({
   onSaved,
   compact = false,
   align = 'left',
+  expectedUpdatedAt,
 }: {
   claimId: string;
   displayName: string;
   onSaved: (insuredName: string) => void;
   compact?: boolean;
   align?: 'left' | 'center';
+  /** Optimistic concurrency — backend ConflictException ile eşzamanlı düzenleme uyarısı */
+  expectedUpdatedAt?: string | null;
 }) {
   const missing = displayName === '—';
   const [editing, setEditing] = useState(missing);
@@ -33,14 +36,25 @@ export function InsuredNameInlineEdit({
     setSaving(true);
     setError('');
     try {
-      await axios.patch(`${API}/claim-files/${claimId}`, { insuredName: name }, { headers: authHeader() });
+      await axios.patch(
+        `${API}/claim-files/${claimId}`,
+        {
+          insuredName: name,
+          ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+        },
+        { headers: authHeader() },
+      );
       onSaved(name);
       setEditing(false);
     } catch (e: unknown) {
-      const msg = axios.isAxiosError(e)
-        ? e.response?.data?.message ?? e.message
-        : 'Kaydedilemedi';
-      setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
+      if (axios.isAxiosError(e) && e.response?.status === 409) {
+        setError('Bu dosya başka biri tarafından güncellendi. Sayfayı yenileyin.');
+      } else {
+        const msg = axios.isAxiosError(e)
+          ? e.response?.data?.message ?? e.message
+          : 'Kaydedilemedi';
+        setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
+      }
     } finally {
       setSaving(false);
     }
