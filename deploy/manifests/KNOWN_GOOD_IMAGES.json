@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-15",
-  "label": "v361-operasyon-8-madde",
-  "description": "Full: Operasyon 8 madde (KPI, Gecikme Süresi, 72s, PDF 500, aksiyon UX, mail etiket). Web v361 + backend v361. Migration yok. Smoke: route PASS, auth login PARTIAL (LOGIN_EMAIL/LOGIN_PASSWORD yok). Rollback web v360 / backend v359.",
+  "label": "v362-epic03-operasyon-final",
+  "description": "Web-only: EPIC-03 Operasyon final olgunlaştırma (KPI, kolon width, sort, aksiyon UX, mail etiket, gecikme/72s). Web v362 + backend v361. Migration yok. Smoke: route PASS, auth login PARTIAL (LOGIN_EMAIL/LOGIN_PASSWORD yok). Rollback web v361 / backend v359.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v361-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v361-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v362-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v360-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v361-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v359-amd64"
   },
   "mustPassSmokeRoutes": [
