@@ -21,6 +21,8 @@ import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { fmtDate } from '@/utils/date-helpers';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
+import { resolveOperationStatusLabel } from '@sigorta/shared';
 
 
 const fmtAmount = (n: number | undefined | null) => {
@@ -73,17 +75,26 @@ const STATUS_CODE_BADGE: Record<string, string> = {
   COST_REPORT_SUBMITTED:   'bg-green-100 text-green-700',
 };
 
-function ClaimStatusBadge({ status }: { status?: { code?: string; name?: string; color?: string } | null }) {
+function ClaimStatusBadge({ status, reportStatus, approval72hExceeded }: {
+  status?: { code?: string; name?: string; color?: string } | null;
+  reportStatus?: string | null;
+  approval72hExceeded?: boolean;
+}) {
   if (!status) return <span className="badge badge-gray">N/A</span>;
   const code = status.code ?? '';
+  const label = resolveOperationStatusLabel({
+    claimStatusCode: code,
+    reportStatus,
+    approval72hExceeded,
+  }) || portalStatusLabel(code, status.name);
   const cls = STATUS_CODE_BADGE[code];
   if (cls) {
-    return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>{status.name}</span>;
+    return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
   }
   const style = status.color ? { backgroundColor: `${status.color}22`, color: status.color } : undefined;
   return (
     <span className={style ? 'inline-block rounded-full px-2.5 py-0.5 text-xs font-medium' : 'badge badge-blue'} style={style}>
-      {status.name ?? 'N/A'}
+      {label || 'N/A'}
     </span>
   );
 }
@@ -556,7 +567,11 @@ function ClaimFilesPageContent() {
                       <div className="font-mono text-sm font-bold text-slate-900">{claim.fileNo ?? claim.claimNo ?? '—'}</div>
                       <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
                     </div>
-                    <ClaimStatusBadge status={claim.currentStatus} />
+                    <ClaimStatusBadge
+                      status={claim.currentStatus}
+                      reportStatus={claim.latestRepairReport?.status}
+                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                    />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div>
@@ -653,7 +668,11 @@ function ClaimFilesPageContent() {
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
                       <PanelTableTd colId="status" className="table-td whitespace-nowrap">
-                        <ClaimStatusBadge status={claim.currentStatus} />
+                        <ClaimStatusBadge
+                      status={claim.currentStatus}
+                      reportStatus={claim.latestRepairReport?.status}
+                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                    />
                       </PanelTableTd>
                       <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}

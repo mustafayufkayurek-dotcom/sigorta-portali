@@ -38,6 +38,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import { resolveOperationStatusLabel } from '@sigorta/shared';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -215,10 +216,15 @@ function DosyaSayfaUstu({
             <span className="text-xs text-slate-500">
               Eksper: <span className={`font-semibold ${dosyaEksperi === 'Atanmamış' ? 'text-amber-700' : 'text-slate-700'}`}>{dosyaEksperi}</span>
             </span>
-            {claim.currentStatus?.name && (
+            {(claim.operationStatusLabel || claim.currentStatus?.code || claim.currentStatus?.name) && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                 <span className="w-2 h-2 rounded-full" style={{ background: claim.currentStatus?.color ?? '#6B7280' }} />
-                {claim.currentStatus.name}
+                {claim.operationStatusLabel
+                  ?? resolveOperationStatusLabel({
+                    claimStatusCode: claim.currentStatus?.code,
+                    reportStatus: latestReport?.status,
+                    approval72hExceeded: Boolean(claim.approval72hExceeded),
+                  })}
               </span>
             )}
           </div>

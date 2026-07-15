@@ -17,11 +17,11 @@ import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 
 const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
 const STATUS_LABELS: Record<EmergencyStatus, string> = {
-  GELEN: 'Gelen',
-  ATANDI: 'Atandı',
-  SAHADA: 'Sahada',
-  COZULDU: 'Çözüldü',
-  FATURALANDILDI: 'Faturalandı',
+  GELEN: 'Yeni İhbar',
+  ATANDI: 'Tespit Aşamasında',
+  SAHADA: 'Onarım Aşamasında',
+  COZULDU: 'Dosya Kapatıldı',
+  FATURALANDILDI: 'Finansa Aktarıldı',
 };
 const URGENCY_LABELS: Record<EmergencyUrgency, string> = {
   DUSUK: 'Düşük',

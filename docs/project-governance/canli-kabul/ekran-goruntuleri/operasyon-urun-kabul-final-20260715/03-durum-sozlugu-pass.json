@@ -1,0 +1,22 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "at": "2026-07-15T21:11:23.257Z",
+  "statusTexts": [
+    "Acil",
+    "Yeni İhbar",
+    "Hasar",
+    "72s",
+    "Onay Talep Et",
+    "Hasar",
+    "Rapor Yazılıyor",
+    "Hasar",
+    "Rapor Yazılıyor",
+    "Hasar",
+    "Rapor Yazılıyor",
+    "Hasar",
+    "Rapor Yazılıyor",
+    "Hasar",
+    "Rapor Yazılıyor"
+  ],
+  "bad": []
+}

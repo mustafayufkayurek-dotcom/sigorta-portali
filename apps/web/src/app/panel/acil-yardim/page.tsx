@@ -10,11 +10,11 @@ import { getCases, updateCaseStatus, EmergencyCase, EmergencyStatus } from '@/ut
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<EmergencyStatus, { label: string; color: string; badge: string }> = {
-  GELEN: { label: 'Gelen', color: 'bg-slate-50 border-slate-200', badge: 'bg-slate-100 text-slate-700' },
-  ATANDI: { label: 'Atandı', color: 'bg-blue-50 border-blue-200', badge: 'bg-blue-100 text-blue-700' },
-  SAHADA: { label: 'Sahada', color: 'bg-orange-50 border-orange-200', badge: 'bg-orange-100 text-orange-700' },
-  COZULDU: { label: 'Çözüldü', color: 'bg-green-50 border-green-200', badge: 'bg-green-100 text-green-700' },
-  FATURALANDILDI: { label: 'Faturalandı', color: 'bg-purple-50 border-purple-200', badge: 'bg-purple-100 text-purple-700' },
+  GELEN: { label: 'Yeni İhbar', color: 'bg-slate-50 border-slate-200', badge: 'bg-slate-100 text-slate-700' },
+  ATANDI: { label: 'Tespit Aşamasında', color: 'bg-blue-50 border-blue-200', badge: 'bg-blue-100 text-blue-700' },
+  SAHADA: { label: 'Onarım Aşamasında', color: 'bg-orange-50 border-orange-200', badge: 'bg-orange-100 text-orange-700' },
+  COZULDU: { label: 'Dosya Kapatıldı', color: 'bg-green-50 border-green-200', badge: 'bg-green-100 text-green-700' },
+  FATURALANDILDI: { label: 'Finansa Aktarıldı', color: 'bg-purple-50 border-purple-200', badge: 'bg-purple-100 text-purple-700' },
 };
 
 const COLUMNS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];

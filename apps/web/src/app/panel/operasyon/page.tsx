@@ -78,11 +78,11 @@ function deriveInvoiceStatus(invoices: { status: string; invoiceType: string }[]
 }
 
 const EMERGENCY_STATUS_LABELS: Record<string, string> = {
-  GELEN: 'Gelen',
-  ATANDI: 'Atandı',
-  SAHADA: 'Sahada',
-  COZULDU: 'Çözüldü',
-  FATURALANDILDI: 'Faturalandı',
+  GELEN: 'Yeni İhbar',
+  ATANDI: 'Tespit Aşamasında',
+  SAHADA: 'Onarım Aşamasında',
+  COZULDU: 'Dosya Kapatıldı',
+  FATURALANDILDI: 'Finansa Aktarıldı',
 };
 const EMERGENCY_STATUS_CLASSES: Record<string, string> = {
   GELEN:          'badge badge-gray',
@@ -817,8 +817,8 @@ export default function OperasyonPage() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-semibold text-slate-800 whitespace-nowrap ${COL_DIVIDER}`}>
-                              <span className="inline-flex items-center gap-1">
+                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-normal text-slate-800 whitespace-nowrap ${COL_DIVIDER}`}>
+                              <span className={`inline-flex items-center gap-1 ${clientSort?.key === 'fileNo' ? 'font-semibold text-slate-950' : ''}`}>
                                 {row.fileNo}
                                 {row.approval72hExceeded && (
                                   <span className="badge badge-red" title="72 saat onay aşıldı">72s</span>

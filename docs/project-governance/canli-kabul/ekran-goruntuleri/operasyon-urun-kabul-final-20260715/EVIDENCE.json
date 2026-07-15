@@ -1,0 +1,89 @@
+{
+  "at": "2026-07-15T21:11:31.646Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "result": {
+    "Madde 01": {
+      "status": "PASS",
+      "detail": "avgH=66.0 finance={\"h\":66,\"w\":148,\"label\":\"Finansa Aktarılacak\",\"truncated\":false,\"iconH\":20}",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/01-kpi-pass.png"
+    },
+    "Madde 02": {
+      "status": "PASS",
+      "detail": "{\"weight\":\"400\",\"text\":\"AY-202606-0001\"}",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/02-dosya-no-pass.png"
+    },
+    "Madde 03": {
+      "status": "PASS",
+      "detail": "bad=[] sample=[\"Acil\",\"Yeni İhbar\",\"Hasar\",\"72s\",\"Onay Talep Et\",\"Hasar\",\"Rapor Yazılıyor\",\"Hasar\",\"Rapor Yazılıyor\",\"Hasar\",\"Rapor Yazılıyor\",\"Hasar\"]",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/03-durum-sozlugu-pass.png"
+    },
+    "Madde 04": {
+      "status": "PASS",
+      "detail": "th=1 nextAction=0 cells=[\"—\",\"72+ Saat 🔴\",\"—\",\"—\",\"—\",\"—\",\"—\"] onayUi=true",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/04-gecikme-pass.png"
+    },
+    "Madde 05": {
+      "status": "PASS",
+      "detail": "picker=true persist=true reset=true seps=9",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/05-sutunlar-pass.png"
+    },
+    "Madde 06": {
+      "status": "PASS",
+      "detail": "ASC/DESC/Default cycle",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/06-sort-pass.png"
+    },
+    "Madde 07": {
+      "status": "PASS",
+      "detail": "titles=Görüntüle|PDF Oluştur|E-posta Gönder|WhatsApp|İşlem Menüsü",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/07-islemler-pass.png"
+    },
+    "Madde 08": {
+      "status": "PASS",
+      "detail": "hasarEdit=true menu=Not EkleGeçmişArşive Taşı",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/08-menu-pass.png"
+    },
+    "Madde 09": {
+      "status": "PASS",
+      "detail": "menu=Not EkleGeçmişArşive Taşı",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/08-menu-pass.png"
+    },
+    "Madde 10": {
+      "status": "PASS",
+      "detail": "titles=Görüntüle|PDF Oluştur|E-posta Gönder|WhatsApp|İşlem Menüsü",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/07-islemler-pass.png"
+    },
+    "Madde 11": {
+      "status": "PASS",
+      "detail": "status=200 head=%PDF- bytes=241713",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/11-pdf-pass.png"
+    },
+    "Madde 12": {
+      "status": "PASS",
+      "detail": "musteri=true noDis=true alici=true tpl=true",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-urun-kabul-final-20260715/12-mail-pass.png"
+    },
+    "Madde 13": {
+      "status": "FAIL",
+      "detail": "Production ürün kabulü kullanıcıda; Cursor prod doğrulamaz — kullanıcı production ekranında verecek",
+      "shot": null
+    }
+  },
+  "summary": [
+    "□ Madde 01 PASS",
+    "□ Madde 02 PASS",
+    "□ Madde 03 PASS",
+    "□ Madde 04 PASS",
+    "□ Madde 05 PASS",
+    "□ Madde 06 PASS",
+    "□ Madde 07 PASS",
+    "□ Madde 08 PASS",
+    "□ Madde 09 PASS",
+    "□ Madde 10 PASS",
+    "□ Madde 11 PASS",
+    "□ Madde 12 PASS",
+    "□ Madde 13 FAIL"
+  ],
+  "commit": "none",
+  "deploy": "none"
+}

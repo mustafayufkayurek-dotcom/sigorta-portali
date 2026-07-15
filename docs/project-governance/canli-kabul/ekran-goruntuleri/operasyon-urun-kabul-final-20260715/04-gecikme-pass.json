@@ -1,0 +1,16 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "at": "2026-07-15T21:11:23.298Z",
+  "delayTh": 1,
+  "nextActionTh": 0,
+  "delayCells": [
+    "—",
+    "72+ Saat 🔴",
+    "—",
+    "—",
+    "—",
+    "—",
+    "—"
+  ],
+  "onayTalepUi": true
+}

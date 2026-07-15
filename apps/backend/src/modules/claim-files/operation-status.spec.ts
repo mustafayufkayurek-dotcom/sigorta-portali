@@ -1,5 +1,7 @@
 import {
   deriveOperationStage,
+  resolveOperationStatusLabel,
+  emergencyStatusProductLabel,
   isApproval72hExceeded,
   hoursSince,
   formatApprovalDelayLabel,
@@ -7,12 +9,39 @@ import {
 } from '@sigorta/shared';
 
 describe('operation-status mapping', () => {
-  it('maps new → İhbar Alındı', () => {
-    expect(deriveOperationStage({ claimStatusCode: 'new' }).label).toBe('İhbar Alındı');
+  it('maps new → Yeni İhbar', () => {
+    expect(deriveOperationStage({ claimStatusCode: 'new' }).label).toBe('Yeni İhbar');
   });
 
-  it('maps closed → Dosya Kapandı', () => {
-    expect(deriveOperationStage({ claimStatusCode: 'closed' }).label).toBe('Dosya Kapandı');
+  it('maps closed → Dosya Kapatıldı', () => {
+    expect(deriveOperationStage({ claimStatusCode: 'closed' }).label).toBe('Dosya Kapatıldı');
+  });
+
+  it('maps adjuster_assigned → Tespit Aşamasında', () => {
+    expect(deriveOperationStage({ claimStatusCode: 'adjuster_assigned' }).label).toBe('Tespit Aşamasında');
+  });
+
+  it('maps repair_in_progress → Onarım Aşamasında', () => {
+    expect(deriveOperationStage({ claimStatusCode: 'repair_in_progress' }).label).toBe('Onarım Aşamasında');
+  });
+
+  it('maps invoice_pending → Finansa Aktarıldı', () => {
+    expect(deriveOperationStage({ claimStatusCode: 'invoice_pending' }).label).toBe('Finansa Aktarıldı');
+  });
+
+  it('72h override → Onay Talep Et', () => {
+    expect(
+      resolveOperationStatusLabel({
+        claimStatusCode: 'budget_preparing',
+        reportStatus: 'pending_approval',
+        approval72hExceeded: true,
+      }),
+    ).toBe('Onay Talep Et');
+  });
+
+  it('acil ATANDI → Tespit Aşamasında; COZULDU → Dosya Kapatıldı', () => {
+    expect(emergencyStatusProductLabel('ATANDI')).toBe('Tespit Aşamasında');
+    expect(emergencyStatusProductLabel('COZULDU')).toBe('Dosya Kapatıldı');
   });
 
   it('report pending_approval overrides claim code → Onay Bekliyor', () => {

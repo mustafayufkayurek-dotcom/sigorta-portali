@@ -45,11 +45,11 @@ const URGENCY_LABEL: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  GELEN: 'Gelen',
-  ATANDI: 'Atandı',
-  SAHADA: 'Sahada',
-  COZULDU: 'Çözüldü',
-  FATURALANDILDI: 'Faturalandı',
+  GELEN: 'Yeni İhbar',
+  ATANDI: 'Tespit Aşamasında',
+  SAHADA: 'Onarım Aşamasında',
+  COZULDU: 'Dosya Kapatıldı',
+  FATURALANDILDI: 'Finansa Aktarıldı',
 };
 
 function budgetHint(file: ExpensePickerHasarFile, expensePlan: string) {

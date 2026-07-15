@@ -36,34 +36,40 @@ export type OperationStageMeta = {
   nextAction: string;
 };
 
+/**
+ * Ürün durum sözlüğü (tek kaynak):
+ * Yeni→Yeni İhbar · Atandı→Tespit Aşamasında · Sahada→Onarım Aşamasında ·
+ * Rapor Yazılıyor · Onay Bekliyor · 72 Saat+→Onay Talep Et ·
+ * Finansa Aktarıldı · Çözüldü→Dosya Kapatıldı
+ */
 export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
   ihbar_alindi: {
     id: 'ihbar_alindi',
-    label: 'İhbar Alındı',
+    label: 'Yeni İhbar',
     tone: 'gray',
     nextAction: 'Ön inceleme ve sorumluluk ataması',
   },
   on_inceleme: {
     id: 'on_inceleme',
-    label: 'Ön İnceleme',
+    label: 'Tespit Aşamasında',
     tone: 'blue',
     nextAction: 'Eksper / tespitçi ataması',
   },
   eksper_atandi: {
     id: 'eksper_atandi',
-    label: 'Eksper Atandı',
+    label: 'Tespit Aşamasında',
     tone: 'blue',
     nextAction: 'Saha ziyareti planla',
   },
   saha_planlandi: {
     id: 'saha_planlandi',
-    label: 'Saha Planlandı',
+    label: 'Onarım Aşamasında',
     tone: 'blue',
     nextAction: 'Saha ziyaretini tamamla',
   },
   saha_tamamlandi: {
     id: 'saha_tamamlandi',
-    label: 'Saha Tamamlandı',
+    label: 'Onarım Aşamasında',
     tone: 'blue',
     nextAction: 'Rapor yazımına başla',
   },
@@ -81,31 +87,31 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
   },
   onaylandi: {
     id: 'onaylandi',
-    label: 'Onaylandı',
+    label: 'Onarım Aşamasında',
     tone: 'green',
     nextAction: 'Tedarikçi / onarım planı',
   },
   onarim: {
     id: 'onarim',
-    label: 'Onarım',
+    label: 'Onarım Aşamasında',
     tone: 'orange',
     nextAction: 'Onarımı tamamla',
   },
   fatura: {
     id: 'fatura',
-    label: 'Fatura',
+    label: 'Finansa Aktarıldı',
     tone: 'purple',
     nextAction: 'Finansa aktar / fatura kes',
   },
   odeme: {
     id: 'odeme',
-    label: 'Ödeme',
+    label: 'Finansa Aktarıldı',
     tone: 'purple',
     nextAction: 'Tahsilatı takip et',
   },
   dosya_kapandi: {
     id: 'dosya_kapandi',
-    label: 'Dosya Kapandı',
+    label: 'Dosya Kapatıldı',
     tone: 'green',
     nextAction: '—',
   },
@@ -116,6 +122,20 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     nextAction: '—',
   },
 };
+
+/** Acil yardım durumları — aynı ürün sözlüğü */
+export const EMERGENCY_STATUS_PRODUCT_LABELS: Record<string, string> = {
+  GELEN: 'Yeni İhbar',
+  ATANDI: 'Tespit Aşamasında',
+  SAHADA: 'Onarım Aşamasında',
+  COZULDU: 'Dosya Kapatıldı',
+  FATURALANDILDI: 'Finansa Aktarıldı',
+};
+
+export function emergencyStatusProductLabel(code: string | null | undefined): string {
+  if (!code) return '—';
+  return EMERGENCY_STATUS_PRODUCT_LABELS[code] ?? code;
+}
 
 /** ClaimStatus.code → operasyon aşaması */
 const CLAIM_CODE_TO_STAGE: Record<string, OperationStageId> = {
@@ -171,6 +191,13 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
 
 export function deriveOperationStage(input: DeriveOperationStageInput): OperationStageMeta {
   return OPERATION_STAGES[deriveOperationStageId(input)];
+}
+
+export function resolveOperationStatusLabel(
+  input: DeriveOperationStageInput & { approval72hExceeded?: boolean },
+): string {
+  if (input.approval72hExceeded) return 'Onay Talep Et';
+  return deriveOperationStage(input).label;
 }
 
 export function isApprovalWaitingReport(status?: string | null): boolean {
