@@ -159,27 +159,29 @@ function OpsStripKpi({
   onClick?: () => void;
   active?: boolean;
 }) {
-  /** Operasyon KPI — mevcut set korunur; yükseklik +%15–20, ikon belirgin, kart kaybolmaz */
+  /** Operasyon KPI — yükseklik ~%15↑, başlık tek satır (truncate yok), kart boğulmadan kalır */
   const body = (
     <div
-      className={`group flex min-h-[56px] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 shadow-md transition ${
+      className={`group flex min-h-[64px] min-w-[148px] items-center gap-3 rounded-xl border bg-white px-3.5 py-3 shadow-md transition ${
         active
           ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
           : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
       }`}
     >
-      <span className={`inline-flex shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
+      <span className={`inline-flex shrink-0 rounded-lg p-2.5 shadow-sm ${color}`}>
         <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-lg font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-1 block truncate text-[11px] font-semibold text-slate-600">{label}</span>
+      <span className="overflow-visible">
+        <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
+        <span className="mt-1.5 block whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-600">
+          {label}
+        </span>
       </span>
     </div>
   );
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="block w-full text-left">
+      <button type="button" onClick={onClick} className="block w-full min-w-[148px] text-left">
         {body}
       </button>
     );
@@ -208,7 +210,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'delayDuration', label: 'Gecikme Süresi', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 268, minWidth: 220 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160 },
 ];
 
 const PAGE_SIZE = 50;
@@ -434,6 +436,7 @@ export default function OperasyonPage() {
     ? clientSort.dir
     : (sort.endsWith(':asc') ? 'asc' : 'desc');
 
+  /** ASC → DESC → Default (üç durumlu gerçek sıralama) */
   const handleColumnSort = (colId: string) => {
     if (colId === 'actions') return;
     const serverField = COL_SERVER_SORT[colId];
@@ -441,14 +444,16 @@ export default function OperasyonPage() {
       setClientSort(null);
       setSort((prev) => {
         const [f, d] = prev.split(':');
-        if (f === serverField) return `${serverField}:${d === 'asc' ? 'desc' : 'asc'}`;
+        if (f === serverField && d === 'asc') return `${serverField}:desc`;
+        if (f === serverField && d === 'desc') return 'createdAt:desc';
         return `${serverField}:asc`;
       });
       return;
     }
     setClientSort((prev) => {
-      if (prev?.key === colId) return { key: colId, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
-      return { key: colId, dir: 'asc' };
+      if (!prev || prev.key !== colId) return { key: colId, dir: 'asc' };
+      if (prev.dir === 'asc') return { key: colId, dir: 'desc' };
+      return null;
     });
   };
 
@@ -549,8 +554,11 @@ export default function OperasyonPage() {
         </div>
       </div>
 
-      {/* Operasyon KPI — RC1 StripKpi dili, kompakt; mail/gelen kutu KPI yok */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5" data-testid="ops-kpi-band">
+      {/* Operasyon KPI — genişlik artırılmış; Finansa Aktarılacak kesilmez; mail/gelen kutu KPI yok */}
+      <div
+        className="grid grid-cols-2 gap-3 overflow-x-auto sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8"
+        data-testid="ops-kpi-band"
+      >
         <OpsStripKpi
           label="Açık Dosya"
           value={opsStats?.open ?? '—'}

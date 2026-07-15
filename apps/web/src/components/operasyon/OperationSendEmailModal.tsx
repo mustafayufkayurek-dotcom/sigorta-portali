@@ -219,7 +219,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
               disabled={busy}
               data-testid="ops-email-pdf-view"
             >
-              <option value="external">Alıcı PDF Görünümü</option>
+              <option value="external">Müşteri PDF Görünümü</option>
               <option value="internal">İç PDF Görünümü</option>
             </select>
           </div>

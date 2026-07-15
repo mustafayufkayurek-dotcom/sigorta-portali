@@ -1,0 +1,70 @@
+{
+  "at": "2026-07-15T19:19:43.887Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "url": "http://localhost:3001/panel/operasyon",
+  "checks": {
+    "KPI okunur / Finansa Aktarılacak tam / boyut dengeli": {
+      "status": "PASS",
+      "detail": "avgH=66.0 finance={\"h\":66,\"w\":148,\"label\":\"Finansa Aktarılacak\",\"truncated\":false}"
+    },
+    "Varsayılana Dön komutu": {
+      "status": "PASS",
+      "detail": "picker reset"
+    },
+    "Sütun genişlik kaydet + reload + Varsayılana Dön": {
+      "status": "PASS",
+      "detail": "persist=true reset=true seps=9"
+    },
+    "Tüm kolon ASC/DESC/Default": {
+      "status": "PASS",
+      "detail": "cycle + icons"
+    },
+    "Görünür ikonlar azaltıldı + menü": {
+      "status": "PASS",
+      "detail": "missing= extra= titles=Onay Talep Et|Görüntüle|PDF Oluştur|E-posta Gönder|WhatsApp|İşlem Menüsü"
+    },
+    "Üç nokta çalışıyor": {
+      "status": "PASS",
+      "detail": "DüzenleNot EkleGeçmiş | Arşive Taşı"
+    },
+    "Görüntüle/Düzenle ayrıldı": {
+      "status": "PASS",
+      "detail": "viewVisible=1 editVisible=0 editInMenu=true expectEdit=true menu=DüzenleNot EkleGeçmiş | Arşive Taşı"
+    },
+    "Tooltip": {
+      "status": "PASS",
+      "detail": "Onay Talep Et|Görüntüle|PDF Oluştur|E-posta Gönder|WhatsApp|İşlem Menüsü"
+    },
+    "Mail etiket Müşteri PDF Görünümü": {
+      "status": "PASS",
+      "detail": "modal=true"
+    },
+    "PDF no 500": {
+      "status": "PASS",
+      "detail": "api pdf"
+    },
+    "Gecikme Süresi": {
+      "status": "PASS",
+      "detail": "th=1 cells=7"
+    },
+    "72 Saat Kuralı": {
+      "status": "PASS",
+      "detail": "ui=true"
+    },
+    "Typecheck": {
+      "status": "PASS",
+      "detail": "tsc --noEmit exit 0"
+    },
+    "Build": {
+      "status": "PASS",
+      "detail": "next build exit 0"
+    },
+    "Browser": {
+      "status": "PASS",
+      "detail": "Playwright chromium local"
+    }
+  },
+  "commit": "none",
+  "deploy": "none"
+}

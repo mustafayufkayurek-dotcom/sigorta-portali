@@ -4,15 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
-  Archive,
   Eye,
   FileText,
-  History,
   Mail,
   MessageCircle,
   MoreVertical,
-  Pencil,
-  StickyNote,
 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
@@ -60,8 +56,9 @@ export function OperationRowActions({
 
   const detailHref =
     kind === 'hasar' ? `/panel/hasar-dosyalari/${id}` : `/panel/acil-yardim/${id}`;
+  /** Hasar: ?edit=1 ile dosya bilgileri düzenleme (Görüntüle’den ayrı) */
   const editHref =
-    kind === 'hasar' ? `/panel/hasar-dosyalari/${id}?edit=1` : `/panel/acil-yardim/${id}?edit=1`;
+    kind === 'hasar' ? `/panel/hasar-dosyalari/${id}?edit=1` : detailHref;
   const noteHref =
     kind === 'hasar'
       ? `/panel/hasar-dosyalari/${id}?grup=operasyon&alt=iletisim`
@@ -112,7 +109,6 @@ export function OperationRowActions({
         showToast('error', 'PDF oluşmadı veya boş döndü.');
         return;
       }
-      // PDF sihirli bayt kontrolü — JSON hata gövdesini indirme
       const head = await blob.slice(0, 5).text();
       if (!head.startsWith('%PDF')) {
         showToast('error', 'Sunucu PDF yerine hata döndü.');
@@ -195,15 +191,10 @@ export function OperationRowActions({
         </button>
       )}
 
+      {/* Görünür: Görüntüle · PDF · Mail · WhatsApp — diğerleri ⋮ menüde */}
       <button type="button" title="Görüntüle" aria-label="Görüntüle" className={iconBtnClass} onClick={() => router.push(detailHref)}>
         <Eye className="h-3.5 w-3.5" aria-hidden />
       </button>
-      {/* Hasar: Düzenle → ?edit=1 dosya bilgileri. Acil: Görüntüle ile aynı → tek ikon. */}
-      {kind === 'hasar' && (
-        <button type="button" title="Düzenle" aria-label="Düzenle" className={iconBtnClass} onClick={() => router.push(editHref)}>
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      )}
       <button
         type="button"
         title="PDF Oluştur"
@@ -228,21 +219,6 @@ export function OperationRowActions({
       >
         <MessageCircle className="h-3.5 w-3.5" aria-hidden />
       </a>
-      <button type="button" title="Not Ekle" aria-label="Not Ekle" className={iconBtnClass} onClick={() => router.push(noteHref)}>
-        <StickyNote className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      <button type="button" title="Geçmiş" aria-label="Geçmiş" className={iconBtnClass} onClick={() => router.push(historyHref)}>
-        <History className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      <button
-        type="button"
-        title="Arşive Taşı"
-        aria-label="Arşive Taşı"
-        className={`${iconBtnClass} text-red-600 hover:bg-red-50 hover:text-red-700`}
-        onClick={() => onDeleteRequest?.()}
-      >
-        <Archive className="h-3.5 w-3.5" aria-hidden />
-      </button>
 
       <button
         type="button"
@@ -260,28 +236,12 @@ export function OperationRowActions({
           className="absolute right-0 top-full mt-1 z-30 min-w-[176px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
           data-testid="ops-actions-menu"
         >
-          {menuItem('Görüntüle', () => {
-            setOpen(false);
-            router.push(detailHref);
-          })}
+          {/* Hasar: Düzenle = ?edit=1 (Görüntüle’den ayrı). Acil: tek Görüntüle — menüde Düzenle yok. */}
           {kind === 'hasar' &&
             menuItem('Düzenle', () => {
               setOpen(false);
               router.push(editHref);
             })}
-          {menuItem(pdfBusy ? 'PDF Oluşturuluyor…' : 'PDF Oluştur', () => void handlePdf(), {
-            disabled: pdfBusy,
-          })}
-          {menuItem('E-posta Gönder', openEmail)}
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full text-left px-3 py-2 hover:bg-green-50 text-slate-700"
-            onClick={() => setOpen(false)}
-          >
-            WhatsApp
-          </a>
           {menuItem('Not Ekle', () => {
             setOpen(false);
             router.push(noteHref);

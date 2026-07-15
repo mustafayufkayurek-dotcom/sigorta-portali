@@ -1,0 +1,11 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T19:19:39.808Z",
+  "feature": "widths",
+  "afterResize": "{\"kind\":128,\"fileNo\":110,\"customer\":130,\"insured\":150,\"assignee\":120,\"date\":96,\"subject\":220,\"status\":130,\"delayDuration\":120,\"invoice\":100,\"amount\":96,\"actions\":188}",
+  "afterReload": "{\"kind\":128,\"fileNo\":110,\"customer\":130,\"insured\":150,\"assignee\":120,\"date\":96,\"subject\":220,\"status\":130,\"delayDuration\":120,\"invoice\":100,\"amount\":96,\"actions\":188}"
+}

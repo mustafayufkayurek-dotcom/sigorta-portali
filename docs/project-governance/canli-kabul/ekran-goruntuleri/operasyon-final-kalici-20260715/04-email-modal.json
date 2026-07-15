@@ -1,0 +1,13 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T19:19:41.490Z",
+  "feature": "email",
+  "opts": [
+    "Müşteri PDF Görünümü",
+    "İç PDF Görünümü"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "a1": "ascending",
+  "a2": "descending",
+  "a3": "none",
+  "headers": [
+    {
+      "text": "Tür⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Dosya No⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Sigorta Şirketi⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Sigortalı Adı Soyadı⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Kimde⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Dosya Konusu⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Durum⇅",
+      "hasSort": true
+    },
+    {
+      "text": "Gecikme Süresi⇅",
+      "hasSort": true
+    },
+    {
+      "text": "İşlemler",
+      "hasSort": false
+    }
+  ]
+}

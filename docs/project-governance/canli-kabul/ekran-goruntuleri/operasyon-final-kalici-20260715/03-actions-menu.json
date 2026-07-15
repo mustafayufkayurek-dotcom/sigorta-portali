@@ -1,0 +1,18 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T19:19:40.928Z",
+  "feature": "actions",
+  "menuText": "DüzenleNot EkleGeçmiş\nArşive Taşı",
+  "titles": [
+    "Onay Talep Et",
+    "Görüntüle",
+    "PDF Oluştur",
+    "E-posta Gönder",
+    "WhatsApp",
+    "İşlem Menüsü"
+  ]
+}

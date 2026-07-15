@@ -649,11 +649,17 @@ export function SortablePanelTableTh({
   resizable = true,
 }: SortablePanelTableThProps) {
   const active = activeSortKey === sortKey;
+  const sortTitle = active
+    ? sortDir === 'asc'
+      ? 'Sıralı: Artan — Tıklayınca Azalan'
+      : 'Sıralı: Azalan — Tıklayınca Varsayılan'
+    : 'Sıralamak İçin Tıklayın (Artan)';
   const label = (
     <span
       role="button"
       tabIndex={0}
-      title={active ? `Sıralı: ${sortDir === 'asc' ? 'artan' : 'azalan'}` : 'Sıralamak için tıklayın'}
+      title={sortTitle}
+      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={`inline-flex w-full cursor-pointer items-center justify-center gap-1 transition-colors hover:text-slate-800 dark:hover:text-slate-100 ${
         active ? 'text-blue-700 dark:text-blue-300' : 'text-inherit'
       }`}
@@ -676,7 +682,7 @@ export function SortablePanelTableTh({
         }`}
         aria-hidden
       >
-        {active && sortDir === 'desc' ? '↓' : '↑'}
+        {active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}
       </span>
     </span>
   );

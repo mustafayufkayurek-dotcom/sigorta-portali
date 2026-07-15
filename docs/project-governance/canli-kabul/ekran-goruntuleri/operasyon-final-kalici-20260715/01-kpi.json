@@ -1,0 +1,53 @@
+{
+  "avgH": 66,
+  "kpiMeta": [
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Açık Dosya",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Onay Bekleyen",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Rapor Yazılıyor",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Rapor Onayı",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Finansa Aktarılacak",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "72 Saat + Risk",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Bugün Açılan",
+      "truncated": false
+    },
+    {
+      "h": 66,
+      "w": 148,
+      "label": "Acil Dosya",
+      "truncated": false
+    }
+  ]
+}
