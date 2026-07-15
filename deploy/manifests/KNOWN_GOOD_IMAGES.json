@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-15",
-  "label": "v356-dashboard-rc1",
-  "description": "Full: Dashboard RC1 freeze (marka PNG, shell, Günün Akışı, Yardım çekmecesi, Sistem Sağlığı). Web+backend v356. Migration yok (schema up-to-date). Rollback web v355 / backend v349.",
+  "label": "v359-epic03-operasyon-rev",
+  "description": "Full: EPIC-03 Operasyon revizyon (kompakt KPI, sort/lines, işlem menüsü, 72s, PDF-email kod zinciri). Web+backend v359. Migration yok. SMTP gerçek gönderim ayrı epic. Smoke: route PASS, auth login PARTIAL (LOGIN_EMAIL/LOGIN_PASSWORD yok). Rollback web v358 / backend v358.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v356-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v356-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v359-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v359-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v355-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v349-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v358-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v358-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
