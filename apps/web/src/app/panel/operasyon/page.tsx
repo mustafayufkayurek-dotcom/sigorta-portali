@@ -423,7 +423,20 @@ export default function OperasyonPage() {
         return av.localeCompare(bv, 'tr', { sensitivity: 'base', numeric: true }) * mul;
       });
     } else {
-      rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Sunucu sort alanı (fileNo / tarih) seçildiyse birleşik listede de aynı sırayı uygula.
+      // Aksi halde default (createdAt) görünümü tarih azalan kalır.
+      const [field, dir] = sort.split(':');
+      const serverColId = Object.entries(COL_SERVER_SORT).find(([, v]) => v === field)?.[0];
+      if (serverColId && (dir === 'asc' || dir === 'desc')) {
+        const mul = dir === 'asc' ? 1 : -1;
+        rows.sort((a, b) => {
+          const av = String(sortValue(a, serverColId) ?? '');
+          const bv = String(sortValue(b, serverColId) ?? '');
+          return av.localeCompare(bv, 'tr', { sensitivity: 'base', numeric: true }) * mul;
+        });
+      } else {
+        rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      }
     }
     return rows;
   })();
@@ -436,25 +449,26 @@ export default function OperasyonPage() {
     ? clientSort.dir
     : (sort.endsWith(':asc') ? 'asc' : 'desc');
 
-  /** ASC → DESC → Default (üç durumlu gerçek sıralama) */
+  /** ASC → DESC → Default (üç durumlu gerçek sıralama; birleşik hasar+acil listede client) */
   const handleColumnSort = (colId: string) => {
     if (colId === 'actions') return;
     const serverField = COL_SERVER_SORT[colId];
+    setClientSort((prev) => {
+      if (!prev || prev.key !== colId) return { key: colId, dir: 'asc' };
+      if (prev.dir === 'asc') return { key: colId, dir: 'desc' };
+      return null;
+    });
+    // Sayfalı hasar API ile hizala (görüntü sırası clientSort ile belirlenir)
     if (serverField) {
-      setClientSort(null);
       setSort((prev) => {
         const [f, d] = prev.split(':');
         if (f === serverField && d === 'asc') return `${serverField}:desc`;
         if (f === serverField && d === 'desc') return 'createdAt:desc';
         return `${serverField}:asc`;
       });
-      return;
+    } else {
+      setSort('createdAt:desc');
     }
-    setClientSort((prev) => {
-      if (!prev || prev.key !== colId) return { key: colId, dir: 'asc' };
-      if (prev.dir === 'asc') return { key: colId, dir: 'desc' };
-      return null;
-    });
   };
 
   const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');

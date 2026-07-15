@@ -1307,10 +1307,14 @@ export default function ClaimFileDetailPage() {
   const searchParams = useSearchParams();
   const focusSigortali = searchParams.get('sigortali') === '1';
   const openEdit = searchParams.get('edit') === '1';
+  const aksiyonParam = searchParams.get('aksiyon');
   const grupParam = searchParams.get('grup');
   const altParam = searchParams.get('alt');
+  /** Operasyon → Onay Talep Et (72s): doğrudan raporlar grubuna */
   const initialGroup: GroupTab =
-    grupParam === 'operasyon' || grupParam === 'raporlar' || grupParam === 'evraklar' || grupParam === 'finans' || grupParam === 'genel-bilgiler'
+    aksiyonParam === 'onay-talep'
+      ? 'raporlar'
+      : grupParam === 'operasyon' || grupParam === 'raporlar' || grupParam === 'evraklar' || grupParam === 'finans' || grupParam === 'genel-bilgiler'
       ? (grupParam as GroupTab)
       : 'genel-bilgiler';
   const initialOpsSub =
