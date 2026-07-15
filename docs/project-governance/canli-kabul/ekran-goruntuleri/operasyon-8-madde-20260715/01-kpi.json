@@ -1,0 +1,61 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T18:33:11.889Z",
+  "feature": "kpi",
+  "avgH": 61,
+  "avgIcon": 20,
+  "kpiMeta": [
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "6Açık Dosya"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "1Onay Bekleyen"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "5Rapor Yazılıyor"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "1Rapor Onayı"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "0Finansa Aktarılacak"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "172 Saat + Risk"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "0Bugün Açılan"
+    },
+    {
+      "h": 61,
+      "w": 140,
+      "iconH": 20,
+      "label": "0Acil Dosya"
+    }
+  ]
+}

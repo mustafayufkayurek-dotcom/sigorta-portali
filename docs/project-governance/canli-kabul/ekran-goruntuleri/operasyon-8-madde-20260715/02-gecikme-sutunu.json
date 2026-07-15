@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T18:33:11.939Z",
+  "headers": [
+    "Tür↑",
+    "Dosya No↑",
+    "Sigorta Şirketi↑",
+    "Sigortalı Adı Soyadı↑",
+    "Kimde↑",
+    "Dosya Konusu↑",
+    "Durum↑",
+    "Gecikme Süresi↑",
+    "İşlemler"
+  ],
+  "delayCells": 7
+}

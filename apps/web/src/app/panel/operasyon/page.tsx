@@ -40,6 +40,7 @@ import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
+  formatApprovalDelayLabel,
   type OperationPreset,
   type OperationStageMeta,
 } from '@sigorta/shared';
@@ -115,7 +116,7 @@ type UnifiedRow =
       statusTone: string;
       invoiceStatus: string;
       amount: string | null;
-      nextAction: string;
+      delayHours: number | null;
       assigneeName: string;
       approval72hExceeded: boolean;
       delayRisk: boolean;
@@ -135,7 +136,7 @@ type UnifiedRow =
       statusCode: string;
       invoiceStatus: string;
       amount: string | null;
-      nextAction: string;
+      delayHours: number | null;
       assigneeName: string;
       approval72hExceeded: boolean;
       delayRisk: boolean;
@@ -158,21 +159,21 @@ function OpsStripKpi({
   onClick?: () => void;
   active?: boolean;
 }) {
-  /** RC1 StripKpi dili — kompakt dengeli (~46px ≈ +%15, büyük mockup değil) */
+  /** Operasyon KPI — mevcut set korunur; yükseklik +%15–20, ikon belirgin, kart kaybolmaz */
   const body = (
     <div
-      className={`group flex min-h-[46px] items-center gap-2 rounded-lg border bg-white px-2.5 py-1.5 shadow-sm transition ${
+      className={`group flex min-h-[56px] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 shadow-md transition ${
         active
-          ? 'border-blue-400 ring-2 ring-blue-200'
-          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+          ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
+          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
       }`}
     >
-      <span className={`inline-flex shrink-0 rounded-md p-1.5 ${color}`}>
-        <Icon className="h-3.5 w-3.5 text-white" aria-hidden />
+      <span className={`inline-flex shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
+        <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-0.5 block truncate text-[10px] font-medium text-slate-500">{label}</span>
+        <span className="block text-lg font-bold leading-none tabular-nums text-slate-950">{value}</span>
+        <span className="mt-1 block truncate text-[11px] font-semibold text-slate-600">{label}</span>
       </span>
     </div>
   );
@@ -204,7 +205,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 220, minWidth: 120, flex: true },
   { id: 'status', label: 'Durum', defaultWidth: 130, minWidth: 100 },
-  { id: 'nextAction', label: 'Sonraki Aksiyon', defaultWidth: 140, minWidth: 100 },
+  { id: 'delayDuration', label: 'Gecikme Süresi', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 268, minWidth: 220 },
@@ -236,7 +237,7 @@ type OpsStats = {
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon-v6', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:operasyon-v7', TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
@@ -349,11 +350,15 @@ export default function OperasyonPage() {
       insuredName: resolveHasarInsuredName(claim),
       date: resolveClaimDisplayDate(claim),
       subject,
-      statusLabel: claim.operationStatusLabel ?? stage.label,
-      statusTone: BADGE_TONE_CLASS[stage.tone as OperationStageMeta['tone']] ?? 'badge badge-blue',
+      statusLabel: Boolean(claim.approval72hExceeded)
+        ? 'Onay Talep Et'
+        : (claim.operationStatusLabel ?? stage.label),
+      statusTone: Boolean(claim.approval72hExceeded)
+        ? 'badge badge-red'
+        : (BADGE_TONE_CLASS[stage.tone as OperationStageMeta['tone']] ?? 'badge badge-blue'),
       invoiceStatus: invStatus,
       amount: claim.invoicedAmount != null ? `${Number(claim.invoicedAmount).toLocaleString('tr-TR')} ₺` : null,
-      nextAction: claim.nextAction ?? stage.nextAction,
+      delayHours: typeof claim.approvalWaitingHours === 'number' ? claim.approvalWaitingHours : null,
       assigneeName: claim.assigneeName ?? '—',
       approval72hExceeded: Boolean(claim.approval72hExceeded),
       delayRisk: Boolean(claim.delayRisk),
@@ -375,7 +380,7 @@ export default function OperasyonPage() {
     statusCode: c.status,
     invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
     amount: null,
-    nextAction: c.status === 'GELEN' ? 'Ata / değerlendir' : c.status === 'ATANDI' ? 'Sahaya git' : 'Takip et',
+    delayHours: null,
     assigneeName: '—',
     approval72hExceeded: false,
     delayRisk: false,
@@ -393,7 +398,7 @@ export default function OperasyonPage() {
       case 'date': return row.date;
       case 'subject': return row.subject;
       case 'status': return row.kind === 'hasar' ? row.statusLabel : row.statusCode;
-      case 'nextAction': return row.nextAction;
+      case 'delayDuration': return row.delayHours == null ? '' : String(row.delayHours).padStart(5, '0');
       case 'invoice': return row.invoiceStatus;
       case 'amount': return row.amount ?? '';
       default: return '';
@@ -468,7 +473,7 @@ export default function OperasyonPage() {
       samples.date?.push(fmtDate(row.date));
       samples.subject?.push(row.subject);
       samples.status?.push(row.kind === 'hasar' ? row.statusLabel : (EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode));
-      samples.nextAction?.push(row.nextAction);
+      samples.delayDuration?.push(formatApprovalDelayLabel(row.delayHours).text);
       samples.invoice?.push(INVOICE_STATUS_LABELS[row.invoiceStatus] ?? row.invoiceStatus);
       if (row.amount) samples.amount?.push(row.amount);
       samples.actions?.push('İşlemler');
@@ -525,7 +530,7 @@ export default function OperasyonPage() {
           </div>
           <div>
             <h1 className="page-title">Operasyon</h1>
-            <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve sonraki aksiyon</p>
+            <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -545,7 +550,7 @@ export default function OperasyonPage() {
       </div>
 
       {/* Operasyon KPI — RC1 StripKpi dili, kompakt; mail/gelen kutu KPI yok */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1.5" data-testid="ops-kpi-band">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5" data-testid="ops-kpi-band">
         <OpsStripKpi
           label="Açık Dosya"
           value={opsStats?.open ?? '—'}
@@ -853,14 +858,32 @@ export default function OperasyonPage() {
                               )}
                             </PanelTableTd>
                           );
-                        case 'nextAction':
+                        case 'delayDuration': {
+                          const delay = formatApprovalDelayLabel(
+                            row.approval72hExceeded && (row.delayHours == null || row.delayHours < 72)
+                              ? 72
+                              : row.delayHours,
+                          );
                           return (
-                            <PanelTableTd key={col.id} colId="nextAction" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
-                              <span className={row.approval72hExceeded ? 'font-semibold text-red-700' : 'text-slate-600'}>
-                                {row.nextAction}
+                            <PanelTableTd key={col.id} colId="delayDuration" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                              <span
+                                className={
+                                  delay.level === 'over96'
+                                    ? 'font-semibold text-red-800'
+                                    : delay.level === 'over72'
+                                      ? 'font-semibold text-red-700'
+                                      : delay.level === 'normal'
+                                        ? 'text-slate-700'
+                                        : 'text-slate-400'
+                                }
+                                data-testid="ops-delay-duration"
+                              >
+                                {delay.text}
+                                {delay.suffix ? ` ${delay.suffix}` : ''}
                               </span>
                             </PanelTableTd>
                           );
+                        }
                         case 'invoice':
                           return (
                             <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>

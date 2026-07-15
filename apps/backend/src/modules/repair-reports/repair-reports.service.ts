@@ -45,27 +45,36 @@ interface DownloadToken {
 // In-memory token store (5 min TTL)
 const downloadTokenStore = new Map<string, DownloadToken>();
 
-const REPORT_INCLUDE = {
-  claimFile: {
+/**
+ * claimFile SELECT — skaler kolonları açıkça listeler.
+ * `include: claimFile` Prisma şemasındaki tüm skalerleri (örn. assigned_inspector_vendor_id)
+ * çeker; kolon migrate edilmemiş DB’de PDF getReport kırılır.
+ */
+const CLAIM_FILE_SAFE_SELECT = {
+  id: true,
+  fileNo: true,
+  claimNo: true,
+  lossType: true,
+  insuredName: true,
+  commercialTitle: true,
+  insuranceCompany: true,
+  currentStatus: { select: { id: true, code: true, name: true, color: true } },
+  customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
+  propertyAddress: true,
+  claimSubject: { select: { id: true, code: true, name: true } },
+  assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  assignedSupplier: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
+  supplierAssignments: {
+    orderBy: [{ sortOrder: 'asc' as const }, { assignedAt: 'asc' as const }],
     include: {
-      insuranceCompany: true,
-      currentStatus: { select: { id: true, code: true, name: true, color: true } },
-      customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
-      propertyAddress: true,
-      claimSubject: { select: { id: true, code: true, name: true } },
-      assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
-      assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
-      assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
-      assignedInspectorVendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
-      assignedSupplier: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
-      supplierAssignments: {
-        orderBy: [{ sortOrder: 'asc' as const }, { assignedAt: 'asc' as const }],
-        include: {
-          vendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
-        },
-      },
+      vendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
     },
   },
+};
+
+const REPORT_INCLUDE_CORE = {
   createdBy: { select: { id: true, firstName: true, lastName: true } },
   revisedBy: { select: { id: true, firstName: true, lastName: true } },
   originalReport: { select: { id: true, reportNo: true, versionNo: true } },
@@ -92,6 +101,28 @@ const REPORT_INCLUDE = {
     },
   },
 };
+
+/** PDF / getReport — migrate edilmemiş kolonlara dayanmayan güvenli include */
+const REPORT_INCLUDE_SAFE = {
+  claimFile: { select: CLAIM_FILE_SAFE_SELECT },
+  ...REPORT_INCLUDE_CORE,
+};
+
+/** Kolon mevcut ortamlarda eksper firması da istenebilir (create/update) */
+const REPORT_INCLUDE = {
+  claimFile: {
+    select: {
+      ...CLAIM_FILE_SAFE_SELECT,
+      assignedInspectorVendor: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
+    },
+  },
+  ...REPORT_INCLUDE_CORE,
+};
+
+function isMissingAssignedInspectorVendorColumn(error: unknown): boolean {
+  const msg = String((error as { message?: string })?.message ?? error ?? '');
+  return msg.includes('assigned_inspector_vendor_id');
+}
 
 @Injectable()
 export class RepairReportsService {
@@ -130,25 +161,121 @@ export class RepairReportsService {
     });
   }
 
-  async createReport(claimFileId: string, dto: CreateRepairReportDto, userId: string) {
-    const claimFile = await this.prisma.claimFile.findUnique({
-      where: { id: claimFileId },
-      include: {
-        assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
-        assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
-        assignedInspectorVendor: { select: { id: true, name: true } },
-        customer: {
-          select: {
-            id: true,
-            type: true,
-            entityType: true,
-            subType: true,
-            companyName: true,
-            fullName: true,
+  private async loadClaimFileForCreate(claimFileId: string) {
+    try {
+      return await this.prisma.claimFile.findUnique({
+        where: { id: claimFileId },
+        include: {
+          assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
+          assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+          assignedInspectorVendor: { select: { id: true, name: true } },
+          customer: {
+            select: {
+              id: true,
+              type: true,
+              entityType: true,
+              subType: true,
+              companyName: true,
+              fullName: true,
+            },
           },
         },
-      },
+      });
+    } catch (error) {
+      if (!isMissingAssignedInspectorVendorColumn(error)) throw error;
+      this.logger.warn('assigned_inspector_vendor_id yok — createReport claim include fallback');
+      return this.prisma.claimFile.findUnique({
+        where: { id: claimFileId },
+        include: {
+          assignedAdjuster: { select: { id: true, firstName: true, lastName: true } },
+          assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+          customer: {
+            select: {
+              id: true,
+              type: true,
+              entityType: true,
+              subType: true,
+              companyName: true,
+              fullName: true,
+            },
+          },
+        },
+      });
+    }
+  }
+
+  private async findReportWithInclude(id: string) {
+    // SAFE select: claim_files skalerlerinde assigned_inspector_vendor_id yok.
+    // Eksper firması ikinci sorguda (kolon varsa) eklenir.
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id },
+      include: REPORT_INCLUDE_SAFE,
     });
+    if (!report?.claimFile) return report;
+
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ id: string; name: string | null; phone: string | null; authorized_phone: string | null }>>`
+        SELECT v.id, v.name, v.phone, v.authorized_phone
+        FROM claim_files cf
+        INNER JOIN vendors v ON v.id = cf.assigned_inspector_vendor_id
+        WHERE cf.id = ${report.claimFileId}
+        LIMIT 1
+      `;
+      const v = rows[0];
+      if (v) {
+        (report.claimFile as { assignedInspectorVendor?: unknown }).assignedInspectorVendor = {
+          id: v.id,
+          name: v.name,
+          phone: v.phone,
+          authorizedPhone: v.authorized_phone,
+        };
+      }
+    } catch (error) {
+      // Kolon yoksa raw SQL da düşer — PDF için kritik değil
+      if (!isMissingAssignedInspectorVendorColumn(error)) {
+        this.logger.warn(
+          `Inspector vendor zenginleştirme atlandı: ${(error as Error)?.message ?? error}`,
+        );
+      }
+    }
+    return report;
+  }
+
+  private async mutateReportWithInclude(
+    action: 'create' | 'update',
+    args: { where?: { id: string }; data: Record<string, unknown> },
+  ) {
+    try {
+      if (action === 'create') {
+        return await this.prisma.repairReport.create({
+          data: args.data as any,
+          include: REPORT_INCLUDE,
+        });
+      }
+      return await this.prisma.repairReport.update({
+        where: args.where!,
+        data: args.data as any,
+        include: REPORT_INCLUDE,
+      });
+    } catch (error) {
+      if (!isMissingAssignedInspectorVendorColumn(error)) throw error;
+      this.logger.warn('assigned_inspector_vendor_id yok — mutate include fallback');
+      if (action === 'create') {
+        return this.prisma.repairReport.create({
+          data: args.data as any,
+          include: REPORT_INCLUDE_SAFE,
+        });
+      }
+      return this.prisma.repairReport.update({
+        where: args.where!,
+        data: args.data as any,
+        include: REPORT_INCLUDE_SAFE,
+      });
+    }
+  }
+
+  async createReport(claimFileId: string, dto: CreateRepairReportDto, userId: string) {
+    const claimFile = await this.loadClaimFileForCreate(claimFileId);
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
 
     // Raporlayan: login olan kullanıcı
@@ -159,8 +286,10 @@ export class RepairReportsService {
     const autoReporterName = reporter ? `${reporter.firstName} ${reporter.lastName}` : undefined;
 
     // Eksper: dto veya atanmış eksper firması; dosya sorumlusu (assignedOfficeUser) asla eksper adı olmaz
+    const vendorName = (claimFile as { assignedInspectorVendor?: { name?: string | null } | null })
+      .assignedInspectorVendor?.name;
     const autoInspectorName = dto.inspectorName
-      ?? claimFile.assignedInspectorVendor?.name
+      ?? vendorName
       ?? undefined;
 
     // Müşteri kartı (ekspertiz firması) → expertOffice; dto öncelikli
@@ -171,7 +300,7 @@ export class RepairReportsService {
     const count = await this.prisma.repairReport.count({ where: { claimFileId } });
     const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;
 
-    return this.prisma.repairReport.create({
+    return this.mutateReportWithInclude('create', {
       data: {
         claimFileId,
         reportNo,
@@ -188,15 +317,11 @@ export class RepairReportsService {
         createdByUserId: userId,
         versionNo: REPAIR_REPORT_INITIAL_VERSION,
       },
-      include: REPORT_INCLUDE,
     });
   }
 
   async getReport(id: string) {
-    const report = await this.prisma.repairReport.findUnique({
-      where: { id },
-      include: REPORT_INCLUDE,
-    });
+    const report = await this.findReportWithInclude(id);
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
     const earliestInbound = await this.prisma.inboundMessage.findFirst({
@@ -228,13 +353,12 @@ export class RepairReportsService {
       throw new BadRequestException('Bu durumdaki rapor düzenlenemez');
     }
 
-    return this.prisma.repairReport.update({
+    return this.mutateReportWithInclude('update', {
       where: { id },
       data: {
         ...dto,
         reportDate: dto.reportDate ? new Date(dto.reportDate) : undefined,
       },
-      include: REPORT_INCLUDE,
     });
   }
 
@@ -629,8 +753,45 @@ export class RepairReportsService {
 
   // ── PDF & Email ────────────────────────────────────────────────────────────
 
+  /** PDF için minimal claimFile — migrate edilmemiş skaler kolonlara dayanmaz */
+  private async getReportForPdf(reportId: string) {
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            claimNo: true,
+            lossType: true,
+            insuredName: true,
+            commercialTitle: true,
+            insuranceCompany: { select: { name: true } },
+            customer: { select: { fullName: true, companyName: true } },
+            propertyAddress: { select: { city: true, district: true, addressLine: true } },
+            assignedOfficeUser: { select: { firstName: true, lastName: true } },
+          },
+        },
+        expertOffice: {
+          select: { id: true, companyName: true, phone: true, email: true },
+        },
+        originalReport: { select: { id: true, reportNo: true, versionNo: true, createdAt: true } },
+        items: {
+          include: { workGroup: true, damageType: true },
+          orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+        },
+        images: { orderBy: { sortOrder: 'asc' } },
+        damageTypes: { orderBy: { sortOrder: 'asc' } },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    return report;
+  }
+
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
-    const report = await this.getReport(reportId);
+    // PDF kök nedeni: getReport() claimFile include ile şema gerisi kolonları isterdi.
+    // PDF yalnız gerekli alanları select eder.
+    const report = await this.getReportForPdf(reportId);
     try {
       const buffer = await this.pdfService.generate(report as any, viewType);
       return { buffer, report };
@@ -1150,10 +1311,19 @@ export class RepairReportsService {
 
       // getReport() bu transaction dışından okursa READ COMMITTED nedeniyle 404 alır
       // — doğrudan tx client ile sorgula
-      const created = await tx.repairReport.findUnique({
-        where: { id: newReport.id },
-        include: REPORT_INCLUDE,
-      });
+      let created;
+      try {
+        created = await tx.repairReport.findUnique({
+          where: { id: newReport.id },
+          include: REPORT_INCLUDE,
+        });
+      } catch (error) {
+        if (!isMissingAssignedInspectorVendorColumn(error)) throw error;
+        created = await tx.repairReport.findUnique({
+          where: { id: newReport.id },
+          include: REPORT_INCLUDE_SAFE,
+        });
+      }
       if (!created) throw new NotFoundException('Revizyon raporu oluşturulamadı');
       return created;
     });

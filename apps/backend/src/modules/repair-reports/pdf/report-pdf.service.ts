@@ -1,7 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
 import { resolveRepairReportExpertName } from '@sigorta/shared';
+import * as fs from 'fs';
 import * as puppeteer from 'puppeteer';
 
 interface ReportItem {
@@ -133,6 +134,8 @@ const LEGAL_NOTES_DEFAULT = [
 
 @Injectable()
 export class ReportPdfService {
+  private readonly logger = new Logger(ReportPdfService.name);
+
   constructor(private readonly config: ConfigService) {}
 
   async generate(report: ReportData, viewType: 'internal' | 'external'): Promise<Buffer> {
@@ -140,14 +143,46 @@ export class ReportPdfService {
       const html = this.buildHtml(report, viewType);
       return await this.htmlToPdf(html);
     } catch (error) {
+      this.logger.error(
+        `PDF motor hatası: ${(error as Error)?.message ?? error}`,
+        (error as Error)?.stack,
+      );
       throw new InternalServerErrorException(
         'PDF oluşturulamadı. Sunucu PDF motorunu kontrol edin veya daha sonra tekrar deneyin.',
       );
     }
   }
 
+  /** Yerel: puppeteer cache silinmiş olabilir — sistem Chrome / env fallback */
+  private resolveChromeExecutable(): string | undefined {
+    const fromEnv = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+    if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
+
+    try {
+      const bundled = puppeteer.executablePath();
+      if (bundled && fs.existsSync(bundled)) return bundled;
+    } catch {
+      /* paket chrome yok */
+    }
+
+    const macChrome =
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    if (fs.existsSync(macChrome)) return macChrome;
+
+    const linuxChrome = ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
+    for (const p of linuxChrome) {
+      if (fs.existsSync(p)) return p;
+    }
+    return undefined;
+  }
+
   private async htmlToPdf(html: string): Promise<Buffer> {
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    const executablePath = this.resolveChromeExecutable();
+    if (!executablePath) {
+      throw new Error(
+        'Chrome/Chromium bulunamadı (PUPPETEER_EXECUTABLE_PATH veya sistem Chrome gerekli)',
+      );
+    }
     const browser = await puppeteer.launch({
       headless: true,
       executablePath,

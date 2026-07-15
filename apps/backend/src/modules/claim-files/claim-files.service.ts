@@ -635,7 +635,7 @@ export class ClaimFilesService {
       return {
         ...claim,
         operationStage: stage,
-        operationStatusLabel: stage.label,
+        operationStatusLabel: approval72hExceeded ? 'Onay Talep Et' : stage.label,
         nextAction: approval72hExceeded ? 'Onay Talep Et' : stage.nextAction,
         approval72hExceeded,
         approvalWaitingHours,

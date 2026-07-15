@@ -217,9 +217,10 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
               onChange={(e) => setViewType(e.target.value as 'external' | 'internal')}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
               disabled={busy}
+              data-testid="ops-email-pdf-view"
             >
-              <option value="external">Dış (Sigorta)</option>
-              <option value="internal">İç (Meridyen)</option>
+              <option value="external">Alıcı PDF Görünümü</option>
+              <option value="internal">İç PDF Görünümü</option>
             </select>
           </div>
 

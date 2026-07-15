@@ -41,6 +41,26 @@ function buildPdfFilename(opts: {
   const base = [...parts, `${fileNo} Hasar Onarım Raporu`].join(' - ');
   return `${prefix}${base}.pdf`;
 }
+
+/** Node Content-Disposition header ASCII-only; Türkçe dosya adı kırıyordu (PDF 500) */
+function toContentDispositionAttachment(filename: string): string {
+  const ascii = filename
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/[^\x20-\x7E]+/g, '_')
+    .replace(/["\\]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180) || 'onarim-raporu.pdf';
+  const utf8 = encodeURIComponent(filename).replace(/['()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -126,7 +146,7 @@ export class RepairReportsController {
     const filename = buildPdfFilename({ expertOfficeName, insuranceCompanyName, fileNo, view });
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': toContentDispositionAttachment(filename),
     });
     res.send(buffer);
   }
@@ -292,7 +312,7 @@ export class RepairReportsController {
     });
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': toContentDispositionAttachment(filename),
     });
     res.send(buffer);
   }

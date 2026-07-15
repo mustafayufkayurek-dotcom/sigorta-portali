@@ -194,6 +194,25 @@ export function hoursSince(awaitingSince: Date | string | null | undefined, now 
   return Math.floor((now.getTime() - since.getTime()) / (60 * 60 * 1000));
 }
 
+/** Operasyon «Gecikme Süresi» — onay bekleyen saate göre ürün dili */
+export type ApprovalDelayDisplay = {
+  text: string;
+  suffix: '' | '🔴' | '🚨';
+  level: 'none' | 'normal' | 'over72' | 'over96';
+};
+
+export function formatApprovalDelayLabel(
+  hours: number | null | undefined,
+): ApprovalDelayDisplay {
+  if (hours == null || !Number.isFinite(hours) || hours < 0) {
+    return { text: '—', suffix: '', level: 'none' };
+  }
+  const h = Math.floor(hours);
+  if (h >= 96) return { text: '96+ Saat', suffix: '🚨', level: 'over96' };
+  if (h >= 72) return { text: '72+ Saat', suffix: '🔴', level: 'over72' };
+  return { text: `${h} Saat`, suffix: '', level: 'normal' };
+}
+
 export type OperationPreset =
   | 'approval_pending'
   | 'approval_72h'

@@ -2,6 +2,7 @@ import {
   deriveOperationStage,
   isApproval72hExceeded,
   hoursSince,
+  formatApprovalDelayLabel,
   APPROVAL_72H_MS,
 } from '@sigorta/shared';
 
@@ -36,5 +37,13 @@ describe('operation-status mapping', () => {
   it('hoursSince floors hours', () => {
     const since = new Date(Date.now() - (90 * 60 * 60 * 1000));
     expect(hoursSince(since)).toBe(90);
+  });
+
+  it('Gecikme Süresi: exact / 72+ / 96+', () => {
+    expect(formatApprovalDelayLabel(18)).toEqual({ text: '18 Saat', suffix: '', level: 'normal' });
+    expect(formatApprovalDelayLabel(71)).toEqual({ text: '71 Saat', suffix: '', level: 'normal' });
+    expect(formatApprovalDelayLabel(72)).toEqual({ text: '72+ Saat', suffix: '🔴', level: 'over72' });
+    expect(formatApprovalDelayLabel(96)).toEqual({ text: '96+ Saat', suffix: '🚨', level: 'over96' });
+    expect(formatApprovalDelayLabel(null).text).toBe('—');
   });
 });

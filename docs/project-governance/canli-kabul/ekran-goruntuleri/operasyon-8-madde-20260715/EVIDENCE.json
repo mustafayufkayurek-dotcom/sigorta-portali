@@ -1,0 +1,42 @@
+{
+  "at": "2026-07-15T18:33:24.151Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "url": "http://localhost:3001/panel/operasyon",
+  "checks": {
+    "1 KPI güçlü": {
+      "status": "PASS",
+      "detail": "avgH=61.0 avgIcon=20.0 samples=[61,61,61,61,61,61,61,61]"
+    },
+    "2 Gecikme Süresi sütunu": {
+      "status": "PASS",
+      "detail": "hasDelay=true hasNext=false delayCells=7 headers=Tür↑|Dosya No↑|Sigorta Şirketi↑|Sigortalı Adı Soyadı↑|Kimde↑|Dosya Konusu↑|Durum↑|Gecikme Süresi↑|İşlemler"
+    },
+    "3 72s kuralı": {
+      "status": "PASS",
+      "detail": "bannerish=true badge72=1 api72count=1 flagsOk=true"
+    },
+    "4 İşlemler fonksiyon": {
+      "status": "PASS",
+      "detail": "Onay Talep Et|Görüntüle|Düzenle|PDF Oluştur|E-posta Gönder|WhatsApp|Not Ekle|Geçmiş|Arşive Taşı|İşlem Menüsü"
+    },
+    "5 Üç nokta menü": {
+      "status": "PASS",
+      "detail": "GörüntüleDüzenlePDF OluşturE-posta Gönder | WhatsApp | Not EkleGeçmiş | Arşive Taşı"
+    },
+    "6 Görüntüle/Düzenle UX": {
+      "status": "PASS",
+      "detail": "editHref=http://localhost:3001/panel/hasar-dosyalari/8757467a-a32d-4068-ae6c-3c927afccf3f?edit=1 viewHref=http://localhost:3001/panel/hasar-dosyalari/8757467a-a32d-4068-ae6c-3c927afccf3f"
+    },
+    "7 PDF (no 500)": {
+      "status": "PASS",
+      "detail": "status=200 head=%PDF- reportId=60a1e8c3-afa5-49c5-8f1f-0c8f05e797c4 fileNo=D278F-1781628345390-DOSYA"
+    },
+    "8 Mail alıcı etiket": {
+      "status": "PASS",
+      "detail": "options=Alıcı PDF Görünümü|İç PDF Görünümü"
+    }
+  },
+  "commit": "none",
+  "deploy": "none"
+}

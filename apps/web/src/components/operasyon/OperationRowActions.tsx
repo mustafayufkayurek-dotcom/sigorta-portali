@@ -94,9 +94,28 @@ export function OperationRowActions({
         headers: authHeader(),
         responseType: 'blob',
       });
+      const contentType = String(res.headers?.['content-type'] ?? '');
+      if (contentType.includes('application/json') || contentType.includes('text/')) {
+        const text = await (res.data as Blob).text();
+        let msg = 'PDF oluşturulamadı';
+        try {
+          const parsed = JSON.parse(text) as { message?: string | string[] };
+          msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : (parsed.message ?? msg);
+        } catch {
+          msg = text.slice(0, 180) || msg;
+        }
+        showToast('error', msg);
+        return;
+      }
       const blob = new Blob([res.data], { type: 'application/pdf' });
       if (blob.size < 32) {
         showToast('error', 'PDF oluşmadı veya boş döndü.');
+        return;
+      }
+      // PDF sihirli bayt kontrolü — JSON hata gövdesini indirme
+      const head = await blob.slice(0, 5).text();
+      if (!head.startsWith('%PDF')) {
+        showToast('error', 'Sunucu PDF yerine hata döndü.');
         return;
       }
       const url = URL.createObjectURL(blob);
@@ -107,12 +126,27 @@ export function OperationRowActions({
       URL.revokeObjectURL(url);
       showToast('success', 'PDF oluşturuldu ve indirildi.');
     } catch (e: unknown) {
-      const msg = axios.isAxiosError(e)
-        ? e.response?.data?.message ?? e.message
-        : e instanceof Error
-          ? e.message
-          : 'PDF oluşturulamadı';
-      showToast('error', Array.isArray(msg) ? msg.join(', ') : String(msg));
+      let msg = 'PDF oluşturulamadı';
+      if (axios.isAxiosError(e)) {
+        const data = e.response?.data;
+        if (data instanceof Blob) {
+          try {
+            const parsed = JSON.parse(await data.text()) as { message?: string | string[] };
+            msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : (parsed.message ?? e.message);
+          } catch {
+            msg = e.message;
+          }
+        } else {
+          msg = (data as { message?: string | string[] })?.message
+            ? (Array.isArray((data as { message: string | string[] }).message)
+              ? ((data as { message: string[] }).message).join(', ')
+              : String((data as { message: string }).message))
+            : e.message;
+        }
+      } else if (e instanceof Error) {
+        msg = e.message;
+      }
+      showToast('error', msg);
     } finally {
       setPdfBusy(false);
     }
@@ -164,9 +198,12 @@ export function OperationRowActions({
       <button type="button" title="Görüntüle" aria-label="Görüntüle" className={iconBtnClass} onClick={() => router.push(detailHref)}>
         <Eye className="h-3.5 w-3.5" aria-hidden />
       </button>
-      <button type="button" title="Düzenle" aria-label="Düzenle" className={iconBtnClass} onClick={() => router.push(editHref)}>
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
-      </button>
+      {/* Hasar: Düzenle → ?edit=1 dosya bilgileri. Acil: Görüntüle ile aynı → tek ikon. */}
+      {kind === 'hasar' && (
+        <button type="button" title="Düzenle" aria-label="Düzenle" className={iconBtnClass} onClick={() => router.push(editHref)}>
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
       <button
         type="button"
         title="PDF Oluştur"
@@ -227,10 +264,11 @@ export function OperationRowActions({
             setOpen(false);
             router.push(detailHref);
           })}
-          {menuItem('Düzenle', () => {
-            setOpen(false);
-            router.push(editHref);
-          })}
+          {kind === 'hasar' &&
+            menuItem('Düzenle', () => {
+              setOpen(false);
+              router.push(editHref);
+            })}
           {menuItem(pdfBusy ? 'PDF Oluşturuluyor…' : 'PDF Oluştur', () => void handlePdf(), {
             disabled: pdfBusy,
           })}

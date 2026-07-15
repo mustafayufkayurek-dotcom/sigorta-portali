@@ -1,0 +1,12 @@
+{
+  "count": 1,
+  "sample": [
+    {
+      "fileNo": "D278F-1781628345390-DOSYA",
+      "approval72hExceeded": true,
+      "operationStatusLabel": "Onay Talep Et",
+      "nextAction": "Onay Talep Et",
+      "approvalWaitingHours": 85
+    }
+  ]
+}

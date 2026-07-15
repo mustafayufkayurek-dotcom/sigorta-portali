@@ -238,14 +238,17 @@ export function DosyaBilgileriDetay({
   claim,
   onClaimUpdated,
   initialOpen = false,
+  initialEditOpen = false,
   repairReportId,
 }: {
   claim: any;
   onClaimUpdated?: (patch: Partial<any>) => void;
   initialOpen?: boolean;
+  /** Operasyon → Düzenle (?edit=1) ile dosya bilgileri düzenleme açılır */
+  initialEditOpen?: boolean;
   repairReportId?: string | null;
 }) {
-  const [open, setOpen] = useState(initialOpen);
+  const [open, setOpen] = useState(initialOpen || initialEditOpen);
   const [editOpen, setEditOpen] = useState(false);
   const [reportSummary, setReportSummary] = useState<any | null>(null);
   const [canEdit, setCanEdit] = useState(false);
@@ -253,6 +256,13 @@ export function DosyaBilgileriDetay({
   useEffect(() => {
     setCanEdit(canEditDosyaBilgileri());
   }, []);
+
+  useEffect(() => {
+    if (!initialEditOpen) return;
+    if (!canEdit || !onClaimUpdated) return;
+    setOpen(true);
+    setEditOpen(true);
+  }, [initialEditOpen, canEdit, onClaimUpdated]);
 
   useEffect(() => {
     if (!repairReportId) {

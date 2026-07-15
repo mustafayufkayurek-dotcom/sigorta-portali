@@ -182,12 +182,14 @@ function DosyaSayfaUstu({
   reportEditHref,
   onClaimUpdated,
   focusSigortali = false,
+  openEdit = false,
 }: {
   claim: any;
   onBack: () => void;
   reportEditHref?: string | null;
   onClaimUpdated?: (patch: Partial<any>) => void;
   focusSigortali?: boolean;
+  openEdit?: boolean;
 }) {
   const ihbarChip = resolveClaimIhbarKonusu(claim);
   const insuredLine = resolveHasarInsuredName(claim);
@@ -318,7 +320,8 @@ function DosyaSayfaUstu({
       <DosyaBilgileriDetay
         claim={claim}
         onClaimUpdated={onClaimUpdated}
-        initialOpen={focusSigortali || !!claim.latestRepairReport?.id}
+        initialOpen={focusSigortali || openEdit || !!claim.latestRepairReport?.id}
+        initialEditOpen={openEdit}
         repairReportId={claim.latestRepairReport?.id}
       />
     </div>
@@ -1303,6 +1306,7 @@ export default function ClaimFileDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusSigortali = searchParams.get('sigortali') === '1';
+  const openEdit = searchParams.get('edit') === '1';
   const grupParam = searchParams.get('grup');
   const altParam = searchParams.get('alt');
   const initialGroup: GroupTab =
@@ -1371,6 +1375,7 @@ export default function ClaimFileDetailPage() {
         reportEditHref={reportEditHref}
         onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
         focusSigortali={focusSigortali}
+        openEdit={openEdit}
       />
 
       {canEditFieldSurvey && (
