@@ -1,0 +1,82 @@
+{
+  "at": "2026-07-15T17:20:43.865Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "url": "http://localhost:3001/panel/operasyon",
+  "checks": {
+    "KPI yükseklik +%15 dengeli": {
+      "status": "PASS",
+      "detail": "avgH=47.0 samples=[47,47,47,47,47,47,47,47]"
+    },
+    "KPI operasyon odağı": {
+      "status": "PASS",
+      "detail": "hits=8"
+    },
+    "Kolon çizgileri": {
+      "status": "PASS",
+      "detail": "[{\"text\":\"Tür↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"},{\"text\":\"Dosya No↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"},{\"text\":\"Sigorta Şirketi↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"},{\"text\":\"Sigortalı Adı Soyadı↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"},{\"text\":\"Kimde↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"},{\"text\":\"Dosya Konusu↑\",\"hasAfterLine\":true,\"afterW\":1,\"afterBg\":\"rgb(203, 213, 225)\",\"borderRight\":\"0px\",\"hasBorder\":false,\"className\":\"group relative box-border select-none overflow-hidden !text-center table-th !py-2 text-xs relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none group\"}]"
+    },
+    "Sort ikonları tüm kolonlar": {
+      "status": "PASS",
+      "detail": "[{\"text\":\"Tür↑\",\"hasArrow\":true},{\"text\":\"Dosya No↑\",\"hasArrow\":true},{\"text\":\"Sigorta Şirketi↑\",\"hasArrow\":true},{\"text\":\"Sigortalı Adı Soyadı↑\",\"hasArrow\":true},{\"text\":\"Kimde↑\",\"hasArrow\":true},{\"text\":\"Dosya Konusu↑\",\"hasArrow\":true},{\"text\":\"Durum↑\",\"hasArrow\":true},{\"text\":\"Sonraki Aksiyon↑\",\"hasArrow\":true}]"
+    },
+    "Kolon gizle/göster": {
+      "status": "PASS",
+      "detail": "Sütunlar button"
+    },
+    "Görünüm kaydet": {
+      "status": "PASS",
+      "detail": "Görünümü Kaydet button"
+    },
+    "Kolon sıralama (reorder)": {
+      "status": "PASS",
+      "detail": "moveBtns=24"
+    },
+    "Kolon genişlik": {
+      "status": "PASS",
+      "detail": "separators=10"
+    },
+    "Tooltip her ikon": {
+      "status": "PASS",
+      "detail": "Görüntüle|Düzenle|PDF Oluştur|E-posta Gönder|WhatsApp|Not Ekle|Geçmiş|Arşive Taşı|İşlem Menüsü"
+    },
+    "Görüntüle": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "Düzenle": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "PDF Oluştur": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "WhatsApp": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "Not Ekle": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "Geçmiş": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "Arşive Taşı": {
+      "status": "PASS",
+      "detail": ""
+    },
+    "Üç nokta menü": {
+      "status": "PASS",
+      "detail": "GörüntüleDüzenlePDF OluşturE-posta Gönder | WhatsApp | Not EkleGeçmiş | Arşive Taşı"
+    },
+    "E-posta Gönder (UI+PDF bağ)": {
+      "status": "PASS",
+      "detail": "modal=true to=true pdf=true tpl=true note=true"
+    }
+  },
+  "commit": "none",
+  "deploy": "none"
+}

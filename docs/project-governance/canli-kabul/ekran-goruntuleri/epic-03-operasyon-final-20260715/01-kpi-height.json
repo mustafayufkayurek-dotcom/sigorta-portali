@@ -1,0 +1,37 @@
+{
+  "avgH": 47,
+  "kpiMeta": [
+    {
+      "h": 47,
+      "label": "6Açık Dosya"
+    },
+    {
+      "h": 47,
+      "label": "1Onay Bekleyen"
+    },
+    {
+      "h": 47,
+      "label": "5Rapor Yazılıyor"
+    },
+    {
+      "h": 47,
+      "label": "1Rapor Onayı"
+    },
+    {
+      "h": 47,
+      "label": "0Finansa Aktarılacak"
+    },
+    {
+      "h": 47,
+      "label": "172 Saat + Risk"
+    },
+    {
+      "h": 47,
+      "label": "0Bugün Açılan"
+    },
+    {
+      "h": 47,
+      "label": "0Acil Dosya"
+    }
+  ]
+}

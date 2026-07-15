@@ -198,6 +198,7 @@ interface ResizableThProps {
     onDragOver: (e: DragEvent) => void;
     onDrop: () => void;
     onDragEnd: () => void;
+    className?: string;
   };
 }
 
@@ -237,11 +238,21 @@ export function ResizableTh({
     document.addEventListener('mouseup', onUp);
   };
 
+  const dragClassName = dragProps && 'className' in dragProps ? dragProps.className : undefined;
+  const restDragProps = dragProps
+    ? {
+        draggable: dragProps.draggable,
+        onDragStart: dragProps.onDragStart,
+        onDragOver: dragProps.onDragOver,
+        onDrop: dragProps.onDrop,
+        onDragEnd: dragProps.onDragEnd,
+      }
+    : undefined;
   return (
     <th
       style={{ width, minWidth: width, maxWidth: width }}
-      className={`group relative box-border select-none overflow-hidden !text-center ${className}`}
-      {...(dragProps ?? {})}
+      className={`group relative box-border select-none overflow-hidden !text-center ${className} ${dragClassName ?? ''}`.trim()}
+      {...restDragProps}
     >
       <span className={`flex min-w-0 items-center justify-center truncate px-1 pr-3 ${dragProps ? 'cursor-grab active:cursor-grabbing' : ''}`}>
         {children}
@@ -274,6 +285,8 @@ interface TableColumnPickerProps {
   columns: TableColumnDef[];
   visibleIds: string[];
   columnOrder: string[];
+  storageKey?: string;
+  widths?: Record<string, number>;
   onToggle: (id: string) => void;
   onMoveColumn: (id: string, direction: -1 | 1) => void;
   onReorderColumn?: (fromId: string, toId: string) => void;
@@ -300,6 +313,8 @@ export function TableColumnPicker({
   columns,
   visibleIds,
   columnOrder,
+  storageKey,
+  widths,
   onToggle,
   onMoveColumn,
   onReorderColumn,
@@ -308,11 +323,30 @@ export function TableColumnPicker({
 }: TableColumnPickerProps) {
   const [open, setOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const resetAll = () => {
     onReset();
     onResetWidths?.();
     setOpen(false);
+  };
+
+  const saveView = () => {
+    if (!storageKey) {
+      setOpen(false);
+      return;
+    }
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(visibleIds));
+      localStorage.setItem(`${storageKey}:order`, JSON.stringify(columnOrder));
+      if (widths) {
+        localStorage.setItem(`${storageKey}:widths`, JSON.stringify(widths));
+      }
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1200);
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -387,10 +421,18 @@ export function TableColumnPicker({
             </p>
             <button
               type="button"
-              onClick={resetAll}
-              className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              onClick={saveView}
+              data-testid="table-view-save"
+              className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
             >
-              Varsayılana dön (görünüm + genişlik)
+              {savedFlash ? 'Görünüm Kaydedildi' : 'Görünümü Kaydet'}
+            </button>
+            <button
+              type="button"
+              onClick={resetAll}
+              className="mt-0.5 w-full rounded-lg px-2 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            >
+              Varsayılana Dön (Görünüm + Genişlik)
             </button>
           </div>
         </>
@@ -481,6 +523,8 @@ export function PanelTableColumnPicker({ tableColumns }: { tableColumns: PanelTa
       columns={tableColumns.columns}
       visibleIds={tableColumns.prefs.visibleIds}
       columnOrder={tableColumns.prefs.columnOrder}
+      storageKey={tableColumns.storageKey}
+      widths={tableColumns.widths.widths}
       onToggle={tableColumns.prefs.toggle}
       onMoveColumn={tableColumns.prefs.moveColumn}
       onReorderColumn={tableColumns.prefs.reorderColumn}

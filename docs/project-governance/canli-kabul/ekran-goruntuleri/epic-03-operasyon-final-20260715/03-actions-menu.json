@@ -1,0 +1,21 @@
+{
+  "url": "http://localhost:3001/panel/operasyon",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "at": "2026-07-15T17:20:43.222Z",
+  "feature": "actions",
+  "menuText": "GörüntüleDüzenlePDF OluşturE-posta Gönder\nWhatsApp\nNot EkleGeçmiş\nArşive Taşı",
+  "titles": [
+    "Görüntüle",
+    "Düzenle",
+    "PDF Oluştur",
+    "E-posta Gönder",
+    "WhatsApp",
+    "Not Ekle",
+    "Geçmiş",
+    "Arşive Taşı",
+    "İşlem Menüsü"
+  ]
+}

@@ -158,10 +158,10 @@ function OpsStripKpi({
   onClick?: () => void;
   active?: boolean;
 }) {
-  /** RC1 StripKpi dili — kompakt (~40px, kart büyütme yok) */
+  /** RC1 StripKpi dili — kompakt dengeli (~46px ≈ +%15, büyük mockup değil) */
   const body = (
     <div
-      className={`group flex min-h-[40px] items-center gap-2 rounded-lg border bg-white px-2 py-1 shadow-sm transition ${
+      className={`group flex min-h-[46px] items-center gap-2 rounded-lg border bg-white px-2.5 py-1.5 shadow-sm transition ${
         active
           ? 'border-blue-400 ring-2 ring-blue-200'
           : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
@@ -207,7 +207,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'nextAction', label: 'Sonraki Aksiyon', defaultWidth: 140, minWidth: 100 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 120, minWidth: 96 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 268, minWidth: 220 },
 ];
 
 const PAGE_SIZE = 50;
@@ -218,7 +218,9 @@ const COL_SERVER_SORT: Record<string, string> = {
   date: 'notificationDate',
 };
 
-const COL_DIVIDER = 'border-r border-slate-200/70 last:border-r-0';
+/** Tablo border-collapse altında border-r güvensiz; inset çizgi belirgin ve kalıcı */
+const COL_DIVIDER =
+  "relative after:pointer-events-none after:absolute after:inset-y-1 after:right-0 after:w-px after:bg-slate-300 after:content-[''] last:after:content-none";
 
 type OpsStats = {
   open: number;
@@ -234,7 +236,7 @@ type OpsStats = {
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon-v5', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:operasyon-v6', TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 

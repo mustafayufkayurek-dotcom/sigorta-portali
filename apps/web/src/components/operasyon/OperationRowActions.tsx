@@ -3,6 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import {
+  Archive,
+  Eye,
+  FileText,
+  History,
+  Mail,
+  MessageCircle,
+  MoreVertical,
+  Pencil,
+  StickyNote,
+} from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -18,6 +29,9 @@ export type OperationRowActionsProps = {
   onDeleteRequest?: () => void;
   onEmailRequest?: () => void;
 };
+
+const iconBtnClass =
+  'inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-transparent hover:border-slate-200 disabled:opacity-40';
 
 export function OperationRowActions({
   kind,
@@ -104,6 +118,19 @@ export function OperationRowActions({
     }
   };
 
+  const openEmail = () => {
+    setOpen(false);
+    if (onEmailRequest) {
+      onEmailRequest();
+      return;
+    }
+    if (!reportId) {
+      showToast('error', 'Bu dosyada onarım raporu yok — PDF’siz e-posta engellendi.');
+      return;
+    }
+    showToast('info', `Alıcı: ${defaultEmailTo || 'manuel girilecek'}`);
+  };
+
   const menuItem = (
     label: string,
     onClick: () => void,
@@ -133,22 +160,67 @@ export function OperationRowActions({
           Onay Talep Et
         </button>
       )}
+
+      <button type="button" title="Görüntüle" aria-label="Görüntüle" className={iconBtnClass} onClick={() => router.push(detailHref)}>
+        <Eye className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button type="button" title="Düzenle" aria-label="Düzenle" className={iconBtnClass} onClick={() => router.push(editHref)}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        title="PDF Oluştur"
+        aria-label="PDF Oluştur"
+        className={iconBtnClass}
+        disabled={pdfBusy}
+        onClick={() => void handlePdf()}
+      >
+        <FileText className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button type="button" title="E-posta Gönder" aria-label="E-posta Gönder" className={iconBtnClass} onClick={openEmail}>
+        <Mail className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="WhatsApp"
+        aria-label="WhatsApp"
+        className={iconBtnClass}
+        onClick={() => setOpen(false)}
+      >
+        <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+      </a>
+      <button type="button" title="Not Ekle" aria-label="Not Ekle" className={iconBtnClass} onClick={() => router.push(noteHref)}>
+        <StickyNote className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button type="button" title="Geçmiş" aria-label="Geçmiş" className={iconBtnClass} onClick={() => router.push(historyHref)}>
+        <History className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <button
+        type="button"
+        title="Arşive Taşı"
+        aria-label="Arşive Taşı"
+        className={`${iconBtnClass} text-red-600 hover:bg-red-50 hover:text-red-700`}
+        onClick={() => onDeleteRequest?.()}
+      >
+        <Archive className="h-3.5 w-3.5" aria-hidden />
+      </button>
+
       <button
         type="button"
         title="İşlem Menüsü"
         aria-label="İşlem Menüsü"
         aria-expanded={open}
-        className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 border border-transparent hover:border-slate-200"
+        className={iconBtnClass}
         onClick={() => setOpen((v) => !v)}
         data-testid="ops-actions-menu-btn"
       >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-        </svg>
+        <MoreVertical className="h-3.5 w-3.5" aria-hidden />
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 z-30 min-w-[168px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
+          className="absolute right-0 top-full mt-1 z-30 min-w-[176px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
           data-testid="ops-actions-menu"
         >
           {menuItem('Görüntüle', () => {
@@ -162,15 +234,7 @@ export function OperationRowActions({
           {menuItem(pdfBusy ? 'PDF Oluşturuluyor…' : 'PDF Oluştur', () => void handlePdf(), {
             disabled: pdfBusy,
           })}
-          {menuItem('E-posta Gönder', () => {
-            setOpen(false);
-            if (onEmailRequest) onEmailRequest();
-            else if (!reportId) {
-              showToast('error', 'Bu dosyada onarım raporu yok — PDF’siz e-posta engellendi.');
-            } else {
-              showToast('info', `Alıcı: ${defaultEmailTo || 'manuel girilecek'}`);
-            }
-          })}
+          {menuItem('E-posta Gönder', openEmail)}
           <a
             href={waHref}
             target="_blank"
@@ -180,7 +244,7 @@ export function OperationRowActions({
           >
             WhatsApp
           </a>
-          {menuItem('Not', () => {
+          {menuItem('Not Ekle', () => {
             setOpen(false);
             router.push(noteHref);
           })}
@@ -190,7 +254,7 @@ export function OperationRowActions({
           })}
           <div className="my-1 border-t border-slate-100" />
           {menuItem(
-            'Sil / İptal…',
+            'Arşive Taşı',
             () => {
               setOpen(false);
               onDeleteRequest?.();
