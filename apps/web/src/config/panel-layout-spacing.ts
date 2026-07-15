@@ -15,6 +15,12 @@ export const PANEL_NAVBAR_HEIGHT = 'h-14';
 export const PANEL_SIDEBAR_STICKY_TOP = 'md:top-14';
 export const PANEL_SIDEBAR_HEIGHT = 'h-[calc(100vh-3.5rem)]';
 
-/** Sidebar genişlik — mockup: 220–230 açık / 68–72 kapalı */
-export const PANEL_SIDEBAR_WIDTH_EXPANDED = 'w-[224px]';
-export const PANEL_SIDEBAR_WIDTH_COLLAPSED = 'w-[70px]';
+/**
+ * Sidebar genişlik HARD — parent/flex büyütmesin.
+ * DevTools: açık width=220 / min=220 / max=220; kapalı 72.
+ * (v353 regresyonu: 224/70 kilitli kalmıştı — v354 nihai)
+ */
+export const PANEL_SIDEBAR_WIDTH_EXPANDED =
+  'panel-sidebar panel-sidebar--expanded w-[220px] min-w-[220px] max-w-[220px] shrink-0';
+export const PANEL_SIDEBAR_WIDTH_COLLAPSED =
+  'panel-sidebar panel-sidebar--collapsed w-[72px] min-w-[72px] max-w-[72px] shrink-0';

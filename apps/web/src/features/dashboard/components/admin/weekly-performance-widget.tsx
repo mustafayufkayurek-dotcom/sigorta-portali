@@ -98,6 +98,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
       isLoaded={!isLoading}
       compact
       sectionId="pazartesi-toplantisi"
+      className="h-full"
     >
       {isLoading ? (
         <WidgetSkeleton variant="card" rows={2} />

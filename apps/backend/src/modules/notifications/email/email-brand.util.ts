@@ -1,7 +1,7 @@
 import { buildAppPath, stripTrailingSlash } from '@/common/utils/app-url';
 
-/** Web public — kılavuzlarla birlikte deploy edilen kurumsal logo. */
-export const EMAIL_BRAND_LOGO_PATH = '/docs/meridyen-assistance-logo.jpeg';
+/** Web public — kılavuzlarla birlikte deploy edilen resmi kurumsal logo (PNG). */
+export const EMAIL_BRAND_LOGO_PATH = '/docs/meridyen-logo-original.png';
 
 /**
  * Hoş geldin / bildirim maillerinde kullanılan logo URL'i.

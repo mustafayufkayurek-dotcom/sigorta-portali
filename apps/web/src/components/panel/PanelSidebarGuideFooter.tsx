@@ -8,6 +8,7 @@ import {
   resolvePanelUserGuide,
   type PanelGuideContext,
 } from '@/config/panel-user-guide';
+import { usePanelHelpDrawerOptional } from '@/contexts/PanelHelpDrawerContext';
 
 type PanelSidebarGuideFooterProps = PanelGuideContext & {
   collapsed: boolean;
@@ -15,13 +16,18 @@ type PanelSidebarGuideFooterProps = PanelGuideContext & {
 };
 
 /**
- * Sidebar alt — daralt + (dar modda) kılavuz ikonu.
- * Kalıcı sağ kılavuz paneli yok; yardım topbar / bu ikon üzerinden.
+ * Sidebar alt — daralt + Yardım (aynı Help Drawer).
+ * Kalıcı sağ kılavuz paneli yok.
  */
 export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
   const { collapsed, onToggleCollapsed, ...ctx } = props;
   const guide = resolvePanelUserGuide(ctx);
+  const helpDrawer = usePanelHelpDrawerOptional();
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
+
+  const openHelp = () => {
+    helpDrawer?.setOpen(true);
+  };
 
   const versionLine = !collapsed ? (
     <p className="truncate px-2 pb-1 pt-0.5 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
@@ -29,19 +35,22 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
     </p>
   ) : null;
 
-  const helpIcon = collapsed ? (
-    <SidebarNavTooltip label={guide.title} collapsed>
-      <a
-        href={guide.href}
-        target="_blank"
-        rel="noopener noreferrer"
+  const helpControl = (
+    <SidebarNavTooltip label={guide.title} collapsed={collapsed}>
+      <button
+        type="button"
+        onClick={openHelp}
         title={guide.title}
-        className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        aria-label="Yardım"
+        className={`flex items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
+          collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2 px-3 py-1.5 text-xs font-medium'
+        }`}
       >
-        <HelpCircle className="h-5 w-5" />
-      </a>
+        <HelpCircle className="h-4 w-4 shrink-0" />
+        {!collapsed ? <span>Yardım</span> : null}
+      </button>
     </SidebarNavTooltip>
-  ) : null;
+  );
 
   const collapseControl = onToggleCollapsed ? (
     <SidebarNavTooltip label={toggleLabel} collapsed={collapsed}>
@@ -68,7 +77,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
 
   return (
     <div className="shrink-0 space-y-1.5 border-t border-[#E5E7EB] bg-white px-2 py-2 dark:border-slate-800 dark:bg-slate-950">
-      {helpIcon}
+      {helpControl}
       {collapseControl}
       {versionLine}
     </div>

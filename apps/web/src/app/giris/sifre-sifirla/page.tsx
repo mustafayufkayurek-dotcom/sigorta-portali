@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
-import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { API } from '@/utils/api';
 
 function ResetPasswordForm() {
@@ -261,7 +261,7 @@ function ResetPasswordForm() {
         <div className="rp-card">
           <div className="rp-logo">
             {companyLogo ? (
-              <BrandLogoMark alt={companyName} src={companyLogo} variant="card" />
+              <BrandLogo alt={companyName} src={companyLogo} variant="card" />
             ) : (
               <>
                 <div className="rp-logo-shield">

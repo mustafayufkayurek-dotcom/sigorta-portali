@@ -1,12 +1,12 @@
 'use client';
 
-import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
+import { BrandLogo } from './BrandLogo';
 
 interface Props {
   alt: string;
 }
 
-/** Giriş ve dış sayfalarda kurumsal logo — sola yaslı, kenardan nefes payı ile */
+/** Giriş — BrandLogo login varyasyonu */
 export function LoginBrandLogo({ alt }: Props) {
-  return <BrandLogoMark alt={alt} variant="login" />;
+  return <BrandLogo alt={alt} variant="login" />;
 }

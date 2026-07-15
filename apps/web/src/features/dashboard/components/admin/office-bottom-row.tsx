@@ -7,6 +7,7 @@ import {
   useCriticalAlerts,
   usePendingActions,
 } from '../../hooks/use-dashboard-data';
+import { formatActivityAction } from '../../utils/format-activity-action';
 import { getRelativeTime } from '../../utils/formatters';
 import { WidgetSkeleton } from '../widget-frame';
 
@@ -109,7 +110,9 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
                 className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
               >
                 <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.fileNo}</span>
-                <span className="shrink-0 truncate text-xs text-slate-500 max-w-[45%]">{item.action}</span>
+                <span className="shrink-0 truncate text-xs text-slate-500 max-w-[45%]">
+                  {formatActivityAction(item.action)}
+                </span>
               </li>
             ))}
           </ul>
@@ -139,7 +142,7 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-slate-800 dark:text-slate-100">
-                    {item.action}
+                    {formatActivityAction(item.action)}
                   </span>
                   <span className="block truncate text-[10px] text-slate-400 sm:text-xs">{item.fileNo}</span>
                 </span>

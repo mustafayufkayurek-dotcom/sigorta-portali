@@ -19,7 +19,7 @@ import {
   WeeklyPerformanceWidget,
   AdminOperationsKpiBand,
   AdminDailyFlowSection,
-  AdminBottomRow,
+  AdminOperationsCriticalRow,
   OfficeDailyFlowSection,
   OfficeBottomRow,
   FieldOperationsKpiBand,
@@ -33,6 +33,29 @@ function operationAreaDashboardLabel(area: string): string | null {
   if (area === 'acil') return 'Acil';
   if (area === 'both') return 'Hasar - Acil';
   return null;
+}
+
+/** C4 — Haftalık | Günün Akışı dengeli satır */
+function AdminAnalyticsRow({
+  staggerIndex,
+  hideAcil,
+}: {
+  staggerIndex: number;
+  hideAcil: boolean;
+}) {
+  return (
+    <section
+      className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 xl:gap-5"
+      style={{ transitionDelay: `${staggerIndex * 100}ms` }}
+    >
+      <div className="flex h-full min-h-[260px] flex-col">
+        <WeeklyPerformanceWidget staggerIndex={0} />
+      </div>
+      <div className="flex h-full min-h-[260px] flex-col">
+        <AdminDailyFlowSection staggerIndex={0} hideAcil={hideAcil} />
+      </div>
+    </section>
+  );
 }
 
 export default function PanelPage() {
@@ -83,7 +106,7 @@ export default function PanelPage() {
 
   const hideAcil = !showAcilYardim;
 
-  /** Admin / müdür: onaylı mockup — tam şablon düzeni (v345) */
+  /** Admin: C1 → C2 KPI → C3 Operasyon|Kritik → C4 Haftalık|Akış → C5 Finans */
   if (isManagement) {
     return (
       <DashboardShell>
@@ -94,26 +117,24 @@ export default function PanelPage() {
           isManagement
         />
 
+        <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
+
+        <AdminOperationsCriticalRow staggerIndex={1} />
+
+        <AdminAnalyticsRow staggerIndex={2} hideAcil={hideAcil} />
+
         <AdminFinanceSummarySection
           year={year}
           month={month}
           onYearChange={setYear}
           onMonthChange={setMonth}
-          staggerIndex={0}
+          staggerIndex={3}
         />
-
-        <AdminOperationsKpiBand staggerIndex={1} hideAcil={hideAcil} />
-
-        <WeeklyPerformanceWidget staggerIndex={2} />
-
-        <AdminDailyFlowSection staggerIndex={3} hideAcil={hideAcil} />
-
-        <AdminBottomRow staggerIndex={4} />
       </DashboardShell>
     );
   }
 
-  /** Dosya sorumlusu: aynı görsel dil; finans / admin bölümleri yok (D0) */
+  /** Dosya sorumlusu: KPI → Operasyon panelleri → Akış | Onay */
   if (isOfficeStaff) {
     return (
       <DashboardShell>
@@ -126,16 +147,17 @@ export default function PanelPage() {
 
         <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
 
-        <OfficeDailyFlowSection staggerIndex={1} hideAcil={hideAcil} />
+        <OfficeBottomRow staggerIndex={1} />
 
-        <ApprovalDelayWidget staggerIndex={2} compact />
-
-        <OfficeBottomRow staggerIndex={3} />
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <OfficeDailyFlowSection staggerIndex={2} hideAcil={hideAcil} />
+          <ApprovalDelayWidget staggerIndex={3} compact />
+        </section>
       </DashboardShell>
     );
   }
 
-  /** Saha: D0-paralel kabuk; finans / onay yok — my-performance + claim-files (v347) */
+  /** Saha: KPI → Operasyon panelleri → Günün Akışı */
   if (isFieldStaff) {
     return (
       <DashboardShell>
@@ -148,9 +170,9 @@ export default function PanelPage() {
 
         <FieldOperationsKpiBand staggerIndex={0} />
 
-        <FieldDailyFlowSection staggerIndex={1} />
+        <FieldBottomRow staggerIndex={1} />
 
-        <FieldBottomRow staggerIndex={2} />
+        <FieldDailyFlowSection staggerIndex={2} />
       </DashboardShell>
     );
   }

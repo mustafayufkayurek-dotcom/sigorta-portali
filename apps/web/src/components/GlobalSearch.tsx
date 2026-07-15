@@ -25,13 +25,13 @@ interface SearchResults {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  dosyalar:     'Hasar Dosyaları',
-  acil_dosyalar:'Acil Yardım',
+  dosyalar:     'Dosya',
+  acil_dosyalar:'Acil',
   mailler:      'Gelen Kutusu',
-  musteriler:   'Müşteriler',
-  tedarikciler: 'Tedarikçiler',
-  eksperler:    'Eksper Firması',
-  faturalar:    'Faturalar',
+  musteriler:   'Müşteri',
+  tedarikciler: 'Tedarikçi',
+  eksperler:    'Eksper',
+  faturalar:    'Fatura',
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -43,6 +43,17 @@ const CATEGORY_ICONS: Record<string, string> = {
   eksperler:    '🔍',
   faturalar:    '🧾',
 };
+
+const SEARCH_HINT =
+  'Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi, Operasyon…';
+
+const PINNED_HINTS = [
+  { label: 'Dosya No', hint: 'Dosya' },
+  { label: 'Plaka', hint: 'Plaka' },
+  { label: 'Telefon', hint: 'Telefon' },
+  { label: 'Personel', hint: 'Personel' },
+  { label: 'Tedarikçi', hint: 'Tedarikçi' },
+];
 
 const RECENT_SEARCHES_KEY = 'globalSearch_recent';
 const MAX_RECENT = 5;
@@ -213,7 +224,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Dosya no, müşteri, gelen kutusu, fatura..."
+              placeholder={SEARCH_HINT}
               className="flex-1 text-sm text-slate-800 placeholder-slate-400 bg-transparent outline-none"
             />
             {query && (
@@ -238,16 +249,16 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             {/* Recent searches (empty state) */}
             {!query && recentSearches.length > 0 && (
               <div className="px-4 py-3">
-                <p className="text-[10px] font-bold text-slate-400 mb-2">Son Aramalar</p>
+                <p className="mb-2 text-[10px] font-semibold text-slate-400">Son Aramalar</p>
                 <div className="flex flex-wrap gap-1.5">
                   {recentSearches.map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => handleRecentClick(s)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
                     >
-                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       {s}
@@ -257,14 +268,33 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               </div>
             )}
 
+            {/* Sık kullanılan arama ipuçları */}
+            {!query && (
+              <div className="border-t border-slate-50 px-4 py-3">
+                <p className="mb-2 text-[10px] font-semibold text-slate-400">Sık Kullanılan</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PINNED_HINTS.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setQuery(p.hint)}
+                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Empty no-query state */}
             {!query && recentSearches.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <svg className="w-10 h-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <svg className="h-10 w-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <p className="text-sm text-slate-400">Aramak için yazmaya başlayın</p>
-                <p className="text-xs text-slate-300">Dosya, gelen kutusu, müşteri, tedarikçi veya fatura</p>
+                <p className="text-sm text-slate-400">Aramak İçin Yazmaya Başlayın</p>
+                <p className="max-w-sm px-4 text-xs text-slate-300">{SEARCH_HINT}</p>
               </div>
             )}
 
@@ -294,10 +324,10 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               if (!items.length) return null;
               return (
                 <div key={cat} className="py-2">
-                  <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                  <p className="flex items-center gap-1.5 px-4 pb-1.5 pt-1 text-[10px] font-semibold text-slate-400">
                     <span>{CATEGORY_ICONS[cat]}</span>
                     {CATEGORY_LABELS[cat]}
-                    <span className="ml-auto font-normal text-slate-300 normal-case tracking-normal">{items.length}</span>
+                    <span className="ml-auto font-normal normal-case tracking-normal text-slate-300">{items.length}</span>
                   </p>
                   {items.map((item) => {
                     const idx = globalIdx++;
@@ -308,12 +338,12 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                         type="button"
                         onMouseEnter={() => setActiveIndex(idx)}
                         onClick={() => navigate(item)}
-                        className={`w-full text-left flex items-center gap-3 mx-2 px-3 py-2.5 rounded-xl transition-colors ${
+                        className={`mx-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                           isActive
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-slate-700 hover:bg-slate-50'
                         }`}
-                        style={{ width: 'calc(100% - 1rem)' }}
+                        style={{ width: 'calc(100% - 1rem)', minHeight: 36 }}
                       >
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${isActive ? 'text-blue-700' : 'text-slate-800'}`}>
@@ -351,7 +381,9 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                 <kbd className="px-1 py-0.5 rounded border border-slate-200 bg-white text-[9px]">ESC</kbd>
                 kapat
               </span>
-              <span className="ml-auto text-[10px] text-slate-400">{results.total} sonuç</span>
+              <span className="ml-auto text-[10px] text-slate-400">
+                {results.total} sonuç · Ctrl+K / ⌘K
+              </span>
             </div>
           )}
         </div>

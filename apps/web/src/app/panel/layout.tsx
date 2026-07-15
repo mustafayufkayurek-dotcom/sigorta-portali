@@ -30,11 +30,16 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { getDefaultScreensForRole } from '@/utils/screen-permissions-defaults';
-import { CORPORATE_LOGO_LIGHT } from '@/constants/brand';
-import { BrandLogoMark } from '@/components/brand/BrandLogoMark';
 import { PanelSidebarGuideFooter } from '@/components/panel/PanelSidebarGuideFooter';
-import { PanelSidebarBrand } from '@/components/panel/PanelSidebarBrand';
+import { PanelHelpDrawer } from '@/components/panel/PanelHelpDrawer';
+import { PanelThemeToggle } from '@/components/panel/PanelThemeToggle';
+import { PanelSystemHealth } from '@/components/panel/PanelSystemHealth';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { PanelUserProvider } from '@/contexts/PanelUserContext';
+import {
+  PanelHelpDrawerProvider,
+  usePanelHelpDrawerOptional,
+} from '@/contexts/PanelHelpDrawerContext';
 import { applyPanelThemeToDocument, type StoredThemeConfig } from '@/utils/panel-time-theme';
 import PortalBottomNav from '@/components/portal/PortalBottomNav';
 import {
@@ -63,13 +68,13 @@ import {
   MapPin,
   MonitorCheck,
   PackageCheck,
-  Plus,
   Receipt,
   Settings,
   ShieldCheck,
   Users,
   TestTube2,
   UserCog,
+  Zap,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -288,6 +293,7 @@ function getPanelMainLinks({
   showAcilYardim: boolean;
   pendingRevisionCount: number;
 }): NavigationLink[] {
+  const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   return isExpert
     ? getExpertPortalNav()
     : isInsuranceCompanyUser
@@ -295,7 +301,7 @@ function getPanelMainLinks({
       : isOfficeStaff
         ? [
             { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
-            { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+            { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'CRM', href: '/panel/crm', icon: GitBranch },
@@ -318,7 +324,7 @@ function getPanelMainLinks({
             { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
             { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
             ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
-            { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+            { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
@@ -328,7 +334,7 @@ function getPanelMainLinks({
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
-          { title: 'Operasyon', href: '/panel/operasyon', alertCount: pendingRevisionCount, icon: ClipboardList },
+          { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
           { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog },
           { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
@@ -369,6 +375,8 @@ interface NavbarProps {
   isFieldStaff: boolean;
   showAcilYardim: boolean;
   userGuide?: ReturnType<typeof resolvePanelUserGuide>;
+  onToggleSidebar?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
 function Navbar({
@@ -378,6 +386,7 @@ function Navbar({
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
   allowedScreens, companyLogo: _companyLogo, companyName: _companyName,
   isFinance, isFieldStaff, showAcilYardim, userGuide,
+  onToggleSidebar, sidebarCollapsed = false,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
@@ -390,12 +399,18 @@ function Navbar({
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [searchShortcut, setSearchShortcut] = useState('Ctrl+K');
+  const helpDrawer = usePanelHelpDrawerOptional();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileDropRef = useRef<HTMLDivElement>(null);
   const quickActionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsHydrated(true);
+    const isMac =
+      typeof navigator !== 'undefined' &&
+      /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
+    setSearchShortcut(isMac ? '⌘K' : 'Ctrl+K');
   }, []);
 
   // Ctrl+K / Cmd+K → arama aç
@@ -434,14 +449,6 @@ function Navbar({
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const panelLogoHref = isExpert
-    ? '/panel/eksper-portal'
-    : isInsuranceCompanyUser
-      ? '/panel/sigorta-portal'
-      : isFinance
-        ? '/panel/finans'
-        : '/panel';
-
   const canCreateHasar = !isPortalUser && canSee('/panel/hasar-dosyalari');
   const canCreateAcil = !isPortalUser && showAcilYardim;
   const canOpenMonday = !isPortalUser && canSee('/panel/pazartesi-toplantisi');
@@ -451,34 +458,52 @@ function Navbar({
     <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className="w-full px-2 sm:px-3 lg:px-5">
         <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <Link href={panelLogoHref} className="inline-flex shrink-0 items-center" title="Panel Ana Sayfa">
-              <BrandLogoMark
-                alt="Meridyen Assistance"
-                src={CORPORATE_LOGO_LIGHT}
-                variant="panel"
-              />
-            </Link>
+          {/* Zone A — ☰ + resmi logo (12–16px gap, aynı hiza); marka yalnız topbar */}
+          <div className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4">
+            {!isPortalUser && onToggleSidebar ? (
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
+                title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+                aria-label={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            ) : null}
+            {!isPortalUser ? (
+              <Link
+                href="/panel"
+                className="hidden items-center sm:inline-flex"
+                title="Panel Ana Sayfa"
+                aria-label="Meridyen Panel"
+              >
+                <BrandLogo alt="Meridyen Assistance" variant="topbar" />
+              </Link>
+            ) : null}
           </div>
 
           {/* Center + right */}
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
 
-            {/* Global Arama */}
+            {/* Global Arama — Ctrl+K / ⌘+K */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex min-w-0 flex-1 items-center gap-2 max-w-xl px-3 py-2 rounded-lg border border-[#E5E7EB] text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
-              title="Global Arama (⌘K)"
+              className="hidden md:flex min-w-0 flex-1 items-center gap-2 max-w-xl px-3 py-2 rounded-lg border border-[#E5E7EB] text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-900"
+              title={`Global Arama (${searchShortcut})`}
+              aria-keyshortcuts="Control+K Meta+K"
             >
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <span className="flex-1 truncate text-left text-xs text-slate-400">
-                Global Arama... (Dosya, Müşteri, Poliçe, Tedarikçi, İşlem...)
+                Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…
               </span>
-              <kbd className="hidden lg:flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium text-slate-400 bg-slate-100 rounded border border-slate-200">
-                ⌘K
+              <kbd className="hidden lg:inline-flex shrink-0 items-center gap-0.5 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                {searchShortcut}
               </kbd>
             </button>
 
@@ -497,17 +522,17 @@ function Navbar({
             {/* Global Search Modal */}
             <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-            {/* + Hızlı İşlem */}
+            {/* Hızlı İşlem */}
             {showQuickActions ? (
               <div className="relative" ref={quickActionRef}>
                 <button
                   type="button"
                   onClick={() => setQuickActionOpen((v) => !v)}
-                  className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1E40AF]"
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   aria-expanded={quickActionOpen}
                   aria-haspopup="menu"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Zap className="h-3.5 w-3.5 text-amber-500" />
                   <span>Hızlı İşlem</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition ${quickActionOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -631,49 +656,31 @@ function Navbar({
               )}
             </div>
 
-            {/* Yardım — topbar; kalıcı sağ kılavuz yok */}
-            {userGuide ? (
-              <a
-                href={userGuide.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700 dark:border-slate-700 dark:hover:bg-slate-800"
-                title={userGuide.title}
-                aria-label="Yardım"
-              >
-                <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-              </a>
-            ) : (
-              <span
-                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400"
-                title="Yardım"
-              >
-                <HelpCircle className="h-5 w-5" />
-              </span>
-            )}
+            {/* Yardım → Help Drawer */}
+            <button
+              type="button"
+              onClick={() => helpDrawer?.setOpen(true)}
+              className="hidden lg:inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700 dark:border-slate-700 dark:hover:bg-slate-800"
+              title={userGuide?.title ?? 'Yardım'}
+              aria-label="Yardım"
+            >
+              <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+              <span className="hidden text-xs font-medium xl:inline">Yardım</span>
+            </button>
 
-            {/* Operasyon durumu */}
-            {!isPortalUser ? (
-              <div
-                className="hidden xl:inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
-                title="Sistem Operasyon Durumu"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" aria-hidden="true" />
-                Operasyon Aktif
-              </div>
-            ) : null}
+            <PanelThemeToggle />
 
             {/* Profil Dropdown */}
             <div className="relative" ref={profileDropRef}>
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
-                className="flex items-center gap-2 py-1.5 pl-2 pr-1 sm:pr-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+                className="flex items-center gap-2 py-1.5 pl-2 pr-1 sm:pr-1.5 rounded-xl hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
               >
-                <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
+                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
-                <span className="hidden sm:block text-sm font-medium text-slate-700 max-w-[120px] truncate">
+                <span className="hidden sm:block text-sm font-medium text-slate-700 max-w-[120px] truncate dark:text-slate-200">
                   {user?.firstName} {user?.lastName}
                 </span>
                 <svg className="hidden sm:block w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -707,12 +714,15 @@ function Navbar({
               )}
             </div>
 
+            {/* Sistem Durumu → Sistem Sağlık paneli */}
+            {!isPortalUser ? <PanelSystemHealth /> : null}
+
             {/* Mobil hamburger — portal kullanıcılarında alt menü var; yalnızca profil/çıkış */}
             <button
               type="button"
               className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
               onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label={isPortalUser ? 'Hesap menüsü' : 'Menü'}
+              aria-label={isPortalUser ? 'Hesap Menüsü' : 'Menü'}
             >
               {mobileMenuOpen ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -751,31 +761,33 @@ function Navbar({
                     Sayfa geçişleri ekranın altındaki menüden yapılır.
                   </p>
                   {userGuide ? (
-                    <a
-                      href={userGuide.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        helpDrawer?.setOpen(true);
+                      }}
                     >
                       <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
                       {userGuide.title}
-                    </a>
+                    </button>
                   ) : null}
                   </>
                 )}
             <div className={`border-t border-slate-100 pt-2 ${isPortalUser ? '' : 'mt-2'}`}>
               {userGuide ? (
-                <a
-                  href={userGuide.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    helpDrawer?.setOpen(true);
+                  }}
                 >
                   <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
                   {userGuide.title}
-                </a>
+                </button>
               ) : null}
               <Link
                 href="/panel/profil"
@@ -855,14 +867,6 @@ function PanelSidebar({
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  const panelLogoHref = isExpert
-    ? '/panel/eksper-portal'
-    : isInsuranceCompanyUser
-      ? '/panel/sigorta-portal'
-      : isFinance
-        ? '/panel/finans'
-        : '/panel';
-
   const linkClass = (
     href: string,
     compact = false,
@@ -928,12 +932,16 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`z-30 hidden h-full shrink-0 flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#1F2937] transition-[width] duration-200 ease-in-out md:flex ${
+      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#1F2937] transition-[width] duration-200 ease-in-out md:flex ${
         collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
+      style={
+        collapsed
+          ? { width: 72, minWidth: 72, maxWidth: 72 }
+          : { width: 220, minWidth: 220, maxWidth: 220 }
+      }
     >
-      <PanelSidebarBrand href={panelLogoHref} collapsed={collapsed} />
-
+      {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
       <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pt-2 pb-2 [scrollbar-width:thin]">
         <div className="space-y-0.5">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
@@ -994,6 +1002,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingRevisionCount, setPendingRevisionCount] = useState(0);
+  const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [pendingAgreements, setPendingAgreements] = useState<PendingAgreement[]>([]);
   const [agreementsChecked, setAgreementsChecked] = useState(false);
   const [agreementModalDismissed, setAgreementModalDismissed] = useState(false);
@@ -1253,8 +1262,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       apiClient.getWithMeta<any[], { total?: number }>('/revision-requests', { status: 'REQUESTED', limit: 1 })
         .then((json) => { if (json) setPendingRevisionCount(json?.meta?.total ?? json?.data?.length ?? 0); })
         .catch(() => { setPendingRevisionCount(0); });
+
+      apiClient
+        .get<{ pending?: number; unownedCount?: number }>('/operation-inbox/stats')
+        .then((inbox) => {
+          const inboxCount = inbox?.unownedCount ?? inbox?.pending ?? 0;
+          setInboxPendingCount(typeof inboxCount === 'number' ? inboxCount : 0);
+        })
+        .catch(() => setInboxPendingCount(0));
     }
-  }, [loading]);
+  }, [loading, authChecked]);
 
   const handleNotifOpen = async () => {
     const newOpen = !notifOpen;
@@ -1399,17 +1416,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     isOfficeStaff: isOfficeStaffRole(roleCode),
   });
 
-  const navbarProps = {
-    user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
-    pendingRevisionCount, onLogout: handleLogout,
-    unreadCount, notifOpen, onNotifOpen: handleNotifOpen,
-    onNotifClose: () => setNotifOpen(false),
-    notifications, onMarkRead: handleMarkRead, onMarkAllRead: handleMarkAllRead,
-    onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
-    allowedScreens, companyLogo, companyName,
-    isFinance, isFieldStaff, showAcilYardim,
-    userGuide,
-  };
   const contextBackLink = isSettingsPath(pathname) ? null : getContextBackLink(pathname);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -1431,6 +1437,22 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       }
       return next;
     });
+  };
+
+  const operationBadgeCount = pendingRevisionCount + inboxPendingCount;
+
+  const navbarProps = {
+    user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
+    pendingRevisionCount: operationBadgeCount, onLogout: handleLogout,
+    unreadCount, notifOpen, onNotifOpen: handleNotifOpen,
+    onNotifClose: () => setNotifOpen(false),
+    notifications, onMarkRead: handleMarkRead, onMarkAllRead: handleMarkAllRead,
+    onNotifClick: handleNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
+    allowedScreens, companyLogo, companyName,
+    isFinance, isFieldStaff, showAcilYardim,
+    userGuide,
+    onToggleSidebar: toggleSidebarCollapsed,
+    sidebarCollapsed,
   };
 
   if (loading) {
@@ -1471,8 +1493,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   return (
     <QueryClientProvider client={queryClient}>
       <PanelUserProvider user={user}>
+      <PanelHelpDrawerProvider>
       <NavigationGuardProvider tryNavigateRef={tryNavigateRef}>
-      <div className="min-h-screen bg-slate-50 flex flex-col" ref={mainRef}>
+      <div className="min-h-screen bg-slate-50 flex flex-col dark:bg-slate-950" ref={mainRef}>
         <Navbar {...navbarProps} />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <PanelSidebar
@@ -1484,14 +1507,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             isFinance={isFinance}
             isFieldStaff={isFieldStaff}
             showAcilYardim={showAcilYardim}
-            pendingRevisionCount={pendingRevisionCount}
+            pendingRevisionCount={operationBadgeCount}
             allowedScreens={allowedScreens}
             collapsed={sidebarCollapsed}
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
-          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90">
+          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 dark:bg-slate-950">
         <GlobalActivityStrip />
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
@@ -1571,10 +1594,19 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         ) : null}
           </div>
         </div>
+        <PanelHelpDrawer
+          roleCode={roleCode}
+          isExpert={isExpert}
+          isInsuranceCompanyUser={isInsuranceCompanyUser}
+          isFinance={isFinance}
+          isFieldStaff={isFieldStaff}
+          isOfficeStaff={isOfficeStaffRole(roleCode)}
+        />
         <SessionTimeoutBar />
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
       </NavigationGuardProvider>
+      </PanelHelpDrawerProvider>
       </PanelUserProvider>
     </QueryClientProvider>
   );

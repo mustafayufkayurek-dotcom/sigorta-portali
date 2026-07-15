@@ -45,11 +45,12 @@ export function AdminFinanceSummarySection({
 
   return (
     <section
-      className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3"
+      className="rounded-xl border border-slate-200/80 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/90"
       style={{ transitionDelay: `${staggerIndex * 100}ms` }}
+      aria-label="Finans Özeti"
     >
-      <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold text-slate-950 dark:text-white sm:text-base">Finans Özeti</h2>
+      <div className="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-200 sm:text-sm">Finans Özeti</h2>
         <FinancePeriodSelector year={year} month={month} onYearChange={onYearChange} onMonthChange={onMonthChange} />
       </div>
 
@@ -61,7 +62,7 @@ export function AdminFinanceSummarySection({
         >
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+              <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
             ))
           ) : (
             <>

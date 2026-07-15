@@ -7,6 +7,7 @@ import {
   useMyPerformance,
   usePendingActions,
 } from '../../hooks/use-dashboard-data';
+import { formatActivityAction } from '../../utils/format-activity-action';
 import { WidgetSkeleton } from '../widget-frame';
 
 type FieldBottomRowProps = {
@@ -100,7 +101,9 @@ export function FieldBottomRow({ staggerIndex = 0 }: FieldBottomRowProps) {
                 className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
               >
                 <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.fileNo}</span>
-                <span className="shrink-0 truncate text-xs text-slate-500 max-w-[45%]">{item.action}</span>
+                <span className="shrink-0 truncate text-xs text-slate-500 max-w-[45%]">
+                  {formatActivityAction(item.action)}
+                </span>
               </li>
             ))}
           </ul>

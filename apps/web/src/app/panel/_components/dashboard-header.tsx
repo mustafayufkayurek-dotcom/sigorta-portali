@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Activity, CalendarDays } from 'lucide-react';
+import { Activity, CalendarDays, ChevronRight } from 'lucide-react';
 import { ReactNode } from 'react';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 
@@ -33,34 +33,62 @@ export function DashboardHeader({
   isFieldStaff = false,
 }: DashboardHeaderProps) {
   const compactChrome = isManagement || isOfficeStaff || isFieldStaff;
+  const showBreadcrumb = compactChrome;
+
+  const todayLabel = new Date().toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-white px-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5 ${
-        compactChrome ? 'py-2.5 sm:py-3' : 'py-3 sm:py-4'
+      className={`border-b border-slate-200/80 pb-3 dark:border-slate-800 ${
+        compactChrome ? 'pt-0.5' : 'pt-1'
       }`}
     >
+      {showBreadcrumb ? (
+        <nav
+          className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-500"
+          aria-label="Sayfa konumu"
+        >
+          <Link
+            href="/panel"
+            className="transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-slate-300"
+          >
+            Dashboard
+          </Link>
+          <ChevronRight className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
+          <span className="truncate text-slate-600 dark:text-slate-300" aria-current="page">
+            {title}
+          </span>
+        </nav>
+      ) : null}
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
               {title}
             </h1>
             {isManagement ? (
-              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                 Admin
               </span>
             ) : null}
             {isOfficeStaff ? (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 Dosya Sorumlusu
               </span>
             ) : null}
             {isFieldStaff ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                 Saha
               </span>
             ) : null}
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {todayLabel}
+            </span>
           </div>
           <p
             className={`mt-0.5 text-xs text-slate-500 dark:text-slate-400 sm:mt-1 sm:text-sm ${

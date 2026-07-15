@@ -30,7 +30,11 @@ function writeRolePreview(
     forcePasswordChange: true,
   });
 
-  const html = rendered.html;
+  // Preview'da HTTPS CDN yerine lokal PNG — oran bozulmadan aynı dosya.
+  const html = rendered.html.replace(
+    /https?:\/\/[^"'\s]+\/docs\/meridyen-logo-original\.png/g,
+    './meridyen-logo-original.png',
+  );
   const cardMatch = html.match(/<table width="640"[\s\S]*<\/table>\s*<\/td>\s*<\/tr>\s*<\/table>\s*<\/body>/i);
   const cardHtml = cardMatch?.[0].replace(/\s*<\/body>$/, '') ?? html;
 
@@ -120,8 +124,8 @@ writeFileSync(
 );
 
 copyFileSync(
-  join(__dirname, '../assets/meridyen-assistance-logo.jpeg'),
-  join(outDir, 'meridyen-assistance-logo.jpeg'),
+  join(__dirname, '../assets/meridyen-logo-original.png'),
+  join(outDir, 'meridyen-logo-original.png'),
 );
 
 console.log('Previews written:', outDir);

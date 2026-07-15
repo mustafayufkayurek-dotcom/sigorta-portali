@@ -1,5 +1,7 @@
 'use client';
 
+import { BrandLogo } from '@/components/brand/BrandLogo';
+
 export type LoadingIndicatorSize = 'sm' | 'md' | 'lg';
 
 export interface LoadingIndicatorProps {
@@ -74,10 +76,11 @@ export function LoadingScreen({
   return (
     <div
       className={joinClasses(
-        'flex min-h-[12rem] flex-col items-center justify-center px-4',
+        'flex min-h-[12rem] flex-col items-center justify-center gap-4 px-4',
         className,
       )}
     >
+      <BrandLogo alt="Meridyen Assistance" variant="splash" />
       <LoadingIndicator size="lg" label={label} ariaLabel={label ?? 'Yükleniyor'} />
     </div>
   );

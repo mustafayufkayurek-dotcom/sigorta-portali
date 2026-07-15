@@ -4,15 +4,12 @@ import { ReactNode } from 'react';
 
 interface DashboardShellProps {
   children: ReactNode;
-  /** @deprecated Kalıcı sağ kılavuz kaldırıldı — topbar Yardım kullanılır */
-  withGuideRail?: boolean;
-  guideSlot?: ReactNode;
 }
 
-/** Dashboard içerik kabuğu — tek sütun; kalıcı sağ kılavuz yok */
+/** Canvas C — tek sütun; gap 16–20; kalıcı sağ kılavuz yok (Help = overlay drawer) */
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="mx-auto w-full max-w-[1520px] space-y-2 sm:space-y-3">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 xl:space-y-5">
       {children}
     </div>
   );

@@ -30,7 +30,9 @@ describe('generateWelcomeEmail', () => {
     expect(rendered.html).not.toContain('Hızlı ve Şeffaf');
     expect(rendered.html).not.toContain('Rapor Gönder');
     expect(rendered.html).not.toContain('Size atanmış dosyalar');
-    expect(rendered.html).toContain('https://app.meridyen-tr.com/docs/meridyen-assistance-logo.jpeg');
+    expect(rendered.html).toContain('https://app.meridyen-tr.com/docs/meridyen-logo-original.png');
+    expect(rendered.html).not.toContain('meridyen-assistance-logo');
+    expect(rendered.html).not.toMatch(/\.jpeg|\.svg/i);
     expect(rendered.attachments).toEqual([]);
   });
 

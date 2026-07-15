@@ -4,6 +4,7 @@ import { Activity, Inbox } from 'lucide-react';
 import { useActivityFeed } from '../../hooks/use-dashboard-data';
 import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
 import { getRelativeTime } from '../../utils/formatters';
+import { formatActivityAction } from '../../utils/format-activity-action';
 
 interface ActivityFeedWidgetProps {
   onNavigate?: (path: string) => void;
@@ -43,7 +44,9 @@ export function ActivityFeedWidget({ onNavigate, staggerIndex = 0 }: ActivityFee
               <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{item.action}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {formatActivityAction(item.action)}
+                  </p>
                   <span className="shrink-0 text-xs text-slate-400">{getRelativeTime(item.createdAt)}</span>
                 </div>
                 <p className="text-xs text-slate-500">

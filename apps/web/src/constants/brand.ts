@@ -1,19 +1,12 @@
-/** Kurumsal marka — orijinal PNG korunur; panel UI SVG varyasyon kullanır */
+/** Kurumsal marka — tek resmi PNG (AI redraw yasak) */
 
-/** Arşiv / yedek — replace edilmez */
+/** Resmi tam logo (küre + wordmark) — tek runtime kaynak */
 export const CORPORATE_LOGO_ORIGINAL_PNG = '/meridyen-logo-original.png';
-export const CORPORATE_LOGO_GLOBE_PNG = '/meridyen-globe-square.png';
 
-/** Panel / header: yatay wordmark SVG */
-export const CORPORATE_LOGO_LIGHT = '/brand/meridyen-wordmark.svg';
-export const CORPORATE_LOGO_DARK = '/brand/meridyen-wordmark-dark.svg';
+/** Alias — tüm panel / login / splash yüzeyleri aynı dosya */
+export const CORPORATE_LOGO_FULL = CORPORATE_LOGO_ORIGINAL_PNG;
+export const CORPORATE_LOGO_LIGHT = CORPORATE_LOGO_ORIGINAL_PNG;
+export const CORPORATE_LOGO_DARK = CORPORATE_LOGO_ORIGINAL_PNG;
 
-/** Sidebar geniş: üst üste (küre + metin) SVG */
-export const CORPORATE_LOGO_FULL = '/brand/meridyen-stacked.svg';
-export const CORPORATE_LOGO_FULL_DARK = '/brand/meridyen-stacked.svg';
-
-/** Sidebar dar / ikon: yalnız küre SVG */
-export const CORPORATE_LOGO_GLOBE = '/brand/meridyen-globe.svg';
-export const CORPORATE_LOGO_GLOBE_FALLBACK = CORPORATE_LOGO_GLOBE_PNG;
-
-export const CORPORATE_LOGO_TEXT = '/meridyen-logo-text.png';
+/** Favicon / mark için aynı resmi asset (object-fit contain) */
+export const CORPORATE_LOGO_MARK = CORPORATE_LOGO_ORIGINAL_PNG;

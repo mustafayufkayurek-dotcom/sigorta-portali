@@ -264,39 +264,28 @@
   color: #e2e8f0 !important;
 }
 
-/* Panel sidebar marka — logo merkez; açık %80–85 / kapalı küre SVG */
-.panel-sidebar-brand {
-  @apply relative shrink-0 border-b border-slate-200 bg-white box-border dark:border-slate-800 dark:bg-slate-950;
+/* Panel sidebar genişlik HARD — flex/parent override yok (v354: 220 / 72) */
+.panel-sidebar {
+  flex-shrink: 0 !important;
+  box-sizing: border-box;
 }
-.panel-sidebar-brand--collapsed {
-  @apply h-14 px-2;
+.panel-sidebar--expanded {
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
 }
-.panel-sidebar-brand--expanded {
-  @apply h-[4.5rem] px-3;
+.panel-sidebar--collapsed {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
 }
-.panel-sidebar-brand-link {
-  @apply flex h-full w-full items-center justify-center overflow-hidden;
-}
-.panel-sidebar-brand-link--collapsed {
-  @apply justify-center;
-}
-.panel-sidebar-brand-link--expanded {
-  @apply justify-center;
-}
-.panel-sidebar-brand-globe__img {
-  @apply h-10 w-10 object-contain;
-}
-.panel-sidebar-brand-full__img {
-  @apply block h-11 w-[82%] max-w-[82%] object-contain object-center;
-}
-.dark .panel-sidebar-brand-full__img {
-  filter: brightness(1.08);
-}
+
+/* RC1: sidebar marka kaldırıldı — logo yalnızca topbar BrandLogo */
 
 /* Panel sidebar navigasyon — ANA SAYFA TASARIM TALİMATI aktif: #EEF4FF / #2563EB */
 .panel-sidebar-nav-link {
   @apply relative flex items-center justify-between gap-2 rounded-lg px-3 font-semibold transition duration-150 ease-in-out;
-  @apply text-[#1F2937] hover:bg-[#F8FAFC] hover:text-[#1F2937];
+  @apply text-[#1F2937] hover:bg-[#F1F5F9]/80 hover:text-[#1F2937];
 }
 .panel-sidebar-nav-link--default {
   @apply py-2 text-sm;
@@ -310,6 +299,7 @@
 .panel-sidebar-nav-link--active {
   background-color: #EEF4FF;
   color: #2563EB;
+  font-weight: 700;
   box-shadow: inset 4px 0 0 #2563EB;
 }
 .panel-sidebar-nav-icon {
@@ -443,3 +433,77 @@
 .meridyen-indeterminate-bar {
   animation: meridyen-indeterminate 1.2s ease-in-out infinite;
 }
+
+/* ── Enterprise Dashboard v3.0 tema tokenleri ── */
+:root {
+  --panel-navy: #0f2744;
+  --panel-blue: #2563eb;
+  --panel-red: #dc2626;
+  --panel-gap: 1rem; /* 16px */
+  --panel-focus-ring: 2px solid #2563eb;
+}
+
+html[data-panel-theme='corporate-blue'] {
+  --panel-navy: #0f2744;
+  --panel-blue: #1d4ed8;
+  --panel-surface: #f0f5fb;
+  --panel-border: #d6e2f0;
+}
+
+html[data-panel-theme='corporate-blue'] body,
+html[data-panel-theme='corporate-blue'] .min-h-screen {
+  background-color: var(--panel-surface);
+}
+
+html[data-panel-theme='corporate-dark'].dark {
+  --panel-navy: #0a192f;
+  --panel-blue: #3b82f6;
+  --panel-surface: #0b1220;
+  --panel-border: #1e293b;
+}
+
+html[data-panel-theme='corporate-dark'].dark body,
+html[data-panel-theme='corporate-dark'].dark .min-h-screen {
+  background-color: var(--panel-surface);
+}
+
+html.high-contrast,
+html[data-panel-theme='high-contrast'] {
+  --panel-blue: #0052cc;
+  --panel-red: #b00020;
+  --panel-border: #0a0a0a;
+}
+
+html.high-contrast body,
+html[data-panel-theme='high-contrast'] body {
+  background: #ffffff;
+  color: #0a0a0a;
+}
+
+html.high-contrast .panel-sidebar-nav-link,
+html[data-panel-theme='high-contrast'] .panel-sidebar-nav-link {
+  border: 1px solid transparent;
+  color: #0a0a0a;
+}
+
+html.high-contrast .panel-sidebar-nav-link--active,
+html[data-panel-theme='high-contrast'] .panel-sidebar-nav-link--active {
+  border-color: #0052cc;
+  background: #e8f0ff !important;
+  color: #003d99 !important;
+}
+
+html.high-contrast *:focus-visible,
+html[data-panel-theme='high-contrast'] *:focus-visible {
+  outline: 3px solid #0052cc;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meridyen-spinner,
+  .meridyen-indeterminate-bar,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
