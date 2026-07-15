@@ -1,0 +1,10 @@
+{
+  "status": 201,
+  "body": {
+    "success": true,
+    "data": {
+      "notified": 0,
+      "scanned": 1
+    }
+  }
+}

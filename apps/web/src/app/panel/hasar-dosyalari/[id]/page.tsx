@@ -1303,10 +1303,20 @@ export default function ClaimFileDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusSigortali = searchParams.get('sigortali') === '1';
+  const grupParam = searchParams.get('grup');
+  const altParam = searchParams.get('alt');
+  const initialGroup: GroupTab =
+    grupParam === 'operasyon' || grupParam === 'raporlar' || grupParam === 'evraklar' || grupParam === 'finans' || grupParam === 'genel-bilgiler'
+      ? (grupParam as GroupTab)
+      : 'genel-bilgiler';
+  const initialOpsSub =
+    altParam === 'gecmis' || altParam === 'iletisim' || altParam === 'gorevler' || altParam === 'randevular'
+      ? altParam
+      : undefined;
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeGroup, setActiveGroup] = useState<GroupTab>('genel-bilgiler');
+  const [activeGroup, setActiveGroup] = useState<GroupTab>(initialGroup);
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
   const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
   const [fieldSurveyRefreshKey, setFieldSurveyRefreshKey] = useState(0);
@@ -1445,7 +1455,7 @@ export default function ClaimFileDetailPage() {
         />
       )}
       {activeGroup === 'operasyon' && (
-        <TakipTab claimId={id!} claim={claim} />
+        <TakipTab claimId={id!} claim={claim} initialSubTab={initialOpsSub} />
       )}
     </div>
   );

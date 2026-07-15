@@ -609,23 +609,35 @@ export function SortablePanelTableTh({
     <span
       role="button"
       tabIndex={0}
-      className="inline-flex w-full cursor-pointer items-center justify-center gap-1 hover:text-slate-700 dark:hover:text-slate-200"
-      onClick={() => onSort(sortKey)}
+      title={active ? `Sıralı: ${sortDir === 'asc' ? 'artan' : 'azalan'}` : 'Sıralamak için tıklayın'}
+      className={`inline-flex w-full cursor-pointer items-center justify-center gap-1 transition-colors hover:text-slate-800 dark:hover:text-slate-100 ${
+        active ? 'text-blue-700 dark:text-blue-300' : 'text-inherit'
+      }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSort(sortKey);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          e.stopPropagation();
           onSort(sortKey);
         }
       }}
     >
       {children}
-      <span className={`transition-opacity ${active ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30'}`}>
+      <span
+        className={`text-[10px] font-semibold transition-opacity ${
+          active ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-40 group-hover:opacity-70'
+        }`}
+        aria-hidden
+      >
         {active && sortDir === 'desc' ? '↓' : '↑'}
       </span>
     </span>
   );
   return (
-    <PanelTableTh colId={colId} className={className} resizable={resizable}>
+    <PanelTableTh colId={colId} className={`${className} group`.trim()} resizable={resizable}>
       {label}
     </PanelTableTh>
   );

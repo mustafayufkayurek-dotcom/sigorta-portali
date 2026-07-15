@@ -119,8 +119,21 @@ function HareketGecmisiPanel({ claimId }: { claimId: string }) {
   );
 }
 
-export function TakipTab({ claimId, claim }: { claimId: string; claim: any }) {
-  const [subTab, setSubTab] = useState<OperasyonSubTab>('gorevler');
+export function TakipTab({
+  claimId,
+  claim,
+  initialSubTab,
+}: {
+  claimId: string;
+  claim: any;
+  /** Operasyon listesinden ?alt=gecmis | iletisim */
+  initialSubTab?: OperasyonSubTab;
+}) {
+  const [subTab, setSubTab] = useState<OperasyonSubTab>(initialSubTab ?? 'gorevler');
+
+  useEffect(() => {
+    if (initialSubTab) setSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   return (
     <div className="space-y-4">

@@ -1,0 +1,38 @@
+[
+  {
+    "text": "Tür↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Dosya No↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Sigorta Şirketi↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Sigortalı Adı Soyadı↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Kimde↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Dosya Konusu↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Durum↑",
+    "hasArrow": true
+  },
+  {
+    "text": "Sonraki Aksiyon↑",
+    "hasArrow": true
+  },
+  {
+    "text": "İşlemler",
+    "hasArrow": false
+  }
+]

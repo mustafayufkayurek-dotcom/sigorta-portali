@@ -1,0 +1,92 @@
+{
+  "at": "2026-07-15T16:24:44.675Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "notes": [
+    "API login OK"
+  ],
+  "checks": [
+    {
+      "id": 1,
+      "name": "operation-stats HTTP",
+      "status": "PASS",
+      "detail": "keys=open,urgent,openedToday,approvalPending,reportWriting,reportApproval,financeTransfer,delayRisk,approval72h"
+    },
+    {
+      "id": 2,
+      "name": "KPI set fields",
+      "status": "PASS",
+      "detail": "{\"open\":6,\"urgent\":0,\"openedToday\":0,\"approvalPending\":1,\"reportWriting\":5,\"reportApproval\":1,\"financeTransfer\":0,\"delayRisk\":1,\"approval72h\":1}"
+    },
+    {
+      "id": 3,
+      "name": "72s check endpoint",
+      "status": "PASS",
+      "detail": "status=201"
+    },
+    {
+      "id": 4,
+      "name": "page title Operasyon",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": 5,
+      "name": "KPI labels 8/8",
+      "status": "PASS",
+      "detail": "hits=8: Açık Dosya|Onay Bekleyen|Rapor Yazılıyor|Rapor Onayı|Finansa Aktarılacak|72 Saat + Risk|Bugün Açılan|Acil Dosya"
+    },
+    {
+      "id": 6,
+      "name": "no Gelen Kutu KPI",
+      "status": "PASS",
+      "detail": "gelen kutu not in KPI band"
+    },
+    {
+      "id": 7,
+      "name": "KPI band no Gelen Kutu",
+      "status": "PASS",
+      "detail": "6\nAçık Dosya\n1\nOnay Bekleyen\n5\nRapor Yazılıyor\n1\nRapor Onayı\n0\nFinansa Aktarılacak\n1\n72 Saat + Risk\n0\nBugün Açılan\n0\nAci"
+    },
+    {
+      "id": 8,
+      "name": "sort indicators on data columns",
+      "status": "PASS",
+      "detail": "[{\"text\":\"Tür↑\",\"hasArrow\":true},{\"text\":\"Dosya No↑\",\"hasArrow\":true},{\"text\":\"Sigorta Şirketi↑\",\"hasArrow\":true},{\"text\":\"Sigortalı Adı Soyadı↑\",\"hasArrow\":true},{\"text\":\"Kimde↑\",\"hasArrow\":true},{\"text\":\"Dosya Konusu↑\",\"hasArrow\":true},{\"text\":\"Durum↑\",\"hasArrow\":true},{\"text\":\"Sonraki Aksiyon↑\",\"hasArrow\":true}]"
+    },
+    {
+      "id": 9,
+      "name": "header sort click",
+      "status": "PASS",
+      "detail": "Dosya No clicked"
+    },
+    {
+      "id": 10,
+      "name": "actions menu items",
+      "status": "PASS",
+      "detail": "GörüntüleDüzenlePDF OluşturE-posta Gönder | WhatsApp | NotGeçmiş | Sil / İptal…"
+    },
+    {
+      "id": 11,
+      "name": "email modal open",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "id": 12,
+      "name": "email PDF chain feedback",
+      "status": "PASS",
+      "detail": "PARTIAL: send disabled — no reportId (PDF zorunlu)"
+    },
+    {
+      "id": 13,
+      "name": "72s UI surface present",
+      "status": "PASS",
+      "detail": "banner/chip/next-action"
+    }
+  ],
+  "passCount": 13,
+  "failCount": 0,
+  "commit": "none",
+  "deploy": "none"
+}

@@ -3,6 +3,17 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  AlertTriangle,
+  CalendarPlus,
+  CircleDollarSign,
+  ClipboardCheck,
+  FileEdit,
+  FileText,
+  FolderOpen,
+  Hourglass,
+  type LucideIcon,
+} from 'lucide-react';
 import { getCases, EmergencyCase } from '@/utils/emergencyApi';
 import { apiClient } from '@/lib/api-client';
 import {
@@ -10,6 +21,7 @@ import {
   PanelTableTd,
   PanelTableTh,
   PanelTableColGroup,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -20,6 +32,7 @@ import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
+import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
@@ -108,6 +121,8 @@ type UnifiedRow =
       delayRisk: boolean;
       updatedAt?: string | null;
       priority?: string | null;
+      reportId: string | null;
+      defaultEmailTo: string | null;
     }
   | {
       kind: 'acil';
@@ -124,53 +139,51 @@ type UnifiedRow =
       assigneeName: string;
       approval72hExceeded: boolean;
       delayRisk: boolean;
+      reportId: string | null;
+      defaultEmailTo: string | null;
     };
 
-function StatCard({
+function OpsStripKpi({
   label,
   value,
-  accentClass,
-  iconBg,
-  icon,
-  href,
+  color,
+  icon: Icon,
   onClick,
   active,
 }: {
   label: string;
   value: string | number;
-  accentClass?: string;
-  iconBg?: string;
-  icon?: React.ReactNode;
-  href?: string;
+  color: string;
+  icon: LucideIcon;
   onClick?: () => void;
   active?: boolean;
 }) {
-  const content = (
+  /** RC1 StripKpi dili — kompakt (~40px, kart büyütme yok) */
+  const body = (
     <div
-      className={`flex flex-col items-center justify-center text-center gap-1 bg-white rounded-xl border shadow-card px-3 py-2 ${accentClass ?? 'card-accent-blue'} ${
-        active ? 'border-blue-400 ring-2 ring-blue-200' : 'border-slate-200/70'
+      className={`group flex min-h-[40px] items-center gap-2 rounded-lg border bg-white px-2 py-1 shadow-sm transition ${
+        active
+          ? 'border-blue-400 ring-2 ring-blue-200'
+          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
       }`}
     >
-      {icon && (
-        <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center ${iconBg ?? 'bg-blue-50'}`}>
-          {icon}
-        </div>
-      )}
-      <div className="flex flex-col items-center min-w-0 w-full">
-        <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-tight">{label}</p>
-        <span className="text-base font-bold text-slate-900 leading-none tabular-nums mt-0.5">{value}</span>
-      </div>
+      <span className={`inline-flex shrink-0 rounded-md p-1.5 ${color}`}>
+        <Icon className="h-3.5 w-3.5 text-white" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-bold leading-none tabular-nums text-slate-950">{value}</span>
+        <span className="mt-0.5 block truncate text-[10px] font-medium text-slate-500">{label}</span>
+      </span>
     </div>
   );
   if (onClick) {
     return (
       <button type="button" onClick={onClick} className="block w-full text-left">
-        {content}
+        {body}
       </button>
     );
   }
-  if (href) return <Link href={href} className="block">{content}</Link>;
-  return content;
+  return body;
 }
 
 function resolveClaimDisplayDate(claim: {
@@ -194,10 +207,18 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'nextAction', label: 'Sonraki Aksiyon', defaultWidth: 140, minWidth: 100 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 220, minWidth: 180 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 120, minWidth: 96 },
 ];
 
 const PAGE_SIZE = 50;
+
+/** Sunucu sort alanı — claim-files parseSort ile hizalı */
+const COL_SERVER_SORT: Record<string, string> = {
+  fileNo: 'fileNo',
+  date: 'notificationDate',
+};
+
+const COL_DIVIDER = 'border-r border-slate-200/70 last:border-r-0';
 
 type OpsStats = {
   open: number;
@@ -205,6 +226,7 @@ type OpsStats = {
   openedToday: number;
   approvalPending: number;
   reportWriting: number;
+  reportApproval: number;
   financeTransfer: number;
   delayRisk: number;
   approval72h: number;
@@ -222,12 +244,13 @@ export default function OperasyonPage() {
   const [claimsError, setClaimsError] = useState('');
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('createdAt:desc');
+  const [clientSort, setClientSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
 
   const [cases, setCases] = useState<EmergencyCase[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
 
-  const [inboxPendingCount, setInboxPendingCount] = useState<number | null>(null);
   const [opsStats, setOpsStats] = useState<OpsStats | null>(null);
+  const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
 
   const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
   const [filterInvoice, setFilterInvoice] = useState('');
@@ -266,15 +289,8 @@ export default function OperasyonPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const [statsRes, inboxRes] = await Promise.allSettled([
-        apiClient.get<OpsStats>('/claim-files/operation-stats'),
-        apiClient.get<{ pending?: number; unownedCount?: number }>('/operation-inbox/stats'),
-      ]);
-      if (statsRes.status === 'fulfilled') setOpsStats(statsRes.value);
-      if (inboxRes.status === 'fulfilled') {
-        const inbox = inboxRes.value;
-        setInboxPendingCount(inbox.unownedCount ?? inbox.pending ?? 0);
-      }
+      const stats = await apiClient.get<OpsStats>('/claim-files/operation-stats');
+      setOpsStats(stats);
     } catch { /* ignore */ }
   }, []);
 
@@ -314,8 +330,6 @@ export default function OperasyonPage() {
     setPage(1);
   }, [opsPreset, filterInvoice, filterType]);
 
-  const emergencyOpenCount = cases.filter((c) => c.status !== 'FATURALANDILDI').length;
-
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
     const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
@@ -343,6 +357,8 @@ export default function OperasyonPage() {
       delayRisk: Boolean(claim.delayRisk),
       updatedAt: claim.updatedAt ?? null,
       priority: claim.priority ?? null,
+      reportId: claim.latestRepairReport?.id ?? null,
+      defaultEmailTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null,
     };
   });
 
@@ -361,7 +377,26 @@ export default function OperasyonPage() {
     assigneeName: '—',
     approval72hExceeded: false,
     delayRisk: false,
+    reportId: null,
+    defaultEmailTo: null,
   }));
+
+  function sortValue(row: UnifiedRow, key: string): string {
+    switch (key) {
+      case 'kind': return row.kind;
+      case 'fileNo': return row.fileNo;
+      case 'customer': return row.customerName;
+      case 'insured': return row.insuredName;
+      case 'assignee': return row.assigneeName;
+      case 'date': return row.date;
+      case 'subject': return row.subject;
+      case 'status': return row.kind === 'hasar' ? row.statusLabel : row.statusCode;
+      case 'nextAction': return row.nextAction;
+      case 'invoice': return row.invoiceStatus;
+      case 'amount': return row.amount ?? '';
+      default: return '';
+    }
+  }
 
   const filteredRows: UnifiedRow[] = (() => {
     const merged = filterType === 'hasar'
@@ -369,10 +404,55 @@ export default function OperasyonPage() {
       : filterType === 'acil'
         ? acilRows
         : [...hasarRows, ...acilRows];
-    return [...merged].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    const rows = [...merged];
+    if (clientSort) {
+      const { key, dir } = clientSort;
+      const mul = dir === 'asc' ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = String(sortValue(a, key) ?? '');
+        const bv = String(sortValue(b, key) ?? '');
+        return av.localeCompare(bv, 'tr', { sensitivity: 'base', numeric: true }) * mul;
+      });
+    } else {
+      rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return rows;
   })();
+
+  const activeSortKey =
+    clientSort?.key
+    ?? Object.entries(COL_SERVER_SORT).find(([, v]) => sort.startsWith(`${v}:`))?.[0]
+    ?? null;
+  const sortDir: 'asc' | 'desc' = clientSort
+    ? clientSort.dir
+    : (sort.endsWith(':asc') ? 'asc' : 'desc');
+
+  const handleColumnSort = (colId: string) => {
+    if (colId === 'actions') return;
+    const serverField = COL_SERVER_SORT[colId];
+    if (serverField) {
+      setClientSort(null);
+      setSort((prev) => {
+        const [f, d] = prev.split(':');
+        if (f === serverField) return `${serverField}:${d === 'asc' ? 'desc' : 'asc'}`;
+        return `${serverField}:asc`;
+      });
+      return;
+    }
+    setClientSort((prev) => {
+      if (prev?.key === colId) return { key: colId, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      return { key: colId, dir: 'asc' };
+    });
+  };
+
+  const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
+  const isLoading = claimsLoading || (filterType !== 'hasar' && !opsPreset && casesLoading);
+  const totalPages = Math.max(1, Math.ceil(claimsTotal / PAGE_SIZE));
+
+  const togglePreset = (preset: OperationPreset) => {
+    setOpsPreset((prev) => (prev === preset ? '' : preset));
+    setFilterType('hasar');
+  };
 
   const columnFitSamples = useMemo(() => {
     const samples: Record<string, string[]> = {};
@@ -393,15 +473,6 @@ export default function OperasyonPage() {
     }
     return samples;
   }, [filteredRows]);
-
-  const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
-  const isLoading = claimsLoading || (filterType !== 'hasar' && !opsPreset && casesLoading);
-  const totalPages = Math.max(1, Math.ceil(claimsTotal / PAGE_SIZE));
-
-  const togglePreset = (preset: OperationPreset) => {
-    setOpsPreset((prev) => (prev === preset ? '' : preset));
-    setFilterType('hasar');
-  };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -471,78 +542,71 @@ export default function OperasyonPage() {
         </div>
       </div>
 
-      {/* Operasyon KPI — ciro/kâr yok */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        <StatCard
-          label="Gelen Kutu"
-          value={inboxPendingCount ?? '—'}
-          accentClass="card-accent-purple"
-          iconBg="bg-violet-50"
-          icon={<svg className="w-3.5 h-3.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
-          href="/panel/operasyon/gelen-kutusu"
-        />
-        <StatCard
-          label="Açık"
+      {/* Operasyon KPI — RC1 StripKpi dili, kompakt; mail/gelen kutu KPI yok */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1.5" data-testid="ops-kpi-band">
+        <OpsStripKpi
+          label="Açık Dosya"
           value={opsStats?.open ?? '—'}
-          accentClass="card-accent-blue"
-          iconBg="bg-blue-50"
-          icon={<svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+          color="bg-blue-600"
+          icon={FolderOpen}
           active={opsPreset === 'open'}
           onClick={() => togglePreset('open')}
         />
-        <StatCard
-          label="Acil"
-          value={opsStats?.urgent ?? emergencyOpenCount}
-          accentClass="card-accent-amber"
-          iconBg="bg-amber-50"
-          icon={<svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
-          active={opsPreset === 'urgent'}
-          onClick={() => togglePreset('urgent')}
-        />
-        <StatCard
-          label="Bugün"
-          value={opsStats?.openedToday ?? '—'}
-          accentClass="card-accent-green"
-          iconBg="bg-emerald-50"
-          icon={<svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
-          active={opsPreset === 'opened_today'}
-          onClick={() => togglePreset('opened_today')}
-        />
-        <StatCard
+        <OpsStripKpi
           label="Onay Bekleyen"
           value={opsStats?.approvalPending ?? '—'}
-          accentClass="card-accent-amber"
-          iconBg="bg-amber-50"
-          icon={<svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          color="bg-amber-500"
+          icon={Hourglass}
           active={opsPreset === 'approval_pending'}
           onClick={() => togglePreset('approval_pending')}
         />
-        <StatCard
-          label="Rapor Bekleyen"
+        <OpsStripKpi
+          label="Rapor Yazılıyor"
           value={opsStats?.reportWriting ?? '—'}
-          accentClass="card-accent-amber"
-          iconBg="bg-orange-50"
-          icon={<svg className="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+          color="bg-orange-500"
+          icon={FileEdit}
           active={opsPreset === 'report_writing'}
           onClick={() => togglePreset('report_writing')}
         />
-        <StatCard
+        <OpsStripKpi
+          label="Rapor Onayı"
+          value={opsStats?.reportApproval ?? '—'}
+          color="bg-amber-600"
+          icon={ClipboardCheck}
+          active={opsPreset === 'report_approval'}
+          onClick={() => togglePreset('report_approval')}
+        />
+        <OpsStripKpi
           label="Finansa Aktarılacak"
           value={opsStats?.financeTransfer ?? '—'}
-          accentClass="card-accent-purple"
-          iconBg="bg-violet-50"
-          icon={<svg className="w-3.5 h-3.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          color="bg-violet-600"
+          icon={CircleDollarSign}
           active={opsPreset === 'finance_transfer'}
           onClick={() => togglePreset('finance_transfer')}
         />
-        <StatCard
-          label="Gecikme Riski"
+        <OpsStripKpi
+          label="72 Saat + Risk"
           value={opsStats?.delayRisk ?? opsStats?.approval72h ?? '—'}
-          accentClass="card-accent-red"
-          iconBg="bg-red-50"
-          icon={<svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+          color="bg-red-600"
+          icon={AlertTriangle}
           active={opsPreset === 'delay_risk' || opsPreset === 'approval_72h'}
           onClick={() => togglePreset('delay_risk')}
+        />
+        <OpsStripKpi
+          label="Bugün Açılan"
+          value={opsStats?.openedToday ?? '—'}
+          color="bg-emerald-600"
+          icon={CalendarPlus}
+          active={opsPreset === 'opened_today'}
+          onClick={() => togglePreset('opened_today')}
+        />
+        <OpsStripKpi
+          label="Acil Dosya"
+          value={opsStats?.urgent ?? '—'}
+          color="bg-orange-600"
+          icon={FileText}
+          active={opsPreset === 'urgent'}
+          onClick={() => togglePreset('urgent')}
         />
       </div>
 
@@ -667,16 +731,31 @@ export default function OperasyonPage() {
               <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
-                  {tableColumns.prefs.orderedVisibleColumns.map((col) => (
-                    <PanelTableTh
-                      key={col.id}
-                      colId={col.id}
-                      className="table-th !py-2.5 text-xs"
-                      fitSamples={columnFitSamples[col.id]}
-                    >
-                      {col.label}
-                    </PanelTableTh>
-                  ))}
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) =>
+                    col.id === 'actions' ? (
+                      <PanelTableTh
+                        key={col.id}
+                        colId={col.id}
+                        className={`table-th !py-2 text-xs ${COL_DIVIDER}`}
+                        fitSamples={columnFitSamples[col.id]}
+                      >
+                        {col.label}
+                      </PanelTableTh>
+                    ) : (
+                      <SortablePanelTableTh
+                        key={col.id}
+                        colId={col.id}
+                        className={`table-th !py-2 text-xs ${COL_DIVIDER}`}
+                        fitSamples={columnFitSamples[col.id]}
+                        sortKey={col.id}
+                        activeSortKey={activeSortKey}
+                        sortDir={sortDir}
+                        onSort={handleColumnSort}
+                      >
+                        {col.label}
+                      </SortablePanelTableTh>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -696,7 +775,7 @@ export default function OperasyonPage() {
                       switch (col.id) {
                         case 'kind':
                           return (
-                            <PanelTableTd key={col.id} colId="kind" className="table-td !py-2 text-xs whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="kind" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
                               {row.kind === 'hasar' ? (
                                 <span className="badge badge-blue">Hasar</span>
                               ) : (
@@ -709,7 +788,7 @@ export default function OperasyonPage() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" className="table-td !py-2 font-mono text-xs font-semibold text-slate-800 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-semibold text-slate-800 whitespace-nowrap ${COL_DIVIDER}`}>
                               <span className="inline-flex items-center gap-1">
                                 {row.fileNo}
                                 {row.approval72hExceeded && (
@@ -720,13 +799,13 @@ export default function OperasyonPage() {
                           );
                         case 'customer':
                           return (
-                            <PanelTableTd key={col.id} colId="customer" className="table-td !py-2 text-xs whitespace-nowrap" title={row.customerName}>
+                            <PanelTableTd key={col.id} colId="customer" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`} title={row.customerName}>
                               {row.customerName}
                             </PanelTableTd>
                           );
                         case 'insured':
                           return (
-                            <PanelTableTd key={col.id} colId="insured" className="table-td !py-2 text-xs whitespace-nowrap font-medium text-slate-700" title={row.insuredName}>
+                            <PanelTableTd key={col.id} colId="insured" className={`table-td !py-2 text-xs whitespace-nowrap font-medium text-slate-700 ${COL_DIVIDER}`} title={row.insuredName}>
                               {row.kind === 'hasar' ? (
                                 <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                   <InsuredNameInlineEdit
@@ -744,25 +823,25 @@ export default function OperasyonPage() {
                           );
                         case 'assignee':
                           return (
-                            <PanelTableTd key={col.id} colId="assignee" className="table-td !py-2 text-xs whitespace-nowrap text-slate-600" title={row.assigneeName}>
+                            <PanelTableTd key={col.id} colId="assignee" className={`table-td !py-2 text-xs whitespace-nowrap text-slate-600 ${COL_DIVIDER}`} title={row.assigneeName}>
                               {row.assigneeName || '—'}
                             </PanelTableTd>
                           );
                         case 'date':
                           return (
-                            <PanelTableTd key={col.id} colId="date" className="table-td !py-2 text-xs text-slate-400 whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="date" className={`table-td !py-2 text-xs text-slate-400 whitespace-nowrap ${COL_DIVIDER}`}>
                               {fmtDate(row.date)}
                             </PanelTableTd>
                           );
                         case 'subject':
                           return (
-                            <PanelTableTd key={col.id} colId="subject" className="table-td !py-2 text-xs text-slate-500 whitespace-nowrap" title={row.subject}>
+                            <PanelTableTd key={col.id} colId="subject" className={`table-td !py-2 text-xs text-slate-500 whitespace-nowrap ${COL_DIVIDER}`} title={row.subject}>
                               {row.subject}
                             </PanelTableTd>
                           );
                         case 'status':
                           return (
-                            <PanelTableTd key={col.id} colId="status" className="table-td !py-2 text-xs whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="status" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
                               {row.kind === 'hasar' ? (
                                 <span className={row.statusTone}>{row.statusLabel}</span>
                               ) : (
@@ -774,7 +853,7 @@ export default function OperasyonPage() {
                           );
                         case 'nextAction':
                           return (
-                            <PanelTableTd key={col.id} colId="nextAction" className="table-td !py-2 text-xs whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="nextAction" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
                               <span className={row.approval72hExceeded ? 'font-semibold text-red-700' : 'text-slate-600'}>
                                 {row.nextAction}
                               </span>
@@ -782,7 +861,7 @@ export default function OperasyonPage() {
                           );
                         case 'invoice':
                           return (
-                            <PanelTableTd key={col.id} colId="invoice" className="table-td !py-2 text-xs whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
                               <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
@@ -790,18 +869,28 @@ export default function OperasyonPage() {
                           );
                         case 'amount':
                           return (
-                            <PanelTableTd key={col.id} colId="amount" className="table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums">
+                            <PanelTableTd key={col.id} colId="amount" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER}`}>
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
                         case 'actions':
                           return (
-                            <PanelTableTd key={col.id} colId="actions" className="table-td !py-2 text-xs whitespace-nowrap">
+                            <PanelTableTd key={col.id} colId="actions" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
                               <OperationRowActions
                                 kind={row.kind}
                                 id={row.id}
                                 fileNo={row.fileNo}
+                                reportId={row.reportId}
+                                defaultEmailTo={row.defaultEmailTo}
                                 approval72hExceeded={row.approval72hExceeded}
+                                onEmailRequest={() =>
+                                  setEmailTarget({
+                                    claimId: row.id,
+                                    fileNo: row.fileNo,
+                                    reportId: row.reportId,
+                                    defaultTo: row.defaultEmailTo ?? undefined,
+                                  })
+                                }
                                 onDeleteRequest={() => {
                                   setDeleteError('');
                                   setDeleteTarget({ kind: row.kind, id: row.id, fileNo: row.fileNo });
@@ -853,6 +942,10 @@ export default function OperasyonPage() {
         loading={deleteLoading}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDeleteConfirm()}
+      />
+      <OperationSendEmailModal
+        target={emailTarget}
+        onClose={() => setEmailTarget(null)}
       />
     </div>
     </TableColumnsProvider>

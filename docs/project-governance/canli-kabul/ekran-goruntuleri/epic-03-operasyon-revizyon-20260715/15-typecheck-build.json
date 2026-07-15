@@ -1,0 +1,12 @@
+{
+  "typecheck": "PASS",
+  "webBuild": "PASS",
+  "unitTests": {
+    "report-email.service.spec": "PASS (3)",
+    "approval-72h.rule.spec": "PASS (3)"
+  },
+  "browserCapture": "PASS 13/13",
+  "emailLiveSmtp": "PARTIAL — staging-no-smtp zorunlu PDF chain (unit+UI)",
+  "commit": "none",
+  "deploy": "none"
+}

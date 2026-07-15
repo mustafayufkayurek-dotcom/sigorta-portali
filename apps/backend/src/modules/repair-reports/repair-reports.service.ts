@@ -642,7 +642,11 @@ export class RepairReportsService {
 
   async sendEmail(reportId: string, dto: SendEmailDto) {
     const report = await this.getReport(reportId);
+    // PDF önce — ek yoksa sendReport FAIL eder
     const { buffer: pdfBuffer } = await this.generatePdf(reportId, dto.viewType);
+    if (!pdfBuffer?.length) {
+      throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
+    }
     const subject = dto.subject ?? `Hasar Onarım Raporu — ${report.reportNo}`;
     return this.emailService.sendReport({
       to: dto.to,
