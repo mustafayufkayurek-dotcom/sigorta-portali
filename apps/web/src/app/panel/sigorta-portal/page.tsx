@@ -13,7 +13,9 @@ import {
   computeVitrinStats,
   type ClaimFileForMap,
 } from '@/utils/insurance-portal-map-utils';
-import { PortalCompactHeader } from '@/components/panel/PortalCompactHeader';
+import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
+import { PortalExchangeRates, PortalLiveClock } from '@/components/panel/portal-header-widgets';
+
 
 const VIEW_MODES: { key: InsurancePortalViewMode; label: string; hint: string }[] = [
   { key: 'ours', label: 'Bizim Dosyalar', hint: 'Yalnızca şirket kapsamınızdaki gerçek dosyalar' },
@@ -130,42 +132,46 @@ export default function SigortaPortalPage() {
   const userName = `${String(user?.firstName ?? '')} ${String(user?.lastName ?? '')}`.trim();
 
   return (
-    <div className="min-w-0 max-w-full space-y-3">
-        <PortalCompactHeader
+    <DashboardShell>
+        <DashboardHeader
           title="Sigorta Portalı"
-          welcomeLabel={userName || 'Kullanıcı'}
-          showRatesAndClock
-          meta={
+          subtitle={
+            companies !== '—'
+              ? `Hoş Geldiniz, ${userName || 'Kullanıcı'} · ${companies}`
+              : `Hoş Geldiniz, ${userName || 'Kullanıcı'}`
+          }
+          hideDefaultActions
+          actions={
             <>
-              <p className="text-sm text-slate-600">{companies}</p>
+              <PortalExchangeRates tone="light" />
+              <PortalLiveClock compact />
               {pendingCount > 0 ? (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-                  <span className="text-xs font-semibold text-amber-800">{pendingCount} onay bekliyor</span>
+                  <span className="text-xs font-semibold text-amber-800">{pendingCount} Onay Bekliyor</span>
                 </div>
               ) : null}
             </>
           }
-          belowActions={
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-md">
-              {VIEW_MODES.map((mode) => (
-                <button
-                  key={mode.key}
-                  type="button"
-                  onClick={() => setViewMode(mode.key)}
-                  title={mode.hint}
-                  className={`rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
-                    viewMode === mode.key
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          }
         />
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-md">
+          {VIEW_MODES.map((mode) => (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => setViewMode(mode.key)}
+              title={mode.hint}
+              className={`rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
+                viewMode === mode.key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
 
         {missingScope && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-900">
@@ -235,6 +241,6 @@ export default function SigortaPortalPage() {
             </div>
           )}
         </div>
-    </div>
+    </DashboardShell>
   );
 }

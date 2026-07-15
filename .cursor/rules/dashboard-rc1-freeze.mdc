@@ -1,0 +1,36 @@
+---
+description: Dashboard RC1 freeze — kabuk/tasarım donduruldu; izinli/yasaklı geliştirme
+globs: apps/web/src/features/dashboard/**/*,apps/web/src/app/panel/**/*,apps/web/src/components/panel/**/*,apps/web/src/components/brand/**
+alwaysApply: false
+---
+
+# Dashboard RC1 Freeze
+
+**Kaynak:** `docs/project-governance/DASHBOARD_RC1_FREEZE.md`  
+**Durum:** RC1 ACCEPTED · Architecture LOCKED · Design System LOCKED
+
+## Altın kural
+
+Dashboard yeniden tasarlanmaz. Shell / Layout / Header / Sidebar / KPI yerleşimi / Theme / Design Token kalıcıdır. Fark yalnızca widget · yetki · veri · rol aksiyonudur.
+
+## Yasak (Mustafa mimari onayı yoksa)
+
+- Yeni Dashboard Layout / Sidebar / Header
+- KPI kartlarını büyütmek veya KPI ekranına çevirmek
+- Sidebar 220 / 72 dışına çıkmak
+- Rol veya portal için ayrı Dashboard tasarlamak
+- Ortak component kopyalamak; Dashboard Shell değiştirmek
+- AI / yeniden çizilmiş / farklı logo
+- Commit · push · deploy (açık onay yoksa)
+
+## İzinli
+
+Bug fix · widget ekleme · veri / yetki · performans · güvenlik · erişilebilirlik · küçük UX (geri bildirimle)
+
+## Tek marka kaynağı
+
+`BrandLogo` + `/meridyen-logo-original.png` (`constants/brand.ts`) — Header, Login, Loading, Splash dahil.
+
+## Yeni odak
+
+EPIC-02 – Hasar Dosyası Enterprise UX (Dashboard dışı modül işi)

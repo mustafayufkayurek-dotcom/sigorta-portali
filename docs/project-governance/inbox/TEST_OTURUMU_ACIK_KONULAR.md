@@ -2,6 +2,8 @@
 
 > Mustafa seri test notları akışında. Başka ekrana geçmeden önce bu listeden ilgili maddeyi kapat veya karar ver.
 
+> **2026-07-15:** Dashboard RC1 FREEZE / ACCEPTED — sonraki odak EPIC-02 (`inbox/EPIC-02_HASAR_DOSYASI.md`, politika: `DASHBOARD_RC1_FREEZE.md`).
+
 ---
 
 ## P1-DASH — Dashboard P1 paket kapanış (13 Temmuz 2026)

@@ -8,7 +8,14 @@ import {
   usePendingActions,
 } from '../../hooks/use-dashboard-data';
 import { formatActivityAction } from '../../utils/format-activity-action';
+import {
+  CLAIM_LIST_HREF,
+  CLAIM_LIST_OPEN_HREF,
+  CLAIM_LIST_SLA_HREF,
+  claimNavHref,
+} from '../../utils/claim-nav-href';
 import { getRelativeTime } from '../../utils/formatters';
+import { DashboardRowLink } from '../dashboard-row-link';
 import { WidgetSkeleton } from '../widget-frame';
 
 type OfficeBottomRowProps = {
@@ -27,14 +34,16 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
   const inactiveFiles = criticalQuery.data?.inactiveFiles ?? [];
   const criticalItems = [
     ...slaEscalations.slice(0, 3).map((item) => ({
-      key: `sla-${item.fileNo}`,
+      key: `sla-${item.id ?? item.fileNo}`,
       label: `${item.fileNo} — SLA Aşımı`,
       meta: 'SLA Riski',
+      href: claimNavHref({ id: item.id, fileNo: item.fileNo }),
     })),
     ...inactiveFiles.slice(0, 2).map((item) => ({
-      key: `inactive-${item.fileNo}`,
+      key: `inactive-${item.id ?? item.fileNo}`,
       label: `${item.fileNo} — Hareketsiz`,
       meta: item.daysSinceActivity != null ? `${item.daysSinceActivity} Gün` : '48 Sa+',
+      href: claimNavHref({ id: item.id, fileNo: item.fileNo }),
     })),
   ].slice(0, 4);
 
@@ -58,8 +67,8 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
             ) : null}
           </div>
           <Link
-            href="/panel/hasar-dosyalari?status=sla_exceeded"
-            className="text-xs font-medium text-blue-600 hover:underline"
+            href={CLAIM_LIST_SLA_HREF}
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Tümünü Gör
           </Link>
@@ -70,15 +79,31 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
           <p className="text-sm text-slate-500">Kritik uyarı görünmüyor.</p>
         ) : (
           <ul className="space-y-1.5">
-            {criticalItems.map((item) => (
-              <li
-                key={item.key}
-                className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-red-900/40 dark:bg-red-950/20"
-              >
-                <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
-                <span className="shrink-0 text-xs text-slate-500">{item.meta}</span>
-              </li>
-            ))}
+            {criticalItems.map((item) => {
+              const inner = (
+                <span className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                  <span className="line-clamp-2 font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
+                  <span className="shrink-0 text-xs text-slate-500">{item.meta}</span>
+                </span>
+              );
+              return (
+                <li key={item.key}>
+                  {item.href ? (
+                    <DashboardRowLink
+                      href={item.href}
+                      aria-label={`Kritik Uyarı: ${item.label}`}
+                      className="block rounded-lg border border-red-100 bg-red-50/60 px-2.5 py-1.5 hover:bg-red-100/70 dark:border-red-900/40 dark:bg-red-950/20 dark:hover:bg-red-900/30"
+                    >
+                      {inner}
+                    </DashboardRowLink>
+                  ) : (
+                    <div className="rounded-lg border border-red-100 bg-red-50/60 px-2.5 py-1.5 dark:border-red-900/40 dark:bg-red-950/20">
+                      {inner}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -94,7 +119,10 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
               </span>
             ) : null}
           </div>
-          <Link href="/panel/hasar-dosyalari?status=open" className="text-xs font-medium text-blue-600 hover:underline">
+          <Link
+            href={CLAIM_LIST_OPEN_HREF}
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
             Tümünü Gör
           </Link>
         </div>
@@ -104,17 +132,34 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
           <p className="text-sm text-slate-500">Bekleyen aksiyon yok.</p>
         ) : (
           <ul className="space-y-1.5">
-            {pendingItems.map((item) => (
-              <li
-                key={item.id || `${item.fileNo}-${item.action}`}
-                className="flex items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 text-xs sm:text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
-              >
-                <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.fileNo}</span>
-                <span className="shrink-0 truncate text-xs text-slate-500 max-w-[45%]">
-                  {formatActivityAction(item.action)}
+            {pendingItems.map((item) => {
+              const href = claimNavHref({ id: item.id, fileNo: item.fileNo });
+              const inner = (
+                <span className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                  <span className="line-clamp-2 font-medium text-slate-800 dark:text-slate-100">{item.fileNo}</span>
+                  <span className="max-w-[45%] shrink-0 truncate text-xs text-slate-500">
+                    {formatActivityAction(item.action)}
+                  </span>
                 </span>
-              </li>
-            ))}
+              );
+              return (
+                <li key={item.id || `${item.fileNo}-${item.action}`}>
+                  {href ? (
+                    <DashboardRowLink
+                      href={href}
+                      aria-label={`Dosyaya Git: ${item.fileNo}`}
+                      className="block rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 hover:bg-amber-100/70 dark:border-amber-900/40 dark:bg-amber-950/20 dark:hover:bg-amber-900/30"
+                    >
+                      {inner}
+                    </DashboardRowLink>
+                  ) : (
+                    <div className="rounded-lg border border-amber-100 bg-amber-50/60 px-2.5 py-1.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+                      {inner}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -125,7 +170,10 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
             <Activity className="h-4 w-4 text-blue-500" />
             <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Son Aktiviteler</h3>
           </div>
-          <Link href="/panel/hasar-dosyalari" className="text-xs font-medium text-blue-600 hover:underline">
+          <Link
+            href={CLAIM_LIST_HREF}
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
             Dosyalara Git
           </Link>
         </div>
@@ -135,22 +183,37 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
           <p className="text-sm text-slate-500">Henüz aktivite kaydı yok.</p>
         ) : (
           <ul className="space-y-1.5">
-            {activityItems.map((item, idx) => (
-              <li
-                key={`${item.fileNo}-${item.createdAt}-${idx}`}
-                className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-1.5 text-xs sm:text-sm dark:border-slate-800"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-slate-800 dark:text-slate-100">
-                    {formatActivityAction(item.action)}
+            {activityItems.map((item, idx) => {
+              const href = claimNavHref({ fileNo: item.fileNo });
+              const inner = (
+                <span className="flex items-start justify-between gap-2 text-xs sm:text-sm">
+                  <span className="min-w-0">
+                    <span className="block line-clamp-2 font-medium text-slate-800 dark:text-slate-100">
+                      {formatActivityAction(item.action)}
+                    </span>
+                    <span className="block truncate text-[10px] text-slate-400 sm:text-xs">{item.fileNo}</span>
                   </span>
-                  <span className="block truncate text-[10px] text-slate-400 sm:text-xs">{item.fileNo}</span>
+                  <span className="shrink-0 text-[10px] text-slate-400 sm:text-xs">
+                    {getRelativeTime(item.createdAt)}
+                  </span>
                 </span>
-                <span className="shrink-0 text-[10px] text-slate-400 sm:text-xs">
-                  {getRelativeTime(item.createdAt)}
-                </span>
-              </li>
-            ))}
+              );
+              return (
+                <li key={`${item.fileNo}-${item.createdAt}-${idx}`}>
+                  {href ? (
+                    <DashboardRowLink
+                      href={href}
+                      aria-label={`Aktivite Dosyasına Git: ${item.fileNo}`}
+                      className="block rounded-lg border border-slate-100 px-2.5 py-1.5 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/80"
+                    >
+                      {inner}
+                    </DashboardRowLink>
+                  ) : (
+                    <div className="rounded-lg border border-slate-100 px-2.5 py-1.5 dark:border-slate-800">{inner}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

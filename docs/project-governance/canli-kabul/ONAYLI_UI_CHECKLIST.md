@@ -6,7 +6,8 @@
 **Rollback (canlı):** Web **v348** / Backend **v348**  
 **P1 Dashboard:** implementasyon kapandı (v344–v348); local RC1 hazırlık (commit/deploy bekliyor)
 
-> **Dashboard donduruldu — odak Hasar / Operasyon / CRM / Finans.**  
+> **Dashboard RC1 FREEZE — `docs/project-governance/DASHBOARD_RC1_FREEZE.md`**  
+> Dashboard donduruldu — odak Hasar / Operasyon / CRM / Finans.  
 > RC1 sonrası dashboard kabuğu ve canvas yerleşimi değiştirilmez; yeni işler modül sayfalarına gider.
 
 Bu dosya **canlıda onaylanmış** görünüm ve bileşenlerin tek kaynağıdır. Agent panel/layout/portal dosyalarına dokunmadan önce burayı okur. Onaylı maddeyi değiştirmek için Mustafa onayı şarttır.
@@ -17,7 +18,7 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 
 ## Zorunlu agent akışı
 
-1. **Önce oku** — bu dosya + ilgili ortak bileşen (`BrandLogo`, `PortalCompactHeader`, `PortalPageHeader`)
+1. **Önce oku** — bu dosya + ilgili ortak bileşen (`BrandLogo`, `DashboardHeader`, `PortalPageHeader`)
 2. **Tek kaynak kullan** — inline hero / tekrarlayan header yazma
 3. **Kapsam dar tut** — istenen alan dışına dokunma
 4. **Deploy öncesi** — aşağıdaki «Deploy öncesi görsel kontrol» maddelerini teyit et
@@ -96,25 +97,26 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 
 | ID | Onaylı davranış | Tek kaynak | Durum |
 |----|-----------------|------------|-------|
-| P1 | **Eski mavi gradient hero yok** — kompakt beyaz kart + ince mavi üst şerit | `PortalCompactHeader.tsx` | ✅ v262 |
-| P2 | Ana sayfa header: `PortalCompactHeader` | eksper + sigorta `page.tsx` | ✅ v262 |
-| P3 | Alt sayfa header: `PortalPageHeader` (aynı kart dili) | portal alt sayfaları | ✅ v262 |
-| P4 | Portal layout geniş — `max-w-none`, padding `px-2 sm:px-3` | `layout.tsx` (`isPortalUser`) | ✅ v262 |
-| P5 | Eksper aksiyon butonları (Yeni İhbar vb.) **sağa hizalı** (lg+ aynı satır) | `PortalCompactHeader` actions slot | ✅ v262 |
-| P6 | Kur/döviz + saat: `HeroExchangeRates tone="light"`, `LiveClock compact` | `portal-header-widgets.tsx` | ✅ v262 |
+| P1 | **Eski mavi gradient hero yok** — RC1 DashboardHeader (gradient hero yasak) | `DashboardHeader` | ✅ RC1 2026-07-15 |
+| P2 | Ana sayfa header: `DashboardShell` + `DashboardHeader` (Admin RC1 aynı chrome) | eksper + sigorta `page.tsx` | ✅ RC1 2026-07-15 |
+| P3 | Alt sayfa header: `PortalPageHeader` (aynı kart dili) | portal alt sayfalar | ✅ v262 |
+| P4 | Portal main padding Admin ile aynı — `max-w-screen-2xl px-3 sm:px-4` | `layout.tsx` | ✅ RC1 2026-07-15 |
+| P5 | Eksper aksiyon butonları (Yeni İhbar vb.) **sağa hizalı** (lg+ aynı satır) | `DashboardHeader` actions | ✅ RC1 2026-07-15 |
+| P6 | Kur/döviz + saat: `PortalExchangeRates tone="light"`, `PortalLiveClock compact` | `portal-header-widgets.tsx` | ✅ v262 / RC1 actions |
 | P7 | İletişim şeridi (WhatsApp, tel, e-posta) header altında | `portal-header-widgets.tsx` | ✅ v261+ |
+| P8 | Topbar: `BrandLogo` + sidebar toggle + `PanelThemeToggle` (portal dahil) | `layout.tsx` Navbar | ✅ RC1 2026-07-15 |
 
-**Yasak:** Sayfa içine `-mx-3 sm:-mx-4` hack'i ekleyerek layout ile savaşmak; inline gradient hero geri yazmak.
+**Yasak:** Sayfa içine `-mx-3 sm:-mx-4` hack'i ekleyerek layout ile savaşmak; inline gradient hero geri yazmak; portal dashboard’da ayrı `PortalCompactHeader` chrome.
 
 ### Portal route'ları (smoke + görsel)
 
 | Route | Header bileşeni |
 |-------|-----------------|
-| `/panel/eksper-portal` | `PortalCompactHeader` |
+| `/panel/eksper-portal` | `DashboardShell` + `DashboardHeader` |
 | `/panel/eksper-portal/dosyalar` | `PortalPageHeader` |
 | `/panel/eksper-portal/onaylar` | `PortalPageHeader` |
 | `/panel/eksper-portal/randevular` | `PortalPageHeader` |
-| `/panel/sigorta-portal` | `PortalCompactHeader` |
+| `/panel/sigorta-portal` | `DashboardShell` + `DashboardHeader` |
 | `/panel/sigorta-portal/dosyalar` | `PortalPageHeader` |
 | `/panel/sigorta-portal/onaylar` | `PortalPageHeader` |
 | `/panel/sigorta-portal/faturalar` | `PortalPageHeader` |

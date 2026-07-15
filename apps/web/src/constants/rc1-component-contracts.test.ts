@@ -86,6 +86,106 @@ const activitySrc = readFileSync(
   'utf8',
 );
 assert(activitySrc.includes('formatActivityAction'), 'activity feed uses formatter');
+assert(activitySrc.includes('claimNavHref'), 'activity feed uses claimNavHref');
+assert(
+  activitySrc.includes('DashboardRowLink') || activitySrc.includes('onNavigate'),
+  'activity feed navigates via Link or onNavigate',
+);
+
+// --- C3 Operasyon / Kritik Uyarı satır navigasyonu ---
+const c3Src = readFileSync(
+  join(__dirname, '../features/dashboard/components/admin/admin-operations-critical-row.tsx'),
+  'utf8',
+);
+assert(c3Src.includes('OPERATIONS_CENTER_HREF') || c3Src.includes('/panel/operasyon'), 'C3 Operasyon Merkezi');
+assert(c3Src.includes('CLAIM_LIST_SLA_HREF') || c3Src.includes('status=sla_exceeded'), 'C3 Tümünü Gör SLA');
+assert(c3Src.includes('DashboardRowLink'), 'C3 satır Link bileşeni');
+assert(c3Src.includes('claimNavHref'), 'C3 claimNavHref');
+assert(c3Src.includes('staffLoadHref') || c3Src.includes('personel-yonetimi'), 'C3 Son Atamalar nav');
+assert(c3Src.includes('items-start'), 'C3 equal-height stretch kaldırıldı');
+assert(!c3Src.includes('items-stretch'), 'C3 items-stretch yok');
+assert(c3Src.includes('line-clamp-2'), 'C3 kontrollü line-clamp');
+assert(c3Src.includes('aria-label'), 'C3 aria-label');
+assert(!c3Src.includes('min-h-[280') && !c3Src.includes('min-h-[320'), 'C3 kritik panel min-h zorlaması yok');
+
+const pendingSrc = readFileSync(
+  join(__dirname, '../features/dashboard/components/queue/pending-actions-widget.tsx'),
+  'utf8',
+);
+assert(pendingSrc.includes('formatActivityAction'), 'pending actions TR map');
+assert(pendingSrc.includes('claimNavHref'), 'pending actions claimNavHref');
+assert(pendingSrc.includes('DashboardRowLink'), 'pending actions DashboardRowLink');
+
+const criticalWidgetSrc = readFileSync(
+  join(__dirname, '../features/dashboard/components/alerts/critical-alerts-widget.tsx'),
+  'utf8',
+);
+assert(!criticalWidgetSrc.includes('min-h-[172px]'), 'critical alerts widget no forced min-h');
+assert(criticalWidgetSrc.includes('items-start'), 'critical alerts items-start');
+const rowLinkSrc = readFileSync(
+  join(__dirname, '../features/dashboard/components/dashboard-row-link.tsx'),
+  'utf8',
+);
+assert(rowLinkSrc.includes('onKeyDown'), 'DashboardRowLink Space destekler');
+assert(rowLinkSrc.includes('cursor-pointer'), 'DashboardRowLink cursor');
+assert(rowLinkSrc.includes('focus-visible:ring'), 'DashboardRowLink focus ring');
+
+const officeSrc = readFileSync(
+  join(__dirname, '../features/dashboard/components/admin/office-bottom-row.tsx'),
+  'utf8',
+);
+assert(officeSrc.includes('DashboardRowLink'), 'office satır Link');
+assert(officeSrc.includes('claimNavHref'), 'office claimNavHref');
+
+const fieldSrc = readFileSync(
+  join(__dirname, '../features/dashboard/components/admin/field-bottom-row.tsx'),
+  'utf8',
+);
+assert(fieldSrc.includes('DashboardRowLink'), 'field satır Link');
+assert(fieldSrc.includes('claimNavHref'), 'field claimNavHref');
+
+const claimNavSrc = readFileSync(
+  join(__dirname, '../features/dashboard/utils/claim-nav-href.ts'),
+  'utf8',
+);
+assert(claimNavSrc.includes('encodeURIComponent'), 'claim nav encodes params');
+
+// --- Rol layout registry ---
+const roleLayoutSrc = readFileSync(
+  join(__dirname, '../features/dashboard/registry/role-dashboard-layout.ts'),
+  'utf8',
+);
+assert(roleLayoutSrc.includes("admin: 'management'"), 'admin management layout');
+assert(roleLayoutSrc.includes("office_staff: 'office_staff'"), 'office layout');
+assert(roleLayoutSrc.includes("field_staff: 'field_staff'"), 'field layout');
+assert(roleLayoutSrc.includes("expert: 'expert_portal'"), 'expert portal layout');
+assert(roleLayoutSrc.includes("insurance_company_user: 'insurance_portal'"), 'insurance portal layout');
+assert(roleLayoutSrc.includes("SHARED_DASHBOARD_SHELL"), 'shared shell contract');
+const panelPageSrc = readFileSync(join(__dirname, '../app/panel/page.tsx'), 'utf8');
+assert(panelPageSrc.includes('resolveDashboardLayout'), 'panel uses layout registry');
+assert((panelPageSrc.match(/DashboardShell/g) || []).length >= 4, 'all role branches use DashboardShell');
+
+// Portal dashboards — aynı shell (PortalCompactHeader dashboard home yasak)
+const expertPortalSrc = readFileSync(
+  join(__dirname, '../app/panel/eksper-portal/page.tsx'),
+  'utf8',
+);
+assert(expertPortalSrc.includes('DashboardShell'), 'eksper uses DashboardShell');
+assert(expertPortalSrc.includes('DashboardHeader'), 'eksper uses DashboardHeader');
+assert(!expertPortalSrc.includes('PortalCompactHeader'), 'eksper no PortalCompactHeader');
+const insurancePortalSrc = readFileSync(
+  join(__dirname, '../app/panel/sigorta-portal/page.tsx'),
+  'utf8',
+);
+assert(insurancePortalSrc.includes('DashboardShell'), 'sigorta uses DashboardShell');
+assert(insurancePortalSrc.includes('DashboardHeader'), 'sigorta uses DashboardHeader');
+assert(!insurancePortalSrc.includes('PortalCompactHeader'), 'sigorta no PortalCompactHeader');
+// BrandLogo topbar — portal dahil (RC1 chrome)
+assert(layoutSrc.includes('BrandLogo'), 'layout BrandLogo');
+assert(layoutSrc.includes("variant=\"topbar\""), 'BrandLogo topbar variant');
+assert(layoutSrc.includes("isExpert ? '/panel/eksper-portal'"), 'portal BrandLogo home link');
+assert(layoutSrc.includes('max-w-screen-2xl px-3 sm:px-4'), 'portal main padding matches admin');
+assert(!layoutSrc.includes('max-w-none px-2 sm:px-3'), 'no portal-only max-w-none padding');
 
 // --- Yardım tek drawer ---
 assert(HELP_DRAWER_MIN_WIDTH === 320, 'help min width');

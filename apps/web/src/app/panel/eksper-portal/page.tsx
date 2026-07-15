@@ -9,8 +9,13 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
-import { PortalCompactHeader } from '@/components/panel/PortalCompactHeader';
-import { ExpertPortalContactStrip } from '@/components/panel/portal-header-widgets';
+import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
+import {
+  ExpertPortalContactStrip,
+  PortalExchangeRates,
+  PortalLiveClock,
+} from '@/components/panel/portal-header-widgets';
+
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -1257,8 +1262,7 @@ export default function EksperPortalPage() {
   );
 
   return (
-    <div className="min-w-0 max-w-full space-y-3">
-
+    <DashboardShell>
         {loadError && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {loadError}
@@ -1270,28 +1274,33 @@ export default function EksperPortalPage() {
           </div>
         )}
 
-        {/* ── Üst kart: kompakt karşılama ── */}
-        <PortalCompactHeader
+        <DashboardHeader
           title="Eksper Portalı"
-          welcomeLabel={userName}
-          showRatesAndClock
-          actions={headerActions}
-          contactStrip={<ExpertPortalContactStrip />}
-          meta={
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span className="text-xs font-semibold text-amber-800">{approvalPendingCount} onay bekliyor</span>
-              </div>
-              {approvalExpiredCount > 0 ? (
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                  <span className="text-xs font-semibold text-red-800">{approvalExpiredCount} süresi geçmiş</span>
-                </div>
-              ) : null}
-            </div>
+          subtitle={`Hoş Geldiniz, ${userName}`}
+          hideDefaultActions
+          actions={
+            <>
+              <PortalExchangeRates tone="light" />
+              <PortalLiveClock compact />
+              {headerActions}
+            </>
           }
         />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <span className="text-xs font-semibold text-amber-800">{approvalPendingCount} Onay Bekliyor</span>
+          </div>
+          {approvalExpiredCount > 0 ? (
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              <span className="text-xs font-semibold text-red-800">{approvalExpiredCount} Süresi Geçmiş</span>
+            </div>
+          ) : null}
+        </div>
+
+        <ExpertPortalContactStrip />
 
         {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1579,6 +1588,6 @@ export default function EksperPortalPage() {
           onClose={() => setSuccessFileNo(null)}
         />
       )}
-    </div>
+    </DashboardShell>
   );
 }

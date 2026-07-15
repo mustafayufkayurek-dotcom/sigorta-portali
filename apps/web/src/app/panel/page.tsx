@@ -27,6 +27,7 @@ import {
   FieldBottomRow,
 } from '@/features/dashboard/components/admin';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { resolveDashboardLayout } from '@/features/dashboard/registry/role-dashboard-layout';
 
 function operationAreaDashboardLabel(area: string): string | null {
   if (area === 'hasar') return 'Hasar';
@@ -64,14 +65,25 @@ export default function PanelPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
+  const access = usePanelAccess();
   const {
+    roleCode,
     isManagement,
     isOfficeStaff,
     isFieldStaff,
     operationArea,
     showAcilYardim,
     showFinanceWidgets,
-  } = usePanelAccess();
+  } = access;
+
+  const layout = resolveDashboardLayout({
+    roleCode,
+    isManagement,
+    isOfficeStaff,
+    isFieldStaff,
+    showFinanceWidgets,
+    showAcilYardim,
+  });
 
   const handleNavigate = (path: string) => {
     if (typeof window !== 'undefined') {
@@ -84,30 +96,32 @@ export default function PanelPage() {
 
   const scopeLabel = operationAreaDashboardLabel(operationArea);
 
-  const title = isFieldStaff
-    ? 'Saha Operasyon Merkezi'
-    : isOfficeStaff
-      ? 'Dosya Sorumlusu Merkezi'
-      : isManagement
-        ? 'Operasyon Yönetim Merkezi'
-        : 'Operasyon Merkezi';
+  const title =
+    layout.layoutId === 'field_staff'
+      ? 'Saha Operasyon Merkezi'
+      : layout.layoutId === 'office_staff'
+        ? 'Dosya Sorumlusu Merkezi'
+        : layout.layoutId === 'management'
+          ? 'Operasyon Yönetim Merkezi'
+          : 'Operasyon Merkezi';
 
-  const subtitle = isFieldStaff
-    ? scopeLabel
-      ? `${scopeLabel} kapsamındaki atanan dosyalarınız, SLA riskleri ve saha aksiyonları.`
-      : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
-    : isOfficeStaff
+  const subtitle =
+    layout.layoutId === 'field_staff'
       ? scopeLabel
-        ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
-        : 'Dosya kapsamı tanımlanmamış. Kullanıcı yönetiminden Hasar / Acil kapsamı atanmalıdır.'
-      : isManagement
-        ? 'Kurumsal operasyon, finans özeti ve haftalık performans tek ekranda.'
-        : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
+        ? `${scopeLabel} kapsamındaki atanan dosyalarınız, SLA riskleri ve saha aksiyonları.`
+        : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
+      : layout.layoutId === 'office_staff'
+        ? scopeLabel
+          ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
+          : 'Dosya kapsamı tanımlanmamış. Kullanıcı yönetiminden Hasar / Acil kapsamı atanmalıdır.'
+        : layout.layoutId === 'management'
+          ? 'Kurumsal operasyon, finans özeti ve haftalık performans tek ekranda.'
+          : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
-  const hideAcil = !showAcilYardim;
+  const hideAcil = !layout.showAcilInFlow;
 
-  /** Admin: C1 → C2 KPI → C3 Operasyon|Kritik → C4 Haftalık|Akış → C5 Finans */
-  if (isManagement) {
+  /** Management: C1 → C2 KPI → C3 Operasyon|Kritik → C4 Haftalık|Akış → C5 Finans */
+  if (layout.layoutId === 'management') {
     return (
       <DashboardShell>
         <DashboardHeader
@@ -135,7 +149,7 @@ export default function PanelPage() {
   }
 
   /** Dosya sorumlusu: KPI → Operasyon panelleri → Akış | Onay */
-  if (isOfficeStaff) {
+  if (layout.layoutId === 'office_staff') {
     return (
       <DashboardShell>
         <DashboardHeader
@@ -158,7 +172,7 @@ export default function PanelPage() {
   }
 
   /** Saha: KPI → Operasyon panelleri → Günün Akışı */
-  if (isFieldStaff) {
+  if (layout.layoutId === 'field_staff') {
     return (
       <DashboardShell>
         <DashboardHeader

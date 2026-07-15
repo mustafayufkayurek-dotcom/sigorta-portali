@@ -458,9 +458,9 @@ function Navbar({
     <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className="w-full px-2 sm:px-3 lg:px-5">
         <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          {/* Zone A — ☰ + resmi logo (12–16px gap, aynı hiza); marka yalnız topbar */}
+          {/* Zone A — ☰ + resmi logo (RC1: panel + portal aynı topbar chrome) */}
           <div className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4">
-            {!isPortalUser && onToggleSidebar ? (
+            {onToggleSidebar ? (
               <button
                 type="button"
                 onClick={onToggleSidebar}
@@ -473,16 +473,14 @@ function Navbar({
                 </svg>
               </button>
             ) : null}
-            {!isPortalUser ? (
-              <Link
-                href="/panel"
-                className="hidden items-center sm:inline-flex"
-                title="Panel Ana Sayfa"
-                aria-label="Meridyen Panel"
-              >
-                <BrandLogo alt="Meridyen Assistance" variant="topbar" />
-              </Link>
-            ) : null}
+            <Link
+              href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : '/panel'}
+              className="hidden items-center sm:inline-flex"
+              title="Panel Ana Sayfa"
+              aria-label="Meridyen Panel"
+            >
+              <BrandLogo alt="Meridyen Assistance" variant="topbar" />
+            </Link>
           </div>
 
           {/* Center + right */}
@@ -1571,7 +1569,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         )}
         <main className={`min-w-0 flex-1 overflow-x-clip ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
-          <div className={`mx-auto min-w-0 ${isPortalUser ? 'max-w-none px-2 sm:px-3' : 'max-w-screen-2xl px-3 sm:px-4'} ${PANEL_MAIN_TOP}`}>
+          <div className={`mx-auto min-w-0 max-w-screen-2xl px-3 sm:px-4 ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
             {contextBackLink && (
               <Link

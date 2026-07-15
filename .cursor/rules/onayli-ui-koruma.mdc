@@ -17,7 +17,7 @@ Panel görünümü değiştirirken **önce oku:** `docs/project-governance/canli
 | Alan | Bileşen / dosya |
 |------|-----------------|
 | Sidebar logo | `PanelSidebarBrand.tsx` + `constants/brand.ts` |
-| Portal ana header | `PortalCompactHeader.tsx` |
+| Portal ana header | `DashboardHeader` (Dashboard home) / `PortalPageHeader` (alt sayfa) |
 | Portal alt sayfa header | `PortalPageHeader.tsx` |
 | Portal widget'lar | `portal-header-widgets.tsx` |
 | Ayarlar menüsü | `settings-nav.ts` |

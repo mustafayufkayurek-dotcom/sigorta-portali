@@ -6,7 +6,9 @@ import { WidgetShell, WidgetSkeleton, WidgetEmpty } from '../widget-frame';
 import { formatWidgetErrorMessage } from '../../utils/widget-errors';
 import { StatusBadge } from '@/components/ui';
 import { getDaysAgo } from '../../utils/formatters';
-import Link from 'next/link';
+import { formatActivityAction } from '../../utils/format-activity-action';
+import { claimNavHref } from '../../utils/claim-nav-href';
+import { DashboardRowLink } from '../dashboard-row-link';
 
 interface PendingActionsWidgetProps {
   staggerIndex?: number;
@@ -37,24 +39,45 @@ export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetP
         />
       ) : (
         <div className="space-y-2">
-          {items.slice(0, 8).map((item) => (
-            <Link
-              key={item.id || `${item.fileNo}-${item.action}`}
-              href={`/panel/hasar-dosyalari?search=${encodeURIComponent(item.fileNo)}`}
-              className="grid w-full grid-cols-1 gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-left transition-colors hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 md:grid-cols-4"
-            >
-              <span className="font-semibold text-slate-900 dark:text-white">{item.fileNo}</span>
-              <span className="text-sm text-slate-700 dark:text-slate-300">{item.action}</span>
-              <span className="text-sm text-slate-500">{getDaysAgo(item.pendingSince)} gün bekliyor</span>
-              <StatusBadge
-                label={item.priority || 'normal'}
-                variant={
-                  item.priority === 'critical' ? 'danger' : item.priority === 'high' ? 'warning' : 'neutral'
-                }
-                size="sm"
-              />
-            </Link>
-          ))}
+          {items.slice(0, 8).map((item) => {
+            const href = claimNavHref({ id: item.id, fileNo: item.fileNo });
+            const actionLabel = formatActivityAction(item.action);
+            const body = (
+              <span className="grid w-full grid-cols-1 gap-2 md:grid-cols-4">
+                <span className="font-semibold text-slate-900 dark:text-white">{item.fileNo}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{actionLabel}</span>
+                <span className="text-sm text-slate-500">{getDaysAgo(item.pendingSince)} gün bekliyor</span>
+                <StatusBadge
+                  label={item.priority || 'normal'}
+                  variant={
+                    item.priority === 'critical' ? 'danger' : item.priority === 'high' ? 'warning' : 'neutral'
+                  }
+                  size="sm"
+                />
+              </span>
+            );
+            const shellClass =
+              'block rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-left hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-900/30';
+
+            if (!href) {
+              return (
+                <div key={item.id || `${item.fileNo}-${item.action}`} className={shellClass}>
+                  {body}
+                </div>
+              );
+            }
+
+            return (
+              <DashboardRowLink
+                key={item.id || `${item.fileNo}-${item.action}`}
+                href={href}
+                aria-label={`Dosyaya Git: ${item.fileNo}`}
+                className={shellClass}
+              >
+                {body}
+              </DashboardRowLink>
+            );
+          })}
         </div>
       )}
     </WidgetShell>
