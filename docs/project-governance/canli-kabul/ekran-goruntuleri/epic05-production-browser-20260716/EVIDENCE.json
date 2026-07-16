@@ -1,0 +1,40 @@
+{
+  "at": "2026-07-16T19:08:42.670Z",
+  "base": "https://app.meridyen-tr.com",
+  "tag": "v367-epic05-acil-dosya-detay",
+  "session": false,
+  "url": "https://app.meridyen-tr.com/giris",
+  "items": {
+    "Dosya Başlığı": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "Güncel İşlem": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "Tedarikçi Önerileri": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "Maliyet ve Onay": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "WhatsApp": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "Tarihsel Dosya": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    },
+    "Mobil": {
+      "status": "FAIL",
+      "reason": "panel oturumu açılamadı — kullanıcı ürün kabulü"
+    }
+  },
+  "notes": [
+    "Panel oturumu açılamadı — kullanıcı ürün kabulü"
+  ]
+}
