@@ -293,6 +293,17 @@ export class EmergencyCasesService {
       include: {
         assignedVendor: { select: { id: true, name: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
+        customer: {
+          select: {
+            id: true,
+            fullName: true,
+            companyName: true,
+            firstName: true,
+            lastName: true,
+            entityType: true,
+            subType: true,
+          },
+        },
         costEntries: true,
       },
       orderBy: [{ urgency: 'desc' }, { fileDate: 'desc' }, { createdAt: 'desc' }],
@@ -316,7 +327,17 @@ export class EmergencyCasesService {
       include: {
         assignedVendor: { select: { id: true, name: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
-        customer: { select: { id: true, fullName: true, companyName: true } },
+        customer: {
+          select: {
+            id: true,
+            fullName: true,
+            companyName: true,
+            firstName: true,
+            lastName: true,
+            entityType: true,
+            subType: true,
+          },
+        },
         costEntries: { orderBy: { entryDate: 'asc' } },
         invoiceItems: { include: { draft: true } },
       },

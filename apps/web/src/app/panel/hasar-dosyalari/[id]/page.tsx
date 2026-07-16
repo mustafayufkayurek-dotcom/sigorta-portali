@@ -429,9 +429,6 @@ function DosyadaKimlerVarCard({
     return () => document.removeEventListener('mousedown', onDown);
   }, [activePanel]);
 
-  const normalizeRoleCodeLocal = (code?: string | null) =>
-    String(code ?? '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
-
   useEffect(() => {
     setCurrentOfficeUser(claim.assignedOfficeUser);
     setCurrentFieldUser(claim.assignedFieldUser);
@@ -496,16 +493,23 @@ function DosyadaKimlerVarCard({
 
   useEffect(() => {
     if (!canAssign || !activePanel || activePanel === 'supplier') return;
-    axios.get(`${API}/users?limit=200`, { headers: authHeader() })
+    const role = activePanel === 'field' ? 'field_staff' : 'office_staff';
+    axios
+      .get(`${API}/claim-files/assignable-staff?role=${role}`, { headers: authHeader() })
       .then((r) => {
-        const users = r.data.data ?? r.data ?? [];
-        const list = Array.isArray(users) ? users : [];
-        setStaffPool({
-          office: list.filter((u: any) => normalizeRoleCodeLocal(u.role?.code) === 'office_staff'),
-          field: list.filter((u: any) => normalizeRoleCodeLocal(u.role?.code) === 'field_staff'),
-        });
+        const list = r.data?.data ?? [];
+        const users = Array.isArray(list) ? list : [];
+        setStaffPool((prev) => ({
+          office: role === 'office_staff' ? users : prev.office,
+          field: role === 'field_staff' ? users : prev.field,
+        }));
       })
-      .catch(() => setStaffPool({ office: [], field: [] }));
+      .catch(() => {
+        setStaffPool((prev) => ({
+          office: role === 'office_staff' ? [] : prev.office,
+          field: role === 'field_staff' ? [] : prev.field,
+        }));
+      });
   }, [canAssign, activePanel]);
 
   useEffect(() => {

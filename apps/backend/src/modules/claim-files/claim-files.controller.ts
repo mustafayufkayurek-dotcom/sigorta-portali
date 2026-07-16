@@ -81,6 +81,14 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Get('assignable-staff')
+  @RequirePermissions('claim_file.assign')
+  @ApiOperation({ summary: 'Hasar dosyası ataması için seçilebilir personel listesi' })
+  async getAssignableStaff(@Query('role') role?: 'office_staff' | 'field_staff') {
+    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff');
+    return { success: true, data };
+  }
+
   @Get('check-file-no')
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Dosya numarası çakışma kontrolü (hasar ve acil yardım tabloları)' })

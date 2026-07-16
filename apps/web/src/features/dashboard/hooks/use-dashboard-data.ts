@@ -170,3 +170,36 @@ export function useActivityFeed(limit: number = 20) {
 export function useDailyFlow() {
   return useApiQuery<DailyFlowResponse>(['dashboard-daily-flow'], '/dashboard/daily-flow');
 }
+
+export type OperationInboxStatsResponse = {
+  pending?: number;
+  unownedCount?: number;
+  total?: number;
+};
+
+/** Operasyon gelen kutusu — bekleyen / sahipsiz ihbar sayısı */
+export function useOperationInboxStats() {
+  return useApiQuery<OperationInboxStatsResponse>(
+    ['operation-inbox-stats'],
+    '/operation-inbox/stats',
+  );
+}
+
+/** claim-files meta.total — liste filtreleri ile sayım */
+export function useClaimFileCount(
+  key: string,
+  params: Record<string, string | number | boolean | null | undefined>,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['claim-file-count', key, params],
+    enabled,
+    queryFn: async () => {
+      const res = await apiClient.getWithMeta<unknown[], { total?: number }>('/claim-files', {
+        limit: 1,
+        ...params,
+      });
+      return res.meta?.total ?? 0;
+    },
+  });
+}

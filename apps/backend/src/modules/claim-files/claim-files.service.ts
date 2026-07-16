@@ -450,6 +450,11 @@ export class ClaimFilesService {
         { fileNo: { contains: q, mode: 'insensitive' } },
         { claimNo: { contains: q, mode: 'insensitive' } },
         { insuredName: { contains: q, mode: 'insensitive' } },
+        { customer: { companyName: { contains: q, mode: 'insensitive' } } },
+        { customer: { fullName: { contains: q, mode: 'insensitive' } } },
+        { customer: { firstName: { contains: q, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: q, mode: 'insensitive' } } },
+        { customer: { subType: { contains: q, mode: 'insensitive' } } },
       ];
     }
 
@@ -493,7 +498,18 @@ export class ClaimFilesService {
           invoicedAmount: true,
           insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
           currentStatus: { select: { id: true, code: true, name: true, color: true } },
-          customer: { select: { id: true, fullName: true, companyName: true, firstName: true, lastName: true, email: true } },
+          customer: {
+            select: {
+              id: true,
+              fullName: true,
+              companyName: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              entityType: true,
+              subType: true,
+            },
+          },
           assignedBranch: { select: { id: true, name: true } },
           claimSubject: { select: { id: true, name: true } },
           departmentFileSubject: { select: { id: true, name: true } },
@@ -1674,6 +1690,30 @@ export class ClaimFilesService {
         district: null,
         activeFileCount: user._count[countKey] ?? 0,
       }));
+  }
+
+  async getAssignableStaff(role: 'office_staff' | 'field_staff' = 'office_staff') {
+    const roleCodes =
+      role === 'field_staff'
+        ? ['field_staff', 'FIELD_STAFF']
+        : ['office_staff', 'OFFICE_STAFF'];
+
+    return this.prisma.user.findMany({
+      where: {
+        status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
+        role: { code: { in: roleCodes } },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: { select: { id: true, name: true, code: true } },
+      },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      take: 200,
+    });
   }
 
   async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {

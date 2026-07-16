@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type ReactNode,
@@ -324,6 +325,8 @@ export function TableColumnPicker({
   const [open, setOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
 
   const resetAll = () => {
     onReset();
@@ -349,11 +352,32 @@ export function TableColumnPicker({
     }
   };
 
+  const openMenu = () => {
+    const next = !open;
+    if (next && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuHeight = 420;
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const top =
+        spaceBelow >= Math.min(menuHeight, 280)
+          ? Math.round(rect.bottom + 4)
+          : Math.max(8, Math.round(rect.top - Math.min(menuHeight, spaceBelow > 120 ? spaceBelow : menuHeight) - 4));
+      setMenuPos({
+        top,
+        right: Math.round(window.innerWidth - rect.right),
+      });
+    }
+    setOpen(next);
+  };
+
   return (
     <div className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={openMenu}
+        data-testid="table-columns-btn"
+        aria-expanded={open}
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
       >
         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,8 +387,16 @@ export function TableColumnPicker({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-800">
+          <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[90] max-h-[min(420px,calc(100vh-24px))] w-64 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-600 dark:bg-slate-800"
+            data-testid="table-columns-menu"
+            role="menu"
+            style={{
+              top: menuPos?.top ?? 0,
+              right: menuPos?.right ?? 16,
+            }}
+          >
             <p className="px-2 py-1 text-[11px] font-semibold text-slate-400">Görünür sütunlar</p>
             {columnOrder.map((id) => {
               const col = columns.find((c) => c.id === id);
@@ -469,6 +501,7 @@ export function usePanelTableColumns(storageKey: string, columns: TableColumnDef
   const prefs = useTableColumnPrefs(storageKey, columns);
   const widths = useTableColumnWidths(storageKey, columns);
   const [headerDragId, setHeaderDragId] = useState<string | null>(null);
+  const headerDragIdRef = useRef<string | null>(null);
   const resetAll = useCallback(() => {
     prefs.reset();
     widths.resetWidths();
@@ -477,17 +510,25 @@ export function usePanelTableColumns(storageKey: string, columns: TableColumnDef
   const headerDragProps = useCallback(
     (colId: string) => ({
       draggable: true as const,
-      onDragStart: () => setHeaderDragId(colId),
+      onDragStart: () => {
+        headerDragIdRef.current = colId;
+        setHeaderDragId(colId);
+      },
       onDragOver: (e: DragEvent) => {
         e.preventDefault();
       },
       onDrop: () => {
-        if (headerDragId && headerDragId !== colId) {
-          prefs.reorderColumn(headerDragId, colId);
+        const fromId = headerDragIdRef.current;
+        if (fromId && fromId !== colId) {
+          prefs.reorderColumn(fromId, colId);
         }
+        headerDragIdRef.current = null;
         setHeaderDragId(null);
       },
-      onDragEnd: () => setHeaderDragId(null),
+      onDragEnd: () => {
+        headerDragIdRef.current = null;
+        setHeaderDragId(null);
+      },
       className: headerDragId === colId ? 'opacity-50' : undefined,
     }),
     [headerDragId, prefs],

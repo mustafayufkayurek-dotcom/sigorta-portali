@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   CalendarPlus,
-  CircleDollarSign,
   ClipboardCheck,
   FileEdit,
   FileText,
+  FolderInput,
   FolderOpen,
   Hourglass,
   type LucideIcon,
@@ -30,6 +30,11 @@ import {
 import { fmtDate } from '@/utils/date-helpers';
 import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import {
+  OPERATION_CUSTOMER_UNDEFINED,
+  resolveHasarOperationCustomer,
+  resolveOperationCustomer,
+} from '@/utils/operation-customer-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
@@ -109,6 +114,9 @@ type UnifiedRow =
       id: string;
       fileNo: string;
       customerName: string;
+      customerTypeLabel: string | null;
+      customerTitle: string;
+      customerSearch: string;
       insuredName: string;
       date: string;
       subject: string;
@@ -130,6 +138,9 @@ type UnifiedRow =
       id: string;
       fileNo: string;
       customerName: string;
+      customerTypeLabel: string | null;
+      customerTitle: string;
+      customerSearch: string;
       insuredName: string;
       date: string;
       subject: string;
@@ -159,21 +170,23 @@ function OpsStripKpi({
   onClick?: () => void;
   active?: boolean;
 }) {
-  /** Operasyon KPI — yükseklik ~%15↑, başlık tek satır (truncate yok), kart boğulmadan kalır */
+  /** Operasyon KPI — dikey kart; eşit yükseklik; Finansa Aktarılacak 2 satırda tam okunur */
   const body = (
     <div
-      className={`group flex min-h-[64px] min-w-[148px] items-center gap-3 rounded-xl border bg-white px-3.5 py-3 shadow-md transition ${
+      className={`group flex h-[102px] w-full min-w-0 flex-col justify-between overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
         active
           ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
           : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
       }`}
+      data-testid="ops-kpi-card"
+      data-kpi-label={label}
     >
-      <span className={`inline-flex shrink-0 rounded-lg p-2.5 shadow-sm ${color}`}>
+      <span className={`inline-flex w-fit shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
         <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
       </span>
-      <span className="overflow-visible">
+      <span className="min-w-0">
         <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-1.5 block whitespace-nowrap text-[11px] font-semibold leading-tight text-slate-600">
+        <span className="mt-1.5 block text-[10px] font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere]">
           {label}
         </span>
       </span>
@@ -181,7 +194,7 @@ function OpsStripKpi({
   );
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="block w-full min-w-[148px] text-left">
+      <button type="button" onClick={onClick} className="block w-full min-w-0 text-left" data-testid={`ops-kpi-${label}`}>
         {body}
       </button>
     );
@@ -201,7 +214,7 @@ function resolveClaimDisplayDate(claim: {
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'kind', label: 'Tür', defaultWidth: 80, minWidth: 68 },
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 110, minWidth: 88 },
-  { id: 'customer', label: 'Sigorta Şirketi', defaultWidth: 130, minWidth: 100 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 168, minWidth: 140 },
   { id: 'insured', label: 'Sigortalı Adı Soyadı', defaultWidth: 150, minWidth: 120 },
   { id: 'assignee', label: 'Kimde', defaultWidth: 120, minWidth: 88 },
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80, defaultVisible: false },
@@ -214,6 +227,39 @@ const TABLE_COLUMNS: TableColumnDef[] = [
 ];
 
 const PAGE_SIZE = 50;
+
+const OPS_COLS_LEGACY_KEY = 'table-cols:operasyon-v7';
+const OPS_COLS_BASE_KEY = 'table-cols:operasyon-v8';
+
+function resolveOpsColumnsStorageKey(): string {
+  if (typeof window === 'undefined') return OPS_COLS_BASE_KEY;
+  try {
+    const raw = localStorage.getItem('user') ?? '{}';
+    const user = JSON.parse(raw) as { id?: string };
+    const uid = typeof user?.id === 'string' && user.id.trim() ? user.id.trim() : '';
+    return uid ? `${OPS_COLS_BASE_KEY}:${uid}` : OPS_COLS_BASE_KEY;
+  } catch {
+    return OPS_COLS_BASE_KEY;
+  }
+}
+
+function migrateOpsColumnPrefs(targetKey: string) {
+  if (typeof window === 'undefined') return;
+  const suffixes = ['', ':order', ':widths'] as const;
+  for (const suffix of suffixes) {
+    const dest = `${targetKey}${suffix}`;
+    if (localStorage.getItem(dest)) continue;
+    const fromV7 = localStorage.getItem(`${OPS_COLS_LEGACY_KEY}${suffix}`);
+    if (fromV7) {
+      localStorage.setItem(dest, fromV7);
+      continue;
+    }
+    const fromBase = localStorage.getItem(`${OPS_COLS_BASE_KEY}${suffix}`);
+    if (fromBase && dest !== `${OPS_COLS_BASE_KEY}${suffix}`) {
+      localStorage.setItem(dest, fromBase);
+    }
+  }
+}
 
 /** Sunucu sort alanı — claim-files parseSort ile hizalı */
 const COL_SERVER_SORT: Record<string, string> = {
@@ -239,7 +285,8 @@ type OpsStats = {
 
 export default function OperasyonPage() {
   const router = useRouter();
-  const tableColumns = usePanelTableColumns('table-cols:operasyon-v7', TABLE_COLUMNS);
+  const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_BASE_KEY);
+  const tableColumns = usePanelTableColumns(colsStorageKey, TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
@@ -250,6 +297,7 @@ export default function OperasyonPage() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('createdAt:desc');
   const [clientSort, setClientSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
+  const [customerQuery, setCustomerQuery] = useState('');
 
   const [cases, setCases] = useState<EmergencyCase[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -264,6 +312,12 @@ export default function OperasyonPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  useEffect(() => {
+    const key = resolveOpsColumnsStorageKey();
+    migrateOpsColumnPrefs(key);
+    setColsStorageKey(key);
+  }, []);
 
   const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
     setClaims((prev) => prev.map((claim) => (
@@ -337,7 +391,7 @@ export default function OperasyonPage() {
 
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
-    const customerName = claim.insuranceCompany?.name ?? claim.customer?.fullName ?? claim.customer?.companyName ?? '—';
+    const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
     const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
     const stage: OperationStageMeta = claim.operationStage
       ?? deriveOperationStage({
@@ -348,7 +402,10 @@ export default function OperasyonPage() {
       kind: 'hasar' as const,
       id: claim.id,
       fileNo: claim.fileNo ?? claim.claimNo ?? '—',
-      customerName,
+      customerName: customer.name,
+      customerTypeLabel: customer.typeLabel,
+      customerTitle: customer.title,
+      customerSearch: customer.searchText,
       insuredName: resolveHasarInsuredName(claim),
       date: resolveClaimDisplayDate(claim),
       subject,
@@ -371,30 +428,36 @@ export default function OperasyonPage() {
     };
   });
 
-  const acilRows: UnifiedRow[] = cases.map((c) => ({
-    kind: 'acil' as const,
-    id: c.id,
-    fileNo: c.caseNo,
-    customerName: '—',
-    insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
-    date: c.createdAt,
-    subject: resolveClaimDosyaKonusu({ lossType: c.issueType }, dosyaKonusuCatalog),
-    statusCode: c.status,
-    invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
-    amount: null,
-    delayHours: null,
-    assigneeName: '—',
-    approval72hExceeded: false,
-    delayRisk: false,
-    reportId: null,
-    defaultEmailTo: null,
-  }));
+  const acilRows: UnifiedRow[] = cases.map((c) => {
+    const customer = resolveOperationCustomer(c.customer);
+    return {
+      kind: 'acil' as const,
+      id: c.id,
+      fileNo: c.caseNo,
+      customerName: customer.name,
+      customerTypeLabel: customer.typeLabel,
+      customerTitle: customer.title,
+      customerSearch: customer.searchText,
+      insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
+      date: c.createdAt,
+      subject: resolveClaimDosyaKonusu({ lossType: c.issueType }, dosyaKonusuCatalog),
+      statusCode: c.status,
+      invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
+      amount: null,
+      delayHours: null,
+      assigneeName: '—',
+      approval72hExceeded: false,
+      delayRisk: false,
+      reportId: null,
+      defaultEmailTo: null,
+    };
+  });
 
   function sortValue(row: UnifiedRow, key: string): string {
     switch (key) {
       case 'kind': return row.kind;
       case 'fileNo': return row.fileNo;
-      case 'customer': return row.customerName;
+      case 'customer': return `${row.customerName} ${row.customerTypeLabel ?? ''}`;
       case 'insured': return row.insuredName;
       case 'assignee': return row.assigneeName;
       case 'date': return row.date;
@@ -413,11 +476,14 @@ export default function OperasyonPage() {
       : filterType === 'acil'
         ? acilRows
         : [...hasarRows, ...acilRows];
-    const rows = [...merged];
+    const q = customerQuery.trim().toLocaleLowerCase('tr');
+    let rows = q
+      ? merged.filter((row) => row.customerSearch.includes(q) || row.customerName.toLocaleLowerCase('tr').includes(q) || (row.customerTypeLabel ?? '').toLocaleLowerCase('tr').includes(q))
+      : [...merged];
     if (clientSort) {
       const { key, dir } = clientSort;
       const mul = dir === 'asc' ? 1 : -1;
-      rows.sort((a, b) => {
+      rows = [...rows].sort((a, b) => {
         const av = String(sortValue(a, key) ?? '');
         const bv = String(sortValue(b, key) ?? '');
         return av.localeCompare(bv, 'tr', { sensitivity: 'base', numeric: true }) * mul;
@@ -429,13 +495,13 @@ export default function OperasyonPage() {
       const serverColId = Object.entries(COL_SERVER_SORT).find(([, v]) => v === field)?.[0];
       if (serverColId && (dir === 'asc' || dir === 'desc')) {
         const mul = dir === 'asc' ? 1 : -1;
-        rows.sort((a, b) => {
+        rows = [...rows].sort((a, b) => {
           const av = String(sortValue(a, serverColId) ?? '');
           const bv = String(sortValue(b, serverColId) ?? '');
           return av.localeCompare(bv, 'tr', { sensitivity: 'base', numeric: true }) * mul;
         });
       } else {
-        rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        rows = [...rows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       }
     }
     return rows;
@@ -487,6 +553,7 @@ export default function OperasyonPage() {
       samples.kind?.push(row.kind === 'hasar' ? 'Hasar' : 'Acil');
       samples.fileNo?.push(row.fileNo);
       samples.customer?.push(row.customerName);
+      if (row.customerTypeLabel) samples.customer?.push(row.customerTypeLabel);
       samples.insured?.push(row.insuredName);
       samples.assignee?.push(row.assigneeName);
       samples.date?.push(fmtDate(row.date));
@@ -568,9 +635,9 @@ export default function OperasyonPage() {
         </div>
       </div>
 
-      {/* Operasyon KPI — genişlik artırılmış; Finansa Aktarılacak kesilmez; mail/gelen kutu KPI yok */}
+      {/* Operasyon KPI — dikey kartlar; 1440’te tek satır taşma/kesilme yok */}
       <div
-        className="grid grid-cols-2 gap-3 overflow-x-auto sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8"
+        className="grid grid-cols-4 gap-3 xl:grid-cols-8"
         data-testid="ops-kpi-band"
       >
         <OpsStripKpi
@@ -609,7 +676,7 @@ export default function OperasyonPage() {
           label="Finansa Aktarılacak"
           value={opsStats?.financeTransfer ?? '—'}
           color="bg-violet-600"
-          icon={CircleDollarSign}
+          icon={FolderInput}
           active={opsPreset === 'finance_transfer'}
           onClick={() => togglePreset('finance_transfer')}
         />
@@ -675,6 +742,15 @@ export default function OperasyonPage() {
               <span className="section-heading-text">Tüm Dosyalar</span>
             </div>
             <div className="flex flex-nowrap items-center gap-2 shrink-0">
+              <input
+                type="search"
+                value={customerQuery}
+                onChange={(e) => setCustomerQuery(e.target.value)}
+                placeholder="Müşteri Ara…"
+                data-testid="ops-customer-search"
+                className="w-40 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                title="Müşteri adı veya tipine göre ara"
+              />
               <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden text-xs font-medium">
                 {(['all', 'hasar', 'acil'] as const).map((t) => (
                   <button
@@ -828,8 +904,34 @@ export default function OperasyonPage() {
                           );
                         case 'customer':
                           return (
-                            <PanelTableTd key={col.id} colId="customer" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`} title={row.customerName}>
-                              {row.customerName}
+                            <PanelTableTd
+                              key={col.id}
+                              colId="customer"
+                              className={`table-td !py-2 text-xs ${COL_DIVIDER}`}
+                              title={row.customerTitle}
+                            >
+                              <div className="min-w-0 text-left" data-testid="ops-customer-cell" data-kind={row.kind}>
+                                <div
+                                  className={`truncate ${
+                                    row.customerName === OPERATION_CUSTOMER_UNDEFINED
+                                      ? 'text-slate-500'
+                                      : 'font-medium text-slate-800'
+                                  }`}
+                                  title={row.customerName}
+                                >
+                                  {row.customerName}
+                                </div>
+                                {row.customerTypeLabel ? (
+                                  <div
+                                    className={`mt-0.5 truncate text-[10px] font-medium ${
+                                      row.kind === 'hasar' ? 'text-slate-500' : 'text-slate-400'
+                                    }`}
+                                    title={row.customerTypeLabel}
+                                  >
+                                    {row.customerTypeLabel}
+                                  </div>
+                                ) : null}
+                              </div>
                             </PanelTableTd>
                           );
                         case 'insured':

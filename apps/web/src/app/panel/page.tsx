@@ -18,6 +18,8 @@ import {
   AdminFinanceSummarySection,
   WeeklyPerformanceWidget,
   AdminOperationsKpiBand,
+  AdminManagementKpiBand,
+  AdminOperationsStatusBand,
   AdminDailyFlowSection,
   AdminOperationsCriticalRow,
   OfficeDailyFlowSection,
@@ -115,12 +117,12 @@ export default function PanelPage() {
           ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
           : 'Dosya kapsamı tanımlanmamış. Kullanıcı yönetiminden Hasar / Acil kapsamı atanmalıdır.'
         : layout.layoutId === 'management'
-          ? 'Kurumsal operasyon, finans özeti ve haftalık performans tek ekranda.'
+          ? 'Şirket yönetimi, operasyon durumu ve haftalık performans tek ekranda.'
           : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
   const hideAcil = !layout.showAcilInFlow;
 
-  /** Management: C1 → C2 KPI → C3 Operasyon|Kritik → C4 Haftalık|Akış → C5 Finans */
+  /** Management: C1 Şirket Yönetimi → C2 Operasyon Durumu → C3 Ops|Kritik → C4 Haftalık|Akış → C5 Finans */
   if (layout.layoutId === 'management') {
     return (
       <DashboardShell>
@@ -131,18 +133,20 @@ export default function PanelPage() {
           isManagement
         />
 
-        <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
+        <AdminManagementKpiBand staggerIndex={0} />
 
-        <AdminOperationsCriticalRow staggerIndex={1} />
+        <AdminOperationsStatusBand staggerIndex={1} hideAcil={hideAcil} />
 
-        <AdminAnalyticsRow staggerIndex={2} hideAcil={hideAcil} />
+        <AdminOperationsCriticalRow staggerIndex={2} />
+
+        <AdminAnalyticsRow staggerIndex={3} hideAcil={hideAcil} />
 
         <AdminFinanceSummarySection
           year={year}
           month={month}
           onYearChange={setYear}
           onMonthChange={setMonth}
-          staggerIndex={3}
+          staggerIndex={4}
         />
       </DashboardShell>
     );

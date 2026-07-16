@@ -1,6 +1,8 @@
 export { AdminFinanceSummarySection } from './admin-finance-summary-section';
 export { WeeklyPerformanceWidget } from './weekly-performance-widget';
 export { AdminOperationsKpiBand } from './admin-operations-kpi-band';
+export { AdminManagementKpiBand } from './admin-management-kpi-band';
+export { AdminOperationsStatusBand } from './admin-operations-status-band';
 export { AdminDailyFlowSection } from './admin-daily-flow-section';
 export { AdminOperationsCriticalRow } from './admin-operations-critical-row';
 export { TeamWorkloadChart } from './team-workload-chart';

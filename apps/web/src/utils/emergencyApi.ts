@@ -36,6 +36,15 @@ export interface EmergencyCase {
   // relations
   assignedVendor?: { id: string; name: string } | null;
   assignedUser?: { id: string; firstName: string; lastName: string } | null;
+  customer?: {
+    id: string;
+    fullName?: string | null;
+    companyName?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    entityType?: string | null;
+    subType?: string | null;
+  } | null;
   activeDelegation?: {
     actingUser: { id: string; firstName: string; lastName: string };
     principalUser: { id: string; firstName: string; lastName: string } | null;
