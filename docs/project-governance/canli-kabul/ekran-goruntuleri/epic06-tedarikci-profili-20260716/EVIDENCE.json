@@ -1,0 +1,89 @@
+{
+  "at": "2026-07-16T20:22:37.714Z",
+  "epic": "EPIC-06-tedarikci-profili",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "vendorId": "603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+  "vendorName": "D278F Tedarikçi D278F-1781628345390",
+  "vendorSource": "ranked",
+  "overall": "PASS",
+  "commit": false,
+  "diagnostics": {
+    "pageErrors": [
+      "Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+      "There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+    ],
+    "failedAssets": []
+  },
+  "viewports": [
+    {
+      "name": "01-desktop",
+      "width": 1440,
+      "height": 900,
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-tedarikci-profili-20260716/01-desktop.png",
+      "status": "PASS",
+      "checks": {
+        "url": "http://localhost:3001/panel/tedarikciler/603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+        "title": "D278F Tedarikçi D278F-1781628345390",
+        "bodyPreview": "Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi… ⌘K Hızlı İşlem 4 Yardım Tema SY Sistem Yöneticisi Operasyon Aktif Dashboard Operasyon Personel Personel Özlük Sahiplik Müşteriler Tedarikçiler CRM Finans Harita Test Notları Ayarlar Yardı",
+        "hasGeneral": true,
+        "hasOps": true,
+        "hasCost": true,
+        "hasQuality": true,
+        "hasCoverage": true,
+        "hasFiles": true,
+        "hasWhatsapp": true,
+        "hasDecision": true,
+        "hasFinanceTab": true,
+        "financePanelsVisible": false,
+        "hScroll": false
+      }
+    },
+    {
+      "name": "02-tablet",
+      "width": 768,
+      "height": 1024,
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-tedarikci-profili-20260716/02-tablet.png",
+      "status": "PASS",
+      "checks": {
+        "url": "http://localhost:3001/panel/tedarikciler/603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+        "title": "D278F Tedarikçi D278F-1781628345390",
+        "bodyPreview": "Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi… Hızlı İşlem 4 SY Sistem Yöneticisi Dashboard Operasyon Personel Personel Özlük Sahiplik Müşteriler Tedarikçiler CRM Finans Harita Test Notları Ayarlar Yardım Menüyü Daralt Web v356 · v356",
+        "hasGeneral": true,
+        "hasOps": true,
+        "hasCost": true,
+        "hasQuality": true,
+        "hasCoverage": true,
+        "hasFiles": true,
+        "hasWhatsapp": true,
+        "hasDecision": true,
+        "hasFinanceTab": true,
+        "financePanelsVisible": false,
+        "hScroll": false
+      }
+    },
+    {
+      "name": "03-mobile",
+      "width": 390,
+      "height": 844,
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-tedarikci-profili-20260716/03-mobile.png",
+      "status": "PASS",
+      "checks": {
+        "url": "http://localhost:3001/panel/tedarikciler/603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+        "title": "D278F Tedarikçi D278F-1781628345390",
+        "bodyPreview": "4 SY Tedarikçiler D D278F Tedarikçi D278F-1781628345390 Kurumsal · Hizmet · İstanbul Aktif 0555 000 00 00 VKN: 1628345500 D Kurumsal Tedarikçi D278F Tedarikçi D278F-1781628345390 Telefon 0555 000 00 00 Şehir İstanbul 👤 Genel Bakış 🗺 Hizme",
+        "hasGeneral": true,
+        "hasOps": true,
+        "hasCost": true,
+        "hasQuality": true,
+        "hasCoverage": true,
+        "hasFiles": true,
+        "hasWhatsapp": true,
+        "hasDecision": true,
+        "hasFinanceTab": true,
+        "financePanelsVisible": false,
+        "hScroll": false
+      }
+    }
+  ]
+}

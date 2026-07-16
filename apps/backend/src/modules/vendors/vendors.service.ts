@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import { VendorRecommendationService } from './vendor-recommendation.service';
+import { VendorCostMemoryService } from '@/modules/vendor-cost-memory/vendor-cost-memory.service';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class VendorsService {
   constructor(
     private prisma: PrismaService,
     private readonly vendorRecommendation: VendorRecommendationService,
+    private readonly vendorCostMemory: VendorCostMemoryService,
   ) {}
 
   private mapVendorContactInput(c: any, vendorId: string) {
@@ -390,6 +392,401 @@ export class VendorsService {
     ]);
 
     return { completedJobs, activeJobs, avgByCategory };
+  }
+
+  async getProfileOverview(id: string) {
+    await this.findOne(id);
+
+    const [
+      operationSummary,
+      costSummary,
+      qualitySummary,
+      fileHistory,
+      whatsappHistory,
+    ] = await Promise.all([
+      this.buildOperationSummary(id),
+      this.buildCostSummary(id),
+      this.buildQualitySummary(id),
+      this.buildFileHistory(id),
+      this.buildWhatsappHistory(id),
+    ]);
+
+    return {
+      operationSummary,
+      costSummary,
+      qualitySummary,
+      fileHistory,
+      whatsappHistory,
+    };
+  }
+
+  private async buildOperationSummary(id: string) {
+    const [
+      metrics,
+      overallCostMemory,
+      latestOperation,
+      repeatWorkRate,
+      closedEmergencyCount,
+      activeEmergencyCount,
+    ] = await Promise.all([
+      this.vendorRecommendation.getOperationMetrics(id),
+      this.vendorCostMemory.getVendorSummary({ vendorId: id, months: 12 }),
+      this.findLatestOperation(id),
+      this.calculateRepeatWorkRate(id),
+      this.prisma.emergencyCase.count({
+        where: { assignedVendorId: id, status: { in: ['COZULDU', 'FATURALANDILDI'] } },
+      }),
+      this.prisma.emergencyCase.count({
+        where: { assignedVendorId: id, status: { notIn: ['COZULDU', 'FATURALANDILDI'] } },
+      }),
+    ]);
+
+    const completedOperations = metrics.completedFileCount + closedEmergencyCount;
+    const activeOperations = metrics.activeFileCount + activeEmergencyCount;
+    const totalOperations = completedOperations + activeOperations;
+    const denominator = completedOperations + activeOperations + metrics.cancelledCaseCount;
+    const successRate = denominator > 0
+      ? Math.round((completedOperations / denominator) * 100)
+      : null;
+
+    return {
+      totalOperations,
+      completedOperations,
+      activeOperations,
+      lastOperation: latestOperation,
+      avgResponseTimeHours: metrics.avgResponseTimeHours,
+      avgCompletionTimeHours: overallCostMemory?.avgDurationHours ?? null,
+      repeatWorkRate,
+      complaintCount: metrics.disputeCount,
+      successRate,
+    };
+  }
+
+  private async buildCostSummary(id: string) {
+    const points = await this.vendorCostMemory.collectMemoryPoints({
+      vendorIds: [id],
+      months: 12,
+      limitPerVendor: 120,
+    });
+
+    const grouped = new Map<string, typeof points>();
+    for (const point of points) {
+      const key = point.operationGroup?.trim()
+        || point.canonicalLabel?.trim()
+        || point.serviceType?.trim()
+        || point.originalServiceType?.trim()
+        || 'Genel';
+      const list = grouped.get(key) ?? [];
+      list.push(point);
+      grouped.set(key, list);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([serviceType, rows]) => {
+        const sorted = [...rows].sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
+        const costs = rows
+          .map((row) => row.actualCost)
+          .filter((value): value is number => Number.isFinite(value) && value > 0);
+        if (costs.length === 0) return null;
+        const avg = Math.round(costs.reduce((sum, value) => sum + value, 0) / costs.length);
+        return {
+          serviceType,
+          operationGroup: sorted[0]?.operationGroup ?? null,
+          count: costs.length,
+          minCost: Math.min(...costs),
+          avgCost: avg,
+          maxCost: Math.max(...costs),
+          lastCost: sorted[0]?.actualCost ?? null,
+          lastDate: sorted[0]?.recordedAt?.toISOString() ?? null,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort((a, b) => b.count - a.count || a.serviceType.localeCompare(b.serviceType, 'tr'));
+  }
+
+  private async buildQualitySummary(id: string) {
+    const emergencyCaseIds = (
+      await this.prisma.emergencyCase.findMany({
+        where: { assignedVendorId: id },
+        select: { id: true },
+        take: 200,
+      })
+    ).map((row) => row.id);
+
+    const [claimResponses, emergencyResponses] = await Promise.all([
+      this.prisma.surveyResponse.findMany({
+        where: {
+          campaign: {
+            claimFile: {
+              OR: [
+                { assignedSupplierId: id },
+                { supplierAssignments: { some: { vendorId: id } } },
+              ],
+            },
+          },
+        },
+        select: {
+          q1Rating: true,
+          q2Rating: true,
+          q3Rating: true,
+          q4Rating: true,
+          q5Rating: true,
+          q6Recommend: true,
+        },
+      }),
+      this.prisma.surveyResponse.findMany({
+        where: {
+          campaign: {
+            emergencyCaseId: { in: emergencyCaseIds.length ? emergencyCaseIds : ['__none__'] },
+          },
+        },
+        select: {
+          q1Rating: true,
+          q2Rating: true,
+          q3Rating: true,
+          q4Rating: true,
+          q5Rating: true,
+          q6Recommend: true,
+        },
+      }),
+    ]);
+
+    const responses = [...claimResponses, ...emergencyResponses];
+    const average = (values: number[]) => {
+      if (values.length === 0) return null;
+      const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+      return Math.round(avg * 10) / 10;
+    };
+
+    const ratings = {
+      overallSatisfaction: average(responses.map((row) => row.q1Rating)),
+      onTimeIntervention: average(responses.map((row) => row.q2Rating)),
+      communicationQuality: average(responses.map((row) => row.q3Rating)),
+      photoQuality: average(responses.map((row) => row.q4Rating)),
+      documentQuality: average(responses.map((row) => row.q5Rating)),
+    };
+    const recommendCount = responses.filter((row) => row.q6Recommend).length;
+    const recommendRate = responses.length > 0
+      ? Math.round((recommendCount / responses.length) * 100)
+      : null;
+
+    return {
+      responseCount: responses.length,
+      recommendRate,
+      ...ratings,
+    };
+  }
+
+  private async buildFileHistory(id: string) {
+    const files = await this.prisma.claimFile.findMany({
+      where: {
+        OR: [
+          { assignedSupplierId: id },
+          { supplierAssignments: { some: { vendorId: id } } },
+        ],
+      },
+      take: 50,
+      orderBy: [
+        { closedAt: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+      select: {
+        id: true,
+        fileNo: true,
+        claimNo: true,
+        insuredName: true,
+        lossType: true,
+        createdAt: true,
+        closedAt: true,
+        updatedAt: true,
+        propertyAddress: { select: { city: true, district: true } },
+        insuranceCompany: { select: { id: true, name: true } },
+        currentStatus: { select: { code: true, name: true, color: true, isClosedState: true } },
+        claimSubject: { select: { name: true } },
+      },
+    });
+
+    return files.map((file) => ({
+      id: file.id,
+      fileNo: file.fileNo,
+      claimNo: file.claimNo,
+      insuredName: file.insuredName,
+      serviceType: file.claimSubject?.name ?? file.lossType ?? null,
+      city: file.propertyAddress?.city ?? null,
+      district: file.propertyAddress?.district ?? null,
+      insuranceCompanyName: file.insuranceCompany?.name ?? null,
+      status: file.currentStatus,
+      createdAt: file.createdAt.toISOString(),
+      updatedAt: file.updatedAt.toISOString(),
+      closedAt: file.closedAt?.toISOString() ?? null,
+    }));
+  }
+
+  private async buildWhatsappHistory(id: string) {
+    const claimFiles = await this.prisma.claimFile.findMany({
+      where: {
+        OR: [
+          { assignedSupplierId: id },
+          { supplierAssignments: { some: { vendorId: id } } },
+        ],
+      },
+      select: { id: true, fileNo: true },
+      take: 80,
+      orderBy: { updatedAt: 'desc' },
+    });
+    const claimFileIds = claimFiles.map((file) => file.id);
+    const fileNoById = new Map(claimFiles.map((file) => [file.id, file.fileNo]));
+    if (claimFileIds.length === 0) return [];
+
+    const [archives, documents] = await Promise.all([
+      this.prisma.chatArchive.findMany({
+        where: { claimFileId: { in: claimFileIds } },
+        take: 20,
+        orderBy: { uploadedAt: 'desc' },
+        select: {
+          id: true,
+          claimFileId: true,
+          label: true,
+          uploadedAt: true,
+          uploadedBy: { select: { firstName: true, lastName: true } },
+          parsedMessages: true,
+        },
+      }),
+      this.prisma.fileDocument.findMany({
+        where: {
+          entityType: 'claim_file',
+          entityId: { in: claimFileIds },
+          whatsappSentAt: { not: null },
+        },
+        take: 20,
+        orderBy: { whatsappSentAt: 'desc' },
+        select: {
+          id: true,
+          entityId: true,
+          documentKind: true,
+          whatsappSentAt: true,
+          whatsappPhone: true,
+        },
+      }),
+    ]);
+
+    const history = [
+      ...archives.map((archive) => ({
+        id: archive.id,
+        type: 'chat_archive',
+        claimFileId: archive.claimFileId,
+        fileNo: fileNoById.get(archive.claimFileId) ?? null,
+        label: archive.label,
+        sentAt: archive.uploadedAt.toISOString(),
+        messageCount: Array.isArray(archive.parsedMessages) ? archive.parsedMessages.length : 0,
+        contact: archive.uploadedBy
+          ? `${archive.uploadedBy.firstName} ${archive.uploadedBy.lastName}`.trim()
+          : null,
+      })),
+      ...documents.map((document) => ({
+        id: document.id,
+        type: 'file_document',
+        claimFileId: document.entityId,
+        fileNo: fileNoById.get(document.entityId) ?? null,
+        label: document.documentKind,
+        sentAt: document.whatsappSentAt?.toISOString() ?? null,
+        messageCount: null,
+        contact: document.whatsappPhone ?? null,
+      })),
+    ];
+
+    history.sort((a, b) => {
+      const left = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+      const right = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+      return right - left;
+    });
+
+    return history.slice(0, 24);
+  }
+
+  private async findLatestOperation(id: string) {
+    const [latestClaimFile, latestEmergencyCase] = await Promise.all([
+      this.prisma.claimFile.findFirst({
+        where: {
+          OR: [
+            { assignedSupplierId: id },
+            { supplierAssignments: { some: { vendorId: id } } },
+          ],
+          currentStatus: { isClosedState: true },
+        },
+        orderBy: { closedAt: 'desc' },
+        select: {
+          id: true,
+          fileNo: true,
+          closedAt: true,
+          claimSubject: { select: { name: true } },
+          lossType: true,
+        },
+      }),
+      this.prisma.emergencyCase.findFirst({
+        where: {
+          assignedVendorId: id,
+          status: { in: ['COZULDU', 'FATURALANDILDI'] },
+        },
+        orderBy: { resolvedAt: 'desc' },
+        select: {
+          id: true,
+          caseNo: true,
+          issueType: true,
+          resolvedAt: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    const claimClosedAt = latestClaimFile?.closedAt?.getTime() ?? 0;
+    const emergencyClosedAt = latestEmergencyCase?.resolvedAt?.getTime() ?? 0;
+
+    if (!latestClaimFile && !latestEmergencyCase) return null;
+    if (claimClosedAt >= emergencyClosedAt && latestClaimFile) {
+      return {
+        type: 'claim_file',
+        id: latestClaimFile.id,
+        referenceNo: latestClaimFile.fileNo,
+        serviceType: latestClaimFile.claimSubject?.name ?? latestClaimFile.lossType ?? null,
+        completedAt: latestClaimFile.closedAt?.toISOString() ?? null,
+      };
+    }
+
+    return {
+      type: 'emergency_case',
+      id: latestEmergencyCase!.id,
+      referenceNo: latestEmergencyCase!.caseNo,
+      serviceType: latestEmergencyCase!.issueType ?? null,
+      completedAt: latestEmergencyCase!.resolvedAt?.toISOString() ?? null,
+    };
+  }
+
+  private async calculateRepeatWorkRate(id: string) {
+    const files = await this.prisma.claimFile.findMany({
+      where: {
+        OR: [
+          { assignedSupplierId: id },
+          { supplierAssignments: { some: { vendorId: id } } },
+        ],
+        currentStatus: { isClosedState: true },
+      },
+      select: {
+        insuranceCompanyId: true,
+      },
+    });
+
+    if (files.length === 0) return null;
+    const counts = new Map<string, number>();
+    for (const file of files) {
+      const key = file.insuranceCompanyId;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const repeatedCount = Array.from(counts.values())
+      .filter((count) => count > 1)
+      .reduce((sum, count) => sum + count, 0);
+
+    return Math.round((repeatedCount / files.length) * 100);
   }
 
   async updateServiceAreas(id: string, serviceAreas: Array<{ provinceId: string; districtId?: string | null }>) {

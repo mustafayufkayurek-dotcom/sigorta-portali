@@ -1,0 +1,106 @@
+{
+  "at": "2026-07-16T20:26:59.399Z",
+  "epic": "EPIC-06-urun-kabul-9-madde",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "vendorId": "603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+  "vendorName": "D278F Tedarikçi D278F-1781628345390",
+  "vendorUrl": "http://localhost:3001/panel/tedarikciler/603f75ae-c719-4ef9-9c4f-bd6f2daee00d",
+  "overall": "PASS",
+  "passCount": "9/9",
+  "commit": false,
+  "push": false,
+  "deploy": false,
+  "diagnostics": {
+    "pageErrors": [
+      "Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+      "There was an error while hydrating this Suspense boundary. Switched to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+    ]
+  },
+  "items": [
+    {
+      "id": 1,
+      "name": "Genel Bilgiler",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/01-genel-bilgiler.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 2,
+      "name": "Operasyon Hafızası / Operasyon Özeti",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/02-operasyon-ozeti.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 3,
+      "name": "Maliyet Hafızası / Maliyet Özeti",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/03-maliyet-ozeti.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 4,
+      "name": "Hizmet Kalitesi",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/04-hizmet-kalitesi.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 5,
+      "name": "Hizmet Bölgeleri / Hizmet Kapsamı",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/05-hizmet-kapsami.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 6,
+      "name": "Dosya Geçmişi",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/06-dosya-gecmisi.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 7,
+      "name": "Finans Sekmesi",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/07b-finans-sekme-acik.png",
+      "overviewScreenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/07a-finans-sekme-ilk-ekran.png",
+      "checks": {
+        "hasFinanceTab": true,
+        "financePanelsOnOverview": false,
+        "clicked": true,
+        "afterClickVisible": true
+      },
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 8,
+      "name": "WhatsApp Geçmişi",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/08-whatsapp-gecmisi.png",
+      "reason": null,
+      "fix": null
+    },
+    {
+      "id": 9,
+      "name": "Akıllı Tedarikçi Profili / Karar Özeti",
+      "status": "PASS",
+      "screenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/09-karar-ozeti.png",
+      "checks": {
+        "hasDecision": true,
+        "hasTechBrand": false
+      },
+      "reason": null,
+      "fix": null
+    }
+  ],
+  "fullScreenshot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic06-urun-kabul-9-madde-20260716/00-genel-bakis-full.png"
+}

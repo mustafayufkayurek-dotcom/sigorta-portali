@@ -131,6 +131,14 @@ export class VendorsController {
     return { success: true, data };
   }
 
+  @Get(':id/profile-overview')
+  @RequirePermissions('vendor.view')
+  @ApiOperation({ summary: 'Tedarikçi profil özeti' })
+  async getProfileOverview(@Param('id') id: string) {
+    const data = await this.vendorsService.getProfileOverview(id);
+    return { success: true, data };
+  }
+
   @Post()
   @RequirePermissions('vendor.create')
   @ApiOperation({ summary: 'Yeni tedarikçi ekle' })

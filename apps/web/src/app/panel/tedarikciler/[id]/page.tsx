@@ -52,12 +52,10 @@ const CONTACT_LABEL: Record<string, string> = {
 type VendorTab = 'profil' | 'yetkili-iletisim' | 'hizmet-kapsam' | 'performans' | 'evraklar' | 'odemeler';
 
 const TABS: { id: VendorTab; label: string; icon: string }[] = [
-  { id: 'profil', label: 'Profil', icon: '👤' },
-  { id: 'yetkili-iletisim', label: 'Yetkili & İletişim', icon: '📡' },
+  { id: 'profil', label: 'Genel Bakış', icon: '👤' },
   { id: 'hizmet-kapsam', label: 'Hizmet Kapsamı', icon: '🗺' },
-  { id: 'performans', label: 'Performans', icon: '📊' },
   { id: 'evraklar', label: 'Evraklar', icon: '📄' },
-  { id: 'odemeler', label: 'Ödemeler / Ekstre', icon: '💰' },
+  { id: 'odemeler', label: 'Finans', icon: '💰' },
 ];
 
 // ── Shared ────────────────────────────────────────────────────────────────────
@@ -619,6 +617,436 @@ function PerformansTab({ vendorId }: { vendorId: string }) {
   );
 }
 
+void ProfilTab;
+void YetkiliIletisimTab;
+void VendorPerformanceStats;
+void PerformansTab;
+
+function fmtHours(value: number | null | undefined) {
+  if (value == null) return '—';
+  if (value < 24) return `${value.toFixed(value % 1 === 0 ? 0 : 1)} sa`;
+  const days = value / 24;
+  return `${days.toFixed(days % 1 === 0 ? 0 : 1)} gün`;
+}
+
+function fmtPercent(value: number | null | undefined) {
+  if (value == null) return '—';
+  return `%${value}`;
+}
+
+function fmtScore(value: number | null | undefined) {
+  if (value == null) return 'Veri bekleniyor';
+  return `${value.toFixed(1)} / 5`;
+}
+
+function scoreTone(value: number | null | undefined) {
+  if (value == null) return 'text-slate-400';
+  if (value >= 4.5) return 'text-green-700';
+  if (value >= 3.5) return 'text-amber-700';
+  return 'text-red-600';
+}
+
+function resolveWhatsappValue(vendor: any) {
+  const contactInfo = (vendor.contactInfos || []).find((info: any) => info.type === 'whatsapp')?.value;
+  return contactInfo || vendor.authorizedPhone || vendor.phone || null;
+}
+
+function resolveServiceTypeSummary(vendor: any) {
+  const workGroups = (vendor.vendorWorkGroups || []).map((row: any) => row.workGroup?.name).filter(Boolean);
+  const branches = Array.isArray(vendor.serviceBranches) ? vendor.serviceBranches.filter(Boolean) : [];
+  return [...new Set([...workGroups, ...branches])];
+}
+
+function OverviewMetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-900">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
+    </div>
+  );
+}
+
+function QualityMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null | undefined;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-4">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className={`mt-2 text-base font-semibold ${scoreTone(value)}`}>{fmtScore(value)}</p>
+    </div>
+  );
+}
+
+function ChatArchivePreviewModal({
+  archive,
+  selfSender,
+  onSelfSenderChange,
+  onClose,
+}: {
+  archive: any;
+  selfSender: string;
+  onSelfSenderChange: (value: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900">{archive.label}</p>
+            <p className="mt-0.5 text-xs text-slate-400">{archive.messageCount ?? 0} mesaj</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600"
+              value={selfSender}
+              onChange={(e) => onSelfSenderChange(e.target.value)}
+            >
+              {Array.from(new Set<string>((archive.parsedMessages || []).map((msg: any) => String(msg.sender || 'Bilinmeyen')))).map((sender) => (
+                <option key={sender} value={sender}>{sender}</option>
+              ))}
+            </select>
+            <button type="button" onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600">Kapat</button>
+          </div>
+        </div>
+        <div className="space-y-1 overflow-y-auto bg-slate-50 p-4">
+          {(archive.parsedMessages || []).map((msg: any, index: number) => (
+            <div key={`${msg.timestamp}-${index}`} className={`flex ${msg.sender === selfSender ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-3 py-2 shadow-sm ${msg.sender === selfSender ? 'bg-green-100 text-slate-800' : 'border border-slate-100 bg-white text-slate-700'}`}>
+                {msg.sender !== selfSender ? (
+                  <p className="mb-0.5 text-[11px] font-semibold text-green-700">{msg.sender}</p>
+                ) : null}
+                <p className="whitespace-pre-wrap text-sm">{msg.mediaRef ? 'Medya dosyası' : msg.message}</p>
+                <p className="mt-1 text-[10px] text-slate-400">
+                  {msg.timestamp ? new Date(msg.timestamp).toLocaleString('tr-TR') : '—'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GenelBakisTab({ vendor, vendorId }: { vendor: any; vendorId: string }) {
+  const [overview, setOverview] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [selectedArchive, setSelectedArchive] = useState<any>(null);
+  const [selfSender, setSelfSender] = useState('');
+  const serviceTypes = resolveServiceTypeSummary(vendor);
+  const whatsappValue = resolveWhatsappValue(vendor);
+
+  const loadOverview = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/vendors/${vendorId}/profile-overview`, { headers: authHeader() });
+      setOverview(response.data.data);
+    } catch (error) {
+      console.error(error);
+      setOverview(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [vendorId]);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
+
+  const openArchive = useCallback(async (archiveId: string) => {
+    try {
+      const response = await axios.get(`${API}/chat-archives/${archiveId}`, { headers: authHeader() });
+      const detail = response.data.data;
+      setSelectedArchive(detail);
+      setSelfSender(detail?.parsedMessages?.[0]?.sender ?? '');
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const filteredHistory = (overview?.fileHistory || []).filter((row: any) => {
+    const haystack = [
+      row.fileNo,
+      row.claimNo,
+      row.insuredName,
+      row.serviceType,
+      row.insuranceCompanyName,
+      row.city,
+      row.district,
+      row.status?.name,
+    ].filter(Boolean).join(' ').toLocaleLowerCase('tr-TR');
+    return haystack.includes(historyQuery.trim().toLocaleLowerCase('tr-TR'));
+  });
+
+  const highlightedCost = (overview?.costSummary || []).slice(0, 6);
+  const operation = overview?.operationSummary;
+  const quality = overview?.qualitySummary;
+  const latestFileHistory = (overview?.fileHistory || []).slice(0, 8);
+  const whatsappHistory = (overview?.whatsappHistory || []).slice(0, 8);
+  const coverageAreas = vendor.serviceAreas || [];
+  const decisionSummary = [
+    operation?.successRate != null ? `Başarılı tamamlama oranı ${fmtPercent(operation.successRate)}` : null,
+    operation?.avgResponseTimeHours != null ? `ortalama müdahale ${fmtHours(operation.avgResponseTimeHours)}` : null,
+    highlightedCost[0]?.serviceType ? `en yoğun hizmet ${highlightedCost[0].serviceType}` : null,
+    quality?.recommendRate != null ? `yeniden tercih oranı ${fmtPercent(quality.recommendRate)}` : null,
+  ].filter(Boolean).join(', ');
+
+  if (loading) {
+    return <div className="py-12 text-center text-sm text-slate-400">Profil özeti yükleniyor...</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      {selectedArchive ? (
+        <ChatArchivePreviewModal
+          archive={selectedArchive}
+          selfSender={selfSender}
+          onSelfSenderChange={setSelfSender}
+          onClose={() => setSelectedArchive(null)}
+        />
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <SectionCard title="Genel Bilgiler" subtitle="Karar için gereken temel tedarikçi bilgileri">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InfoRow label="Firma Adı" value={vendor.name} />
+            <InfoRow label="Yetkili" value={vendor.authorizedPerson} />
+            <InfoRow label="Telefon" value={vendor.phone ? <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" /> : null} />
+            <InfoRow label="WhatsApp" value={whatsappValue ? <PhoneContactActions phone={whatsappValue} variant="inline" accent="emerald" /> : null} />
+            <InfoRow label="E-posta" value={vendor.email ? <a href={`mailto:${vendor.email}`} className="text-indigo-600 hover:underline">{vendor.email}</a> : null} />
+            <InfoRow label="Yetkili E-posta" value={vendor.authorizedEmail ? <a href={`mailto:${vendor.authorizedEmail}`} className="text-indigo-600 hover:underline">{vendor.authorizedEmail}</a> : null} />
+            <InfoRow label="Vergi Bilgileri" value={[vendor.taxOffice, vendor.taxNumber].filter(Boolean).join(' · ')} />
+            <InfoRow label="Banka Bilgileri" value={[vendor.bankName, vendor.iban].filter(Boolean).join(' · ')} />
+            <InfoRow label="Hizmet Bölgeleri" value={coverageAreas.length ? `${coverageAreas.length} bölge tanımlı` : 'Henüz tanımlı değil'} />
+            <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.join(', ') : 'Henüz tanımlı değil'} />
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Karar Özeti" subtitle="İlk bakışta operasyon resmi">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <p className="text-sm font-semibold text-indigo-900">
+                {decisionSummary || 'Yeterli operasyon verisi oluştukça bu özet otomatik zenginleşir.'}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <OverviewMetricCard label="Toplam Operasyon" value={operation?.totalOperations ?? '—'} />
+              <OverviewMetricCard label="Başarılı Oran" value={fmtPercent(operation?.successRate)} />
+              <OverviewMetricCard label="Son Operasyon" value={operation?.lastOperation?.referenceNo ?? '—'} hint={operation?.lastOperation?.completedAt ? fmtDate(operation.lastOperation.completedAt) : undefined} />
+              <OverviewMetricCard label="Şikayet Sayısı" value={operation?.complaintCount ?? '—'} />
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Operasyon Özeti" subtitle="Hız, tamamlama ve tekrar çalışma görünümü">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <OverviewMetricCard label="Toplam Operasyon" value={operation?.totalOperations ?? '—'} />
+          <OverviewMetricCard label="Ortalama Müdahale Süresi" value={fmtHours(operation?.avgResponseTimeHours)} />
+          <OverviewMetricCard label="Ortalama Tamamlama Süresi" value={fmtHours(operation?.avgCompletionTimeHours)} />
+          <OverviewMetricCard label="Tekrar Çalışma Oranı" value={fmtPercent(operation?.repeatWorkRate)} hint="Aynı kurumdan tekrar gelen işler" />
+          <OverviewMetricCard label="Şikayet Sayısı" value={operation?.complaintCount ?? '—'} />
+          <OverviewMetricCard label="Başarılı Operasyon Oranı" value={fmtPercent(operation?.successRate)} />
+          <OverviewMetricCard label="Tamamlanan Operasyon" value={operation?.completedOperations ?? '—'} />
+          <OverviewMetricCard label="Aktif Operasyon" value={operation?.activeOperations ?? '—'} />
+        </div>
+      </SectionCard>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <SectionCard title="Maliyet Özeti" subtitle="Son 12 aydaki hizmet bazlı maliyet görünümü">
+          {highlightedCost.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-400">Henüz maliyet geçmişi oluşmadı.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                    <th className="pb-3 pr-4 font-medium">Hizmet</th>
+                    <th className="pb-3 pr-4 font-medium">Min</th>
+                    <th className="pb-3 pr-4 font-medium">Ort.</th>
+                    <th className="pb-3 pr-4 font-medium">Maks</th>
+                    <th className="pb-3 pr-4 font-medium">Son</th>
+                    <th className="pb-3 font-medium">Adet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {highlightedCost.map((row: any) => (
+                    <tr key={row.serviceType} className="border-b border-slate-50 last:border-0">
+                      <td className="py-3 pr-4 font-medium text-slate-800">{row.serviceType}</td>
+                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.minCost)}</td>
+                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.avgCost)}</td>
+                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.maxCost)}</td>
+                      <td className="py-3 pr-4 text-slate-900">{fmtCurrency(row.lastCost)}</td>
+                      <td className="py-3 text-slate-500">{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Hizmet Kalitesi" subtitle="Anket ve kapanan iş verilerinden oluşur">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <QualityMetric label="Genel Memnuniyet" value={quality?.overallSatisfaction} />
+            <QualityMetric label="Zamanında Müdahale" value={quality?.onTimeIntervention} />
+            <QualityMetric label="İletişim Kalitesi" value={quality?.communicationQuality} />
+            <QualityMetric label="Fotoğraf Kalitesi" value={quality?.photoQuality} />
+            <QualityMetric label="Evrak Kalitesi" value={quality?.documentQuality} />
+            <div className="rounded-xl border border-slate-100 bg-white p-4">
+              <p className="text-xs font-medium text-slate-500">Tekrar Tercih Oranı</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">{fmtPercent(quality?.recommendRate)}</p>
+              <p className="mt-1 text-xs text-slate-400">{quality?.responseCount ? `${quality.responseCount} yanıt üzerinden` : 'Henüz anket yanıtı yok'}</p>
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Hizmet Kapsamı" subtitle="İl, ilçe ve hizmet yoğunluğu görünümü">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <p className="mb-3 text-xs font-medium text-slate-500">Bölge Görünümü</p>
+            {coverageAreas.length === 0 ? (
+              <p className="text-sm text-slate-400">Henüz hizmet bölgesi tanımlı değil.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {coverageAreas.map((area: any, index: number) => (
+                  <div key={`${area.provinceId}-${area.districtId ?? 'all'}-${index}`} className="rounded-xl border border-white bg-white p-3 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-800">{area.province?.name ?? 'İl'}</p>
+                    <p className="mt-1 text-xs text-slate-500">{area.district?.name ?? 'Tüm İlçeler'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-100 bg-white p-4">
+              <p className="mb-3 text-xs font-medium text-slate-500">Hizmet Türleri</p>
+              <div className="flex flex-wrap gap-2">
+                {serviceTypes.length ? serviceTypes.map((item) => (
+                  <Badge key={item} variant="indigo">{item}</Badge>
+                )) : <span className="text-sm text-slate-400">Henüz tanımlı değil.</span>}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-white p-4">
+              <p className="mb-3 text-xs font-medium text-slate-500">Kısa Not</p>
+              <p className="text-sm text-slate-600">
+                {coverageAreas.length
+                  ? `${coverageAreas.length} farklı bölgede hizmet veriyor. Karar verirken iş türü ile bölgeyi birlikte değerlendirin.`
+                  : 'Bölge tanımı eklenirse atama kararları daha hızlı netleşir.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Dosya Geçmişi" subtitle="Bu tedarikçinin tamamladığı ve üstlendiği dosyalar">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            value={historyQuery}
+            onChange={(e) => setHistoryQuery(e.target.value)}
+            placeholder="Dosya no, hizmet, müşteri veya il ara..."
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:max-w-sm"
+          />
+          <p className="text-xs text-slate-400">{filteredHistory.length} kayıt</p>
+        </div>
+        {filteredHistory.length === 0 ? (
+          <p className="py-10 text-center text-sm text-slate-400">Filtreye uygun dosya bulunamadı.</p>
+        ) : (
+          <div className="space-y-2">
+            {filteredHistory.map((row: any) => (
+              <div key={row.id} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{row.fileNo}</p>
+                    <Badge variant={row.status?.isClosedState ? 'green' : 'blue'}>{row.status?.name ?? 'Durum Yok'}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">{row.serviceType || 'Hizmet tipi yok'}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {[row.insuranceCompanyName, row.insuredName, row.city, row.district].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span>{row.closedAt ? `Kapanış: ${fmtDate(row.closedAt)}` : `Güncelleme: ${fmtDate(row.updatedAt)}`}</span>
+                  <Link href={`/panel/hasar-dosyalari/${row.id}`} className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-600 hover:bg-white">
+                    Dosyaya Git
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="WhatsApp Geçmişi" subtitle="Yazışmalar ve belge gönderimleri dosya bazında görünür">
+        {whatsappHistory.length === 0 ? (
+          <p className="py-10 text-center text-sm text-slate-400">Henüz WhatsApp geçmişi oluşmadı.</p>
+        ) : (
+          <div className="space-y-2">
+            {whatsappHistory.map((item: any) => (
+              <div key={`${item.type}-${item.id}`} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{item.fileNo ? `Dosya ${item.fileNo}` : 'Dosya bağlantısı'}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {item.type === 'chat_archive' ? item.label : `${item.label} gönderimi`}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {[item.sentAt ? new Date(item.sentAt).toLocaleString('tr-TR') : null, item.contact, item.messageCount ? `${item.messageCount} mesaj` : null].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {item.type === 'chat_archive' ? (
+                    <button
+                      type="button"
+                      onClick={() => openArchive(item.id)}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Yazışmayı Aç
+                    </button>
+                  ) : null}
+                  {item.claimFileId ? (
+                    <Link href={`/panel/hasar-dosyalari/${item.claimFileId}`} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">
+                      Dosyaya Git
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {latestFileHistory.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <p className="mb-3 text-xs font-medium text-slate-500">Yakın Dosyalar</p>
+            <div className="flex flex-wrap gap-2">
+              {latestFileHistory.map((row: any) => (
+                <Link key={row.id} href={`/panel/hasar-dosyalari/${row.id}`} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
+                  {row.fileNo}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </SectionCard>
+    </div>
+  );
+}
+
 // ── Evrak Önizleme Modalı ─────────────────────────────────────────────────────
 function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
   const ext = (doc.fileExtension ?? '').replace('.', '').toLowerCase();
@@ -1001,8 +1429,6 @@ export default function VendorDetailPage() {
         )}
       </div>
 
-      <VendorPerformanceStats vendorId={id!} />
-
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-5 overflow-x-auto">
         <div className="flex min-w-max">
@@ -1024,10 +1450,8 @@ export default function VendorDetailPage() {
       </div>
 
       {/* ── Tab Content ── */}
-      {activeTab === 'profil' && <ProfilTab vendor={vendor} />}
-      {activeTab === 'yetkili-iletisim' && <YetkiliIletisimTab vendor={vendor} />}
+      {activeTab === 'profil' && <GenelBakisTab vendor={vendor} vendorId={id!} />}
       {activeTab === 'hizmet-kapsam' && <HizmetKapsamTab vendor={vendor} onUpdate={loadVendor} />}
-      {activeTab === 'performans' && <PerformansTab vendorId={id!} />}
       {activeTab === 'evraklar' && (
         <EvraklarTab
           vendorId={id!}
