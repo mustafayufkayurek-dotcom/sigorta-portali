@@ -13,6 +13,7 @@ import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { CacheService } from '@/cache/cache.service';
 import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
 import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
+import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
@@ -157,6 +158,7 @@ export class ClaimFilesService {
     @Optional() private readonly templateService?: MessageTemplateService,
     @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
     @Optional() private readonly operationalAccessGrants?: OperationalAccessGrantsService,
+    @Optional() private readonly vendorProfile?: VendorIntelligenceProfileService,
   ) {}
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
@@ -1545,6 +1547,10 @@ export class ClaimFilesService {
           relatedEntityId: id,
         });
       }
+
+      void this.vendorProfile?.onFileCompleted({ type: 'claim_file', id }).catch((err) =>
+        this.logger.warn(`[VendorIntelligenceProfile] Kapanış hook: ${err?.message}`),
+      );
     }
 
     return updated;

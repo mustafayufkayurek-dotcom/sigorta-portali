@@ -92,7 +92,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               color="bg-cyan-600"
               subtext={ops && !opsFailed ? `${ops.openEmergencyCases} açık, ${ops.closedEmergencyCases} kapalı` : undefined}
               emptyHint="Kayıtlı acil yardım dosyası yok."
-              href="/panel/acil-yardim"
+              href="/panel/operasyon?filter=acil"
             />
             )}
             <KpiCard

@@ -56,7 +56,6 @@ import {
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bell,
   BookOpen,
   Building2,
   CalendarDays,
@@ -268,7 +267,6 @@ interface PanelSidebarProps {
   isInsuranceCompanyUser: boolean;
   isFinance: boolean;
   isFieldStaff: boolean;
-  showAcilYardim: boolean;
   pendingRevisionCount: number;
   allowedScreens: string[] | null;
   collapsed: boolean;
@@ -282,7 +280,6 @@ function getPanelMainLinks({
   isOfficeStaff,
   isFinance,
   isFieldStaff,
-  showAcilYardim,
   pendingRevisionCount,
 }: {
   isExpert: boolean;
@@ -290,7 +287,6 @@ function getPanelMainLinks({
   isOfficeStaff: boolean;
   isFinance: boolean;
   isFieldStaff: boolean;
-  showAcilYardim: boolean;
   pendingRevisionCount: number;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
@@ -305,7 +301,6 @@ function getPanelMainLinks({
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'CRM', href: '/panel/crm', icon: GitBranch },
-            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Harita', href: '/panel/harita', icon: MapPin },
             { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
@@ -314,7 +309,6 @@ function getPanelMainLinks({
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
-            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
           ]
@@ -323,7 +317,6 @@ function getPanelMainLinks({
             { title: 'Finans Merkezi', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
             { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
             { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
-            ...(showAcilYardim ? [{ title: 'Acil Yardım', href: '/panel/acil-yardim', icon: Bell }] : []),
             { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -444,7 +437,6 @@ function Navbar({
     isOfficeStaff: isOfficeStaffRole(roleCode),
     isFinance,
     isFieldStaff,
-    showAcilYardim,
     pendingRevisionCount,
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -552,7 +544,7 @@ function Navbar({
                     ) : null}
                     {canCreateAcil ? (
                       <Link
-                        href="/panel/acil-yardim?yeni=1"
+                        href="/panel/operasyon?filter=acil&yeni=1"
                         role="menuitem"
                         className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-700"
                         onClick={() => setQuickActionOpen(false)}
@@ -829,7 +821,6 @@ function PanelSidebar({
   isInsuranceCompanyUser,
   isFinance,
   isFieldStaff,
-  showAcilYardim,
   pendingRevisionCount,
   allowedScreens,
   collapsed,
@@ -859,7 +850,6 @@ function PanelSidebar({
     isOfficeStaff: isOfficeStaffRole(roleCode),
     isFinance,
     isFieldStaff,
-    showAcilYardim,
     pendingRevisionCount,
   });
 
@@ -1504,7 +1494,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             isInsuranceCompanyUser={isInsuranceCompanyUser}
             isFinance={isFinance}
             isFieldStaff={isFieldStaff}
-            showAcilYardim={showAcilYardim}
             pendingRevisionCount={operationBadgeCount}
             allowedScreens={allowedScreens}
             collapsed={sidebarCollapsed}

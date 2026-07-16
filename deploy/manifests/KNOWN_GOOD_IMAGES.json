@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-16",
-  "label": "v364-epic03-operasyon-kabul",
-  "description": "Full: EPIC-03 Operasyon ürün kabul final (durum sözlüğü, UX). Web v364 + backend v364. Migration yok. Smoke: route PASS, auth login PARTIAL (kullanıcı kabulü). Rollback web v363 / backend v361.",
+  "label": "v365-epic03-tespitci-operasyon-kapanis",
+  "description": "Full: EPIC-03 operasyon kapanış (müşteri sütunu, KPI) + tespitçi atama assignable-staff. Web v365 + backend v365. Migration yok. Smoke: route PASS, auth login PARTIAL. Rollback web v364 / backend v364.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v364-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v364-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v365-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v365-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v363-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v361-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v364-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v364-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

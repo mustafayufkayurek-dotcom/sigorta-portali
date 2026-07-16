@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   CalendarPlus,
@@ -41,6 +41,8 @@ import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/compon
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
+import { SlidePanel } from '@/components/SlidePanel';
+import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
 import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
@@ -170,10 +172,10 @@ function OpsStripKpi({
   onClick?: () => void;
   active?: boolean;
 }) {
-  /** Operasyon KPI — dikey kart; eşit yükseklik; Finansa Aktarılacak 2 satırda tam okunur */
+  /** Operasyon KPI — yatay kart; ikon solda, rakam ve başlık sağda; eşit yükseklik */
   const body = (
     <div
-      className={`group flex h-[102px] w-full min-w-0 flex-col justify-between overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
+      className={`group flex h-[102px] w-full min-w-0 flex-row items-center gap-3 overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
         active
           ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
           : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
@@ -184,7 +186,7 @@ function OpsStripKpi({
       <span className={`inline-flex w-fit shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
         <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
       </span>
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1 text-left">
         <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
         <span className="mt-1.5 block text-[10px] font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere]">
           {label}
@@ -284,7 +286,22 @@ type OpsStats = {
 };
 
 export default function OperasyonPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="flex items-center justify-center h-64">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+    >
+      <OperasyonPageContent />
+    </Suspense>
+  );
+}
+
+function OperasyonPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_BASE_KEY);
   const tableColumns = usePanelTableColumns(colsStorageKey, TABLE_COLUMNS);
 
@@ -312,6 +329,34 @@ export default function OperasyonPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [showNewAcilPanel, setShowNewAcilPanel] = useState(false);
+  const [acilFormSession, setAcilFormSession] = useState(0);
+  const [acilCreatedNotice, setAcilCreatedNotice] = useState('');
+
+  useEffect(() => {
+    const filter = searchParams.get('filter');
+    if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
+      setFilterType(filter);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('yeni') !== '1') return;
+    setAcilFormSession((s) => s + 1);
+    setShowNewAcilPanel(true);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('yeni');
+    router.replace(`/panel/operasyon?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  const applyFilterType = useCallback((t: 'all' | 'hasar' | 'acil') => {
+    setFilterType(t);
+    const params = new URLSearchParams(searchParams.toString());
+    if (t === 'all') params.delete('filter');
+    else params.set('filter', t);
+    router.replace(`/panel/operasyon?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   useEffect(() => {
     const key = resolveOpsColumnsStorageKey();
@@ -628,10 +673,15 @@ export default function OperasyonPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Hasar Dosyası
           </Link>
-          <Link href="/panel/acil-yardim?yeni=1" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+          <Link href="/panel/operasyon?filter=acil&yeni=1" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Acil Dosyası
           </Link>
+          {acilCreatedNotice ? (
+            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+              {acilCreatedNotice}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -756,7 +806,7 @@ export default function OperasyonPage() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setFilterType(t)}
+                    onClick={() => applyFilterType(t)}
                     className={`px-3 py-1.5 transition-colors ${
                       filterType === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -1096,6 +1146,25 @@ export default function OperasyonPage() {
         target={emailTarget}
         onClose={() => setEmailTarget(null)}
       />
+      <SlidePanel
+        open={showNewAcilPanel}
+        onClose={() => setShowNewAcilPanel(false)}
+        title="Yeni Acil Yardım Dosyası"
+        width={600}
+        scrollContent={false}
+      >
+        <EmergencyCaseNewForm
+          key={acilFormSession}
+          variant="panel"
+          onCancel={() => setShowNewAcilPanel(false)}
+          onSuccess={() => {
+            setShowNewAcilPanel(false);
+            void loadCases();
+            setAcilCreatedNotice('Dosya oluşturuldu');
+            setTimeout(() => setAcilCreatedNotice(''), 3000);
+          }}
+        />
+      </SlidePanel>
     </div>
     </TableColumnsProvider>
   );

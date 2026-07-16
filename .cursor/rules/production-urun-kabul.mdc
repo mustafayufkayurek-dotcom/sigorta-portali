@@ -1,0 +1,26 @@
+---
+description: Production ürün kabulü — kullanıcı kabul eder; Cursor production login/credential istemez; yalnızca local düzeltme ve doğrulama
+alwaysApply: true
+---
+
+# Production ürün kabulü (kalıcı)
+
+**Kaynak:** `docs/project-governance/PRODUCTION_URUN_KABULU.md`
+
+## Roller
+
+1. **Ürün kabulünü kullanıcı yapar** (production ekranı referanstır).
+2. **Cursor** yalnızca: eksik tespit → düzeltme → **local** doğrulama.
+3. Kullanıcı production ekranını gösterir / gönderir → bu referanstır.
+
+## Yasaklar (Cursor)
+
+- Production login istemez; credential talep etmez.
+- Credential aramaz; production SSH ile UI login denemez.
+- **"Production login gerekli"** uyarısı **yazılmaz**.
+
+## Akış
+
+```
+Kullanıcı (prod ekran) → Cursor (eksik + local fix + local doğrula) → Kullanıcı (ürün kabulü)
+```

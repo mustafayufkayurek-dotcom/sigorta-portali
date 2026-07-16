@@ -145,7 +145,7 @@ function FinansPageInner() {
           <Link href="/panel/acil-yardim/finans/faturalar" className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
             Fatura Taslakları
           </Link>
-          <Link href="/panel/acil-yardim" className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+          <Link href="/panel/operasyon?filter=acil" className="px-3 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
             Kanban
           </Link>
         </div>

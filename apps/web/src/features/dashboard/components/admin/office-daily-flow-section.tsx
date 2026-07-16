@@ -43,7 +43,7 @@ export function OfficeDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: O
             detail: ops && !loading ? `${ops.totalEmergencyCases} toplam dosya` : 'Atanan acil',
             icon: ACIL_OPERATION_ICON,
             iconClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
-            path: '/panel/acil-yardim',
+            path: '/panel/operasyon?filter=acil',
           },
         ]),
     {

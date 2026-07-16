@@ -26,12 +26,14 @@ import {
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 
 @Controller('emergency/cases')
 export class EmergencyCasesController {
   constructor(
     private readonly service: EmergencyCasesService,
     private readonly claimFilesService: ClaimFilesService,
+    private readonly vendorProfileService: VendorIntelligenceProfileService,
   ) {}
 
   private async resolveScope(user: any) {
@@ -89,6 +91,19 @@ export class EmergencyCasesController {
     return { success: true, data };
   }
 
+  @Get(':id/vendors/recommended')
+  @RequirePermissions('claim_file.view')
+  async getRecommendedVendors(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const data = await this.vendorProfileService.recommendForEmergencyCase(
+      id,
+      limit ? Number(limit) : 3,
+    );
+    return { success: true, data };
+  }
+
   @Get(':id')
   @RequirePermissions('claim_file.view')
   async findOne(@Param('id') id: string, @CurrentUser() user?: any) {
@@ -117,7 +132,7 @@ export class EmergencyCasesController {
   ) {
     const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
     await this.service.findOne(id, requestingUser, insuranceCompanyIds);
-    return this.service.updateStatus(id, dto);
+    return this.service.updateStatus(id, dto, user?.id ?? 'system');
   }
 
   @Delete(':id')

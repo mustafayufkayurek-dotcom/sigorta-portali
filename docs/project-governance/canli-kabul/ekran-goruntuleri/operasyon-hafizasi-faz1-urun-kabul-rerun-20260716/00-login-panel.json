@@ -1,0 +1,7 @@
+{
+  "url": "http://localhost:3001/panel",
+  "at": "2026-07-16T12:48:14.877Z",
+  "injectUsed": false,
+  "pass": true,
+  "reason": "UI login → panel"
+}

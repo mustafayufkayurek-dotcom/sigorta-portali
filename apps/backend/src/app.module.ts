@@ -27,6 +27,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdjustersModule } from './modules/adjusters/adjusters.module';
 import { BudgetModule } from './modules/budget/budget.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
+import { VendorCostMemoryModule } from './modules/vendor-cost-memory/vendor-cost-memory.module';
+import { VendorIntelligenceProfileModule } from './modules/vendor-intelligence-profile/vendor-intelligence-profile.module';
 import { VendorDiscoveryModule } from './modules/vendor-discovery/vendor-discovery.module';
 import { WorkGroupsModule } from './modules/work-groups/work-groups.module';
 import { RepairReportsModule } from './modules/repair-reports/repair-reports.module';
@@ -158,6 +160,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     AdjustersModule,
     BudgetModule,
     VendorsModule,
+    VendorCostMemoryModule,
+    VendorIntelligenceProfileModule,
     VendorDiscoveryModule,
     WorkGroupsModule,
     RepairReportsModule,

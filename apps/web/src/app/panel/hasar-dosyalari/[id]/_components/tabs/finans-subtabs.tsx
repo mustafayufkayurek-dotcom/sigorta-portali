@@ -22,6 +22,7 @@ import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
+import { fetchVendorQuoteComparison } from '@/utils/vendor-intelligence-profile';
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
   const { showToast } = useToast();
@@ -39,6 +40,28 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
   const [itemManualVendor, setItemManualVendor] = useState(false);
   const [costManualVendor, setCostManualVendor] = useState(false);
   const [groupByCategory, setGroupByCategory] = useState(false);
+  const [itemQuoteWarning, setItemQuoteWarning] = useState<string | null>(null);
+  const [costQuoteWarning, setCostQuoteWarning] = useState<string | null>(null);
+
+  const checkQuoteWarning = useCallback(async (
+    vendorId: string,
+    amountRaw: string,
+    category: string,
+    setter: (msg: string | null) => void,
+  ) => {
+    const amount = parseFloat(amountRaw);
+    if (!vendorId || !Number.isFinite(amount) || amount <= 0) {
+      setter(null);
+      return;
+    }
+    const result = await fetchVendorQuoteComparison(API, authHeader, {
+      vendorId,
+      quoteAmount: amount,
+      category,
+      city: claimCity,
+    });
+    setter(result?.comparison?.warning ?? null);
+  }, [claimCity]);
 
   const CATEGORIES: Record<string, string> = { labor: 'İşçilik', material: 'Malzeme', subcontractor: 'Taşeron', logistics: 'Lojistik', equipment: 'Ekipman' };
 
@@ -435,7 +458,14 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
               <div className="grid grid-cols-2 gap-2">
                 <input placeholder="Miktar" type="number" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={itemForm.quantity} onChange={(e) => setItemForm((p) => ({ ...p, quantity: e.target.value }))} />
                 <input placeholder="Birim (Adet, m², vb.)" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={itemForm.unit} onChange={(e) => setItemForm((p) => ({ ...p, unit: e.target.value }))} />
-                <input placeholder="Birim Fiyat (₺)" type="number" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={itemForm.unitPrice} onChange={(e) => setItemForm((p) => ({ ...p, unitPrice: e.target.value }))} />
+                <input
+                  placeholder="Birim Fiyat (₺)"
+                  type="number"
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={itemForm.unitPrice}
+                  onChange={(e) => setItemForm((p) => ({ ...p, unitPrice: e.target.value }))}
+                  onBlur={() => void checkQuoteWarning(itemForm.vendorId, itemForm.unitPrice, itemForm.category, setItemQuoteWarning)}
+                />
                 <input placeholder="KDV %" type="number" className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={itemForm.vatRate} onChange={(e) => setItemForm((p) => ({ ...p, vatRate: e.target.value }))} />
               </div>
               {itemManualVendor ? (
@@ -451,12 +481,18 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
                 </div>
               ) : (
                 <VendorSuggestPanel
+                  claimFileId={claimId}
                   city={claimCity}
                   category={itemForm.category}
                   selectedVendorId={itemForm.vendorId}
                   onSelect={(vid) => setItemForm((p) => ({ ...p, vendorId: vid }))}
                   onManual={() => setItemManualVendor(true)}
                 />
+              )}
+              {itemQuoteWarning && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  {itemQuoteWarning}
+                </p>
               )}
             </div>
             <div className="flex gap-2 mt-4">
@@ -548,6 +584,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
                 </div>
               ) : (
                 <VendorSuggestPanel
+                  claimFileId={claimId}
                   city={claimCity}
                   category={costForm.category}
                   selectedVendorId={costForm.vendorId}
@@ -571,8 +608,21 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Tutar (₺)</label>
-                <input type="number" min="0" step="0.01" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.amount} onChange={(e) => setCostForm((p) => ({ ...p, amount: e.target.value }))} />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={costForm.amount}
+                  onChange={(e) => setCostForm((p) => ({ ...p, amount: e.target.value }))}
+                  onBlur={() => void checkQuoteWarning(costForm.vendorId, costForm.amount, costForm.category, setCostQuoteWarning)}
+                />
               </div>
+              {costQuoteWarning && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  {costQuoteWarning}
+                </p>
+              )}
             </div>
             <div className="flex gap-2 mt-4">
               <button type="button" onClick={handleAddCost} disabled={saving || !costForm.description || !costForm.amount || !costForm.entryDate} className="flex-1 bg-orange-600 text-white py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50">

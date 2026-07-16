@@ -8,7 +8,7 @@ export default function YeniAcilDosyaRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/panel/acil-yardim?yeni=1');
+    router.replace('/panel/operasyon?filter=acil&yeni=1');
   }, [router]);
 
   return (

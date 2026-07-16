@@ -7,9 +7,11 @@ import { PrismaModule } from '@/prisma/prisma.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { ClaimResponsibilitiesModule } from '@/modules/claim-responsibilities/claim-responsibilities.module';
 import { OperationalAccessGrantsModule } from '@/modules/operational-access-grants/operational-access-grants.module';
+import { VendorsModule } from '@/modules/vendors/vendors.module';
+import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.module';
 
 @Module({
-  imports: [CustomerAccessLogModule, PrismaModule, NotificationsModule, ClaimResponsibilitiesModule, OperationalAccessGrantsModule],
+  imports: [CustomerAccessLogModule, PrismaModule, NotificationsModule, ClaimResponsibilitiesModule, OperationalAccessGrantsModule, VendorsModule, VendorIntelligenceProfileModule],
   providers: [ClaimFilesService, Approval72hScheduler],
   controllers: [ClaimFilesController],
   exports: [ClaimFilesService, Approval72hScheduler],

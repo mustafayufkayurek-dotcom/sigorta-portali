@@ -5,6 +5,51 @@ import { apiClient } from '@/lib/api-client';
 export type EmergencyUrgency = 'DUSUK' | 'NORMAL' | 'YUKSEK' | 'KRITIK';
 export type EmergencyStatus = 'GELEN' | 'ATANDI' | 'SAHADA' | 'COZULDU' | 'FATURALANDILDI';
 export type OverdueLevel = 'none' | 'warning' | 'critical';
+export type OperationStepState = 'done' | 'current' | 'pending' | 'blocked';
+
+export interface EmergencyOperationStep {
+  key: 'ihbar' | 'atama' | 'maliyet' | 'onay' | 'saha' | 'kapanis' | 'finans' | 'hakedis' | 'odeme';
+  label: string;
+  state: OperationStepState;
+  note?: string;
+}
+
+export interface EmergencyOperationChain {
+  currentStageKey: EmergencyOperationStep['key'];
+  currentStageLabel: string;
+  financeTransferReady: boolean;
+  vendorStatementReady: boolean;
+  paymentReady: boolean;
+  blockerReasons: string[];
+  totals: {
+    gelir: number;
+    gider: number;
+    vendorGider: number;
+  };
+  inbox: {
+    messageCount: number;
+    attachmentCount: number;
+    hasHistory: boolean;
+    lastReceivedAt: string | null;
+  };
+  documents: {
+    totalCount: number;
+    whatsappSentCount: number;
+    digitallyApprovedCount: number;
+    hasApprovedMatbuEvrak: boolean;
+  };
+  finance: {
+    invoiceRequestCount: number;
+    latestInvoiceRequestStatus: string | null;
+    invoiceDraftCount: number;
+    latestInvoiceDraftStatus: string | null;
+  };
+  constraints: {
+    vendorStatementRequiresClaimFile: boolean;
+    paymentRequiresClaimFile: boolean;
+  };
+  steps: EmergencyOperationStep[];
+}
 
 export interface EmergencyCase {
   id: string;
@@ -51,6 +96,7 @@ export interface EmergencyCase {
     reason: string | null;
     validUntil: string | null;
   } | null;
+  operationChain?: EmergencyOperationChain;
   costEntries?: EmergencyCostEntry[];
   invoiceItems?: any[];
 }
@@ -298,6 +344,21 @@ export interface VendorOption {
   name: string;
   phone?: string | null;
   category?: string | null;
+}
+
+export async function getRecommendedVendors(caseId: string, limit = 3): Promise<{ data: VendorRecommendation[] }> {
+  const data = await apiClient.get<unknown>(`/emergency/cases/${caseId}/vendors/recommended`, { limit });
+  return { data: asList<VendorRecommendation>(data) };
+}
+
+export interface VendorRecommendation {
+  id: string;
+  name: string;
+  avgServiceScore: number | null;
+  avgCost: number | null;
+  avgResponseTime: number | null;
+  completedFileCount: number;
+  rank?: number;
 }
 
 export async function getEmergencyVendors(search?: string): Promise<{ data: VendorOption[]; meta: { total: number } }> {

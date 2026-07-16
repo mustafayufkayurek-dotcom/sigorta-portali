@@ -76,7 +76,7 @@ export function OperationFlowStrip({
       detail: ops ? `${ops.totalEmergencyCases} toplam dosya` : 'Veri bekleniyor',
       icon: ACIL_OPERATION_ICON,
       iconClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
-      path: '/panel/acil-yardim',
+      path: '/panel/operasyon?filter=acil',
     }]),
     {
       title: 'Bekleyen Aksiyon',

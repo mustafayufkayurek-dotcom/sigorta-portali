@@ -13,6 +13,9 @@ describe('EmergencyCasesService', () => {
         findUnique: jest.fn(),
       },
       claimFile: { findFirst: jest.fn() },
+      inboundMessage: { findMany: jest.fn().mockResolvedValue([]) },
+      fileDocument: { findMany: jest.fn().mockResolvedValue([]) },
+      invoiceRequest: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const operationalAccessGrants = {
       isDelegationScopedRole: jest.fn().mockReturnValue(false),
@@ -20,7 +23,24 @@ describe('EmergencyCasesService', () => {
       canAccessAssignedUserViaDelegation: jest.fn().mockResolvedValue(false),
       resolveDelegationBanner: jest.fn().mockResolvedValue(null),
     };
-    service = new EmergencyCasesService(prisma, operationalAccessGrants as any);
+    const fileDocumentsService = {
+      checkEmergencyCaseClosureConditions: jest.fn().mockResolvedValue({
+        canCreateInvoiceRequest: false,
+      }),
+    };
+    const invoiceRequestsService = {
+      create: jest.fn(),
+    };
+    const vendorProfile = {
+      onFileCompleted: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new EmergencyCasesService(
+      prisma,
+      operationalAccessGrants as any,
+      fileDocumentsService as any,
+      invoiceRequestsService as any,
+      vendorProfile as any,
+    );
   });
 
   describe('findAllForCustomer', () => {

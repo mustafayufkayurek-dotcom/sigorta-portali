@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Ba
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
+import { VendorRecommendationService } from './vendor-recommendation.service';
 import { resolveVendorPrimaryPhone } from './vendor-contact-resolve.util';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
@@ -12,7 +13,10 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 @Controller('vendors')
 @UseGuards(PermissionsGuard)
 export class VendorsController {
-  constructor(private readonly vendorsService: VendorsService) {}
+  constructor(
+    private readonly vendorsService: VendorsService,
+    private readonly vendorRecommendationService: VendorRecommendationService,
+  ) {}
 
   @Get('contract-expiring')
   @RequirePermissions('vendor.view')
@@ -58,9 +62,33 @@ export class VendorsController {
     res.end(buffer);
   }
 
+  @Get('recommend')
+  @RequirePermissions('vendor.view')
+  @ApiOperation({ summary: 'Operasyon hafızasına dayalı tedarikçi önerisi (Akıllı Tedarikçi Profili)' })
+  async recommend(
+    @Query('city') city?: string,
+    @Query('district') district?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('serviceType') serviceType?: string,
+    @Query('workGroupId') workGroupId?: string,
+    @Query('category') category?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const data = await this.vendorRecommendationService.recommend({
+      city,
+      district,
+      provinceId,
+      serviceType,
+      workGroupId,
+      category,
+      limit: limit ? Number(limit) : 3,
+    });
+    return { success: true, data };
+  }
+
   @Get('suggest')
   @RequirePermissions('vendor.view')
-  @ApiOperation({ summary: 'Akıllı tedarikçi önerisi' })
+  @ApiOperation({ summary: 'Akıllı tedarikçi önerisi (geriye uyum)' })
   async suggest(@Query() query: any) {
     const data = await this.vendorsService.suggest({
       provinceId: query.provinceId,

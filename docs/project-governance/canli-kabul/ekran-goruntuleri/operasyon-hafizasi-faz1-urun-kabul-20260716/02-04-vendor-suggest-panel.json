@@ -1,0 +1,15 @@
+{
+  "url": "http://localhost:3001/panel/hasar-dosyalari/8757467a-a32d-4068-ae6c-3c927afccf3f?grup=finans",
+  "at": "2026-07-16T12:40:25.655Z",
+  "injectUsed": false,
+  "claimId": "8757467a-a32d-4068-ae6c-3c927afccf3f",
+  "panelVisible": true,
+  "terminologyVisible": false,
+  "smartProfileVisible": true,
+  "metricsVisible": {
+    "operationGroup": true,
+    "costMemory": false,
+    "serviceQuality": true
+  },
+  "modalTextSample": "Gerçekleşen Maliyet Ekle Tarih Ana Kategori — Seçiniz — Tedarikçi Hakediş Yönetici Ulaşım Gideri Yönetici Denetim ve Refakat Malzeme Gideri İletişim / Telefon Gideri Diğer Değişken Giderler Ofis Kirası Personel Maaşları Yazılım Lisansları Sigorta Primleri Muhasebe / Hukuk Giderleri Açıklama Akıllı Tedarikçi Profili — Operasyon Hafızası Manuel Seç D278F Tedarikçi D278F-1781626445338 0 iş · Skor 50 Operasyon Grubu: Tesisat Hizmetleri D278F Tedarikçi D278F-1781626504961 0 iş · Skor 50 Operasyon Grubu: Tesisat Hizmetleri D278F Tedarikçi D278F-1781626555513 0 iş · Skor 50 Operasyon Grubu: Tesisat Hizmetleri KDV Oranı (%) % Tutar (₺) Ekle İptal"
+}

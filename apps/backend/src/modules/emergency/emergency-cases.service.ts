@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmergencyStatus } from '@prisma/client';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
@@ -9,17 +9,61 @@ import { UpdateEmergencyStatusDto } from './dto/update-emergency-status.dto';
 import { CreateCostEntryDto } from './dto/create-cost-entry.dto';
 import { UpdateCostEntryDto } from './dto/update-cost-entry.dto';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
+import { FileDocumentsService } from '../file-documents/file-documents.service';
+import { InvoiceRequestsService } from '../invoice-requests/invoice-requests.service';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
+import { buildEmergencyOperationChain } from './emergency-operation-chain';
+import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 
 @Injectable()
 export class EmergencyCasesService {
+  private readonly logger = new Logger(EmergencyCasesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly operationalAccessGrants: OperationalAccessGrantsService,
+    private readonly fileDocumentsService: FileDocumentsService,
+    private readonly invoiceRequestsService: InvoiceRequestsService,
+    private readonly vendorProfile: VendorIntelligenceProfileService,
   ) {}
+
+  /** EPIC-04: Kapanışta tedarikçi hakediş entegrasyon noktası (onay sonrası VendorStatements bağlanacak). */
+  private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<void> {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      select: { id: true, caseNo: true, assignedVendorId: true },
+    });
+    if (!emergencyCase?.assignedVendorId) {
+      this.logger.debug(`[EPIC-04] Kapanış hakediş atlandı — tedarikçi yok: ${caseId}`);
+      return;
+    }
+    this.logger.log(
+      `[EPIC-04] Kapanış hakediş entegrasyonu bekliyor — case=${emergencyCase.caseNo} vendor=${emergencyCase.assignedVendorId}`,
+    );
+    await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
+      this.logger.warn(`[EPIC-04] Otomatik finans aktarımı atlandı: ${err?.message}`),
+    );
+    await this.vendorProfile.onFileCompleted({ type: 'emergency_case', id: caseId }).catch((err) =>
+      this.logger.warn(`[VendorIntelligenceProfile] Acil kapanış hook: ${err?.message}`),
+    );
+  }
+
+  /** EPIC-04: Finansa aktarım entegrasyon noktası (onay sonrası finance modülü bağlanacak). */
+  private async onEmergencyCaseInvoiced(caseId: string, userId: string): Promise<void> {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      select: { caseNo: true },
+    });
+    this.logger.log(
+      `[EPIC-04] Finansa aktarım entegrasyonu bekliyor — case=${emergencyCase?.caseNo ?? caseId}`,
+    );
+    await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
+      this.logger.warn(`[EPIC-04] Fatura talebi senkronu atlandı: ${err?.message}`),
+    );
+  }
 
   private computeOverdueLevel(
     resolvedAt: Date | null,
@@ -45,6 +89,124 @@ export class EmergencyCasesService {
       .filter((e: any) => e.entryType === 'gider')
       .reduce((s: number, e: any) => s + e.amount, 0);
     return { ...c, overdueLevel, totalGelir, totalGider, netKar: totalGelir - totalGider };
+  }
+
+  private async ensureFinanceTransfer(caseId: string, userId: string): Promise<void> {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      include: {
+        costEntries: true,
+        invoiceRequests: {
+          where: { status: { in: ['pending', 'approved', 'invoiced'] } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    if (!emergencyCase) return;
+    if (!(emergencyCase.status === EmergencyStatus.COZULDU || emergencyCase.status === EmergencyStatus.FATURALANDILDI)) {
+      return;
+    }
+    if (emergencyCase.invoiceRequests.length > 0) return;
+
+    const closure = await this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId);
+    if (!closure.canCreateInvoiceRequest) return;
+
+    const gelirEntries = emergencyCase.costEntries.filter((entry) => entry.entryType === 'gelir');
+    const totalAmount = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    if (totalAmount <= 0) return;
+
+    await this.invoiceRequestsService.create(
+      {
+        serviceType: 'emergency',
+        emergencyCaseId: caseId,
+        insuranceCompanyId: emergencyCase.customerId ?? undefined,
+        insuranceCompanyName: emergencyCase.customerName,
+        fileNo: emergencyCase.fileNo ?? emergencyCase.caseNo,
+        totalAmount,
+        workItemsSummary: gelirEntries.map((entry) => ({
+          description: entry.description,
+          amount: entry.amount,
+        })),
+        notes: 'Acil yardım operasyon zinciri kapanış hooku ile otomatik oluşturuldu.',
+      },
+      userId,
+    );
+  }
+
+  private async buildOperationChain(caseId: string) {
+    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure] = await Promise.all([
+      this.prisma.emergencyCase.findUnique({
+        where: { id: caseId },
+        include: {
+          assignedVendor: { select: { name: true } },
+          costEntries: true,
+          invoiceItems: {
+            include: { draft: { select: { status: true } } },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      }),
+      this.prisma.inboundMessage.findMany({
+        where: { emergencyCaseId: caseId },
+        select: {
+          receivedAt: true,
+          attachments: { select: { id: true } },
+        },
+        orderBy: { receivedAt: 'desc' },
+      }),
+      this.prisma.fileDocument.findMany({
+        where: { entityType: 'emergency_case', entityId: caseId },
+        select: {
+          documentKind: true,
+          whatsappSentAt: true,
+          digitallyApprovedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.invoiceRequest.findMany({
+        where: { emergencyCaseId: caseId },
+        select: { status: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId),
+    ]);
+
+    if (!emergencyCase) {
+      throw new NotFoundException('Acil vaka bulunamadı');
+    }
+
+    const totalGelir = emergencyCase.costEntries
+      .filter((entry) => entry.entryType === 'gelir')
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const totalGider = emergencyCase.costEntries
+      .filter((entry) => entry.entryType === 'gider')
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const vendorGider = emergencyCase.costEntries
+      .filter((entry) => entry.entryType === 'gider' && !!entry.vendorId)
+      .reduce((sum, entry) => sum + entry.amount, 0);
+
+    return buildEmergencyOperationChain({
+      status: emergencyCase.status,
+      assignedVendorName: emergencyCase.assignedVendor?.name,
+      totalGelir,
+      totalGider,
+      vendorGider,
+      inboxMessageCount: inboundMessages.length,
+      inboxAttachmentCount: inboundMessages.reduce((sum, item) => sum + item.attachments.length, 0),
+      lastInboxAt: inboundMessages[0]?.receivedAt?.toISOString() ?? null,
+      documentCount: documents.length,
+      whatsappSentCount: documents.filter((doc) => !!doc.whatsappSentAt).length,
+      digitallyApprovedCount: documents.filter((doc) => !!doc.digitallyApprovedAt).length,
+      hasApprovedMatbuEvrak: documents.some(
+        (doc) => doc.documentKind === 'matbu_evrak' && !!doc.digitallyApprovedAt,
+      ),
+      invoiceRequestCount: invoiceRequests.length,
+      latestInvoiceRequestStatus: invoiceRequests[0]?.status ?? null,
+      invoiceDraftCount: emergencyCase.invoiceItems.length,
+      latestInvoiceDraftStatus: emergencyCase.invoiceItems[0]?.draft?.status ?? null,
+      canCreateInvoiceRequest: closure.canCreateInvoiceRequest,
+    });
   }
 
   async generateCaseNo(): Promise<string> {
@@ -353,7 +515,8 @@ export class EmergencyCasesService {
         )
       : null;
 
-    return { data: { ...this.enrichCase(c), activeDelegation } };
+    const operationChain = await this.buildOperationChain(id);
+    return { data: { ...this.enrichCase(c), activeDelegation, operationChain } };
   }
 
   async update(id: string, dto: UpdateEmergencyCaseDto) {
@@ -388,7 +551,7 @@ export class EmergencyCasesService {
     return { data: this.enrichCase(updated) };
   }
 
-  async updateStatus(id: string, dto: UpdateEmergencyStatusDto) {
+  async updateStatus(id: string, dto: UpdateEmergencyStatusDto, userId = 'system') {
     await this.findOne(id);
     const data: any = { status: dto.status };
     if (dto.status === EmergencyStatus.COZULDU) data.resolvedAt = new Date();
@@ -398,6 +561,16 @@ export class EmergencyCasesService {
       data,
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    if (dto.status === EmergencyStatus.COZULDU) {
+      await this.onEmergencyCaseClosed(id, userId).catch((err) =>
+        this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`),
+      );
+    }
+    if (dto.status === EmergencyStatus.FATURALANDILDI) {
+      await this.onEmergencyCaseInvoiced(id, userId).catch((err) =>
+        this.logger.warn(`[EPIC-04] Finans aktarım hook hatası: ${err?.message}`),
+      );
+    }
     return { data: this.enrichCase(updated) };
   }
 

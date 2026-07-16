@@ -62,7 +62,14 @@ function collapseAliasKey(value: string): string {
   return collapseKey(value)
     .toLocaleLowerCase('tr-TR')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    // Türkçe ı NFD ile düşmez; alias lookup ASCII anahtarlarla hizalanır.
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
 }
 
 function titleCaseTokenTR(token: string): string {
@@ -120,6 +127,38 @@ export function mapInboundLossTypeToMeridyen(raw?: string | null): string | unde
   if (aliasKey.includes('cam') && aliasKey.includes('kir')) return 'Cam Kırılması';
   if (aliasKey.includes('dahili') && aliasKey.includes('su')) return 'Dahili Su';
   return undefined;
+}
+
+/**
+ * Kanonik etikete giden bilinen alias varyantları (okuma-zamanı filtre genişletme).
+ * Orijinal metni silmez; yalnızca eşleşen anahtarları listeler.
+ */
+export function listInboundAliasVariantsForCanonical(canonical?: string | null): string[] {
+  if (!canonical?.trim()) return [];
+  const target = collapseKey(canonical);
+  const targetAlias = collapseAliasKey(canonical);
+  const variants = new Set<string>([target]);
+
+  for (const [alias, mapped] of Object.entries(LOSS_TYPE_ALIASES)) {
+    if (collapseAliasKey(mapped) !== targetAlias) continue;
+    variants.add(mapped);
+    variants.add(alias);
+    variants.add(toInboundTitleCaseTR(alias));
+  }
+  for (const [alias, mapped] of Object.entries(CATEGORY_ALIASES)) {
+    if (collapseAliasKey(mapped) !== targetAlias) continue;
+    variants.add(mapped);
+    variants.add(alias);
+    variants.add(toInboundTitleCaseTR(alias));
+  }
+  return [...variants];
+}
+
+/** Serbest metin için sync kanonik etiket (DB yok) — eşleşmezse null */
+export function resolveInboundCanonicalLabel(raw?: string | null): string | null {
+  if (!raw?.trim()) return null;
+  if (isInboundIhbarNoteText(raw)) return null;
+  return mapInboundLossTypeToMeridyen(raw) ?? mapInboundCategoryKnown(raw) ?? null;
 }
 
 /**

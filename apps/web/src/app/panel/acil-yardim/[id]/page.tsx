@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   getCase, updateCaseStatus, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
-  getEmergencyVendors, createVendorQuick,
-  EmergencyCase, EmergencyCostEntry, EmergencyStatus, EmergencyUrgency, VendorOption,
+  getEmergencyVendors, createVendorQuick, getRecommendedVendors,
+  EmergencyCase, EmergencyCostEntry, EmergencyStatus, EmergencyUrgency, VendorOption, VendorRecommendation,
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
@@ -35,12 +35,34 @@ const URGENCY_COLOR: Record<EmergencyUrgency, string> = {
   YUKSEK: 'bg-orange-50 text-orange-700',
   KRITIK: 'bg-red-100 text-red-700',
 };
+const OPERATION_STEP_STYLES = {
+  done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  current: 'bg-blue-50 text-blue-700 border-blue-200',
+  pending: 'bg-slate-50 text-slate-500 border-slate-200',
+  blocked: 'bg-amber-50 text-amber-800 border-amber-200',
+} as const;
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  pending: 'Bekliyor',
+  approved: 'Onaylandı',
+  invoiced: 'Faturalandı',
+  cancelled: 'İptal',
+  draft: 'Taslak',
+};
+const OPERATION_STEP_LABELS = {
+  done: 'Tamam',
+  current: 'Aktif',
+  pending: 'Bekliyor',
+  blocked: 'Bloklu',
+} as const;
 
 function fmtCurrency(n: number) {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
 }
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function fmtDateTime(d: string) {
+  return new Date(d).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // ─── Inline Vendor Selector ───────────────────────────────────────────────────
@@ -292,6 +314,8 @@ export default function VakaDetayPage() {
   const [showGiderForm, setShowGiderForm] = useState(false);
   const [giderForm, setGiderForm] = useState(EMPTY_COST_FORM);
   const [giderVendor, setGiderVendor] = useState<VendorOption | null>(null);
+  const [giderVendorRecs, setGiderVendorRecs] = useState<VendorRecommendation[]>([]);
+  const [giderRecsLoading, setGiderRecsLoading] = useState(false);
   const [giderLoading, setGiderLoading] = useState(false);
   const [giderError, setGiderError] = useState<string | null>(null);
 
@@ -317,6 +341,15 @@ export default function VakaDetayPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!showGiderForm || !id) return;
+    setGiderRecsLoading(true);
+    getRecommendedVendors(id, 3)
+      .then((res) => setGiderVendorRecs(res.data ?? []))
+      .catch(() => setGiderVendorRecs([]))
+      .finally(() => setGiderRecsLoading(false));
+  }, [showGiderForm, id]);
 
   async function handleStatusChange(newStatus: EmergencyStatus) {
     setStatusLoading(true);
@@ -457,7 +490,7 @@ export default function VakaDetayPage() {
     <div className="max-w-5xl mx-auto space-y-5">
       {/* Back + header */}
       <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <Link href="/panel/acil-yardim" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+        <Link href="/panel/operasyon?filter=acil" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -510,6 +543,78 @@ export default function VakaDetayPage() {
           })}
         </div>
       </div>
+
+      {vaka.operationChain && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 tracking-wider">Tek Operasyon Zinciri</p>
+              <h2 className="text-sm font-semibold text-slate-900 mt-1">
+                Güncel Aşama: {vaka.operationChain.currentStageLabel}
+              </h2>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className={`px-2 py-1 rounded-full font-semibold ${vaka.operationChain.financeTransferReady ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                {vaka.operationChain.financeTransferReady ? 'Finansa Aktarıma Hazır' : 'Finans Koşulları Eksik'}
+              </span>
+              <span className={`px-2 py-1 rounded-full font-semibold ${vaka.operationChain.vendorStatementReady ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>
+                {vaka.operationChain.vendorStatementReady ? 'Hakediş Şema Bloklu' : 'Hakediş Beklemede'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {vaka.operationChain.steps.map((step) => (
+              <div key={step.key} className={`rounded-xl border px-3 py-2 ${OPERATION_STEP_STYLES[step.state]}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold">{step.label}</p>
+                  <span className="text-[10px] font-bold tracking-wide">{OPERATION_STEP_LABELS[step.state]}</span>
+                </div>
+                {step.note && <p className="text-[11px] mt-1 opacity-90">{step.note}</p>}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-xs font-semibold text-slate-500 tracking-wider">Dosya Geçmişi</p>
+              <p className="mt-2 text-slate-800 font-medium">{vaka.operationChain.inbox.messageCount} yazışma, {vaka.operationChain.inbox.attachmentCount} ek</p>
+              <p className="text-xs text-slate-500 mt-1">{vaka.operationChain.documents.totalCount} evrak, {vaka.operationChain.documents.whatsappSentCount} WhatsApp gönderimi</p>
+              {vaka.operationChain.inbox.lastReceivedAt && (
+                <p className="text-xs text-slate-400 mt-1">Son kayıt: {fmtDateTime(vaka.operationChain.inbox.lastReceivedAt)}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-xs font-semibold text-slate-500 tracking-wider">Finans Bağı</p>
+              <p className="mt-2 text-slate-800 font-medium">{vaka.operationChain.finance.invoiceRequestCount} fatura talebi</p>
+              <p className="text-xs text-slate-500 mt-1">{vaka.operationChain.finance.invoiceDraftCount} finans taslağı</p>
+              {(vaka.operationChain.finance.latestInvoiceRequestStatus || vaka.operationChain.finance.latestInvoiceDraftStatus) && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Son durum: {INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceRequestStatus ?? ''] ?? vaka.operationChain.finance.latestInvoiceRequestStatus ?? INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceDraftStatus ?? ''] ?? vaka.operationChain.finance.latestInvoiceDraftStatus}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-xs font-semibold text-slate-500 tracking-wider">Hakediş ve Ödeme</p>
+              <p className="mt-2 text-slate-800 font-medium">Tedarikçi gideri: {fmtCurrency(vaka.operationChain.totals.vendorGider)}</p>
+              <p className="text-xs text-slate-500 mt-1">Mevcut zincir hasar dosyası bağı istediği için şimdilik blocker olarak izleniyor.</p>
+            </div>
+          </div>
+
+          {vaka.operationChain.blockerReasons.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-xs font-semibold text-amber-800 tracking-wider">Açık Blokerler</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {vaka.operationChain.blockerReasons.map((reason) => (
+                  <span key={reason} className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-amber-900 border border-amber-200">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Dosya Bilgileri */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
@@ -834,6 +939,37 @@ export default function VakaDetayPage() {
                 />
               </div>
               <div className="mb-1.5">
+                {giderRecsLoading ? (
+                  <p className="text-[10px] text-slate-400 mb-1">Öneriler yükleniyor...</p>
+                ) : giderVendorRecs.length > 0 ? (
+                  <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/50 p-2">
+                    <p className="text-[10px] font-semibold text-blue-700 mb-1">Önerilen İlk 3 Tedarikçi</p>
+                    <div className="space-y-1">
+                      {giderVendorRecs.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setGiderVendor({ id: v.id, name: v.name })}
+                          className={`w-full text-left rounded px-2 py-1 text-[10px] border ${
+                            giderVendor?.id === v.id
+                              ? 'border-blue-500 bg-blue-100 text-blue-900'
+                              : 'border-slate-200 bg-white hover:border-blue-200'
+                          }`}
+                        >
+                          <span className="font-semibold">{v.name}</span>
+                          <span className="block text-slate-400 mt-0.5">
+                            {[
+                              v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
+                              v.avgCost != null ? `Ort. ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
+                              v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
+                              `${v.completedFileCount} dosya`,
+                            ].filter(Boolean).join(' · ')}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <VendorSelector value={giderVendor} onChange={setGiderVendor} />
               </div>
               <div className="flex gap-1.5">

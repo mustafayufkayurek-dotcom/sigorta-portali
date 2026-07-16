@@ -1,0 +1,63 @@
+{
+  "at": "2026-07-16T12:40:36.229Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "injectUsed": false,
+  "claimId": "8757467a-a32d-4068-ae6c-3c927afccf3f",
+  "emergencyId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "items": [
+    {
+      "n": 1,
+      "title": "Acil Yardım Operasyon Akışı",
+      "status": "PASS",
+      "reason": "redirect=http://localhost:3001/panel/operasyon?filter=acil; detay f4624c59-30e9-4380-8ac9-abb2f0c36757",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/01-acil-operasyon-akisi.png"
+    },
+    {
+      "n": 2,
+      "title": "Terminoloji",
+      "status": "FAIL",
+      "reason": "Panel açık; dosya lossType=Dahili Su → Operasyon Grubu: Tesisat Hizmetleri. Cam Kırığı → Cam Kırılması → Cam Hizmetleri UI’da yok (inject yok).",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/02-04-vendor-suggest-panel.png"
+    },
+    {
+      "n": 3,
+      "title": "Akıllı Tedarikçi Profili",
+      "status": "PASS",
+      "reason": "Panel: Akıllı Tedarikçi Profili — Operasyon Hafızası",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/02-04-vendor-suggest-panel.png"
+    },
+    {
+      "n": 4,
+      "title": "Öneri metrikleri",
+      "status": "FAIL",
+      "reason": "Operasyon Grubu + Skor var; Maliyet Hafızası satırı yok (costMemory null, Ort/Min/Max yok).",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/02-04-vendor-suggest-panel.png"
+    },
+    {
+      "n": 5,
+      "title": "WhatsApp / yazışma dosyaya bağlı",
+      "status": "PASS",
+      "reason": "Acil dosya f4624c59-30e9-4380-8ac9-abb2f0c36757: Dosya Geçmişi/WhatsApp görünür",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/05-whatsapp-dosya.png"
+    },
+    {
+      "n": 6,
+      "title": "Hakediş akışı",
+      "status": "PASS",
+      "reason": "Acil dosyada Hakediş ve Ödeme paneli görünür",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/06-hakedis-akisi.png"
+    },
+    {
+      "n": 7,
+      "title": "Cari",
+      "status": "PASS",
+      "reason": "Carilerim gerçek liste görünür",
+      "shot": "docs/project-governance/canli-kabul/ekran-goruntuleri/operasyon-hafizasi-faz1-urun-kabul-20260716/07-cari-baglantisi.png"
+    }
+  ],
+  "summary": {
+    "pass": 5,
+    "fail": 2
+  }
+}

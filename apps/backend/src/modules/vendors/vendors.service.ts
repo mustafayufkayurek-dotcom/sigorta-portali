@@ -1,11 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
+import { VendorRecommendationService } from './vendor-recommendation.service';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class VendorsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly vendorRecommendation: VendorRecommendationService,
+  ) {}
 
   private mapVendorContactInput(c: any, vendorId: string) {
     const fullName =
@@ -498,30 +502,17 @@ export class VendorsService {
   }
 
   async suggest(params: { provinceId?: string; city?: string; workGroupId?: string; category?: string }) {
-    const { provinceId, workGroupId, category } = params;
-    const cityRaw = typeof params.city === 'string' ? params.city.trim() : '';
-    const cityUnresolved = !cityRaw
-      || ['belirtilmemiş', 'belirtilmemis', 'belirtilmedi'].includes(cityRaw.toLocaleLowerCase('tr-TR'));
-    const city = cityUnresolved ? undefined : cityRaw;
-
-    const where: any = { status: 'active' };
-
-    // Filter by service area (province by id or city name) — Belirtilmemiş şehir filtrelemez
-    if (provinceId || city) {
-      where.serviceAreas = {
-        some: provinceId
-          ? { provinceId }
-          : { province: { name: { equals: city, mode: 'insensitive' } } },
-      };
-    }
-
-    // Filter by work group
-    if (workGroupId) {
-      where.vendorWorkGroups = { some: { workGroupId } };
-    }
+    const recommendations = await this.vendorRecommendation.recommend({
+      provinceId: params.provinceId,
+      city: params.city,
+      workGroupId: params.workGroupId,
+      category: params.category,
+      limit: 3,
+    });
+    if (recommendations.length === 0) return [];
 
     const vendors = await this.prisma.vendor.findMany({
-      where,
+      where: { id: { in: recommendations.map((r) => r.id) } },
       include: {
         serviceAreas: {
           include: {
@@ -533,33 +524,33 @@ export class VendorsService {
           include: { workGroup: { select: { id: true, code: true, name: true } } },
         },
       },
-      take: 50,
     });
 
-    // Compute stats per vendor
-    const results = await Promise.all(
-      vendors.map(async (v) => {
-        const [completedJobs, activeJobs, avgAmount] = await Promise.all([
-          this.prisma.costEntry.count({ where: { vendorId: v.id } }),
-          this.prisma.costEntry.count({
-            where: { vendorId: v.id, claimFile: { currentStatus: { isClosedState: false } } },
-          }),
-          category
-            ? this.prisma.costEntry.aggregate({
-                where: { vendorId: v.id, category },
-                _avg: { amount: true },
-              }).then((r) => r._avg.amount)
-            : Promise.resolve(null),
-        ]);
-
-        const availableCapacity: null = null;
-        const score = completedJobs * 2 + 10;
-
-        return { ...v, stats: { completedJobs, activeJobs, avgAmount, availableCapacity }, score };
-      }),
-    );
-
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, 10).map(({ score, ...v }) => v);
+    const rankById = new Map(recommendations.map((r) => [r.id, r]));
+    return vendors
+      .map((vendor) => {
+        const rec = rankById.get(vendor.id);
+        if (!rec) return null;
+        return {
+          ...vendor,
+          operationGroup: rec.operationGroup ?? rec.costMemory?.operationGroup ?? null,
+          canonicalLabel: rec.canonicalLabel ?? rec.costMemory?.canonicalLabel ?? null,
+          originalServiceType:
+            rec.originalServiceType ?? rec.costMemory?.originalServiceType ?? null,
+          stats: {
+            completedJobs: rec.completedFileCount,
+            activeJobs: 0,
+            avgAmount: rec.avgCost,
+            availableCapacity: null,
+            costMemory: rec.costMemory ?? null,
+            recommendationScore: rec.compositeScore,
+            avgServiceScore: rec.avgServiceScore,
+            avgResponseTime: rec.avgResponseTime,
+            expertiseMatchScore: rec.expertiseMatchScore ?? null,
+          },
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v != null)
+      .sort((a, b) => (rankById.get(a.id)?.rank ?? 99) - (rankById.get(b.id)?.rank ?? 99));
   }
 }

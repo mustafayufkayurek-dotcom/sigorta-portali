@@ -123,7 +123,7 @@ export function AdminOperationsStatusBand({
                 label="Acil Yardım"
                 value={opsQuery.isError ? '—' : (ops?.openEmergencyCases ?? '—')}
                 color="bg-cyan-600"
-                href="/panel/acil-yardim"
+                href="/panel/operasyon?filter=acil"
                 subtext={
                   ops && !opsQuery.isError
                     ? `${ops.totalEmergencyCases} Toplam`

@@ -77,7 +77,7 @@ export function AdminOperationsKpiBand({ staggerIndex = 0, hideAcil = false }: A
                 value={opsFailed ? '—' : (ops?.totalEmergencyCases ?? '—')}
                 pct={ops && !opsFailed ? formatKpiPct(ops.totalEmergencyCases, total) : undefined}
                 color="bg-cyan-600"
-                href="/panel/acil-yardim"
+                href="/panel/operasyon?filter=acil"
               />
             )}
             <StripKpi

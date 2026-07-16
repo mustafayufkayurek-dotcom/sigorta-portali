@@ -516,7 +516,6 @@ function DosyadaKimlerVarCard({
     if (!canAssign || activePanel !== 'supplier' || !claim?.id) return;
     setVendorsLoading(true);
     setVendorSuggLoading(true);
-    const city = resolvedCity ?? '';
     const loadAllActive = () =>
       axios.get(`${API}/vendors?status=active&limit=100`, { headers: authHeader() })
         .then((r2) => {
@@ -531,19 +530,19 @@ function DosyadaKimlerVarCard({
 
     Promise.all([
       axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() }),
-      axios.get(`${API}/vendors/suggest?city=${encodeURIComponent(city)}`, { headers: authHeader() }),
+      axios.get(`${API}/claim-files/${claim.id}/vendors/recommended?limit=3`, { headers: authHeader() }),
     ])
-      .then(async ([nearbyRes, suggestRes]) => {
+      .then(async ([nearbyRes, recommendRes]) => {
         const nearby = nearbyRes.data.data ?? [];
-        const suggested = suggestRes.data.data ?? [];
+        const recommended = recommendRes.data.data ?? [];
         if (nearby.length > 0) {
           setVendors(nearby);
-          setVendorSuggestions(suggested);
+          setVendorSuggestions(recommended);
           return;
         }
-        if (suggested.length > 0) {
-          setVendors(suggested);
-          setVendorSuggestions(suggested);
+        if (recommended.length > 0) {
+          setVendors(recommended);
+          setVendorSuggestions(recommended);
           return;
         }
         // Bölge yok / eşleşme yok: operasyon atayabilsin diye tüm aktifler
@@ -1062,11 +1061,11 @@ function DosyadaKimlerVarCard({
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {vendorSuggestions.length > 0 && regionLabel && (
+                  {vendorSuggestions.length > 0 && (
                     <div>
-                      <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen Tedarikçiler (Maliyet / Kalite / Bölge)</p>
-                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                        {vendorSuggestions.slice(0, 8).map((v) => {
+                      <p className="text-[11px] font-medium text-slate-500 mb-1.5">Önerilen İlk 3 Tedarikçi</p>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                        {vendorSuggestions.slice(0, 3).map((v) => {
                           const already = assignedSupplierIdSet.has(v.id);
                           const selected = selectedVendorIds.includes(v.id);
                           return (
@@ -1075,7 +1074,7 @@ function DosyadaKimlerVarCard({
                               type="button"
                               disabled={already}
                               onClick={() => toggleVendorSelect(v.id)}
-                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs disabled:opacity-60 ${
+                              className={`w-full text-left rounded-lg border px-2.5 py-2 text-xs disabled:opacity-60 ${
                                 already
                                   ? 'border-purple-200 bg-purple-50 text-purple-700'
                                   : selected
@@ -1083,11 +1082,20 @@ function DosyadaKimlerVarCard({
                                     : 'border-slate-200 bg-white hover:border-purple-200'
                               }`}
                             >
-                              <span className="font-medium">{v.name}</span>
-                              {already && <span className="text-[10px] text-purple-500">Atandı</span>}
-                              {v.stats?.completedJobs != null && (
-                                <span className="text-[10px] text-slate-400">{v.stats.completedJobs} iş</span>
-                              )}
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold truncate">{v.name}</span>
+                                {v.rank != null && (
+                                  <span className="text-[10px] text-slate-400 shrink-0">#{v.rank}</span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                {[
+                                  v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
+                                  v.avgCost != null ? `Ort. ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
+                                  v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
+                                  v.completedFileCount != null ? `${v.completedFileCount} dosya` : null,
+                                ].filter(Boolean).join(' · ') || 'Operasyon verisi birikiyor'}
+                              </p>
                             </button>
                           );
                         })}

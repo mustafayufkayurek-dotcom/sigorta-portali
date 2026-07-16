@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ClaimFilesService } from './claim-files.service';
 import { Approval72hScheduler } from './approval-72h.scheduler';
+import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { PhoneMaskingInterceptor } from '@/common/interceptors/phone-masking.interceptor';
@@ -33,6 +34,7 @@ export class ClaimFilesController {
   constructor(
     private readonly claimFilesService: ClaimFilesService,
     private readonly approval72hScheduler: Approval72hScheduler,
+    private readonly vendorProfileService: VendorIntelligenceProfileService,
   ) {}
 
   @Get()
@@ -286,6 +288,20 @@ export class ClaimFilesController {
     @CurrentUser() user: any,
   ) {
     const data = await this.claimFilesService.submitCostReport(id, body, user);
+    return { success: true, data };
+  }
+
+  @Get(':id/vendors/recommended')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: 'Dosya bölgesine göre ağırlıklı tedarikçi önerisi (ilk 3)' })
+  async getRecommendedVendors(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const data = await this.vendorProfileService.recommendForClaimFile(
+      id,
+      limit ? Number(limit) : 3,
+    );
     return { success: true, data };
   }
 
