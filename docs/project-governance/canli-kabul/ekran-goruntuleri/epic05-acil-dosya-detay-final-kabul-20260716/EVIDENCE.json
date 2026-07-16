@@ -1,0 +1,112 @@
+{
+  "at": "2026-07-16T18:16:53.393Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "injectUsed": false,
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "caseSource": "seed-id",
+  "caseNo": "AY-202606-0001",
+  "fileDate": "2026-06-16T19:35:00.000Z",
+  "historicalCase": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "caseNo": "AY-202606-0001",
+    "fileDate": "2026-06-16T19:35:00.000Z"
+  },
+  "viewports": [
+    {
+      "name": "01-desktop",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-acil-dosya-detay-final-kabul-20260716/01-desktop.png",
+      "width": 1440
+    },
+    {
+      "name": "02-tablet",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-acil-dosya-detay-final-kabul-20260716/02-tablet.png",
+      "width": 768
+    },
+    {
+      "name": "03-mobile",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-acil-dosya-detay-final-kabul-20260716/03-mobile.png",
+      "width": 390,
+      "hScroll": false
+    },
+    {
+      "name": "04-onay-talebi-modal",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-acil-dosya-detay-final-kabul-20260716/04-onay-talebi-modal.png"
+    }
+  ],
+  "maddeler": {
+    "1_dosya_basligi": {
+      "status": "PASS",
+      "reason": null
+    },
+    "2_guncel_islem": {
+      "status": "PASS",
+      "reason": null
+    },
+    "3_tedarikci_onerileri": {
+      "status": "PASS",
+      "reason": null
+    },
+    "4_maliyet_onay": {
+      "status": "PASS",
+      "reason": null
+    },
+    "5_onay_talebi": {
+      "status": "PASS",
+      "reason": null
+    },
+    "6_whatsapp": {
+      "status": "PASS",
+      "reason": null
+    },
+    "7_tarihsel_dosya": {
+      "status": "FAIL",
+      "reason": "Tarihsel dosya bulundu (AY-202606-0001, 2026-06-16T19:35:00.000Z) ancak kodda 01.07.2026 cutoff / tarihsel muafiyet kuralı yok; kabul kriteri 'kural yoksa FAIL'. UI bloker metni: false"
+    },
+    "8_mobil": {
+      "status": "PASS",
+      "reason": null
+    }
+  },
+  "overall": "FAIL",
+  "historicalUi": {
+    "blockers": false,
+    "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-acil-dosya-detay-final-kabul-20260716/05-tarihsel-dosya.png",
+    "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757"
+  },
+  "uiSample": {
+    "header": {
+      "hasMusteri": true,
+      "hasSigortali": true,
+      "hasHizmet": true,
+      "hasAdres": true,
+      "hasSorumlu": true,
+      "logoInHeader": false,
+      "headerText": "AY2026-0012-D276B-1781638518232 AY-202606-0001 Müşteri (Asistans) Mehmet Kaya Sigortalı — Hizmet Türü Çilingir Dosya Sorumlusu — Adres Bodrum Merkez, Muğla / Bodrum"
+    },
+    "guncel": {
+      "count": 1,
+      "titleCount": 1,
+      "present": true,
+      "cards": 1
+    },
+    "tedarik": {
+      "recItems": 0,
+      "hasGoogle": true,
+      "googleOnlyWhenEmpty": true,
+      "text": "Tedarikçi Önerileri Uygun tedarikçi önerisi yok. Google'da Ara Atama zorunlu değildir."
+    },
+    "maliyet": {
+      "hasAlis": true,
+      "hasSatis": true,
+      "firstScreenHasForbidden": false,
+      "maliyetText": "Maliyet Ve Onay Tedarikçi Alış Fiyatı(İç Kullanım) Meridyen Satış Fiyatı(Dışarıya Gönderilir) Satış fiyatı asistansa iletilir; alış fiyatı yalnızca Meridyen iç kullanımındadır. Onay Talebi Oluştur"
+    },
+    "whatsapp": {
+      "present": true,
+      "waBound": true,
+      "waNoAutoStage": true,
+      "text": "WhatsApp Ana iletişim: yazışma, foto ve belge. Otomatik algı metni sonraki sürümde; tek dokunuş onay için hazır UI. E-posta Yazışmaları 1 kayıt Local Test Yazisma — Acil Dosya Local Test Musteri · musteri@local.test İhbar Local seed: WhatsApp/yazisma referansi 16.07.2026 14:59 Yanıtla 📎 Local-Test-Evrak.pdf Belgeler Matbu Evrak Gönderildi Dijital onay Sigortalı linkten onay verince tamamlanır Wha"
+    }
+  }
+}

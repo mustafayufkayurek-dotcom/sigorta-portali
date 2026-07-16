@@ -1,0 +1,24 @@
+1. Dosya Başlığı
+PASS
+
+2. Güncel İşlem
+PASS
+
+3. Tedarikçi Önerileri
+PASS
+
+4. Maliyet ve Onay
+PASS
+
+5. Onay Talebi
+PASS
+
+6. WhatsApp
+PASS
+
+7. Tarihsel Dosya
+FAIL
+Neden: Tarihsel dosya bulundu (AY-202606-0001, 2026-06-16T19:35:00.000Z) ancak kodda 01.07.2026 cutoff / tarihsel muafiyet kuralı yok; kabul kriteri 'kural yoksa FAIL'. UI bloker metni: false
+
+8. Mobil
+PASS

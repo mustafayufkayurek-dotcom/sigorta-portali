@@ -1,0 +1,3 @@
+7. Tarihsel Dosya
+PASS
+(kanıt: /Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-madde7-tarihsel-20260716/07-tarihsel-dosya.png; case=AY-202606-0001; badge=true; reason=ok)

@@ -1,0 +1,32 @@
+{
+  "at": "2026-07-16T18:35:19.920Z",
+  "base": "http://localhost:3001",
+  "api": "http://localhost:3000/api/v1",
+  "injectUsed": false,
+  "cutoff": "2026-07-01T00:00:00+03:00",
+  "case": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "caseNo": "AY-202606-0001",
+    "createdAt": "2026-06-16T19:35:18.261Z",
+    "fileDate": "2026-06-16T19:35:00.000Z",
+    "source": "seed-id"
+  },
+  "madde7": {
+    "status": "PASS",
+    "reason": null
+  },
+  "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-madde7-tarihsel-20260716/07-tarihsel-dosya.png",
+  "ui": {
+    "hasBadge": true,
+    "badgeText": "Tarihsel Dosya",
+    "fakeBlockers": false,
+    "missingCostWarn": false,
+    "missingApprovalWarn": false,
+    "guncel": "Güncel İşlem Tarihsel Dosya Yeni finans akışı, hakediş ve cari zorunlu değildir.",
+    "bodySample": "Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi… ⌘K Hızlı İşlem 4 Yardım Tema SY Sistem Yöneticisi Operasyon Aktif Dashboard Operasyon Personel Personel Özlük Sahiplik Müşteriler Tedarikçiler CRM Finans Harita Test Notları Ayarlar Yardım Menüyü Daralt Web v356 · v356-dashboard-rc1 · Kılavuz 2026-07-11b AY2026-0012-D276B-1781638518232 AY-202606-0001 Tarihsel Dosya 01.07.2026 öncesi dosya — yeni finans akışı zorunlu değil. Tarihsel Dosyayı Yeni Finans Dönemine Dahil Et Müşteri (Asistans) Mehme",
+    "rootPresent": true,
+    "notFound": false
+  },
+  "loginOk": true,
+  "loginUrl": "http://localhost:3001/panel"
+}

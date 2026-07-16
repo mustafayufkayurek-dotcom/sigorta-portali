@@ -2,45 +2,44 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  getCase, updateCaseStatus, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
+  getCase, updateCase, updateCaseStatus, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
   getEmergencyVendors, createVendorQuick, getRecommendedVendors,
-  EmergencyCase, EmergencyCostEntry, EmergencyStatus, EmergencyUrgency, VendorOption, VendorRecommendation,
+  EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorOption, VendorRecommendation,
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
+import {
+  isHistoricalEmergencyFile,
+  readHistoricalFinanceOptIn,
+  writeHistoricalFinanceOptIn,
+} from './historical-file';
 
 const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
-const STATUS_LABELS: Record<EmergencyStatus, string> = {
-  GELEN: 'Yeni İhbar',
-  ATANDI: 'Tespit Aşamasında',
-  SAHADA: 'Onarım Aşamasında',
-  COZULDU: 'Dosya Kapatıldı',
+const PROCESS_STRIP_LABELS: Record<EmergencyStatus, string> = {
+  GELEN: 'İhbar',
+  ATANDI: 'Tedarikçi Atandı',
+  SAHADA: 'Sahada',
+  COZULDU: 'Dosya Kapandı',
   FATURALANDILDI: 'Finansa Aktarıldı',
 };
-const URGENCY_LABELS: Record<EmergencyUrgency, string> = {
-  DUSUK: 'Düşük',
-  NORMAL: 'Normal',
-  YUKSEK: 'Yüksek',
-  KRITIK: 'Kritik',
+
+const CURRENT_TASK_TITLES: Record<string, string> = {
+  ihbar: 'Dosya Açıldı',
+  atama: 'Tedarikçi Ataması Bekleniyor',
+  maliyet: 'Tedarikçi Maliyeti Bekleniyor',
+  onay: 'Asistans Onayı Bekleniyor',
+  saha: 'İşe Başlama Bekleniyor',
+  kapanis: 'Dosya Kapanışı Bekleniyor',
+  finans: 'Finansa Aktarım Bekleniyor',
+  hakedis: 'Hakediş Bekleniyor',
+  odeme: 'Ödeme Bekleniyor',
 };
-const URGENCY_COLOR: Record<EmergencyUrgency, string> = {
-  DUSUK: 'bg-slate-100 text-slate-600',
-  NORMAL: 'bg-blue-50 text-blue-700',
-  YUKSEK: 'bg-orange-50 text-orange-700',
-  KRITIK: 'bg-red-100 text-red-700',
-};
-const OPERATION_STEP_STYLES = {
-  done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  current: 'bg-blue-50 text-blue-700 border-blue-200',
-  pending: 'bg-slate-50 text-slate-500 border-slate-200',
-  blocked: 'bg-amber-50 text-amber-800 border-amber-200',
-} as const;
+
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   pending: 'Bekliyor',
   approved: 'Onaylandı',
@@ -48,12 +47,9 @@ const INVOICE_STATUS_LABELS: Record<string, string> = {
   cancelled: 'İptal',
   draft: 'Taslak',
 };
-const OPERATION_STEP_LABELS = {
-  done: 'Tamam',
-  current: 'Aktif',
-  pending: 'Bekliyor',
-  blocked: 'Bloklu',
-} as const;
+
+type BottomTab = 'gecmis' | 'finans' | null;
+type ApprovalChannel = 'whatsapp' | 'email' | 'both';
 
 function fmtCurrency(n: number) {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
@@ -65,7 +61,51 @@ function fmtDateTime(d: string) {
   return new Date(d).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── Inline Vendor Selector ───────────────────────────────────────────────────
+function deriveCurrentTask(
+  vaka: EmergencyCase,
+  opts?: { historicalExempt?: boolean },
+): { title: string; detail?: string } {
+  if (opts?.historicalExempt) {
+    return {
+      title: 'Tarihsel Dosya',
+      detail: 'Yeni finans akışı, hakediş ve cari zorunlu değildir.',
+    };
+  }
+  const chain = vaka.operationChain;
+  if (chain) {
+    const current =
+      chain.steps.find((s) => s.state === 'current')
+      ?? chain.steps.find((s) => s.state === 'blocked');
+    if (current) {
+      return {
+        title: CURRENT_TASK_TITLES[current.key] ?? `${current.label} Bekleniyor`,
+        detail: current.note,
+      };
+    }
+    return { title: chain.currentStageLabel };
+  }
+  const fallback: Record<EmergencyStatus, string> = {
+    GELEN: 'Tedarikçi Ataması Bekleniyor',
+    ATANDI: 'Tedarikçi Maliyeti Bekleniyor',
+    SAHADA: 'Dosya Kapanışı Bekleniyor',
+    COZULDU: 'Finansa Aktarım Bekleniyor',
+    FATURALANDILDI: 'Finans Tamamlandı',
+  };
+  return { title: fallback[vaka.status] };
+}
+
+function customerLabel(vaka: EmergencyCase): string {
+  const c = vaka.customer;
+  if (!c) return vaka.customerName;
+  return (
+    c.companyName
+    || c.fullName
+    || [c.firstName, c.lastName].filter(Boolean).join(' ')
+    || vaka.customerName
+  );
+}
+
+// ─── Inline Vendor Selector (Finans sekmesi) ─────────────────────────────────
 
 interface VendorSelectorProps {
   value: VendorOption | null;
@@ -96,9 +136,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      fetchOptions(search);
-    }
+    if (open) fetchOptions(search);
   }, [open, search, fetchOptions]);
 
   useEffect(() => {
@@ -147,7 +185,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
         className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
       >
         <span className={value ? 'text-slate-900' : 'text-slate-400'}>
-          {value ? value.name : 'Tedarikçi seçin (opsiyonel)'}
+          {value ? value.name : 'Tedarikçi Seçin (Opsiyonel)'}
         </span>
         {value ? (
           <span
@@ -178,73 +216,29 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
               className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           {showAddForm ? (
             <div className="p-3 space-y-2">
               <p className="text-xs font-semibold text-slate-600">Yeni Tedarikçi Ekle</p>
               {addError && <p className="text-xs text-red-600">{addError}</p>}
-              <div>
-                <label className="flex items-center gap-1 text-xs text-slate-500 mb-1">
-                  Ad <span className="text-red-400">*</span>
-                  <span className="ml-auto text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">Zorunlu Alan</span>
-                </label>
-                <input
-                  type="text"
-                  value={addForm.name}
-                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(e as any); } }}
-                  placeholder="Ad *"
-                  className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!addForm.name.trim() && addError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-1 text-xs text-slate-500 mb-1">
-                  Telefon <span className="text-red-400">*</span>
-                  <span className="ml-auto text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">Zorunlu Alan</span>
-                </label>
-                <input
-                  type="tel"
-                  value={addForm.phone}
-                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(e as any); } }}
-                  placeholder="05XX XXX XX XX *"
-                  className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!addForm.phone.trim() && addError ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">TC / Vergi No <span className="text-slate-400 text-[10px]">(opsiyonel)</span></label>
-                <input
-                  type="text"
-                  value={addForm.identityNo}
-                  onChange={(e) => setAddForm((f) => ({ ...f, identityNo: e.target.value }))}
-                  placeholder="TC Kimlik veya Vergi No"
-                  className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Adres <span className="text-slate-400 text-[10px]">(opsiyonel)</span></label>
-                <input
-                  type="text"
-                  value={addForm.address}
-                  onChange={(e) => setAddForm((f) => ({ ...f, address: e.target.value }))}
-                  placeholder="Açık Adres"
-                  className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <input
+                type="text"
+                value={addForm.name}
+                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Ad *"
+                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg"
+              />
+              <input
+                type="tel"
+                value={addForm.phone}
+                onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                placeholder="Telefon *"
+                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg"
+              />
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleAddVendor}
-                  disabled={addLoading}
-                  className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
+                <button type="button" onClick={handleAddVendor} disabled={addLoading} className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
                   {addLoading ? 'Kaydediliyor...' : 'Kaydet'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50"
-                >
+                <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg">
                   Geri
                 </button>
               </div>
@@ -261,7 +255,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
                     key={opt.id}
                     type="button"
                     onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
                   >
                     <span className="font-medium">{opt.name}</span>
                     {opt.phone && <span className="text-xs text-slate-400 ml-2">{opt.phone}</span>}
@@ -269,14 +263,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
                 ))
               )}
               <div className="border-t border-slate-100 p-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(true)}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg px-2 py-1.5">
                   Yeni Tedarikçi Ekle
                 </button>
               </div>
@@ -290,41 +277,49 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-// Separate form state for income and expense to avoid shared-state bugs
 const EMPTY_COST_FORM = { description: '', amount: '', entryDate: new Date().toISOString().slice(0, 10) };
 
-export default function VakaDetayPage() {
+export default function AcilDosyaDetayPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params?.id as string;
 
   const [vaka, setVaka] = useState<EmergencyCase | null>(null);
   const [costs, setCosts] = useState<EmergencyCostEntry[]>([]);
   const [costSummary, setCostSummary] = useState({ totalGelir: 0, totalGider: 0, netKar: 0 });
   const [loading, setLoading] = useState(true);
-  const [statusLoading, setStatusLoading] = useState(false);
 
-  // ─── Gelir form state (separate from gider) ───────────────────────────────
+  const [vendorRecs, setVendorRecs] = useState<VendorRecommendation[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  const [alisFiyati, setAlisFiyati] = useState('');
+  const [satisFiyati, setSatisFiyati] = useState('');
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalChannel, setApprovalChannel] = useState<ApprovalChannel>('whatsapp');
+  const [approvalBusy, setApprovalBusy] = useState(false);
+  const [approvalMsg, setApprovalMsg] = useState<string | null>(null);
+
+  const [bottomTab, setBottomTab] = useState<BottomTab>(null);
+
   const [showGelirForm, setShowGelirForm] = useState(false);
   const [gelirForm, setGelirForm] = useState(EMPTY_COST_FORM);
   const [gelirLoading, setGelirLoading] = useState(false);
   const [gelirError, setGelirError] = useState<string | null>(null);
 
-  // ─── Gider form state (separate from gelir) ───────────────────────────────
   const [showGiderForm, setShowGiderForm] = useState(false);
   const [giderForm, setGiderForm] = useState(EMPTY_COST_FORM);
   const [giderVendor, setGiderVendor] = useState<VendorOption | null>(null);
-  const [giderVendorRecs, setGiderVendorRecs] = useState<VendorRecommendation[]>([]);
-  const [giderRecsLoading, setGiderRecsLoading] = useState(false);
   const [giderLoading, setGiderLoading] = useState(false);
   const [giderError, setGiderError] = useState<string | null>(null);
 
-  // ─── Edit state ───────────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ description: '', amount: '', entryDate: '' });
   const [editVendor, setEditVendor] = useState<VendorOption | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  /** Tarihsel dosyayı yeni finans dönemine manuel dahil et (localStorage; migration yok). */
+  const [financeOptIn, setFinanceOptIn] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -333,6 +328,10 @@ export default function VakaDetayPage() {
       setVaka(caseRes.data);
       setCosts(costRes.data);
       setCostSummary(costRes.summary);
+      const gelir = costRes.data.find((c) => c.entryType === 'gelir');
+      const gider = costRes.data.find((c) => c.entryType === 'gider');
+      if (gelir) setSatisFiyati((prev) => prev || String(gelir.amount));
+      if (gider) setAlisFiyati((prev) => prev || String(gider.amount));
     } catch {
       // sessiz
     } finally {
@@ -343,33 +342,93 @@ export default function VakaDetayPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    if (!showGiderForm || !id) return;
-    setGiderRecsLoading(true);
-    getRecommendedVendors(id, 3)
-      .then((res) => setGiderVendorRecs(res.data ?? []))
-      .catch(() => setGiderVendorRecs([]))
-      .finally(() => setGiderRecsLoading(false));
-  }, [showGiderForm, id]);
+    if (!id) return;
+    setFinanceOptIn(readHistoricalFinanceOptIn(id));
+  }, [id]);
 
-  async function handleStatusChange(newStatus: EmergencyStatus) {
-    setStatusLoading(true);
-    try {
-      const res = await updateCaseStatus(id, newStatus);
-      setVaka(res.data);
-      if (newStatus === 'COZULDU') {
-        router.push(`/panel/acil-yardim/finans?caseId=${id}`);
-      }
-    } catch {
-      // sessiz
-    } finally {
-      setStatusLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (!id) return;
+    setRecsLoading(true);
+    getRecommendedVendors(id, 3)
+      .then((res) => setVendorRecs(res.data ?? []))
+      .catch(() => setVendorRecs([]))
+      .finally(() => setRecsLoading(false));
+  }, [id]);
 
   async function refreshCosts() {
     const res = await getCostEntries(id);
     setCosts(res.data);
     setCostSummary(res.summary);
+  }
+
+  async function handleAssignVendor(vendorId: string) {
+    setAssignLoading(true);
+    try {
+      const res = await updateCase(id, { assignedVendorId: vendorId } as Partial<EmergencyCase>);
+      setVaka(res.data);
+      if (res.data.status === 'GELEN') {
+        const statusRes = await updateCaseStatus(id, 'ATANDI');
+        setVaka(statusRes.data);
+      } else {
+        await load();
+      }
+    } catch {
+      // sessiz
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  async function handleApprovalSubmit() {
+    setApprovalBusy(true);
+    setApprovalMsg(null);
+    try {
+      const alis = Number(alisFiyati);
+      const satis = Number(satisFiyati);
+      if (!alisFiyati || isNaN(alis) || alis <= 0) {
+        setApprovalMsg('Tedarikçi alış fiyatı girin');
+        return;
+      }
+      if (!satisFiyati || isNaN(satis) || satis <= 0) {
+        setApprovalMsg('Meridyen satış fiyatı girin');
+        return;
+      }
+
+      const hasGider = costs.some((c) => c.entryType === 'gider');
+      const hasGelir = costs.some((c) => c.entryType === 'gelir');
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (!hasGider) {
+        await addCostEntry(id, {
+          entryType: 'gider',
+          description: 'Tedarikçi Alış Fiyatı',
+          amount: alis,
+          entryDate: today,
+          vendorId: vaka?.assignedVendorId ?? undefined,
+        });
+      }
+      if (!hasGelir) {
+        await addCostEntry(id, {
+          entryType: 'gelir',
+          description: 'Meridyen Satış Fiyatı',
+          amount: satis,
+          entryDate: today,
+        });
+      }
+      await refreshCosts();
+      await load();
+
+      const channelLabel =
+        approvalChannel === 'whatsapp' ? 'WhatsApp'
+        : approvalChannel === 'email' ? 'E-posta'
+        : 'WhatsApp + E-posta';
+      setApprovalMsg(`Onay talebi oluşturuldu (${channelLabel}). Gönderim bağlantısı sonraki adımda tamamlanacak.`);
+      setShowApprovalModal(false);
+    } catch (err: any) {
+      setApprovalMsg(err.message ?? 'Onay talebi oluşturulamadı');
+    } finally {
+      setApprovalBusy(false);
+    }
   }
 
   async function handleAddGelir(e: React.FormEvent) {
@@ -397,28 +456,23 @@ export default function VakaDetayPage() {
 
   async function handleAddGider(e: React.FormEvent) {
     e.preventDefault();
-    e.stopPropagation();
     if (!giderForm.description.trim()) { setGiderError('Açıklama zorunludur'); return; }
     if (!giderForm.amount || isNaN(Number(giderForm.amount)) || Number(giderForm.amount) <= 0) { setGiderError('Geçerli bir tutar girin'); return; }
-    if (!giderForm.entryDate) { setGiderError('Tarih zorunludur'); return; }
     setGiderLoading(true);
     setGiderError(null);
     try {
-      const payload = {
-        entryType: 'gider' as const,
+      await addCostEntry(id, {
+        entryType: 'gider',
         description: giderForm.description.trim(),
         amount: Number(giderForm.amount),
         entryDate: giderForm.entryDate,
         vendorId: giderVendor?.id,
-      };
-      console.log('[handleAddGider] payload:', payload);
-      await addCostEntry(id, payload);
+      });
       setGiderForm(EMPTY_COST_FORM);
       setGiderVendor(null);
       setShowGiderForm(false);
       await refreshCosts();
     } catch (err: any) {
-      console.error('[handleAddGider] error:', err);
       setGiderError(err.message ?? 'Bir hata oluştu');
     } finally {
       setGiderLoading(false);
@@ -430,7 +484,7 @@ export default function VakaDetayPage() {
     try {
       await deleteCostEntry(id, costId);
       await refreshCosts();
-    } catch {}
+    } catch { /* sessiz */ }
   }
 
   function handleStartEdit(c: EmergencyCostEntry) {
@@ -441,11 +495,6 @@ export default function VakaDetayPage() {
       entryDate: c.entryDate.slice(0, 10),
     });
     setEditVendor(c.vendor ? { id: c.vendor.id, name: c.vendor.name } : null);
-    setEditError(null);
-  }
-
-  function handleCancelEdit() {
-    setEditingId(null);
     setEditError(null);
   }
 
@@ -479,638 +528,587 @@ export default function VakaDetayPage() {
     );
   }
   if (!vaka) {
-    return (
-      <div className="text-center py-20 text-slate-500">Dosya bulunamadı.</div>
-    );
+    return <div className="text-center py-20 text-slate-500">Dosya bulunamadı.</div>;
   }
 
+  const isHistorical = isHistoricalEmergencyFile(vaka.createdAt, vaka.fileDate);
+  const historicalExempt = isHistorical && !financeOptIn;
+  const task = deriveCurrentTask(vaka, { historicalExempt });
   const currentIdx = STATUS_STEPS.indexOf(vaka.status);
+  const googleQuery = [vaka.city, vaka.district, vaka.issueType, 'acil yardım'].filter(Boolean).join(' ');
+  const showGoogleSearch = !recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId;
+  const assigneeName = vaka.assignedUser
+    ? `${vaka.assignedUser.firstName} ${vaka.assignedUser.lastName}`.trim()
+    : '—';
+  const karOrani = costSummary.totalGelir > 0
+    ? ((costSummary.netKar / costSummary.totalGelir) * 100)
+    : 0;
+
+  function handleHistoricalFinanceOptIn() {
+    writeHistoricalFinanceOptIn(id, true);
+    setFinanceOptIn(true);
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
-      {/* Back + header */}
-      <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <Link href="/panel/operasyon?filter=acil" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold tracking-[0.18em] text-orange-600">Acil Yardım Operasyon Akışı</p>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            {vaka.fileNo && <span className="text-xs font-mono text-slate-500">Dosya No: {vaka.fileNo}</span>}
-            <span className="text-xs font-mono text-slate-400">{vaka.caseNo}</span>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${URGENCY_COLOR[vaka.urgency]}`}>
-              {URGENCY_LABELS[vaka.urgency]}
-            </span>
-            {vaka.overdueLevel !== 'none' && (
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                vaka.overdueLevel === 'critical' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-              }`}>
-                {vaka.overdueLevel === 'critical' ? '15+ gün' : '7+ gün'} faturasız
-              </span>
-            )}
-          </div>
-          <h1 className="text-xl font-bold text-slate-900 truncate mt-1">{vaka.customerName}</h1>
-          <p className="text-xs text-slate-500 mt-1">Bu ekran yalnız Acil Yardım dosyalarının durum, maliyet ve evrak akışını yönetir.</p>
-        </div>
-      </div>
-
-      {/* Durum Stepper */}
+    <div className="max-w-3xl mx-auto space-y-4 pb-8" data-testid="acil-dosya-detay">
+      {/* 1. Dosya Başlığı */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-        <p className="text-xs font-semibold text-slate-500 tracking-wider mb-3">Acil Yardım Süreç Durumu</p>
-        <div className="flex items-center gap-1">
-          {STATUS_STEPS.map((s, i) => {
-            const isActive = s === vaka.status;
-            const isDone = i < currentIdx;
-            return (
-              <button
-                key={s}
-                type="button"
-                disabled={statusLoading || isActive}
-                onClick={() => handleStatusChange(s)}
-                className={`flex-1 text-[10px] py-1.5 rounded-lg font-semibold transition-all ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : isDone
-                    ? 'bg-slate-100 text-slate-400'
-                    : 'bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600 border border-slate-200'
-                }`}
-              >
-                {STATUS_LABELS[s]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {vaka.operationChain && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-500 tracking-wider">Tek Operasyon Zinciri</p>
-              <h2 className="text-sm font-semibold text-slate-900 mt-1">
-                Güncel Aşama: {vaka.operationChain.currentStageLabel}
-              </h2>
-            </div>
-            <div className="flex flex-wrap gap-2 text-[11px]">
-              <span className={`px-2 py-1 rounded-full font-semibold ${vaka.operationChain.financeTransferReady ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                {vaka.operationChain.financeTransferReady ? 'Finansa Aktarıma Hazır' : 'Finans Koşulları Eksik'}
-              </span>
-              <span className={`px-2 py-1 rounded-full font-semibold ${vaka.operationChain.vendorStatementReady ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>
-                {vaka.operationChain.vendorStatementReady ? 'Hakediş Şema Bloklu' : 'Hakediş Beklemede'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {vaka.operationChain.steps.map((step) => (
-              <div key={step.key} className={`rounded-xl border px-3 py-2 ${OPERATION_STEP_STYLES[step.state]}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{step.label}</p>
-                  <span className="text-[10px] font-bold tracking-wide">{OPERATION_STEP_LABELS[step.state]}</span>
-                </div>
-                {step.note && <p className="text-[11px] mt-1 opacity-90">{step.note}</p>}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-xs font-semibold text-slate-500 tracking-wider">Dosya Geçmişi</p>
-              <p className="mt-2 text-slate-800 font-medium">{vaka.operationChain.inbox.messageCount} yazışma, {vaka.operationChain.inbox.attachmentCount} ek</p>
-              <p className="text-xs text-slate-500 mt-1">{vaka.operationChain.documents.totalCount} evrak, {vaka.operationChain.documents.whatsappSentCount} WhatsApp gönderimi</p>
-              {vaka.operationChain.inbox.lastReceivedAt && (
-                <p className="text-xs text-slate-400 mt-1">Son kayıt: {fmtDateTime(vaka.operationChain.inbox.lastReceivedAt)}</p>
+        <div className="flex items-start gap-3">
+          <Link
+            href="/panel/operasyon?filter=acil"
+            className="mt-0.5 p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors shrink-0"
+            aria-label="Geri"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-lg font-bold text-slate-900 font-mono tracking-tight">
+                {vaka.fileNo || vaka.caseNo}
+              </h1>
+              {vaka.fileNo && vaka.caseNo !== vaka.fileNo && (
+                <span className="text-xs text-slate-400 font-mono">{vaka.caseNo}</span>
+              )}
+              {isHistorical && (
+                <span
+                  data-testid="tarihsel-dosya-badge"
+                  className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 border border-amber-200"
+                >
+                  Tarihsel Dosya
+                </span>
               )}
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-xs font-semibold text-slate-500 tracking-wider">Finans Bağı</p>
-              <p className="mt-2 text-slate-800 font-medium">{vaka.operationChain.finance.invoiceRequestCount} fatura talebi</p>
-              <p className="text-xs text-slate-500 mt-1">{vaka.operationChain.finance.invoiceDraftCount} finans taslağı</p>
-              {(vaka.operationChain.finance.latestInvoiceRequestStatus || vaka.operationChain.finance.latestInvoiceDraftStatus) && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Son durum: {INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceRequestStatus ?? ''] ?? vaka.operationChain.finance.latestInvoiceRequestStatus ?? INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceDraftStatus ?? ''] ?? vaka.operationChain.finance.latestInvoiceDraftStatus}
+            {isHistorical && historicalExempt && (
+              <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="tarihsel-dosya-muafiyet">
+                <p className="text-[11px] text-slate-500">
+                  01.07.2026 öncesi dosya — yeni finans akışı zorunlu değil.
                 </p>
-              )}
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-xs font-semibold text-slate-500 tracking-wider">Hakediş ve Ödeme</p>
-              <p className="mt-2 text-slate-800 font-medium">Tedarikçi gideri: {fmtCurrency(vaka.operationChain.totals.vendorGider)}</p>
-              <p className="text-xs text-slate-500 mt-1">Mevcut zincir hasar dosyası bağı istediği için şimdilik blocker olarak izleniyor.</p>
-            </div>
-          </div>
-
-          {vaka.operationChain.blockerReasons.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-xs font-semibold text-amber-800 tracking-wider">Açık Blokerler</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {vaka.operationChain.blockerReasons.map((reason) => (
-                  <span key={reason} className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-amber-900 border border-amber-200">
-                    {reason}
-                  </span>
-                ))}
+                <button
+                  type="button"
+                  onClick={handleHistoricalFinanceOptIn}
+                  className="text-[11px] font-medium text-blue-700 hover:text-blue-800 underline-offset-2 hover:underline"
+                  data-testid="tarihsel-finans-optin"
+                >
+                  Tarihsel Dosyayı Yeni Finans Dönemine Dahil Et
+                </button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Dosya Bilgileri */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-        <p className="text-xs font-semibold text-slate-500 tracking-wider">Dosya Bilgileri</p>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs text-slate-400">Dosya Sorumlusu</p>
-            <p className="font-medium text-slate-800">
-              {vaka.assignedUser
-                ? `${vaka.assignedUser.firstName} ${vaka.assignedUser.lastName}`.trim()
-                : '—'}
-            </p>
+            )}
+            {isHistorical && financeOptIn && (
+              <p className="mt-2 text-[11px] text-emerald-700" data-testid="tarihsel-finans-optin-active">
+                Yeni finans dönemine dahil edildi.
+              </p>
+            )}
+            <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <dt className="text-xs text-slate-400">Müşteri (Asistans)</dt>
+                <dd className="font-medium text-slate-800 truncate">{customerLabel(vaka)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400">Sigortalı</dt>
+                <dd className="font-medium text-slate-800 truncate">—</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400">Hizmet Türü</dt>
+                <dd className="font-medium text-blue-700">{vaka.issueType}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400">Dosya Sorumlusu</dt>
+                <dd className="font-medium text-slate-800">{assigneeName}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-400">Adres</dt>
+                <dd className="font-medium text-slate-800">
+                  {vaka.address}{vaka.city ? `, ${vaka.city}` : ''}{vaka.district ? ` / ${vaka.district}` : ''}
+                </dd>
+              </div>
+            </dl>
             {vaka.activeDelegation && (
               <div className="mt-2">
                 <DelegationBanner delegation={vaka.activeDelegation} />
               </div>
             )}
           </div>
-          <div>
-            <p className="text-xs text-slate-400">Sorun Türü</p>
-            <p className="font-medium text-blue-700">{vaka.issueType}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Telefon</p>
-            <p className="font-medium">{vaka.customerPhone ?? '—'}</p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-xs text-slate-400">Adres</p>
-            <p className="font-medium">{vaka.address}{vaka.city ? `, ${vaka.city}` : ''}</p>
-          </div>
-          {vaka.notes && (
-            <div className="col-span-2">
-              <p className="text-xs text-slate-400">Notlar</p>
-              <p className="text-sm text-slate-700">{vaka.notes}</p>
-            </div>
-          )}
-          <div>
-            <p className="text-xs text-slate-400">Dosya Tarihi</p>
-            <p className="font-medium">{fmtDate(vaka.fileDate ?? vaka.createdAt)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Oluşturuldu</p>
-            <p className="font-medium">{fmtDate(vaka.createdAt)}</p>
-          </div>
-          {vaka.resolvedAt && (
-            <div>
-              <p className="text-xs text-slate-400">Çözüm Tarihi</p>
-              <p className="font-medium">{fmtDate(vaka.resolvedAt)}</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Kar Analizi Özeti */}
-      <style>{`
-        @keyframes lossFlash {
-          0%, 100% { background-color: #991b1b; }
-          50% { background-color: #dc2626; }
-        }
-        .loss-flash { animation: lossFlash 1.6s ease-in-out infinite; }
-      `}</style>
-      {(() => {
-        const karOrani = costSummary.totalGelir > 0
-          ? ((costSummary.netKar / costSummary.totalGelir) * 100)
-          : 0;
-        const isLoss = costSummary.netKar < 0;
-        return (
-          <div className={`rounded-2xl border shadow-sm overflow-hidden ${isLoss ? 'border-red-300' : 'border-slate-100'}`}>
-            <div className={`px-4 py-2.5 flex items-center gap-2 ${isLoss ? 'loss-flash' : 'bg-slate-700'}`}>
-              <span className="text-white text-xs font-extrabold tracking-widest">
-                {isLoss ? '⚠ ZARAR' : 'Kar Analizi'}
-              </span>
-              {!isLoss && (
-                <span className={`ml-auto text-sm font-extrabold px-2.5 py-0.5 rounded-full ${karOrani >= 20 ? 'bg-green-100 text-green-700' : karOrani >= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-orange-100 text-orange-700'}`}>
-                  %{karOrani.toFixed(1)} Kar Oranı
-                </span>
-              )}
-              {isLoss && (
-                <span className="ml-auto text-sm font-extrabold px-2.5 py-0.5 rounded-full bg-red-900/60 text-red-100">
-                  %{Math.abs(karOrani).toFixed(1)} Zarar
-                </span>
-              )}
-            </div>
-            <div className="bg-white grid grid-cols-4 divide-x divide-slate-100">
-              <div className="p-3 text-center">
-                <p className="text-xs text-green-600 font-medium mb-0.5">Toplam Gelir</p>
-                <p className="text-sm font-bold text-green-700">{fmtCurrency(costSummary.totalGelir)}</p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xs text-red-600 font-medium mb-0.5">Toplam Gider</p>
-                <p className="text-sm font-bold text-red-700">{fmtCurrency(costSummary.totalGider)}</p>
-              </div>
-              <div className="p-3 text-center">
-                <p className={`text-xs font-medium mb-0.5 ${isLoss ? 'text-red-600' : 'text-blue-600'}`}>Net Kâr</p>
-                <p className={`text-sm font-bold ${isLoss ? 'text-red-700' : 'text-blue-700'}`}>{fmtCurrency(costSummary.netKar)}</p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xs text-slate-500 font-medium mb-0.5">Kar Oranı</p>
-                <span className={`inline-block px-2 py-0.5 rounded-full text-sm font-extrabold ${isLoss ? 'bg-red-100 text-red-700' : karOrani >= 20 ? 'bg-green-100 text-green-700' : karOrani >= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-orange-100 text-orange-700'}`}>
-                  %{karOrani.toFixed(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Gelir / Gider Kayıtları — tek görünümde iki sütun */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-        {/* ── Gelir Sütunu ── */}
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* Başlık */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-            <span className="text-xs font-bold text-green-700 tracking-wide flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              Gelir
-              {costs.filter((c) => c.entryType === 'gelir').length > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
-                  {costs.filter((c) => c.entryType === 'gelir').length}
-                </span>
-              )}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !showGelirForm;
-                setShowGelirForm(next);
-                if (next) {
-                  setShowGiderForm(false);
-                  setGelirForm(EMPTY_COST_FORM);
-                  setGelirError(null);
-                }
-              }}
-              className="text-xs font-medium text-green-600 hover:text-green-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-green-50 transition-colors"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showGelirForm ? 'M6 18L18 6M6 6l12 12' : 'M12 4v16m8-8H4'} />
-              </svg>
-              {showGelirForm ? 'Kapat' : 'Ekle'}
-            </button>
-          </div>
-
-          {/* Gelir Ekleme Formu */}
-          {showGelirForm && (
-            <form onSubmit={handleAddGelir} className="px-3 py-2 bg-green-50 border-b border-green-100">
-              {gelirError && <p className="text-xs text-red-600 mb-1.5">{gelirError}</p>}
-              <input
-                type="text"
-                value={gelirForm.description}
-                onChange={(e) => setGelirForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Açıklama"
-                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white mb-1.5"
-              />
-              <div className="flex gap-1.5 mb-1.5">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={gelirForm.amount}
-                  onChange={(e) => setGelirForm((f) => ({ ...f, amount: e.target.value }))}
-                  placeholder="Tutar (₺)"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-                />
-                <TrDateInput
-                  value={gelirForm.entryDate}
-                  onChange={(entryDate) => setGelirForm((f) => ({ ...f, entryDate }))}
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-                />
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  type="submit"
-                  disabled={gelirLoading}
-                  className="flex-1 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                >
-                  {gelirLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowGelirForm(false); setGelirError(null); }}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100 bg-white transition-colors"
-                >
-                  İptal
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Gelir Listesi */}
-          {(() => {
-            const gelirList = costs.filter((c) => c.entryType === 'gelir');
-            if (gelirList.length === 0) {
-              return <p className="text-xs text-slate-400 text-center py-3">Henüz gelir kaydı yok</p>;
-            }
-            return (
-              <div className="divide-y divide-slate-50">
-                {gelirList.map((c) => (
-                  <div key={c.id} className="px-3">
-                    {editingId === c.id ? (
-                      <form
-                        onSubmit={(e) => handleSaveEdit(e, c)}
-                        className="py-2 space-y-1.5"
-                      >
-                        {editError && <p className="text-xs text-red-600">{editError}</p>}
-                        <input
-                          type="text"
-                          value={editForm.description}
-                          onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                          placeholder="Açıklama"
-                          className={`w-full px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!editForm.description.trim() && editError ? 'border-red-400' : 'border-slate-200'}`}
-                        />
-                        <div className="flex gap-1.5">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.amount}
-                            onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
-                            placeholder="Tutar (₺)"
-                            className={`flex-1 min-w-0 px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!editForm.amount || Number(editForm.amount) <= 0) && editError ? 'border-red-400' : 'border-slate-200'}`}
-                          />
-                          <TrDateInput
-                            value={editForm.entryDate}
-                            onChange={(entryDate) => setEditForm((f) => ({ ...f, entryDate }))}
-                            className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="flex gap-1.5">
-                          <button type="submit" disabled={editLoading} className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                            {editLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                          </button>
-                          <button type="button" onClick={handleCancelEdit} className="px-3 py-1.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">
-                            İptal
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="flex items-center justify-between py-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-slate-800 font-medium truncate">{c.description}</p>
-                          <p className="text-[10px] text-slate-400">{fmtDate(c.entryDate)}</p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0 ml-2">
-                          <span className="text-xs font-bold text-green-600">+{fmtCurrency(c.amount)}</span>
-                          <button type="button" onClick={() => handleStartEdit(c)} className="p-1 rounded text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors" title="Düzenle">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button type="button" onClick={() => handleDeleteCost(c.id)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Sil">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* ── Gider Sütunu ── */}
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* Başlık */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-            <span className="text-xs font-bold text-red-700 tracking-wide flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-              Gider
-              {costs.filter((c) => c.entryType === 'gider').length > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
-                  {costs.filter((c) => c.entryType === 'gider').length}
-                </span>
-              )}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !showGiderForm;
-                setShowGiderForm(next);
-                if (next) {
-                  setShowGelirForm(false);
-                  setGiderForm(EMPTY_COST_FORM);
-                  setGiderVendor(null);
-                  setGiderError(null);
-                }
-              }}
-              className="text-xs font-medium text-red-600 hover:text-red-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showGiderForm ? 'M6 18L18 6M6 6l12 12' : 'M12 4v16m8-8H4'} />
-              </svg>
-              {showGiderForm ? 'Kapat' : 'Ekle'}
-            </button>
-          </div>
-
-          {/* Gider Ekleme Formu */}
-          {showGiderForm && (
-            <form onSubmit={handleAddGider} className="px-3 py-2 bg-red-50 border-b border-red-100">
-              {giderError && <p className="text-xs text-red-600 mb-1.5">{giderError}</p>}
-              <input
-                type="text"
-                value={giderForm.description}
-                onChange={(e) => setGiderForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Açıklama"
-                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 bg-white mb-1.5"
-              />
-              <div className="flex gap-1.5 mb-1.5">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={giderForm.amount}
-                  onChange={(e) => setGiderForm((f) => ({ ...f, amount: e.target.value }))}
-                  placeholder="Tutar (₺)"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
-                />
-                <TrDateInput
-                  value={giderForm.entryDate}
-                  onChange={(entryDate) => setGiderForm((f) => ({ ...f, entryDate }))}
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
-                />
-              </div>
-              <div className="mb-1.5">
-                {giderRecsLoading ? (
-                  <p className="text-[10px] text-slate-400 mb-1">Öneriler yükleniyor...</p>
-                ) : giderVendorRecs.length > 0 ? (
-                  <div className="mb-2 rounded-lg border border-blue-100 bg-blue-50/50 p-2">
-                    <p className="text-[10px] font-semibold text-blue-700 mb-1">Önerilen İlk 3 Tedarikçi</p>
-                    <div className="space-y-1">
-                      {giderVendorRecs.map((v) => (
-                        <button
-                          key={v.id}
-                          type="button"
-                          onClick={() => setGiderVendor({ id: v.id, name: v.name })}
-                          className={`w-full text-left rounded px-2 py-1 text-[10px] border ${
-                            giderVendor?.id === v.id
-                              ? 'border-blue-500 bg-blue-100 text-blue-900'
-                              : 'border-slate-200 bg-white hover:border-blue-200'
-                          }`}
-                        >
-                          <span className="font-semibold">{v.name}</span>
-                          <span className="block text-slate-400 mt-0.5">
-                            {[
-                              v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
-                              v.avgCost != null ? `Ort. ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
-                              v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
-                              `${v.completedFileCount} dosya`,
-                            ].filter(Boolean).join(' · ')}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <VendorSelector value={giderVendor} onChange={setGiderVendor} />
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  type="submit"
-                  disabled={giderLoading}
-                  className="flex-1 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                >
-                  {giderLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowGiderForm(false); setGiderVendor(null); setGiderError(null); }}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100 bg-white transition-colors"
-                >
-                  İptal
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Gider Listesi */}
-          {(() => {
-            const giderList = costs.filter((c) => c.entryType === 'gider');
-            if (giderList.length === 0) {
-              return <p className="text-xs text-slate-400 text-center py-3">Henüz gider kaydı yok</p>;
-            }
-            return (
-              <div className="divide-y divide-slate-50">
-                {giderList.map((c) => (
-                  <div key={c.id} className="px-3">
-                    {editingId === c.id ? (
-                      <form
-                        onSubmit={(e) => handleSaveEdit(e, c)}
-                        className="py-2 space-y-1.5"
-                      >
-                        {editError && <p className="text-xs text-red-600">{editError}</p>}
-                        <input
-                          type="text"
-                          value={editForm.description}
-                          onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                          placeholder="Açıklama"
-                          className={`w-full px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${!editForm.description.trim() && editError ? 'border-red-400' : 'border-slate-200'}`}
-                        />
-                        <div className="flex gap-1.5">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.amount}
-                            onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
-                            placeholder="Tutar (₺)"
-                            className={`flex-1 min-w-0 px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!editForm.amount || Number(editForm.amount) <= 0) && editError ? 'border-red-400' : 'border-slate-200'}`}
-                          />
-                          <TrDateInput
-                            value={editForm.entryDate}
-                            onChange={(entryDate) => setEditForm((f) => ({ ...f, entryDate }))}
-                            className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <VendorSelector value={editVendor} onChange={setEditVendor} />
-                        </div>
-                        <div className="flex gap-1.5">
-                          <button type="submit" disabled={editLoading} className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                            {editLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                          </button>
-                          <button type="button" onClick={handleCancelEdit} className="px-3 py-1.5 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">
-                            İptal
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="flex items-center justify-between py-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-slate-800 font-medium truncate">{c.description}</p>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-[10px] text-slate-400">{fmtDate(c.entryDate)}</p>
-                            {c.vendor && (
-                              <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                                {c.vendor.name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0 ml-2">
-                          <span className="text-xs font-bold text-red-600">-{fmtCurrency(c.amount)}</span>
-                          <button type="button" onClick={() => handleStartEdit(c)} className="p-1 rounded text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors" title="Düzenle">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button type="button" onClick={() => handleDeleteCost(c.id)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Sil">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
+      {/* 2. Güncel İşlem — ANA ODAK */}
+      <div
+        className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-sm p-5"
+        data-testid="guncel-islem"
+      >
+        <p className="text-[11px] font-semibold text-blue-600 tracking-wide">Güncel İşlem</p>
+        <h2 className="mt-1 text-xl font-bold text-slate-900 leading-snug">{task.title}</h2>
+        {task.detail && (
+          <p className="mt-1.5 text-sm text-slate-600">{task.detail}</p>
+        )}
+        {vaka.assignedVendor && (
+          <p className="mt-2 text-xs text-slate-500">
+            Atanan Tedarikçi: <span className="font-semibold text-slate-700">{vaka.assignedVendor.name}</span>
+          </p>
+        )}
       </div>
 
-      {/* E-posta Yazışmaları */}
-      {vaka && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      {/* 3. Tedarikçi Önerileri */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4" data-testid="tedarikci-onerileri">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <p className="text-sm font-semibold text-slate-800">Tedarikçi Önerileri</p>
+          {vaka.assignedVendor && (
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Atandı
+            </span>
+          )}
+        </div>
+        {recsLoading ? (
+          <p className="text-xs text-slate-400 py-3 text-center">Öneriler yükleniyor...</p>
+        ) : vendorRecs.length > 0 ? (
+          <ul className="space-y-2">
+            {vendorRecs.slice(0, 3).map((v, idx) => (
+              <li
+                key={v.id}
+                className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 ${
+                  vaka.assignedVendorId === v.id
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-slate-200 bg-slate-50/50'
+                }`}
+              >
+                <span className="text-xs font-bold text-slate-400 w-4 shrink-0">{idx + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{v.name}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {[
+                      v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
+                      v.avgCost != null ? `Maliyet ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
+                      v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
+                      vaka.city ? `Bölge ${vaka.city}` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                {!vaka.assignedVendorId && (
+                  <button
+                    type="button"
+                    disabled={assignLoading}
+                    onClick={() => handleAssignVendor(v.id)}
+                    className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Ata
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-slate-500 py-2">Uygun tedarikçi önerisi yok.</p>
+        )}
+        {showGoogleSearch && (
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Google&apos;da Ara
+          </a>
+        )}
+        <p className="mt-2 text-[11px] text-slate-400">Atama zorunlu değildir.</p>
+      </div>
+
+      {/* 4. Maliyet ve Onay */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3" data-testid="maliyet-onay">
+        <p className="text-sm font-semibold text-slate-800">Maliyet Ve Onay</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">
+              Tedarikçi Alış Fiyatı
+              <span className="ml-1 text-[10px] text-slate-400">(İç Kullanım)</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              value={alisFiyati}
+              onChange={(e) => setAlisFiyati(e.target.value)}
+              placeholder="0,00"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">
+              Meridyen Satış Fiyatı
+              <span className="ml-1 text-[10px] text-amber-600">(Dışarıya Gönderilir)</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              value={satisFiyati}
+              onChange={(e) => setSatisFiyati(e.target.value)}
+              placeholder="0,00"
+              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-400">
+          Satış fiyatı asistansa iletilir; alış fiyatı yalnızca Meridyen iç kullanımındadır.
+        </p>
+        {approvalMsg && (
+          <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">{approvalMsg}</p>
+        )}
+        <button
+          type="button"
+          onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
+          className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800"
+        >
+          Onay Talebi Oluştur
+        </button>
+      </div>
+
+      {/* 5. WhatsApp / İletişim */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3" data-testid="whatsapp-iletisim">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">WhatsApp</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Ana iletişim: yazışma, foto ve belge. Otomatik algı metni sonraki sürümde; tek dokunuş onay için hazır UI.
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 max-h-64 overflow-auto">
           <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} />
         </div>
-      )}
-
-      {/* Matbu Evrak */}
-      {vaka && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 border-b border-slate-100 pb-2">
-            Matbu Evrak
-          </h3>
+        <div className="rounded-xl border border-slate-100 p-3">
+          <p className="text-xs font-semibold text-slate-600 mb-2">Belgeler</p>
           <FileDocumentPanel
             entityType="emergency_case"
             entityId={vaka.id}
             documentKind="matbu_evrak"
           />
         </div>
-      )}
+      </div>
 
-      {/* Kapama Koşulları + Fatura Talebi */}
-      {vaka && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 border-b border-slate-100 pb-2">
-            Dosya Kapama & Fatura Talebi
-          </h3>
-          <ClosureConditionsPanel
-            serviceType="emergency"
-            entityId={vaka.id}
-            fileNo={vaka.caseNo}
-            totalAmount={costs.reduce((s, c) => s + c.amount, 0)}
-            workItemsSummary={[]}
-          />
+      {/* 6–7. Sekmeler: Dosya Geçmişi / Finans (ilk ekranda kapalı) */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" data-testid="alt-sekmeler">
+        <div className="flex border-b border-slate-100">
+          <button
+            type="button"
+            onClick={() => setBottomTab(bottomTab === 'gecmis' ? null : 'gecmis')}
+            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+              bottomTab === 'gecmis' ? 'text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Dosya Geçmişi
+          </button>
+          <button
+            type="button"
+            onClick={() => setBottomTab(bottomTab === 'finans' ? null : 'finans')}
+            className={`flex-1 py-3 text-sm font-semibold border-l border-slate-100 transition-colors ${
+              bottomTab === 'finans' ? 'text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Finans
+          </button>
+        </div>
+
+        {bottomTab === 'gecmis' && (
+          <div className="p-4 space-y-3 text-sm">
+            {vaka.operationChain ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                    <p className="text-xs text-slate-400">Yazışma</p>
+                    <p className="font-medium text-slate-800 mt-0.5">
+                      {vaka.operationChain.inbox.messageCount} yazışma · {vaka.operationChain.inbox.attachmentCount} ek
+                    </p>
+                    {vaka.operationChain.inbox.lastReceivedAt && (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Son: {fmtDateTime(vaka.operationChain.inbox.lastReceivedAt)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                    <p className="text-xs text-slate-400">Evrak</p>
+                    <p className="font-medium text-slate-800 mt-0.5">
+                      {vaka.operationChain.documents.totalCount} evrak · {vaka.operationChain.documents.whatsappSentCount} WhatsApp
+                    </p>
+                  </div>
+                </div>
+                {vaka.notes && (
+                  <div>
+                    <p className="text-xs text-slate-400">Notlar</p>
+                    <p className="text-slate-700 mt-0.5">{vaka.notes}</p>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400">
+                  Dosya tarihi: {fmtDate(vaka.fileDate ?? vaka.createdAt)} · Oluşturuldu: {fmtDate(vaka.createdAt)}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-slate-400">Geçmiş özeti henüz yok.</p>
+            )}
+          </div>
+        )}
+
+        {bottomTab === 'finans' && (
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              <div className="rounded-xl bg-green-50 border border-green-100 px-2 py-2">
+                <p className="text-[10px] text-green-600 font-medium">Gelir</p>
+                <p className="text-xs font-bold text-green-700 mt-0.5">{fmtCurrency(costSummary.totalGelir)}</p>
+              </div>
+              <div className="rounded-xl bg-red-50 border border-red-100 px-2 py-2">
+                <p className="text-[10px] text-red-600 font-medium">Gider</p>
+                <p className="text-xs font-bold text-red-700 mt-0.5">{fmtCurrency(costSummary.totalGider)}</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 border border-blue-100 px-2 py-2">
+                <p className="text-[10px] text-blue-600 font-medium">Net Kâr</p>
+                <p className="text-xs font-bold text-blue-700 mt-0.5">{fmtCurrency(costSummary.netKar)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 px-2 py-2">
+                <p className="text-[10px] text-slate-500 font-medium">Kâr Oranı</p>
+                <p className="text-xs font-bold text-slate-700 mt-0.5">%{karOrani.toFixed(1)}</p>
+              </div>
+            </div>
+
+            {vaka.operationChain && (
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600 space-y-1">
+                {historicalExempt ? (
+                  <p data-testid="tarihsel-finans-muaf">
+                    Hakediş: Zorunlu Değil · Ödeme / Cari: Zorunlu Değil
+                  </p>
+                ) : (
+                  <p>
+                    Hakediş: {vaka.operationChain.vendorStatementReady ? 'Şema Bloklu' : 'Beklemede'}
+                    {' · '}
+                    Ödeme / Cari: {vaka.operationChain.paymentReady ? 'Şema Bloklu' : 'Beklemede'}
+                  </p>
+                )}
+                <p>
+                  Fatura talebi: {vaka.operationChain.finance.invoiceRequestCount}
+                  {' · '}
+                  Taslak: {vaka.operationChain.finance.invoiceDraftCount}
+                  {(vaka.operationChain.finance.latestInvoiceRequestStatus || vaka.operationChain.finance.latestInvoiceDraftStatus) && (
+                    <> · Son: {INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceRequestStatus ?? '']
+                      ?? vaka.operationChain.finance.latestInvoiceRequestStatus
+                      ?? INVOICE_STATUS_LABELS[vaka.operationChain.finance.latestInvoiceDraftStatus ?? '']
+                      ?? vaka.operationChain.finance.latestInvoiceDraftStatus}</>
+                  )}
+                </p>
+                <p className="text-slate-400">KDV özeti: sonraki sürümde.</p>
+              </div>
+            )}
+
+            {/* Gelir / Gider — finans sekmesinde */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="border border-slate-100 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-green-700">Gelir</span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowGelirForm((v) => !v); setShowGiderForm(false); }}
+                    className="text-xs font-medium text-green-600"
+                  >
+                    {showGelirForm ? 'Kapat' : 'Ekle'}
+                  </button>
+                </div>
+                {showGelirForm && (
+                  <form onSubmit={handleAddGelir} className="px-3 py-2 bg-green-50 space-y-1.5 border-b border-green-100">
+                    {gelirError && <p className="text-xs text-red-600">{gelirError}</p>}
+                    <input type="text" value={gelirForm.description} onChange={(e) => setGelirForm((f) => ({ ...f, description: e.target.value }))} placeholder="Açıklama" className="w-full px-2 py-1.5 text-xs border rounded-lg" />
+                    <div className="flex gap-1.5">
+                      <input type="number" step="0.01" value={gelirForm.amount} onChange={(e) => setGelirForm((f) => ({ ...f, amount: e.target.value }))} placeholder="Tutar" className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+                      <TrDateInput value={gelirForm.entryDate} onChange={(entryDate) => setGelirForm((f) => ({ ...f, entryDate }))} className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+                    </div>
+                    <button type="submit" disabled={gelirLoading} className="w-full py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
+                      {gelirLoading ? 'Kaydediliyor...' : 'Kaydet'}
+                    </button>
+                  </form>
+                )}
+                {costs.filter((c) => c.entryType === 'gelir').length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-3">Henüz gelir yok</p>
+                ) : (
+                  <div className="divide-y divide-slate-50">
+                    {costs.filter((c) => c.entryType === 'gelir').map((c) => (
+                      <div key={c.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                        {editingId === c.id ? (
+                          <form onSubmit={(e) => handleSaveEdit(e, c)} className="w-full space-y-1.5">
+                            {editError && <p className="text-xs text-red-600">{editError}</p>}
+                            <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-2 py-1 text-xs border rounded" />
+                            <div className="flex gap-1">
+                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-blue-600 text-white text-[10px] rounded">Kaydet</button>
+                              <button type="button" onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] border rounded">İptal</button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium truncate">{c.description}</p>
+                              <p className="text-[10px] text-slate-400">{fmtDate(c.entryDate)}</p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-xs font-bold text-green-600">+{fmtCurrency(c.amount)}</span>
+                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-blue-600">Düzenle</button>
+                              <button type="button" onClick={() => handleDeleteCost(c.id)} className="text-[10px] text-slate-400 hover:text-red-600">Sil</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-slate-100 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-red-700">Gider</span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowGiderForm((v) => !v); setShowGelirForm(false); }}
+                    className="text-xs font-medium text-red-600"
+                  >
+                    {showGiderForm ? 'Kapat' : 'Ekle'}
+                  </button>
+                </div>
+                {showGiderForm && (
+                  <form onSubmit={handleAddGider} className="px-3 py-2 bg-red-50 space-y-1.5 border-b border-red-100">
+                    {giderError && <p className="text-xs text-red-600">{giderError}</p>}
+                    <input type="text" value={giderForm.description} onChange={(e) => setGiderForm((f) => ({ ...f, description: e.target.value }))} placeholder="Açıklama" className="w-full px-2 py-1.5 text-xs border rounded-lg" />
+                    <div className="flex gap-1.5">
+                      <input type="number" step="0.01" value={giderForm.amount} onChange={(e) => setGiderForm((f) => ({ ...f, amount: e.target.value }))} placeholder="Tutar" className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+                      <TrDateInput value={giderForm.entryDate} onChange={(entryDate) => setGiderForm((f) => ({ ...f, entryDate }))} className="flex-1 px-2 py-1.5 text-xs border rounded-lg" />
+                    </div>
+                    <VendorSelector value={giderVendor} onChange={setGiderVendor} />
+                    <button type="submit" disabled={giderLoading} className="w-full py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
+                      {giderLoading ? 'Kaydediliyor...' : 'Kaydet'}
+                    </button>
+                  </form>
+                )}
+                {costs.filter((c) => c.entryType === 'gider').length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-3">Henüz gider yok</p>
+                ) : (
+                  <div className="divide-y divide-slate-50">
+                    {costs.filter((c) => c.entryType === 'gider').map((c) => (
+                      <div key={c.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                        {editingId === c.id ? (
+                          <form onSubmit={(e) => handleSaveEdit(e, c)} className="w-full space-y-1.5">
+                            {editError && <p className="text-xs text-red-600">{editError}</p>}
+                            <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-2 py-1 text-xs border rounded" />
+                            <VendorSelector value={editVendor} onChange={setEditVendor} />
+                            <div className="flex gap-1">
+                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-blue-600 text-white text-[10px] rounded">Kaydet</button>
+                              <button type="button" onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] border rounded">İptal</button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium truncate">{c.description}</p>
+                              <p className="text-[10px] text-slate-400">
+                                {fmtDate(c.entryDate)}
+                                {c.vendor ? ` · ${c.vendor.name}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-xs font-bold text-red-600">-{fmtCurrency(c.amount)}</span>
+                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-blue-600">Düzenle</button>
+                              <button type="button" onClick={() => handleDeleteCost(c.id)} className="text-[10px] text-slate-400 hover:text-red-600">Sil</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {!historicalExempt && (
+              <ClosureConditionsPanel
+                serviceType="emergency"
+                entityId={vaka.id}
+                fileNo={vaka.caseNo}
+                totalAmount={costs.reduce((s, c) => s + c.amount, 0)}
+                workItemsSummary={[]}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 8. Süreç — bilgi amaçlı kompakt strip */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-3 py-3" data-testid="surec-strip">
+        <p className="text-[11px] font-semibold text-slate-400 mb-2 px-1">Süreç</p>
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+          {STATUS_STEPS.map((s, i) => {
+            const isActive = s === vaka.status;
+            const isDone = i < currentIdx;
+            return (
+              <div key={s} className="flex items-center gap-1 shrink-0">
+                {i > 0 && <span className="text-slate-300 text-xs px-0.5">→</span>}
+                <span
+                  className={`text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : isDone
+                        ? 'bg-slate-100 text-slate-500'
+                        : 'bg-slate-50 text-slate-400 border border-slate-100'
+                  }`}
+                >
+                  {PROCESS_STRIP_LABELS[s]}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Onay kanalı modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+            <h3 className="text-base font-semibold text-slate-900">Onay Talebi Oluştur</h3>
+            <p className="text-xs text-slate-500">
+              Satış fiyatı ({satisFiyati || '—'} TL.) seçilen kanala iletilir. Alış fiyatı gönderilmez.
+            </p>
+            <fieldset className="space-y-2">
+              {([
+                { id: 'whatsapp' as const, label: 'WhatsApp' },
+                { id: 'email' as const, label: 'E-posta' },
+                { id: 'both' as const, label: 'WhatsApp + E-posta' },
+              ]).map((opt) => (
+                <label
+                  key={opt.id}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer ${
+                    approvalChannel === opt.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="approvalChannel"
+                    checked={approvalChannel === opt.id}
+                    onChange={() => setApprovalChannel(opt.id)}
+                    className="accent-blue-600"
+                  />
+                  <span className="text-sm font-medium text-slate-800">{opt.label}</span>
+                </label>
+              ))}
+            </fieldset>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowApprovalModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
+              >
+                İptal
+              </button>
+              <button
+                type="button"
+                disabled={approvalBusy}
+                onClick={handleApprovalSubmit}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {approvalBusy ? 'Gönderiliyor...' : 'Oluştur'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

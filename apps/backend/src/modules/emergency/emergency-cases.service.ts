@@ -206,6 +206,8 @@ export class EmergencyCasesService {
       invoiceDraftCount: emergencyCase.invoiceItems.length,
       latestInvoiceDraftStatus: emergencyCase.invoiceItems[0]?.draft?.status ?? null,
       canCreateInvoiceRequest: closure.canCreateInvoiceRequest,
+      createdAt: emergencyCase.createdAt,
+      fileDate: emergencyCase.fileDate,
     });
   }
 

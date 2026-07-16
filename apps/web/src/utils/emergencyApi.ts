@@ -21,6 +21,8 @@ export interface EmergencyOperationChain {
   vendorStatementReady: boolean;
   paymentReady: boolean;
   blockerReasons: string[];
+  /** createdAt / fileDate < 2026-07-01T00:00:00+03:00 */
+  isHistoricalFile?: boolean;
   totals: {
     gelir: number;
     gider: number;

@@ -1,0 +1,44 @@
+{
+  "at": "2026-07-16T18:08:17.221Z",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "injectUsed": false,
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "caseSource": "seed-id",
+  "typecheck": "PASS",
+  "overall": "PASS",
+  "viewports": [
+    {
+      "viewport": { "name": "01-desktop", "width": 1440, "height": 900 },
+      "status": "PASS",
+      "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+      "shot": "01-desktop.png",
+      "missingLabels": [],
+      "financeTabClosed": true
+    },
+    {
+      "viewport": { "name": "02-tablet", "width": 768, "height": 1024 },
+      "status": "PASS",
+      "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+      "shot": "02-tablet.png",
+      "missingLabels": [],
+      "financeTabClosed": true
+    },
+    {
+      "viewport": { "name": "03-mobile", "width": 390, "height": 844 },
+      "status": "PASS",
+      "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+      "shot": "03-mobile.png",
+      "missingLabels": [],
+      "financeTabClosed": true
+    }
+  ],
+  "checks": [
+    "Güncel İşlem tek kart",
+    "Finans / Dosya Geçmişi ilk ekranda kapalı",
+    "Google'da Ara yalnızca öneri yokken",
+    "Onay Talebi Oluştur + kanal modal",
+    "Title Case / vaka yok",
+    "Inject yok — gerçek login + seed dosya"
+  ]
+}
