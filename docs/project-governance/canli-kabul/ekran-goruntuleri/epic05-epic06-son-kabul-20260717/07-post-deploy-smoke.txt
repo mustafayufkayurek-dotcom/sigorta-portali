@@ -1,0 +1,20 @@
+PASS: GET /api/v1/health returns 200 and status ok
+PASS: GET /giris returns 200
+FAIL: POST /api/v1/auth/login returns success and access token (LOGIN_EMAIL/LOGIN_PASSWORD kontrol edin)
+PASS: GET /panel returns 200
+PASS: GET /panel/musteriler returns 200
+PASS: GET /panel/tedarikciler returns 200
+PASS: GET /panel/hasar-dosyalari returns 200
+PASS: GET /panel/operasyon returns 200
+PASS: GET /panel/sahiplik returns 200
+PASS: GET /panel/finans returns 200
+PASS: GET /panel/ayarlar returns 200
+PASS: GET /panel/ayarlar/tanimlar returns 200
+PASS: GET /panel/ayarlar/masraf-kategorileri returns 200
+PASS: GET /panel/ayarlar/is-gruplari returns 200
+PASS: GET /panel/ayarlar/dosya-konulari returns 200
+PASS: GET /panel/ayarlar/evrak-turleri returns 200
+PASS: GET /panel/ayarlar/mahaller returns 200
+PASS: GET /panel/ayarlar/hizmet-turleri returns 200
+PASS: GET /panel/ayarlar/tedarikci-hizmet-kollari returns 200
+PASS: GET /panel/guvenlik returns 200

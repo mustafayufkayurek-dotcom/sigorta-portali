@@ -54,9 +54,11 @@ Kullanıcı → production kontrolü → ürün kabulü / epic kapanışı
 ## Anlık not — EPIC-05 / EPIC-06
 
 - **Local:** 12/12 PASS (`epic05-epic06-son-kabul-20260717`)
-- **Deploy hedef:** `v369-epic05-epic06-son-kabul` (full: web + backend; migration yok)
+- **Deploy:** `v369-epic05-epic06-son-kabul` (**full**: web + backend; migration yok)
+- **Commit:** `0a1672a`
+- **Health:** PASS · **Smoke route:** PASS · auth login PARTIAL
 - **Rollback:** web v368 / backend v368
-- **Durum:** Local + deploy zinciri sonrası Health/Smoke beklenir; **Kullanıcı Production Onayı bekliyor**
+- **Durum:** Local + deploy PASS; **Kullanıcı Production Onayı bekliyor**
 - Epic resmi kapanışı kullanıcı production kontrolüne bağlıdır
 - Cursor Production Browser ile tekrar doğrulama **yapmaz**
 - Kapanış notu: `canli-kabul/EPIC05_EPIC06_SON_KAPANIS_20260717.md`

@@ -1,0 +1,1 @@
+{"status":"ok","maintenanceMode":false,"timestamp":"2026-07-17T05:50:41.533Z","uptime":161.813365351,"services":{"database":{"status":"up"},"redis":{"status":"up"},"cache":{"enabled":false,"healthy":false,"latencyMs":null,"stats":{"totalHits":0,"totalMisses":0,"hitRatio":0,"byResource":[]}}}}

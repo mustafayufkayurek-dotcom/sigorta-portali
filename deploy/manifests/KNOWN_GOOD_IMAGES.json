@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-16",
-  "label": "v368-epic06-tedarikci-profili",
-  "description": "Full: EPIC-06 Tedarikçi Profili 2.0 karar destek ekranı. Web v368 + backend v368. Migration yok (migrate no-op). Smoke: route PASS, auth login PARTIAL. Production browser: oturum yoksa UI maddeleri ürün FAIL sayılmaz — EPIC-06 kapanmaz. Rollback web v367 / backend v367.",
+  "updatedAt": "2026-07-17",
+  "label": "v369-epic05-epic06-son-kabul",
+  "description": "Full: EPIC-05/06 Acil Yardım son ürün kabulü. Web v369 + backend v369. Migration yok (migrate no-op). Local 12/12 PASS. Smoke: route PASS, auth login PARTIAL. Production browser: Cursor yapmaz — kullanıcı production onayı bekliyor. Rollback web v368 / backend v368.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v368-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v368-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v369-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v369-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v367-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v367-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v368-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v368-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

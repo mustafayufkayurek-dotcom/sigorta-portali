@@ -10,13 +10,21 @@
 
 | Aşama | Sonuç |
 |-------|--------|
-| Local Browser (12 madde) | PASS |
-| Typecheck web + backend | PASS |
-| Commit / Push / Deploy | Bu not ile zincir |
-| Health / Smoke | Deploy sonrası |
+| Local Browser (12 madde) | **PASS** |
+| Typecheck web + backend | **PASS** |
+| Commit | `0a1672a` |
+| Push | `safety/pre-v318-kilit-20260712` |
+| Deploy | **full** `v369-epic05-epic06-son-kabul` |
+| Health | **PASS** |
+| Smoke (route) | **PASS** (auth login PARTIAL — ürün FAIL sayılmaz) |
+| Nginx routing | **PASS** |
+| Kritik path | **PASS** |
 | Kullanıcı Production Onayı | **Bekliyor** |
 
 Cursor Production Browser **yapmaz**. Epic resmi kapanışı kullanıcı production kontrolüne bağlıdır.
+
+**Rollback:** web v368 / backend v368  
+**Migration:** yok
 
 ## 12 madde özeti
 
