@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-17",
-  "label": "v370-epic05-acil-dosya-detay-final",
-  "description": "Full: EPIC-05 Acil Yardım dosya detayı final. Web v370 + backend v370. Migration yok (migrate no-op). Commit 66dcf65. Smoke: route PASS, auth login PARTIAL (credential yok). Production browser: Cursor yapmaz — kullanıcı production onayı bekliyor. Rollback web v369 / backend v369.",
+  "label": "v371-epic05-tedarikci-onerileri-final",
+  "description": "Full: EPIC-05 tedarikçi öneri sekmeleri final. Web v371 + backend v371. Migration yok (migrate no-op). Commit 514c49b. Smoke: route PASS, auth login PARTIAL (credential yok — Cursor production UI login yapmaz). Production browser: kullanıcı production kontrolü. Rollback web v370 / backend v370.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v370-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v370-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v371-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v371-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v369-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v369-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v370-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v370-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
