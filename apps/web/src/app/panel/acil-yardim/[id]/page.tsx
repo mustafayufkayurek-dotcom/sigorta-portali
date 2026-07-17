@@ -18,27 +18,20 @@ import {
   readHistoricalFinanceOptIn,
   writeHistoricalFinanceOptIn,
 } from './historical-file';
-
-const STATUS_STEPS: EmergencyStatus[] = ['GELEN', 'ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'];
-const PROCESS_STRIP_LABELS: Record<EmergencyStatus, string> = {
-  GELEN: 'İhbar',
-  ATANDI: 'Tedarikçi Atandı',
-  SAHADA: 'Sahada',
-  COZULDU: 'Dosya Kapandı',
-  FATURALANDILDI: 'Finansa Aktarıldı',
-};
-
-const CURRENT_TASK_TITLES: Record<string, string> = {
-  ihbar: 'Dosya Açıldı',
-  atama: 'Tedarikçi Ataması Bekleniyor',
-  maliyet: 'Tedarikçi Maliyeti Bekleniyor',
-  onay: 'Asistans Onayı Bekleniyor',
-  saha: 'İşe Başlama Bekleniyor',
-  kapanis: 'Dosya Kapanışı Bekleniyor',
-  finans: 'Finansa Aktarım Bekleniyor',
-  hakedis: 'Hakediş Bekleniyor',
-  odeme: 'Ödeme Bekleniyor',
-};
+import { AlternativeVendorServicePanel } from '@/components/vendor-discovery/AlternativeVendorServicePanel';
+import {
+  ACIL_STAGES,
+  AcilLocalFlow,
+  appendFlowHistory,
+  buildClosureEmailPreview,
+  buildVendorWhatsAppText,
+  buildWorkStartWhatsAppText,
+  deriveAcilStageIndex,
+  emptyAcilLocalFlow,
+  readAcilLocalFlow,
+  stageTaskTitle,
+  writeAcilLocalFlow,
+} from './acil-workflow';
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   pending: 'Bekliyor',
@@ -48,50 +41,17 @@ const INVOICE_STATUS_LABELS: Record<string, string> = {
   draft: 'Taslak',
 };
 
-type BottomTab = 'gecmis' | 'finans' | null;
+type BottomTab = 'iletisim' | 'gecmis' | 'finans' | null;
 type ApprovalChannel = 'whatsapp' | 'email' | 'both';
 
 function fmtCurrency(n: number) {
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL.';
+  return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
 }
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function fmtDateTime(d: string) {
   return new Date(d).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function deriveCurrentTask(
-  vaka: EmergencyCase,
-  opts?: { historicalExempt?: boolean },
-): { title: string; detail?: string } {
-  if (opts?.historicalExempt) {
-    return {
-      title: 'Tarihsel Dosya',
-      detail: 'Yeni finans akışı, hakediş ve cari zorunlu değildir.',
-    };
-  }
-  const chain = vaka.operationChain;
-  if (chain) {
-    const current =
-      chain.steps.find((s) => s.state === 'current')
-      ?? chain.steps.find((s) => s.state === 'blocked');
-    if (current) {
-      return {
-        title: CURRENT_TASK_TITLES[current.key] ?? `${current.label} Bekleniyor`,
-        detail: current.note,
-      };
-    }
-    return { title: chain.currentStageLabel };
-  }
-  const fallback: Record<EmergencyStatus, string> = {
-    GELEN: 'Tedarikçi Ataması Bekleniyor',
-    ATANDI: 'Tedarikçi Maliyeti Bekleniyor',
-    SAHADA: 'Dosya Kapanışı Bekleniyor',
-    COZULDU: 'Finansa Aktarım Bekleniyor',
-    FATURALANDILDI: 'Finans Tamamlandı',
-  };
-  return { title: fallback[vaka.status] };
 }
 
 function customerLabel(vaka: EmergencyCase): string {
@@ -103,6 +63,34 @@ function customerLabel(vaka: EmergencyCase): string {
     || [c.firstName, c.lastName].filter(Boolean).join(' ')
     || vaka.customerName
   );
+}
+
+function insuredLabel(vaka: EmergencyCase): string {
+  // Sigortalı alanı şemada ayrı değil; notlardan veya boş gösterilir.
+  const note = (vaka.notes || '').trim();
+  const m = note.match(/sigortal[ıi]\s*[:：]\s*(.+)/i);
+  if (m?.[1]) return m[1].split(/[\n|]/)[0].trim().slice(0, 80);
+  return '—';
+}
+
+function statusLabel(status: EmergencyStatus): string {
+  const map: Record<EmergencyStatus, string> = {
+    GELEN: 'İhbar',
+    ATANDI: 'Tedarikçi Atandı',
+    SAHADA: 'Saha',
+    COZULDU: 'Dosya Kapatıldı',
+    FATURALANDILDI: 'Finansa Aktarıldı',
+  };
+  return map[status];
+}
+
+function openWhatsApp(phone: string | null | undefined, text: string) {
+  const digits = (phone || '').replace(/\D/g, '');
+  const withCountry = digits.startsWith('90') ? digits : digits ? `90${digits.replace(/^0/, '')}` : '';
+  const url = withCountry
+    ? `https://wa.me/${withCountry}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // ─── Inline Vendor Selector (Finans sekmesi) ─────────────────────────────────
@@ -300,6 +288,13 @@ export default function AcilDosyaDetayPage() {
   const [approvalMsg, setApprovalMsg] = useState<string | null>(null);
 
   const [bottomTab, setBottomTab] = useState<BottomTab>(null);
+  const [flow, setFlow] = useState<AcilLocalFlow>(emptyAcilLocalFlow);
+  const [costEditDraft, setCostEditDraft] = useState('');
+  const [showClosureEmail, setShowClosureEmail] = useState(false);
+  const [financeResult, setFinanceResult] = useState<string | null>(null);
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [financeBusy, setFinanceBusy] = useState(false);
+  const [actionFlash, setActionFlash] = useState<string | null>(null);
 
   const [showGelirForm, setShowGelirForm] = useState(false);
   const [gelirForm, setGelirForm] = useState(EMPTY_COST_FORM);
@@ -318,8 +313,12 @@ export default function AcilDosyaDetayPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  /** Tarihsel dosyayı yeni finans dönemine manuel dahil et (localStorage; migration yok). */
   const [financeOptIn, setFinanceOptIn] = useState(false);
+
+  const persistFlow = useCallback((next: AcilLocalFlow) => {
+    setFlow(next);
+    if (id) writeAcilLocalFlow(id, next);
+  }, [id]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -344,6 +343,9 @@ export default function AcilDosyaDetayPage() {
   useEffect(() => {
     if (!id) return;
     setFinanceOptIn(readHistoricalFinanceOptIn(id));
+    const saved = readAcilLocalFlow(id);
+    setFlow(saved);
+    if (saved.detectedCostTl != null) setCostEditDraft(String(saved.detectedCostTl));
   }, [id]);
 
   useEffect(() => {
@@ -372,11 +374,72 @@ export default function AcilDosyaDetayPage() {
       } else {
         await load();
       }
+      persistFlow(appendFlowHistory(flow, `Tedarikçi atandı: ${res.data.assignedVendor?.name ?? vendorId}`));
+      setActionFlash('Tedarikçi atandı. WhatsApp ile gönderebilirsiniz.');
     } catch {
       // sessiz
     } finally {
       setAssignLoading(false);
     }
+  }
+
+  function handleWhatsAppSend() {
+    if (!vaka) return;
+    const fileNo = vaka.fileNo || vaka.caseNo;
+    const text = buildVendorWhatsAppText({
+      fileNo,
+      issueType: vaka.issueType,
+      insuredLabel: insuredLabel(vaka),
+      phone: vaka.customerPhone || '',
+      address: vaka.address,
+      city: vaka.city,
+      district: vaka.district,
+      notes: vaka.notes,
+    });
+    const vendorPhone = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone;
+    openWhatsApp(vendorPhone, text);
+    const next = appendFlowHistory(flow, 'WhatsApp mesajı hazırlandı ve gönderim penceresi açıldı');
+    // Maliyet algısı stub — mesaj aşamayı değiştirmez; yalnızca öneri kartı
+    if (next.detectedCostTl == null && !next.costConfirmed) {
+      next.detectedCostTl = 2500;
+      setCostEditDraft('2500');
+    }
+    persistFlow(next);
+    setActionFlash('WhatsApp mesajı hazırlandı. Geçmişe kaydedildi.');
+  }
+
+  async function confirmDetectedCost() {
+    const amount = Number(costEditDraft || flow.detectedCostTl || 0);
+    if (!amount || amount <= 0) {
+      setActionFlash('Geçerli bir tutar girin');
+      return;
+    }
+    setAlisFiyati(String(amount));
+    const hasGider = costs.some((c) => c.entryType === 'gider');
+    if (!hasGider) {
+      try {
+        await addCostEntry(id, {
+          entryType: 'gider',
+          description: 'Tedarikçi Alış Fiyatı',
+          amount,
+          entryDate: new Date().toISOString().slice(0, 10),
+          vendorId: vaka?.assignedVendorId ?? undefined,
+        });
+        await refreshCosts();
+      } catch {
+        /* lokal alan yine set */
+      }
+    }
+    persistFlow(appendFlowHistory(
+      { ...flow, costConfirmed: true, detectedCostTl: amount },
+      `Tedarikçi maliyeti onaylandı: ${fmtCurrency(amount)}`,
+    ));
+    setActionFlash('Tedarikçi maliyeti onaylandı.');
+  }
+
+  function rejectDetectedCost() {
+    setCostEditDraft(String(flow.detectedCostTl ?? ''));
+    setActionFlash('Tutarı düzeltip onaylayın. Aşama otomatik değişmez.');
   }
 
   async function handleApprovalSubmit() {
@@ -422,12 +485,117 @@ export default function AcilDosyaDetayPage() {
         approvalChannel === 'whatsapp' ? 'WhatsApp'
         : approvalChannel === 'email' ? 'E-posta'
         : 'WhatsApp + E-posta';
-      setApprovalMsg(`Onay talebi oluşturuldu (${channelLabel}). Gönderim bağlantısı sonraki adımda tamamlanacak.`);
+      const next = appendFlowHistory(
+        {
+          ...flow,
+          costConfirmed: true,
+          approvalRequested: true,
+          approvalDetected: true,
+        },
+        `Onay talebi oluşturuldu (${channelLabel})`,
+      );
+      persistFlow(next);
+      setApprovalMsg(`Onay talebi oluşturuldu (${channelLabel}).`);
       setShowApprovalModal(false);
+      setActionFlash(`Onay talebi: ${channelLabel}`);
     } catch (err: any) {
       setApprovalMsg(err.message ?? 'Onay talebi oluşturulamadı');
     } finally {
       setApprovalBusy(false);
+    }
+  }
+
+  function handleCustomerApproval(accept: boolean) {
+    if (accept) {
+      persistFlow(appendFlowHistory(
+        { ...flow, customerApproved: true, approvalDetected: false },
+        'Müşteri onayı kaydedildi',
+      ));
+      setActionFlash('Müşteri onayı kaydedildi. İşe başlama mesajı hazırlayabilirsiniz.');
+    } else {
+      persistFlow(appendFlowHistory(
+        { ...flow, approvalDetected: false, approvalRequested: true },
+        'Onay reddedildi / düzeltme bekleniyor',
+      ));
+      setActionFlash('Onay kaydedilmedi. Gerekirse yeni onay talebi oluşturun.');
+    }
+  }
+
+  function handleWorkStartMessage() {
+    if (!vaka) return;
+    const fileNo = vaka.fileNo || vaka.caseNo;
+    const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
+    const vendorPhone = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone;
+    openWhatsApp(vendorPhone, text);
+    persistFlow(appendFlowHistory(
+      { ...flow, workStartPrepared: true },
+      'İşe başlama mesajı hazırlandı',
+    ));
+    setActionFlash('İşe başlama mesajı hazırlandı.');
+  }
+
+  async function handleServiceComplete() {
+    try {
+      if (vaka && (vaka.status === 'GELEN' || vaka.status === 'ATANDI')) {
+        const res = await updateCaseStatus(id, 'SAHADA');
+        setVaka(res.data);
+      }
+    } catch { /* local devam */ }
+    persistFlow(appendFlowHistory(
+      { ...flow, serviceCompleted: true, workStartPrepared: true, customerApproved: true },
+      'Hizmet tamamlandı olarak işaretlendi',
+    ));
+    setActionFlash('Hizmet tamamlandı.');
+  }
+
+  async function handleCloseFile() {
+    const saleOk = Number(satisFiyati) > 0 || costSummary.totalGelir > 0;
+    const approvalOk = flow.customerApproved || flow.approvalRequested;
+    if (!saleOk) {
+      setActionFlash('Onaylı satış fiyatı eksik. Dosya kapatılamaz.');
+      return;
+    }
+    setCloseBusy(true);
+    try {
+      const res = await updateCaseStatus(id, 'COZULDU');
+      setVaka(res.data);
+      persistFlow(appendFlowHistory(
+        { ...flow, fileClosed: true, serviceCompleted: true },
+        'Dosya kapatıldı',
+      ));
+      setShowClosureEmail(true);
+      setActionFlash(approvalOk
+        ? 'Dosya kapatıldı. Kapanış e-postasını önizleyin.'
+        : 'Dosya kapatıldı. Müşteri onayı kaydı eksik olabilir — e-postayı kontrol edin.');
+    } catch (err: any) {
+      setActionFlash(err.message ?? 'Dosya kapatılamadı');
+    } finally {
+      setCloseBusy(false);
+    }
+  }
+
+  async function handleFinanceTransfer() {
+    setFinanceBusy(true);
+    setFinanceResult(null);
+    try {
+      const res = await updateCaseStatus(id, 'FATURALANDILDI');
+      setVaka(res.data);
+      const claimBlocked = Boolean(res.data.operationChain?.constraints?.vendorStatementRequiresClaimFile);
+      const blockers = res.data.operationChain?.blockerReasons ?? [];
+      const hakedisBlocked = claimBlocked || blockers.some((b) => /hakediş|claimFile|cari/i.test(b));
+      const result = hakedisBlocked
+        ? 'Finansa Aktarıldı. Tedarikçi hakedişi ve cari bağlantısı bu dosya için henüz tamamlanamadı.'
+        : 'Finansa Aktarıldı.';
+      setFinanceResult(result);
+      persistFlow(appendFlowHistory(
+        { ...flow, financeTransferred: true, fileClosed: true },
+        result,
+      ));
+      setActionFlash(result);
+    } catch (err: any) {
+      setFinanceResult(err.message ?? 'Finansa aktarım yapılamadı');
+    } finally {
+      setFinanceBusy(false);
     }
   }
 
@@ -533,16 +701,44 @@ export default function AcilDosyaDetayPage() {
 
   const isHistorical = isHistoricalEmergencyFile(vaka.createdAt, vaka.fileDate);
   const historicalExempt = isHistorical && !financeOptIn;
-  const task = deriveCurrentTask(vaka, { historicalExempt });
-  const currentIdx = STATUS_STEPS.indexOf(vaka.status);
-  const googleQuery = [vaka.city, vaka.district, vaka.issueType, 'acil yardım'].filter(Boolean).join(' ');
-  const showGoogleSearch = !recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId;
+  const hasAlis = costSummary.totalGider > 0 || flow.costConfirmed || Number(alisFiyati) > 0;
+  const stageIdx = deriveAcilStageIndex({
+    status: vaka.status,
+    hasVendor: Boolean(vaka.assignedVendorId),
+    hasAlis,
+    flow,
+  });
+  const task = historicalExempt
+    ? { title: 'Tarihsel Dosya', detail: 'Yeni finans akışı, hakediş ve cari zorunlu değildir.' }
+    : stageTaskTitle(stageIdx);
+  const showAlternativeService = !recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId;
   const assigneeName = vaka.assignedUser
     ? `${vaka.assignedUser.firstName} ${vaka.assignedUser.lastName}`.trim()
     : '—';
   const karOrani = costSummary.totalGelir > 0
     ? ((costSummary.netKar / costSummary.totalGelir) * 100)
     : 0;
+  const fileNo = vaka.fileNo || vaka.caseNo;
+  const phone = vaka.customerPhone || '—';
+  const insured = insuredLabel(vaka);
+  const guncelDurum = ACIL_STAGES[stageIdx]?.label ?? statusLabel(vaka.status);
+  const showCostDetect = Boolean(vaka.assignedVendorId) && flow.detectedCostTl != null && !flow.costConfirmed;
+  const showApprovalDetect = flow.approvalDetected && !flow.customerApproved;
+  const salePriceNum = Number(satisFiyati) || costSummary.totalGelir || null;
+  const closureMail = buildClosureEmailPreview({
+    fileNo,
+    insuredLabel: insured,
+    issueType: vaka.issueType,
+    salePrice: salePriceNum,
+    closedAt: fmtDate(new Date().toISOString()),
+    summary: vaka.notes?.trim().slice(0, 120) || 'Hizmet tamamlandı',
+  });
+  const closeChecklist = {
+    sale: Number(satisFiyati) > 0 || costSummary.totalGelir > 0,
+    photos: (vaka.operationChain?.documents.totalCount ?? 0) > 0 || (vaka.operationChain?.inbox.attachmentCount ?? 0) > 0,
+    docs: Boolean(vaka.operationChain?.documents.hasApprovedMatbuEvrak) || (vaka.operationChain?.documents.totalCount ?? 0) > 0,
+    approval: flow.customerApproved,
+  };
 
   function handleHistoricalFinanceOptIn() {
     writeHistoricalFinanceOptIn(id, true);
@@ -550,13 +746,13 @@ export default function AcilDosyaDetayPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 pb-8" data-testid="acil-dosya-detay">
+    <div className="max-w-3xl mx-auto space-y-4 pb-24 sm:pb-8 overflow-x-hidden" data-testid="acil-dosya-detay">
       {/* 1. Dosya Başlığı */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4" data-testid="dosya-basligi">
         <div className="flex items-start gap-3">
           <Link
             href="/panel/operasyon?filter=acil"
-            className="mt-0.5 p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors shrink-0"
+            className="mt-1 p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors shrink-0"
             aria-label="Geri"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -564,10 +760,12 @@ export default function AcilDosyaDetayPage() {
             </svg>
           </Link>
           <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="text-lg font-bold text-slate-900 font-mono tracking-tight">
-                {vaka.fileNo || vaka.caseNo}
-              </h1>
+            <p className="text-xs text-slate-400">Müşteri (Asistans)</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight truncate">
+              {customerLabel(vaka)}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-sm font-mono font-semibold text-slate-700">{fileNo}</span>
               {vaka.fileNo && vaka.caseNo !== vaka.fileNo && (
                 <span className="text-xs text-slate-400 font-mono">{vaka.caseNo}</span>
               )}
@@ -602,26 +800,38 @@ export default function AcilDosyaDetayPage() {
             )}
             <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
-                <dt className="text-xs text-slate-400">Müşteri (Asistans)</dt>
-                <dd className="font-medium text-slate-800 truncate">{customerLabel(vaka)}</dd>
+                <dt className="text-xs text-slate-400">Dosya No</dt>
+                <dd className="font-medium text-slate-800 font-mono truncate">{fileNo}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-400">Sigortalı</dt>
-                <dd className="font-medium text-slate-800 truncate">—</dd>
+                <dd className="font-medium text-slate-800 truncate">{insured}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-400">Hizmet Türü</dt>
                 <dd className="font-medium text-blue-700">{vaka.issueType}</dd>
               </div>
               <div>
+                <dt className="text-xs text-slate-400">Telefon</dt>
+                <dd className="font-medium text-slate-800">{phone}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-slate-400">Dosya Sorumlusu</dt>
                 <dd className="font-medium text-slate-800">{assigneeName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-400">Açılış Tarihi</dt>
+                <dd className="font-medium text-slate-800">{fmtDate(vaka.fileDate ?? vaka.createdAt)}</dd>
               </div>
               <div className="sm:col-span-2">
                 <dt className="text-xs text-slate-400">Adres</dt>
                 <dd className="font-medium text-slate-800">
                   {vaka.address}{vaka.city ? `, ${vaka.city}` : ''}{vaka.district ? ` / ${vaka.district}` : ''}
                 </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-400">Güncel Durum</dt>
+                <dd className="font-semibold text-blue-700" data-testid="guncel-durum">{guncelDurum}</dd>
               </div>
             </dl>
             {vaka.activeDelegation && (
@@ -633,7 +843,34 @@ export default function AcilDosyaDetayPage() {
         </div>
       </div>
 
-      {/* 2. Güncel İşlem — ANA ODAK */}
+      {/* 2. Acil aşamalar strip */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-3 py-3" data-testid="surec-strip">
+        <p className="text-[11px] font-semibold text-slate-400 mb-2 px-1">Dosya Aşamaları</p>
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
+          {ACIL_STAGES.map((s, i) => {
+            const isActive = i === stageIdx;
+            const isDone = i < stageIdx;
+            return (
+              <div key={s.key} className="flex items-center gap-1 shrink-0">
+                {i > 0 && <span className="text-slate-300 text-xs px-0.5">→</span>}
+                <span
+                  className={`text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : isDone
+                        ? 'bg-slate-100 text-slate-500'
+                        : 'bg-slate-50 text-slate-400 border border-slate-100'
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Güncel İşlem — ANA ODAK */}
       <div
         className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-sm p-5"
         data-testid="guncel-islem"
@@ -648,14 +885,19 @@ export default function AcilDosyaDetayPage() {
             Atanan Tedarikçi: <span className="font-semibold text-slate-700">{vaka.assignedVendor.name}</span>
           </p>
         )}
+        {actionFlash && (
+          <p className="mt-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2" data-testid="aksiyon-bildirim">
+            {actionFlash}
+          </p>
+        )}
       </div>
 
-      {/* 3. Tedarikçi Önerileri */}
+      {/* 3. Önerilen Tedarikçiler */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4" data-testid="tedarikci-onerileri">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <p className="text-sm font-semibold text-slate-800">Tedarikçi Önerileri</p>
+          <p className="text-sm font-semibold text-slate-800">Önerilen Tedarikçiler</p>
           {vaka.assignedVendor && (
-            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
               Atandı
             </span>
           )}
@@ -672,16 +914,19 @@ export default function AcilDosyaDetayPage() {
                     ? 'border-blue-400 bg-blue-50'
                     : 'border-slate-200 bg-slate-50/50'
                 }`}
+                data-testid="tedarikci-oneri"
               >
                 <span className="text-xs font-bold text-slate-400 w-4 shrink-0">{idx + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900 truncate">{v.name}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
                     {[
-                      v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
-                      v.avgCost != null ? `Maliyet ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
-                      v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
                       vaka.city ? `Bölge ${vaka.city}` : null,
+                      vaka.issueType ? `Hizmet ${vaka.issueType}` : null,
+                      v.avgServiceScore != null ? `Kalite ${v.avgServiceScore}` : null,
+                      v.avgCost != null ? `Ortalama Maliyet ${Number(v.avgCost).toLocaleString('tr-TR')} ₺` : null,
+                      v.avgResponseTime != null ? `Müdahale ${v.avgResponseTime} sa` : null,
+                      `Tamamlanan ${v.completedFileCount ?? 0}`,
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -691,8 +936,9 @@ export default function AcilDosyaDetayPage() {
                     disabled={assignLoading}
                     onClick={() => handleAssignVendor(v.id)}
                     className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    data-testid="tedarikci-ata"
                   >
-                    Ata
+                    Dosyaya Ata
                   </button>
                 )}
               </li>
@@ -701,20 +947,78 @@ export default function AcilDosyaDetayPage() {
         ) : (
           <p className="text-xs text-slate-500 py-2">Uygun tedarikçi önerisi yok.</p>
         )}
-        {showGoogleSearch && (
-          <a
-            href={`https://www.google.com/search?q=${encodeURIComponent(googleQuery)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Google&apos;da Ara
-          </a>
+        {!recsLoading && !vaka.assignedVendorId && (
+          <AlternativeVendorServicePanel
+            city={vaka.city ?? undefined}
+            district={vaka.district ?? undefined}
+            serviceType={vaka.issueType ?? undefined}
+            category="acil"
+            autoExpandWhenEmpty={showAlternativeService}
+            onAssigned={async (vendor) => {
+              await handleAssignVendor(vendor.id);
+            }}
+          />
         )}
         <p className="mt-2 text-[11px] text-slate-400">Atama zorunlu değildir.</p>
       </div>
 
-      {/* 4. Maliyet ve Onay */}
+      {/* 4. WhatsApp ile Gönder — ata sonrası */}
+      {vaka.assignedVendorId && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2" data-testid="whatsapp-gonder">
+          <p className="text-sm font-semibold text-slate-800">WhatsApp İle Gönder</p>
+          <p className="text-[11px] text-slate-500">
+            Dosya bilgisi otomatik hazırlanır. Serbest mesaj dosya aşamasını değiştirmez.
+          </p>
+          <button
+            type="button"
+            onClick={handleWhatsAppSend}
+            className="w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+            data-testid="whatsapp-gonder-btn"
+          >
+            WhatsApp İle Gönder
+          </button>
+        </div>
+      )}
+
+      {/* 5. Tedarikçi maliyeti algılama */}
+      {showCostDetect && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 space-y-3" data-testid="maliyet-algilandi">
+          <p className="text-sm font-semibold text-slate-800">
+            Tedarikçi maliyeti algılandı:{' '}
+            <span className="text-amber-800">{fmtCurrency(Number(costEditDraft || flow.detectedCostTl || 0))}</span>
+          </p>
+          <p className="text-[11px] text-slate-500">Onaylanmadan maliyet kesinleşmez.</p>
+          <input
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            value={costEditDraft}
+            onChange={(e) => setCostEditDraft(e.target.value)}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            data-testid="maliyet-duzelt-input"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void confirmDetectedCost()}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+              data-testid="maliyet-onayla"
+            >
+              Onayla
+            </button>
+            <button
+              type="button"
+              onClick={rejectDetectedCost}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700"
+              data-testid="maliyet-duzelt"
+            >
+              Düzelt
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Maliyet ve Onay */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3" data-testid="maliyet-onay">
         <p className="text-sm font-semibold text-slate-800">Maliyet Ve Onay</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -731,6 +1035,7 @@ export default function AcilDosyaDetayPage() {
               onChange={(e) => setAlisFiyati(e.target.value)}
               placeholder="0,00"
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-testid="alis-fiyati"
             />
           </div>
           <div>
@@ -746,6 +1051,7 @@ export default function AcilDosyaDetayPage() {
               onChange={(e) => setSatisFiyati(e.target.value)}
               placeholder="0,00"
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-testid="satis-fiyati"
             />
           </div>
         </div>
@@ -759,57 +1065,181 @@ export default function AcilDosyaDetayPage() {
           type="button"
           onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
           className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800"
+          data-testid="onay-talebi-olustur"
         >
           Onay Talebi Oluştur
         </button>
       </div>
 
-      {/* 5. WhatsApp / İletişim */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3" data-testid="whatsapp-iletisim">
-        <div>
-          <p className="text-sm font-semibold text-slate-800">WhatsApp</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Ana iletişim: yazışma, foto ve belge. Otomatik algı metni sonraki sürümde; tek dokunuş onay için hazır UI.
+      {/* 7. Asistans onayı */}
+      {showApprovalDetect && (
+        <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-4 space-y-3" data-testid="asistans-onay-algilandi">
+          <p className="text-sm font-semibold text-slate-800">
+            Onay algılandı. Müşteri onayı olarak kaydedilsin mi?
           </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleCustomerApproval(true)}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+              data-testid="asistans-onayla"
+            >
+              Onayla
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCustomerApproval(false)}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700"
+              data-testid="asistans-reddet"
+            >
+              Reddet
+            </button>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 max-h-64 overflow-auto">
-          <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} />
-        </div>
-        <div className="rounded-xl border border-slate-100 p-3">
-          <p className="text-xs font-semibold text-slate-600 mb-2">Belgeler</p>
-          <FileDocumentPanel
-            entityType="emergency_case"
-            entityId={vaka.id}
-            documentKind="matbu_evrak"
-          />
-        </div>
-      </div>
+      )}
 
-      {/* 6–7. Sekmeler: Dosya Geçmişi / Finans (ilk ekranda kapalı) */}
+      {flow.customerApproved && !flow.workStartPrepared && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4" data-testid="ise-baslama">
+          <button
+            type="button"
+            onClick={handleWorkStartMessage}
+            className="w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold"
+            data-testid="ise-baslama-mesaji"
+          >
+            İşe Başlama Mesajı Hazırla
+          </button>
+        </div>
+      )}
+
+      {/* 8–10. Tamamlama / Kapat / Finansa Aktar */}
+      {(flow.workStartPrepared || flow.serviceCompleted || stageIdx >= 4) && !flow.serviceCompleted && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4" data-testid="hizmet-tamamla">
+          <button
+            type="button"
+            onClick={() => void handleServiceComplete()}
+            className="w-full py-3 rounded-xl bg-slate-800 text-white text-sm font-semibold"
+            data-testid="hizmet-tamamlandi-btn"
+          >
+            Hizmet Tamamlandı
+          </button>
+        </div>
+      )}
+
+      {(flow.serviceCompleted || stageIdx >= 5) && !flow.fileClosed && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI' && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3" data-testid="dosya-kapat">
+          <p className="text-sm font-semibold text-slate-800">Dosya Kapanış Kontrolü</p>
+          <ul className="text-xs text-slate-600 space-y-1">
+            <li className={closeChecklist.sale ? 'text-emerald-700' : 'text-amber-700'}>
+              {closeChecklist.sale ? '✓' : '•'} Onaylı satış fiyatı {closeChecklist.sale ? 'mevcut' : 'eksik'}
+            </li>
+            <li className={closeChecklist.photos ? 'text-emerald-700' : 'text-slate-500'}>
+              {closeChecklist.photos ? '✓' : '•'} Fotoğraf / yazışma ekleri {closeChecklist.photos ? 'bağlı' : 'henüz yok (opsiyonel)'}
+            </li>
+            <li className={closeChecklist.docs ? 'text-emerald-700' : 'text-slate-500'}>
+              {closeChecklist.docs ? '✓' : '•'} Belge {closeChecklist.docs ? 'mevcut' : 'henüz yok (opsiyonel)'}
+            </li>
+            <li className={closeChecklist.approval ? 'text-emerald-700' : 'text-amber-700'}>
+              {closeChecklist.approval ? '✓' : '•'} Müşteri onayı {closeChecklist.approval ? 'kayıtlı' : 'eksik'}
+            </li>
+          </ul>
+          <button
+            type="button"
+            disabled={closeBusy || !closeChecklist.sale}
+            onClick={() => void handleCloseFile()}
+            className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+            data-testid="dosyayi-kapat-btn"
+          >
+            {closeBusy ? 'Kapatılıyor...' : 'Dosyayı Kapat'}
+          </button>
+        </div>
+      )}
+
+      {(flow.fileClosed || vaka.status === 'COZULDU') && vaka.status !== 'FATURALANDILDI' && !flow.financeTransferred && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2" data-testid="finansa-aktar">
+          <button
+            type="button"
+            onClick={() => setShowClosureEmail(true)}
+            className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700"
+            data-testid="kapanis-email-onizle"
+          >
+            Kapanış E-postasını Önizle
+          </button>
+          <button
+            type="button"
+            disabled={financeBusy}
+            onClick={() => void handleFinanceTransfer()}
+            className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+            data-testid="finansa-aktar-btn"
+          >
+            {financeBusy ? 'Aktarılıyor...' : 'Finansa Aktar'}
+          </button>
+        </div>
+      )}
+
+      {(flow.financeTransferred || vaka.status === 'FATURALANDILDI') && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4" data-testid="finansa-aktarildi">
+          <p className="text-sm font-semibold text-emerald-800">Finansa Aktarıldı</p>
+          {financeResult && (
+            <p className="mt-1 text-xs text-emerald-700" data-testid="finans-sonuc">{financeResult}</p>
+          )}
+          {!financeResult && vaka.operationChain?.constraints?.vendorStatementRequiresClaimFile && (
+            <p className="mt-1 text-xs text-emerald-700" data-testid="finans-sonuc">
+              Finansa Aktarıldı. Tedarikçi hakedişi ve cari bağlantısı bu dosya için henüz tamamlanamadı.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 11. Sekmeler — ilk ekranda kapalı */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" data-testid="alt-sekmeler">
         <div className="flex border-b border-slate-100">
-          <button
-            type="button"
-            onClick={() => setBottomTab(bottomTab === 'gecmis' ? null : 'gecmis')}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-              bottomTab === 'gecmis' ? 'text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Dosya Geçmişi
-          </button>
-          <button
-            type="button"
-            onClick={() => setBottomTab(bottomTab === 'finans' ? null : 'finans')}
-            className={`flex-1 py-3 text-sm font-semibold border-l border-slate-100 transition-colors ${
-              bottomTab === 'finans' ? 'text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            Finans
-          </button>
+          {([
+            { id: 'iletisim' as const, label: 'WhatsApp / Belge' },
+            { id: 'gecmis' as const, label: 'Dosya Geçmişi' },
+            { id: 'finans' as const, label: 'Finans' },
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setBottomTab(bottomTab === tab.id ? null : tab.id)}
+              className={`flex-1 py-3 text-xs sm:text-sm font-semibold transition-colors border-l border-slate-100 first:border-l-0 ${
+                bottomTab === tab.id ? 'text-blue-700 bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+              data-testid={`sekme-${tab.id}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
+        {bottomTab === 'iletisim' && (
+          <div className="p-4 space-y-3" data-testid="sekme-iletisim-icerik">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 max-h-64 overflow-auto">
+              <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} />
+            </div>
+            <div className="rounded-xl border border-slate-100 p-3">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Belgeler</p>
+              <FileDocumentPanel
+                entityType="emergency_case"
+                entityId={vaka.id}
+                documentKind="matbu_evrak"
+              />
+            </div>
+          </div>
+        )}
+
         {bottomTab === 'gecmis' && (
-          <div className="p-4 space-y-3 text-sm">
+          <div className="p-4 space-y-3 text-sm" data-testid="sekme-gecmis-icerik">
+            {flow.history.length > 0 && (
+              <ul className="space-y-2">
+                {flow.history.map((h, i) => (
+                  <li key={`${h.at}-${i}`} className="text-xs text-slate-600 border-b border-slate-50 pb-2">
+                    <span className="text-slate-400">{fmtDateTime(h.at)}</span>
+                    <p className="mt-0.5 font-medium text-slate-800">{h.text}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
             {vaka.operationChain ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
@@ -818,11 +1248,6 @@ export default function AcilDosyaDetayPage() {
                     <p className="font-medium text-slate-800 mt-0.5">
                       {vaka.operationChain.inbox.messageCount} yazışma · {vaka.operationChain.inbox.attachmentCount} ek
                     </p>
-                    {vaka.operationChain.inbox.lastReceivedAt && (
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Son: {fmtDateTime(vaka.operationChain.inbox.lastReceivedAt)}
-                      </p>
-                    )}
                   </div>
                   <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
                     <p className="text-xs text-slate-400">Evrak</p>
@@ -837,18 +1262,15 @@ export default function AcilDosyaDetayPage() {
                     <p className="text-slate-700 mt-0.5">{vaka.notes}</p>
                   </div>
                 )}
-                <p className="text-xs text-slate-400">
-                  Dosya tarihi: {fmtDate(vaka.fileDate ?? vaka.createdAt)} · Oluşturuldu: {fmtDate(vaka.createdAt)}
-                </p>
               </>
-            ) : (
+            ) : flow.history.length === 0 ? (
               <p className="text-xs text-slate-400">Geçmiş özeti henüz yok.</p>
-            )}
+            ) : null}
           </div>
         )}
 
         {bottomTab === 'finans' && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4" data-testid="sekme-finans-icerik">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div className="rounded-xl bg-green-50 border border-green-100 px-2 py-2">
                 <p className="text-[10px] text-green-600 font-medium">Gelir</p>
@@ -876,9 +1298,9 @@ export default function AcilDosyaDetayPage() {
                   </p>
                 ) : (
                   <p>
-                    Hakediş: {vaka.operationChain.vendorStatementReady ? 'Şema Bloklu' : 'Beklemede'}
+                    Durum özeti: satış {costSummary.totalGelir > 0 ? 'var' : 'yok'}
                     {' · '}
-                    Ödeme / Cari: {vaka.operationChain.paymentReady ? 'Şema Bloklu' : 'Beklemede'}
+                    alış {costSummary.totalGider > 0 ? 'var' : 'yok'}
                   </p>
                 )}
                 <p>
@@ -892,11 +1314,9 @@ export default function AcilDosyaDetayPage() {
                       ?? vaka.operationChain.finance.latestInvoiceDraftStatus}</>
                   )}
                 </p>
-                <p className="text-slate-400">KDV özeti: sonraki sürümde.</p>
               </div>
             )}
 
-            {/* Gelir / Gider — finans sekmesinde */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="border border-slate-100 rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
@@ -1033,40 +1453,51 @@ export default function AcilDosyaDetayPage() {
         )}
       </div>
 
-      {/* 8. Süreç — bilgi amaçlı kompakt strip */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-3 py-3" data-testid="surec-strip">
-        <p className="text-[11px] font-semibold text-slate-400 mb-2 px-1">Süreç</p>
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-          {STATUS_STEPS.map((s, i) => {
-            const isActive = s === vaka.status;
-            const isDone = i < currentIdx;
-            return (
-              <div key={s} className="flex items-center gap-1 shrink-0">
-                {i > 0 && <span className="text-slate-300 text-xs px-0.5">→</span>}
-                <span
-                  className={`text-[10px] sm:text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
-                    isActive
-                      ? 'bg-blue-600 text-white'
-                      : isDone
-                        ? 'bg-slate-100 text-slate-500'
-                        : 'bg-slate-50 text-slate-400 border border-slate-100'
-                  }`}
-                >
-                  {PROCESS_STRIP_LABELS[s]}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      {/* 12. Mobil sabit alt çubuk */}
+      <div
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-3 py-2 flex gap-2"
+        data-testid="mobil-alt-cubuk"
+      >
+        {vaka.assignedVendorId ? (
+          <button
+            type="button"
+            onClick={handleWhatsAppSend}
+            className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold"
+          >
+            WhatsApp
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => document.querySelector('[data-testid="tedarikci-onerileri"]')?.scrollIntoView({ behavior: 'smooth' })}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold"
+          >
+            Tedarikçi
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
+          className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
+        >
+          Onay Talebi
+        </button>
+        <button
+          type="button"
+          onClick={() => setBottomTab(bottomTab === 'iletisim' ? null : 'iletisim')}
+          className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
+        >
+          Yazışma
+        </button>
       </div>
 
       {/* Onay kanalı modal */}
       {showApprovalModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" data-testid="onay-talebi-modal">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
             <h3 className="text-base font-semibold text-slate-900">Onay Talebi Oluştur</h3>
             <p className="text-xs text-slate-500">
-              Satış fiyatı ({satisFiyati || '—'} TL.) seçilen kanala iletilir. Alış fiyatı gönderilmez.
+              Satış fiyatı ({satisFiyati || '—'} TL) seçilen kanala iletilir. Alış fiyatı gönderilmez.
             </p>
             <fieldset className="space-y-2">
               {([
@@ -1104,10 +1535,48 @@ export default function AcilDosyaDetayPage() {
                 disabled={approvalBusy}
                 onClick={handleApprovalSubmit}
                 className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+                data-testid="onay-talebi-gonder"
               >
                 {approvalBusy ? 'Gönderiliyor...' : 'Oluştur'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kapanış e-posta önizleme — alış YOK */}
+      {showClosureEmail && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" data-testid="kapanis-email-modal">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[85vh] overflow-auto">
+            <h3 className="text-base font-semibold text-slate-900">Kapanış E-postası Önizleme</h3>
+            <p className="text-xs text-slate-500">Konu: {closureMail.subject}</p>
+            <pre
+              className="text-xs text-slate-700 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-xl p-3"
+              data-testid="kapanis-email-govde"
+            >
+              {closureMail.body}
+            </pre>
+            <p className="text-[11px] text-amber-700" data-testid="kapanis-alis-yok">
+              Tedarikçi alış fiyatı bu e-postada yer almaz.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                persistFlow(appendFlowHistory(flow, 'Kapanış e-postası önizlendi'));
+                setShowClosureEmail(false);
+                setActionFlash('Kapanış e-postası önizlendi. Alış fiyatı gönderilmez.');
+              }}
+              className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+            >
+              Önizlemeyi Onayla
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowClosureEmail(false)}
+              className="w-full py-2 rounded-xl border border-slate-200 text-sm text-slate-600"
+            >
+              Kapat
+            </button>
           </div>
         </div>
       )}

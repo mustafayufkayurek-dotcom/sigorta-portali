@@ -7,6 +7,7 @@ import {
   type VendorCostMemorySummary,
 } from '@/utils/vendor-intelligence-profile';
 import { API, authHeader } from './claim-detail-utils';
+import { AlternativeVendorServicePanel } from '@/components/vendor-discovery/AlternativeVendorServicePanel';
 
 type CostMemorySummary = VendorCostMemorySummary;
 
@@ -93,7 +94,7 @@ export function VendorSuggestPanel({
     <div className="border border-indigo-100 rounded-xl bg-indigo-50/40 p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-indigo-700">
-          Akıllı Tedarikçi Profili — Operasyon Hafızası {city ? `(${city})` : ''}
+          Önerilen Tedarikçiler{city ? ` (${city})` : ''}
         </p>
         <button type="button" onClick={onManual} className="text-xs text-slate-500 hover:text-slate-700 underline">Manuel Seç</button>
       </div>
@@ -155,7 +156,7 @@ export function VendorSuggestPanel({
                 </div>
                 {operationGroup && (
                   <p className={`text-[11px] mt-0.5 leading-snug ${muted}`}>
-                    Operasyon Grubu: {operationGroup}
+                    Hizmet: {operationGroup}
                     {terminologyParts.length > 0 ? ` · ${terminologyParts.join(' · ')}` : ''}
                   </p>
                 )}
@@ -163,7 +164,7 @@ export function VendorSuggestPanel({
                   Hizmet Kalitesi: {formatMetricValue(qualityText)}
                 </p>
                 <p className={`text-[11px] mt-0.5 leading-snug ${muted}`}>
-                  Maliyet Hafızası: {formatMetricValue(costMemoryText, 'Veri yok')}
+                  Ortalama Maliyet: {formatMetricValue(costMemoryText, 'Veri yok')}
                 </p>
                 <p className={`text-[11px] mt-0.5 leading-snug ${muted}`}>
                   Müdahale Süresi: {responseText}
@@ -172,6 +173,18 @@ export function VendorSuggestPanel({
             );
           })}
         </div>
+      )}
+      {!loading && (
+        <AlternativeVendorServicePanel
+          city={city}
+          serviceType={category}
+          category={category}
+          compact
+          autoExpandWhenEmpty={suggestions.length === 0}
+          onAssigned={async (vendor) => {
+            onSelect(vendor.id);
+          }}
+        />
       )}
     </div>
   );

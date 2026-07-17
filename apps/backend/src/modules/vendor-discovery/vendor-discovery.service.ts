@@ -14,6 +14,8 @@ import { SystemSettingsService } from '../system-settings/system-settings.servic
 import type { ImportVendorDiscoveryDto } from './dto/import-vendor-discovery.dto';
 import type { LinkImportVendorDiscoveryDto } from './dto/link-import-vendor-discovery.dto';
 import type {
+  AlternativeVendorCandidate,
+  AlternativeVendorSearchResult,
   ExternalVendorCandidate,
   ExternalVendorSource,
   SearchExternalVendorsQuery,
@@ -76,6 +78,87 @@ export class VendorDiscoveryService {
     private readonly systemSettings: SystemSettingsService,
     private readonly http: HttpService,
   ) {}
+
+  /**
+   * EPIC-05 Alternatif Tedarikçi Servisi.
+   * Anahtar yoksa sahte marka üretmez; boş sonuç + net kod döner.
+   * Kullanıcıya dönük mesajlarda harici kaynak adı yok.
+   */
+  async searchAlternative(
+    query: SearchExternalVendorsQuery,
+    userId: string,
+  ): Promise<AlternativeVendorSearchResult> {
+    await this.assertSearchQuota(userId);
+
+    const city = query.city.trim();
+    const districts = this.normalizeDistricts(query);
+    const districtLabel = this.formatDistrictsLabel(districts);
+    const serviceType = toTitleCaseTR(query.serviceType.trim());
+    const minRating = query.minRating ?? 3.5;
+
+    const apiKey = await this.resolveGooglePlacesApiKey();
+    if (!apiKey) {
+      return {
+        candidates: [],
+        configured: false,
+        code: 'ALTERNATIVE_SERVICE_NOT_CONFIGURED',
+        message: 'Alternatif tedarikçi şu anda önerilemiyor. Lütfen daha sonra tekrar deneyin.',
+      };
+    }
+
+    let external: ExternalVendorCandidate[];
+    try {
+      external = await this.searchGooglePlacesMerged(apiKey, city, districts, serviceType, minRating);
+    } catch (err) {
+      this.logger.warn(
+        `Alternatif tedarikçi araması başarısız: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return {
+        candidates: [],
+        configured: true,
+        code: 'SEARCH_FAILED',
+        message: 'Alternatif arama şu anda tamamlanamadı. Lütfen daha sonra tekrar deneyin.',
+      };
+    }
+
+    const candidates = external.map((c) => this.toAlternativeCandidate(c));
+    const session = await this.prisma.vendorDiscoverySession.create({
+      data: {
+        userId,
+        city: toTitleCaseTR(city),
+        district: districtLabel,
+        serviceType,
+        minRating,
+        source: 'google_places',
+        resultCount: candidates.length,
+        candidates: {
+          create: external.map((c) => ({
+            externalId: c.externalId,
+            name: c.name,
+            address: c.address,
+            phone: c.phone ?? null,
+            rating: c.rating,
+            reviewCount: c.reviewCount,
+            latitude: c.latitude ?? null,
+            longitude: c.longitude ?? null,
+            source: c.source,
+            rawPayload: c as unknown as object,
+          })),
+        },
+      },
+    });
+
+    return {
+      candidates,
+      configured: true,
+      code: candidates.length === 0 ? 'NO_RESULTS' : 'OK',
+      message:
+        candidates.length === 0
+          ? 'Bu kriterlerde alternatif tedarikçi bulunamadı.'
+          : `${candidates.length} alternatif aday bulundu.`,
+      sessionId: session.id,
+    };
+  }
 
   async searchExternal(
     query: SearchExternalVendorsQuery,
@@ -289,9 +372,27 @@ export class VendorDiscoveryService {
     } catch {
       /* env fallback */
     }
-    const envKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
+    const envKey =
+      process.env.GOOGLE_PLACES_API_KEY?.trim()
+      || process.env.GOOGLE_MAPS_API_KEY?.trim();
     if (envKey) return envKey;
     return null;
+  }
+
+  private toAlternativeCandidate(c: ExternalVendorCandidate): AlternativeVendorCandidate {
+    return {
+      externalId: c.externalId,
+      name: c.name,
+      address: c.address,
+      city: c.city,
+      district: c.district,
+      phone: c.phone,
+      rating: c.rating,
+      reviewCount: c.reviewCount,
+      serviceTypes: c.serviceTypes,
+      latitude: c.latitude,
+      longitude: c.longitude,
+    };
   }
 
   private buildMockResults(

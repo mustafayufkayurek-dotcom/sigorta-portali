@@ -63,6 +63,51 @@ export class VendorDiscoveryController {
     };
   }
 
+  @Get('alternative-search')
+  @RequirePermissions('vendor.view')
+  @ApiOperation({
+    summary: 'Alternatif Tedarikçi Servisi (UI’da kaynak markası yok; yapılandırılmamışsa boş)',
+  })
+  async alternativeSearch(
+    @Query('city') city: string,
+    @Query('district') district: string,
+    @Query('serviceType') serviceType: string,
+    @Query('operationGroup') operationGroup: string,
+    @Query('minRating') minRating: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    if (!city?.trim()) {
+      throw new BadRequestException('İl (city) parametresi zorunludur');
+    }
+    const resolvedService = (serviceType || operationGroup || '').trim();
+    if (!resolvedService) {
+      throw new BadRequestException('Hizmet türü (serviceType) veya operasyon grubu zorunludur');
+    }
+
+    const parsedMinRating = minRating ? Number(minRating) : 3.5;
+    const result = await this.discoveryService.searchAlternative(
+      {
+        city: city.trim(),
+        district: district?.trim() || undefined,
+        serviceType: resolvedService,
+        minRating: Number.isFinite(parsedMinRating) ? parsedMinRating : 3.5,
+      },
+      user.id,
+    );
+
+    return {
+      success: true,
+      data: result.candidates,
+      meta: {
+        configured: result.configured,
+        code: result.code,
+        message: result.message,
+        sessionId: result.sessionId,
+        count: result.candidates.length,
+      },
+    };
+  }
+
   @Post('import')
   @RequirePermissions('vendor.create', 'vendor.view')
   @ApiOperation({ summary: 'Dış kaynak adayını tedarikçi formu için hazırla' })

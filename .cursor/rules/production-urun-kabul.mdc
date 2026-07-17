@@ -1,5 +1,5 @@
 ---
-description: Production ürün kabulü — kullanıcı kabul eder; Cursor production login/credential istemez; yalnızca local düzeltme ve doğrulama
+description: Production ürün kabulü — Cursor Production Browser doğrulaması yapmaz; kullanıcı production kontrolü ile epic kapanır; yalnızca local düzeltme/doğrulama
 alwaysApply: true
 ---
 
@@ -7,20 +7,40 @@ alwaysApply: true
 
 **Kaynak:** `docs/project-governance/PRODUCTION_URUN_KABULU.md`
 
+## Temel karar (Mustafa — kilitli)
+
+Production Browser doğrulaması **Cursor tarafından yapılmaz**.  
+Sebep: Production oturumuna erişim güvenlik nedeniyle mümkün değil. Bu ürün hatası değildir.
+
 ## Roller
 
 1. **Ürün kabulünü kullanıcı yapar** (production ekranı referanstır).
 2. **Cursor** yalnızca: eksik tespit → düzeltme → **local** doğrulama.
 3. Kullanıcı production ekranını gösterir / gönderir → bu referanstır.
+4. Kullanıcı production kontrolünü tamamladığında **Epic kapanır**.
+5. Cursor Production Browser için **tekrar doğrulama yapmaz**.
 
 ## Yasaklar (Cursor)
 
+- Production Browser doğrulaması yapmaz.
 - Production login istemez; credential talep etmez.
 - Credential aramaz; production SSH ile UI login denemez.
 - **"Production login gerekli"** uyarısı **yazılmaz**.
 
-## Akış
+## Kalıcı akış
 
 ```
-Kullanıcı (prod ekran) → Cursor (eksik + local fix + local doğrula) → Kullanıcı (ürün kabulü)
+Local PASS → Commit → Push → Deploy → Health PASS → Smoke PASS
+→ Kullanıcı Production Kontrolü → Epic Kapanışı
 ```
+
+## Düzeltme akışı
+
+```
+Kullanıcı (prod ekran) → Cursor (eksik + local fix + local doğrula)
+→ (talimatla deploy) → Kullanıcı (production kontrolü / epic kapanışı)
+```
+
+## Anlık not — EPIC-06
+
+Health/Smoke PASS. Kapanış kullanıcı production kontrolüne bağlıdır; Cursor Production Browser doğrulaması yapmaz.

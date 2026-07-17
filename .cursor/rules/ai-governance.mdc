@@ -53,6 +53,7 @@ Deploy ve canlı güvenlik için ayrıca: `deploy-guvenlik.mdc` ve `docs/project
 - Yeni ekran mevcut tasarım dilini bozmaz; aynı bileşen farklı sayfalarda farklı görünmez.
 - Buton ve temel navigasyon yerleri keyfi değiştirilmez.
 - Panel metinleri: `turkce-yazim-kulturu.mdc`
+- Teknoloji görünmez · Operasyon görünür: `docs/project-governance/URUN_STANDARDI_TEKNOLOJI_GORUNMEZ.md`
 
 ## Teslim standardı
 

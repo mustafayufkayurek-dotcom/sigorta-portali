@@ -1,0 +1,59 @@
+---
+description: Ürün standardı yansıması — teknoloji görünmez, operasyon görünür (değiştirilemez)
+alwaysApply: true
+---
+
+# Ürün — Görünmez Teknoloji (ürün standardı yansıması)
+
+Bu dosya bir Cursor tercihi değildir.  
+**Kaynak (değiştirilemez ürün standardı):** `docs/project-governance/URUN_STANDARDI_TEKNOLOJI_GORUNMEZ.md`
+
+**Temel cümle:** Meridyen teknolojisini göstermez; operasyonu yönetir.  
+*(Teknoloji görünmez · Operasyon görünür)*
+
+Tüm paneller (Hasar, Acil, CRM, Finans, Tedarikçi, Müşteri…) için geçerlidir. İhlal = tasarım kabul edilmez.
+
+## Kullanıcı GÖRÜR (izinli)
+
+- Güncel İşlem
+- Önerilen Tedarikçiler
+- Alış / Satış
+- Onay Talebi
+- WhatsApp yazışmaları
+- Dosyayı Kapat
+- Finansa Aktar
+
+## Kullanıcı GÖRMEZ (yasak — UI etiketi / metin / badge)
+
+| Yasak | Neden |
+|-------|--------|
+| Google, Google Maps, Places | Harici sağlayıcı |
+| API, entegrasyon, algoritma | Teknik iç yapı |
+| Operasyon Hafızası, Terminoloji Hafızası, Maliyet Hafızası | İç motor markası |
+| Akıllı Tedarikçi / Akıllı Tedarikçi Ağı | Teknoloji pazarlama |
+| Alternatif Tedarikçi Servisi | Servis ürün adı |
+| WhatsApp analizi | Analiz motoru |
+| Hakediş / cari motoru, finans kuralları (arka plan) | Motor detayı |
+
+Backend log, kod yorumu, admin ayar ekranı (açık ürün kararı varsa) teknik dil kullanabilir.
+
+## UI kuralları
+
+1. Bölüm başlığı: **Önerilen Tedarikçiler** (havuz + harici adaylar aynı liste; kaynak etiketi yok).
+2. Harici sonuç yoksa / servis kapalıysa:  
+   `Alternatif tedarikçi şu anda önerilemiyor. Lütfen daha sonra tekrar deneyin.`  
+   — Google / API / yapılandırma demeden.
+3. Yeni özellik veya metin: “kullanıcı bunu operasyon işi olarak mı görür?” — hayırsa yazma.
+4. Regresyon: eski “Akıllı / Hafıza / Google / API” etiketlerini geri getirme.
+
+```tsx
+// ❌ BAD
+<p>Akıllı Tedarikçi Profili — Operasyon Hafızası</p>
+<span>Maliyet Hafızası: …</span>
+<button>Alternatif Tedarikçi Servisi</button>
+
+// ✅ GOOD
+<p>Önerilen Tedarikçiler</p>
+<span>Ortalama Maliyet: …</span>
+<button>Daha Fazla Öneri</button>
+```

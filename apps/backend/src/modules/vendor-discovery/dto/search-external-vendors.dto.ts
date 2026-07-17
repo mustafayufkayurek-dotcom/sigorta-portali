@@ -56,3 +56,32 @@ export interface VendorDiscoveryQuota {
   limit: number;
   remaining: number;
 }
+
+/** EPIC-05 — Alternatif Tedarikçi Servisi (UI’da kaynak markası yok) */
+export type AlternativeSearchCode =
+  | 'OK'
+  | 'ALTERNATIVE_SERVICE_NOT_CONFIGURED'
+  | 'SEARCH_FAILED'
+  | 'NO_RESULTS';
+
+export interface AlternativeVendorCandidate {
+  externalId: string;
+  name: string;
+  address: string;
+  city: string;
+  district?: string;
+  phone?: string;
+  rating: number;
+  reviewCount: number;
+  serviceTypes: string[];
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface AlternativeVendorSearchResult {
+  candidates: AlternativeVendorCandidate[];
+  configured: boolean;
+  code: AlternativeSearchCode;
+  message: string;
+  sessionId?: string;
+}

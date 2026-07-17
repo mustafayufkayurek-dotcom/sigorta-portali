@@ -1,0 +1,137 @@
+{
+  "at": "2026-07-17T05:36:43.290Z",
+  "epic": "EPIC-05/EPIC-06",
+  "title": "Son ürün kabulü",
+  "base": "http://localhost:3001",
+  "api": "http://127.0.0.1:3000/api/v1",
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "caseSource": "seed-id",
+  "resetPrep": {
+    "ok": true,
+    "status": 200
+  },
+  "assignPrep": {
+    "ok": true,
+    "vendorId": "44c1f107-3f70-4f6e-81a8-aeee87fbae6b",
+    "via": "existing"
+  },
+  "viewports": [
+    {
+      "name": "01-desktop",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-epic06-son-kabul-20260717/01-desktop.png",
+      "width": 1440,
+      "hScroll": false
+    },
+    {
+      "name": "02-tablet",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-epic06-son-kabul-20260717/02-tablet.png",
+      "width": 768,
+      "hScroll": false
+    },
+    {
+      "name": "03-mobile",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-epic06-son-kabul-20260717/03-mobile.png",
+      "width": 390,
+      "hScroll": false
+    }
+  ],
+  "checklist": {
+    "1": {
+      "label": "Dosya başlığı alanları",
+      "status": "PASS",
+      "reason": null
+    },
+    "2": {
+      "label": "Acil akış 8 aşama",
+      "status": "PASS",
+      "reason": null
+    },
+    "3": {
+      "label": "Güncel İşlem tek aktif",
+      "status": "PASS",
+      "reason": null
+    },
+    "4": {
+      "label": "Önerilen Tedarikçiler + Alternatif CTA",
+      "status": "PASS",
+      "reason": null
+    },
+    "5": {
+      "label": "WhatsApp gönder/yazışma/foto/belge",
+      "status": "PASS",
+      "reason": null
+    },
+    "6": {
+      "label": "Maliyet yalnız Alış + Satış",
+      "status": "PASS",
+      "reason": null
+    },
+    "7": {
+      "label": "Onay Talebi WhatsApp/E-posta/İkisi",
+      "status": "PASS",
+      "reason": null
+    },
+    "8": {
+      "label": "Müşteri onayı → işe başlama",
+      "status": "PASS",
+      "reason": null
+    },
+    "9": {
+      "label": "Kapanış tamamla/kapat/foto-belge",
+      "status": "PASS",
+      "reason": null
+    },
+    "10": {
+      "label": "Kapanış e-postası satış var alış yok",
+      "status": "PASS",
+      "reason": null
+    },
+    "11": {
+      "label": "Finansa Aktar sonuç durumu",
+      "status": "PASS",
+      "reason": null
+    },
+    "12": {
+      "label": "Mobil tek el / yatay taşma yok",
+      "status": "PASS",
+      "reason": null
+    }
+  },
+  "product": {
+    "no_forbidden_tech": {
+      "status": "PASS",
+      "reason": null
+    }
+  },
+  "staticChecks": {
+    "text": "Müşteri (Asistans) Mehmet Kaya AY2026-0012-D276B-1781638518232 AY-202606-0001 Tarihsel Dosya 01.07.2026 öncesi dosya — yeni finans akışı zorunlu değil. Tarihsel Dosyayı Yeni Finans Dönemine Dahil Et Dosya No AY2026-0012-D276B-1781638518232 Sigortalı — Hizmet Türü Çilingir Telefon — Dosya Sorumlusu — Açılış Tarihi 16 Haz 2026 Adres Bodrum Merkez, Muğla / Bodrum Güncel Durum Tedarikçi Maliyeti Alındı Dosya Aşamaları İhbar → Tedarikçi Atandı → Tedarikçi Maliyeti Alındı → Asistans Onayı Bekleniyor → İşe Başlama Onayı Verildi → Hizmet Tamamlandı → Dosya Kapatıldı → Finansa Aktarıldı Güncel İşlem Tarihsel Dosya Yeni finans akışı, hakediş ve cari zorunlu değildir. Atanan Tedarikçi: Local Kabul Tedarikci WhatsApp mesajı hazırlandı. Geçmişe kaydedildi. Önerilen Tedarikçiler Atandı Uygun tedarikçi önerisi yok. Atama zorunlu değildir. WhatsApp İle Gönder Dosya bilgisi otomatik hazırlanır. Serbest mesaj dosya aşamasını değiştirmez. WhatsApp İle Gönder Tedarikçi maliyeti algılandı: 2.500,00 TL Onaylanmadan maliyet kesinleşmez. Onayla Düzelt Maliyet Ve Onay Tedarikçi Alış Fiyatı(İç Kullanım) Meridyen Satış Fiyatı(Dışarıya Gönderilir) Satış fiyatı asistansa iletilir; alış fiyatı yalnızca Meridyen iç kullanımındadır. Onay Talebi Oluştur WhatsApp / Belge Dosya Geçmişi Finans",
+    "body": "Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi… ⌘K Hızlı İşlem 5 Yardım Tema SY Sistem Yöneticisi Operasyon Aktif Dashboard Operasyon Personel Personel Özlük Sahiplik Müşteriler Tedarikçiler CRM Finans Harita Test Notları Ayarlar Yardım Menüyü Daralt Web v356 · v356-dashboard-rc1 · Kılavuz 2026-07-11b Müşteri (Asistans) Mehmet Kaya AY2026-0012-D276B-1781638518232 AY-202606-0001 Tarihsel Dosya 01.07.2026 öncesi dosya — yeni finans akışı zorunlu değil. Tarihsel Dosyayı Yeni Finans Dönemine Dahil Et Dosya No AY2026-0012-D276B-1781638518232 Sigortalı — Hizmet Türü Çilingir Telefon — Dosya Sorumlusu — Açılış Tarihi 16 Haz 2026 Adres Bodrum Merkez, Muğla / Bodrum Güncel Durum Tedarikçi Maliyeti Alındı Dosya Aşamaları İhbar → Tedarikçi Atandı → Tedarikçi Maliyeti Alındı → Asistans Onayı Bekleniyor → İşe Başlama Onayı Verildi → Hizmet Tamamlandı → Dosya Kapatıldı → Finansa Aktarıldı Güncel İşlem Tarihsel Dosya Yeni finans akışı, hakediş ve cari zorunlu değildir. Atanan Tedarikçi: Local Kabul Tedarikci WhatsApp mesajı hazırlandı. Geçmişe kaydedildi. Önerilen Tedarikçiler Atandı Uygun tedarikçi önerisi yok. Atama zorunlu değildir. WhatsApp İle Gönder Dosya bilgisi otomatik hazırlanır. Serbest mesaj dosya aşamasını değiştirmez. WhatsApp İle Gönder Tedarikçi maliyeti algılandı: 2.500,00 TL Onaylanmadan maliyet kesinleşmez. Onayla Düzelt Maliyet Ve Onay Tedarikçi Alış Fiyatı(İç Kullanım) Meridyen Satış Fiyatı(Dışarıya Gönderilir) Satış fiyatı asistansa iletilir; alış fiyatı yalnızca Meridyen iç kullanımındadır. Onay Talebi Oluştur WhatsApp / Belge Dosya Geçmişi Finans",
+    "forbiddenHit": false,
+    "header": {
+      "musteriTop": true,
+      "hasDosyaNo": true,
+      "hasSigortali": true,
+      "hasHizmet": true,
+      "hasAdres": true,
+      "hasTelefon": true,
+      "hasSorumlu": true,
+      "hasAcilis": true
+    },
+    "stagesOk": true,
+    "stripText": "Dosya Aşamaları İhbar → Tedarikçi Atandı → Tedarikçi Maliyeti Alındı → Asistans Onayı Bekleniyor → İşe Başlama Onayı Verildi → Hizmet Tamamlandı → Dosya Kapatıldı → Finansa Aktarıldı",
+    "guncelCount": 1,
+    "altText": "",
+    "hasAltOner": false,
+    "hasOnerilen": true,
+    "hasDahaFazla": false,
+    "hasAlis": true,
+    "hasSatis": true,
+    "maliyetOnlyAlisSatis": true,
+    "hasOnayBtn": true,
+    "mobilCubuk": true,
+    "hScroll": false
+  },
+  "overall": "PASS",
+  "passCount": 12,
+  "total": 12
+}
