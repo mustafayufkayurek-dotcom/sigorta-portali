@@ -1,0 +1,554 @@
+{
+  "allPass": false,
+  "resolved": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "source": "seed-id"
+  },
+  "results": [
+    {
+      "viewport": "01-desktop",
+      "size": "1440x900",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-final-kapanis-20260717/01-desktop.png",
+      "overflowPass": true,
+      "singleColPass": true,
+      "touchPass": false,
+      "metrics": {
+        "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "hasHScroll": false,
+        "mainCols": {
+          "childCount": 6,
+          "stacked": true,
+          "tops": [
+            109,
+            375,
+            518,
+            765,
+            917,
+            1207
+          ]
+        },
+        "singleColLikely": true,
+        "pageButtonCount": 23,
+        "primarySample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yeni Finans Dönemine Dahil Et",
+            "w": 162,
+            "h": 17,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Alış / Satış Fiyatı Gir",
+            "w": 129,
+            "h": 27,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Alternatif Tedarikçi Ara",
+            "w": 563,
+            "h": 32,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Kaydet",
+            "w": 67,
+            "h": 36,
+            "iconOnly": false,
+            "ok": true
+          }
+        ],
+        "touchFailCount": 13,
+        "primaryFailCount": 13,
+        "touchFailSample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          }
+        ],
+        "forbiddenUiText": false,
+        "title": "Meridyen Assistance"
+      }
+    },
+    {
+      "viewport": "02-tablet",
+      "size": "768x1024",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-final-kapanis-20260717/02-tablet.png",
+      "overflowPass": true,
+      "singleColPass": true,
+      "touchPass": false,
+      "metrics": {
+        "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+        "viewport": {
+          "w": 768,
+          "h": 1024
+        },
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "hasHScroll": false,
+        "mainCols": {
+          "childCount": 7,
+          "stacked": true,
+          "tops": [
+            109,
+            394,
+            512,
+            573,
+            1036,
+            1298,
+            1686
+          ]
+        },
+        "singleColLikely": true,
+        "pageButtonCount": 23,
+        "primarySample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yeni Finans Dönemine Dahil Et",
+            "w": 162,
+            "h": 17,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Alış / Satış Fiyatı Gir",
+            "w": 129,
+            "h": 27,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Alternatif Tedarikçi Ara",
+            "w": 490,
+            "h": 32,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Kaydet",
+            "w": 67,
+            "h": 36,
+            "iconOnly": false,
+            "ok": true
+          }
+        ],
+        "touchFailCount": 13,
+        "primaryFailCount": 13,
+        "touchFailSample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          }
+        ],
+        "forbiddenUiText": false,
+        "title": "Meridyen Assistance"
+      }
+    },
+    {
+      "viewport": "03-mobile",
+      "size": "390x844",
+      "shot": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-final-kapanis-20260717/03-mobile.png",
+      "overflowPass": true,
+      "singleColPass": true,
+      "touchPass": false,
+      "metrics": {
+        "url": "http://localhost:3001/panel/acil-yardim/f4624c59-30e9-4380-8ac9-abb2f0c36757",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "hasHScroll": false,
+        "mainCols": {
+          "childCount": 8,
+          "stacked": true,
+          "tops": [
+            105,
+            491,
+            608,
+            670,
+            1149,
+            1520,
+            2097,
+            775
+          ]
+        },
+        "singleColLikely": true,
+        "pageButtonCount": 26,
+        "primarySample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yeni Finans Dönemine Dahil Et",
+            "w": 162,
+            "h": 17,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Alış / Satış Fiyatı Gir",
+            "w": 129,
+            "h": 27,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Alternatif Tedarikçi Ara",
+            "w": 340,
+            "h": 32,
+            "iconOnly": false,
+            "ok": true
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Kaydet",
+            "w": 67,
+            "h": 36,
+            "iconOnly": false,
+            "ok": true
+          }
+        ],
+        "touchFailCount": 13,
+        "primaryFailCount": 13,
+        "touchFailSample": [
+          {
+            "label": "Dosya Notları",
+            "w": 94,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Onay Talebi",
+            "w": 86,
+            "h": 27,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Yenile",
+            "w": 32,
+            "h": 17,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "Detay",
+            "w": 31,
+            "h": 25,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Hariç",
+            "w": 66,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          },
+          {
+            "label": "KDV Dahil",
+            "w": 65,
+            "h": 23,
+            "iconOnly": false,
+            "ok": false
+          }
+        ],
+        "forbiddenUiText": false,
+        "title": "Meridyen Assistance"
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

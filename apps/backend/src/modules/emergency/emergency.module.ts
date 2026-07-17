@@ -11,6 +11,8 @@ import { InvoiceRequestsModule } from '@/modules/invoice-requests/invoice-reques
 import { VendorsModule } from '@/modules/vendors/vendors.module';
 
 import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-p
     InvoiceRequestsModule,
     VendorsModule,
     VendorIntelligenceProfileModule,
+    NotificationsModule,
+    StorageModule,
   ],
   controllers: [EmergencyCasesController, EmergencyFinanceController],
   providers: [EmergencyCasesService, EmergencyFinanceService],

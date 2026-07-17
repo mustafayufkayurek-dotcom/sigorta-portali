@@ -82,7 +82,13 @@ export interface EmergencyCase {
   netKar: number;
   // relations
   assignedVendor?: { id: string; name: string } | null;
-  assignedUser?: { id: string; firstName: string; lastName: string } | null;
+  assignedUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
   customer?: {
     id: string;
     fullName?: string | null;
@@ -240,6 +246,50 @@ export async function updateCaseStatus(
 ): Promise<{ data: EmergencyCase }> {
   const data = await apiClient.patch<unknown>(`/emergency/cases/${id}/status`, { status });
   return { data: asEntity<EmergencyCase>(data) };
+}
+
+export type ClosureEmailPreview = {
+  to: string;
+  recipients: string[];
+  greetingName?: string | null;
+  assistansName: string;
+  subject: string;
+  body: string;
+  attachmentNames: string[];
+  canSend: boolean;
+  note: string;
+};
+
+export async function previewClosureEmail(
+  id: string,
+): Promise<{ data: ClosureEmailPreview }> {
+  const data = await apiClient.get<unknown>(`/emergency/cases/${id}/closure-email`);
+  return { data: asEntity<ClosureEmailPreview>(data) };
+}
+
+export async function sendClosureEmail(
+  id: string,
+): Promise<{
+  data: {
+    sent: boolean;
+    to: string;
+    recipients?: string[];
+    subject: string;
+    attachmentNames: string[];
+    errorMsg: string | null;
+  };
+}> {
+  const data = await apiClient.post<unknown>(`/emergency/cases/${id}/closure-email`, {});
+  return {
+    data: asEntity<{
+      sent: boolean;
+      to: string;
+      recipients?: string[];
+      subject: string;
+      attachmentNames: string[];
+      errorMsg: string | null;
+    }>(data),
+  };
 }
 
 export async function updateCase(

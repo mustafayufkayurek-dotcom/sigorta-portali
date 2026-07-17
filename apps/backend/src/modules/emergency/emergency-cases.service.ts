@@ -17,6 +17,10 @@ import {
 } from '@/common/utils/file-no-helpers';
 import { buildEmergencyOperationChain } from './emergency-operation-chain';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
+import { StorageService } from '@/modules/storage/storage.service';
+import { resolveInsuredPhoneForInbox } from '@sigorta/shared';
+import type { SendMailOptions } from 'nodemailer';
 
 @Injectable()
 export class EmergencyCasesService {
@@ -28,6 +32,8 @@ export class EmergencyCasesService {
     private readonly fileDocumentsService: FileDocumentsService,
     private readonly invoiceRequestsService: InvoiceRequestsService,
     private readonly vendorProfile: VendorIntelligenceProfileService,
+    private readonly emailService: EmailService,
+    private readonly storage: StorageService,
   ) {}
 
   /** EPIC-04: Kapanışta tedarikçi hakediş entegrasyon noktası (onay sonrası VendorStatements bağlanacak). */
@@ -89,6 +95,52 @@ export class EmergencyCasesService {
       .filter((e: any) => e.entryType === 'gider')
       .reduce((s: number, e: any) => s + e.amount, 0);
     return { ...c, overdueLevel, totalGelir, totalGider, netKar: totalGelir - totalGider };
+  }
+
+  /**
+   * Sigortalı telefonu: dosyadaki customerPhone; boşsa bağlı ihbar yazışmasından çıkarır ve kaydeder.
+   * Yeni şema alanı yok — mevcut customerPhone kullanılır.
+   */
+  private async ensureCustomerPhoneFromInbound(
+    caseId: string,
+    existingPhone?: string | null,
+  ): Promise<string | null> {
+    const current = (existingPhone || '').trim();
+    if (current) return current;
+
+    const inbound = await this.prisma.inboundMessage.findMany({
+      where: { emergencyCaseId: caseId },
+      orderBy: { receivedAt: 'asc' },
+      select: {
+        bodyText: true,
+        bodyPreview: true,
+        bodyHtml: true,
+        aiExtractedJson: true,
+      },
+      take: 30,
+    });
+
+    for (const msg of inbound) {
+      let extractedPhone: string | null = null;
+      const raw = msg.aiExtractedJson;
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        const phone = (raw as Record<string, unknown>).phone;
+        if (typeof phone === 'string') extractedPhone = phone;
+      }
+      const bodyText = [msg.bodyText, msg.bodyPreview, msg.bodyHtml].filter(Boolean).join('\n');
+      const resolved = resolveInsuredPhoneForInbox({
+        extractedPhone,
+        bodyText,
+      });
+      if (resolved) {
+        await this.prisma.emergencyCase.update({
+          where: { id: caseId },
+          data: { customerPhone: resolved },
+        });
+        return resolved;
+      }
+    }
+    return null;
   }
 
   private async ensureFinanceTransfer(caseId: string, userId: string): Promise<void> {
@@ -456,7 +508,7 @@ export class EmergencyCasesService {
       where,
       include: {
         assignedVendor: { select: { id: true, name: true } },
-        assignedUser: { select: { id: true, firstName: true, lastName: true } },
+        assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
             id: true,
@@ -490,7 +542,7 @@ export class EmergencyCasesService {
       where: { id },
       include: {
         assignedVendor: { select: { id: true, name: true } },
-        assignedUser: { select: { id: true, firstName: true, lastName: true } },
+        assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
             id: true,
@@ -518,7 +570,15 @@ export class EmergencyCasesService {
       : null;
 
     const operationChain = await this.buildOperationChain(id);
-    return { data: { ...this.enrichCase(c), activeDelegation, operationChain } };
+    const customerPhone =
+      (await this.ensureCustomerPhoneFromInbound(id, c.customerPhone)) ?? c.customerPhone;
+    return {
+      data: {
+        ...this.enrichCase({ ...c, customerPhone }),
+        activeDelegation,
+        operationChain,
+      },
+    };
   }
 
   async update(id: string, dto: UpdateEmergencyCaseDto) {
@@ -640,5 +700,252 @@ export class EmergencyCasesService {
       include: { vendor: { select: { id: true, name: true } } },
     });
     return { data: updated };
+  }
+
+  /**
+   * Asistans firmasına kapanış e-postası önizleme / gönderim.
+   * Alış fiyatı, kâr ve iç operasyon notları dahil edilmez.
+   */
+  private async buildClosureEmailPayload(caseId: string) {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        costEntries: {
+          where: { entryType: 'gelir' },
+          orderBy: { entryDate: 'desc' },
+          take: 5,
+        },
+      },
+    });
+    if (!emergencyCase) throw new NotFoundException('Dosya bulunamadı');
+
+    const inbound = await this.prisma.inboundMessage.findMany({
+      where: { emergencyCaseId: caseId },
+      orderBy: { receivedAt: 'asc' },
+      select: {
+        fromAddress: true,
+        fromName: true,
+        toAddresses: true,
+        receivedAt: true,
+      },
+      take: 50,
+    });
+
+    const emailSet = new Set<string>();
+    const addEmail = (raw?: string | null) => {
+      const e = (raw || '').trim().toLowerCase();
+      if (!e || !e.includes('@')) return;
+      // Meridyen iç kutuları alıcıya ekleme
+      if (/@(meridyen|localhost)/i.test(e)) return;
+      emailSet.add(e);
+    };
+
+    for (const msg of inbound) {
+      addEmail(msg.fromAddress);
+      for (const t of msg.toAddresses || []) addEmail(t);
+    }
+    addEmail(emergencyCase.customer?.email);
+
+    const recipients = [...emailSet];
+    const latestInbound = [...inbound].reverse().find((m) => (m.fromAddress || '').includes('@'));
+    const greetingName = this.resolveClosureGreetingName(latestInbound?.fromName, latestInbound?.fromAddress);
+    const greeting = greetingName ? `Sayın ${greetingName},` : 'Sayın Yetkili,';
+
+    const to = recipients.join(', ');
+    const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
+    const insured =
+      (emergencyCase.customerName || '').trim()
+      || [emergencyCase.customer?.firstName, emergencyCase.customer?.lastName].filter(Boolean).join(' ').trim()
+      || emergencyCase.customer?.fullName
+      || '—';
+    const insuredPhone =
+      (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '—';
+    const saleAmount = emergencyCase.costEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const saleLabel =
+      saleAmount > 0
+        ? `${saleAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
+        : '—';
+    const closedAt = (emergencyCase.resolvedAt || new Date()).toLocaleString('tr-TR');
+    const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
+    const subject = `Dosya Kapanışı – ${fileNo}`;
+    const bodyText = [
+      greeting,
+      '',
+      'Dosya kapanış bilgileri aşağıdadır.',
+      '',
+      `Dosya No: ${fileNo}`,
+      `Sigortalı: ${insured}`,
+      `Sigortalı Telefon: ${insuredPhone}`,
+      `Hizmet Türü: ${emergencyCase.issueType}`,
+      `Tamamlanma: ${summary}`,
+      `Onaylı Hizmet Bedeli: ${saleLabel}`,
+      `Kapanış Tarihi: ${closedAt}`,
+      '',
+      'Ekler: onaylı fotoğraflar ve kapanış belgeleri (varsa).',
+      '',
+      'Saygılarımızla,',
+      'Meridyen Assistance',
+    ].join('\n');
+
+    // Güvenlik: alış / kâr / iç operasyon ifadeleri sızmasın
+    const forbidden = /(alış|ali[sş]\s*fiyat|kâr\s*\(?%|kar\s*\(?%|i[cç]\s*operasyon|hakedi[sş])/i;
+    if (forbidden.test(bodyText)) {
+      throw new BadRequestException('Kapanış e-postası güvenlik kontrolünden geçemedi');
+    }
+
+    const docs = await this.prisma.fileDocument.findMany({
+      where: { entityType: 'emergency_case', entityId: caseId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const attachments: NonNullable<SendMailOptions['attachments']> = [];
+    const attachmentNames: string[] = [];
+
+    for (const doc of docs) {
+      const kindLabel = doc.documentKind === 'matbu_evrak' ? 'Matbu-Evrak' : 'Belge';
+      if (doc.physicalUploadKey) {
+        try {
+          const content = await this.storage.download(doc.physicalUploadKey);
+          const filename = `${kindLabel}-${fileNo}-${doc.id.slice(0, 8)}.bin`;
+          const ext = doc.physicalUploadKey.split('.').pop();
+          attachments.push({
+            filename: ext && ext.length <= 5 ? `${kindLabel}-${fileNo}.${ext}` : filename,
+            content,
+          });
+          attachmentNames.push(attachments[attachments.length - 1].filename as string);
+        } catch (err: any) {
+          this.logger.warn(`Kapanış eki indirilemedi (${doc.id}): ${err?.message}`);
+        }
+      } else if (doc.renderedContent) {
+        const filename = `${kindLabel}-${fileNo}.html`;
+        attachments.push({
+          filename,
+          content: Buffer.from(doc.renderedContent, 'utf8'),
+          contentType: 'text/html; charset=utf-8',
+        });
+        attachmentNames.push(filename);
+      }
+    }
+
+    // Maliyet fişleri (hizmet bedeli makbuzu vb.) — alış satırı eklenmez
+    const receiptEntries = await this.prisma.emergencyCostEntry.findMany({
+      where: { caseId, entryType: 'gelir', receiptKey: { not: null } },
+      take: 10,
+    });
+    for (const entry of receiptEntries) {
+      if (!entry.receiptKey) continue;
+      try {
+        const content = await this.storage.download(entry.receiptKey);
+        const ext = entry.receiptKey.split('.').pop() || 'bin';
+        const filename = `Hizmet-Belge-${fileNo}-${entry.id.slice(0, 6)}.${ext}`;
+        attachments.push({ filename, content });
+        attachmentNames.push(filename);
+      } catch (err: any) {
+        this.logger.warn(`Kapanış fiş eki indirilemedi (${entry.id}): ${err?.message}`);
+      }
+    }
+
+    const assistansName =
+      emergencyCase.customer?.companyName
+      || emergencyCase.customer?.fullName
+      || 'Asistans Firması';
+
+    return {
+      to,
+      recipients,
+      greetingName,
+      assistansName,
+      subject,
+      bodyText,
+      html: `<pre style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5;color:#0f172a;white-space:pre-wrap">${bodyText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')}</pre>`,
+      attachmentNames,
+      attachments,
+      fileNo,
+      caseStatus: emergencyCase.status,
+    };
+  }
+
+  private resolveClosureGreetingName(fromName?: string | null, fromAddress?: string | null): string | null {
+    const raw = (fromName || '').trim();
+    if (raw) {
+      // "Ad Soyad <mail>" veya "Ad Soyad" → Title Case benzeri ilk iki kelime
+      const cleaned = raw.replace(/<[^>]+>/g, '').replace(/["']/g, '').trim();
+      if (cleaned && !cleaned.includes('@')) {
+        return cleaned
+          .split(/\s+/)
+          .slice(0, 3)
+          .map((w) => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1).toLocaleLowerCase('tr-TR'))
+          .join(' ');
+      }
+    }
+    const local = (fromAddress || '').split('@')[0]?.trim();
+    if (local && local.length >= 2 && !/^(info|destek|noreply|no-reply|mail|operasyon)/i.test(local)) {
+      return local.charAt(0).toLocaleUpperCase('tr-TR') + local.slice(1);
+    }
+    return null;
+  }
+
+  async previewClosureEmail(caseId: string) {
+    const payload = await this.buildClosureEmailPayload(caseId);
+    return {
+      data: {
+        to: payload.to,
+        recipients: payload.recipients,
+        greetingName: payload.greetingName,
+        assistansName: payload.assistansName,
+        subject: payload.subject,
+        body: payload.bodyText,
+        attachmentNames: payload.attachmentNames,
+        canSend: payload.recipients.length > 0,
+        note: 'Tedarikçi alış fiyatı, kâr oranı ve iç operasyon bilgileri bu e-postada yer almaz.',
+      },
+    };
+  }
+
+  async sendClosureEmail(caseId: string) {
+    const payload = await this.buildClosureEmailPayload(caseId);
+    if (!payload.recipients.length) {
+      throw new BadRequestException(
+        'Gönderilecek e-posta adresi bulunamadı. İhbar gelen kutusu veya müşteri kartında e-posta olmalı.',
+      );
+    }
+    if (payload.caseStatus !== 'COZULDU' && payload.caseStatus !== 'FATURALANDILDI') {
+      throw new BadRequestException('Kapanış e-postası yalnızca kapatılmış dosyalar için gönderilebilir.');
+    }
+
+    const result = await this.emailService.sendEmail(
+      payload.to,
+      payload.subject,
+      payload.html,
+      {
+        text: payload.bodyText,
+        attachments: payload.attachments,
+      },
+    );
+
+    return {
+      data: {
+        sent: result.sent,
+        to: payload.to,
+        recipients: payload.recipients,
+        subject: payload.subject,
+        attachmentNames: payload.attachmentNames,
+        errorMsg: result.errorMsg ?? null,
+      },
+    };
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { Search } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
@@ -15,6 +16,8 @@ export type AlternativeVendorCandidate = {
   rating: number;
   reviewCount: number;
   serviceTypes: string[];
+  latitude?: number;
+  longitude?: number;
 };
 
 type AlternativeMeta = {
@@ -50,6 +53,12 @@ function formatStars(rating: number | null | undefined): string {
   return `${'★'.repeat(full)}${'☆'.repeat(5 - full)} ${rating.toFixed(1)}`;
 }
 
+/** tel: href — yalnızca rakam ve + (Google/sağlayıcı yok) */
+function toTelHref(phone: string): string {
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  return cleaned ? `tel:${cleaned}` : '';
+}
+
 export function AlternativeVendorServicePanel({
   city,
   district,
@@ -57,6 +66,7 @@ export function AlternativeVendorServicePanel({
   category = 'acil',
   vendorType = 'hizmet',
   autoExpandWhenEmpty = true,
+  forceExpand = false,
   compact = false,
   onAssigned,
   onSavedToPool,
@@ -68,11 +78,17 @@ export function AlternativeVendorServicePanel({
   vendorType?: string;
   /** Meridyen önerisi yokken CTA’yı açık göster */
   autoExpandWhenEmpty?: boolean;
+  /** Red / manuel — paneli açık tut (aynı sayfa) */
+  forceExpand?: boolean;
   compact?: boolean;
   onAssigned?: (vendor: { id: string; name: string; phone?: string | null }) => void | Promise<void>;
   onSavedToPool?: (vendor: { id: string; name: string; phone?: string | null }) => void | Promise<void>;
 }) {
-  const [expanded, setExpanded] = useState(autoExpandWhenEmpty);
+  const [expanded, setExpanded] = useState(autoExpandWhenEmpty || forceExpand);
+
+  useEffect(() => {
+    if (forceExpand) setExpanded(true);
+  }, [forceExpand]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<AlternativeVendorCandidate[]>([]);
@@ -82,6 +98,8 @@ export function AlternativeVendorServicePanel({
   const [phoneDraft, setPhoneDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  /** Alternatif aday detay inceleme (satır genişletme; yeni sekme yok) */
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const canSearch = Boolean(city?.trim() && serviceType?.trim());
 
@@ -218,15 +236,15 @@ export function AlternativeVendorServicePanel({
             void runSearch();
           }
         }}
-        className={`w-full flex items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+        className={
           compact
-            ? 'py-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50'
-            : 'py-2.5 border-slate-200 text-slate-700 hover:bg-slate-50'
-        }`}
+            ? 'w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors'
+            : 'w-full flex items-center justify-center gap-2 rounded-xl py-3 px-3 bg-blue-600 text-white border-2 border-blue-700 text-sm sm:text-[15px] font-bold shadow-md shadow-blue-200/60 ring-2 ring-blue-100 hover:bg-blue-700 transition-colors'
+        }
         data-testid="alternatif-tedarikci-cta"
       >
-        Alternatif Tedarikçi Öner
-        <span className="text-[11px] font-normal text-slate-400">{expanded ? '▲' : '▼'}</span>
+        <Search className={compact ? 'w-3.5 h-3.5 shrink-0' : 'w-4 h-4 shrink-0'} aria-hidden />
+        Alternatif Tedarikçi Ara
       </button>
 
       {expanded && (
@@ -262,44 +280,123 @@ export function AlternativeVendorServicePanel({
             </p>
           ) : (
             <ul className="space-y-2">
-              {results.map((c) => (
-                <li
-                  key={c.externalId}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
-                  data-testid="alternatif-aday"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
-                      <p className="text-[11px] text-amber-700 mt-0.5">
-                        {formatStars(c.rating)}
-                        {c.reviewCount > 0 ? ` · ${c.reviewCount} değerlendirme` : ''}
-                      </p>
-                      {c.address && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">{c.address}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
+              {results.map((c) => {
+                const open = detailId === c.externalId;
+                const phone = c.phone?.trim() || '';
+                const telHref = phone ? toTelHref(phone) : '';
+                const addressLine = [c.address, c.district, c.city].filter(Boolean).join(' · ');
+                return (
+                  <li
+                    key={c.externalId}
+                    className={`rounded-xl border bg-white px-3 py-2.5 transition-colors ${
+                      open ? 'border-blue-200 ring-1 ring-blue-100' : 'border-slate-200'
+                    }`}
+                    data-testid="alternatif-aday"
+                    data-detail-open={open ? '1' : '0'}
+                  >
                     <button
                       type="button"
-                      onClick={() => openAction('assign_file', c)}
-                      className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                      data-testid="alternatif-dosyaya-ata"
+                      onClick={() => setDetailId(open ? null : c.externalId)}
+                      className="w-full text-left"
+                      data-testid="alternatif-aday-detay-toggle"
+                      aria-expanded={open}
                     >
-                      Dosyaya Ata
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                          <p className="text-[11px] text-amber-700 mt-0.5">
+                            {formatStars(c.rating)}
+                            {c.reviewCount > 0 ? ` · ${c.reviewCount} değerlendirme` : ''}
+                          </p>
+                          {!open && c.address && (
+                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">{c.address}</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[11px] font-medium text-blue-600 pt-0.5">
+                          {open ? 'Gizle' : 'Detay'}
+                        </span>
+                      </div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openAction('save_pool', c)}
-                      className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                      data-testid="alternatif-havuza-kaydet"
-                    >
-                      Havuza Kaydet
-                    </button>
-                  </div>
-                </li>
-              ))}
+
+                    {open ? (
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-2"
+                        data-testid="alternatif-aday-detay"
+                      >
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] text-slate-500">Telefon</span>
+                          {phone ? (
+                            <>
+                              <a
+                                href={telHref}
+                                className="text-[11px] font-medium text-slate-800 tabular-nums hover:text-blue-700 hover:underline"
+                                data-testid="alternatif-telefon-link"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {phone}
+                              </a>
+                              <a
+                                href={telHref}
+                                className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                data-testid="alternatif-ara"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Ara
+                              </a>
+                            </>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Kayıtlı değil</span>
+                          )}
+                        </div>
+                        <p
+                          className="text-[11px] text-slate-600 min-w-[7rem] flex-1 basis-[9rem] truncate"
+                          title={addressLine || undefined}
+                        >
+                          <span className="font-medium text-slate-700">Adres: </span>
+                          {addressLine || '—'}
+                        </p>
+                        <div className="flex flex-wrap gap-2 shrink-0 ml-auto">
+                          <button
+                            type="button"
+                            onClick={() => openAction('assign_file', c)}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                            data-testid="alternatif-dosyaya-ata"
+                          >
+                            Dosyaya Ata
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openAction('save_pool', c)}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                            data-testid="alternatif-havuza-kaydet"
+                          >
+                            Havuza Kaydet
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openAction('assign_file', c)}
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                          data-testid="alternatif-dosyaya-ata"
+                        >
+                          Dosyaya Ata
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAction('save_pool', c)}
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                          data-testid="alternatif-havuza-kaydet"
+                        >
+                          Havuza Kaydet
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {actionMsg && !pending && (

@@ -34,12 +34,20 @@ describe('EmergencyCasesService', () => {
     const vendorProfile = {
       onFileCompleted: jest.fn().mockResolvedValue(undefined),
     };
+    const emailService = {
+      sendEmail: jest.fn().mockResolvedValue({ sent: true }),
+    };
+    const storage = {
+      download: jest.fn().mockResolvedValue(Buffer.from('x')),
+    };
     service = new EmergencyCasesService(
       prisma,
       operationalAccessGrants as any,
       fileDocumentsService as any,
       invoiceRequestsService as any,
       vendorProfile as any,
+      emailService as any,
+      storage as any,
     );
   });
 

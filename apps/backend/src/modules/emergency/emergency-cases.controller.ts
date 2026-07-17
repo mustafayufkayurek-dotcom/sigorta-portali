@@ -135,6 +135,24 @@ export class EmergencyCasesController {
     return this.service.updateStatus(id, dto, user?.id ?? 'system');
   }
 
+  /** Kapanış e-postası önizleme (asistans firması) */
+  @Get(':id/closure-email')
+  @RequirePermissions('claim_file.view')
+  async previewClosureEmail(@Param('id') id: string, @CurrentUser() user?: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    return this.service.previewClosureEmail(id);
+  }
+
+  /** Kapanış e-postasını asistans firmasına gönder */
+  @Post(':id/closure-email')
+  @RequirePermissions('claim_file.status_change')
+  async sendClosureEmail(@Param('id') id: string, @CurrentUser() user?: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    return this.service.sendClosureEmail(id);
+  }
+
   @Delete(':id')
   @RequirePermissions('claim_file.delete')
   @HttpCode(HttpStatus.NO_CONTENT)

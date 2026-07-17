@@ -315,7 +315,7 @@ export class OperationInboxService {
 
     const emergency = await this.prisma.emergencyCase.findUnique({
       where: { id: dto.emergencyCaseId },
-      select: { id: true, caseNo: true, fileNo: true },
+      select: { id: true, caseNo: true, fileNo: true, customerPhone: true },
     });
     if (!emergency) {
       throw new BadRequestException('Acil yardım dosyası bulunamadı');
@@ -335,6 +335,18 @@ export class OperationInboxService {
         emergencyCase: { select: { id: true, caseNo: true, fileNo: true } },
       },
     });
+
+    // Sigortalı telefonu dosyada yoksa ihbardan yaz (mevcut customerPhone alanı)
+    if (!(emergency.customerPhone || '').trim()) {
+      const extracted = this.enrichExtracted(message, this.parseExtracted(message.aiExtractedJson));
+      const phone = extracted.phone?.trim();
+      if (phone) {
+        await this.prisma.emergencyCase.update({
+          where: { id: emergency.id },
+          data: { customerPhone: phone },
+        });
+      }
+    }
 
     return { emergencyCase: emergency, message: updated };
   }
