@@ -63,11 +63,24 @@ const GOOGLE_FIELD_MASK = [
   'places.displayName',
   'places.formattedAddress',
   'places.nationalPhoneNumber',
+  'places.internationalPhoneNumber',
   'places.rating',
   'places.userRatingCount',
   'places.location',
   'places.googleMapsUri',
 ].join(',');
+
+/** Place Details — Text Search telefonsuz döndüğünde tamamlamak için */
+const GOOGLE_PLACE_DETAILS_FIELD_MASK = [
+  'id',
+  'nationalPhoneNumber',
+  'internationalPhoneNumber',
+].join(',');
+
+/** Alternatif listede telefon sonrası hedef aday sayısı */
+const ALTERNATIVE_MAX_RESULTS = 5;
+/** Telefon filtresinden önce ham havuz (Details zenginleştirme dahil) */
+const ALTERNATIVE_CANDIDATE_POOL = 12;
 
 @Injectable()
 export class VendorDiscoveryService {
@@ -108,7 +121,19 @@ export class VendorDiscoveryService {
 
     let external: ExternalVendorCandidate[];
     try {
-      external = await this.searchGooglePlacesMerged(apiKey, city, districts, serviceType, minRating);
+      external = await this.searchGooglePlacesMerged(
+        apiKey,
+        city,
+        districts,
+        serviceType,
+        minRating,
+        ALTERNATIVE_CANDIDATE_POOL,
+      );
+      external = await this.enrichCandidatesWithPhones(apiKey, external);
+      // Operasyon için telefon zorunlu — telefonsuz / POI gürültüsünü listeleme
+      external = external
+        .filter((c) => Boolean(c.phone?.trim()))
+        .slice(0, ALTERNATIVE_MAX_RESULTS);
     } catch (err) {
       this.logger.warn(
         `Alternatif tedarikçi araması başarısız: ${err instanceof Error ? err.message : String(err)}`,
@@ -154,7 +179,7 @@ export class VendorDiscoveryService {
       code: candidates.length === 0 ? 'NO_RESULTS' : 'OK',
       message:
         candidates.length === 0
-          ? 'Bu kriterlerde alternatif tedarikçi bulunamadı.'
+          ? 'Bu kriterlerde telefonu olan alternatif tedarikçi bulunamadı.'
           : `${candidates.length} alternatif aday bulundu.`,
       sessionId: session.id,
     };
@@ -471,15 +496,24 @@ export class VendorDiscoveryService {
     districts: string[] | undefined,
     serviceType: string,
     minRating: number,
+    maxResults = 5,
   ): Promise<ExternalVendorCandidate[]> {
     const targets = !districts?.length
       ? [undefined as string | undefined]
       : districts.slice(0, MAX_DISTRICTS_PER_SEARCH);
 
     const merged = new Map<string, ExternalVendorCandidate>();
+    const perDistrict = Math.min(10, Math.max(maxResults, 10));
 
     for (const district of targets) {
-      const batch = await this.searchGooglePlaces(apiKey, city, district, serviceType, minRating, 10);
+      const batch = await this.searchGooglePlaces(
+        apiKey,
+        city,
+        district,
+        serviceType,
+        minRating,
+        perDistrict,
+      );
       for (const candidate of batch) {
         const existing = merged.get(candidate.externalId);
         if (!existing || candidate.rating > existing.rating) {
@@ -490,7 +524,59 @@ export class VendorDiscoveryService {
 
     return Array.from(merged.values())
       .sort((a, b) => b.rating - a.rating)
-      .slice(0, 5);
+      .slice(0, maxResults);
+  }
+
+  private extractPlacePhone(place: {
+    nationalPhoneNumber?: string;
+    internationalPhoneNumber?: string;
+  }): string | undefined {
+    const national = place.nationalPhoneNumber?.trim();
+    const international = place.internationalPhoneNumber?.trim();
+    return national || international || undefined;
+  }
+
+  /**
+   * Text Search bazen place_id döndürüp telefonu boş bırakır.
+   * Place Details ile national / international phone tamamlanır.
+   */
+  private async fetchPlacePhone(apiKey: string, placeId: string): Promise<string | undefined> {
+    const id = placeId.replace(/^places\//, '').trim();
+    if (!id) return undefined;
+    try {
+      const response = await firstValueFrom(
+        this.http.get<GooglePlaceResult>(
+          `https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': GOOGLE_PLACE_DETAILS_FIELD_MASK,
+            },
+            timeout: 10_000,
+          },
+        ),
+      );
+      return this.extractPlacePhone(response.data ?? {});
+    } catch (err) {
+      this.logger.debug(
+        `Place Details telefon alınamadı (${id}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return undefined;
+    }
+  }
+
+  private async enrichCandidatesWithPhones(
+    apiKey: string,
+    candidates: ExternalVendorCandidate[],
+  ): Promise<ExternalVendorCandidate[]> {
+    return Promise.all(
+      candidates.map(async (c) => {
+        if (c.phone?.trim()) return c;
+        const phone = await this.fetchPlacePhone(apiKey, c.externalId);
+        return phone ? { ...c, phone } : c;
+      }),
+    );
   }
 
   private async searchGooglePlaces(
@@ -511,7 +597,7 @@ export class VendorDiscoveryService {
           textQuery,
           languageCode: 'tr',
           regionCode: 'TR',
-          maxResultCount: 10,
+          maxResultCount: Math.min(20, Math.max(10, maxResults)),
         },
         {
           headers: {
@@ -543,7 +629,7 @@ export class VendorDiscoveryService {
         address,
         city: toTitleCaseTR(city),
         district: district ? toTitleCaseTR(district) : undefined,
-        phone: place.nationalPhoneNumber ?? undefined,
+        phone: this.extractPlacePhone(place),
         rating: place.rating ?? 0,
         reviewCount: place.userRatingCount ?? 0,
         source: 'google_places' as const,
@@ -566,6 +652,7 @@ interface GooglePlaceResult {
   displayName?: { text?: string };
   formattedAddress?: string;
   nationalPhoneNumber?: string;
+  internationalPhoneNumber?: string;
   rating?: number;
   userRatingCount?: number;
   location?: { latitude?: number; longitude?: number };

@@ -1,0 +1,36 @@
+{
+  "at": "2026-07-17T16:44:28.119Z",
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "caseNo": "AY-202606-0001",
+  "notes": {
+    "placesConfiguredLocal": false,
+    "googleScreenshot": "ALTERNATIVE_SERVICE_NOT_CONFIGURED mesajı — local Places key yok; kod telefonsuz adayı filtreler",
+    "matbuLogo": "src=/meridyen-logo-original.png naturalWidth=1024",
+    "kaydetVeKapat": "Dosya Bütçesi kartında görünür"
+  },
+  "checks": {
+    "kaydetVeKapat": {
+      "visible": true,
+      "text": "Kaydet Ve Kapat",
+      "y": 738.25
+    },
+    "googleAlternatif": {
+      "candidateCount": 0,
+      "phones": [],
+      "allHavePhone": true,
+      "localCode": "ALTERNATIVE_SERVICE_NOT_CONFIGURED"
+    },
+    "matbuCreate": {
+      "status": 201,
+      "id": "abad2f8d-8220-4b06-8a9e-75a467dc0126",
+      "hasToken": true
+    },
+    "matbu": {
+      "logoSrc": "/meridyen-logo-original.png",
+      "logoNaturalWidth": 1024,
+      "logoComplete": true,
+      "hasAlisLeak": false,
+      "hasIsOzetiPlaceholder": false
+    }
+  }
+}

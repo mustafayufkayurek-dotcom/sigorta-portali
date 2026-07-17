@@ -48,6 +48,12 @@ export function prepareTrustedDocumentHtml(html: string): string {
     .replace(/<\/?body[^>]*>/gi, '')
     .trim();
 
+  // Kırık absolute logo URL'lerini (yanlış APP_URL / eski host) aynı origin resmi yola çevir
+  bodyContent = bodyContent.replace(
+    /(<img\b[^>]*\bsrc=["'])([^"']*meridyen-logo[^"']*)(["'][^>]*>)/gi,
+    '$1/meridyen-logo-original.png$3',
+  );
+
   const scopedCss = styles.map(scopeDocumentStyles).join('\n');
   const styleBlock = scopedCss ? `<style>${scopedCss}</style>` : '';
 

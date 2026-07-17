@@ -52,12 +52,15 @@ export async function getDocumentBranding(
   const companyAddress = str(info.address) || '—';
 
   const customLogo = str(info.logoUrl);
-  const logoUrl = customLogo.startsWith('http')
-    ? customLogo
-    : buildAppPath(
-        config,
-        customLogo ? (customLogo.startsWith('/') ? customLogo : `/${customLogo}`) : '/meridyen-logo-original.png',
-      );
+  // Müşteriye dönük evrak: kırık relative/upload yolları yerine resmi marka PNG (absolute).
+  // Özel logo yalnızca geçerli http(s) ise kullanılır.
+  const officialLogoPath = '/meridyen-logo-original.png';
+  let logoUrl: string;
+  if (/^https?:\/\//i.test(customLogo)) {
+    logoUrl = customLogo;
+  } else {
+    logoUrl = buildAppPath(config, officialLogoPath);
+  }
 
   return {
     logoUrl,

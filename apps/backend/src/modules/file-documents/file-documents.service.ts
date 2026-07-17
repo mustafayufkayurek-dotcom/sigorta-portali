@@ -7,12 +7,46 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { getDocumentBranding, DOCUMENT_HEADER_STYLES } from '@/common/utils/document-branding';
 import { buildAppPath } from '@/common/utils/app-url';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
   SendWhatsappDto,
 } from './dto/file-documents.dto';
 import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
+
+/** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
+const INTERNAL_COST_DESC_RE =
+  /alış\s*fiyat|satış\s*fiyat|tedarikçi\s*maliyet|müşteri\s*satış|meridyen\s*satış|kâr\s*oran/i;
+
+function isCustomerFacingWorkSummary(description: string | null | undefined): boolean {
+  const t = (description ?? '').trim();
+  if (!t) return false;
+  if (INTERNAL_COST_DESC_RE.test(t)) return false;
+  return true;
+}
+
+function buildEmergencyMatbuWorkSummary(ec: {
+  issueType: string;
+  notes?: string | null;
+  costEntries: Array<{ description: string; entryType?: string }>;
+}): string {
+  const usable = ec.costEntries
+    .map((c) => (c.description ?? '').trim())
+    .filter((d) => isCustomerFacingWorkSummary(d));
+
+  if (usable.length > 0) {
+    return usable.map((d) => `• ${toTitleCaseTR(d)}`).join('\n');
+  }
+
+  const notes = (ec.notes ?? '').trim();
+  if (notes && isCustomerFacingWorkSummary(notes)) {
+    return toTitleCaseTR(notes);
+  }
+
+  const issue = toTitleCaseTR((ec.issueType ?? '').trim()) || 'Acil Yardım';
+  return `${issue} Hizmeti Tamamlandı.`;
+}
 
 const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
 <html lang="tr">
@@ -239,22 +273,29 @@ export class FileDocumentsService {
       const ec = await this.prisma.emergencyCase.findUnique({
         where: { id: dto.entityId },
         include: {
-          assignedVendor: { select: { name: true } },
-          costEntries: { select: { amount: true, description: true } },
+          assignedVendor: { select: { name: true, phone: true } },
+          costEntries: { select: { amount: true, description: true, entryType: true } },
         },
       });
       if (!ec) throw new NotFoundException('Acil yardım vakası bulunamadı');
 
-      // Toplam tutar
-      const toplamTutar = ec.costEntries.reduce((s, c) => s + c.amount, 0);
+      // Müşteriye satış bedeli (gelir); alış/gider tutarı matbuya yazılmaz
+      const gelirTotal = ec.costEntries
+        .filter((c) => c.entryType === 'gelir')
+        .reduce((s, c) => s + c.amount, 0);
+      const toplamTutar = gelirTotal;
 
-      // İş özeti — cost entry açıklamalarından oluştur
-      const isOzeti = ec.costEntries.length > 0
-        ? ec.costEntries.map((c) => `• ${c.description}`).join('\n')
-        : ec.notes ?? '(İş özeti girilmemiş)';
+      const isOzeti = buildEmergencyMatbuWorkSummary(ec);
 
-      // Tedarikçi adı
-      const tedarikci = ec.assignedVendor?.name ?? '—';
+      const vendorName = (ec.assignedVendor?.name ?? '').trim();
+      const vendorPhone = (ec.assignedVendor?.phone ?? '').trim();
+      const tedarikci = vendorName
+        ? vendorPhone
+          ? `${toTitleCaseTR(vendorName)} · ${vendorPhone}`
+          : toTitleCaseTR(vendorName)
+        : '—';
+
+      const musteriTelefon = (ec.customerPhone ?? '').trim() || '—';
 
       // İlçe / İl
       const ilceIl = [ec.district, ec.city].filter(Boolean).join(' / ') || '—';
@@ -270,11 +311,11 @@ export class FileDocumentsService {
         '{{case_no}}': ec.caseNo,
         '{{dosya_no}}': ec.fileNo ?? ec.caseNo,
         '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
-        '{{musteri_ad}}': ec.customerName,
-        '{{musteri_telefon}}': ec.customerPhone ?? '—',
+        '{{musteri_ad}}': toTitleCaseTR(ec.customerName) || ec.customerName,
+        '{{musteri_telefon}}': musteriTelefon,
         '{{adres}}': ec.address,
         '{{ilce_il}}': ilceIl,
-        '{{konu}}': ec.issueType,
+        '{{konu}}': toTitleCaseTR(ec.issueType) || ec.issueType,
         '{{tedarikci}}': tedarikci,
         '{{is_ozeti}}': isOzeti,
         '{{toplam_tutar}}': toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
