@@ -1,0 +1,27 @@
+{
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "source": "list-unassigned-FATURALANDILDI",
+  "status": "FATURALANDILDI",
+  "mockedCards": true,
+  "defaultTabKayitli": true,
+  "hasSekmeler": true,
+  "tabLabels": {
+    "kayitli": "Kayıtlı Tedarikçiler",
+    "alternatif": "Alternatif Öneriler"
+  },
+  "forbiddenGoogleInUi": true,
+  "kayitliOnlyDosyayaAta": true,
+  "kayitliNoHavuzButton": true,
+  "hasSistemOnerisi": true,
+  "hasRationaleLabels": true,
+  "hasDosyayaAtaOrEmpty": true,
+  "hasFirmaAdi": true,
+  "hasPuan": true,
+  "hasDegerlendirme": true,
+  "hasYolTarifi": true,
+  "alternatifHasHavuzaKaydet": true,
+  "screenshots": [
+    "01-kayitli-tab.png",
+    "02-alternatif-tab.png"
+  ]
+}

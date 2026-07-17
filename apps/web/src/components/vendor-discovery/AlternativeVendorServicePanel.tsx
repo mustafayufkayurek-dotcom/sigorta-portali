@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Search } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { VendorCandidateCard } from './VendorCandidateCard';
 
 export type AlternativeVendorCandidate = {
   externalId: string;
@@ -18,7 +18,68 @@ export type AlternativeVendorCandidate = {
   serviceTypes: string[];
   latitude?: number;
   longitude?: number;
+  /** Yol tarifi — API’den gelir; yoksa istemci adresle üretir */
+  mapsUrl?: string;
+  websiteUrl?: string;
+  /** Karar gerekçesi — yalnızca API’de varsa gösterilir */
+  distanceKm?: number | null;
+  distanceLabel?: string | null;
+  avgCost?: number | null;
+  completedFileCount?: number | null;
+  lastWorkedAt?: string | null;
 };
+
+function formatAltScore(score: number | null | undefined): string {
+  if (score == null || !Number.isFinite(score) || score <= 0) return '—';
+  return (Math.round(score * 10) / 10).toFixed(1);
+}
+
+function formatAltCost(cost: number | null | undefined): string {
+  if (cost == null || !Number.isFinite(cost)) return '—';
+  return `${Number(cost).toLocaleString('tr-TR')} TL`;
+}
+
+function formatAltDistance(c: AlternativeVendorCandidate): string {
+  const label = c.distanceLabel?.trim();
+  if (label) return label;
+  if (c.distanceKm != null && Number.isFinite(c.distanceKm)) {
+    return `${(Math.round(c.distanceKm * 10) / 10).toLocaleString('tr-TR')} km`;
+  }
+  return '—';
+}
+
+function formatAltLastWorked(iso: string | null | undefined): string {
+  if (!iso?.trim()) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('tr-TR');
+}
+
+/** Alternatif: yalnızca mevcut ranking alanları varsa gerekçe satırları. */
+function alternativeRationaleMetrics(
+  c: AlternativeVendorCandidate,
+): Array<{ label: string; value: string }> | undefined {
+  const hasAny =
+    (c.distanceKm != null && Number.isFinite(c.distanceKm))
+    || Boolean(c.distanceLabel?.trim())
+    || (c.avgCost != null && Number.isFinite(c.avgCost))
+    || (c.completedFileCount != null && Number.isFinite(c.completedFileCount))
+    || Boolean(c.lastWorkedAt?.trim());
+  if (!hasAny) return undefined;
+  return [
+    { label: 'Hizmet Kalitesi', value: formatAltScore(c.rating) },
+    { label: 'Bölgeye Uzaklık', value: formatAltDistance(c) },
+    { label: 'Ortalama Maliyet', value: formatAltCost(c.avgCost) },
+    {
+      label: 'Tamamlanan Dosya Sayısı',
+      value:
+        c.completedFileCount != null && Number.isFinite(c.completedFileCount)
+          ? String(c.completedFileCount)
+          : '—',
+    },
+    { label: 'Son Çalışma Tarihi', value: formatAltLastWorked(c.lastWorkedAt) },
+  ];
+}
 
 type AlternativeMeta = {
   configured: boolean;
@@ -47,16 +108,15 @@ function toUserFacingSearchMessage(raw: string | null | undefined): string {
   return t;
 }
 
-function formatStars(rating: number | null | undefined): string {
-  if (rating == null || !Number.isFinite(rating) || rating <= 0) return '—';
-  const full = Math.min(5, Math.round(rating));
-  return `${'★'.repeat(full)}${'☆'.repeat(5 - full)} ${rating.toFixed(1)}`;
-}
-
-/** tel: href — yalnızca rakam ve + (Google/sağlayıcı yok) */
-function toTelHref(phone: string): string {
-  const cleaned = phone.replace(/[^\d+]/g, '');
-  return cleaned ? `tel:${cleaned}` : '';
+/** UI’da sağlayıcı adı yazmadan yol tarifi linki. */
+function buildDirectionsUrl(c: AlternativeVendorCandidate): string | null {
+  if (c.mapsUrl?.trim()) return c.mapsUrl.trim();
+  if (c.latitude != null && c.longitude != null) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`;
+  }
+  const q = [c.name, c.address, c.district, c.city].filter(Boolean).join(' ');
+  if (!q.trim()) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
 export function AlternativeVendorServicePanel({
@@ -65,9 +125,12 @@ export function AlternativeVendorServicePanel({
   serviceType,
   category = 'acil',
   vendorType = 'hizmet',
+  /** Sekme içinde: arama otomatik, CTA gizli */
+  embedded = false,
   autoExpandWhenEmpty = true,
   forceExpand = false,
   compact = false,
+  active = true,
   onAssigned,
   onSavedToPool,
 }: {
@@ -76,19 +139,23 @@ export function AlternativeVendorServicePanel({
   serviceType?: string;
   category?: string;
   vendorType?: string;
-  /** Meridyen önerisi yokken CTA’yı açık göster */
+  embedded?: boolean;
+  /** Meridyen önerisi yokken CTA’yı açık göster (standalone) */
   autoExpandWhenEmpty?: boolean;
   /** Red / manuel — paneli açık tut (aynı sayfa) */
   forceExpand?: boolean;
   compact?: boolean;
+  /** Sekme aktifken arama tetiklenir */
+  active?: boolean;
   onAssigned?: (vendor: { id: string; name: string; phone?: string | null }) => void | Promise<void>;
   onSavedToPool?: (vendor: { id: string; name: string; phone?: string | null }) => void | Promise<void>;
 }) {
-  const [expanded, setExpanded] = useState(autoExpandWhenEmpty || forceExpand);
+  const [expanded, setExpanded] = useState(embedded || autoExpandWhenEmpty || forceExpand);
 
   useEffect(() => {
     if (forceExpand) setExpanded(true);
   }, [forceExpand]);
+
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<AlternativeVendorCandidate[]>([]);
@@ -98,10 +165,9 @@ export function AlternativeVendorServicePanel({
   const [phoneDraft, setPhoneDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  /** Alternatif aday detay inceleme (satır genişletme; yeni sekme yok) */
-  const [detailId, setDetailId] = useState<string | null>(null);
 
   const canSearch = Boolean(city?.trim() && serviceType?.trim());
+  const panelOpen = embedded ? active : expanded;
 
   const runSearch = useCallback(async () => {
     if (!city?.trim() || !serviceType?.trim()) {
@@ -154,10 +220,11 @@ export function AlternativeVendorServicePanel({
   }, [city, district, serviceType]);
 
   useEffect(() => {
-    if (expanded && autoExpandWhenEmpty && canSearch && !searched) {
+    if (!panelOpen || !canSearch || searched) return;
+    if (embedded || autoExpandWhenEmpty || forceExpand) {
       void runSearch();
     }
-  }, [expanded, autoExpandWhenEmpty, canSearch, searched, runSearch]);
+  }, [panelOpen, canSearch, searched, embedded, autoExpandWhenEmpty, forceExpand, runSearch]);
 
   function openAction(mode: ActionMode, candidate: AlternativeVendorCandidate) {
     setPending({ mode, candidate });
@@ -222,190 +289,105 @@ export function AlternativeVendorServicePanel({
     }
   }
 
-  return (
-    <div
-      className={compact ? 'mt-2' : 'mt-3'}
-      data-testid="alternatif-tedarikci-servisi"
-    >
-      <button
-        type="button"
-        onClick={() => {
-          const next = !expanded;
-          setExpanded(next);
-          if (next && !searched && canSearch) {
-            void runSearch();
-          }
-        }}
-        className={
-          compact
-            ? 'w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors'
-            : 'w-full flex items-center justify-center gap-2 rounded-xl py-3 px-3 bg-blue-600 text-white border-2 border-blue-700 text-sm sm:text-[15px] font-bold shadow-md shadow-blue-200/60 ring-2 ring-blue-100 hover:bg-blue-700 transition-colors'
-        }
-        data-testid="alternatif-tedarikci-cta"
-      >
-        <Search className={compact ? 'w-3.5 h-3.5 shrink-0' : 'w-4 h-4 shrink-0'} aria-hidden />
-        Alternatif Tedarikçi Ara
-      </button>
-
-      {expanded && (
-        <div className="mt-2 space-y-2" data-testid="alternatif-tedarikci-panel">
-          {!canSearch && (
-            <p className="text-xs text-slate-500 text-center py-1">
-              Öneri için il ve hizmet türü gerekli.
-            </p>
-          )}
-          {canSearch && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => void runSearch()}
-                disabled={loading}
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
-              >
-                {loading ? 'Aranıyor...' : searched ? 'Yenile' : 'Ara'}
-              </button>
-            </div>
-          )}
-          {loading ? (
-            <p className="text-xs text-slate-400 py-2 text-center">Öneriler yükleniyor...</p>
-          ) : error && results.length === 0 ? (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          ) : searched && results.length === 0 ? (
-            <p className="text-xs text-slate-500 py-2 text-center">
-              {meta?.message
-                ? toUserFacingSearchMessage(meta.message)
-                : 'Uygun tedarikçi önerisi yok.'}
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {results.map((c) => {
-                const open = detailId === c.externalId;
-                const phone = c.phone?.trim() || '';
-                const telHref = phone ? toTelHref(phone) : '';
-                const addressLine = [c.address, c.district, c.city].filter(Boolean).join(' · ');
-                return (
-                  <li
-                    key={c.externalId}
-                    className={`rounded-xl border bg-white px-3 py-2.5 transition-colors ${
-                      open ? 'border-blue-200 ring-1 ring-blue-100' : 'border-slate-200'
-                    }`}
-                    data-testid="alternatif-aday"
-                    data-detail-open={open ? '1' : '0'}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setDetailId(open ? null : c.externalId)}
-                      className="w-full text-left"
-                      data-testid="alternatif-aday-detay-toggle"
-                      aria-expanded={open}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
-                          <p className="text-[11px] text-amber-700 mt-0.5">
-                            {formatStars(c.rating)}
-                            {c.reviewCount > 0 ? ` · ${c.reviewCount} değerlendirme` : ''}
-                          </p>
-                          {!open && c.address && (
-                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">{c.address}</p>
-                          )}
-                        </div>
-                        <span className="shrink-0 text-[11px] font-medium text-blue-600 pt-0.5">
-                          {open ? 'Gizle' : 'Detay'}
-                        </span>
-                      </div>
-                    </button>
-
-                    {open ? (
-                      <div
-                        className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-2"
-                        data-testid="alternatif-aday-detay"
-                      >
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[11px] text-slate-500">Telefon</span>
-                          {phone ? (
-                            <>
-                              <a
-                                href={telHref}
-                                className="text-[11px] font-medium text-slate-800 tabular-nums hover:text-blue-700 hover:underline"
-                                data-testid="alternatif-telefon-link"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {phone}
-                              </a>
-                              <a
-                                href={telHref}
-                                className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                                data-testid="alternatif-ara"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Ara
-                              </a>
-                            </>
-                          ) : (
-                            <span className="text-[11px] text-slate-400">Kayıtlı değil</span>
-                          )}
-                        </div>
-                        <p
-                          className="text-[11px] text-slate-600 min-w-[7rem] flex-1 basis-[9rem] truncate"
-                          title={addressLine || undefined}
-                        >
-                          <span className="font-medium text-slate-700">Adres: </span>
-                          {addressLine || '—'}
-                        </p>
-                        <div className="flex flex-wrap gap-2 shrink-0 ml-auto">
-                          <button
-                            type="button"
-                            onClick={() => openAction('assign_file', c)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                            data-testid="alternatif-dosyaya-ata"
-                          >
-                            Dosyaya Ata
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openAction('save_pool', c)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                            data-testid="alternatif-havuza-kaydet"
-                          >
-                            Havuza Kaydet
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openAction('assign_file', c)}
-                          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                          data-testid="alternatif-dosyaya-ata"
-                        >
-                          Dosyaya Ata
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openAction('save_pool', c)}
-                          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                          data-testid="alternatif-havuza-kaydet"
-                        >
-                          Havuza Kaydet
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {actionMsg && !pending && (
-            <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-              {actionMsg}
-            </p>
-          )}
+  const resultsList = (
+    <div className="space-y-2" data-testid="alternatif-tedarikci-panel">
+      {!canSearch && (
+        <p className="text-xs text-slate-500 text-center py-1">
+          Öneri için il ve hizmet türü gerekli.
+        </p>
+      )}
+      {canSearch && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void runSearch()}
+            disabled={loading}
+            className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
+          >
+            {loading ? 'Aranıyor...' : searched ? 'Yenile' : 'Ara'}
+          </button>
         </div>
       )}
+      {loading ? (
+        <p className="text-xs text-slate-400 py-2 text-center">Öneriler yükleniyor...</p>
+      ) : error && results.length === 0 ? (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      ) : searched && results.length === 0 ? (
+        <p className="text-xs text-slate-500 py-2 text-center">
+          {meta?.message
+            ? toUserFacingSearchMessage(meta.message)
+            : 'Uygun tedarikçi önerisi yok.'}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {results.map((c, index) => {
+            const addressLine = [c.address, c.district, c.city].filter(Boolean).join(' · ');
+            return (
+              <VendorCandidateCard
+                key={c.externalId}
+                name={toTitleCaseTR(c.name)}
+                phone={c.phone}
+                address={addressLine || null}
+                rating={c.rating}
+                reviewCount={c.reviewCount}
+                metrics={alternativeRationaleMetrics(c)}
+                systemSuggestion={index === 0}
+                directionsUrl={buildDirectionsUrl(c)}
+                showDirections
+                websiteUrl={c.websiteUrl?.trim() || null}
+                testId="alternatif-aday"
+                primaryAction={{
+                  label: 'Dosyaya Ata',
+                  onClick: () => openAction('assign_file', c),
+                  testId: 'alternatif-dosyaya-ata',
+                }}
+                secondaryAction={{
+                  label: 'Havuza Kaydet',
+                  onClick: () => openAction('save_pool', c),
+                  testId: 'alternatif-havuza-kaydet',
+                }}
+              />
+            );
+          })}
+        </ul>
+      )}
+      {actionMsg && !pending && (
+        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          {actionMsg}
+        </p>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className={embedded ? undefined : compact ? 'mt-2' : 'mt-3'}
+      data-testid="alternatif-tedarikci-servisi"
+    >
+      {!embedded && (
+        <button
+          type="button"
+          onClick={() => {
+            const next = !expanded;
+            setExpanded(next);
+            if (next && !searched && canSearch) {
+              void runSearch();
+            }
+          }}
+          className={
+            compact
+              ? 'w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors'
+              : 'w-full flex items-center justify-center gap-2 rounded-xl py-3 px-3 bg-blue-600 text-white border-2 border-blue-700 text-sm sm:text-[15px] font-bold shadow-md shadow-blue-200/60 ring-2 ring-blue-100 hover:bg-blue-700 transition-colors'
+          }
+          data-testid="alternatif-tedarikci-cta"
+        >
+          Alternatif Öneri Getir
+        </button>
+      )}
+
+      {panelOpen && (embedded ? resultsList : <div className="mt-2">{resultsList}</div>)}
 
       {pending && (
         <div

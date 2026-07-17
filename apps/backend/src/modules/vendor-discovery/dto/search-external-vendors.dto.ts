@@ -76,6 +76,10 @@ export interface AlternativeVendorCandidate {
   serviceTypes: string[];
   latitude?: number;
   longitude?: number;
+  /** Yol tarifi linki (UI etiketi: Yol Tarifi — sağlayıcı adı yok) */
+  mapsUrl?: string;
+  /** Varsa web sitesi */
+  websiteUrl?: string;
 }
 
 export interface AlternativeVendorSearchResult {

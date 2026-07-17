@@ -406,11 +406,21 @@ export async function getRecommendedVendors(caseId: string, limit = 3): Promise<
 export interface VendorRecommendation {
   id: string;
   name: string;
+  phone?: string | null;
+  city?: string | null;
+  district?: string | null;
   avgServiceScore: number | null;
   avgCost: number | null;
   avgResponseTime: number | null;
   completedFileCount: number;
+  compositeScore?: number;
   rank?: number;
+  /** Bölgeye uzaklık (km) — API varsa gösterilir */
+  distanceKm?: number | null;
+  /** Hazır uzaklık metni — API varsa gösterilir */
+  distanceLabel?: string | null;
+  /** Son çalışma tarihi (ISO) — API varsa gösterilir */
+  lastWorkedAt?: string | null;
 }
 
 export async function getEmergencyVendors(search?: string): Promise<{ data: VendorOption[]; meta: { total: number } }> {

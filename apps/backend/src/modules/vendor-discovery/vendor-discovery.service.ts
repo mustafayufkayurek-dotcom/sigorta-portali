@@ -392,6 +392,7 @@ export class VendorDiscoveryService {
       serviceTypes: c.serviceTypes,
       latitude: c.latitude,
       longitude: c.longitude,
+      mapsUrl: c.mapsUrl,
     };
   }
 

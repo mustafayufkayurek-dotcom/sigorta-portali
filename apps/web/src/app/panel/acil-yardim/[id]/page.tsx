@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Building2,
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
@@ -14,7 +13,6 @@ import {
   Lock,
   Play,
   Send,
-  Star,
   Wallet,
 } from 'lucide-react';
 import {
@@ -34,7 +32,7 @@ import {
   readHistoricalFinanceOptIn,
   writeHistoricalFinanceOptIn,
 } from './historical-file';
-import { AlternativeVendorServicePanel } from '@/components/vendor-discovery/AlternativeVendorServicePanel';
+import { RecommendedVendorsTabs } from '@/components/vendor-discovery/RecommendedVendorsTabs';
 import {
   ACIL_STAGES,
   AcilLocalFlow,
@@ -253,25 +251,6 @@ function fmtElapsedDuration(fromIso: string): string {
   const remH = hours % 24;
   return remH > 0 ? `${days} gün ${remH} saat` : `${days} gün`;
 }
-function formatVendorScore(score: number | null | undefined): string {
-  if (score == null || !Number.isFinite(score)) return '—';
-  return (Math.round(score * 10) / 10).toFixed(1);
-}
-
-/** Ortalama yanıt süresi (saat) → referans biçimi: 30 dk */
-function formatMudahaleSuresi(hours: number | null | undefined): string {
-  if (hours == null || !Number.isFinite(hours) || hours <= 0) return '—';
-  const mins = Math.round(hours * 60);
-  if (mins < 120) return `${mins} dk`;
-  const h = Math.round(hours * 10) / 10;
-  return `${h} sa`;
-}
-
-function formatSonFiyat(cost: number | null | undefined): string {
-  if (cost == null || !Number.isFinite(cost)) return '—';
-  return `${Number(cost).toLocaleString('tr-TR')} TL`;
-}
-
 /** Fiyat girişi input: 1.250,00 ↔ sayı */
 function formatPriceInput(n: number): string {
   if (!Number.isFinite(n)) return '';
@@ -646,7 +625,6 @@ export default function AcilDosyaDetayPage() {
 
   const [vendorRecs, setVendorRecs] = useState<VendorRecommendation[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
-  const [showAllVendorRecs, setShowAllVendorRecs] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
 
   const [alisFiyati, setAlisFiyati] = useState('');
@@ -778,8 +756,7 @@ export default function AcilDosyaDetayPage() {
   useEffect(() => {
     if (!id) return;
     setRecsLoading(true);
-    setShowAllVendorRecs(false);
-    getRecommendedVendors(id, 10)
+    getRecommendedVendors(id, 5)
       .then((res) => setVendorRecs(res.data ?? []))
       .catch(() => setVendorRecs([]))
       .finally(() => setRecsLoading(false));
@@ -1369,10 +1346,6 @@ export default function AcilDosyaDetayPage() {
   const task = historicalExempt
     ? { title: 'Dosya Takibi', detail: 'Yeni finans akışı, hakediş ve cari zorunlu değildir.' }
     : stageTaskTitle(stageIdx);
-  const showAlternativeService =
-    forceAltVendor
-    || flow.vendorProcess === 'reddedildi'
-    || (!recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId);
   const owner = fileOwnerContact(vaka);
   const assigneeName = owner.name;
   const assigneeInitials = assigneeName !== '—' ? personInitials(assigneeName) : '—';
@@ -1739,125 +1712,23 @@ export default function AcilDosyaDetayPage() {
         className="grid grid-cols-1 xl:grid-cols-2 gap-2.5 items-stretch"
         data-testid="operasyon-iki-kolon"
       >
-        {/* Sol: Önerilen Tedarikçiler */}
-        <div
-          className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0 h-full flex flex-col"
-          data-testid="tedarikci-onerileri"
-        >
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <SectionTitle icon={Building2} title="Önerilen Tedarikçiler" iconClassName="text-blue-600" />
-            {vaka.assignedVendor && (
-              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                Atandı
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-500 mb-2 leading-snug" data-testid="tedarikci-onerileri-yardim">
-            Dosya için tedarikçi seçin veya alternatif önerin
-          </p>
-          {recsLoading ? (
-            <p className="text-xs text-slate-400 py-2 text-center">Öneriler yükleniyor...</p>
-          ) : vendorRecs.length > 0 ? (
-            <>
-              <ul className="divide-y divide-slate-100">
-                {(showAllVendorRecs ? vendorRecs : vendorRecs.slice(0, 3)).map((v) => {
-                  const selected = vaka.assignedVendorId === v.id;
-                  return (
-                    <li
-                      key={v.id}
-                      className={`flex items-center gap-2 py-2 ${selected ? 'bg-blue-50/60 -mx-1 px-1 rounded-lg' : ''}`}
-                      data-testid="tedarikci-oneri"
-                    >
-                      <span className="shrink-0 w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-                        <Building2 className="w-3.5 h-3.5" aria-hidden />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{v.name}</p>
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-600 font-medium">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" aria-hidden />
-                          {formatVendorScore(v.avgServiceScore)}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                          {vaka.issueType?.trim() || 'Hizmet'}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right hidden 2xl:block min-w-[3.5rem]">
-                        <p className="text-[10px] text-slate-400 leading-tight">Müdahale</p>
-                        <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                          {formatMudahaleSuresi(v.avgResponseTime)}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right hidden 2xl:block min-w-[3.5rem]">
-                        <p className="text-[10px] text-slate-400 leading-tight">Fiyat</p>
-                        <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                          {formatSonFiyat(v.avgCost)}
-                        </p>
-                      </div>
-                      {!vaka.assignedVendorId && (
-                        <button
-                          type="button"
-                          disabled={assignLoading}
-                          onClick={() => handleAssignVendor(v.id)}
-                          className="shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                          data-testid="tedarikci-ata"
-                        >
-                          Ata
-                        </button>
-                      )}
-                      {selected && (
-                        <span className="shrink-0 text-[11px] font-medium text-blue-700 px-1">Atandı</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-              {vendorRecs.length > 3 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllVendorRecs((v) => !v)}
-                  className="w-full mt-1.5 py-1 text-sm font-medium text-blue-600 hover:text-blue-700"
-                  data-testid="tedarikci-tumunu-gor"
-                >
-                  {showAllVendorRecs ? 'Daha Az Göster' : 'Tümünü Gör'}
-                </button>
-              )}
-              {vendorRecs.length <= 3 && (
-                <p className="mt-1.5 text-center text-sm font-medium text-blue-600" data-testid="tedarikci-tumunu-gor">
-                  Tümünü Gör
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-slate-500 py-1.5" data-testid="tedarikci-havuz-bos">
-              Uygun tedarikçi önerisi yok.
-            </p>
-          )}
-          {/* Havuz doluysa alternatif CTA gizlenir; yalnızca havuz boş / red / zorunlu yedek */}
-          {!recsLoading && showAlternativeService && (
-            <AlternativeVendorServicePanel
-              city={vaka.city ?? undefined}
-              district={vaka.district ?? undefined}
-              serviceType={vaka.issueType ?? undefined}
-              category="acil"
-              compact
-              autoExpandWhenEmpty={showAlternativeService}
-              forceExpand={forceAltVendor || flow.vendorProcess === 'reddedildi'}
-              onAssigned={async (vendor) => {
-                await handleAssignVendor(vendor.id);
-              }}
-            />
-          )}
-          {!recsLoading && vendorRecs.length > 0 && !vaka.assignedVendorId && !showAlternativeService && (
-            <button
-              type="button"
-              onClick={() => setForceAltVendor(true)}
-              className="mt-2 w-full text-center text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2"
-              data-testid="daha-fazla-oneri"
-            >
-              Daha Fazla Öneri
-            </button>
-          )}
-        </div>
+        {/* Sol: Önerilen Tedarikçiler (Kayıtlı / Alternatif sekmeleri) */}
+        <RecommendedVendorsTabs
+          assignedBadge={Boolean(vaka.assignedVendor)}
+          loading={recsLoading}
+          vendors={vendorRecs}
+          assignedVendorId={vaka.assignedVendorId}
+          assignLoading={assignLoading}
+          onAssign={handleAssignVendor}
+          preferAlternatif={forceAltVendor || flow.vendorProcess === 'reddedildi'}
+          city={vaka.city ?? undefined}
+          district={vaka.district ?? undefined}
+          serviceType={vaka.issueType ?? undefined}
+          category="acil"
+          onAlternativeAssigned={async (vendor) => {
+            await handleAssignVendor(vendor.id);
+          }}
+        />
 
         {/* Sağ: Alış / Satış Fiyatı (inline — sade, düşük yükseklik) */}
         <div
