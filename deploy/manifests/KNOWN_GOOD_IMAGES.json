@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-17",
-  "label": "v374-epic05-yerlesim-yogunluk",
-  "description": "Web-only: EPIC-05 yerleşim yoğunluk (compact Operasyon under vendor). Web v374 + backend v373 (değişmedi). Migration yok. Commit 7c7931c. Smoke: route PASS, auth login PARTIAL (credential yok — Cursor production UI login yapmaz). Production browser: kullanıcı production kontrolü. Rollback web v373 / backend v373.",
+  "label": "v375-epic05-belgeler-ust-bosluk",
+  "description": "Web-only: EPIC-05 belgeler üst boşluk (2×2 density). Web v375 + backend v373 (değişmedi). Migration yok. Commit b7aaa4c. Smoke: route PASS, auth login PARTIAL (credential yok — Cursor production UI login yapmaz). Production browser: kullanıcı production kontrolü. Rollback web v374 / backend v373.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v373-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v374-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v375-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v373-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v374-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v373-amd64"
   },
   "mustPassSmokeRoutes": [
