@@ -134,7 +134,7 @@ export function RecommendedVendorsTabs({
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0 flex flex-col"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0"
       data-testid="tedarikci-onerileri"
     >
       <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -191,9 +191,9 @@ export function RecommendedVendorsTabs({
       </div>
 
       {tab === 'kayitli' ? (
-        <div className="flex-1 min-h-0" data-testid="sekme-kayitli-icerik" role="tabpanel">
+        <div data-testid="sekme-kayitli-icerik" role="tabpanel">
           {loading ? (
-            <p className="text-xs text-slate-400 py-2 text-center">Öneriler yükleniyor...</p>
+            <p className="text-xs text-slate-400 py-1 text-center">Öneriler yükleniyor...</p>
           ) : ranked.length > 0 ? (
             <ul className="space-y-2">
               {ranked.map((v, index) => {
@@ -223,14 +223,14 @@ export function RecommendedVendorsTabs({
               })}
             </ul>
           ) : (
-            <div className="space-y-2" data-testid="tedarikci-havuz-bos">
-              <p className="text-xs text-slate-500 py-1.5">
+            <div className="space-y-1.5" data-testid="tedarikci-havuz-bos">
+              <p className="text-xs text-slate-500 leading-snug">
                 Bu bölge ve hizmet için kayıtlı tedarikçi önerisi yok.
               </p>
               <button
                 type="button"
                 onClick={() => setTab('alternatif')}
-                className="w-full text-center text-xs font-semibold py-2 px-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                className="w-full text-center text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 min-h-[44px]"
                 data-testid="kayitli-bos-alternatif-gec"
               >
                 Google Alternatiflerine Geç
@@ -249,7 +249,7 @@ export function RecommendedVendorsTabs({
           )}
         </div>
       ) : (
-        <div className="flex-1 min-h-0" data-testid="sekme-alternatif-icerik" role="tabpanel">
+        <div data-testid="sekme-alternatif-icerik" role="tabpanel">
           <AlternativeVendorServicePanel
             city={city}
             district={district}

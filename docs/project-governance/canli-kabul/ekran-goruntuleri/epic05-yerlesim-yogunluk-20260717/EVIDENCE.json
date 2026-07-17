@@ -1,0 +1,22 @@
+{
+  "at": "2026-07-17T17:14:37.484Z",
+  "base": "http://localhost:3001",
+  "caseInfo": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "source": "seed-id"
+  },
+  "shotPath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-yerlesim-yogunluk-20260717/01-desktop.png",
+  "fullPath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-yerlesim-yogunluk-20260717/01-tam-sayfa-desktop.png",
+  "metrics": {
+    "opsCount": 1,
+    "opsInsideGrid": true,
+    "opsBelowVendor": true,
+    "gapVendorToOps": 10,
+    "opsBesideBudget": true,
+    "firstCardHeight": 44.5,
+    "firstCardAspectSquare": false,
+    "cardCount": 5,
+    "emptyAlert": true
+  },
+  "pass": true
+}

@@ -77,7 +77,6 @@ type AltBolumTab = 'belgeler' | 'whatsapp' | 'gecmis' | 'finans';
 type ConfirmAction = 'dosya_kapat' | 'finansa_aktar' | null;
 
 const ICON_SM = 'h-4 w-4 shrink-0';
-const ICON_MD = 'h-[18px] w-[18px] shrink-0';
 
 function SectionTitle({
   icon: Icon,
@@ -166,10 +165,10 @@ function QuickActionCard({
       title={title}
       data-testid={testId}
       data-visual-state={resolvedState}
-      className={`flex aspect-square min-h-0 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed sm:py-2.5 ${shellCls}`}
+      className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed ${shellCls}`}
     >
-      <Icon className={`${ICON_MD} ${iconCls}`} strokeWidth={1.75} aria-hidden />
-      <span className="text-[10px] sm:text-[11px] font-semibold leading-tight">{busy ? 'Bekleyin...' : label}</span>
+      <Icon className={`${ICON_SM} ${iconCls}`} strokeWidth={1.75} aria-hidden />
+      <span className="text-[10px] font-semibold leading-tight">{busy ? 'Bekleyin...' : label}</span>
     </button>
   );
 }
@@ -1790,31 +1789,201 @@ export default function AcilDosyaDetayPage() {
         </div>
       </div>
 
-      {/* 3–4. Önerilen Tedarikçiler | Dosya Bütçesi + Zorunlu İşlemler */}
+      {/* 3–6. Tedarikçi + Operasyon | Bütçe + Zorunlu */}
       <div
         className="grid grid-cols-1 xl:grid-cols-2 gap-2.5 items-start"
         data-testid="operasyon-iki-kolon"
       >
-        {/* Sol: Önerilen Tedarikçiler (Kayıtlı / Google Alternatifleri) */}
-        <RecommendedVendorsTabs
-          assignedBadge={Boolean(vaka.assignedVendor)}
-          loading={recsLoading}
-          vendors={vendorRecs}
-          assignedVendorId={vaka.assignedVendorId}
-          assignLoading={assignLoading}
-          onAssign={handleAssignVendor}
-          preferAlternatif={forceAltVendor || flow.vendorProcess === 'reddedildi'}
-          city={vaka.city ?? undefined}
-          district={vaka.district ?? undefined}
-          serviceType={vaka.issueType ?? undefined}
-          category="acil"
-          onAlternativeAssigned={async (vendor) => {
-            await handleAssignVendor(vendor.id);
-          }}
-        />
+        {/* xl: sol kolon (sıkı yığın). Mobil: contents → order ile Tedarikçi → Bütçe → Operasyon */}
+        <div className="contents xl:flex xl:flex-col xl:gap-2.5 xl:min-w-0">
+          <div className="min-w-0 order-1" data-testid="sol-tedarikci-kolon">
+            <RecommendedVendorsTabs
+              assignedBadge={Boolean(vaka.assignedVendor)}
+              loading={recsLoading}
+              vendors={vendorRecs}
+              assignedVendorId={vaka.assignedVendorId}
+              assignLoading={assignLoading}
+              onAssign={handleAssignVendor}
+              preferAlternatif={forceAltVendor || flow.vendorProcess === 'reddedildi'}
+              city={vaka.city ?? undefined}
+              district={vaka.district ?? undefined}
+              serviceType={vaka.issueType ?? undefined}
+              category="acil"
+              onAlternativeAssigned={async (vendor) => {
+                await handleAssignVendor(vendor.id);
+              }}
+            />
+          </div>
 
-        {/* Sağ kolon: Dosya Bütçesi → Zorunlu İşlemler (içerik yüksekliği) */}
-        <div className="flex flex-col gap-2.5 min-w-0" data-testid="sag-operasyon-kolon">
+          {/* Operasyon — xl’de tedarikçi altında (boşluğu doldurur); mobilde sonda */}
+          <div
+            id="hizli-islemler"
+            className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 space-y-2 min-w-0 order-3"
+            data-testid="hizli-islemler"
+          >
+            <SectionTitle icon={Send} title="Operasyon İşlemleri" iconClassName="text-blue-600" />
+            <div
+              className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-1.5"
+              data-testid="hizli-islem-kartlari"
+            >
+              <QuickActionCard
+                icon={Send}
+                label="Onay Talebi"
+                onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
+                disabled={!vaka.assignedVendorId || approvalBusy}
+                busy={approvalBusy}
+                variant="primary"
+                visualState={opsVisual.approval}
+                title={
+                  approvalDone
+                    ? 'Onay talebi oluşturuldu.'
+                    : !vaka.assignedVendorId
+                      ? 'Önce tedarikçi atayın.'
+                      : 'Asistans onay talebi oluştur'
+                }
+                testId="hizli-onay-talebi"
+              />
+              <QuickActionCard
+                icon={Play}
+                label="İşe Başlama"
+                onClick={() => void handleWorkStartMessage()}
+                disabled={!flow.customerApproved || flow.workStartPrepared || opsActionBusy === 'work_start'}
+                busy={opsActionBusy === 'work_start'}
+                variant="success"
+                visualState={opsVisual.workStart}
+                title={
+                  flow.workStartPrepared
+                    ? 'İşe başlama mesajı hazırlandı.'
+                    : !flow.customerApproved
+                      ? 'Önce müşteri onayını kaydedin.'
+                      : 'Tedarikçiye işe başlama mesajı gönder'
+                }
+                testId="ise-baslama-mesaji"
+              />
+              <QuickActionCard
+                icon={CheckCircle2}
+                label="Hizmeti Tamamla"
+                onClick={() => void handleServiceComplete()}
+                disabled={
+                  fileAlreadyClosed
+                  || flow.serviceCompleted
+                  || (!flow.workStartPrepared && stageIdx < 4)
+                  || opsActionBusy === 'service'
+                }
+                busy={opsActionBusy === 'service'}
+                variant="success"
+                visualState={opsVisual.service}
+                title={
+                  flow.serviceCompleted || fileAlreadyClosed
+                    ? 'Hizmet tamamlandı.'
+                    : !flow.workStartPrepared && stageIdx < 4
+                      ? 'Önce işe başlama adımını tamamlayın.'
+                      : 'Hizmeti tamamlandı olarak işaretle'
+                }
+                testId="hizmet-tamamla-btn"
+              />
+              {showCloseBlock ? (
+                <QuickActionCard
+                  icon={Lock}
+                  label={closeBusy ? 'Kapatılıyor...' : 'Dosyayı Kapat'}
+                  onClick={() => setConfirmAction('dosya_kapat')}
+                  disabled={closeBusy || !closeReady}
+                  busy={closeBusy}
+                  variant="primary"
+                  visualState={opsVisual.close}
+                  title={
+                    closeReady
+                      ? 'Dosyayı kapat'
+                      : missingCloseLabels.length
+                        ? `Eksik: ${missingCloseLabels.join(', ')}`
+                        : 'Zorunlu işlemler tamamlanmalı'
+                  }
+                  testId="dosyayi-kapat-btn"
+                />
+              ) : fileAlreadyClosed ? (
+                <div
+                  className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-50 px-1.5 py-1.5 text-center"
+                  data-testid="dosya-kapali-badge"
+                  data-visual-state="completed"
+                >
+                  <Lock className={`${ICON_SM} text-emerald-600`} strokeWidth={1.75} aria-hidden />
+                  <span className="text-[10px] font-semibold text-emerald-800 leading-tight">Dosya Kapalı</span>
+                </div>
+              ) : (
+                <QuickActionCard
+                  icon={Lock}
+                  label="Dosyayı Kapat"
+                  onClick={() => setActionFlash(
+                    missingCloseLabels.length
+                      ? `Eksik: ${missingCloseLabels.join(', ')}`
+                      : 'Dosya kapatma için işe başlama veya sonraki aşama gerekir.',
+                  )}
+                  disabled
+                  visualState="waiting"
+                  title={
+                    missingCloseLabels.length
+                      ? `Eksik: ${missingCloseLabels.join(', ')}`
+                      : 'Dosya kapatma için işe başlama veya sonraki aşama gerekir.'
+                  }
+                  testId="dosyayi-kapat-btn"
+                />
+              )}
+              {financeDone ? (
+                <span
+                  className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-50 px-1.5 py-1.5 text-center"
+                  data-testid="finansa-aktarildi"
+                  data-visual-state="completed"
+                >
+                  <Landmark className={`${ICON_SM} text-emerald-600`} strokeWidth={1.75} aria-hidden />
+                  <span className="text-[10px] font-semibold text-emerald-800 leading-tight">Finansa Aktarıldı</span>
+                </span>
+              ) : showFinanceTransfer ? (
+                <span data-testid="finansa-aktar" className="contents">
+                  <QuickActionCard
+                    icon={Landmark}
+                    label={financeBusy ? 'Aktarılıyor...' : 'Finansa Aktar'}
+                    onClick={() => setConfirmAction('finansa_aktar')}
+                    disabled={financeBusy}
+                    busy={financeBusy}
+                    variant="primary"
+                    visualState={opsVisual.finance}
+                    title="Finansa aktar"
+                    testId="finansa-aktar-btn"
+                  />
+                </span>
+              ) : (
+                <QuickActionCard
+                  icon={Landmark}
+                  label="Finansa Aktar"
+                  onClick={() => setActionFlash('Önce dosyayı kapatın.')}
+                  disabled
+                  visualState="waiting"
+                  title="Önce dosyayı kapatın."
+                  testId="finansa-aktar-btn"
+                />
+              )}
+            </div>
+            {financeDone && (financeResult || vaka.operationChain?.constraints?.vendorStatementRequiresClaimFile) && (
+              <p className="text-[10px] text-emerald-700" data-testid="finans-sonuc">
+                {financeResult
+                  || 'Finansa Aktarıldı. Tedarikçi hakedişi ve cari bağlantısı bu dosya için henüz tamamlanamadı.'}
+              </p>
+            )}
+            {!closeReady && !fileAlreadyClosed && (
+              <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5" data-testid="dosya-kapat-kilit-bilgi">
+                {missingCloseLabels.length > 0
+                  ? `Dosyayı Kapat pasif. Eksik: ${missingCloseLabels.join(', ')}.`
+                  : 'Dosyayı Kapat, zorunlu işlemler ve satış fiyatı tamamlanınca aktif olur.'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Sağ: Dosya Bütçesi → Zorunlu İşlemler */}
+        <div
+          className="flex flex-col gap-2.5 min-w-0 order-2"
+          data-testid="sag-operasyon-kolon"
+        >
           <div
             ref={priceFormRef}
             className="rounded-xl border border-slate-100 bg-white shadow-sm p-2.5 space-y-1.5 min-w-0"
@@ -2146,169 +2315,6 @@ export default function AcilDosyaDetayPage() {
           </div>
         </div>
       )}
-
-      {/* 6. Operasyon İşlemleri */}
-      <div
-        id="hizli-islemler"
-        className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 space-y-2.5 min-w-0"
-        data-testid="hizli-islemler"
-      >
-        <SectionTitle icon={Send} title="Operasyon İşlemleri" iconClassName="text-blue-600" />
-        <div
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2"
-          data-testid="hizli-islem-kartlari"
-        >
-          <QuickActionCard
-            icon={Send}
-            label="Onay Talebi"
-            onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
-            disabled={!vaka.assignedVendorId || approvalBusy}
-            busy={approvalBusy}
-            variant="primary"
-            visualState={opsVisual.approval}
-            title={
-              approvalDone
-                ? 'Onay talebi oluşturuldu.'
-                : !vaka.assignedVendorId
-                  ? 'Önce tedarikçi atayın.'
-                  : 'Asistans onay talebi oluştur'
-            }
-            testId="hizli-onay-talebi"
-          />
-          <QuickActionCard
-            icon={Play}
-            label="İşe Başlama"
-            onClick={() => void handleWorkStartMessage()}
-            disabled={!flow.customerApproved || flow.workStartPrepared || opsActionBusy === 'work_start'}
-            busy={opsActionBusy === 'work_start'}
-            variant="success"
-            visualState={opsVisual.workStart}
-            title={
-              flow.workStartPrepared
-                ? 'İşe başlama mesajı hazırlandı.'
-                : !flow.customerApproved
-                  ? 'Önce müşteri onayını kaydedin.'
-                  : 'Tedarikçiye işe başlama mesajı gönder'
-            }
-            testId="ise-baslama-mesaji"
-          />
-          <QuickActionCard
-            icon={CheckCircle2}
-            label="Hizmeti Tamamla"
-            onClick={() => void handleServiceComplete()}
-            disabled={
-              fileAlreadyClosed
-              || flow.serviceCompleted
-              || (!flow.workStartPrepared && stageIdx < 4)
-              || opsActionBusy === 'service'
-            }
-            busy={opsActionBusy === 'service'}
-            variant="success"
-            visualState={opsVisual.service}
-            title={
-              flow.serviceCompleted || fileAlreadyClosed
-                ? 'Hizmet tamamlandı.'
-                : !flow.workStartPrepared && stageIdx < 4
-                  ? 'Önce işe başlama adımını tamamlayın.'
-                  : 'Hizmeti tamamlandı olarak işaretle'
-            }
-            testId="hizmet-tamamla-btn"
-          />
-          {showCloseBlock ? (
-            <QuickActionCard
-              icon={Lock}
-              label={closeBusy ? 'Kapatılıyor...' : 'Dosyayı Kapat'}
-              onClick={() => setConfirmAction('dosya_kapat')}
-              disabled={closeBusy || !closeReady}
-              busy={closeBusy}
-              variant="primary"
-              visualState={opsVisual.close}
-              title={
-                closeReady
-                  ? 'Dosyayı kapat'
-                  : missingCloseLabels.length
-                    ? `Eksik: ${missingCloseLabels.join(', ')}`
-                    : 'Zorunlu işlemler tamamlanmalı'
-              }
-              testId="dosyayi-kapat-btn"
-            />
-          ) : fileAlreadyClosed ? (
-            <div
-              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-1.5 py-2 text-center"
-              data-testid="dosya-kapali-badge"
-              data-visual-state="completed"
-            >
-              <Lock className={`${ICON_MD} text-emerald-600`} strokeWidth={1.75} aria-hidden />
-              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-800 leading-tight">Dosya Kapalı</span>
-            </div>
-          ) : (
-            <QuickActionCard
-              icon={Lock}
-              label="Dosyayı Kapat"
-              onClick={() => setActionFlash(
-                missingCloseLabels.length
-                  ? `Eksik: ${missingCloseLabels.join(', ')}`
-                  : 'Dosya kapatma için işe başlama veya sonraki aşama gerekir.',
-              )}
-              disabled
-              visualState="waiting"
-              title={
-                missingCloseLabels.length
-                  ? `Eksik: ${missingCloseLabels.join(', ')}`
-                  : 'Dosya kapatma için işe başlama veya sonraki aşama gerekir.'
-              }
-              testId="dosyayi-kapat-btn"
-            />
-          )}
-          {financeDone ? (
-            <span
-              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-1.5 py-2 text-center"
-              data-testid="finansa-aktarildi"
-              data-visual-state="completed"
-            >
-              <Landmark className={`${ICON_MD} text-emerald-600`} strokeWidth={1.75} aria-hidden />
-              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-800 leading-tight">Finansa Aktarıldı</span>
-            </span>
-          ) : showFinanceTransfer ? (
-            <span data-testid="finansa-aktar" className="contents">
-              <QuickActionCard
-                icon={Landmark}
-                label={financeBusy ? 'Aktarılıyor...' : 'Finansa Aktar'}
-                onClick={() => setConfirmAction('finansa_aktar')}
-                disabled={financeBusy}
-                busy={financeBusy}
-                variant="primary"
-                visualState={opsVisual.finance}
-                title="Finansa aktar"
-                testId="finansa-aktar-btn"
-              />
-            </span>
-          ) : (
-            <QuickActionCard
-              icon={Landmark}
-              label="Finansa Aktar"
-              onClick={() => setActionFlash('Önce dosyayı kapatın.')}
-              disabled
-              visualState="waiting"
-              title="Önce dosyayı kapatın."
-              testId="finansa-aktar-btn"
-            />
-          )}
-        </div>
-        {financeDone && (financeResult || vaka.operationChain?.constraints?.vendorStatementRequiresClaimFile) && (
-          <p className="text-[10px] text-emerald-700" data-testid="finans-sonuc">
-            {financeResult
-              || 'Finansa Aktarıldı. Tedarikçi hakedişi ve cari bağlantısı bu dosya için henüz tamamlanamadı.'}
-          </p>
-        )}
-        {!closeReady && !fileAlreadyClosed && (
-          <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5" data-testid="dosya-kapat-kilit-bilgi">
-            {missingCloseLabels.length > 0
-              ? `Dosyayı Kapat pasif. Eksik: ${missingCloseLabels.join(', ')}.`
-              : 'Dosyayı Kapat, zorunlu işlemler ve satış fiyatı tamamlanınca aktif olur.'}
-          </p>
-        )}
-      </div>
 
       {/* 7. Alt bölüm — sekmeler */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm min-w-0" data-testid="alt-operasyon">

@@ -240,7 +240,7 @@ export function AlternativeVendorServicePanel({
   const resultsList = (
     <div className="space-y-2" data-testid="alternatif-tedarikci-panel">
       {!canSearch && (
-        <p className="text-xs text-slate-500 text-center py-1">
+        <p className="text-xs text-slate-500 text-center py-0.5">
           Öneri için il ve hizmet türü gerekli.
         </p>
       )}
@@ -257,13 +257,21 @@ export function AlternativeVendorServicePanel({
         </div>
       )}
       {loading ? (
-        <p className="text-xs text-slate-400 py-2 text-center">Öneriler yükleniyor...</p>
+        <p className="text-xs text-slate-400 py-1 text-center">Öneriler yükleniyor...</p>
       ) : error && results.length === 0 ? (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+        <p
+          className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 leading-snug"
+          role="status"
+          data-testid="alternatif-bos-uyari"
+        >
           {error}
         </p>
       ) : searched && results.length === 0 ? (
-        <p className="text-xs text-slate-500 py-2 text-center">
+        <p
+          className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 leading-snug"
+          role="status"
+          data-testid="alternatif-bos-uyari"
+        >
           {meta?.message
             ? toUserFacingSearchMessage(meta.message)
             : 'Uygun tedarikçi önerisi yok.'}
