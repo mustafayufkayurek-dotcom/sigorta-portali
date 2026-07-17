@@ -1,0 +1,5 @@
+{
+  "approvalModal": "disabled-as-expected",
+  "closeBlockedUntilRequired": true,
+  "financeBlockedUntilClosed": true
+}

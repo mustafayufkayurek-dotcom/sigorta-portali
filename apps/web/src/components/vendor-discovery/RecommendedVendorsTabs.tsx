@@ -86,7 +86,7 @@ type Props = {
 /**
  * Önerilen Tedarikçiler — karar destek sekmeleri.
  * Sekme 1: Kayıtlı Tedarikçiler (varsayılan)
- * Sekme 2: Alternatif Öneriler — kayıtlı yoksa veya kullanıcı seçince
+ * Sekme 2: Google Alternatifleri — kayıtlı yoksa veya kullanıcı seçince
  */
 export function RecommendedVendorsTabs({
   title = 'Önerilen Tedarikçiler',
@@ -125,7 +125,7 @@ export function RecommendedVendorsTabs({
       setTab('alternatif');
       return;
     }
-    // Kayıtlı öneri yoksa Alternatif sekmesini bir kez aç (varsayılan değil; boş durum).
+    // Kayıtlı öneri yoksa Google Alternatifleri sekmesini bir kez aç (varsayılan değil; boş durum).
     if (!loading && ranked.length === 0 && !autoOpenedAlternatif.current) {
       autoOpenedAlternatif.current = true;
       setTab('alternatif');
@@ -134,7 +134,7 @@ export function RecommendedVendorsTabs({
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0 h-full flex flex-col"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0 flex flex-col"
       data-testid="tedarikci-onerileri"
     >
       <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -186,7 +186,7 @@ export function RecommendedVendorsTabs({
           }`}
           data-testid="sekme-alternatif-oneriler"
         >
-          Alternatif Öneriler
+          Google Alternatifleri
         </button>
       </div>
 
@@ -233,7 +233,7 @@ export function RecommendedVendorsTabs({
                 className="w-full text-center text-xs font-semibold py-2 px-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
                 data-testid="kayitli-bos-alternatif-gec"
               >
-                Alternatif Önerilere Geç
+                Google Alternatiflerine Geç
               </button>
             </div>
           )}
@@ -244,7 +244,7 @@ export function RecommendedVendorsTabs({
               className="mt-2 w-full text-center text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2"
               data-testid="daha-fazla-oneri"
             >
-              Alternatif Önerilere Bak
+              Google Alternatiflerine Bak
             </button>
           )}
         </div>

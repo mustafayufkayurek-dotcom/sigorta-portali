@@ -81,7 +81,7 @@ export interface EmergencyCase {
   totalGider: number;
   netKar: number;
   // relations
-  assignedVendor?: { id: string; name: string } | null;
+  assignedVendor?: { id: string; name: string; phone?: string | null } | null;
   assignedUser?: {
     id: string;
     firstName: string;

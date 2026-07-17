@@ -29,58 +29,6 @@ export type AlternativeVendorCandidate = {
   lastWorkedAt?: string | null;
 };
 
-function formatAltScore(score: number | null | undefined): string {
-  if (score == null || !Number.isFinite(score) || score <= 0) return '—';
-  return (Math.round(score * 10) / 10).toFixed(1);
-}
-
-function formatAltCost(cost: number | null | undefined): string {
-  if (cost == null || !Number.isFinite(cost)) return '—';
-  return `${Number(cost).toLocaleString('tr-TR')} TL`;
-}
-
-function formatAltDistance(c: AlternativeVendorCandidate): string {
-  const label = c.distanceLabel?.trim();
-  if (label) return label;
-  if (c.distanceKm != null && Number.isFinite(c.distanceKm)) {
-    return `${(Math.round(c.distanceKm * 10) / 10).toLocaleString('tr-TR')} km`;
-  }
-  return '—';
-}
-
-function formatAltLastWorked(iso: string | null | undefined): string {
-  if (!iso?.trim()) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('tr-TR');
-}
-
-/** Alternatif: yalnızca mevcut ranking alanları varsa gerekçe satırları. */
-function alternativeRationaleMetrics(
-  c: AlternativeVendorCandidate,
-): Array<{ label: string; value: string }> | undefined {
-  const hasAny =
-    (c.distanceKm != null && Number.isFinite(c.distanceKm))
-    || Boolean(c.distanceLabel?.trim())
-    || (c.avgCost != null && Number.isFinite(c.avgCost))
-    || (c.completedFileCount != null && Number.isFinite(c.completedFileCount))
-    || Boolean(c.lastWorkedAt?.trim());
-  if (!hasAny) return undefined;
-  return [
-    { label: 'Hizmet Kalitesi', value: formatAltScore(c.rating) },
-    { label: 'Bölgeye Uzaklık', value: formatAltDistance(c) },
-    { label: 'Ortalama Maliyet', value: formatAltCost(c.avgCost) },
-    {
-      label: 'Tamamlanan Dosya Sayısı',
-      value:
-        c.completedFileCount != null && Number.isFinite(c.completedFileCount)
-          ? String(c.completedFileCount)
-          : '—',
-    },
-    { label: 'Son Çalışma Tarihi', value: formatAltLastWorked(c.lastWorkedAt) },
-  ];
-}
-
 type AlternativeMeta = {
   configured: boolean;
   code: string;
@@ -329,13 +277,15 @@ export function AlternativeVendorServicePanel({
                 key={c.externalId}
                 name={toTitleCaseTR(c.name)}
                 phone={c.phone}
+                phoneEmptyLabel="Telefon Bilgisi Bulunamadı"
                 address={addressLine || null}
                 rating={c.rating}
                 reviewCount={c.reviewCount}
-                metrics={alternativeRationaleMetrics(c)}
                 systemSuggestion={index === 0}
+                sourceBadge={{ label: 'Google İle Bulundu', testId: 'google-ile-bulundu' }}
                 directionsUrl={buildDirectionsUrl(c)}
                 showDirections
+                showWebsite
                 websiteUrl={c.websiteUrl?.trim() || null}
                 testId="alternatif-aday"
                 primaryAction={{
@@ -344,7 +294,7 @@ export function AlternativeVendorServicePanel({
                   testId: 'alternatif-dosyaya-ata',
                 }}
                 secondaryAction={{
-                  label: 'Havuza Kaydet',
+                  label: 'Tedarikçi Havuzuna Kaydet',
                   onClick: () => openAction('save_pool', c),
                   testId: 'alternatif-havuza-kaydet',
                 }}

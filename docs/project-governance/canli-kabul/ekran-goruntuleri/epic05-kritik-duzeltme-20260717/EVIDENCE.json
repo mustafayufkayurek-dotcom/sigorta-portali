@@ -1,0 +1,56 @@
+{
+  "at": "2026-07-17T15:56:05.761Z",
+  "case": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "source": "seed-id"
+  },
+  "base": "http://localhost:3001",
+  "state": {
+    "phone": "Sigortalı Telefon0532 111 22 33",
+    "owner": "Dosya SorumlusuSYSistem Yöneticisi0532 000 11 22 · admin@meridyenassistance.com",
+    "hasDosyaButcesi": true,
+    "hasAlisSatisTitle": false,
+    "hasKarTutari": true,
+    "hasKarOrani": true,
+    "zorunluUnderBudget": true,
+    "tabKayitli": "Kayıtlı Tedarikçiler",
+    "tabGoogle": "Google Alternatifleri",
+    "googleBadgeCount": 2,
+    "googleOnKayitli": false,
+    "ops": [
+      {
+        "testId": "hizli-onay-talebi",
+        "state": "completed",
+        "disabled": true,
+        "title": "Önce tedarikçi atayın."
+      },
+      {
+        "testId": "ise-baslama-mesaji",
+        "state": "completed",
+        "disabled": true,
+        "title": "İşe başlama mesajı hazırlandı."
+      },
+      {
+        "testId": "hizmet-tamamla-btn",
+        "state": "completed",
+        "disabled": true,
+        "title": "Hizmet tamamlandı."
+      },
+      {
+        "testId": "dosyayi-kapat-btn",
+        "state": "waiting",
+        "disabled": true,
+        "title": "Eksik: Dijital Onay, Fotoğraflar, Kapanış Maili"
+      },
+      {
+        "testId": "finansa-aktar-btn",
+        "state": "waiting",
+        "disabled": true,
+        "title": "Önce dosyayı kapatın."
+      }
+    ],
+    "closeInfo": "Dosyayı Kapat pasif. Eksik: Dijital Onay, Fotoğraflar, Kapanış Maili.",
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+}

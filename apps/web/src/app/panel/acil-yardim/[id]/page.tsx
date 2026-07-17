@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
   CheckCircle2,
-  CircleDollarSign,
   ClipboardList,
   Files,
   History,
@@ -60,6 +59,7 @@ import {
   convertPriceForVatMode,
   formatMarginPercent,
   getMarginWarning,
+  priceToNet,
 } from './acil-price-helpers';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
 
@@ -108,6 +108,7 @@ function QuickActionCard({
   busy,
   variant = 'secondary',
   visualState = 'idle',
+  title,
   testId,
 }: {
   icon: LucideIcon;
@@ -118,6 +119,8 @@ function QuickActionCard({
   variant?: 'primary' | 'secondary' | 'danger' | 'success';
   /** completed=yeşil · next=vurgulu · waiting=pasif · idle=nötr */
   visualState?: QuickActionVisualState;
+  /** Pasif / kilit nedeni (native tooltip) */
+  title?: string;
   testId?: string;
 }) {
   const resolvedState: QuickActionVisualState =
@@ -160,6 +163,7 @@ function QuickActionCard({
       type="button"
       disabled={disabled || busy || resolvedState === 'waiting'}
       onClick={onClick}
+      title={title}
       data-testid={testId}
       data-visual-state={resolvedState}
       className={`flex aspect-square min-h-0 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed sm:py-2.5 ${shellCls}`}
@@ -394,8 +398,16 @@ function insuredLabel(vaka: EmergencyCase): string {
 
 function insuredPhoneLabel(vaka: EmergencyCase): string {
   // Sigortalı telefonu: customerPhone (backend inbound backfill) → notlardan çıkarım.
-  const phone = (vaka.customerPhone || '').trim();
-  if (phone) return phone;
+  // Yanlış alan eşlemesi yüzünden veri varken "—" gösterilmesin.
+  const directCandidates = [
+    vaka.customerPhone,
+    (vaka as { phone?: string | null }).phone,
+    (vaka as { insuredPhone?: string | null }).insuredPhone,
+  ];
+  for (const candidate of directCandidates) {
+    const phone = (candidate || '').trim();
+    if (phone && phone !== '—') return phone;
+  }
   const note = (vaka.notes || '').trim();
   const m = note.match(/(?:sigortal[ıi]\s*)?(?:telefon|tel|gsm|cep)\s*[:：]\s*([+\d\s()\-/]{7,})/i)
     || note.match(/(?:\+90|0)?\s*\(?\d{3}\)?[\s\-./]?\d{3}[\s\-./]?\d{2}[\s\-./]?\d{2}/);
@@ -409,7 +421,10 @@ function insuredPhoneLabel(vaka: EmergencyCase): string {
 function fileOwnerContact(vaka: EmergencyCase): { name: string; phone: string; email: string } {
   const u = vaka.assignedUser;
   if (!u) return { name: '—', phone: '', email: '' };
-  const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || '—';
+  const name =
+    `${u.firstName || ''} ${u.lastName || ''}`.trim()
+    || (u as { fullName?: string | null }).fullName?.trim()
+    || '—';
   return {
     name,
     phone: (u.phone || '').trim(),
@@ -652,6 +667,7 @@ export default function AcilDosyaDetayPage() {
   const [financeResult, setFinanceResult] = useState<string | null>(null);
   const [closeBusy, setCloseBusy] = useState(false);
   const [financeBusy, setFinanceBusy] = useState(false);
+  const [opsActionBusy, setOpsActionBusy] = useState<'work_start' | 'service' | null>(null);
   const [actionFlash, setActionFlash] = useState<string | null>(null);
 
   const [showGelirForm, setShowGelirForm] = useState(false);
@@ -910,7 +926,7 @@ export default function AcilDosyaDetayPage() {
     if (!vaka) return;
     setVendorMsgErrors([]);
     setVendorMsgPreview(null);
-    const vendorPhone = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone;
+    const vendorPhone = vaka.assignedVendor?.phone;
     const guard = validateVendorMessageGuard({
       hasVendor: Boolean(vaka.assignedVendorId),
       vendorPhone,
@@ -940,7 +956,7 @@ export default function AcilDosyaDetayPage() {
 
   function confirmVendorWhatsAppSend() {
     if (!vaka || !vendorMsgPreview) return;
-    const vendorPhone = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone;
+    const vendorPhone = vaka.assignedVendor?.phone;
     openWhatsApp(vendorPhone, vendorMsgPreview);
     let next = appendMessageLog(flow, 'vendor', vendorMsgPreview);
     if (next.vendorProcess == null || next.vendorProcess === 'atama_gonderildi') {
@@ -1110,29 +1126,75 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  function handleWorkStartMessage() {
-    if (!vaka) return;
-    const fileNo = vaka.fileNo || vaka.caseNo;
-    const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
-    const vendorPhone = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone;
-    openWhatsApp(vendorPhone, text);
-    persistFlow(appendFlowHistory(
-      { ...flow, workStartPrepared: true },
-      'İşe başlama mesajı hazırlandı',
-    ));
-    setActionFlash('İşe başlama mesajı hazırlandı.');
+  async function handleWorkStartMessage() {
+    if (!vaka || opsActionBusy) return;
+    if (!flow.customerApproved) {
+      setActionFlash('Önce müşteri onayını kaydedin.');
+      return;
+    }
+    if (flow.workStartPrepared) {
+      setActionFlash('İşe başlama mesajı zaten hazırlandı.');
+      return;
+    }
+    setOpsActionBusy('work_start');
+    try {
+      const fileNo = vaka.fileNo || vaka.caseNo;
+      const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
+      const vendorPhone = vaka.assignedVendor?.phone ?? null;
+      openWhatsApp(vendorPhone, text);
+      if (vaka.status === 'ATANDI' || vaka.status === 'GELEN') {
+        try {
+          const res = await updateCaseStatus(id, 'SAHADA');
+          setVaka(res.data);
+        } catch {
+          /* yerel akış yine ilerler */
+        }
+      }
+      persistFlow(appendFlowHistory(
+        { ...flow, workStartPrepared: true },
+        'İşe başlama mesajı hazırlandı',
+      ));
+      setActionFlash('İşe başlama mesajı hazırlandı.');
+      await load();
+    } finally {
+      setOpsActionBusy(null);
+    }
   }
 
-  function handleServiceComplete() {
+  async function handleServiceComplete() {
+    if (!vaka || opsActionBusy) return;
     if (flow.serviceCompleted) {
       setActionFlash('Hizmet zaten tamamlandı olarak işaretli.');
       return;
     }
-    persistFlow(appendFlowHistory(
-      { ...flow, serviceCompleted: true, workStartPrepared: true },
-      'Hizmet tamamlandı',
-    ));
-    setActionFlash('Hizmet tamamlandı olarak işaretlendi.');
+    if (!flow.workStartPrepared && deriveAcilStageIndex({
+      status: vaka.status,
+      hasVendor: Boolean(vaka.assignedVendorId),
+      hasAlis: true,
+      flow,
+    }) < 4) {
+      setActionFlash('Önce işe başlama adımını tamamlayın.');
+      return;
+    }
+    setOpsActionBusy('service');
+    try {
+      if (vaka.status === 'ATANDI' || vaka.status === 'GELEN') {
+        try {
+          const res = await updateCaseStatus(id, 'SAHADA');
+          setVaka(res.data);
+        } catch {
+          /* yerel akış yine ilerler */
+        }
+      }
+      persistFlow(appendFlowHistory(
+        { ...flow, serviceCompleted: true, workStartPrepared: true },
+        'Hizmet tamamlandı',
+      ));
+      setActionFlash('Hizmet tamamlandı olarak işaretlendi.');
+      await load();
+    } finally {
+      setOpsActionBusy(null);
+    }
   }
 
   async function openClosureEmailModal() {
@@ -1175,13 +1237,26 @@ export default function AcilDosyaDetayPage() {
   }
 
   async function handleCloseFile() {
+    if (closeBusy) return;
     const saleOk = parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0;
     if (!saleOk) {
       setActionFlash('Onaylı satış fiyatı eksik. Dosya kapatılamaz.');
       setConfirmAction(null);
       return;
     }
-    if (!flow.closureEmailSent) {
+    const docs = vaka?.operationChain?.documents;
+    const inbox = vaka?.operationChain?.inbox;
+    const hasWhatsApp =
+      (docs?.whatsappSentCount ?? 0) > 0
+      || flow.workStartPrepared
+      || (flow.messageLog ?? []).some((m) => m.kind === 'vendor' || m.kind === 'customer');
+    const zorunluOk =
+      ((docs?.digitallyApprovedCount ?? 0) > 0 || Boolean(docs?.hasApprovedMatbuEvrak))
+      && hasWhatsApp
+      && ((inbox?.attachmentCount ?? 0) > 0)
+      && ((docs?.totalCount ?? 0) > 0 || Boolean(docs?.hasApprovedMatbuEvrak))
+      && flow.closureEmailSent;
+    if (!zorunluOk) {
       setActionFlash('Zorunlu işlemler tamamlanmadan dosya kapatılamaz.');
       setConfirmAction(null);
       return;
@@ -1196,6 +1271,7 @@ export default function AcilDosyaDetayPage() {
       ));
       setConfirmAction(null);
       setActionFlash('Dosya kapatıldı.');
+      await load();
     } catch (err: any) {
       setActionFlash(err.message ?? 'Dosya kapatılamadı');
     } finally {
@@ -1204,6 +1280,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   async function handleFinanceTransfer() {
+    if (financeBusy) return;
     setFinanceBusy(true);
     setFinanceResult(null);
     try {
@@ -1227,8 +1304,10 @@ export default function AcilDosyaDetayPage() {
       ));
       setConfirmAction(null);
       setActionFlash(result);
+      await load();
     } catch (err: any) {
       setFinanceResult(err.message ?? 'Finansa aktarım yapılamadı');
+      setActionFlash(err.message ?? 'Finansa aktarım yapılamadı');
     } finally {
       setFinanceBusy(false);
     }
@@ -1363,6 +1442,12 @@ export default function AcilDosyaDetayPage() {
     parsePriceInput(draftSatis),
     draftSatisVat,
   );
+  const draftAlisNet = priceToNet(parsePriceInput(draftAlis), draftAlisVat);
+  const draftSatisNet = priceToNet(parsePriceInput(draftSatis), draftSatisVat);
+  const draftKarTutari =
+    Number.isFinite(draftAlisNet) && Number.isFinite(draftSatisNet) && draftAlisNet > 0
+      ? draftSatisNet - draftAlisNet
+      : null;
   // Kâr uyarısı formda sürekli değil; yalnızca Kaydet’te (limit aşımında) geçici toast.
   const fileNo = vaka.fileNo || vaka.caseNo;
   const phone = insuredPhoneLabel(vaka);
@@ -1370,7 +1455,7 @@ export default function AcilDosyaDetayPage() {
   const guncelDurum = ACIL_STAGES[stageIdx]?.label ?? statusLabel(vaka.status);
   const showCostDetect = Boolean(vaka.assignedVendorId) && flow.detectedCostTl != null && !flow.costConfirmed;
   const showApprovalDetect = flow.approvalDetected && !flow.customerApproved;
-  const vendorPhoneRaw = (vaka.assignedVendor as { phone?: string } | null | undefined)?.phone ?? '';
+  const vendorPhoneRaw = vaka.assignedVendor?.phone ?? '';
   const vendorPhoneOk = isValidVendorPhone(vendorPhoneRaw);
   const messageHistory = (flow.messageLog?.length
     ? flow.messageLog
@@ -1382,14 +1467,12 @@ export default function AcilDosyaDetayPage() {
     (docs?.whatsappSentCount ?? 0) > 0
     || flow.workStartPrepared
     || (flow.messageLog ?? []).some((m) => m.kind === 'vendor' || m.kind === 'customer');
-  /** Zorunlu İşlemler — mevcut sayfa verisinden türetilir (yeni API yok) */
+  /** Zorunlu İşlemler — operationChain + yerel akış (dekoratif değil) */
   const requiredOps = {
     digitalApproval:
       (docs?.digitallyApprovedCount ?? 0) > 0 || Boolean(docs?.hasApprovedMatbuEvrak),
     whatsapp: hasWhatsAppNotify,
-    photos:
-      (inbox?.attachmentCount ?? 0) > 0
-      || (docs?.totalCount ?? 0) > 0,
+    photos: (inbox?.attachmentCount ?? 0) > 0,
     documents:
       Boolean(docs?.hasApprovedMatbuEvrak) || (docs?.totalCount ?? 0) > 0,
     closureEmail: flow.closureEmailSent,
@@ -1415,7 +1498,7 @@ export default function AcilDosyaDetayPage() {
       key: 'photos',
       label: 'Fotoğraflar',
       done: requiredOps.photos,
-      hint: 'Ayrı fotoğraf sayacı yok; ek / evrak sayısı kullanılır',
+      hint: 'Gelen kutu ekleri (fotoğraf / dosya eki)',
     },
     { key: 'documents', label: 'Belgeler', done: requiredOps.documents },
     { key: 'closureEmail', label: 'Kapanış Maili', done: requiredOps.closureEmail },
@@ -1691,7 +1774,7 @@ export default function AcilDosyaDetayPage() {
             className="inline-flex items-center justify-center rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
             data-testid="guncel-alis-satis-gir"
           >
-            Alış / Satış Fiyatı Gir
+            Dosya Bütçesi Gir
           </button>
           <button
             type="button"
@@ -1707,12 +1790,12 @@ export default function AcilDosyaDetayPage() {
         </div>
       </div>
 
-      {/* 3–4. Önerilen Tedarikçiler | Alış / Satış Fiyatı */}
+      {/* 3–4. Önerilen Tedarikçiler | Dosya Bütçesi + Zorunlu İşlemler */}
       <div
-        className="grid grid-cols-1 xl:grid-cols-2 gap-2.5 items-stretch"
+        className="grid grid-cols-1 xl:grid-cols-2 gap-2.5 items-start"
         data-testid="operasyon-iki-kolon"
       >
-        {/* Sol: Önerilen Tedarikçiler (Kayıtlı / Alternatif sekmeleri) */}
+        {/* Sol: Önerilen Tedarikçiler (Kayıtlı / Google Alternatifleri) */}
         <RecommendedVendorsTabs
           assignedBadge={Boolean(vaka.assignedVendor)}
           loading={recsLoading}
@@ -1730,146 +1813,159 @@ export default function AcilDosyaDetayPage() {
           }}
         />
 
-        {/* Sağ: Alış / Satış Fiyatı (inline — sade, düşük yükseklik) */}
-        <div
-          ref={priceFormRef}
-          className="rounded-xl border border-slate-100 bg-white shadow-sm p-2.5 space-y-1.5 h-full flex flex-col min-w-0"
-          data-testid="fiyat-giris"
-          id="maliyet-onay"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <SectionTitle icon={CircleDollarSign} title="Alış / Satış Fiyatı" iconClassName="text-slate-600" />
-            <button
-              type="button"
-              onClick={() => setShowVatDetail((v) => !v)}
-              className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2 shrink-0 inline-flex items-center py-1"
-              data-testid="kdv-detayi-toggle"
-              aria-expanded={showVatDetail}
-            >
-              {showVatDetail ? 'Gizle' : 'Detay'}
-            </button>
-          </div>
+        {/* Sağ kolon: Dosya Bütçesi → Zorunlu İşlemler (içerik yüksekliği) */}
+        <div className="flex flex-col gap-2.5 min-w-0" data-testid="sag-operasyon-kolon">
+          <div
+            ref={priceFormRef}
+            className="rounded-xl border border-slate-100 bg-white shadow-sm p-2.5 space-y-1.5 min-w-0"
+            data-testid="fiyat-giris"
+            id="maliyet-onay"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <SectionTitle icon={Wallet} title="Dosya Bütçesi" iconClassName="text-slate-600" />
+              <button
+                type="button"
+                onClick={() => setShowVatDetail((v) => !v)}
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2 shrink-0 inline-flex items-center py-1"
+                data-testid="kdv-detayi-toggle"
+                aria-expanded={showVatDetail}
+              >
+                {showVatDetail ? 'Gizle' : 'Detay'}
+              </button>
+            </div>
 
-          {canSeeOpsCost && (
-            <div data-testid="alis-ozet">
+            {canSeeOpsCost && (
+              <div data-testid="alis-ozet">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <label className="block text-xs font-medium text-slate-600" htmlFor="inline-alis-fiyati">
+                    Tedarikçi Maliyeti
+                  </label>
+                  <VatModeToggle
+                    value={draftAlisVat}
+                    onChange={(m) => applyDraftVatModeChange('alis', m)}
+                    testId="alis-kdv-modu"
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    id="inline-alis-fiyati"
+                    type="text"
+                    inputMode="decimal"
+                    value={draftAlis}
+                    onChange={(e) => setDraftAlis(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full h-9 px-2.5 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    data-testid="alis-fiyati"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">TL</span>
+                </div>
+                {showVatDetail && (
+                  <VatBreakdownRows
+                    amount={parsePriceInput(draftAlis)}
+                    mode={draftAlisVat}
+                    testIdPrefix="alis"
+                  />
+                )}
+              </div>
+            )}
+
+            <div data-testid="satis-ozet">
               <div className="flex items-center justify-between gap-2 mb-0.5">
-                <label className="block text-xs font-medium text-slate-600" htmlFor="inline-alis-fiyati">
-                  Alış
+                <label className="block text-xs font-medium text-slate-600" htmlFor="inline-satis-fiyati">
+                  Müşteri Satış Bedeli
                 </label>
                 <VatModeToggle
-                  value={draftAlisVat}
-                  onChange={(m) => applyDraftVatModeChange('alis', m)}
-                  testId="alis-kdv-modu"
+                  value={draftSatisVat}
+                  onChange={(m) => applyDraftVatModeChange('satis', m)}
+                  testId="satis-kdv-modu"
                 />
               </div>
               <div className="relative">
                 <input
-                  id="inline-alis-fiyati"
+                  id="inline-satis-fiyati"
                   type="text"
                   inputMode="decimal"
-                  value={draftAlis}
-                  onChange={(e) => setDraftAlis(e.target.value)}
+                  value={draftSatis}
+                  onChange={(e) => setDraftSatis(e.target.value)}
                   placeholder="0,00"
                   className="w-full h-9 px-2.5 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  data-testid="alis-fiyati"
+                  data-testid="satis-fiyati"
                 />
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">TL</span>
               </div>
               {showVatDetail && (
                 <VatBreakdownRows
-                  amount={parsePriceInput(draftAlis)}
-                  mode={draftAlisVat}
-                  testIdPrefix="alis"
+                  amount={parsePriceInput(draftSatis)}
+                  mode={draftSatisVat}
+                  testIdPrefix="satis"
                 />
               )}
             </div>
-          )}
 
-          <div data-testid="satis-ozet">
-            <div className="flex items-center justify-between gap-2 mb-0.5">
-              <label className="block text-xs font-medium text-slate-600" htmlFor="inline-satis-fiyati">
-                Satış
-              </label>
-              <VatModeToggle
-                value={draftSatisVat}
-                onChange={(m) => applyDraftVatModeChange('satis', m)}
-                testId="satis-kdv-modu"
-              />
-            </div>
-            <div className="relative">
-              <input
-                id="inline-satis-fiyati"
-                type="text"
-                inputMode="decimal"
-                value={draftSatis}
-                onChange={(e) => setDraftSatis(e.target.value)}
-                placeholder="0,00"
-                className="w-full h-9 px-2.5 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                data-testid="satis-fiyati"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">TL</span>
-            </div>
-            {showVatDetail && (
-              <VatBreakdownRows
-                amount={parsePriceInput(draftSatis)}
-                mode={draftSatisVat}
-                testIdPrefix="satis"
-              />
-            )}
-          </div>
-
-          {marginToast && (
-            <div
-              className={`rounded-lg border px-2 py-1 ${
-                marginToast.level === 'high'
-                  ? 'border-rose-200 bg-rose-50'
-                  : 'border-amber-200 bg-amber-50'
-              }`}
-              data-testid="kar-uyari-banner"
-              role="status"
-            >
-              <p className={`text-[11px] leading-snug ${
-                marginToast.level === 'high' ? 'text-rose-800' : 'text-amber-900'
-              }`}
-              >
-                <span className="font-semibold">Uyarı: </span>
-                {marginToast.message}
-              </p>
-            </div>
-          )}
-
-          {priceFormError && (
-            <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1" data-testid="fiyat-form-hata">
-              {priceFormError}
-            </p>
-          )}
-
-          {/* Kâr (%) + Kaydet / Kaydet ve Kapat */}
-          <div className="mt-auto flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
-            {canSeeOpsCost ? (
+            {marginToast && (
               <div
-                className="flex items-center gap-2 min-w-0"
-                data-testid="kar-orani"
+                className={`rounded-lg border px-2 py-1 ${
+                  marginToast.level === 'high'
+                    ? 'border-rose-200 bg-rose-50'
+                    : 'border-amber-200 bg-amber-50'
+                }`}
+                data-testid="kar-uyari-banner"
+                role="status"
               >
-                <span className="text-xs font-medium text-slate-600 shrink-0">Kâr (%)</span>
-                <span
-                  className={`text-sm font-semibold tabular-nums ${
-                    draftKarPct == null
-                      ? 'text-slate-400'
-                      : draftKarPct < 10 || draftKarPct > 80
-                        ? 'text-amber-700'
-                        : draftKarPct >= 0
-                          ? 'text-emerald-700'
-                          : 'text-rose-600'
-                  }`}
+                <p className={`text-[11px] leading-snug ${
+                  marginToast.level === 'high' ? 'text-rose-800' : 'text-amber-900'
+                }`}
                 >
-                  {formatMarginPercent(draftKarPct)}
-                </span>
+                  <span className="font-semibold">Uyarı: </span>
+                  {marginToast.message}
+                </p>
               </div>
-            ) : (
-              <span />
             )}
-            <div className="flex items-center gap-1.5 shrink-0">
+
+            {priceFormError && (
+              <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1" data-testid="fiyat-form-hata">
+                {priceFormError}
+              </p>
+            )}
+
+            {canSeeOpsCost && (
+              <div
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-slate-50"
+                data-testid="kar-ozet"
+              >
+                <div className="flex items-center gap-1.5 min-w-0" data-testid="kar-tutari">
+                  <span className="text-xs font-medium text-slate-600 shrink-0">Kâr Tutarı</span>
+                  <span className={`text-sm font-semibold tabular-nums ${
+                    draftKarTutari == null
+                      ? 'text-slate-400'
+                      : draftKarTutari >= 0
+                        ? 'text-emerald-700'
+                        : 'text-rose-600'
+                  }`}
+                  >
+                    {draftKarTutari == null ? '—' : `${formatPriceInput(draftKarTutari)} TL`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0" data-testid="kar-orani">
+                  <span className="text-xs font-medium text-slate-600 shrink-0">Kâr Oranı</span>
+                  <span
+                    className={`text-sm font-semibold tabular-nums ${
+                      draftKarPct == null
+                        ? 'text-slate-400'
+                        : draftKarPct < 10 || draftKarPct > 80
+                          ? 'text-amber-700'
+                          : draftKarPct >= 0
+                            ? 'text-emerald-700'
+                            : 'text-rose-600'
+                    }`}
+                  >
+                    {draftKarPct == null ? '—' : `%${formatMarginPercent(draftKarPct)}`}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-1.5 pt-0.5">
               <button
                 type="button"
                 onClick={() => { savePriceForm(); }}
@@ -1887,37 +1983,101 @@ export default function AcilDosyaDetayPage() {
                 Kaydet Ve Kapat
               </button>
             </div>
+
+            {canSeeOpsCost && flow.priceChangeLog.length > 0 && (
+              <div className="rounded-lg border border-slate-100 bg-white px-2 py-1" data-testid="fiyat-degisiklik-logu">
+                <p className="text-[11px] font-semibold text-slate-600 mb-0.5">Fiyat Değişiklikleri</p>
+                <ul className="space-y-0.5 max-h-20 overflow-auto">
+                  {flow.priceChangeLog.slice(0, 6).map((e, i) => (
+                    <li key={`${e.at}-${i}`} className="text-[10px] text-slate-600 flex justify-between gap-2">
+                      <span>
+                        {e.field === 'alis' ? 'Tedarikçi Maliyeti' : 'Müşteri Satış Bedeli'}:{' '}
+                        {e.oldValue != null
+                          ? formatPriceInput(e.oldValue)
+                          : '—'}
+                        {' → '}
+                        {formatPriceInput(e.newValue)} TL
+                      </span>
+                      <span className="text-slate-400 shrink-0 tabular-nums">{fmtTimeHm(e.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {showVatDetail && (
+              <p className="text-[10px] text-slate-500 leading-snug" data-testid="fiyat-gizlilik-bilgi">
+                Tedarikçi satış bedelini görmez. Müşteri tedarikçi maliyetini görmez.
+              </p>
+            )}
+            {approvalMsg && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2 py-1">{approvalMsg}</p>
+            )}
           </div>
 
-          {canSeeOpsCost && flow.priceChangeLog.length > 0 && (
-            <div className="rounded-lg border border-slate-100 bg-white px-2 py-1" data-testid="fiyat-degisiklik-logu">
-              <p className="text-[11px] font-semibold text-slate-600 mb-0.5">Fiyat Değişiklikleri</p>
-              <ul className="space-y-0.5 max-h-20 overflow-auto">
-                {flow.priceChangeLog.slice(0, 6).map((e, i) => (
-                  <li key={`${e.at}-${i}`} className="text-[10px] text-slate-600 flex justify-between gap-2">
-                    <span>
-                      {e.field === 'alis' ? 'Alış' : 'Satış'}:{' '}
-                      {e.oldValue != null
-                        ? formatPriceInput(e.oldValue)
-                        : '—'}
-                      {' → '}
-                      {formatPriceInput(e.newValue)} TL
-                    </span>
-                    <span className="text-slate-400 shrink-0 tabular-nums">{fmtTimeHm(e.at)}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Zorunlu İşlemler — Dosya Bütçesi altında, sağ kolon devamı */}
+          <div
+            className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 space-y-2"
+            data-testid="zorunlu-islemler"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <SectionTitle icon={ClipboardList} title="Zorunlu İşlemler" iconClassName="text-amber-600" />
+              <span
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                  requiredOpsComplete
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}
+                data-testid="zorunlu-islemler-ozet"
+              >
+                {requiredOpsComplete ? 'Tamam' : `${requiredOpsItems.filter((i) => !i.done).length} Eksik`}
+              </span>
             </div>
-          )}
-
-          {showVatDetail && (
-            <p className="text-[10px] text-slate-500 leading-snug" data-testid="fiyat-gizlilik-bilgi">
-              Tedarikçi satış fiyatını görmez. Müşteri tedarikçi alış fiyatını görmez.
-            </p>
-          )}
-          {approvalMsg && (
-            <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2 py-1">{approvalMsg}</p>
-          )}
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5" data-testid="zorunlu-islem-listesi">
+              {requiredOpsItems.map((item) => (
+                <li
+                  key={item.key}
+                  className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs ${
+                    item.done
+                      ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
+                      : 'border-amber-200 bg-amber-50/60 text-amber-900'
+                  }`}
+                  data-testid={`zorunlu-${item.key}`}
+                  data-done={item.done ? '1' : '0'}
+                  title={item.hint}
+                >
+                  <span className="font-bold shrink-0" aria-hidden>{item.done ? '✓' : '•'}</span>
+                  <span className="min-w-0">
+                    <span className="font-semibold block leading-tight">{item.label}</span>
+                    <span className="text-[10px] opacity-80">{item.done ? 'Tamam' : 'Eksik'}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {!requiredOps.closureEmail && (
+              <button
+                type="button"
+                onClick={() => void openClosureEmailModal()}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                data-testid="kapanis-email-onizle"
+              >
+                Kapanış Maili Gönder
+              </button>
+            )}
+            {requiredOps.closureEmail && (
+              <span
+                className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800"
+                data-testid="kapanis-email-gonderildi"
+              >
+                Kapanış Maili Gönderildi
+              </span>
+            )}
+            {!saleReady && (
+              <p className="text-[10px] text-amber-700" data-testid="zorunlu-satis-uyari">
+                Dosyayı kapatmak için satış bedeli de gerekli.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1987,69 +2147,6 @@ export default function AcilDosyaDetayPage() {
         </div>
       )}
 
-      {/* 5. Zorunlu İşlemler */}
-      <div
-        className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 space-y-2"
-        data-testid="zorunlu-islemler"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <SectionTitle icon={ClipboardList} title="Zorunlu İşlemler" iconClassName="text-amber-600" />
-          <span
-            className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
-              requiredOpsComplete
-                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                : 'text-amber-700 bg-amber-50 border-amber-200'
-            }`}
-            data-testid="zorunlu-islemler-ozet"
-          >
-            {requiredOpsComplete ? 'Tamam' : `${requiredOpsItems.filter((i) => !i.done).length} Eksik`}
-          </span>
-        </div>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5" data-testid="zorunlu-islem-listesi">
-          {requiredOpsItems.map((item) => (
-            <li
-              key={item.key}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs ${
-                item.done
-                  ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
-                  : 'border-amber-200 bg-amber-50/60 text-amber-900'
-              }`}
-              data-testid={`zorunlu-${item.key}`}
-              data-done={item.done ? '1' : '0'}
-            >
-              <span className="font-bold shrink-0" aria-hidden>{item.done ? '✓' : '•'}</span>
-              <span className="min-w-0">
-                <span className="font-semibold block leading-tight">{item.label}</span>
-                <span className="text-[10px] opacity-80">{item.done ? 'Tamam' : 'Eksik'}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        {!requiredOps.closureEmail && (
-          <button
-            type="button"
-            onClick={() => void openClosureEmailModal()}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            data-testid="kapanis-email-onizle"
-          >
-            Kapanış Maili Gönder
-          </button>
-        )}
-        {requiredOps.closureEmail && (
-          <span
-            className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800"
-            data-testid="kapanis-email-gonderildi"
-          >
-            Kapanış Maili Gönderildi
-          </span>
-        )}
-        {!saleReady && (
-          <p className="text-[10px] text-amber-700" data-testid="zorunlu-satis-uyari">
-            Dosyayı kapatmak için satış fiyatı da gerekli.
-          </p>
-        )}
-      </div>
-
       {/* 6. Operasyon İşlemleri */}
       <div
         id="hizli-islemler"
@@ -2065,26 +2162,56 @@ export default function AcilDosyaDetayPage() {
             icon={Send}
             label="Onay Talebi"
             onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
+            disabled={!vaka.assignedVendorId || approvalBusy}
+            busy={approvalBusy}
             variant="primary"
             visualState={opsVisual.approval}
+            title={
+              approvalDone
+                ? 'Onay talebi oluşturuldu.'
+                : !vaka.assignedVendorId
+                  ? 'Önce tedarikçi atayın.'
+                  : 'Asistans onay talebi oluştur'
+            }
             testId="hizli-onay-talebi"
           />
           <QuickActionCard
             icon={Play}
             label="İşe Başlama"
-            onClick={handleWorkStartMessage}
-            disabled={!flow.customerApproved || flow.workStartPrepared}
+            onClick={() => void handleWorkStartMessage()}
+            disabled={!flow.customerApproved || flow.workStartPrepared || opsActionBusy === 'work_start'}
+            busy={opsActionBusy === 'work_start'}
             variant="success"
             visualState={opsVisual.workStart}
+            title={
+              flow.workStartPrepared
+                ? 'İşe başlama mesajı hazırlandı.'
+                : !flow.customerApproved
+                  ? 'Önce müşteri onayını kaydedin.'
+                  : 'Tedarikçiye işe başlama mesajı gönder'
+            }
             testId="ise-baslama-mesaji"
           />
           <QuickActionCard
             icon={CheckCircle2}
             label="Hizmeti Tamamla"
-            onClick={handleServiceComplete}
-            disabled={fileAlreadyClosed || flow.serviceCompleted || (!flow.workStartPrepared && stageIdx < 4)}
+            onClick={() => void handleServiceComplete()}
+            disabled={
+              fileAlreadyClosed
+              || flow.serviceCompleted
+              || (!flow.workStartPrepared && stageIdx < 4)
+              || opsActionBusy === 'service'
+            }
+            busy={opsActionBusy === 'service'}
             variant="success"
             visualState={opsVisual.service}
+            title={
+              flow.serviceCompleted || fileAlreadyClosed
+                ? 'Hizmet tamamlandı.'
+                : !flow.workStartPrepared && stageIdx < 4
+                  ? 'Önce işe başlama adımını tamamlayın.'
+                  : 'Hizmeti tamamlandı olarak işaretle'
+            }
             testId="hizmet-tamamla-btn"
           />
           {showCloseBlock ? (
@@ -2096,6 +2223,13 @@ export default function AcilDosyaDetayPage() {
               busy={closeBusy}
               variant="primary"
               visualState={opsVisual.close}
+              title={
+                closeReady
+                  ? 'Dosyayı kapat'
+                  : missingCloseLabels.length
+                    ? `Eksik: ${missingCloseLabels.join(', ')}`
+                    : 'Zorunlu işlemler tamamlanmalı'
+              }
               testId="dosyayi-kapat-btn"
             />
           ) : fileAlreadyClosed ? (
@@ -2118,6 +2252,11 @@ export default function AcilDosyaDetayPage() {
               )}
               disabled
               visualState="waiting"
+              title={
+                missingCloseLabels.length
+                  ? `Eksik: ${missingCloseLabels.join(', ')}`
+                  : 'Dosya kapatma için işe başlama veya sonraki aşama gerekir.'
+              }
               testId="dosyayi-kapat-btn"
             />
           )}
@@ -2140,6 +2279,7 @@ export default function AcilDosyaDetayPage() {
                 busy={financeBusy}
                 variant="primary"
                 visualState={opsVisual.finance}
+                title="Finansa aktar"
                 testId="finansa-aktar-btn"
               />
             </span>
@@ -2150,6 +2290,7 @@ export default function AcilDosyaDetayPage() {
               onClick={() => setActionFlash('Önce dosyayı kapatın.')}
               disabled
               visualState="waiting"
+              title="Önce dosyayı kapatın."
               testId="finansa-aktar-btn"
             />
           )}
