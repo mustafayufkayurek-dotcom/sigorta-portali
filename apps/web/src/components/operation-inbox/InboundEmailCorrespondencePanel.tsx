@@ -30,6 +30,8 @@ interface InboundEmailRow {
 interface Props {
   claimFileId?: string;
   emergencyCaseId?: string;
+  /** Boş / yükleme durumunu sıkı tut (dosya detay yoğunluğu) */
+  compact?: boolean;
 }
 
 const MAILBOX_LABELS = { IHBAR: 'İhbar', HASAR: 'Hasar' } as const;
@@ -59,7 +61,7 @@ async function openAttachment(storageKey: string) {
   if (url) window.open(url, '_blank');
 }
 
-export function InboundEmailCorrespondencePanel({ claimFileId, emergencyCaseId }: Props) {
+export function InboundEmailCorrespondencePanel({ claimFileId, emergencyCaseId, compact = false }: Props) {
   const { showToast } = useToast();
   const [items, setItems] = useState<InboundEmailRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,12 +90,16 @@ export function InboundEmailCorrespondencePanel({ claimFileId, emergencyCaseId }
   }, [load]);
 
   if (loading) {
-    return <div className="text-slate-400 py-8 text-center text-sm">Yükleniyor…</div>;
+    return (
+      <div className={`text-slate-400 text-center text-sm ${compact ? 'py-2' : 'py-8'}`}>
+        Yükleniyor…
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className={`rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 ${compact ? 'px-2.5 py-1.5' : 'px-4 py-3'}`}>
         {error}
       </div>
     );
@@ -101,11 +107,17 @@ export function InboundEmailCorrespondencePanel({ claimFileId, emergencyCaseId }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white py-10 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-600">Bağlı E-posta Yok</p>
-        <p className="text-xs text-slate-400 mt-1">
-          Operasyon gelen kutusundan bu dosyaya bağlanan e-postalar burada görünür.
-        </p>
+      <div
+        className={`rounded-lg border border-slate-200 bg-white text-center ${
+          compact ? 'px-2.5 py-2 shadow-none' : 'py-10 shadow-sm rounded-xl'
+        }`}
+      >
+        <p className={`font-medium text-slate-600 ${compact ? 'text-xs' : 'text-sm'}`}>Bağlı E-posta Yok</p>
+        {!compact && (
+          <p className="text-xs text-slate-400 mt-1">
+            Operasyon gelen kutusundan bu dosyaya bağlanan e-postalar burada görünür.
+          </p>
+        )}
       </div>
     );
   }

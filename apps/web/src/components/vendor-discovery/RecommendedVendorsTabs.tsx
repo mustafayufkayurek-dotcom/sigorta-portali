@@ -134,7 +134,7 @@ export function RecommendedVendorsTabs({
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 min-w-0"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 min-w-0"
       data-testid="tedarikci-onerileri"
     >
       <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -150,12 +150,12 @@ export function RecommendedVendorsTabs({
           </span>
         )}
       </div>
-      <p className="text-[11px] text-slate-500 mb-2 leading-snug" data-testid="tedarikci-onerileri-yardim">
+      <p className="text-[11px] text-slate-500 mb-1.5 leading-snug" data-testid="tedarikci-onerileri-yardim">
         {helpText}
       </p>
 
       <div
-        className="flex rounded-lg border border-slate-200 p-0.5 mb-2 bg-slate-50/80"
+        className="flex rounded-lg border border-slate-200 p-0.5 mb-1.5 bg-slate-50/80"
         role="tablist"
         aria-label="Tedarikçi öneri sekmeleri"
         data-testid="tedarikci-sekmeler"

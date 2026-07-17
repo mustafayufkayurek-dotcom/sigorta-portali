@@ -1,0 +1,24 @@
+{
+  "at": "2026-07-17T18:24:02.005Z",
+  "base": "http://localhost:3001",
+  "caseInfo": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "source": "seed-id"
+  },
+  "shotPath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-belgeler-ust-bosluk-20260717/01-desktop.png",
+  "fullPath": "/Users/mustafayufkayurek/Documents/Codex/d266-release-scope/docs/project-governance/canli-kabul/ekran-goruntuleri/epic05-belgeler-ust-bosluk-20260717/01-tam-sayfa-desktop.png",
+  "metrics": {
+    "gapUpperToTabs": 8,
+    "gapOpsToTabs": 8,
+    "gapZorunluToTabs": 8,
+    "opsAlignedWithZorunlu": false,
+    "opsBottomAlignedWithZorunlu": true,
+    "opsHeight": 89,
+    "opsInternalVoid": 4,
+    "vendorBelowBudgetDelta": 97,
+    "tablistToDocsTitle": 8,
+    "layout2x2": true
+  },
+  "pass": true,
+  "target": "gapUpperToTabs <= 16px (enterprise 8–12px ideal)"
+}
