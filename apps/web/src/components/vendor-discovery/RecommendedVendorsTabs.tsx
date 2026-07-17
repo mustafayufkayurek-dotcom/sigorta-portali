@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
@@ -86,7 +86,7 @@ type Props = {
 /**
  * Önerilen Tedarikçiler — karar destek sekmeleri.
  * Sekme 1: Kayıtlı Tedarikçiler (varsayılan)
- * Sekme 2: Google Alternatifleri — kayıtlı yoksa veya kullanıcı seçince
+ * Sekme 2: Google Alternatifleri — yalnızca sekmeden
  */
 export function RecommendedVendorsTabs({
   title = 'Önerilen Tedarikçiler',
@@ -118,31 +118,22 @@ export function RecommendedVendorsTabs({
   }, [vendors]);
 
   const [tab, setTab] = useState<VendorTabId>('kayitli');
-  const autoOpenedAlternatif = useRef(false);
 
   useEffect(() => {
     if (preferAlternatif) {
       setTab('alternatif');
-      return;
     }
-    // Kayıtlı öneri yoksa Google Alternatifleri sekmesini bir kez aç (varsayılan değil; boş durum).
-    if (!loading && ranked.length === 0 && !autoOpenedAlternatif.current) {
-      autoOpenedAlternatif.current = true;
-      setTab('alternatif');
-    }
-  }, [preferAlternatif, loading, ranked.length]);
+  }, [preferAlternatif]);
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 min-w-0"
+      className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 flex flex-col gap-1.5 min-w-0 h-full min-h-0"
       data-testid="tedarikci-onerileri"
     >
-      <div className="flex items-center justify-between gap-2 mb-0.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="shrink-0 w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-            <Building2 className="w-3.5 h-3.5" aria-hidden />
-          </span>
-          <h3 className="text-sm font-semibold text-slate-900 truncate">{title}</h3>
+      <div className="flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-600" strokeWidth={1.75} aria-hidden />
+          <h3 className="text-sm font-semibold text-slate-800 truncate">{title}</h3>
         </div>
         {assignedBadge && (
           <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -150,12 +141,12 @@ export function RecommendedVendorsTabs({
           </span>
         )}
       </div>
-      <p className="text-[11px] text-slate-500 mb-1.5 leading-snug" data-testid="tedarikci-onerileri-yardim">
+      <p className="text-[11px] text-slate-500 leading-snug shrink-0" data-testid="tedarikci-onerileri-yardim">
         {helpText}
       </p>
 
       <div
-        className="flex rounded-lg border border-slate-200 p-0.5 mb-1.5 bg-slate-50/80"
+        className="flex rounded-lg border border-slate-200 p-0.5 bg-slate-50/80 shrink-0"
         role="tablist"
         aria-label="Tedarikçi öneri sekmeleri"
         data-testid="tedarikci-sekmeler"
@@ -191,7 +182,11 @@ export function RecommendedVendorsTabs({
       </div>
 
       {tab === 'kayitli' ? (
-        <div data-testid="sekme-kayitli-icerik" role="tabpanel">
+        <div
+          className="flex-1 flex flex-col min-h-0"
+          data-testid="sekme-kayitli-icerik"
+          role="tabpanel"
+        >
           {loading ? (
             <p className="text-xs text-slate-400 py-1 text-center">Öneriler yükleniyor...</p>
           ) : ranked.length > 0 ? (
@@ -223,33 +218,23 @@ export function RecommendedVendorsTabs({
               })}
             </ul>
           ) : (
-            <div className="space-y-1.5" data-testid="tedarikci-havuz-bos">
-              <p className="text-xs text-slate-500 leading-snug">
-                Bu bölge ve hizmet için kayıtlı tedarikçi önerisi yok.
-              </p>
-              <button
-                type="button"
-                onClick={() => setTab('alternatif')}
-                className="w-full text-center text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 min-h-[44px]"
-                data-testid="kayitli-bos-alternatif-gec"
-              >
-                Google Alternatiflerine Geç
-              </button>
-            </div>
-          )}
-          {!loading && ranked.length > 0 && !assignedVendorId && (
-            <button
-              type="button"
-              onClick={() => setTab('alternatif')}
-              className="mt-2 w-full text-center text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2"
-              data-testid="daha-fazla-oneri"
+            <div
+              className="flex-1 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-4 min-h-[4.5rem]"
+              data-testid="tedarikci-havuz-bos"
+              role="status"
             >
-              Google Alternatiflerine Bak
-            </button>
+              <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
+                Kayıtlı Tedarikçi Bulunamadı
+              </p>
+            </div>
           )}
         </div>
       ) : (
-        <div data-testid="sekme-alternatif-icerik" role="tabpanel">
+        <div
+          className="flex-1 flex flex-col min-h-0"
+          data-testid="sekme-alternatif-icerik"
+          role="tabpanel"
+        >
           <AlternativeVendorServicePanel
             city={city}
             district={district}

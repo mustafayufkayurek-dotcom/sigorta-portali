@@ -6,8 +6,14 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { getDocumentBranding, DOCUMENT_HEADER_STYLES } from '@/common/utils/document-branding';
+import {
+  DOCUMENT_QR_STYLES,
+  injectDigitalApprovalQrIntoHtml,
+  renderDigitalApprovalQrBlock,
+} from '@/common/utils/document-qr';
 import { buildAppPath } from '@/common/utils/app-url';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
+import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -17,7 +23,7 @@ import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
-  /alış\s*fiyat|satış\s*fiyat|tedarikçi\s*maliyet|müşteri\s*satış|meridyen\s*satış|kâr\s*oran/i;
+  /alış\s*fiyat|satış\s*fiyat|tedarikçi\s*alış|tedarikçi\s*maliyet|müşteri\s*satış|meridyen\s*satış|kâr\s*oran|kar\s*oran/i;
 
 function isCustomerFacingWorkSummary(description: string | null | undefined): boolean {
   const t = (description ?? '').trim();
@@ -44,8 +50,10 @@ function buildEmergencyMatbuWorkSummary(ec: {
     return toTitleCaseTR(notes);
   }
 
-  const issue = toTitleCaseTR((ec.issueType ?? '').trim()) || 'Acil Yardım';
-  return `${issue} Hizmeti Tamamlandı.`;
+  const issueCanonical =
+    mapInboundLossTypeToMeridyen(ec.issueType)
+    ?? (toTitleCaseTR((ec.issueType ?? '').trim()) || 'Acil Yardım');
+  return `${issueCanonical} Hizmeti Tamamlandı.`;
 }
 
 const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
@@ -58,6 +66,7 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
     .page { padding: 28px; max-width: 780px; margin: 0 auto; }
 ${DOCUMENT_HEADER_STYLES}
+${DOCUMENT_QR_STYLES}
     h1 { text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 4px; color: #1a4080; }
     .form-subtitle { text-align: center; font-size: 11px; color: #6b7280; margin: 0 0 20px; }
     .header-right { text-align: right; font-size: 11px; color: #374151; margin-bottom: 20px; }
@@ -84,14 +93,16 @@ ${DOCUMENT_HEADER_STYLES}
 <body>
 <div class="page">
 
-  <div class="doc-header">
-    <div class="doc-header-logo">
-      <img src="{{logo_url}}" alt="Meridyen Assistance" />
+  <div class="doc-header-with-qr">
+    <div class="doc-header-main">
+      <div class="doc-header-logo">
+        <img src="{{logo_url}}" alt="Meridyen Assistance" />
+      </div>
+      <div class="doc-header-meta">
+        <strong>{{sirket_ad}}</strong>
+      </div>
     </div>
-    <div class="doc-header-meta">
-      <strong>{{sirket_ad}}</strong>
-      {{sirket_adres}}
-    </div>
+    {{dijital_onay_qr}}
   </div>
 
   <h1>Hizmet Onay Formu</h1>
@@ -102,7 +113,7 @@ ${DOCUMENT_HEADER_STYLES}
     Düzenlenme Tarihi: {{tarih}}
   </div>
 
-  <!-- Müşteri & Vaka Bilgileri -->
+  <!-- Müşteri & Dosya Bilgileri -->
   <div class="section">
     <div class="section-title">Müşteri ve Dosya Bilgileri</div>
     <div class="info-grid">
@@ -111,7 +122,7 @@ ${DOCUMENT_HEADER_STYLES}
       <div class="info-row"><span class="label">Hizmet Adresi:</span><span class="value">{{adres}}</span></div>
       <div class="info-row"><span class="label">İlçe / İl:</span><span class="value">{{ilce_il}}</span></div>
       <div class="info-row"><span class="label">Dosya No:</span><span class="value">{{dosya_no}}</span></div>
-      <div class="info-row"><span class="label">Hizmet Türü:</span><span class="value">{{konu}}</span></div>
+      <div class="info-row"><span class="label">Dosya Konusu:</span><span class="value">{{konu}}</span></div>
       <div class="info-row"><span class="label">Tedarikçi / Ekip:</span><span class="value">{{tedarikci}}</span></div>
       <div class="info-row"><span class="label">Hizmet Tarihi:</span><span class="value">{{tarih}}</span></div>
     </div>
@@ -300,11 +311,21 @@ export class FileDocumentsService {
       // İlçe / İl
       const ilceIl = [ec.district, ec.city].filter(Boolean).join(' / ') || '—';
 
+      const konuLabel =
+        mapInboundLossTypeToMeridyen(ec.issueType)
+        ?? toTitleCaseTR(ec.issueType)
+        ?? ec.issueType;
+
       // Ayarlardan özel template varsa kullan
       const customTpl = await this.prisma.systemSetting.findUnique({
         where: { key: 'matbu_evrak_template' },
       });
-      const sourceTpl = customTpl ? String((customTpl.value as any) ?? '') : MATBU_EVRAK_TEMPLATE;
+      let sourceTpl = customTpl ? String((customTpl.value as any) ?? '') : MATBU_EVRAK_TEMPLATE;
+      if (!sourceTpl.trim()) sourceTpl = MATBU_EVRAK_TEMPLATE;
+      // Eski özel şablonlarda sokak adresi satırını kaldır (marka adı kalır)
+      sourceTpl = sourceTpl
+        .replace(/\n?\s*\{\{sirket_adres\}\}/g, '')
+        .replace(/>\s*Hizmet Türü:\s*</g, '>Dosya Konusu:<');
       const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
 
       const placeholders: Record<string, string> = {
@@ -315,20 +336,30 @@ export class FileDocumentsService {
         '{{musteri_telefon}}': musteriTelefon,
         '{{adres}}': ec.address,
         '{{ilce_il}}': ilceIl,
-        '{{konu}}': toTitleCaseTR(ec.issueType) || ec.issueType,
+        '{{konu}}': konuLabel,
         '{{tedarikci}}': tedarikci,
         '{{is_ozeti}}': isOzeti,
         '{{toplam_tutar}}': toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
         ...companyPlaceholders,
+        // Acil matbu: şirket sokak adresi müşteri formunda gösterilmez
+        '{{sirket_adres}}': '',
       };
-
-      let rendered = sourceTpl;
-      for (const [k, v] of Object.entries(placeholders)) {
-        rendered = rendered.replaceAll(k, v);
-      }
 
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const publicUrl = buildAppPath(this.config, `/evrak/${publicToken}`);
+      const qrBlock = renderDigitalApprovalQrBlock(publicUrl);
+      placeholders['{{dijital_onay_qr}}'] = qrBlock;
+
+      let rendered = sourceTpl;
+      // Özel şablonda QR CSS yoksa ekle
+      if (!rendered.includes('dijital-onay-qr') && !rendered.includes(DOCUMENT_QR_STYLES.slice(0, 40))) {
+        rendered = rendered.replace('</style>', `${DOCUMENT_QR_STYLES}\n  </style>`);
+      }
+      for (const [k, v] of Object.entries(placeholders)) {
+        rendered = rendered.replaceAll(k, v);
+      }
+      rendered = injectDigitalApprovalQrIntoHtml(rendered, qrBlock);
 
       return this.prisma.fileDocument.create({
         data: {

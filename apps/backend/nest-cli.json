@@ -2,6 +2,12 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "common/utils/vendor/paulmillr-qr/**/*",
+        "watchAssets": true
+      }
+    ]
   }
 }

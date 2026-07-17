@@ -97,6 +97,7 @@ export interface EmergencyCase {
     lastName?: string | null;
     entityType?: string | null;
     subType?: string | null;
+    phone?: string | null;
   } | null;
   activeDelegation?: {
     actingUser: { id: string; firstName: string; lastName: string };

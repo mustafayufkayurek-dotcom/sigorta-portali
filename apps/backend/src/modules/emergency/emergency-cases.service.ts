@@ -104,9 +104,19 @@ export class EmergencyCasesService {
   private async ensureCustomerPhoneFromInbound(
     caseId: string,
     existingPhone?: string | null,
+    customerPhoneFallback?: string | null,
   ): Promise<string | null> {
     const current = (existingPhone || '').trim();
     if (current) return current;
+
+    const fromCustomer = (customerPhoneFallback || '').trim();
+    if (fromCustomer) {
+      await this.prisma.emergencyCase.update({
+        where: { id: caseId },
+        data: { customerPhone: fromCustomer },
+      });
+      return fromCustomer;
+    }
 
     const inbound = await this.prisma.inboundMessage.findMany({
       where: { emergencyCaseId: caseId },
@@ -141,6 +151,22 @@ export class EmergencyCasesService {
       }
     }
     return null;
+  }
+
+  /**
+   * Dosya sorumlusu boşsa oluşturan kullanıcıya bağlar (gösterim + erişim tutarlılığı).
+   */
+  private async ensureAssignedUser(
+    caseId: string,
+    assignedUserId: string | null | undefined,
+    createdByUserId: string,
+  ): Promise<string> {
+    if (assignedUserId) return assignedUserId;
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: { assignedUserId: createdByUserId },
+    });
+    return createdByUserId;
   }
 
   private async ensureFinanceTransfer(caseId: string, userId: string): Promise<void> {
@@ -327,7 +353,7 @@ export class EmergencyCasesService {
         urgency: dto.urgency ?? 'NORMAL',
         fileDate,
         assignedVendorId: dto.assignedVendorId,
-        assignedUserId: dto.assignedUserId,
+        assignedUserId: dto.assignedUserId ?? userId,
         notes: dto.notes,
         createdByUserId: userId,
       },
@@ -543,6 +569,7 @@ export class EmergencyCasesService {
       include: {
         assignedVendor: { select: { id: true, name: true, phone: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
             id: true,
@@ -552,6 +579,7 @@ export class EmergencyCasesService {
             lastName: true,
             entityType: true,
             subType: true,
+            phone: true,
           },
         },
         costEntries: { orderBy: { entryDate: 'asc' } },
@@ -561,20 +589,46 @@ export class EmergencyCasesService {
     if (!c) throw new NotFoundException('Acil vaka bulunamadı');
     await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds);
 
+    const resolvedAssigneeId = await this.ensureAssignedUser(
+      id,
+      c.assignedUserId,
+      c.createdByUserId,
+    );
+    let assignedUser = c.assignedUser;
+    if (!assignedUser && resolvedAssigneeId) {
+      assignedUser = await this.prisma.user.findUnique({
+        where: { id: resolvedAssigneeId },
+        select: { id: true, firstName: true, lastName: true, phone: true, email: true },
+      });
+    }
+    if (!assignedUser && c.createdBy) {
+      assignedUser = c.createdBy;
+    }
+
     const activeDelegation = requestingUser
       ? await this.operationalAccessGrants.resolveDelegationBanner(
           requestingUser.id,
-          c.assignedUserId,
+          resolvedAssigneeId,
           'acil_yardim',
         )
       : null;
 
     const operationChain = await this.buildOperationChain(id);
     const customerPhone =
-      (await this.ensureCustomerPhoneFromInbound(id, c.customerPhone)) ?? c.customerPhone;
+      (await this.ensureCustomerPhoneFromInbound(
+        id,
+        c.customerPhone,
+        c.customer?.phone,
+      )) ?? c.customerPhone;
+    const { createdBy: _createdBy, ...caseWithoutCreatedBy } = c;
     return {
       data: {
-        ...this.enrichCase({ ...c, customerPhone }),
+        ...this.enrichCase({
+          ...caseWithoutCreatedBy,
+          assignedUserId: resolvedAssigneeId,
+          assignedUser,
+          customerPhone,
+        }),
         activeDelegation,
         operationChain,
       },
@@ -786,7 +840,7 @@ export class EmergencyCasesService {
       `Dosya No: ${fileNo}`,
       `Sigortalı: ${insured}`,
       `Sigortalı Telefon: ${insuredPhone}`,
-      `Hizmet Türü: ${emergencyCase.issueType}`,
+      `Dosya Konusu: ${emergencyCase.issueType}`,
       `Tamamlanma: ${summary}`,
       `Onaylı Hizmet Bedeli: ${saleLabel}`,
       `Kapanış Tarihi: ${closedAt}`,

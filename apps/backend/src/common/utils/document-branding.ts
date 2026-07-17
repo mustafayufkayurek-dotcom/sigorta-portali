@@ -73,17 +73,21 @@ export async function getDocumentBranding(
   };
 }
 
-/** Ortak kurumsal başlık bandı — logo (sol) + şirket adı/adresi (sağ). */
+/** Ortak kurumsal başlık bandı — logo (sol) + şirket adı (sağ). Adres matbu/müşteri formunda yok. */
 export function renderDocumentHeaderHtml(
   branding: Pick<DocumentBranding, 'logoUrl' | 'companyName' | 'companyAddress'>,
+  opts?: { includeAddress?: boolean },
 ): string {
+  const address =
+    opts?.includeAddress && branding.companyAddress.trim() && branding.companyAddress !== '—'
+      ? `\n      ${branding.companyAddress}`
+      : '';
   return `<div class="doc-header">
     <div class="doc-header-logo">
       <img src="${branding.logoUrl}" alt="Meridyen Assistance" />
     </div>
     <div class="doc-header-meta">
-      <strong>${branding.companyName}</strong>
-      ${branding.companyAddress}
+      <strong>${branding.companyName}</strong>${address}
     </div>
   </div>`;
 }
@@ -91,7 +95,7 @@ export function renderDocumentHeaderHtml(
 /** Tüm form şablonlarında paylaşılan kurumsal başlık bandı CSS'i. */
 export const DOCUMENT_HEADER_STYLES = `
     .doc-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 2px solid #1a4080; padding-bottom: 14px; margin-bottom: 18px; }
-    .doc-header-logo img { height: 52px; width: auto; display: block; }
+    .doc-header-logo img { height: 64px; width: auto; max-width: 220px; object-fit: contain; display: block; }
     .doc-header-meta { text-align: right; font-size: 10px; color: #64748b; line-height: 1.5; }
-    .doc-header-meta strong { display: block; font-size: 12px; color: #1a4080; margin-bottom: 2px; }
+    .doc-header-meta strong { display: block; font-size: 13px; color: #1a4080; margin-bottom: 2px; }
 `;

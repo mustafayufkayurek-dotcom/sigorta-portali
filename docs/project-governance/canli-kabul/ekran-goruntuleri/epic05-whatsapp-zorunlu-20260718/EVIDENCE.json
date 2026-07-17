@@ -1,0 +1,86 @@
+{
+  "at": "2026-07-17T22:01:24.024Z",
+  "caseId": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+  "resolved": {
+    "id": "f4624c59-30e9-4380-8ac9-abb2f0c36757",
+    "source": "seed-id",
+    "status": "FATURALANDILDI"
+  },
+  "opsMeta": {
+    "initialState": "next",
+    "surveyState": "next",
+    "initialLabel": "İlk Bilgilendirme",
+    "surveyLabel": "Kapanış / Anket"
+  },
+  "checklistBefore": [
+    {
+      "key": "zorunlu-digitalApproval",
+      "done": "0",
+      "text": "○Dijital OnayEksik"
+    },
+    {
+      "key": "zorunlu-insuredInitialNotify",
+      "done": "0",
+      "text": "○Sigortalıya İlk BilgilendirmeEksik"
+    },
+    {
+      "key": "zorunlu-insuredClosureSurvey",
+      "done": "0",
+      "text": "○Kapanış / Anket MesajıEksik"
+    },
+    {
+      "key": "zorunlu-photos",
+      "done": "1",
+      "text": "✓FotoğraflarTamam"
+    },
+    {
+      "key": "zorunlu-documents",
+      "done": "1",
+      "text": "✓BelgelerTamam"
+    },
+    {
+      "key": "zorunlu-closureEmail",
+      "done": "0",
+      "text": "○Kapanış MailiEksik"
+    }
+  ],
+  "afterDone": {
+    "initialState": "completed",
+    "surveyState": "completed",
+    "checklist": [
+      {
+        "key": "zorunlu-digitalApproval",
+        "done": "0",
+        "text": "○Dijital OnayEksik"
+      },
+      {
+        "key": "zorunlu-insuredInitialNotify",
+        "done": "1",
+        "text": "✓Sigortalıya İlk BilgilendirmeTamam"
+      },
+      {
+        "key": "zorunlu-insuredClosureSurvey",
+        "done": "1",
+        "text": "✓Kapanış / Anket MesajıTamam"
+      },
+      {
+        "key": "zorunlu-photos",
+        "done": "1",
+        "text": "✓FotoğraflarTamam"
+      },
+      {
+        "key": "zorunlu-documents",
+        "done": "1",
+        "text": "✓BelgelerTamam"
+      },
+      {
+        "key": "zorunlu-closureEmail",
+        "done": "1",
+        "text": "✓Kapanış MailiTamam"
+      }
+    ]
+  },
+  "previewVisible": false,
+  "guardVisible": true,
+  "note": "Operasyon sırası: İlk Bilgilendirme → Onay Talebi → İşe Başlama → Hizmeti Tamamla → Kapanış/Anket → Dosyayı Kapat Ve Finansa Gönder. Manuel wa.me; otomatik yok."
+}

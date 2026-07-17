@@ -599,7 +599,7 @@ ${DOCUMENT_HEADER_STYLES}
 <div class="watermark">MERİDYEN ASSISTANCE — GİZLİ</div>
 <div class="page">
   <div class="content">
-    ${renderDocumentHeaderHtml({ logoUrl: opts.logoUrl, companyName: opts.companyName, companyAddress: opts.companyAddress })}
+    ${renderDocumentHeaderHtml({ logoUrl: opts.logoUrl, companyName: opts.companyName, companyAddress: opts.companyAddress }, { includeAddress: true })}
     <div class="header">
       <div class="header-left">
         <h1>TEDARİKÇİ ONARIM SÖZLEŞMESİ</h1>
