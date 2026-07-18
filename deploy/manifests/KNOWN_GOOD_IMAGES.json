@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-18",
-  "label": "v377-ayarlar-sigorta-hasar-konu",
-  "description": "Full: Faz 0 Sigorta Şirketleri master + Asistans Firmaları nav + Ayarlar/Sigorta Şirketleri tutarlılık (filtre + kapat ikonu) + Cam Kırığı->Cam Kırılması normalize + hasar konusu dedupe (getIhbarKonulari + service-branches) + hasar listesi filtre etiketi (Müşteri->Sigorta Şirketi). Web v377 + backend v377. Migration yok. Commit df46a55. Health PASS, smoke route PASS, auth login credential yok (Cursor production UI login yapmaz). Production browser: kullanıcı production kontrolü. Rollback web v376 / backend v376.",
+  "label": "v378-sigorta-asistans-sekme",
+  "description": "Web-only: Ayarlar Sigorta + Asistans iki sekme (onaylı UI polish). Web v378, backend v377 değişmedi. Migration yok. Commit 5e4db2a. Health PASS, smoke route PASS, nginx→web routing PASS. Production browser: kullanıcı production kontrolü (Cursor production UI login yapmaz). Rollback web v377 / backend v377.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v377-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v377-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v378-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v376-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v377-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v376-amd64"
   },
   "mustPassSmokeRoutes": [
