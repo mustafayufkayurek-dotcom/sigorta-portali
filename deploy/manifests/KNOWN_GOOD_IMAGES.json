@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-18",
-  "label": "v378-sigorta-asistans-sekme",
-  "description": "Web-only: Ayarlar Sigorta + Asistans iki sekme (onaylı UI polish). Web v378, backend v377 değişmedi. Migration yok. Commit 5e4db2a. Health PASS, smoke route PASS, nginx→web routing PASS. Production browser: kullanıcı production kontrolü (Cursor production UI login yapmaz). Rollback web v377 / backend v377.",
+  "label": "v379-mesaj-sablonlari",
+  "description": "Full deploy (web + backend): Ayarlar Mesaj Şablonları sayfası + Acil WhatsApp şablonları (İlk Bilgilendirme, Kapanış/Anket) API'den yönetilir; kod fallback korunur. Web v379, backend v379. Migration yok (schema up to date). Commit safety/pre-deploy-20260718-mesaj-sablonlari. Health PASS, smoke route PASS, nginx→web routing PASS. Production browser: kullanıcı production kontrolü (Cursor production UI login yapmaz). Rollback web v378 / backend v377.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v377-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v378-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v379-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v379-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v377-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v376-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v378-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v377-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
