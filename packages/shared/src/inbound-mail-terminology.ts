@@ -38,8 +38,9 @@ const CATEGORY_ALIASES: Record<string, string> = {
 const LOSS_TYPE_ALIASES: Record<string, string> = {
   'cam kirilmasi': 'Cam Kırılması',
   'cam kırılması': 'Cam Kırılması',
-  'cam kirigi': 'Cam Kırığı',
-  'cam kırığı': 'Cam Kırığı',
+  // Müşteri dili (Cam Kırığı) → Meridyen Dosya Konusu
+  'cam kirigi': 'Cam Kırılması',
+  'cam kırığı': 'Cam Kırılması',
   'vam kirilmasi': 'Cam Kırılması',
   'vam kırılması': 'Cam Kırılması',
   'vam kirilmas': 'Cam Kırılması',

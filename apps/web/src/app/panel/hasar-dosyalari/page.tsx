@@ -414,9 +414,9 @@ function ClaimFilesPageContent() {
             />
           </div>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Müşteri</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Sigorta Şirketi</span>
             <select className="input-base-sm w-full" value={insuranceFilter} onChange={(e) => { setInsuranceFilter(e.target.value); setPage(1); }}>
-              <option value="">Tüm Müşteriler</option>
+              <option value="">Tüm Sigorta Şirketleri</option>
               {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>

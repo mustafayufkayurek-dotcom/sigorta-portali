@@ -720,13 +720,13 @@ export default function MusterilerPage() {
   const router = useRouter();
   const roleCode = usePanelRoleCode();
   const tableColumns = usePanelTableColumns('table-cols:musteriler', TABLE_COLUMNS);
+  const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [subTypeFilter, setSubTypeFilter] = useState('');
+  const [subTypeFilter, setSubTypeFilter] = useState(() => searchParams.get('subType') ?? '');
   const [cityFilter, setCityFilter] = useState('');
-  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') ?? DEFAULT_STATUS_FILTER);
   const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
@@ -1346,11 +1346,12 @@ export default function MusterilerPage() {
 
   useEffect(() => {
     if (!subTypeFilter) return;
+    if (customerSubTypes.length === 0) return;
     if (!visibleCustomerSubTypes.some((t) => t.value === subTypeFilter)) {
       setSubTypeFilter('');
       setPage(1);
     }
-  }, [subTypeFilter, visibleCustomerSubTypes]);
+  }, [customerSubTypes.length, subTypeFilter, visibleCustomerSubTypes]);
 
   // Gelen kutusundan müşteri ön-dolumu (?inboxPrefill=1)
   useEffect(() => {
@@ -1848,6 +1849,8 @@ export default function MusterilerPage() {
             <p className="page-subtitle">
               {subTypeFilter === 'eksper_firmasi'
                 ? 'Eksper Firması Kayıtları — Hasar İhbar Cari Hesapları'
+                : subTypeFilter === 'asistan_firmasi'
+                  ? 'Geliştirilebilir müşteri ve görüşme kartları; operasyon seçimi müşteri kartından yapılır.'
                 : 'Bireysel ve Kurumsal Müşteri Yönetimi'}
             </p>
           </div>

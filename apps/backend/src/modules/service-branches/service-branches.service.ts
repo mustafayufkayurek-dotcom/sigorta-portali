@@ -62,9 +62,15 @@ export class ServiceBranchesService {
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
 
-    let mapped = subjects.map((subject) =>
-      mapFileSubjectToMeridyenBranch(subject, subject.department),
-    );
+    const seen = new Set<string>();
+    let mapped = subjects
+      .map((subject) => mapFileSubjectToMeridyenBranch(subject, subject.department))
+      .filter((branch) => {
+        const key = `${branch.type}:${branch.name.trim().toLocaleLowerCase('tr-TR')}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     if (type) {
       mapped = mapped.filter((branch) => branch.type === type);
     }

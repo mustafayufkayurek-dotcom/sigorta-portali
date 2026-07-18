@@ -1015,7 +1015,7 @@ async function main() {
     // Acil yardım konuları
     { code: 'su-baskini', name: 'Su Baskını', category: 'acil_yardim', sortOrder: 1 },
     { code: 'cati-hasari', name: 'Çatı Hasarı', category: 'acil_yardim', sortOrder: 2 },
-    { code: 'cam-kirigi', name: 'Cam Kırığı', category: 'acil_yardim', sortOrder: 3 },
+    { code: 'cam-kirigi', name: 'Cam Kırılması', category: 'acil_yardim', sortOrder: 3 },
     { code: 'kapi-kilit-arizasi', name: 'Kapı/Kilit Arızası', category: 'acil_yardim', sortOrder: 4 },
     { code: 'elektrik-arizasi', name: 'Elektrik Arızası', category: 'acil_yardim', sortOrder: 5 },
     { code: 'dogalgaz-arizasi', name: 'Doğalgaz Arızası', category: 'acil_yardim', sortOrder: 6 },

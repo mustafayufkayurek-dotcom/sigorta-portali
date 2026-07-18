@@ -6,6 +6,7 @@ export const TANIMLAR_BACK_TEXT = '← Tanımlar Merkezi';
 
 export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/musteri-tipleri',
+  '/panel/ayarlar/sigorta-sirketleri',
   '/panel/ayarlar/eksper-sigorta-iliskileri',
   '/panel/ayarlar/departmanlar',
   '/panel/ayarlar/iliski-turleri',

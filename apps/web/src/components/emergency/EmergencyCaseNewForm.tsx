@@ -20,8 +20,7 @@ import {
   type EmergencyUrgency,
   type VendorOption,
 } from '@/utils/emergencyApi';
-
-
+import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
   { value: 'DUSUK', label: 'Düşük', color: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -33,7 +32,7 @@ const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }
 const FALLBACK_ISSUE_TYPES = [
   'Su Baskını',
   'Çatı Hasarı',
-  'Cam Kırığı',
+  'Cam Kırılması',
   'Kapı/Kilit Arızası',
   'Elektrik Arızası',
   'Doğalgaz Arızası',
@@ -226,7 +225,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       const acil = Array.isArray(subjectData?.acil) ? subjectData.acil : [];
       setIssueTypes(
         (acil.length > 0 ? acil : FALLBACK_ISSUE_TYPES)
-          .map((s: string) => toTitleCaseTR(String(s).trim()))
+          .map((s: string) => {
+            const raw = String(s).trim();
+            return mapInboundLossTypeToMeridyen(raw) ?? toTitleCaseTR(raw);
+          })
           .filter(Boolean),
       );
       setVendors(vendorsRes.data ?? []);

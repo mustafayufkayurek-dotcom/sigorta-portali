@@ -117,7 +117,7 @@ const DEFAULT_IHBAR_KONULARI: IhbarKonulari = {
   acil: [
     'Su Baskını',
     'Çatı Hasarı',
-    'Cam Kırığı',
+    'Cam Kırılması',
     'Kapı/Kilit Arızası',
     'Elektrik Arızası',
     'Doğalgaz Arızası',
@@ -760,8 +760,17 @@ export class SystemSettingsService {
 
     const hasar: string[] = [];
     const acil: string[] = [];
+    const seenByType = {
+      hasar: new Set<string>(),
+      acil: new Set<string>(),
+    };
     for (const subject of subjects) {
-      const bucket = departmentToMeridyenType(subject.department) === 'acil_yardim' ? acil : hasar;
+      const isAcil = departmentToMeridyenType(subject.department) === 'acil_yardim';
+      const bucket = isAcil ? acil : hasar;
+      const seen = isAcil ? seenByType.acil : seenByType.hasar;
+      const normalizedName = subject.name.trim().toLocaleLowerCase('tr-TR');
+      if (seen.has(normalizedName)) continue;
+      seen.add(normalizedName);
       bucket.push(subject.name);
     }
 

@@ -148,6 +148,14 @@ export function resolveClaimIhbarKonusu(claim: ClaimIhbarKonusuSource): string {
   return resolveClaimDosyaKonusu(claim);
 }
 
+/** Kanonik görünen ad — müşteri dili (ör. Cam Kırığı) → Meridyen Dosya Konusu. */
+function finalizeDosyaKonusuLabel(raw: string): string {
+  const mapped =
+    mapInboundLossTypeToMeridyen(raw)
+    ?? mapInboundCategoryKnown(raw);
+  return mapped ?? toTitleCaseTR(raw);
+}
+
 /**
  * Dosya konusu — Ayarlar → Dosya Konuları kanonik adı öncelikli.
  * Müşteri/personel hatalı serbest metin girmişse katalog veya terminoloji eşlemesiyle düzeltilir.
@@ -158,18 +166,22 @@ export function resolveClaimDosyaKonusu(
 ): string {
   const deptName = claim.departmentFileSubject?.name?.trim();
   if (deptName && !isInboundIhbarNoteText(deptName)) {
-    return matchCatalogName(deptName, catalogNames) ?? toTitleCaseTR(deptName);
+    return finalizeDosyaKonusuLabel(
+      matchCatalogName(deptName, catalogNames) ?? deptName,
+    );
   }
 
   const subjectName = claim.claimSubject?.name?.trim();
   if (subjectName && !isInboundIhbarNoteText(subjectName)) {
-    return matchCatalogName(subjectName, catalogNames) ?? toTitleCaseTR(subjectName);
+    return finalizeDosyaKonusuLabel(
+      matchCatalogName(subjectName, catalogNames) ?? subjectName,
+    );
   }
 
   const lossRaw = claim.lossType?.trim();
   if (lossRaw && !isInboundIhbarNoteText(lossRaw)) {
     const fromCatalog = matchCatalogName(lossRaw, catalogNames);
-    if (fromCatalog) return fromCatalog;
+    if (fromCatalog) return finalizeDosyaKonusuLabel(fromCatalog);
 
     const mapped =
       mapInboundLossTypeToMeridyen(lossRaw)
@@ -177,7 +189,7 @@ export function resolveClaimDosyaKonusu(
     if (mapped) return mapped;
 
     if (lossRaw.length <= 48 && !lossRaw.includes('\n')) {
-      return formatDisplayLabel(lossRaw);
+      return finalizeDosyaKonusuLabel(lossRaw);
     }
   }
 

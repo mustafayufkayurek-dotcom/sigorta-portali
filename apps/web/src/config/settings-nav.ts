@@ -59,6 +59,8 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     icon: BookOpenText,
     links: [
       { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Tüm tanım sözlükleri: departman, ilişki türü, dosya konusu, evrak, iş grubu, mahal, tedarikçi hizmet kolu, müşteri tipi.' },
+      { title: 'Sigorta Şirketleri', href: '/panel/ayarlar/sigorta-sirketleri', icon: Building2, description: 'Operasyon seçimlerinde kullanılan sigorta şirketi master kayıtları.' },
+      { title: 'Asistans Firmaları', href: '/panel/musteriler?subType=asistan_firmasi', icon: Users, description: 'Geliştirilebilir müşteri ve görüşme kartları; operasyon seçimi müşteri kartından yapılır.' },
       { title: 'Eksper–Sigorta İlişkileri', href: '/panel/ayarlar/eksper-sigorta-iliskileri', icon: GitBranch, description: 'Eksper firması ↔ sigorta şirketi dosya kapsam matrisi.' },
       { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch, description: 'Dosya durumları ve süreç sırası.' },
       { title: 'Eskalasyon Kuralları', href: '/panel/ayarlar/eskalasyon-kurallari', icon: Bell, description: 'SLA ve eskalasyon bildirim kuralları.' },
@@ -97,8 +99,6 @@ export const SETTINGS_LEGACY_REDIRECTS: Record<string, string> = {
   '/panel/ayarlar/musteri-gruplari/eksper-firmalari': '/panel/musteriler?openAdd=1&subType=eksper_firmasi&entityType=corporate',
   '/panel/ayarlar/musteri-gruplari/asistans-firmalar': '/panel/musteriler?openAdd=1&subType=asistan_firmasi&entityType=corporate',
   '/panel/ayarlar/musteri-gruplari/eksper-sigorta-iliskileri': '/panel/ayarlar/eksper-sigorta-iliskileri',
-  '/panel/ayarlar/sigorta-sirketleri': '/panel/ayarlar/musteri-tipleri',
-  '/panel/sigorta-sirketleri': '/panel/musteriler',
   '/panel/ayarlar/saha-tespit-kollari': '/panel/ayarlar/tanimlar',
   '/panel/ayarlar/tedarikciler': '/panel/tedarikciler',
   '/panel/ayarlar/fiyat-yonetimi': '/panel/ayarlar/fiyat-listesi',

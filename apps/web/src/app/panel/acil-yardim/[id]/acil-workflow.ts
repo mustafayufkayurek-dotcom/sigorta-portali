@@ -3,6 +3,13 @@
  * Backend EmergencyStatus 5 değerli; ara aşamalar oturum/local ile tamamlanır.
  */
 
+import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+
+function meridyenIssueTypeLabel(issueType: string): string {
+  const label = resolveClaimDosyaKonusu({ lossType: issueType });
+  return label === '—' ? issueType : label;
+}
+
 export type AcilStageKey =
   | 'ihbar'
   | 'tedarikci_atandi'
@@ -257,7 +264,7 @@ export function buildVendorWhatsAppText(input: {
   return [
     `Meridyen Acil Yardım`,
     `Dosya No: ${input.fileNo}`,
-    `Hizmet: ${input.issueType}`,
+    `Hizmet: ${meridyenIssueTypeLabel(input.issueType)}`,
     `Sigortalı: ${input.insuredLabel}`,
     `Sigortalı Telefon: ${input.phone || '—'}`,
     `Adres: ${fullAddress || '—'}`,
@@ -284,7 +291,7 @@ export function buildCustomerGroupWhatsAppText(input: {
   const text = [
     `Meridyen Acil Yardım — Bilgilendirme`,
     `Dosya No: ${input.fileNo}`,
-    `Hizmet: ${input.issueType}`,
+    `Hizmet: ${meridyenIssueTypeLabel(input.issueType)}`,
     `Sigortalı: ${input.insuredLabel}`,
     `Durum: ${input.statusLabel}`,
     `Onaylı Hizmet Bedeli: ${sale}`,
@@ -324,7 +331,7 @@ export function buildWorkStartWhatsAppText(fileNo: string, issueType: string): s
   return [
     `Meridyen — İşe Başlama Onayı`,
     `Dosya No: ${fileNo}`,
-    `Hizmet: ${issueType}`,
+    `Hizmet: ${meridyenIssueTypeLabel(issueType)}`,
     `Müşteri onayı alındı. Lütfen işe başlayın ve tamamlandığında bildirin.`,
   ].join('\n');
 }
@@ -439,7 +446,7 @@ export function buildClosureEmailPreview(input: {
     `Dosya No: ${input.fileNo}`,
     `Sigortalı: ${input.insuredLabel}`,
     `Sigortalı Telefon: ${phone}`,
-    `Dosya Konusu: ${input.issueType}`,
+    `Dosya Konusu: ${meridyenIssueTypeLabel(input.issueType)}`,
     `Tamamlanma: ${input.summary}`,
     `Onaylı Hizmet Bedeli: ${sale}`,
     `Kapanış Tarihi: ${input.closedAt}`,

@@ -1,7 +1,5 @@
-'use client';
-
-import SettingsLegacyRedirect from '@/components/settings/SettingsLegacyRedirect';
+import { redirect } from 'next/navigation';
 
 export default function LegacySigortaSirketleriRedirectPage() {
-  return <SettingsLegacyRedirect target="/panel/musteriler" />;
+  redirect('/panel/ayarlar/sigorta-sirketleri');
 }
