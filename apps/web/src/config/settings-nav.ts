@@ -44,7 +44,6 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     links: [
       { title: 'Şirket Bilgileri', href: '/panel/ayarlar/sirket-bilgileri', icon: Building2, description: 'Unvan, iletişim, logo ve KVKK bilgileri.' },
       { title: 'Mail ve Bildirim Merkezi', href: '/panel/ayarlar/e-posta-bildirimleri', icon: Bell, description: 'SMTP kurulumu, test maili ve e-posta bildirim kuralları.' },
-      { title: 'SMS Bildirimleri', href: '/panel/ayarlar/sms-bildirimler', icon: MessageSquareText, description: 'Atama mesaj şablonu, test SMS ve gönderim geçmişi.' },
       { title: 'Entegrasyon Merkezi', href: '/panel/ayarlar/entegrasyonlar', icon: Settings, description: 'SMS sağlayıcısı, TÜRMOB ve Logo Wings ERP bağlantıları.' },
       { title: 'Sözleşmeler', href: '/panel/ayarlar/sozlesmeler', icon: ScrollText, description: 'Kullanıcı onay metinleri.' },
       { title: 'Kullanıcılar', href: '/panel/kullanicilar', icon: Users, description: 'Davet, geçici şifre ve arşiv.' },
@@ -81,6 +80,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     icon: FileCog,
     links: [
       { title: 'Şablonlar', href: '/panel/ayarlar/sablonlar', icon: FileCog, description: 'Sistem şablonları.' },
+      { title: 'Mesaj Şablonları', href: '/panel/ayarlar/sms-bildirimler', icon: MessageSquareText, description: 'Acil Yardım, Hasar ve SMS mesaj şablonları.' },
     ],
   },
 ];

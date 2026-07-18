@@ -356,15 +356,53 @@ export function validateInsuredWhatsAppGuard(input: {
   return errors.length ? { ok: false, errors } : { ok: true };
 }
 
+function applyAcilMessageTemplate(
+  template: string,
+  values: {
+    fileNo?: string | null;
+    assignedUserName?: string | null;
+    assignedUserPhone?: string | null;
+    insuredLabel?: string | null;
+    issueType?: string | null;
+  },
+): string {
+  const replacements: Record<string, string> = {
+    '{Dosya No}': (values.fileNo || '').trim(),
+    '{Dosya Sorumlusu}': (values.assignedUserName || '').trim(),
+    '{Dosya Sorumlusu Telefon}': (values.assignedUserPhone || '').trim(),
+    '{Sigortalı Ad}': (values.insuredLabel || '').trim(),
+    '{Dosya Konusu}': values.issueType ? meridyenIssueTypeLabel(values.issueType) : '',
+  };
+  return Object.entries(replacements).reduce(
+    (text, [variable, value]) => text.split(variable).join(value),
+    template,
+  );
+}
+
 /**
  * Sigortalıya ilk bilgilendirme — manuel, dosya sorumlusu tetikler.
  * Alış / kâr asla dahil edilmez.
  */
 export function buildInsuredInitialWhatsAppText(input: {
   assignedUserPhone: string;
+  assignedUserName?: string | null;
   fileNo?: string | null;
+  insuredLabel?: string | null;
+  issueType?: string | null;
+  template?: string | null;
 }): string {
   const phone = (input.assignedUserPhone || '').trim();
+  if (input.template?.trim()) {
+    const text = applyAcilMessageTemplate(input.template.trim(), {
+      fileNo: input.fileNo,
+      assignedUserName: input.assignedUserName,
+      assignedUserPhone: phone,
+      insuredLabel: input.insuredLabel,
+      issueType: input.issueType,
+    });
+    assertCustomerFacingPayloadSafe(text);
+    return text;
+  }
   const filePart = (input.fileNo || '').trim()
     ? ` (Dosya No: ${input.fileNo!.trim()})`
     : '';
@@ -389,8 +427,23 @@ export function buildInsuredInitialWhatsAppText(input: {
 export function buildInsuredClosureSurveyWhatsAppText(input: {
   fileNo: string;
   insuredLabel?: string | null;
+  assignedUserName?: string | null;
+  assignedUserPhone?: string | null;
+  issueType?: string | null;
   surveyUrl?: string | null;
+  template?: string | null;
 }): string {
+  if (input.template?.trim()) {
+    const text = applyAcilMessageTemplate(input.template.trim(), {
+      fileNo: input.fileNo,
+      assignedUserName: input.assignedUserName,
+      assignedUserPhone: input.assignedUserPhone,
+      insuredLabel: input.insuredLabel,
+      issueType: input.issueType,
+    });
+    assertCustomerFacingPayloadSafe(text);
+    return text;
+  }
   const name = (input.insuredLabel || '').trim();
   const greeting = name ? `Değerli Sigortalımız ${name},` : 'Değerli Sigortalımız,';
   const surveyUrl = (input.surveyUrl || '').trim();

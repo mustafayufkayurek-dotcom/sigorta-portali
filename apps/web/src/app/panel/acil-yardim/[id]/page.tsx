@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import axios from 'axios';
 import type { LucideIcon } from 'lucide-react';
 import {
   CheckCircle2,
@@ -68,6 +69,7 @@ import {
 } from './acil-price-helpers';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+import { SETTINGS_API, settingsAuthHeader } from '@/utils/settings-api';
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   pending: 'Bekliyor',
@@ -707,6 +709,10 @@ export default function AcilDosyaDetayPage() {
     kind: InsuredWhatsAppKind;
     text: string;
   } | null>(null);
+  const [insuredMessageTemplates, setInsuredMessageTemplates] = useState<{
+    initial: string | null;
+    closureSurvey: string | null;
+  }>({ initial: null, closureSurvey: null });
   const [insuredMsgErrors, setInsuredMsgErrors] = useState<string[]>([]);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [forceAltVendor, setForceAltVendor] = useState(false);
@@ -785,6 +791,29 @@ export default function AcilDosyaDetayPage() {
     if (saved.detectedCostTl != null) setCostEditDraft(String(saved.detectedCostTl));
     if (saved.vendorProcess === 'reddedildi') setForceAltVendor(true);
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      axios.get(`${SETTINGS_API}/notifications/sms/templates/whatsapp_acil_ilk_bilgilendirme`, {
+        headers: settingsAuthHeader(),
+      }),
+      axios.get(`${SETTINGS_API}/notifications/sms/templates/whatsapp_acil_kapanis_anket`, {
+        headers: settingsAuthHeader(),
+      }),
+    ])
+      .then(([initialRes, closureRes]) => {
+        if (cancelled) return;
+        setInsuredMessageTemplates({
+          initial: initialRes.data?.isActive ? initialRes.data.content : null,
+          closureSurvey: closureRes.data?.isActive ? closureRes.data.content : null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setInsuredMessageTemplates({ initial: null, closureSurvey: null });
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -1065,12 +1094,20 @@ export default function AcilDosyaDetayPage() {
       const text = kind === 'initial'
         ? buildInsuredInitialWhatsAppText({
           assignedUserPhone: owner.phone,
+          assignedUserName: owner.name,
           fileNo,
+          insuredLabel: insuredLabel(vaka),
+          issueType: vaka.issueType,
+          template: insuredMessageTemplates.initial,
         })
         : buildInsuredClosureSurveyWhatsAppText({
           fileNo,
           insuredLabel: insuredLabel(vaka),
+          assignedUserName: owner.name,
+          assignedUserPhone: owner.phone,
+          issueType: vaka.issueType,
           surveyUrl: null,
+          template: insuredMessageTemplates.closureSurvey,
         });
       setInsuredMsgPreview({ kind, text });
       setWhatsAppTab('sigortali');

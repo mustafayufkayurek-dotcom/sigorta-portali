@@ -8,16 +8,34 @@ export const TEMPLATE_TYPES = {
   SMS_ASSIGNMENT: 'sms_assignment',
   WHATSAPP_ASSIGNMENT: 'whatsapp_assignment',
   WHATSAPP_VENDOR_ASSIGNMENT: 'whatsapp_vendor_assignment',
+  WHATSAPP_ACIL_INITIAL_INFORMATION: 'whatsapp_acil_ilk_bilgilendirme',
+  WHATSAPP_ACIL_CLOSURE_SURVEY: 'whatsapp_acil_kapanis_anket',
 } as const;
 
 const TEMPLATE_NAMES: Record<string, string> = {
   [TEMPLATE_TYPES.SMS_ASSIGNMENT]: 'Atama SMS Şablonu',
   [TEMPLATE_TYPES.WHATSAPP_ASSIGNMENT]: 'Atama WhatsApp Şablonu',
   [TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT]: 'Tedarikçi Atama WhatsApp Şablonu',
+  [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: 'Sigortalıya İlk Bilgilendirme',
+  [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: 'Kapanış / Anket Mesajı',
 };
 
 const DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE =
   'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.';
+
+const DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE =
+  'Değerli Sigortalımız,\n\nAcil Yardım dosyanız (Dosya No: {Dosya No}) tarafımıza ulaşmış olup, dosya sorumlumuz {Dosya Sorumlusu} en kısa sürede sizinle irtibata geçecektir.\n\nDosya Konusu: {Dosya Konusu}\nDosya Sorumlusu Tlf: {Dosya Sorumlusu Telefon}\n\nSaygılarımızla,\nMeridyen Assistance';
+
+const DEFAULT_ACIL_CLOSURE_SURVEY_TEMPLATE =
+  'Değerli {Sigortalı Ad},\n\nAcil Yardım dosyanız ({Dosya No}) tamamlanmıştır. Hizmetimizden yararlandığınız için teşekkür ederiz.\n\nDosya Konusu: {Dosya Konusu}\nDeneyiminizi kısaca değerlendirmenizi rica ederiz; geri bildiriminiz Meridyen Assistance için çok değerlidir.\n\nSaygılarımızla,\nMeridyen Assistance';
+
+const DEFAULT_TEMPLATES: Record<string, string> = {
+  [TEMPLATE_TYPES.SMS_ASSIGNMENT]: DEFAULT_ASSIGNMENT_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_ASSIGNMENT]: DEFAULT_ASSIGNMENT_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT]: DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: DEFAULT_ACIL_CLOSURE_SURVEY_TEMPLATE,
+};
 
 @Injectable()
 export class MessageTemplateService {
@@ -35,9 +53,7 @@ export class MessageTemplateService {
     });
 
     if (!template) {
-      const defaultContent = type === TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT
-        ? DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE
-        : DEFAULT_ASSIGNMENT_TEMPLATE;
+      const defaultContent = DEFAULT_TEMPLATES[type] ?? DEFAULT_ASSIGNMENT_TEMPLATE;
       return this.prisma.messageTemplate.create({
         data: {
           type,
@@ -55,9 +71,7 @@ export class MessageTemplateService {
     const existing = await this.prisma.messageTemplate.findUnique({ where: { type } });
 
     if (!existing) {
-      const defaultContent = type === TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT
-        ? DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE
-        : DEFAULT_ASSIGNMENT_TEMPLATE;
+      const defaultContent = DEFAULT_TEMPLATES[type] ?? DEFAULT_ASSIGNMENT_TEMPLATE;
       return this.prisma.messageTemplate.create({
         data: {
           type,

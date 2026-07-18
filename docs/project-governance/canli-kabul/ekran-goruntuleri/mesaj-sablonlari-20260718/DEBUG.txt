@@ -1,0 +1,58 @@
+http://localhost:3055/panel/ayarlar/sms-bildirimler
+
+Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…
+⌘K
+Hızlı İşlem
+Yardım
+Tema
+MY
+Mustafa Yönetici
+Operasyon Aktif
+Dashboard
+Operasyon
+Personel
+Personel Özlük
+Sahiplik
+Müşteriler
+Tedarikçiler
+CRM
+Finans
+Harita
+Test Notları
+Ayarlar
+Yardım
+Menüyü Daralt
+
+Web v356 · v356-dashboard-rc1 · Kılavuz 2026-07-11b
+
+Operasyon Paneli
+/
+Ayarlar
+/
+Mesaj Şablonları
+Mesaj Şablonları
+
+Operasyon adımlarında kullanılan mesaj metinlerini yönetin.
+
+Acil Yardım
+Hasar
+SMS
+
+WhatsApp şablonları · Acil Yardım dosya ekranı · Manuel gönderim
+
+Sıra	Şablon Adı	Alıcı Türü	Süreç Adımı	Mesaj Önizlemesi	Durum	
+1	
+
+Sigortalıya İlk Bilgilendirme
+
+	Sigortalı	İlk Bilgilendirme	
+
+Değerli Sigortalımız,
+
+Acil Yardım dosyanız (Dosya No: AY-2026-0042) tarafımıza ulaşmış olup, dosya sorumlumuz Ayşe Demir en kısa sürede sizinle irtibata geçecektir.
+
+Dosya Konusu: Çekici Hizmeti
+Dosya Sorumlusu Tlf: 0532 000 00 00
+
+Saygılarımızla,
+M
