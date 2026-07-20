@@ -8,6 +8,9 @@ export const TEMPLATE_TYPES = {
   SMS_ASSIGNMENT: 'sms_assignment',
   WHATSAPP_ASSIGNMENT: 'whatsapp_assignment',
   WHATSAPP_VENDOR_ASSIGNMENT: 'whatsapp_vendor_assignment',
+  WHATSAPP_HASAR_APPOINTMENT_INSURED: 'whatsapp_hasar_randevu_sigortali',
+  WHATSAPP_HASAR_APPOINTMENT_ADJUSTER: 'whatsapp_hasar_randevu_tespitci',
+  WHATSAPP_HASAR_APPOINTMENT_VENDOR: 'whatsapp_hasar_randevu_tedarikci',
   WHATSAPP_ACIL_INITIAL_INFORMATION: 'whatsapp_acil_ilk_bilgilendirme',
   WHATSAPP_ACIL_CLOSURE_SURVEY: 'whatsapp_acil_kapanis_anket',
 } as const;
@@ -16,12 +19,24 @@ const TEMPLATE_NAMES: Record<string, string> = {
   [TEMPLATE_TYPES.SMS_ASSIGNMENT]: 'Atama SMS Şablonu',
   [TEMPLATE_TYPES.WHATSAPP_ASSIGNMENT]: 'Atama WhatsApp Şablonu',
   [TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT]: 'Tedarikçi Atama WhatsApp Şablonu',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED]: 'Sigortalı Randevu Bilgilendirme',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_ADJUSTER]: 'Tespitçi Randevu Bilgilendirme',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR]: 'Tedarikçi Randevu Bilgilendirme',
   [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: 'Sigortalıya İlk Bilgilendirme',
   [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: 'Kapanış / Anket Mesajı',
 };
 
 const DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE =
   'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.';
+
+const DEFAULT_HASAR_APPOINTMENT_INSURED_TEMPLATE =
+  'Sayın {musteriAdi}, {dosyaNo} numaralı hasar dosyanız için tespit randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
+
+const DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE =
+  '{dosyaNo} numaralı dosya için tespit randevusu: {randevuTarih} {randevuSaat}. Sigortalı: {musteriAdi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
+
+const DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE =
+  '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
 const DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE =
   'Değerli Sigortalımız,\n\nAcil Yardım dosyanız (Dosya No: {Dosya No}) tarafımıza ulaşmış olup, dosya sorumlumuz {Dosya Sorumlusu} en kısa sürede sizinle irtibata geçecektir.\n\nDosya Konusu: {Dosya Konusu}\nDosya Sorumlusu Tlf: {Dosya Sorumlusu Telefon}\n\nSaygılarımızla,\nMeridyen Assistance';
@@ -33,6 +48,9 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
   [TEMPLATE_TYPES.SMS_ASSIGNMENT]: DEFAULT_ASSIGNMENT_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_ASSIGNMENT]: DEFAULT_ASSIGNMENT_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_VENDOR_ASSIGNMENT]: DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED]: DEFAULT_HASAR_APPOINTMENT_INSURED_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_ADJUSTER]: DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR]: DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: DEFAULT_ACIL_CLOSURE_SURVEY_TEMPLATE,
 };
@@ -104,6 +122,9 @@ export class MessageTemplateService {
       tedarikciAdi?: string;
       isTanimi?: string;
       hasarAdresi?: string;
+      randevuTarih?: string;
+      randevuSaat?: string;
+      tahminiSure?: string;
     },
   ): string {
     return template
@@ -113,6 +134,9 @@ export class MessageTemplateService {
       .replace(/\{sirketTelefon\}/g, vars.sirketTelefon ?? '')
       .replace(/\{tedarikciAdi\}/g, vars.tedarikciAdi ?? '')
       .replace(/\{isTanimi\}/g, vars.isTanimi ?? '')
-      .replace(/\{hasarAdresi\}/g, vars.hasarAdresi ?? '');
+      .replace(/\{hasarAdresi\}/g, vars.hasarAdresi ?? '')
+      .replace(/\{randevuTarih\}/g, vars.randevuTarih ?? '')
+      .replace(/\{randevuSaat\}/g, vars.randevuSaat ?? '')
+      .replace(/\{tahminiSure\}/g, vars.tahminiSure ?? '');
   }
 }
