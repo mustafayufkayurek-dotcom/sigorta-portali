@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-20",
-  "label": "v383-yonetim-dashboard-full",
-  "description": "Full deploy: Yönetim Dashboard (onaylı lokal tasarım), Enterprise sidebar 260/72, Anket Sonuçları, tedarikçi banka teyidi (nullable migration). Backend v383 + Web v383. Commit 306e361. Health PASS, nginx→web PASS, migrate vendor_bank_confirmation PASS. Rollback web v382 / backend v380.",
+  "updatedAt": "2026-07-21",
+  "label": "v384-yonetim-gercek-veri",
+  "description": "Web-only: Yönetim Dashboard sahte REFERENCE veriyi kaldırdı; portfolio-pl, operations, SLA, ownership/user-performance ve anket özeti canlı API. Departman grafikleri boş durum. Backend değişmedi (v383). Commit e794b85. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v383 / backend v383.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v383-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v383-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v384-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v382-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v380-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v383-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v383-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
