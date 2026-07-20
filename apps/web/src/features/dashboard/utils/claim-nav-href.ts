@@ -4,7 +4,7 @@
 export function claimDetailHref(id?: string | null): string | null {
   const trimmed = typeof id === 'string' ? id.trim() : '';
   if (!trimmed) return null;
-  return `/panel/hasar-dosyalari/${encodeURIComponent(trimmed)}`;
+  return `/panel/hasar-dosyalari/${encodeURIComponent(trimmed)}?grup=operasyon`;
 }
 
 export function claimSearchHref(fileNo?: string | null): string | null {

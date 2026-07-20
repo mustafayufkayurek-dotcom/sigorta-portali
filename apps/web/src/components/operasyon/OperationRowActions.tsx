@@ -55,17 +55,17 @@ export function OperationRowActions({
   }, [open]);
 
   const detailHref =
-    kind === 'hasar' ? `/panel/hasar-dosyalari/${id}` : `/panel/acil-yardim/${id}`;
+    kind === 'hasar' ? `/panel/hasar-dosyalari/${id}?grup=operasyon` : `/panel/acil-yardim/${id}`;
   /** Hasar: ?edit=1 ile dosya bilgileri düzenleme (Görüntüle’den ayrı) */
   const editHref =
     kind === 'hasar' ? `/panel/hasar-dosyalari/${id}?edit=1` : detailHref;
   const noteHref =
     kind === 'hasar'
-      ? `/panel/hasar-dosyalari/${id}?grup=operasyon&alt=iletisim`
+      ? `/panel/hasar-dosyalari/${id}?grup=operasyon&gorunum=eski&alt=iletisim`
       : `/panel/acil-yardim/${id}`;
   const historyHref =
     kind === 'hasar'
-      ? `/panel/hasar-dosyalari/${id}?grup=operasyon&alt=gecmis`
+      ? `/panel/hasar-dosyalari/${id}?grup=operasyon&gorunum=eski&alt=gecmis`
       : `/panel/acil-yardim/${id}`;
 
   const stop = (e: React.MouseEvent) => {

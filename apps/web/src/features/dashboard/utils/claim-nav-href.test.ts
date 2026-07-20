@@ -13,12 +13,12 @@ import {
 
 assert.equal(
   claimDetailHref('abc-123'),
-  '/panel/hasar-dosyalari/abc-123',
+  '/panel/hasar-dosyalari/abc-123?grup=operasyon',
   'detail href',
 );
 assert.equal(
   claimDetailHref('a/b?x=1'),
-  `/panel/hasar-dosyalari/${encodeURIComponent('a/b?x=1')}`,
+  `/panel/hasar-dosyalari/${encodeURIComponent('a/b?x=1')}?grup=operasyon`,
   'detail encodes path param',
 );
 assert.equal(claimDetailHref('  '), null, 'blank id');
@@ -33,7 +33,7 @@ assert.equal(claimSearchHref(''), null, 'empty fileNo');
 
 assert.equal(
   claimNavHref({ id: 'id-1', fileNo: 'F-1' }),
-  '/panel/hasar-dosyalari/id-1',
+  '/panel/hasar-dosyalari/id-1?grup=operasyon',
   'id wins over fileNo',
 );
 assert.equal(

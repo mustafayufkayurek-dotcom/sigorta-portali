@@ -305,7 +305,7 @@ function ClaimFilesPageContent() {
 
   function handleCreateSuccess(claimId: string) {
     setShowNewPanel(false);
-    router.push(`/panel/hasar-dosyalari/${claimId}`);
+    router.push(`/panel/hasar-dosyalari/${claimId}?grup=operasyon`);
   }
 
   return (

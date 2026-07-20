@@ -1333,16 +1333,22 @@ export default function ClaimFileDetailPage() {
   const initialGroup: GroupTab =
     aksiyonParam === 'onay-talep'
       ? 'raporlar'
-      : grupParam === 'operasyon' || grupParam === 'raporlar' || grupParam === 'evraklar' || grupParam === 'finans' || grupParam === 'genel-bilgiler'
-      ? (grupParam as GroupTab)
-      : 'genel-bilgiler';
+      : openEdit || focusSigortali
+        ? 'genel-bilgiler'
+        : grupParam === 'operasyon' ||
+            grupParam === 'raporlar' ||
+            grupParam === 'evraklar' ||
+            grupParam === 'finans' ||
+            grupParam === 'genel-bilgiler'
+          ? (grupParam as GroupTab)
+          : 'operasyon';
   const initialOpsSub =
     altParam === 'gecmis' || altParam === 'iletisim' || altParam === 'gorevler' || altParam === 'randevular'
       ? altParam
       : undefined;
   const gorunumParam = searchParams.get('gorunum');
   const [opsView, setOpsView] = useState<'planlayici' | 'eski'>(
-    gorunumParam === 'eski' ? 'eski' : 'planlayici',
+    gorunumParam === 'eski' || Boolean(initialOpsSub) ? 'eski' : 'planlayici',
   );
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);

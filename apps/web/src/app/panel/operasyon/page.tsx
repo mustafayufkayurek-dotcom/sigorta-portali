@@ -921,7 +921,7 @@ function OperasyonPageContent() {
                     onClick={() =>
                       router.push(
                         row.kind === 'hasar'
-                          ? `/panel/hasar-dosyalari/${row.id}`
+                          ? `/panel/hasar-dosyalari/${row.id}?grup=operasyon`
                           : `/panel/acil-yardim/${row.id}`,
                       )
                     }
