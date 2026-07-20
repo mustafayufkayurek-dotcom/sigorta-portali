@@ -11,7 +11,8 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { StaffProductivityDetailSection } from '@/features/dashboard/components/management-dashboard/MgmtStaffTable';
-import { REFERENCE_STAFF } from '@/features/dashboard/components/management-dashboard/reference-preview';
+import { useManagementDashboardData } from '@/features/dashboard/components/management-dashboard/use-management-dashboard-data';
+import { rangeForPreset } from '@/features/dashboard/components/management-dashboard/period';
 
 type OwnershipItem = {
   userId: string;
@@ -54,6 +55,8 @@ const PENDING_TABLE_COLUMNS: TableColumnDef[] = [
 export default function OwnershipPage() {
   const loadTableColumns = usePanelTableColumns('table-cols:sahiplik-load', LOAD_TABLE_COLUMNS);
   const pendingTableColumns = usePanelTableColumns('table-cols:sahiplik-pending', PENDING_TABLE_COLUMNS);
+  const staffRange = rangeForPreset('bu_ay');
+  const { staffRows } = useManagementDashboardData(staffRange, 'bu_ay');
 
   const { data: loadRaw, isLoading: loadLoading } = useApiQuery<unknown>(
     ['ownership-load'],
@@ -111,7 +114,7 @@ export default function OwnershipPage() {
         </div>
       </div>
 
-      <StaffProductivityDetailSection rows={REFERENCE_STAFF} />
+      <StaffProductivityDetailSection rows={staffRows} />
 
       {/* Ownership Load Table */}
       <TableColumnsProvider value={loadTableColumns}>

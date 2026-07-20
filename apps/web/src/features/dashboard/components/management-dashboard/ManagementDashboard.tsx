@@ -19,21 +19,11 @@ import {
   type MgmtDateRange,
   type MgmtPeriodPreset,
 } from './period';
-import {
-  REFERENCE_DEPARTMENTS,
-  REFERENCE_DEPT_ROWS,
-  REFERENCE_KPIS,
-  REFERENCE_MARGINS,
-  REFERENCE_SLA_PCT,
-  REFERENCE_SLA_SLICES,
-  REFERENCE_STAFF,
-  REFERENCE_SUMMARY,
-  REFERENCE_TREND,
-} from './reference-preview';
+import { useManagementDashboardData } from './use-management-dashboard-data';
 
 /**
  * MASTER Yönetim Dashboard — yalnızca management layout.
- * Referans: Ekran_Resmi_2026-07-20_22.15.21 (talimat paneli ürün UI’ına alınmaz).
+ * Veri: canlı API; mock REFERENCE kullanılmaz.
  */
 export function ManagementDashboard() {
   const { showToast } = useToast();
@@ -47,21 +37,25 @@ export function ManagementDashboard() {
     return detectPreset(range.dateFrom, range.dateTo);
   }, [customOpen, range.dateFrom, range.dateTo]);
 
+  const {
+    loading,
+    kpis,
+    summary,
+    staffRows,
+    deptRows,
+    deptDataAvailable,
+    trend,
+    departments,
+    margins,
+    slaPct,
+    slaSlices,
+  } = useManagementDashboardData(range, activePreset);
+
   const filterMeta: Array<[string, string]> = [
     ['Grafik / Rapor', 'Yönetim Dashboard'],
     ['Dönem', PERIOD_LABELS[activePreset]],
     ['Tarih Aralığı', `${formatTrDate(range.dateFrom)} - ${formatTrDate(range.dateTo)}`],
   ];
-
-  const kpis = REFERENCE_KPIS;
-  const summary = REFERENCE_SUMMARY;
-  const staffRows = REFERENCE_STAFF;
-  const deptRows = REFERENCE_DEPT_ROWS;
-  const trend = REFERENCE_TREND;
-  const departments = REFERENCE_DEPARTMENTS;
-  const margins = REFERENCE_MARGINS;
-  const slaPct = REFERENCE_SLA_PCT;
-  const slaSlices = REFERENCE_SLA_SLICES;
 
   const updatedAtLabel = useMemo(() => {
     const d = new Date();
@@ -82,7 +76,6 @@ export function ManagementDashboard() {
     setCustomOpen(true);
     setRange((prev) => {
       const merged = { ...prev, ...next };
-      // Geçersiz aralık: bitiş başlangıçtan önceyse düzelt
       if (merged.dateFrom && merged.dateTo && merged.dateTo < merged.dateFrom) {
         if (next.dateFrom) return { ...merged, dateTo: next.dateFrom };
         if (next.dateTo) return { ...merged, dateFrom: next.dateTo };
@@ -110,6 +103,10 @@ export function ManagementDashboard() {
   };
 
   const exportDept = () => {
+    if (!deptRows.length) {
+      showToast('info', 'Departman raporu için henüz veri yok.');
+      return;
+    }
     downloadWorkbook({
       fileName: `departman-finansal-performans-${range.dateFrom}`,
       meta: filterMeta,
@@ -140,6 +137,10 @@ export function ManagementDashboard() {
   };
 
   const exportStaff = () => {
+    if (!staffRows.length) {
+      showToast('info', 'Personel verimliliği için henüz veri yok.');
+      return;
+    }
     downloadWorkbook({
       fileName: `personel-verimlilik-${range.dateFrom}`,
       meta: filterMeta,
@@ -172,7 +173,7 @@ export function ManagementDashboard() {
         onOpenMeeting={() => setMeetingOpen(true)}
       />
 
-      <MgmtKpiRow items={kpis} />
+      <MgmtKpiRow items={kpis} loading={loading} />
       <MgmtExecutiveSummary cells={summary} />
 
       <MgmtChartsRow
@@ -205,14 +206,18 @@ export function ManagementDashboard() {
       />
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(260px,0.85fr)]">
-        <MgmtDepartmentTable rows={deptRows} dataAvailable onExcel={exportDept} />
+        <MgmtDepartmentTable
+          rows={deptRows}
+          dataAvailable={deptDataAvailable}
+          onExcel={exportDept}
+        />
         <MgmtStaffTable rows={staffRows} onExcel={exportStaff} />
         <MgmtSideRail slaPct={slaPct} slices={slaSlices} />
       </div>
 
       <div className="flex flex-col gap-1 border-t border-[#E2E8F0] pt-3 text-[12px] text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
         <p>Son Güncelleme: {updatedAtLabel}</p>
-        <p>Veriler 5 Dakikada Bir Güncellenmektedir</p>
+        <p>Veriler Canlı Sistemden Alınmaktadır</p>
       </div>
 
       <MgmtMeetingDrawer

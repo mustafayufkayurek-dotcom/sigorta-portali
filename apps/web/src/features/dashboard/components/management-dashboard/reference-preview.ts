@@ -1,7 +1,6 @@
 /**
- * MASTER referans önizleme verisi — ekran görüntüsü birebir görsel kabul için.
- * Kaynak: Ekran_Resmi_2026-07-20_22.15.21 (Yönetim Dashboard MASTER v3).
- * Üretim API’leri bağlandığında bu katman kaldırılır / gerçek veriye geçer.
+ * MASTER referans önizleme verisi — yalnızca yerel /dev kabul için.
+ * Production Yönetim Dashboard bu dosyayı KULLANMAZ.
  */
 
 import type { DeptSlice, MarginPoint, TrendPoint } from './MgmtChartsRow';

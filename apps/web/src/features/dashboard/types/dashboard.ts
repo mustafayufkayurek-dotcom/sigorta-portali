@@ -69,6 +69,7 @@ export type SlaByStatus = {
 };
 export type SlaSummaryResponse = {
   byStatus: SlaByStatus[];
+  overall?: { total: number; healthy: number; atRisk: number; critical: number };
 };
 
 export type OwnershipItem = {
