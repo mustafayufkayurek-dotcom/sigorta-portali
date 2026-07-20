@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-20",
-  "label": "v381-hasar-varsayilan-operasyon",
-  "description": "Web-only: Hasar dosya detay varsayılan sekme Operasyon Planlayıcısı (grup yoksa operasyon); giriş linkleri ?grup=operasyon. Backend değişmedi (v380). Commit 035eadf. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v380 / backend v380.",
+  "label": "v382-hasar-planlayici-flicker-fix",
+  "description": "Web-only: Operasyon Planlayıcısı sağ panel flicker döngüsü düzeltmesi (load→onClaimUpdated→claim remount kesildi; soft refresh; form/WA sıfırlama yok). Backend değişmedi (v380). Commit 2df9f2f. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v381 / backend v380.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v380-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v381-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v382-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v380-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v381-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v380-amd64"
   },
   "mustPassSmokeRoutes": [
