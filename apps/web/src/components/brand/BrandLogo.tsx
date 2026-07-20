@@ -27,14 +27,19 @@ type BrandLogoProps = {
   className?: string;
 };
 
+/** Topbar / panel: orta boy + oval (kapsül) kabuk — ne login kadar büyük ne eski kadar küçük */
+const TOPBAR_SHELL =
+  'inline-flex h-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/90 bg-white px-3.5 py-1.5 shadow-sm dark:border-slate-600 dark:bg-slate-900';
+const TOPBAR_IMG = 'block h-10 w-auto max-w-[200px] object-contain object-left sm:h-11 sm:max-w-[220px]';
+
 const variantStyles: Record<BrandLogoVariant, { shell: string; img: string; width?: number; height?: number }> = {
   topbar: {
-    shell: 'inline-flex h-10 shrink-0 items-center justify-center overflow-visible',
-    img: 'block h-9 w-auto max-w-[176px] object-contain object-left sm:h-10',
+    shell: TOPBAR_SHELL,
+    img: TOPBAR_IMG,
   },
   panel: {
-    shell: 'inline-flex h-10 shrink-0 items-center justify-center overflow-visible',
-    img: 'block h-9 w-auto max-w-[176px] object-contain object-left sm:h-10',
+    shell: TOPBAR_SHELL,
+    img: TOPBAR_IMG,
   },
   login: {
     shell:
@@ -45,9 +50,9 @@ const variantStyles: Record<BrandLogoVariant, { shell: string; img: string; widt
   },
   splash: {
     shell: 'inline-flex items-center justify-center',
-    img: 'block h-14 w-auto max-w-[220px] object-contain',
-    width: 220,
-    height: 146,
+    img: 'block h-32 w-auto max-w-[min(400px,88vw)] object-contain sm:h-40 sm:max-w-[480px]',
+    width: 400,
+    height: 266,
   },
   mark: {
     shell: 'inline-flex shrink-0 items-center justify-center',
@@ -69,12 +74,12 @@ const variantStyles: Record<BrandLogoVariant, { shell: string; img: string; widt
     img: 'block h-8 w-auto max-w-[min(128px,32vw)] object-contain object-left sm:h-9 sm:max-w-[160px]',
   },
   light: {
-    shell: 'inline-flex h-10 shrink-0 items-center justify-center',
-    img: 'block h-9 w-auto max-w-[176px] object-contain object-left sm:h-10',
+    shell: TOPBAR_SHELL,
+    img: TOPBAR_IMG,
   },
   dark: {
-    shell: 'inline-flex h-10 shrink-0 items-center justify-center',
-    img: 'block h-9 w-auto max-w-[176px] object-contain object-left brightness-[1.08] sm:h-10',
+    shell: TOPBAR_SHELL,
+    img: `${TOPBAR_IMG} brightness-[1.08]`,
   },
 };
 
@@ -117,6 +122,79 @@ export function BrandLogo({
   }
 
   return inner;
+}
+
+/**
+ * Yükleme ekranı — büyük logo; küre üzerinde yavaş dönen halkalar, yazı sabit.
+ * Resmi PNG bozulmaz / kırpılmaz.
+ */
+export function BrandSplashLogo({
+  alt,
+  className = '',
+}: {
+  alt: string;
+  className?: string;
+}) {
+  const logoSrc = CORPORATE_LOGO_ORIGINAL_PNG;
+
+  return (
+    <div
+      role="img"
+      aria-label={alt}
+      className={`brand-splash-logo relative inline-block h-32 w-auto aspect-[1024/682] sm:h-40 ${className}`.trim()}
+    >
+      <img
+        src={logoSrc}
+        alt=""
+        className="pointer-events-none h-full w-full select-none object-contain"
+        draggable={false}
+        decoding="async"
+        aria-hidden="true"
+      />
+      {/* Küre üzeri yörünge halkaları — marka renkleri */}
+      <div
+        className="pointer-events-none absolute left-[1.5%] top-1/2 aspect-square h-[82%] -translate-y-1/2"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 100 100"
+          className="brand-splash-globe h-full w-full overflow-visible"
+          fill="none"
+        >
+          <ellipse
+            cx="50"
+            cy="50"
+            rx="47"
+            ry="30"
+            stroke="#5BA3E0"
+            strokeWidth="2.2"
+            opacity="0.9"
+            transform="rotate(-28 50 50)"
+          />
+          <ellipse
+            cx="50"
+            cy="50"
+            rx="45"
+            ry="27"
+            stroke="#E53935"
+            strokeWidth="2.2"
+            opacity="0.85"
+            transform="rotate(32 50 50)"
+          />
+          <ellipse
+            cx="50"
+            cy="50"
+            rx="43"
+            ry="24"
+            stroke="#1B3A6B"
+            strokeWidth="1.8"
+            opacity="0.8"
+            transform="rotate(78 50 50)"
+          />
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 /** @deprecated BrandLogo kullanın */

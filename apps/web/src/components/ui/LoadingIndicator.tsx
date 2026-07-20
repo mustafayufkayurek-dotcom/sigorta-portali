@@ -1,6 +1,6 @@
 'use client';
 
-import { BrandLogo } from '@/components/brand/BrandLogo';
+import { BrandSplashLogo } from '@/components/brand/BrandLogo';
 
 export type LoadingIndicatorSize = 'sm' | 'md' | 'lg';
 
@@ -76,12 +76,12 @@ export function LoadingScreen({
   return (
     <div
       className={joinClasses(
-        'flex min-h-[12rem] flex-col items-center justify-center gap-4 px-4',
+        'flex min-h-[16rem] flex-col items-center justify-center gap-6 px-4',
         className,
       )}
     >
-      <BrandLogo alt="Meridyen Assistance" variant="splash" />
-      <LoadingIndicator size="lg" label={label} ariaLabel={label ?? 'Yükleniyor'} />
+      <BrandSplashLogo alt="Meridyen Assistance" />
+      <LoadingIndicator size="md" label={label} ariaLabel={label ?? 'Yükleniyor'} />
     </div>
   );
 }
