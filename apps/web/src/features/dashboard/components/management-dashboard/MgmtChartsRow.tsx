@@ -147,7 +147,7 @@ function DonutBody({ data, tall }: { data: DeptSlice[]; tall?: boolean }) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => formatTry(value)}
+              formatter={(value) => formatTry(Number(value ?? 0))}
               contentStyle={{ borderRadius: 8, borderColor: '#E2E8F0', fontSize: 12 }}
             />
           </PieChart>

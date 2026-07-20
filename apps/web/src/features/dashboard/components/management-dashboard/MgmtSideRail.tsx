@@ -40,7 +40,7 @@ function SlaDonutBody({
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number, name: string) => [`%${value}`, name]}
+              formatter={(value, name) => [`%${Number(value ?? 0)}`, String(name ?? '')]}
               contentStyle={{ borderRadius: 8, borderColor: '#E2E8F0', fontSize: 12 }}
             />
           </PieChart>
