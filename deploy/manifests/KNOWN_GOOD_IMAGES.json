@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-20",
-  "label": "v380-hasar-operasyon-planlayicisi",
-  "description": "Full deploy (web + backend): Hasar Operasyon Planlayıcısı /panel/hasar-dosyalari/[id]?grup=operasyon; eski görünüm ?gorunum=eski; claim-operation-center API + migration 20260719154000_hasar_operation_center; Mesaj Şablonları Hasar/Acil/Özel Müşteri/SMS sekmeleri. Rapor yazım sayfasına dokunulmadı. Commit c1182a2. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v379 / backend v379.",
+  "label": "v381-hasar-varsayilan-operasyon",
+  "description": "Web-only: Hasar dosya detay varsayılan sekme Operasyon Planlayıcısı (grup yoksa operasyon); giriş linkleri ?grup=operasyon. Backend değişmedi (v380). Commit 035eadf. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v380 / backend v380.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v380-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v380-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v381-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v379-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v379-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v380-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v380-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
