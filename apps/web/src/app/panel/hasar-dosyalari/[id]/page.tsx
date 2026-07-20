@@ -14,6 +14,7 @@ import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { TakipTab } from './_components/tabs/TakipTab';
+import { OperasyonPlanlayiciPanel } from '@/components/hasar-operasyon-planlayicisi/OperasyonPlanlayiciPanel';
 import { DosyaBilgileriDetay, resolveDosyaEksperi, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
@@ -1339,6 +1340,10 @@ export default function ClaimFileDetailPage() {
     altParam === 'gecmis' || altParam === 'iletisim' || altParam === 'gorevler' || altParam === 'randevular'
       ? altParam
       : undefined;
+  const gorunumParam = searchParams.get('gorunum');
+  const [opsView, setOpsView] = useState<'planlayici' | 'eski'>(
+    gorunumParam === 'eski' ? 'eski' : 'planlayici',
+  );
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1482,7 +1487,64 @@ export default function ClaimFileDetailPage() {
         />
       )}
       {activeGroup === 'operasyon' && (
-        <TakipTab claimId={id!} claim={claim} initialSubTab={initialOpsSub} />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-xs text-slate-500">
+              Operasyon görünümü · Eski ekran geri dönüş için korunur
+            </p>
+            <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpsView('planlayici');
+                  router.replace(`/panel/hasar-dosyalari/${id}?grup=operasyon&gorunum=planlayici`, {
+                    scroll: false,
+                  });
+                }}
+                className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
+                  opsView === 'planlayici'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                Operasyon Planlayıcısı
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpsView('eski');
+                  router.replace(`/panel/hasar-dosyalari/${id}?grup=operasyon&gorunum=eski`, {
+                    scroll: false,
+                  });
+                }}
+                className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
+                  opsView === 'eski' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Eski Operasyon Görünümü
+              </button>
+            </div>
+          </div>
+          {opsView === 'planlayici' ? (
+            <OperasyonPlanlayiciPanel
+              claimId={id!}
+              claimFile={claim}
+              canEdit={canUserAssignClaim(userRoleCode, isFieldStaff) || userHasPermission('claim_file.update')}
+              onGoToReports={() => {
+                setActiveGroup('raporlar');
+                router.replace(`/panel/hasar-dosyalari/${id}?grup=raporlar`, { scroll: false });
+              }}
+              onClaimUpdated={() => {
+                axios
+                  .get(`${API}/claim-files/${id}`, { headers: authHeader() })
+                  .then((r) => setClaim(r.data.data))
+                  .catch(() => undefined);
+              }}
+            />
+          ) : (
+            <TakipTab claimId={id!} claim={claim} initialSubTab={initialOpsSub} />
+          )}
+        </div>
       )}
     </div>
   );

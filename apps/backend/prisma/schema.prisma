@@ -832,6 +832,9 @@ model Appointment {
   completedAt    DateTime? @map("completed_at")
   notifiedAt     DateTime? @map("notified_at")
   location       String?
+  locationUrl    String?   @map("location_url")
+  estimatedDurationMinutes Int? @map("estimated_duration_minutes")
+  isPrimaryInspection Boolean @default(false) @map("is_primary_inspection")
   notes          String?
   status         String    @default("planned")
   checkedInAt        DateTime? @map("checked_in_at")
@@ -850,6 +853,7 @@ model Appointment {
   @@index([adjusterId])
   @@index([assignedUserId])
   @@index([scheduledAt])
+  @@index([claimFileId, isPrimaryInspection])
   @@map("appointments")
 }
 
@@ -3300,8 +3304,12 @@ model PriceListVersion {
 
 enum FileActivityAction {
   SUPPLIER_ASSIGNED
+  SUPPLIER_REMOVED
   APPOINTMENT_SCHEDULED
   APPOINTMENT_UPDATED
+  APPOINTMENT_NOTIFICATION_RECORDED
+  PHONE_CALL_RECORDED
+  WHATSAPP_STATUS_RECORDED
   INSPECTION_DONE
   COST_REPORT_SUBMITTED
   ATTACHMENT_ADDED

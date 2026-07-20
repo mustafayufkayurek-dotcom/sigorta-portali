@@ -1,3 +1,5 @@
 import { MessageTemplatesPage } from '@/components/settings/MessageTemplatesPage';
 
-export default MessageTemplatesPage;
+export default function SmsBildirimlerPage() {
+  return <MessageTemplatesPage />;
+}

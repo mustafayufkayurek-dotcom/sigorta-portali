@@ -9,11 +9,13 @@ import { ClaimResponsibilitiesModule } from '@/modules/claim-responsibilities/cl
 import { OperationalAccessGrantsModule } from '@/modules/operational-access-grants/operational-access-grants.module';
 import { VendorsModule } from '@/modules/vendors/vendors.module';
 import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.module';
+import { ClaimOperationCenterController } from './claim-operation-center.controller';
+import { ClaimOperationCenterService } from './claim-operation-center.service';
 
 @Module({
   imports: [CustomerAccessLogModule, PrismaModule, NotificationsModule, ClaimResponsibilitiesModule, OperationalAccessGrantsModule, VendorsModule, VendorIntelligenceProfileModule],
-  providers: [ClaimFilesService, Approval72hScheduler],
-  controllers: [ClaimFilesController],
+  providers: [ClaimFilesService, Approval72hScheduler, ClaimOperationCenterService],
+  controllers: [ClaimFilesController, ClaimOperationCenterController],
   exports: [ClaimFilesService, Approval72hScheduler],
 })
 export class ClaimFilesModule {}

@@ -80,7 +80,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     icon: FileCog,
     links: [
       { title: 'Şablonlar', href: '/panel/ayarlar/sablonlar', icon: FileCog, description: 'Sistem şablonları.' },
-      { title: 'Mesaj Şablonları', href: '/panel/ayarlar/sms-bildirimler', icon: MessageSquareText, description: 'Acil Yardım, Hasar ve SMS mesaj şablonları.' },
+      { title: 'Mesaj Şablonları', href: '/panel/ayarlar/sms-bildirimler', icon: MessageSquareText, description: 'Hasar, Acil Yardım, Özel Müşteri WhatsApp ve SMS şablonları.' },
     ],
   },
 ];
