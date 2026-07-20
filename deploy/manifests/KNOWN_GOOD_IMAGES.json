@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-18",
-  "label": "v379-mesaj-sablonlari",
-  "description": "Full deploy (web + backend): Ayarlar Mesaj Şablonları sayfası + Acil WhatsApp şablonları (İlk Bilgilendirme, Kapanış/Anket) API'den yönetilir; kod fallback korunur. Web v379, backend v379. Migration yok (schema up to date). Commit safety/pre-deploy-20260718-mesaj-sablonlari. Health PASS, smoke route PASS, nginx→web routing PASS. Production browser: kullanıcı production kontrolü (Cursor production UI login yapmaz). Rollback web v378 / backend v377.",
+  "updatedAt": "2026-07-20",
+  "label": "v380-hasar-operasyon-planlayicisi",
+  "description": "Full deploy (web + backend): Hasar Operasyon Planlayıcısı /panel/hasar-dosyalari/[id]?grup=operasyon; eski görünüm ?gorunum=eski; claim-operation-center API + migration 20260719154000_hasar_operation_center; Mesaj Şablonları Hasar/Acil/Özel Müşteri/SMS sekmeleri. Rapor yazım sayfasına dokunulmadı. Commit c1182a2. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v379 / backend v379.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v379-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v379-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v380-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v380-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v378-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v377-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v379-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v379-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
