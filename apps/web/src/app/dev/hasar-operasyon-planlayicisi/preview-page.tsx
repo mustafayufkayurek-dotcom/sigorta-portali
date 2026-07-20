@@ -92,64 +92,137 @@ function PreviewShell() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 bg-slate-900/20"
+            className="fixed inset-0 z-40 bg-slate-900/30"
             aria-label="Kapat"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl sm:max-w-lg">
-            <div className="flex items-start justify-between border-b border-slate-100 px-4 py-3">
+          <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl sm:max-w-2xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div>
-                <h2 className="text-sm font-semibold">Operasyon Planlayıcısı</h2>
-                <p className="text-[11px] text-slate-500">
-                  {activeMeta.n}. Adım · {activeMeta.label}
+                <h2 className="text-base font-bold text-slate-950">Operasyon Planlayıcısı</h2>
+                <p className="mt-0.5 text-[12px] text-slate-500">
+                  Adım Adım İlerleyerek Operasyona Yön Verin.
                 </p>
               </div>
-              <button type="button" onClick={() => setDrawerOpen(false)} className="p-1.5">
-                <X className="h-4 w-4 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                aria-label="Kapat"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex gap-1 overflow-x-auto border-b px-2 py-2">
-              {PLANNER_STEPS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setActiveStep(s.id)}
-                  className={`shrink-0 rounded-lg px-2 py-1.5 text-[10px] font-semibold ${
-                    activeStep === s.id ? 'bg-blue-50 text-blue-700' : 'text-slate-500'
-                  }`}
-                >
-                  {s.n}. {s.label}
-                </button>
-              ))}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              {renderStepContent(activeStep)}
-            </div>
-            <div className="border-t px-4 py-3">
-              {saveNotice ? (
-                <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  {saveNotice}
-                </p>
-              ) : null}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold"
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  İptal
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                  onClick={async () => {
-                    const r = await saveStep(activeStep);
-                    setSaveNotice(r.message);
-                  }}
-                >
-                  Kaydet
-                </button>
+            <div className="flex min-h-0 flex-1">
+              <nav
+                className="flex w-[200px] shrink-0 flex-col border-r border-slate-200 bg-white py-3 pl-2 pr-1.5"
+                aria-label="Operasyon Akışı"
+              >
+                <ol className="relative flex flex-col gap-0.5">
+                  {PLANNER_STEPS.map((s, idx) => {
+                    const active = activeStep === s.id;
+                    const done = s.status === 'done';
+                    const waiting = active || s.status === 'waiting';
+                    return (
+                      <li key={s.id} className="relative">
+                        {idx < PLANNER_STEPS.length - 1 ? (
+                          <span
+                            className={`pointer-events-none absolute left-[18px] top-8 h-[calc(100%-8px)] w-0.5 ${
+                              done && !active ? 'bg-emerald-500' : 'bg-slate-200'
+                            }`}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(s.id)}
+                          className={`relative flex w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left ${
+                            active ? 'bg-orange-50 ring-1 ring-orange-200' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <span
+                            className={`relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white ${
+                              done && !active
+                                ? 'bg-emerald-500'
+                                : waiting
+                                  ? 'bg-orange-500 ring-4 ring-orange-200'
+                                  : 'bg-slate-400'
+                            }`}
+                          >
+                            {s.n}
+                          </span>
+                          <span className="min-w-0 flex-1 pt-0.5">
+                            <span
+                              className={`flex items-start gap-1 text-[11px] font-semibold leading-snug ${
+                                done && !active
+                                  ? 'text-emerald-700'
+                                  : waiting
+                                    ? 'text-orange-700'
+                                    : 'text-slate-500'
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1">{s.label}</span>
+                              {done && !active ? (
+                                <span className="mt-0.5 text-emerald-600">✓</span>
+                              ) : null}
+                            </span>
+                            <span
+                              className={`mt-0.5 block text-[10px] font-medium ${
+                                done && !active
+                                  ? 'text-emerald-600'
+                                  : waiting
+                                    ? 'text-orange-600'
+                                    : 'text-slate-400'
+                              }`}
+                            >
+                              {done && !active
+                                ? 'Tamamlandı'
+                                : waiting
+                                  ? 'İşlem Bekliyor'
+                                  : 'Bekliyor'}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </nav>
+              <div className="flex min-w-0 flex-1 flex-col bg-white">
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    {activeMeta.n}. Adım
+                  </p>
+                  <h3 className="text-sm font-bold text-slate-950">{activeMeta.label}</h3>
+                  <div className="mt-3">{renderStepContent(activeStep)}</div>
+                </div>
+                <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3">
+                  {saveNotice ? (
+                    <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      {saveNotice}
+                    </p>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700"
+                      onClick={() => setDrawerOpen(false)}
+                    >
+                      İptal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      onClick={async () => {
+                        const r = await saveStep(activeStep);
+                        setSaveNotice(r.message);
+                      }}
+                    >
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </aside>

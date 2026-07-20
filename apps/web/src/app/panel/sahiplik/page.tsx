@@ -10,6 +10,8 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { StaffProductivityDetailSection } from '@/features/dashboard/components/management-dashboard/MgmtStaffTable';
+import { REFERENCE_STAFF } from '@/features/dashboard/components/management-dashboard/reference-preview';
 
 type OwnershipItem = {
   userId: string;
@@ -108,6 +110,8 @@ export default function OwnershipPage() {
           <p className="text-2xl font-bold text-amber-600 mt-1">{pendingLoading ? '—' : pending.length}</p>
         </div>
       </div>
+
+      <StaffProductivityDetailSection rows={REFERENCE_STAFF} />
 
       {/* Ownership Load Table */}
       <TableColumnsProvider value={loadTableColumns}>

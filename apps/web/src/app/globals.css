@@ -264,15 +264,15 @@
   color: #e2e8f0 !important;
 }
 
-/* Panel sidebar genişlik HARD — flex/parent override yok (v354: 220 / 72) */
+/* Panel sidebar genişlik HARD — flex/parent override yok (260 / 72 — Enterprise Sol Menü 2026-07-20) */
 .panel-sidebar {
   flex-shrink: 0 !important;
   box-sizing: border-box;
 }
 .panel-sidebar--expanded {
-  width: 220px !important;
-  min-width: 220px !important;
-  max-width: 220px !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
 }
 .panel-sidebar--collapsed {
   width: 72px !important;
@@ -282,37 +282,62 @@
 
 /* RC1: sidebar marka kaldırıldı — logo yalnızca topbar BrandLogo */
 
-/* Panel sidebar navigasyon — ANA SAYFA TASARIM TALİMATI aktif: #EEF4FF / #2563EB */
+/*
+ * Panel sidebar navigasyon — Enterprise Sol Menü referans 2026-07-20
+ * Metin 15px/500 · ikon 20px · aktif #EEF2FF / ikon #2563EB / yazı #1E40AF · hover #F3F4F6
+ */
 .panel-sidebar-nav-link {
-  @apply relative flex items-center justify-between gap-2 rounded-lg px-3 font-semibold transition duration-150 ease-in-out;
-  @apply text-[#1F2937] hover:bg-[#F1F5F9]/80 hover:text-[#1F2937];
+  @apply relative flex items-center justify-between gap-2.5 rounded-lg px-3 transition duration-150 ease-in-out;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #0F172A;
+}
+.panel-sidebar-nav-link:hover {
+  background-color: #F3F4F6;
+  color: #0F172A;
 }
 .panel-sidebar-nav-link--default {
-  @apply py-2 text-sm;
+  padding-top: 0.75rem; /* 12px */
+  padding-bottom: 0.75rem;
 }
 .panel-sidebar-nav-link--first {
-  @apply pt-0 pb-2 text-sm;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 .panel-sidebar-nav-link--compact {
-  @apply py-1.5 text-xs;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  font-size: 13px;
 }
 .panel-sidebar-nav-link--active {
-  background-color: #EEF4FF;
-  color: #2563EB;
-  font-weight: 700;
-  box-shadow: inset 4px 0 0 #2563EB;
+  background-color: #EEF2FF;
+  color: #1E40AF;
+  font-weight: 500;
+  box-shadow: none;
+}
+.panel-sidebar-nav-link--active:hover {
+  background-color: #EEF2FF;
+  color: #1E40AF;
 }
 .panel-sidebar-nav-icon {
-  @apply h-4 w-4 shrink-0 text-[#64748B] transition;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #64748B;
+  transition: color 150ms ease, transform 150ms ease;
 }
 .panel-sidebar-nav-link:hover .panel-sidebar-nav-icon {
-  @apply text-[#64748B];
+  color: #64748B;
 }
 .panel-sidebar-nav-link--active .panel-sidebar-nav-icon {
   color: #2563EB;
 }
 .panel-sidebar-nav-children {
-  @apply ml-3 space-y-0.5 border-l border-[#F1F5F9] pl-2;
+  @apply ml-3 space-y-0.5 border-l border-[#E5E7EB] pl-2;
+}
+.panel-sidebar-nav-group--start {
+  margin-top: 8px;
 }
 .dark .panel-sidebar-nav-link {
   color: #cbd5e1 !important;

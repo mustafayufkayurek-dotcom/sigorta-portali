@@ -1,16 +1,20 @@
 # Meridyen Dashboard RC1 — Resmi Kabul, Dondurma (Freeze) ve Geliştirme Politikası
 
 **Tarih:** 15 Temmuz 2026  
-**Durum:** RC1 ACCEPTED · Architecture LOCKED · Design System LOCKED  
+**Durum:** **Frozen** · RC1 ACCEPTED · Architecture LOCKED · Design System LOCKED  
+**Canlı (web):** `v357-dashboard-rc1-freeze` · image `sigorta-web:…-v357-amd64` · commit `65734ac`  
+**Canlı (backend):** `v356` · image `app-backend:…-v356-amd64`  
+**Kapanış raporu:** `docs/project-governance/canli-kabul/DASHBOARD_RC1_RELEASE_KAPANIS_20260715.md`  
 **Doğrulama:** Role / Brand / Responsive / Theme / Shared Components — **PASS**  
 **Kaynak checklist:** `docs/project-governance/canli-kabul/ONAYLI_UI_CHECKLIST.md`  
+**Production ürün kabulü:** `docs/project-governance/PRODUCTION_URUN_KABULU.md` (kullanıcı kabul eder; Cursor prod login/credential istemez)  
 **Yeni odak:** EPIC-02 – Hasar Dosyası Enterprise UX
 
 ---
 
 ## Durum
 
-Dashboard RC1 kullanıcı tarafından kabul edilmiştir.
+Dashboard RC1 kullanıcı tarafından kabul edilmiştir ve **Frozen** işaretlenmiştir (canlı web **v357**).
 
 Yapılan teknik doğrulamalar sonucunda:
 
@@ -122,10 +126,10 @@ Sidebar ölçüleri kalıcıdır.
 
 | Durum | Genişlik |
 |-------|----------|
-| Expanded | **220 px** |
+| Expanded | **260 px** |
 | Collapsed | **72 px** |
 
-Bu standart değiştirilmeyecektir.
+Kaynak: Enterprise Sol Menü referans 2026-07-20 (Mustafa). Bu standart değiştirilmeyecektir.
 
 ---
 

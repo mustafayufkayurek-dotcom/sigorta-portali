@@ -46,7 +46,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
     items: [
       {
         key: 'departments',
-        title: 'Departmanlar',
+    title: 'Departmanlar',
         purpose: 'Operasyon birimleri ve rapor formatları.',
         href: '/panel/ayarlar/departmanlar',
         tone: 'blue',
@@ -60,7 +60,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       },
       {
         key: 'customerSubTypes',
-        title: 'Müşteri Tipleri',
+    title: 'Müşteri Tipleri',
         purpose: 'Müşteri kartında önce seçilen alt tip sözlüğü (sigorta, broker, eksper, asistans…).',
         href: '/panel/ayarlar/musteri-tipleri',
         tone: 'blue',
@@ -161,14 +161,14 @@ function DefinitionCard({ item, metric }: { item: DashboardItem; metric: Definit
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-        <div>
+                <div>
           <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
           <p className="mt-1 text-xs leading-5 text-slate-500">{item.purpose}</p>
-        </div>
+                </div>
         <span className={`shrink-0 rounded-lg border px-2 py-1 text-xs font-semibold ${TONE_CLASS[item.tone]}`}>
           {countText}
-        </span>
-      </div>
+                </span>
+              </div>
       {activeText ? <p className="mt-2 text-xs text-slate-400">{activeText}</p> : null}
       {metric.note ? <p className="mt-1 text-xs text-slate-400">{metric.note}</p> : null}
       <Link
@@ -290,7 +290,7 @@ export default function TanimlarPage() {
             <div className="mb-4">
               <h2 className="text-base font-semibold text-slate-900">{group.title}</h2>
               <p className="mt-1 text-sm text-slate-500">{group.description}</p>
-            </div>
+                </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {group.items.map((item) => (
                 <DefinitionCard key={item.key} item={item} metric={metrics[item.key]} />
@@ -301,7 +301,7 @@ export default function TanimlarPage() {
         <p className="text-xs text-slate-400">
           Cari kayıtlar sol menüdeki Müşteriler ekranından açılır; burada yalnızca tip ve sözlük tanımları yönetilir.
         </p>
-      </div>
+            </div>
     </SettingsPageLayout>
   );
 }

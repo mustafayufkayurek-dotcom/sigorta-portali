@@ -1,13 +1,14 @@
 # Onaylı UI Checklist — Regresyon Kalkanı
 
 **Güncelleme:** 15 Temmuz 2026  
-**Bilinen iyi sürüm (canlı):** Web **v350** + Backend **v349** (`KNOWN_GOOD_IMAGES.json`) — RC1 henüz deploy edilmedi  
+**Durum:** Dashboard RC1 **Frozen** (canlı web **v357** / backend **v356**)  
+**Canlı web image:** `sigorta-web:dalga2-agreement-hr-01-v357-amd64` · commit `65734ac`  
+**KNOWN_GOOD (manifest, auth smoke bekliyor):** hâlâ v356 — auth PASS sonrası v357 / rollback v356  
 **Manifest:** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
-**Rollback (canlı):** Web **v348** / Backend **v348**  
-**P1 Dashboard:** implementasyon kapandı (v344–v348); local RC1 hazırlık (commit/deploy bekliyor)
+**Kapanış:** `DASHBOARD_RC1_RELEASE_KAPANIS_20260715.md`
 
-> **Dashboard RC1 FREEZE — `docs/project-governance/DASHBOARD_RC1_FREEZE.md`**  
-> Dashboard donduruldu — odak Hasar / Operasyon / CRM / Finans.  
+> **Dashboard RC1 FREEZE — Frozen — `docs/project-governance/DASHBOARD_RC1_FREEZE.md`**  
+> Dashboard donduruldu (canlı v357) — odak Hasar / Operasyon / CRM / Finans.  
 > RC1 sonrası dashboard kabuğu ve canvas yerleşimi değiştirilmez; yeni işler modül sayfalarına gider.
 
 Bu dosya **canlıda onaylanmış** görünüm ve bileşenlerin tek kaynağıdır. Agent panel/layout/portal dosyalarına dokunmadan önce burayı okur. Onaylı maddeyi değiştirmek için Mustafa onayı şarttır.
@@ -51,11 +52,11 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 | S3 | Viewport dock: üst logo yok, orta scroll nav, alt daralt + Yardım | `layout.tsx` + `PanelSidebarGuideFooter` | ✅ RC1 kalıcı 2026-07-15 |
 | S4 | Daralt/genişlet tercihi `localStorage panel-sidebar-collapsed` | `layout.tsx` | ✅ |
 | S5 | Yardım = Help Drawer (topbar + sidebar); açık/genişlik localStorage | `PanelHelpDrawer` | ✅ v351 |
-| S6 | Genişlik HARD **220px açık / 72px kapalı** (`min/max` + inline style + CSS `!important`) | `panel-layout-spacing.ts` + `globals.css` + `layout.tsx` | ✅ v354 / RC1 |
-| S7 | Aktif: `#EEF4FF` zemin / `#2563EB` metin + sol 4px çizgi + bold; hafif hover | `globals.css` `.panel-sidebar-nav-link` | ✅ RC1 / v355 |
+| S6 | Genişlik HARD **260px açık / 72px kapalı** (`min/max` + inline style + CSS `!important`) — Enterprise Sol Menü 2026-07-20 | `panel-layout-spacing.ts` + `globals.css` + `layout.tsx` | ✅ 2026-07-20 |
+| S7 | Aktif: `#EEF2FF` zemin / ikon `#2563EB` / metin `#1E40AF`; hover `#F3F4F6`; metin 15px/500; ikon 20px | `globals.css` `.panel-sidebar-nav-link` | ✅ 2026-07-20 |
 | S8 | Operasyon badge = revizyon + gelen kutusu sayısı | `layout.tsx` | ✅ RC1 / v355 |
 
-**Yasak:** Sidebar’da animasyonlu küre; AI SVG brand; kalıcı sağ kılavuz; sidebar genişletme (>220). Header + sidebar aynı resmi PNG asset kullanır.
+**Yasak:** Sidebar’da animasyonlu küre; AI SVG brand; kalıcı sağ kılavuz; sidebar genişletme (>260). Header + sidebar aynı resmi PNG asset kullanır.
 
 ---
 
@@ -145,7 +146,7 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 
 - [x] Logo yalnızca resmi `meridyen-logo-original` (AI logo yok)
 - [x] Header: ☰ + logo aynı satır / hizalı
-- [x] Sidebar 220 / 72 korunuyor; logo→menü boşluk sıkı
+- [x] Sidebar 260 / 72 korunuyor; logo→menü boşluk sıkı
 - [x] Dashboard yerleşim korunuyor (yeni panel / aşağı itme yok; KPI boyutu aynı)
 - [x] Operasyon / Kritik / Günün Akışı iç rafine
 - [x] Breadcrumb `Dashboard > …`
@@ -161,7 +162,7 @@ Durum: `✅ Onaylı` | `⏳ Teyit bekliyor` | `❌ Bilinen regresyon`
 Deploy etmeden önce agent veya Mustafa şunları teyit eder:
 
 - [ ] **S1/S2** — Sidebar’da logo yok (marka yalnız topbar `BrandLogo`)
-- [ ] **S6** — Sidebar HARD 220px açık / 72px kapalı
+- [ ] **S6** — Sidebar HARD 260px açık / 72px kapalı
 - [ ] **O1/O5/O9** — Topbar ☰ + resmi logo + arama (Ctrl+K/⌘K) + breadcrumb
 - [ ] **O6–O8** — Help Drawer + Sistem Sağlık (6 satır) + 5 tema
 - [ ] **A3–A7** — KPI kompakt + C3 Operasyon|Kritik + C4 stretch
@@ -183,6 +184,8 @@ Otomatik smoke (`post-deploy-smoke.sh`) route erişimini doğrular; **görsel ka
 | v353 | **web-only** | Logo h-auto %82 + sidebar HARD 224/70; C3/C4 stretch |
 | v354 | **web-only** | Nihai: 220/72, header logo, operasyon paneli dolu |
 | **v355** | **web-only** | **RC1:** breadcrumb, Ctrl+K, sağlık 6’lı, iç rafine — dashboard donduruldu |
+| v356 | **full** | Dashboard RC1 freeze paketi (web+backend) |
+| **v357** | **web-only** | **Frozen canlı:** click/nav, rol layout, portal shell — `65734ac` |
 
 ---
 

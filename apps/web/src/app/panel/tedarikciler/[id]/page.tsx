@@ -27,6 +27,7 @@ import {
 } from '@/utils/vendor-form-helpers';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { BANK_CONFIRMATION_STATUS_LABELS } from '@/utils/vendor-bank-confirmation';
 
 
 function fmtCurrency(n: number | null | undefined) {
@@ -96,6 +97,113 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'indigo' | '
     red: 'bg-red-50 text-red-700 border-red-100',
   }[variant];
   return <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border ${cls}`}>{children}</span>;
+}
+
+function VendorBankConfirmationCard({
+  vendor,
+  onUpdate,
+}: {
+  vendor: any;
+  onUpdate: () => Promise<void> | void;
+}) {
+  const [working, setWorking] = useState(false);
+  const status = vendor.ibanWhatsappConfirmStatus;
+
+  const openWhatsapp = async () => {
+    setWorking(true);
+    try {
+      const response = await axios.post(
+        `${API}/vendors/${vendor.id}/bank-confirmation/whatsapp`,
+        { phone: vendor.phone },
+        { headers: authHeader() },
+      );
+      window.open(response.data.data.waUrl, '_blank', 'noopener,noreferrer');
+      await axios.post(
+        `${API}/vendors/${vendor.id}/bank-confirmation/whatsapp-opened`,
+        {},
+        { headers: authHeader() },
+      );
+      await onUpdate();
+    } catch (error) {
+      console.error(error);
+      window.alert('WhatsApp teyit mesajı hazırlanamadı.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const setStatus = async (nextStatus: 'confirmed' | 'declined') => {
+    setWorking(true);
+    try {
+      await axios.patch(
+        `${API}/vendors/${vendor.id}/bank-confirmation/status`,
+        { status: nextStatus },
+        { headers: authHeader() },
+      );
+      await onUpdate();
+    } catch (error) {
+      console.error(error);
+      window.alert('Teyit durumu kaydedilemedi.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <SectionCard title="Banka Bilgileri" subtitle="Ödeme öncesi tedarikçi teyidi">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <InfoRow
+          label="IBAN"
+          value={vendor.iban ? <span className="font-mono">{vendor.iban}</span> : null}
+        />
+        <InfoRow
+          label="Banka Adı"
+          value={vendor.bankName ?? (vendor.iban ? 'Banka adı otomatik belirlenemedi' : null)}
+        />
+        <InfoRow label="Hesap Sahibi Adı Soyadı / Unvanı" value={vendor.accountHolderName} />
+        <InfoRow
+          label="Teyit Durumu"
+          value={BANK_CONFIRMATION_STATUS_LABELS[status] ?? 'Henüz Teyit Edilmedi'}
+        />
+      </div>
+      {vendor.ibanAccountHolderMatchStatus === 'mismatch' && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.
+        </div>
+      )}
+      {vendor.iban && vendor.accountHolderName && (
+        <>
+          <p className="mt-3 text-xs text-slate-500">Bu Kontrol Banka Doğrulaması Değildir.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={openWhatsapp}
+              disabled={working || !vendor.phone}
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+            >
+              {working ? 'İşleniyor...' : 'WhatsApp İle Teyit İste'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus('confirmed')}
+              disabled={working}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            >
+              Teyit Alındı
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus('declined')}
+              disabled={working}
+              className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            >
+              Düzeltme İstendi
+            </button>
+          </div>
+        </>
+      )}
+    </SectionCard>
+  );
 }
 
 // ── Profil Tab ────────────────────────────────────────────────────────────────
@@ -742,7 +850,15 @@ function ChatArchivePreviewModal({
   );
 }
 
-function GenelBakisTab({ vendor, vendorId }: { vendor: any; vendorId: string }) {
+function GenelBakisTab({
+  vendor,
+  vendorId,
+  onVendorUpdate,
+}: {
+  vendor: any;
+  vendorId: string;
+  onVendorUpdate: () => Promise<void> | void;
+}) {
   const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [historyQuery, setHistoryQuery] = useState('');
@@ -831,7 +947,6 @@ function GenelBakisTab({ vendor, vendorId }: { vendor: any; vendorId: string }) 
             <InfoRow label="E-posta" value={vendor.email ? <a href={`mailto:${vendor.email}`} className="text-indigo-600 hover:underline">{vendor.email}</a> : null} />
             <InfoRow label="Yetkili E-posta" value={vendor.authorizedEmail ? <a href={`mailto:${vendor.authorizedEmail}`} className="text-indigo-600 hover:underline">{vendor.authorizedEmail}</a> : null} />
             <InfoRow label="Vergi Bilgileri" value={[vendor.taxOffice, vendor.taxNumber].filter(Boolean).join(' · ')} />
-            <InfoRow label="Banka Bilgileri" value={[vendor.bankName, vendor.iban].filter(Boolean).join(' · ')} />
             <InfoRow label="Hizmet Bölgeleri" value={coverageAreas.length ? `${coverageAreas.length} bölge tanımlı` : 'Henüz tanımlı değil'} />
             <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.join(', ') : 'Henüz tanımlı değil'} />
           </div>
@@ -853,6 +968,8 @@ function GenelBakisTab({ vendor, vendorId }: { vendor: any; vendorId: string }) 
           </div>
         </SectionCard>
       </div>
+
+      <VendorBankConfirmationCard vendor={vendor} onUpdate={onVendorUpdate} />
 
       <SectionCard title="Operasyon Özeti" subtitle="Hız, tamamlama ve tekrar çalışma görünümü">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1450,7 +1567,9 @@ export default function VendorDetailPage() {
       </div>
 
       {/* ── Tab Content ── */}
-      {activeTab === 'profil' && <GenelBakisTab vendor={vendor} vendorId={id!} />}
+      {activeTab === 'profil' && (
+        <GenelBakisTab vendor={vendor} vendorId={id!} onVendorUpdate={loadVendor} />
+      )}
       {activeTab === 'hizmet-kapsam' && <HizmetKapsamTab vendor={vendor} onUpdate={loadVendor} />}
       {activeTab === 'evraklar' && (
         <EvraklarTab

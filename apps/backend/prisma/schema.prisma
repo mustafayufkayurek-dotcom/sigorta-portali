@@ -920,6 +920,13 @@ model Vendor {
   longitude        Float?
   iban             String?
   bankName         String?  @map("bank_name")
+  accountHolderName String? @map("account_holder_name")
+  ibanAccountHolderMatchStatus String? @map("iban_account_holder_match_status")
+  ibanWhatsappConfirmStatus String? @map("iban_whatsapp_confirm_status")
+  ibanWhatsappConfirmPhone String? @map("iban_whatsapp_confirm_phone")
+  ibanWhatsappConfirmSentAt DateTime? @map("iban_whatsapp_confirm_sent_at")
+  ibanWhatsappConfirmAt DateTime? @map("iban_whatsapp_confirm_at")
+  ibanWhatsappConfirmByUserId String? @map("iban_whatsapp_confirm_by_user_id")
   // CRM alanları
   source           String?  // referral | web | direct | other
   referral         String?  // Bu tedarikçiyi kim önerdi/tanıştırdı

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardShell, DashboardHeader, DashboardGrid } from './_components';
 import { PrimaryKpiGroup } from '@/features/dashboard/components/kpi';
@@ -15,19 +14,14 @@ import {
 } from '@/features/dashboard/components/finance';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import {
-  AdminFinanceSummarySection,
-  WeeklyPerformanceWidget,
   AdminOperationsKpiBand,
-  AdminManagementKpiBand,
-  AdminOperationsStatusBand,
-  AdminDailyFlowSection,
-  AdminOperationsCriticalRow,
   OfficeDailyFlowSection,
   OfficeBottomRow,
   FieldOperationsKpiBand,
   FieldDailyFlowSection,
   FieldBottomRow,
 } from '@/features/dashboard/components/admin';
+import { ManagementDashboard } from '@/features/dashboard/components/management-dashboard';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { resolveDashboardLayout } from '@/features/dashboard/registry/role-dashboard-layout';
 
@@ -38,34 +32,8 @@ function operationAreaDashboardLabel(area: string): string | null {
   return null;
 }
 
-/** C4 — Haftalık | Günün Akışı dengeli satır */
-function AdminAnalyticsRow({
-  staggerIndex,
-  hideAcil,
-}: {
-  staggerIndex: number;
-  hideAcil: boolean;
-}) {
-  return (
-    <section
-      className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 xl:gap-5"
-      style={{ transitionDelay: `${staggerIndex * 100}ms` }}
-    >
-      <div className="flex h-full min-h-[260px] flex-col">
-        <WeeklyPerformanceWidget staggerIndex={0} />
-      </div>
-      <div className="flex h-full min-h-[260px] flex-col">
-        <AdminDailyFlowSection staggerIndex={0} hideAcil={hideAcil} />
-      </div>
-    </section>
-  );
-}
-
 export default function PanelPage() {
   const router = useRouter();
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
 
   const access = usePanelAccess();
   const {
@@ -104,7 +72,7 @@ export default function PanelPage() {
       : layout.layoutId === 'office_staff'
         ? 'Dosya Sorumlusu Merkezi'
         : layout.layoutId === 'management'
-          ? 'Operasyon Yönetim Merkezi'
+          ? 'Yönetim Dashboard'
           : 'Operasyon Merkezi';
 
   const subtitle =
@@ -117,39 +85,14 @@ export default function PanelPage() {
           ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
           : 'Dosya kapsamı tanımlanmamış. Kullanıcı yönetiminden Hasar / Acil kapsamı atanmalıdır.'
         : layout.layoutId === 'management'
-          ? 'Şirket yönetimi, operasyon durumu ve haftalık performans tek ekranda.'
+          ? 'Kurumsal finans, operasyon ve personel performansını tek ekranda izleyin.'
           : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
   const hideAcil = !layout.showAcilInFlow;
 
-  /** Management: C1 Şirket Yönetimi → C2 Operasyon Durumu → C3 Ops|Kritik → C4 Haftalık|Akış → C5 Finans */
+  /** MASTER Yönetim Dashboard — mockup referansı; eski yönetim yerleşimi kullanılmaz */
   if (layout.layoutId === 'management') {
-    return (
-      <DashboardShell>
-        <DashboardHeader
-          title={title}
-          subtitle={subtitle}
-          showAcilAction
-          isManagement
-        />
-
-        <AdminManagementKpiBand staggerIndex={0} />
-
-        <AdminOperationsStatusBand staggerIndex={1} hideAcil={hideAcil} />
-
-        <AdminOperationsCriticalRow staggerIndex={2} />
-
-        <AdminAnalyticsRow staggerIndex={3} hideAcil={hideAcil} />
-
-        <AdminFinanceSummarySection
-          year={year}
-          month={month}
-          onYearChange={setYear}
-          onMonthChange={setMonth}
-          staggerIndex={4}
-        />
-      </DashboardShell>
-    );
+    return <ManagementDashboard />;
   }
 
   /** Dosya sorumlusu: KPI → Operasyon panelleri → Akış | Onay */

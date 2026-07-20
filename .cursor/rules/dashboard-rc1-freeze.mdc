@@ -7,7 +7,8 @@ alwaysApply: false
 # Dashboard RC1 Freeze
 
 **Kaynak:** `docs/project-governance/DASHBOARD_RC1_FREEZE.md`  
-**Durum:** RC1 ACCEPTED · Architecture LOCKED · Design System LOCKED
+**Durum:** **Frozen** · RC1 ACCEPTED · Architecture LOCKED · Design System LOCKED  
+**Canlı:** web `v357-dashboard-rc1-freeze` (`…-v357-amd64`, `65734ac`) · backend `v356`
 
 ## Altın kural
 
@@ -17,7 +18,7 @@ Dashboard yeniden tasarlanmaz. Shell / Layout / Header / Sidebar / KPI yerleşim
 
 - Yeni Dashboard Layout / Sidebar / Header
 - KPI kartlarını büyütmek veya KPI ekranına çevirmek
-- Sidebar 220 / 72 dışına çıkmak
+- Sidebar 260 / 72 dışına çıkmak (Enterprise Sol Menü 2026-07-20 — Mustafa)
 - Rol veya portal için ayrı Dashboard tasarlamak
 - Ortak component kopyalamak; Dashboard Shell değiştirmek
 - AI / yeniden çizilmiş / farklı logo

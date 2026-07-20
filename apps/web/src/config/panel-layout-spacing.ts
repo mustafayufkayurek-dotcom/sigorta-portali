@@ -17,10 +17,10 @@ export const PANEL_SIDEBAR_HEIGHT = 'h-[calc(100vh-3.5rem)]';
 
 /**
  * Sidebar genişlik HARD — parent/flex büyütmesin.
- * DevTools: açık width=220 / min=220 / max=220; kapalı 72.
- * (v353 regresyonu: 224/70 kilitli kalmıştı — v354 nihai)
+ * DevTools: açık width=260 / min=260 / max=260; kapalı 72.
+ * Kaynak: Sol Menü Enterprise referans 2026-07-20 (Mustafa — RC1 220→260).
  */
 export const PANEL_SIDEBAR_WIDTH_EXPANDED =
-  'panel-sidebar panel-sidebar--expanded w-[220px] min-w-[220px] max-w-[220px] shrink-0';
+  'panel-sidebar panel-sidebar--expanded w-[260px] min-w-[260px] max-w-[260px] shrink-0';
 export const PANEL_SIDEBAR_WIDTH_COLLAPSED =
   'panel-sidebar panel-sidebar--collapsed w-[72px] min-w-[72px] max-w-[72px] shrink-0';

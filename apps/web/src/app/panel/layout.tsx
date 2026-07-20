@@ -65,6 +65,7 @@ import {
   GitBranch,
   HelpCircle,
   MapPin,
+  MessageSquareText,
   MonitorCheck,
   PackageCheck,
   Receipt,
@@ -99,6 +100,7 @@ const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/panel/eksper-crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
+  { path: '/panel/anketler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
@@ -149,6 +151,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/sigorta-portal', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF'] },
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
+  { path: '/panel/anketler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
@@ -257,6 +260,8 @@ interface NavigationLink {
   icon?: LucideIcon;
   /** Yalnızca tam path eşleşmesinde aktif (ör. Finans Özeti ana sayfa) */
   exactMatch?: boolean;
+  /** Öncesinde +8px grup boşluğu (Enterprise Sol Menü) */
+  groupStart?: boolean;
 }
 
 interface PanelSidebarProps {
@@ -302,6 +307,12 @@ function getPanelMainLinks({
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'CRM', href: '/panel/crm', icon: GitBranch },
             { title: 'Harita', href: '/panel/harita', icon: MapPin },
+            {
+              title: 'Anketler',
+              href: '/panel/anketler/sonuclar',
+              icon: MessageSquareText,
+              children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
+            },
             { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
@@ -322,21 +333,34 @@ function getPanelMainLinks({
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
             { title: 'Raporlar', href: '/panel/raporlar', icon: ClipboardList },
+            {
+              title: 'Anketler',
+              href: '/panel/anketler/sonuclar',
+              icon: MessageSquareText,
+              children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
+            },
             { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
-          { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
-          { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog },
+          { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList, groupStart: true },
+          { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog, groupStart: true },
           { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
-          { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
+          { title: 'Müşteriler', href: '/panel/musteriler', icon: Users, groupStart: true },
           { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
           { title: 'CRM', href: '/panel/crm', icon: GitBranch },
-          { title: 'Finans', href: '/panel/finans', icon: Receipt },
+          { title: 'Finans', href: '/panel/finans', icon: Receipt, groupStart: true },
           { title: 'Harita', href: '/panel/harita', icon: MapPin },
-          { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
+          {
+            title: 'Anketler',
+            href: '/panel/anketler/sonuclar',
+            icon: MessageSquareText,
+            groupStart: true,
+            children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
+          },
+          { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2, groupStart: true },
           { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
         ];
 }
@@ -883,21 +907,21 @@ function PanelSidebar({
     const linkNode = (
       <Link
         href={link.href}
-        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative' : ''}`}
+        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : ''}`}
         aria-label={collapsed ? tooltipLabel : undefined}
       >
-        <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2'}`}>
-          {link.icon ? <link.icon className="panel-sidebar-nav-icon" /> : null}
+        <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2.5'}`}>
+          {link.icon ? <link.icon className="panel-sidebar-nav-icon" strokeWidth={1.75} /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
         {!collapsed && link.alertCount && link.alertCount > 0 ? (
-          <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-[#EF4444] px-1.5 py-0.5 text-[10px] font-semibold text-white">
             {link.alertCount > 99 ? '99+' : link.alertCount}
           </span>
         ) : null}
         {collapsed && link.alertCount && link.alertCount > 0 ? (
           <span
-            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500"
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#EF4444]"
             aria-hidden="true"
           />
         ) : null}
@@ -905,7 +929,10 @@ function PanelSidebar({
     );
 
     return (
-      <div key={link.href} className="space-y-0.5">
+      <div
+        key={link.href}
+        className={`panel-sidebar-nav-group space-y-0.5${link.groupStart ? ' panel-sidebar-nav-group--start' : ''}`}
+      >
         <SidebarNavTooltip label={tooltipLabel} collapsed={collapsed}>
           {linkNode}
         </SidebarNavTooltip>
@@ -920,18 +947,18 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#1F2937] transition-[width] duration-200 ease-in-out md:flex ${
+      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out md:flex ${
         collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
       style={
         collapsed
           ? { width: 72, minWidth: 72, maxWidth: 72 }
-          : { width: 220, minWidth: 220, maxWidth: 220 }
+          : { width: 260, minWidth: 260, maxWidth: 260 }
       }
     >
       {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
-      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pt-2 pb-2 [scrollbar-width:thin]">
-        <div className="space-y-0.5">
+      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pt-3 pb-3 [scrollbar-width:thin]">
+        <div className="flex flex-col">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
       </nav>
@@ -1055,6 +1082,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     const token = getAccessToken();
     if (!token || !hasValidSessionScope() || isRememberMeExpired() || isRememberMeInactive()) {
       clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
+      setLoading(false);
+      setAuthChecked(true);
       router.push('/giris');
       return;
     }

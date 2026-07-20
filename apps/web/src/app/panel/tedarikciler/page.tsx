@@ -26,6 +26,10 @@ import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { validateIBAN } from '@/utils/validators';
 import {
+  BANK_CONFIRMATION_STATUS_LABELS,
+  compareVendorAccountHolder,
+} from '@/utils/vendor-bank-confirmation';
+import {
   VENDOR_CATEGORIES,
   VENDOR_DOC_OTHER_SELECT,
   HIZMET_KOLU_OTHER_KEY,
@@ -276,7 +280,8 @@ const emptyForm = () => ({
   identityNo: '', firstName: '', lastName: '', birthDate: '',
   phone: '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: '',
   cityCode: '', city: '', district: '', neighborhood: '', streetName: '', buildingNo: '', doorNo: '', address: '',
-  iban: '', bankName: '', referral: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
+  iban: '', bankName: '', accountHolderName: '',
+  ibanWhatsappConfirmStatus: '', referral: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
   contractStartDate: '', contractEndDate: '', contractNotes: '',
   category: 'hasar' as VendorCategory,
   canActAsInspector: false,
@@ -834,6 +839,7 @@ export default function VendorsPage() {
   const [nviResult, setNviResult] = useState<boolean | null>(null);
 
   const [ibanError, setIbanError] = useState<string | null>(null);
+  const [ibanWhatsappSending, setIbanWhatsappSending] = useState(false);
   const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string }>({});
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
@@ -1493,6 +1499,8 @@ export default function VendorsPage() {
       neighborhood: v.neighborhood ?? '', streetName: v.streetName ?? '',
       buildingNo: v.buildingNo ?? '', doorNo: v.doorNo ?? '',
       address: v.address ?? '', iban: v.iban ?? '', bankName: v.bankName ?? '',
+      accountHolderName: v.accountHolderName ?? '',
+      ibanWhatsappConfirmStatus: v.ibanWhatsappConfirmStatus ?? '',
       referral: v.referral ?? '', tags: Array.isArray(v.tags) ? v.tags : [], cardNotes: cardNotesToFormEntries(v.notes ?? ''),
       contractStartDate: v.contractStartDate ? v.contractStartDate.split('T')[0] : '',
       contractEndDate: v.contractEndDate ? v.contractEndDate.split('T')[0] : '',
@@ -1639,7 +1647,7 @@ export default function VendorsPage() {
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
-        iban: form.iban || null, bankName: form.bankName || null,
+        iban: form.iban || null, accountHolderName: form.accountHolderName || null,
         referral: form.referral || null, tags: form.tags, notes: serializeCardNotes(form.cardNotes),
         contractStartDate: form.contractStartDate ? new Date(form.contractStartDate).toISOString() : null,
         contractEndDate: form.contractEndDate ? new Date(form.contractEndDate).toISOString() : null,
@@ -1769,7 +1777,7 @@ export default function VendorsPage() {
   const addTag = () => { const t = tagInput.trim(); if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] })); setTagInput(''); };
 
   const handleIbanChange = (raw: string) => {
-    setForm((p) => ({ ...p, iban: raw }));
+    setForm((p) => ({ ...p, iban: raw, bankName: raw.trim() ? p.bankName : '' }));
     const compact = raw.replace(/\s/g, '').toUpperCase();
     if (compact.length === 0) {
       setIbanError(null);
@@ -1779,14 +1787,50 @@ export default function VendorsPage() {
       const result = validateIBAN(compact);
       if (result.valid) {
         setIbanError(null);
-        if (result.bankName) {
-          setForm((p) => ({ ...p, iban: raw, bankName: result.bankName ?? p.bankName }));
-        }
+        setForm((p) => ({ ...p, iban: raw, bankName: result.bankName ?? '' }));
       } else {
         setIbanError(result.error ?? 'Geçersiz IBAN');
+        setForm((p) => ({ ...p, iban: raw, bankName: '' }));
       }
     } else {
       setIbanError(null);
+    }
+  };
+
+  const accountHolderMatchStatus = form.iban
+    ? compareVendorAccountHolder(form.accountHolderName, form.name)
+    : 'unknown';
+  const bankDataMatchesSavedVendor =
+    !!editVendor &&
+    form.iban.replace(/\s/g, '').toUpperCase() ===
+      String(editVendor.iban ?? '').replace(/\s/g, '').toUpperCase() &&
+    form.accountHolderName.trim() === String(editVendor.accountHolderName ?? '').trim();
+
+  const openBankConfirmationWhatsapp = async () => {
+    if (!editVendor || !bankDataMatchesSavedVendor) return;
+    setIbanWhatsappSending(true);
+    try {
+      const response = await axios.post(
+        `${API}/vendors/${editVendor.id}/bank-confirmation/whatsapp`,
+        { phone: form.phone },
+        { headers: authHeader() },
+      );
+      window.open(response.data.data.waUrl, '_blank', 'noopener,noreferrer');
+      await axios.post(
+        `${API}/vendors/${editVendor.id}/bank-confirmation/whatsapp-opened`,
+        {},
+        { headers: authHeader() },
+      );
+      setForm((p) => ({ ...p, ibanWhatsappConfirmStatus: 'link_opened' }));
+      setEditVendor((p: any) => p ? { ...p, ibanWhatsappConfirmStatus: 'link_opened' } : p);
+      showToast('success', 'WhatsApp teyit mesajı hazırlandı.');
+    } catch (error: any) {
+      showToast(
+        'error',
+        error?.response?.data?.message ?? 'WhatsApp teyit mesajı hazırlanamadı.',
+      );
+    } finally {
+      setIbanWhatsappSending(false);
     }
   };
 
@@ -3438,10 +3482,63 @@ export default function VendorsPage() {
                       )}
                     </FormField>
                     <FormField label="Banka Adı">
-                      <input className={inp} placeholder="IBAN ile otomatik dolar" value={form.bankName}
-                        onChange={(e) => setForm((p) => ({ ...p, bankName: e.target.value }))} />
+                      <input
+                        className={`${inp} bg-slate-50 text-slate-600`}
+                        placeholder={form.iban ? 'Banka adı otomatik belirlenemedi' : 'IBAN ile otomatik dolar'}
+                        value={form.bankName}
+                        readOnly
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        Banka, IBAN içindeki banka kodundan otomatik belirlenir.
+                      </p>
                     </FormField>
+                    <FormField label="Hesap Sahibi Adı Soyadı / Unvanı">
+                      <input
+                        className={inp}
+                        placeholder="IBAN hesabında kayıtlı tam ad veya unvan"
+                        value={form.accountHolderName}
+                        onChange={(e) => setForm((p) => ({ ...p, accountHolderName: e.target.value }))}
+                        onBlur={(e) => {
+                          const value = e.target.value.replace(/\s+/g, ' ').trim();
+                          setForm((p) => ({ ...p, accountHolderName: value }));
+                        }}
+                      />
+                      {form.iban && !form.accountHolderName.trim() && (
+                        <p className="mt-1.5 text-xs font-medium text-amber-700">
+                          Ödeme güvenliği için hesap sahibi bilgisini girmeniz önerilir.
+                        </p>
+                      )}
+                    </FormField>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-500">Teyit Durumu</p>
+                      <p className="text-sm font-medium text-slate-700">
+                        {BANK_CONFIRMATION_STATUS_LABELS[form.ibanWhatsappConfirmStatus] ?? 'Henüz Teyit Edilmedi'}
+                      </p>
+                      {editVendor && form.iban && form.accountHolderName && (
+                        <button
+                          type="button"
+                          onClick={openBankConfirmationWhatsapp}
+                          disabled={ibanWhatsappSending || !bankDataMatchesSavedVendor}
+                          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {ibanWhatsappSending ? 'Hazırlanıyor...' : 'WhatsApp İle Teyit İste'}
+                        </button>
+                      )}
+                      {editVendor && !bankDataMatchesSavedVendor && form.iban && form.accountHolderName && (
+                        <p className="text-xs text-amber-700">Teyit istemeden önce değişiklikleri kaydedin.</p>
+                      )}
+                    </div>
                   </div>
+                  {accountHolderMatchStatus === 'mismatch' && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.
+                    </div>
+                  )}
+                  {form.iban && form.accountHolderName && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Bu Kontrol Banka Doğrulaması Değildir.
+                    </p>
+                  )}
                   </div>
                 </div>
               )}

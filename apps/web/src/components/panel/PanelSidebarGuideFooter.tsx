@@ -42,11 +42,11 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
         onClick={openHelp}
         title={guide.title}
         aria-label="Yardım"
-        className={`flex items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
-          collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2 px-3 py-1.5 text-xs font-medium'
+        className={`flex items-center rounded-lg text-[#64748B] transition hover:bg-[#F3F4F6] hover:text-[#0F172A] dark:text-slate-300 dark:hover:bg-slate-800 ${
+          collapsed ? 'mx-auto h-10 w-10 justify-center' : 'w-full gap-2.5 px-3 py-3 text-[15px] font-medium'
         }`}
       >
-        <HelpCircle className="h-4 w-4 shrink-0" />
+        <HelpCircle className="h-5 w-5 shrink-0" strokeWidth={1.75} />
         {!collapsed ? <span>Yardım</span> : null}
       </button>
     </SidebarNavTooltip>
@@ -59,15 +59,15 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
         onClick={onToggleCollapsed}
         aria-label={toggleLabel}
         title={toggleLabel}
-        className={`flex items-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
-          collapsed ? 'mx-auto h-8 w-8 justify-center' : 'w-full gap-2 px-3 py-1.5 text-xs font-medium'
+        className={`flex items-center rounded-lg border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:border-slate-300 hover:bg-[#F3F4F6] hover:text-[#0F172A] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
+          collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2.5 px-3 py-2.5 text-[15px] font-medium'
         }`}
       >
         {collapsed ? (
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
         ) : (
           <>
-            <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
+            <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={1.75} />
             <span>Menüyü Daralt</span>
           </>
         )}
@@ -76,7 +76,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
   ) : null;
 
   return (
-    <div className="shrink-0 space-y-1.5 border-t border-[#E5E7EB] bg-white px-2 py-2 dark:border-slate-800 dark:bg-slate-950">
+    <div className="shrink-0 space-y-2 border-t border-[#E5E7EB] bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
       {helpControl}
       {collapseControl}
       {versionLine}

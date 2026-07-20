@@ -156,6 +156,55 @@ export class VendorsController {
     return { success: true, data };
   }
 
+  @Post(':id/bank-confirmation/whatsapp')
+  @RequirePermissions('vendor.update')
+  @ApiOperation({ summary: 'Tedarikçi banka bilgisi WhatsApp teyidi hazırla' })
+  async offerBankConfirmationWhatsapp(
+    @Param('id') id: string,
+    @Body() dto: { phone?: string },
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    const data = await this.vendorsService.offerBankConfirmationWhatsapp(
+      id,
+      dto?.phone,
+      userId,
+    );
+    return { success: true, data };
+  }
+
+  @Post(':id/bank-confirmation/whatsapp-opened')
+  @RequirePermissions('vendor.update')
+  @ApiOperation({ summary: 'Tedarikçi banka teyit WhatsApp bağlantısını açıldı olarak kaydet' })
+  async markBankConfirmationWhatsappOpened(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    const data = await this.vendorsService.markBankConfirmationWhatsappOpened(id, userId);
+    return { success: true, data };
+  }
+
+  @Patch(':id/bank-confirmation/status')
+  @RequirePermissions('vendor.update')
+  @ApiOperation({ summary: 'Tedarikçi banka bilgisi teyit sonucunu kaydet' })
+  async setBankConfirmationStatus(
+    @Param('id') id: string,
+    @Body() dto: { status: 'confirmed' | 'declined' },
+    @CurrentUser() user: any,
+  ) {
+    if (!['confirmed', 'declined'].includes(dto?.status)) {
+      throw new BadRequestException('Teyit durumu confirmed veya declined olmalıdır.');
+    }
+    const userId = user?.id ?? user?.userId;
+    const data = await this.vendorsService.setBankConfirmationStatus(
+      id,
+      dto.status,
+      userId,
+    );
+    return { success: true, data };
+  }
+
   @Patch(':id')
   @RequirePermissions('vendor.update')
   @ApiOperation({ summary: 'Tedarikçi güncelle' })

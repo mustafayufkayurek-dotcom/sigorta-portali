@@ -40,7 +40,7 @@ assert(brandLogoSrc.includes('CORPORATE_LOGO_ORIGINAL_PNG'), 'BrandLogo uses con
 assert(!brandLogoSrc.includes('meridyen-assistance-logo'), 'BrandLogo no JPEG');
 
 // --- Sidebar expanded/collapsed HARD classes ---
-assert(PANEL_SIDEBAR_WIDTH_EXPANDED.includes('220px'), 'sidebar expanded 220');
+assert(PANEL_SIDEBAR_WIDTH_EXPANDED.includes('260px'), 'sidebar expanded 260');
 assert(PANEL_SIDEBAR_WIDTH_COLLAPSED.includes('72px'), 'sidebar collapsed 72');
 
 const layoutSrc = readFileSync(join(__dirname, '../app/panel/layout.tsx'), 'utf8');

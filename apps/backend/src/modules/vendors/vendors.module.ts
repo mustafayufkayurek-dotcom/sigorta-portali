@@ -4,9 +4,10 @@ import { VendorsService } from './vendors.service';
 import { VendorRecommendationService } from './vendor-recommendation.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { VendorCostMemoryModule } from '@/modules/vendor-cost-memory/vendor-cost-memory.module';
+import { AuditLogsModule } from '@/modules/audit-logs/audit-logs.module';
 
 @Module({
-  imports: [PrismaModule, VendorCostMemoryModule],
+  imports: [PrismaModule, VendorCostMemoryModule, AuditLogsModule],
   controllers: [VendorsController],
   providers: [VendorsService, VendorRecommendationService],
   exports: [VendorsService, VendorRecommendationService],

@@ -11,4 +11,6 @@ export const SENSITIVE_AUDIT_KEYS = [
   'tcNo',
   'creditCard',
   'iban',
+  'accountHolderName',
+  'account_holder_name',
 ] as const;

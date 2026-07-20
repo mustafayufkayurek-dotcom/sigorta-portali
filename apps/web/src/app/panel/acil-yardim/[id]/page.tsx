@@ -25,6 +25,7 @@ import {
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
+import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -250,6 +251,23 @@ function WhatsAppReadCheck({ read = false }: { read?: boolean }) {
 
 function fmtDateTime(d: string) {
   return new Date(d).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function formatTurkishList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} ve ${items.at(-1)}`;
+}
+function currentOperator(): { name: string; identity: string } {
+  try {
+    const raw = localStorage.getItem('user');
+    const user = raw ? JSON.parse(raw) : null;
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    return {
+      name: name || user?.email || 'Kullanıcı',
+      identity: String(user?.id || user?.email || 'Kimlik bilgisi alınamadı'),
+    };
+  } catch {
+    return { name: 'Kullanıcı', identity: 'Kimlik bilgisi alınamadı' };
+  }
 }
 function fmtElapsedDuration(fromIso: string): string {
   const start = new Date(fromIso).getTime();
@@ -676,6 +694,7 @@ export default function AcilDosyaDetayPage() {
   const [financeResult, setFinanceResult] = useState<string | null>(null);
   const [closeBusy, setCloseBusy] = useState(false);
   const [financeBusy, setFinanceBusy] = useState(false);
+  const closeSubmitRef = useRef(false);
   const [opsActionBusy, setOpsActionBusy] = useState<'work_start' | 'service' | null>(null);
   const [actionFlash, setActionFlash] = useState<string | null>(null);
 
@@ -701,6 +720,12 @@ export default function AcilDosyaDetayPage() {
 
   const [whatsAppTab, setWhatsAppTab] = useState<WhatsAppPanelTab>('sigortali');
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
+  /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
+  const [closurePhotoCount, setClosurePhotoCount] = useState(0);
+
+  useEffect(() => {
+    setClosurePhotoCount(0);
+  }, [id]);
   const [vendorMsgPreview, setVendorMsgPreview] = useState<string | null>(null);
   const [vendorMsgErrors, setVendorMsgErrors] = useState<string[]>([]);
   const [customerMsgPreview, setCustomerMsgPreview] = useState<string | null>(null);
@@ -911,6 +936,10 @@ export default function AcilDosyaDetayPage() {
 
   /** @returns true if fiyat kaydı geçerli ve uygulandı (veya değişiklik yok ama form geçerli) */
   function savePriceForm(): boolean {
+    if (!requireAssignedVendor()) {
+      setPriceFormError('İlerlemek İçin Tedarikçi Seçimi Zorunludur.');
+      return false;
+    }
     const alisN = parsePriceInput(draftAlis);
     const satisN = parsePriceInput(draftSatis);
     const hasAlisInput = Boolean(draftAlis.trim());
@@ -1179,7 +1208,23 @@ export default function AcilDosyaDetayPage() {
     setActionFlash('Tutarı düzeltip onaylayın. Aşama otomatik değişmez.');
   }
 
+  function requireAssignedVendor(): boolean {
+    if (vaka?.assignedVendorId) return true;
+    setActionFlash('İlerlemek İçin Tedarikçi Seçimi Zorunludur.');
+    return false;
+  }
+
+  function openApprovalModal() {
+    if (!requireAssignedVendor()) return;
+    setShowApprovalModal(true);
+    setApprovalMsg(null);
+  }
+
   async function handleApprovalSubmit() {
+    if (!requireAssignedVendor()) {
+      setShowApprovalModal(false);
+      return;
+    }
     setApprovalBusy(true);
     setApprovalMsg(null);
     try {
@@ -1243,6 +1288,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   function handleCustomerApproval(accept: boolean) {
+    if (!requireAssignedVendor()) return;
     if (accept) {
       persistFlow(appendFlowHistory(
         { ...flow, customerApproved: true, approvalDetected: false },
@@ -1260,6 +1306,7 @@ export default function AcilDosyaDetayPage() {
 
   async function handleWorkStartMessage() {
     if (!vaka || opsActionBusy) return;
+    if (!requireAssignedVendor()) return;
     if (!flow.customerApproved) {
       setActionFlash('Önce müşteri onayını kaydedin.');
       return;
@@ -1295,6 +1342,7 @@ export default function AcilDosyaDetayPage() {
 
   async function handleServiceComplete() {
     if (!vaka || opsActionBusy) return;
+    if (!requireAssignedVendor()) return;
     if (flow.serviceCompleted) {
       setActionFlash('Hizmet zaten tamamlandı olarak işaretli.');
       return;
@@ -1368,30 +1416,35 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  async function handleCloseAndFinance() {
-    if (closeBusy || financeBusy) return;
+  async function handleCloseAndFinance(allowIncomplete = false) {
+    if (closeSubmitRef.current || closeBusy || financeBusy) return;
+    if (!requireAssignedVendor()) {
+      setConfirmAction(null);
+      return;
+    }
     const saleOk = parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0;
     const needsClose = !(
       flow.fileClosed || vaka?.status === 'COZULDU' || vaka?.status === 'FATURALANDILDI'
     );
-    if (needsClose) {
-      const gate = evaluateCloseFinanceGate({
-        docs: vaka?.operationChain?.documents,
-        inbox: vaka?.operationChain?.inbox,
-        flow,
-        saleReady: saleOk,
-      });
-      if (!gate.closeReady) {
-        setActionFlash(
-          gate.missingLabels.length
-            ? `Dosya kapatılamaz. Eksik: ${gate.missingLabels.join(', ')}.`
-            : 'Kapanış öncesi kontroller tamamlanmadan dosya kapatılamaz.',
-        );
-        setConfirmAction(null);
-        return;
-      }
+    const gate = evaluateCloseFinanceGate({
+      docs: vaka?.operationChain?.documents,
+      inbox: vaka?.operationChain?.inbox,
+      uploadedPhotoCount: closurePhotoCount,
+      flow,
+      saleReady: saleOk,
+    });
+    const skippedLabels = gate.missingLabels;
+    if (!gate.closeReady && !allowIncomplete) {
+      setActionFlash(
+        skippedLabels.length
+          ? `Eksik işlemler: ${skippedLabels.join(', ')}.`
+          : 'Kapanış öncesi kontroller tamamlanmadan dosya kapatılamaz.',
+      );
+      setConfirmAction(null);
+      return;
     }
 
+    closeSubmitRef.current = true;
     setCloseBusy(true);
     setFinanceBusy(true);
     setFinanceResult(null);
@@ -1414,6 +1467,25 @@ export default function AcilDosyaDetayPage() {
         ? 'Dosya kapatıldı ve finansa gönderildi. Tedarikçi hakedişi ve cari bağlantısı bu dosya için henüz tamamlanamadı.'
         : 'Dosya kapatıldı ve finansa gönderildi.';
       setFinanceResult(result);
+      let auditText: string | null = null;
+      let auditSaved = true;
+      if (allowIncomplete && skippedLabels.length > 0) {
+        const operator = currentOperator();
+        const at = new Date().toISOString();
+        const action = needsClose
+          ? 'dosya kapanışını gerçekleştirdi ve dosyayı finansa gönderdi'
+          : 'dosyayı finansa gönderdi';
+        auditText = `${fmtDateTime(at)} — ${operator.name} (${operator.identity}), ${formatTurkishList(skippedLabels)} işlemlerini tamamlamadan ${action}.`;
+        try {
+          const existingNotes = (financeRes.data.notes || '').trim();
+          const auditRes = await updateCase(id, {
+            notes: [existingNotes, auditText].filter(Boolean).join('\n\n'),
+          });
+          setVaka(auditRes.data);
+        } catch {
+          auditSaved = false;
+        }
+      }
       persistFlow(appendFlowHistory(
         {
           ...flow,
@@ -1422,10 +1494,16 @@ export default function AcilDosyaDetayPage() {
           financeTransferred: true,
           vendorProcess: 'fatura_bekleniyor',
         },
-        result,
+        auditText || result,
       ));
       setConfirmAction(null);
-      setActionFlash(result);
+      setActionFlash(
+        auditSaved
+          ? auditText
+            ? `${result} Eksik işlem onayı dosya geçmişine kaydedildi.`
+            : result
+          : `${result} Dosya geçmişi kaydı eklenemedi.`,
+      );
       await load();
     } catch (err: any) {
       const msg = err?.message ?? 'Dosya kapatma / finansa gönderme başarısız';
@@ -1433,6 +1511,7 @@ export default function AcilDosyaDetayPage() {
       setActionFlash(msg);
       setConfirmAction(null);
     } finally {
+      closeSubmitRef.current = false;
       setCloseBusy(false);
       setFinanceBusy(false);
     }
@@ -1596,20 +1675,21 @@ export default function AcilDosyaDetayPage() {
   const closeGate = evaluateCloseFinanceGate({
     docs,
     inbox,
+    uploadedPhotoCount: closurePhotoCount,
     flow,
     saleReady,
   });
   const requiredOps = closeGate.requiredOps;
   const requiredOpsComplete = closeGate.requiredOpsComplete;
-  const closeReady = closeGate.closeReady;
   const fileAlreadyClosed =
     flow.fileClosed || vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI';
   const financeDone = flow.financeTransferred || vaka.status === 'FATURALANDILDI';
   const showCloseFinanceBlock =
     (!fileAlreadyClosed && (flow.workStartPrepared || flow.serviceCompleted || stageIdx >= 4))
     || (fileAlreadyClosed && !financeDone);
-  /** Tek CTA: kapat + finansa; kapı her zaman closeReady (ayrı finans yolu yok) */
-  const closeFinanceReady = financeDone ? false : closeReady;
+  /** Eksik kapanış işlemleri onayla geçilebilir; tedarikçi seçimi hiçbir zaman geçilemez. */
+  const closeFinanceReady =
+    !financeDone && showCloseFinanceBlock && Boolean(vaka.assignedVendorId);
   const closeFinanceBusy = closeBusy || financeBusy;
   const dosyaKonusuLabel = resolveClaimDosyaKonusu({ lossType: vaka.issueType }) || '—';
   const requiredOpsItems = closeGate.items;
@@ -1928,10 +2008,7 @@ export default function AcilDosyaDetayPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setShowApprovalModal(true);
-              setApprovalMsg(null);
-            }}
+            onClick={openApprovalModal}
             className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
             data-testid="guncel-onay-talebi"
           >
@@ -1994,7 +2071,7 @@ export default function AcilDosyaDetayPage() {
               <QuickActionCard
                 icon={Send}
                 label="Onay Talebi"
-                onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
+                onClick={openApprovalModal}
                 disabled={!vaka.assignedVendorId || approvalBusy}
                 busy={approvalBusy}
                 variant="primary"
@@ -2077,9 +2154,18 @@ export default function AcilDosyaDetayPage() {
             <button
               type="button"
               disabled={closeFinanceBusy || !closeFinanceReady}
-              onClick={() => setConfirmAction('dosya_kapat_finansa')}
+              onClick={() => {
+                if (!requireAssignedVendor()) return;
+                if (missingCloseLabels.length > 0) {
+                  setConfirmAction('dosya_kapat_finansa');
+                  return;
+                }
+                void handleCloseAndFinance();
+              }}
               title={
-                closeFinanceReady
+                !vaka.assignedVendorId
+                  ? 'İlerlemek İçin Tedarikçi Seçimi Zorunludur.'
+                  : closeFinanceReady
                   ? fileAlreadyClosed
                     ? 'Dosyayı finansa gönder'
                     : 'Dosyayı kapat ve finansa gönder'
@@ -2117,7 +2203,9 @@ export default function AcilDosyaDetayPage() {
             )}
             {!closeFinanceReady && !financeDone && (
               <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 leading-snug" data-testid="dosya-kapat-kilit-bilgi">
-                {missingCloseLabels.length > 0
+                {!vaka.assignedVendorId
+                  ? 'İlerlemek İçin Tedarikçi Seçimi Zorunludur.'
+                  : missingCloseLabels.length > 0
                   ? `Dosyayı Kapat Ve Finansa Gönder pasif. Eksik: ${missingCloseLabels.join(', ')}.`
                   : !showCloseFinanceBlock
                     ? 'Dosyayı Kapat Ve Finansa Gönder, işe başlama veya sonraki aşamadan sonra aktif olur.'
@@ -2422,6 +2510,11 @@ export default function AcilDosyaDetayPage() {
                 </li>
               ))}
             </ul>
+            <ClosurePhotosPanel
+              entityId={vaka.id}
+              onPhotoCountChange={setClosurePhotoCount}
+              readonly={fileAlreadyClosed}
+            />
             {!requiredOps.insuredInitialNotify && (
               <button
                 type="button"
@@ -2590,9 +2683,13 @@ export default function AcilDosyaDetayPage() {
             >
               <SectionTitle
                 icon={Files}
-                title="Dosya Belgeleri ve Fotoğraflar"
+                title="Dosya Belgeleri"
                 iconClassName="text-slate-600"
               />
+              <p className="text-[10px] text-slate-500 leading-snug">
+                Matbu evrak ve yazışma ekleri. Kapanış fotoğrafları için üstteki{' '}
+                <span className="font-semibold text-slate-600">Dosya Kapanış Resimleri</span> alanını kullanın.
+              </p>
               <div className="rounded-lg border border-slate-100 p-2">
                 <FileDocumentPanel
                   entityType="emergency_case"
@@ -3354,13 +3451,21 @@ export default function AcilDosyaDetayPage() {
       {/* Kritik aksiyon onayı */}
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" data-testid="onay-dialog">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
             <h3 className="text-base font-semibold text-slate-900">
-              Dosya Kapatılıp Finansa Gönderilsin Mi?
+              Eksik İşlemlerle Devam Et
             </h3>
             <p className="text-sm text-slate-600">
-              Dosya kapatılacak ve ardından finans sürecine gönderilecek. Devam etmek istiyor musunuz?
+              Aşağıdaki işlemler tamamlanmadı. Bu işlemleri tamamlamadan devam etmek istiyor musunuz?
             </p>
+            <ul className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3" data-testid="eksik-islemler-listesi">
+              {missingCloseLabels.map((label) => (
+                <li key={label} className="flex items-start gap-2 text-sm text-amber-900">
+                  <span aria-hidden>•</span>
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ul>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -3368,16 +3473,16 @@ export default function AcilDosyaDetayPage() {
                 className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
                 data-testid="onay-dialog-iptal"
               >
-                İptal
+                İşlemlere Dön
               </button>
               <button
                 type="button"
                 disabled={closeBusy || financeBusy}
-                onClick={() => { void handleCloseAndFinance(); }}
+                onClick={() => { void handleCloseAndFinance(true); }}
                 className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
                 data-testid="onay-dialog-onayla"
               >
-                Onayla
+                Eksik İşlemlerle Devam Et
               </button>
             </div>
           </div>

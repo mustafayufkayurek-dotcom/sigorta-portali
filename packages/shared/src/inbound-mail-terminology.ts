@@ -29,7 +29,8 @@ const CATEGORY_ALIASES: Record<string, string> = {
   'KAPI/KILIT': 'Kapı/Kilit Arızası',
   ELEKTRIK: 'Elektrik Arızası',
   DOGALGAZ: 'Doğalgaz Arızası',
-  'SU BASKINI': 'Su Baskını',
+  // İhbar mailindeki "Su Baskını" → Meridyen dosya konusu
+  'SU BASKINI': 'Dahili Su',
   'CATI HASARI': 'Çatı Hasarı',
   YANGIN: 'Yangın Hasarı',
 };
@@ -45,8 +46,9 @@ const LOSS_TYPE_ALIASES: Record<string, string> = {
   'vam kırılması': 'Cam Kırılması',
   'vam kirilmas': 'Cam Kırılması',
   'dahili su': 'Dahili Su',
-  'su baskini': 'Su Baskını',
-  'su baskını': 'Su Baskını',
+  // İhbar / müşteri dili → Meridyen terminolojisi
+  'su baskini': 'Dahili Su',
+  'su baskını': 'Dahili Su',
   'konut cam': 'Konut Cam',
   'konut hasar': 'Konut Hasar',
   tesisat: 'Tesisat',
@@ -127,6 +129,15 @@ export function mapInboundLossTypeToMeridyen(raw?: string | null): string | unde
   if (aliasKey.includes('vam') && aliasKey.includes('kir')) return 'Cam Kırılması';
   if (aliasKey.includes('cam') && aliasKey.includes('kir')) return 'Cam Kırılması';
   if (aliasKey.includes('dahili') && aliasKey.includes('su')) return 'Dahili Su';
+  // "Su Baskını" / "su baskini" ihbar dili → Meridyen: Dahili Su
+  // "Sel" içeren doğal afet ifadeleri bu eşlemeye girmez.
+  if (
+    aliasKey.includes('su') &&
+    aliasKey.includes('baskin') &&
+    !aliasKey.includes('sel')
+  ) {
+    return 'Dahili Su';
+  }
   return undefined;
 }
 

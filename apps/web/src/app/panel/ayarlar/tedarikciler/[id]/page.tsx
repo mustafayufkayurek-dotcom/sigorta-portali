@@ -9,6 +9,7 @@ import { formatVendorTypeLabel } from '@/utils/vendor-form-helpers';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
+import { BANK_CONFIRMATION_STATUS_LABELS } from '@/utils/vendor-bank-confirmation';
 import {
   addAllDistrictsInProvince,
   isDistrictAreaChecked,
@@ -80,6 +81,8 @@ function ProfilTab({ vendor }: { vendor: any }) {
     { label: 'Adres', value: vendor.address ?? '—' },
     { label: 'IBAN', value: vendor.iban ?? '—' },
     { label: 'Banka Adı', value: vendor.bankName ?? '—' },
+    { label: 'Hesap Sahibi Adı Soyadı / Unvanı', value: vendor.accountHolderName ?? '—' },
+    { label: 'Teyit Durumu', value: BANK_CONFIRMATION_STATUS_LABELS[vendor.ibanWhatsappConfirmStatus] ?? 'Henüz Teyit Edilmedi' },
     { label: 'Durum', value: vendor.status === 'active' ? 'Aktif' : 'Pasif' },
     { label: 'Kayıt Tarihi', value: fmtDate(vendor.createdAt) },
   ] : [
@@ -94,6 +97,8 @@ function ProfilTab({ vendor }: { vendor: any }) {
     { label: 'Adres', value: vendor.address ?? '—' },
     { label: 'IBAN', value: vendor.iban ?? '—' },
     { label: 'Banka Adı', value: vendor.bankName ?? '—' },
+    { label: 'Hesap Sahibi Adı Soyadı / Unvanı', value: vendor.accountHolderName ?? '—' },
+    { label: 'Teyit Durumu', value: BANK_CONFIRMATION_STATUS_LABELS[vendor.ibanWhatsappConfirmStatus] ?? 'Henüz Teyit Edilmedi' },
     { label: 'Durum', value: vendor.status === 'active' ? 'Aktif' : 'Pasif' },
     { label: 'Kayıt Tarihi', value: fmtDate(vendor.createdAt) },
   ];
@@ -108,6 +113,22 @@ function ProfilTab({ vendor }: { vendor: any }) {
             </div>
           ))}
         </div>
+        {vendor.ibanAccountHolderMatchStatus === 'mismatch' && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.
+          </div>
+        )}
+        {vendor.iban && vendor.accountHolderName && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+            <p className="text-xs text-slate-500">Bu Kontrol Banka Doğrulaması Değildir.</p>
+            <a
+              href={`/panel/tedarikciler/${vendor.id}`}
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100"
+            >
+              Teyit İşlemlerine Git
+            </a>
+          </div>
+        )}
       </SectionCard>
       {vendor.notes && (
         <SectionCard title="Notlar">

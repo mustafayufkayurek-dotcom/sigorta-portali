@@ -589,6 +589,8 @@ export type CloseFinanceCheckItem = {
 export function evaluateCloseFinanceGate(input: {
   docs?: CloseFinanceDocsSnapshot | null;
   inbox?: CloseFinanceInboxSnapshot | null;
+  /** Dosya Kapanış Resimleri (entity-documents, image) — UI yükleme alanı */
+  uploadedPhotoCount?: number;
   flow: Pick<
     AcilLocalFlow,
     | 'closureEmailSent'
@@ -619,7 +621,9 @@ export function evaluateCloseFinanceGate(input: {
       (docs?.digitallyApprovedCount ?? 0) > 0 || Boolean(docs?.hasApprovedMatbuEvrak),
     insuredInitialNotify: hasInitialNotify,
     insuredClosureSurvey: hasClosureSurvey,
-    photos: (inbox?.attachmentCount ?? 0) > 0,
+    photos:
+      (inbox?.attachmentCount ?? 0) > 0
+      || (input.uploadedPhotoCount ?? 0) > 0,
     documents:
       Boolean(docs?.hasApprovedMatbuEvrak) || (docs?.totalCount ?? 0) > 0,
     closureEmail: input.flow.closureEmailSent,
@@ -647,7 +651,7 @@ export function evaluateCloseFinanceGate(input: {
       key: 'photos',
       label: CLOSE_FINANCE_CHECK_LABELS.photos,
       done: requiredOps.photos,
-      hint: 'Gelen kutu ekleri (fotoğraf / dosya eki). WhatsApp medyası otomatik aktarılmaz.',
+      hint: 'Dosya Kapanış Resimleri yükleyin veya gelen kutuda ek olsun. WhatsApp medyası otomatik aktarılmaz.',
     },
     {
       key: 'documents',

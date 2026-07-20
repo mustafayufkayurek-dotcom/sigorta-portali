@@ -1,0 +1,35 @@
+---
+description: Geliştirmeyi engelleyen kilit/freeze durumunda Mustafa'dan açık onay iste
+alwaysApply: true
+---
+
+# Engel → Mustafa onayı (kalıcı iş kuralı)
+
+Mustafa teknik kilitleri (freeze, checklist, deploy yasağı, redesign yasağı vb.) bilmek zorunda değildir. Bunları hatırlamak veya isimlendirmek onun işi değildir.
+
+## Zorunlu davranış
+
+Geliştirmeyi **engelleyen** bir kural, freeze, checklist veya güvenlik kilidine takılınca:
+
+1. Sessizce vazgeçme; “yapamam” deyip bırakma.
+2. Mustafa’ya **Türkçe, tek net soru** sor — teknik jargon yükleme.
+3. Ne engellendiğini bir cümleyle anlat; onay seçeneğini net yaz.
+4. Onay gelmeden o kilidi aşan işi yapma.
+5. Onay gelince yalnızca o kapsamda devam et; kapsam dışına taşma.
+
+## Örnek soru formatı
+
+> Bu iş için şu an bir güvenlik kilidi var: [basit dilde ne].  
+> Devam etmemi onaylıyor musun? (evet / hayır)
+
+## Örnek engeller
+
+- Dashboard / logo / sidebar / onaylı UI kabuğu freeze
+- Redesign vs referansı koruma çatışması
+- Migration / schema / auth / Docker değişikliği
+- Production deploy veya production UI login
+- Ürün standardı (ör. Google etiketi) ile yeni ürün talebi çatışması
+
+## Amaç
+
+Şansa bırakılmasın. Mustafa her seferinde kilidi hatırlamak zorunda kalmasın. Asistan da “yapamıyor” gibi görünmesin — engeli görünür kılıp onay alsın.

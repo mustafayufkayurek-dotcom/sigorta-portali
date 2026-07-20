@@ -3,6 +3,12 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import { VendorRecommendationService } from './vendor-recommendation.service';
 import { VendorCostMemoryService } from '@/modules/vendor-cost-memory/vendor-cost-memory.service';
+import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
+import {
+  compareAccountHolderToVendor,
+  formatIbanForMessage,
+  normalizeAndValidateVendorIban,
+} from './vendor-bank-confirmation.util';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -11,6 +17,7 @@ export class VendorsService {
     private prisma: PrismaService,
     private readonly vendorRecommendation: VendorRecommendationService,
     private readonly vendorCostMemory: VendorCostMemoryService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   private mapVendorContactInput(c: any, vendorId: string) {
@@ -152,12 +159,69 @@ export class VendorsService {
     return vendor;
   }
 
-  private sanitizeVendorWriteData(rest: Record<string, unknown>): Record<string, unknown> {
-    const { firstName, lastName, ...vendorData } = rest;
+  private sanitizeVendorWriteData(
+    rest: Record<string, unknown>,
+    existing?: Record<string, any>,
+  ): Record<string, unknown> {
+    const {
+      firstName,
+      lastName,
+      bankName: _ignoredBankName,
+      ibanAccountHolderMatchStatus: _ignoredMatchStatus,
+      ibanWhatsappConfirmStatus: _ignoredConfirmStatus,
+      ibanWhatsappConfirmPhone: _ignoredConfirmPhone,
+      ibanWhatsappConfirmSentAt: _ignoredConfirmSentAt,
+      ibanWhatsappConfirmAt: _ignoredConfirmAt,
+      ibanWhatsappConfirmByUserId: _ignoredConfirmBy,
+      ...vendorData
+    } = rest;
     if (!vendorData.name && (firstName || lastName)) {
       vendorData.name = `${String(firstName ?? '')} ${String(lastName ?? '')}`.trim();
     }
     applyTitleCase(vendorData, ['name']);
+
+    const hasIban = Object.prototype.hasOwnProperty.call(vendorData, 'iban');
+    const hasAccountHolder = Object.prototype.hasOwnProperty.call(
+      vendorData,
+      'accountHolderName',
+    );
+    const hasName = Object.prototype.hasOwnProperty.call(vendorData, 'name');
+    if (hasIban) {
+      const normalized = normalizeAndValidateVendorIban(vendorData.iban);
+      vendorData.iban = normalized.iban;
+      vendorData.bankName = normalized.bankName;
+    }
+    if (hasAccountHolder) {
+      const trimmed = String(vendorData.accountHolderName ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      vendorData.accountHolderName = trimmed || null;
+    }
+
+    if (hasIban || hasAccountHolder || hasName) {
+      const effectiveIban = hasIban ? vendorData.iban : existing?.iban;
+      const effectiveHolder = hasAccountHolder
+        ? vendorData.accountHolderName
+        : existing?.accountHolderName;
+      const effectiveName = hasName ? vendorData.name : existing?.name;
+      vendorData.ibanAccountHolderMatchStatus = effectiveIban
+        ? compareAccountHolderToVendor(effectiveHolder, effectiveName)
+        : 'unknown';
+    }
+
+    const ibanChanged =
+      !!existing && hasIban && vendorData.iban !== (existing.iban ?? null);
+    const holderChanged =
+      !!existing &&
+      hasAccountHolder &&
+      vendorData.accountHolderName !== (existing.accountHolderName ?? null);
+    if (ibanChanged || holderChanged) {
+      vendorData.ibanWhatsappConfirmStatus = null;
+      vendorData.ibanWhatsappConfirmPhone = null;
+      vendorData.ibanWhatsappConfirmSentAt = null;
+      vendorData.ibanWhatsappConfirmAt = null;
+      vendorData.ibanWhatsappConfirmByUserId = null;
+    }
     return vendorData;
   }
 
@@ -212,9 +276,9 @@ export class VendorsService {
   }
 
   async update(id: string, data: any) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
-    const vendorData = this.sanitizeVendorWriteData(rest);
+    const vendorData = this.sanitizeVendorWriteData(rest, existing as any);
 
     await this.prisma.vendor.update({ where: { id }, data: vendorData as any });
 
@@ -268,6 +332,107 @@ export class VendorsService {
     }
 
     return this.findOne(id);
+  }
+
+  async offerBankConfirmationWhatsapp(id: string, phone: string | undefined, userId: string) {
+    const vendor = await this.findOne(id);
+    if (!vendor.iban || !vendor.accountHolderName) {
+      throw new BadRequestException(
+        'WhatsApp teyidi için IBAN ve hesap sahibi bilgisi gereklidir.',
+      );
+    }
+
+    const recipientPhone = String(phone || vendor.phone || '').replace(/\D/g, '');
+    if (!recipientPhone) {
+      throw new BadRequestException('WhatsApp teyidi için telefon numarası gereklidir.');
+    }
+    const internationalPhone = recipientPhone.startsWith('0')
+      ? `90${recipientPhone.slice(1)}`
+      : recipientPhone.startsWith('90')
+        ? recipientPhone
+        : recipientPhone.length === 10
+          ? `90${recipientPhone}`
+          : recipientPhone;
+    const message = [
+      `Merhaba ${vendor.name},`,
+      '',
+      'Meridyen Assistance kayıtlarındaki ödeme bilgilerinizi teyit etmenizi rica ederiz.',
+      `Hesap Sahibi: ${vendor.accountHolderName}`,
+      `IBAN: ${formatIbanForMessage(vendor.iban)}`,
+      `Banka: ${vendor.bankName ?? 'Banka adı otomatik belirlenemedi'}`,
+      '',
+      'Bilgiler doğruysa “Onaylıyorum”, düzeltme varsa doğru bilgileri yazmanızı rica ederiz.',
+      'Bu mesaj bilgilendirme amaçlıdır.',
+    ].join('\n');
+    const waUrl = `https://wa.me/${internationalPhone}?text=${encodeURIComponent(message)}`;
+    const sentAt = new Date();
+
+    await this.prisma.vendor.update({
+      where: { id },
+      data: {
+        ibanWhatsappConfirmStatus: 'offered',
+        ibanWhatsappConfirmPhone: internationalPhone,
+        ibanWhatsappConfirmSentAt: sentAt,
+        ibanWhatsappConfirmAt: null,
+        ibanWhatsappConfirmByUserId: null,
+      },
+    });
+    this.auditLogsService.log({
+      entityType: 'vendor',
+      entityId: id,
+      action: 'VENDOR_BANK_CONFIRMATION_OFFERED',
+      newValue: { status: 'offered' },
+      userId,
+    });
+
+    return { waUrl, status: 'offered', sentAt };
+  }
+
+  async markBankConfirmationWhatsappOpened(id: string, userId: string) {
+    const vendor = await this.findOne(id);
+    if (!vendor.ibanWhatsappConfirmSentAt) {
+      throw new BadRequestException('Önce WhatsApp teyit mesajı hazırlanmalıdır.');
+    }
+    const data = await this.prisma.vendor.update({
+      where: { id },
+      data: { ibanWhatsappConfirmStatus: 'link_opened' },
+    });
+    this.auditLogsService.log({
+      entityType: 'vendor',
+      entityId: id,
+      action: 'VENDOR_BANK_CONFIRMATION_LINK_OPENED',
+      newValue: { status: 'link_opened' },
+      userId,
+    });
+    return data;
+  }
+
+  async setBankConfirmationStatus(
+    id: string,
+    status: 'confirmed' | 'declined',
+    userId: string,
+  ) {
+    await this.findOne(id);
+    const confirmedAt = new Date();
+    const data = await this.prisma.vendor.update({
+      where: { id },
+      data: {
+        ibanWhatsappConfirmStatus: status,
+        ibanWhatsappConfirmAt: confirmedAt,
+        ibanWhatsappConfirmByUserId: userId,
+      },
+    });
+    this.auditLogsService.log({
+      entityType: 'vendor',
+      entityId: id,
+      action:
+        status === 'confirmed'
+          ? 'VENDOR_BANK_CONFIRMATION_CONFIRMED'
+          : 'VENDOR_BANK_CONFIRMATION_DECLINED',
+      newValue: { status },
+      userId,
+    });
+    return data;
   }
 
   async remove(id: string) {
