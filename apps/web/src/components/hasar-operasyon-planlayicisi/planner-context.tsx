@@ -139,21 +139,29 @@ export function PlannerProvider({
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
 
+  /** Soft refresh’te form alanlarını sıfırlama — yalnızca dosya / ilk hydrate. */
+  const formHydratedForClaim = useRef<string | null>(null);
+
   useEffect(() => {
-    if (initialClaim) {
-      setClaim(initialClaim);
-      if (mode === 'live') {
-        setAssignedSupplierIds(initialClaim.preAssignedSupplierIds);
-        setAssignedInspectorId(initialClaim.preAssignedInspectorId);
-        setApptNote('');
-        setEmailSubject(
-          `${initialClaim.fileNo} — Onay Talebi Revizyon ${initialClaim.report.revision}`,
-        );
-      } else {
-        setAssignedInspectorId(initialClaim.preAssignedInspectorId);
-      }
+    formHydratedForClaim.current = null;
+  }, [claimId]);
+
+  useEffect(() => {
+    if (!initialClaim) return;
+    setClaim(initialClaim);
+    if (mode === 'live') {
+      if (formHydratedForClaim.current === claimId) return;
+      formHydratedForClaim.current = claimId;
+      setAssignedSupplierIds(initialClaim.preAssignedSupplierIds);
+      setAssignedInspectorId(initialClaim.preAssignedInspectorId);
+      setApptNote('');
+      setEmailSubject(
+        `${initialClaim.fileNo} — Onay Talebi Revizyon ${initialClaim.report.revision}`,
+      );
+    } else {
+      setAssignedInspectorId(initialClaim.preAssignedInspectorId);
     }
-  }, [initialClaim, mode]);
+  }, [initialClaim, mode, claimId]);
 
   const baseVars = useMemo(
     () => ({
@@ -169,20 +177,33 @@ export function PlannerProvider({
     [claim],
   );
 
+  const waSeededForClaim = useRef<string | null>(null);
+
+  useEffect(() => {
+    waSeededForClaim.current = null;
+  }, [claimId]);
+
   useEffect(() => {
     let cancelled = false;
+    setTemplatesLoading(true);
     loadHasarWaTemplates().then((result) => {
       if (cancelled) return;
       setTemplates(result.templates);
       setTemplatesFromSettings(result.fromSettings);
       setTemplatesLoading(false);
-      const insured = pickTemplate(result.templates, HASAR_WA_TEMPLATE_TYPES.insuredAppointment);
-      setWaBody(interpolateHasarTemplate(insured.content, baseVars));
     });
     return () => {
       cancelled = true;
     };
-  }, [baseVars]);
+  }, [claimId]);
+
+  useEffect(() => {
+    if (templatesLoading || templates.length === 0 || !claim.fileNo) return;
+    if (waSeededForClaim.current === claimId) return;
+    waSeededForClaim.current = claimId;
+    const insured = pickTemplate(templates, HASAR_WA_TEMPLATE_TYPES.insuredAppointment);
+    setWaBody(interpolateHasarTemplate(insured.content, baseVars));
+  }, [templates, templatesLoading, claim.fileNo, claimId, baseVars]);
 
   const refreshClaim = useCallback(async () => {
     if (onRefresh) {

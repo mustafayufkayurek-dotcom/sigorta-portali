@@ -5,7 +5,7 @@
  * /dev önizleme ayrı kalır. Rapor yazım sayfasına dokunulmaz.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
   CheckCircle2,
@@ -269,77 +269,93 @@ export function OperasyonPlanlayiciPanel({
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeStep, setActiveStep] = useState<StepId>('insured_appointment');
 
-  const load = useCallback(async (): Promise<PlannerClaimSnapshot | void> => {
-    setError(null);
-    try {
-      const [opRes, inspRes, vendorRes] = await Promise.all([
-        axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
-        axios
-          .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=inspector`, {
-            headers: authHeader(),
-          })
-          .catch(() => ({ data: null })),
-        axios
-          .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=supplier`, {
-            headers: authHeader(),
-          })
-          .catch(() => ({ data: null })),
-      ]);
+  /** Parent claim / callback her render’da değişir — load bağımlılığına alma (flicker döngüsü). */
+  const claimFileRef = useRef(claimFile);
+  claimFileRef.current = claimFile;
+  const onClaimUpdatedRef = useRef(onClaimUpdated);
+  onClaimUpdatedRef.current = onClaimUpdated;
 
-      const op = opRes.data?.data ?? opRes.data;
-      const inspRaw = inspRes.data?.data ?? inspRes.data;
-      const vendorRaw = vendorRes.data?.data ?? vendorRes.data;
-      const inspList: PlannerInspector[] = Array.isArray(inspRaw)
-        ? inspRaw.slice(0, 12).map((v: any) => ({
-            id: v.id,
-            name: v.name ?? v.companyName ?? 'Tespitçi',
-            region: v.district ?? v.city ?? '—',
-            available: true,
-            score: Number(v.rating ?? 0),
-            lastWork: '—',
-            completedJobs: Number(v.jobCount ?? 0),
-            phone: v.phone ?? '',
-          }))
-        : [];
-      const vendorList: PlannerSupplier[] = Array.isArray(vendorRaw)
-        ? vendorRaw.slice(0, 12).map((v: any) => ({
-            id: v.id,
-            name: v.name ?? v.companyName ?? 'Tedarikçi',
-            serviceGroup: v.workGroups?.[0]?.name ?? 'Hizmet',
-            place: [v.district, v.city].filter(Boolean).join(' / ') || '—',
-            rating: v.rating != null ? String(v.rating) : '—',
-            avail: 'Müsait' as const,
-            phone: v.phone ?? undefined,
-          }))
-        : [];
+  const load = useCallback(
+    async (opts?: { soft?: boolean; notifyParent?: boolean }): Promise<PlannerClaimSnapshot | void> => {
+      setError(null);
+      if (!opts?.soft) setLoading(true);
+      try {
+        const [opRes, inspRes, vendorRes] = await Promise.all([
+          axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
+          axios
+            .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=inspector`, {
+              headers: authHeader(),
+            })
+            .catch(() => ({ data: null })),
+          axios
+            .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=supplier`, {
+              headers: authHeader(),
+            })
+            .catch(() => ({ data: null })),
+        ]);
 
-      const next = mapLiveSnapshot(op, claimFile, inspList, vendorList);
-      setSnapshot(next);
-      onClaimUpdated?.({});
-      return next;
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ??
-        (e?.response?.status === 404
-          ? 'Operasyon merkezi verisi bulunamadı. Migration uygulanmış mı?'
-          : 'Operasyon verisi yüklenemedi.');
-      setError(typeof msg === 'string' ? msg : 'Operasyon verisi yüklenemedi.');
-      setSnapshot(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [claimId, claimFile, onClaimUpdated]);
+        const op = opRes.data?.data ?? opRes.data;
+        const inspRaw = inspRes.data?.data ?? inspRes.data;
+        const vendorRaw = vendorRes.data?.data ?? vendorRes.data;
+        const inspList: PlannerInspector[] = Array.isArray(inspRaw)
+          ? inspRaw.slice(0, 12).map((v: any) => ({
+              id: v.id,
+              name: v.name ?? v.companyName ?? 'Tespitçi',
+              region: v.district ?? v.city ?? '—',
+              available: true,
+              score: Number(v.rating ?? 0),
+              lastWork: '—',
+              completedJobs: Number(v.jobCount ?? 0),
+              phone: v.phone ?? '',
+            }))
+          : [];
+        const vendorList: PlannerSupplier[] = Array.isArray(vendorRaw)
+          ? vendorRaw.slice(0, 12).map((v: any) => ({
+              id: v.id,
+              name: v.name ?? v.companyName ?? 'Tedarikçi',
+              serviceGroup: v.workGroups?.[0]?.name ?? 'Hizmet',
+              place: [v.district, v.city].filter(Boolean).join(' / ') || '—',
+              rating: v.rating != null ? String(v.rating) : '—',
+              avail: 'Müsait' as const,
+              phone: v.phone ?? undefined,
+            }))
+          : [];
+
+        const next = mapLiveSnapshot(op, claimFileRef.current, inspList, vendorList);
+        setSnapshot(next);
+        if (opts?.notifyParent) {
+          onClaimUpdatedRef.current?.({});
+        }
+        return next;
+      } catch (e: any) {
+        const msg =
+          e?.response?.data?.message ??
+          (e?.response?.status === 404
+            ? 'Operasyon merkezi verisi bulunamadı. Migration uygulanmış mı?'
+            : 'Operasyon verisi yüklenemedi.');
+        setError(typeof msg === 'string' ? msg : 'Operasyon verisi yüklenemedi.');
+        if (!opts?.soft) setSnapshot(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [claimId],
+  );
+
+  const softRefresh = useCallback(
+    () => load({ soft: true, notifyParent: true }),
+    [load],
+  );
 
   useEffect(() => {
-    setLoading(true);
     void load();
   }, [load]);
 
-  if (loading) {
+  if (loading && !snapshot) {
     return <p className="py-10 text-center text-sm text-slate-400">Operasyon planlayıcısı yükleniyor...</p>;
   }
 
-  if (error || !snapshot) {
+  if ((error || !snapshot) && !loading) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-900">
         <p>{error ?? 'Veri yok.'}</p>
@@ -347,7 +363,6 @@ export function OperasyonPlanlayiciPanel({
           type="button"
           className="mt-3 text-sm font-medium text-blue-700 hover:underline"
           onClick={() => {
-            setLoading(true);
             void load();
           }}
         >
@@ -357,13 +372,17 @@ export function OperasyonPlanlayiciPanel({
     );
   }
 
+  if (!snapshot) {
+    return <p className="py-10 text-center text-sm text-slate-400">Operasyon planlayıcısı yükleniyor...</p>;
+  }
+
   return (
     <PlannerProvider
       mode="live"
       canEdit={canEdit}
       claimId={claimId}
       initialClaim={snapshot}
-      onRefresh={load}
+      onRefresh={softRefresh}
       onGoToReports={onGoToReports}
     >
       <PlanlayiciInner
