@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-21",
-  "label": "v391-tum-ilceler-kapsam",
-  "description": "Web-only: Hasar Onarım ve Acil Yardımda il seçiminde Tüm İlçeler + ilçe kapsamı kalıcı; addWholeProvinceEntry ile ilçe listesi no-op kaldırıldı. Commit 07de5d3. Health PASS, nginx→web PASS, migrate yok. Login smoke yerel credential. Rollback web v390 / backend v390.",
+  "updatedAt": "2026-07-22",
+  "label": "v392-musteri-kabul-kilidi",
+  "description": "Web-only: Müşteri Cuma kabul — ölü Onayla/Reddet kaldırıldı; hizmet tipi normalize; Asistan dili/Kara Liste; CRM Operasyon Hafızası→İlişki Özeti; kart notu Title Case. Commit 2b4bc44. Health PASS, nginx→web PASS, /panel/musteriler PASS, migrate yok. Login smoke yerel credential. Rollback web v391 / backend v390.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v390-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v391-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v392-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v390-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v391-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v390-amd64"
   },
   "mustPassSmokeRoutes": [
