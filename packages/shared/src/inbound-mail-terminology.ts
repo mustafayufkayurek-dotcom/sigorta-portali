@@ -39,12 +39,17 @@ const CATEGORY_ALIASES: Record<string, string> = {
 const LOSS_TYPE_ALIASES: Record<string, string> = {
   'cam kirilmasi': 'Cam Kırılması',
   'cam kırılması': 'Cam Kırılması',
-  // Müşteri dili (Cam Kırığı) → Meridyen Dosya Konusu
+  // Müşteri dili (Cam Kırığı) → Meridyen Dosya Konusu — kilitli
   'cam kirigi': 'Cam Kırılması',
   'cam kırığı': 'Cam Kırılması',
+  'cam kirik': 'Cam Kırılması',
+  'cam kırık': 'Cam Kırılması',
+  'cam kirigi hasari': 'Cam Kırılması',
+  'cam kırığı hasarı': 'Cam Kırılması',
   'vam kirilmasi': 'Cam Kırılması',
   'vam kırılması': 'Cam Kırılması',
   'vam kirilmas': 'Cam Kırılması',
+  'vam kirigi': 'Cam Kırılması',
   'dahili su': 'Dahili Su',
   // İhbar / müşteri dili → Meridyen terminolojisi
   'su baskini': 'Dahili Su',
@@ -127,7 +132,13 @@ export function mapInboundLossTypeToMeridyen(raw?: string | null): string | unde
   const category = mapInboundCategoryKnown(raw);
   if (category) return category;
   if (aliasKey.includes('vam') && aliasKey.includes('kir')) return 'Cam Kırılması';
-  if (aliasKey.includes('cam') && aliasKey.includes('kir')) return 'Cam Kırılması';
+  // cam + kırık/kırıl/kırı — müşteri dili kilitli
+  if (
+    aliasKey.includes('cam')
+    && (aliasKey.includes('kir') || aliasKey.includes('kirik') || aliasKey.includes('kiril'))
+  ) {
+    return 'Cam Kırılması';
+  }
   if (aliasKey.includes('dahili') && aliasKey.includes('su')) return 'Dahili Su';
   // "Su Baskını" / "su baskini" ihbar dili → Meridyen: Dahili Su
   // "Sel" içeren doğal afet ifadeleri bu eşlemeye girmez.

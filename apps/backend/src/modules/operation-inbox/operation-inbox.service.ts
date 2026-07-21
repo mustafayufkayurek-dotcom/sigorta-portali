@@ -672,7 +672,13 @@ export class OperationInboxService {
       || extracted.claimNo?.trim()
       || fileNo;
     const propertyAddressText =
-      dto.insuredAddress?.trim() || extracted.address?.trim() || undefined;
+      dto.insuredAddress?.trim()
+      || extracted.address?.trim()
+      || (await this.routingService.resolveAddressFromExistingFiles(
+        policyNo !== 'Belirtilmedi' ? policyNo : extracted.policyNo,
+        fileNo,
+      ))
+      || undefined;
     const { city, district } = await resolveCityDistrictFromAddress(
       this.prisma,
       propertyAddressText,
@@ -820,7 +826,15 @@ export class OperationInboxService {
       this.resolveInsuredName(dto.insuredName, extracted, message.fromName, message.fromAddress)
       || 'Belirtilmemiş';
     const customerPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
-    const address = dto.insuredAddress?.trim() || extracted.address?.trim() || 'Belirtilmemiş';
+    let address = dto.insuredAddress?.trim() || extracted.address?.trim() || '';
+    if (!address || address === 'Belirtilmemiş') {
+      const inferred = await this.routingService.resolveAddressFromExistingFiles(
+        dto.policyNo?.trim() || extracted.policyNo,
+        dto.fileNo?.trim() || extracted.fileNo,
+      );
+      if (inferred?.trim()) address = inferred.trim();
+    }
+    if (!address) address = 'Belirtilmemiş';
     const issueType = (() => {
       const canonical = sanitizeInboundLossType(
         dto.lossType?.trim() || extracted.lossType,

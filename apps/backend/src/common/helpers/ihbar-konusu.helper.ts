@@ -26,12 +26,15 @@ export function resolveCanonicalIhbarLabel(input: {
   return undefined;
 }
 
-/** Gelen kutusu / dosya oluşturma için canonical lossType */
+/** Gelen kutusu / dosya oluşturma için canonical lossType — hasar şekli öncelikli */
 export function sanitizeInboundLossType(raw?: string | null, fileSubject?: string | null): string {
-  const canonical =
-    mapInboundCategoryKnown(fileSubject)
-    || mapInboundLossTypeToMeridyen(raw);
-  return canonical || 'Belirtilmemiş';
+  // Önce serbest hasar şekli (Cam Kırığı → Cam Kırılması); kategori ikinci sırada
+  const fromLoss = mapInboundLossTypeToMeridyen(raw);
+  if (fromLoss) return fromLoss;
+  const fromSubject = mapInboundCategoryKnown(fileSubject) || mapInboundLossTypeToMeridyen(fileSubject);
+  if (fromSubject) return fromSubject;
+  const fromRawCategory = mapInboundCategoryKnown(raw);
+  return fromRawCategory || 'Belirtilmemiş';
 }
 
 /** Canonical etiketten ClaimSubject id çöz */

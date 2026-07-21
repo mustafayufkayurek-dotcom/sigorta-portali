@@ -451,7 +451,7 @@ export class InboundRoutingService {
     return missing;
   }
 
-  private async resolveAddressFromExistingFiles(
+  async resolveAddressFromExistingFiles(
     policyNo?: string | null,
     remedFileNo?: string | null,
   ): Promise<string | null> {

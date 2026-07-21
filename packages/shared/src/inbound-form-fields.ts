@@ -23,11 +23,21 @@ export const INBOUND_FORM_FIELD_LABELS: { key: string; label: string }[] = [
   { key: 'addressAlt3', label: 'İletişim Adresi' },
   { key: 'addressAlt4', label: 'Sigortalı Adresi' },
   { key: 'addressAlt5', label: 'Hasar Adresi' },
+  { key: 'addressAlt6', label: 'Riziko Adresi' },
+  { key: 'addressAlt7', label: 'Mahal Adresi' },
+  { key: 'addressAlt8', label: 'Olay Yeri' },
+  { key: 'addressAlt9', label: 'Olay Adresi' },
+  { key: 'addressAlt10', label: 'Hasar Mahalli' },
   { key: 'category', label: 'Hasar Şekli' },
   { key: 'categoryAlt', label: 'Branş' },
   { key: 'description', label: 'Açıklama' },
   { key: 'descriptionAlt', label: 'Hasar Açıklaması' },
 ];
+
+/** Adres alanı etiketleri — çıkarım ve boş-alan fallback için tek kaynak. */
+export const INBOUND_ADDRESS_FIELD_LABELS = INBOUND_FORM_FIELD_LABELS
+  .filter((f) => f.key.startsWith('address'))
+  .map((f) => f.label);
 
 const INBOUND_FORM_TITLE_PATTERN =
   /\b(KONUT HASAR İHBAR FORMU|HASAR İHBAR FORMU|ACİL YARDIM İHBAR FORMU|İHBAR FORMU)\b/i;
@@ -36,9 +46,12 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** HTML entity ve nbsp temizliği — satır sonları korunur. */
+/** HTML entity ve nbsp temizliği — satır sonları korunur; tablo hücreleri etiket:değer olur. */
 export function decodeInboundEmailText(raw: string): string {
   return raw
+    // Tablo: <td>Adres</td><td>Cadde No: 5</td> → Adres: Cadde No: 5
+    .replace(/<\/t[hd]>\s*<t[hd][^>]*>/gi, ': ')
+    .replace(/<\/tr>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
@@ -50,6 +63,7 @@ export function decodeInboundEmailText(raw: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/\u00a0/g, ' ')
+    .replace(/:{2,}/g, ':')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]{2,}/g, ' ')
@@ -57,15 +71,37 @@ export function decodeInboundEmailText(raw: string): string {
 }
 
 /**
+ * bodyText + HTML + önizleme birleşik düz metin.
+ * Yalnızca bodyText kullanılırsa tablolu maillerde adres kaybolur.
+ */
+export function collectInboundPlainText(parts: {
+  bodyText?: string | null;
+  bodyHtml?: string | null;
+  bodyPreview?: string | null;
+}): string {
+  const chunks = [
+    parts.bodyText,
+    parts.bodyHtml ? decodeInboundEmailText(parts.bodyHtml) : '',
+    parts.bodyPreview,
+  ]
+    .map((c) => (c ?? '').trim())
+    .filter(Boolean);
+  if (chunks.length === 0) return '';
+  return decodeInboundEmailText(chunks.join('\n'));
+}
+
+/**
  * Etiket sınırına göre form alanlarını çıkarır.
  * Değer içindeki "No : 51" gibi iki nokta üst üste karakterleri destekler.
+ * İki nokta yoksa (HTML tablo sonrası satır kırılımı) etiket + satır sonu da kabul edilir.
  */
 export function extractInboundFormFields(text: string): InboundFormField[] {
   const labels = [...INBOUND_FORM_FIELD_LABELS]
     .map((f) => f.label)
     .sort((a, b) => b.length - a.length);
   const labelGroup = labels.map(escapeRegex).join('|');
-  const regex = new RegExp(`(${labelGroup})\\s*:\\s*`, 'gi');
+  // "Adres:" veya "Adres\n" (tablo hücresi → satır)
+  const regex = new RegExp(`(${labelGroup})(?:\\s*[:：]\\s*|\\s*\\n+\\s*)`, 'gi');
   const matches = [...text.matchAll(regex)];
   if (matches.length === 0) return [];
 

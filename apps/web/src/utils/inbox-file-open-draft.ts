@@ -3,7 +3,11 @@ import {
   resolveAssistantFirmLabel,
   type ParsedInboxEmailContent,
 } from '@/utils/inbound-email-content-parser';
-import { sanitizeInboundPhone } from '@sigorta/shared';
+import {
+  mapInboundCategoryKnown,
+  mapInboundLossTypeToMeridyen,
+  sanitizeInboundPhone,
+} from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 export interface InboxMailFields {
@@ -71,6 +75,17 @@ function mergeField(...values: Array<string | null | undefined>): string {
   return '';
 }
 
+/** Müşteri dili → Meridyen dosya konusu (Cam Kırığı → Cam Kırılması). */
+function lockMeridyenLossLabel(raw?: string | null): string {
+  const t = raw?.trim();
+  if (!t) return '';
+  return (
+    mapInboundLossTypeToMeridyen(t)
+    ?? mapInboundCategoryKnown(t)
+    ?? toTitleCaseTR(t)
+  );
+}
+
 export function buildInboxFileOpenDraft(
   message: MessageLike,
   routing?: RoutingLike | null,
@@ -106,8 +121,8 @@ export function buildInboxFileOpenDraft(
     fileNo: fileNoRaw,
     claimNo: claimNoRaw,
     policyNo: policyNoRaw,
-    lossType: lossTypeRaw ? toTitleCaseTR(lossTypeRaw) : '',
-    fileSubject: fileSubjectRaw ? toTitleCaseTR(fileSubjectRaw) : '',
+    lossType: lockMeridyenLossLabel(lossTypeRaw),
+    fileSubject: lockMeridyenLossLabel(fileSubjectRaw),
     insuredName: insuredNameRaw ? toTitleCaseTR(insuredNameRaw) : '',
     insuredPhone: insuredPhoneRaw,
     insuredAddress: addressRaw ? toTitleCaseTR(addressRaw) : '',
@@ -145,10 +160,10 @@ export function applyMailFieldsToDraft(
     policyNo: fields.policyNo?.trim() || draft.policyNo,
     claimNo: fields.claimNo?.trim() || draft.claimNo,
     lossType: fields.lossType?.trim()
-      ? toTitleCaseTR(fields.lossType.trim())
+      ? lockMeridyenLossLabel(fields.lossType.trim())
       : draft.lossType,
     fileSubject: fields.fileSubject?.trim()
-      ? toTitleCaseTR(fields.fileSubject.trim())
+      ? lockMeridyenLossLabel(fields.fileSubject.trim())
       : draft.fileSubject,
     insurer: fields.insurer?.trim()
       ? toTitleCaseTR(fields.insurer.trim())

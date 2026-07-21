@@ -5,9 +5,10 @@ import {
   parseRemedSubjectLine,
   sanitizeInboundPhone,
   findInsuredMobilePhoneInText,
-  decodeInboundEmailText,
+  collectInboundPlainText,
   extractInboundFormFields,
   getInboundFormFieldValue,
+  INBOUND_ADDRESS_FIELD_LABELS,
 } from '@sigorta/shared';
 import { extractSubjectHints } from './inbound-subject-parser';
 
@@ -26,11 +27,12 @@ export interface HeuristicExtractedFields {
 export function extractHeuristicFields(
   message: Pick<InboundMessage, 'subject' | 'bodyText' | 'bodyPreview' | 'bodyHtml'>,
 ): HeuristicExtractedFields {
-  const bodyFromHtml = message.bodyHtml ? decodeInboundEmailText(message.bodyHtml) : '';
-  const textForFields = decodeInboundEmailText(
-    [message.bodyText, bodyFromHtml, message.bodyPreview].filter(Boolean).join('\n'),
-  );
-  const textForPhone = textForFields || decodeInboundEmailText(message.subject);
+  const textForFields = collectInboundPlainText({
+    bodyText: message.bodyText,
+    bodyHtml: message.bodyHtml,
+    bodyPreview: message.bodyPreview,
+  });
+  const textForPhone = textForFields || (message.subject ? String(message.subject) : '');
   const fields = extractInboundFormFields(textForFields);
   const subjectHints = extractSubjectHints(message.subject);
   const remed = parseRemedSubjectLine(message.subject);
@@ -64,15 +66,7 @@ export function extractHeuristicFields(
     policyNo: getInboundFormFieldValue(fields, 'Poliçe No') ?? subjectHints.policyNo ?? remed?.policyNo,
     fileNo: getInboundFormFieldValue(fields, 'Dosya No') ?? remed?.remedFileNo,
     claimNo: getInboundFormFieldValue(fields, 'Referans No') ?? remed?.policyNo,
-    address: getInboundFormFieldValue(
-      fields,
-      'Adres',
-      'Hasar Yeri',
-      'Sigorta Ettiren Adresi',
-      'İletişim Adresi',
-      'Sigortalı Adresi',
-      'Hasar Adresi',
-    ),
+    address: getInboundFormFieldValue(fields, ...INBOUND_ADDRESS_FIELD_LABELS),
     lossType: lossType ?? undefined,
     fileSubject: fileSubject ?? undefined,
   };

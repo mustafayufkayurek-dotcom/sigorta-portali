@@ -2,12 +2,15 @@
 
 import {
   mapInboundCategoryToMeridyen,
+  mapInboundCategoryKnown,
   mapInboundLossTypeToMeridyen,
   parseRemedSubjectLine,
   sanitizeInboundPhone,
   findInsuredMobilePhoneInText,
+  collectInboundPlainText,
   decodeInboundEmailText,
   extractInboundFormFields,
+  INBOUND_ADDRESS_FIELD_LABELS,
 } from '@sigorta/shared';
 
 export type InboxSenderProfile = 'remed' | 'safran' | 'insurance' | 'unknown';
@@ -106,6 +109,17 @@ export function resolveAssistantFirmLabel(profile: InboxSenderProfile): string |
   }
 }
 
+function fieldValue(
+  fieldMap: Map<string, string>,
+  ...labels: string[]
+): string | undefined {
+  for (const label of labels) {
+    const hit = fieldMap.get(label.toLocaleLowerCase('tr-TR'));
+    if (hit?.trim()) return hit.trim();
+  }
+  return undefined;
+}
+
 export function parseInboundEmailContent(input: {
   subject: string;
   bodyText?: string | null;
@@ -113,11 +127,12 @@ export function parseInboundEmailContent(input: {
   bodyPreview?: string | null;
   fromAddress: string;
 }): ParsedInboxEmailContent {
-  const rawBody = input.bodyText?.trim()
-    || (input.bodyHtml ? decodeEmailText(input.bodyHtml) : '')
-    || input.bodyPreview?.trim()
-    || '';
-  const text = decodeEmailText(rawBody);
+  // bodyText tek başına yetersiz kalabilir (HTML tablo); tüm kaynakları birleştir
+  const text = collectInboundPlainText({
+    bodyText: input.bodyText,
+    bodyHtml: input.bodyHtml,
+    bodyPreview: input.bodyPreview,
+  });
   const subjectParts = parseSubjectParts(input.subject);
   const formTitleMatch = text.match(FORM_TITLE_PATTERN);
   const fields = extractFormFields(text);
@@ -125,48 +140,44 @@ export function parseInboundEmailContent(input: {
 
   const fieldMap = new Map<string, string>();
   for (const f of fields) {
-    const key = f.label.toLowerCase();
+    const key = f.label.toLocaleLowerCase('tr-TR');
     if (!fieldMap.has(key)) fieldMap.set(key, f.value);
   }
 
   const customerName =
-    fieldMap.get('sigorta ettiren ad-soyad')
-    ?? fieldMap.get('sigorta ettiren')
+    fieldValue(fieldMap, 'Sigorta Ettiren Ad-Soyad', 'Sigorta Ettiren')
     ?? subjectParts?.customerName;
 
   const phoneFromFields = sanitizeInboundPhone(
-    fieldMap.get('i̇letişim no')
-    ?? fieldMap.get('iletisim no')
-    ?? fieldMap.get('telefon')
-    ?? fieldMap.get('cep telefonu')
-    ?? fieldMap.get('gsm')
-    ?? fieldMap.get('sigortalı telefonu')
-    ?? fieldMap.get('sigortali telefonu'),
+    fieldValue(
+      fieldMap,
+      'İletişim No',
+      'Telefon',
+      'Cep Telefonu',
+      'GSM',
+      'Sigortalı Telefonu',
+    ),
   );
   const phone = phoneFromFields ?? findInsuredMobilePhoneInText(text);
 
-  const fileNo = fieldMap.get('dosya no') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
-  const policyNo = fieldMap.get('poliçe no') ?? subjectParts?.fileOrPolicyNo;
-  const claimRaw = fieldMap.get('referans no') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
+  const fileNo = fieldValue(fieldMap, 'Dosya No') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
+  const policyNo = fieldValue(fieldMap, 'Poliçe No') ?? subjectParts?.fileOrPolicyNo;
+  const claimRaw = fieldValue(fieldMap, 'Referans No') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
   const claimNo = normalizeClaimNo(claimRaw);
-  const address =
-    fieldMap.get('adres')
-    ?? fieldMap.get('hasar yeri')
-    ?? fieldMap.get('sigorta ettiren adresi')
-    ?? fieldMap.get('sigortalı adresi')
-    ?? fieldMap.get('sigortali adresi')
-    ?? fieldMap.get('hasar adresi')
-    ?? fieldMap.get('i̇letişim adresi')
-    ?? fieldMap.get('iletisim adresi');
-  const insurer = fieldMap.get('sigorta şirketi');
-  const bodyCategory = fieldMap.get('hasar şekli') ?? fieldMap.get('branş');
+  const address = fieldValue(fieldMap, ...INBOUND_ADDRESS_FIELD_LABELS);
+  const insurer = fieldValue(fieldMap, 'Sigorta Şirketi');
+  const bodyCategory = fieldValue(fieldMap, 'Hasar Şekli', 'Branş');
   const category = bodyCategory ?? subjectParts?.category;
   const fileSubject =
     subjectParts?.fileSubject
     ?? mapInboundCategoryToMeridyen(subjectParts?.category)
     ?? mapInboundCategoryToMeridyen(bodyCategory);
-  const normalizedLossType = mapInboundLossTypeToMeridyen(bodyCategory) ?? mapInboundLossTypeToMeridyen(subjectParts?.category);
-  const description = fieldMap.get('açıklama') ?? fieldMap.get('hasar açıklaması');
+  const normalizedLossType =
+    mapInboundLossTypeToMeridyen(bodyCategory)
+    ?? mapInboundLossTypeToMeridyen(subjectParts?.category)
+    ?? mapInboundCategoryKnown(bodyCategory)
+    ?? mapInboundCategoryKnown(subjectParts?.category);
+  const description = fieldValue(fieldMap, 'Açıklama', 'Hasar Açıklaması');
 
   return {
     formTitle: formTitleMatch?.[1],
@@ -207,7 +218,7 @@ export function buildSummaryFields(parsed: ParsedInboxEmailContent): ParsedFormF
   push('Açıklama', parsed.description);
 
   for (const f of parsed.fields) {
-    if (!rows.some((r) => r.label.toLowerCase() === f.label.toLowerCase())) {
+    if (!rows.some((r) => r.label.toLocaleLowerCase('tr-TR') === f.label.toLocaleLowerCase('tr-TR'))) {
       rows.push(f);
     }
   }
