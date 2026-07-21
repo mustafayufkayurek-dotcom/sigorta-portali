@@ -187,11 +187,34 @@ export class CustomersService {
     if (params?.type) where.type = params.type;
     if (params?.customerType) (where as any).entityType = params.customerType;
     if (params?.subType) {
-      // Legacy kayıtlar sub_type=eksper; yeni kayıtlar eksper_firmasi
-      (where as any).subType =
-        params.subType === 'eksper_firmasi'
-          ? { in: ['eksper_firmasi', 'eksper'] }
-          : params.subType;
+      // Legacy: sub_type=eksper | eksper_firmasi.
+      // Eski CRM kayıtlarında eksper ofisleri corporate + sub_type NULL kalmış olabilir
+      // (ünvanında Eksper/Ekspertiz geçer); hasar seçicisinde görünmeleri gerekir.
+      if (params.subType === 'eksper_firmasi') {
+        const expertNameOr = [
+          { companyName: { contains: 'eksper', mode: 'insensitive' as const } },
+          { companyName: { contains: 'ekspertiz', mode: 'insensitive' as const } },
+          { fullName: { contains: 'eksper', mode: 'insensitive' as const } },
+          { fullName: { contains: 'ekspertiz', mode: 'insensitive' as const } },
+        ];
+        (where as any).AND = [
+          ...((where as any).AND ?? []),
+          {
+            OR: [
+              { subType: { in: ['eksper_firmasi', 'eksper'] } },
+              {
+                AND: [
+                  { entityType: 'corporate' },
+                  { OR: [{ subType: null }, { subType: '' }] },
+                  { OR: expertNameOr },
+                ],
+              },
+            ],
+          },
+        ];
+      } else {
+        (where as any).subType = params.subType;
+      }
     }
     if (params?.serviceType) {
       const normalized = params.serviceType.trim().toLowerCase().replace(/-/g, '_');

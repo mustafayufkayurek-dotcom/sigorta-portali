@@ -765,6 +765,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         open={showCustomerModal}
         onClose={() => setShowCustomerModal(false)}
         hideTypeColumn
+        subTypeFilter={HASAR_EXPERT_CUSTOMER_SUB_TYPE}
         onSelect={(c) => {
           setSelectedCustomer({
             id: c.id,

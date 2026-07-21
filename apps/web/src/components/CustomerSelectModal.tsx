@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { customerDisplayName } from '@/utils/customer-form-helpers';
 import { API, authHeader } from '@/utils/api';
+import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 
 type Customer = {
   id: string;
@@ -14,6 +15,9 @@ type Customer = {
   taxNumber?: string | null;
   phone?: string | null;
   email?: string | null;
+  subType?: string | null;
+  entityType?: string | null;
+  status?: string | null;
 };
 
 type Props = {
@@ -28,6 +32,29 @@ type Props = {
   hideTypeColumn?: boolean;
 };
 
+function resultCountLabel(subTypeFilter: string | undefined, total: number): string {
+  if (total <= 0) return '';
+  if (subTypeFilter === HASAR_EXPERT_CUSTOMER_SUB_TYPE || subTypeFilter === 'eksper') {
+    return `${total} Eksper Ofisi Bulundu`;
+  }
+  if (subTypeFilter === 'asistan_firmasi') {
+    return `${total} Asistans Firma Bulundu`;
+  }
+  return `${total} Müşteri Bulundu`;
+}
+
+function emptyStateLabel(subTypeFilter: string | undefined, hasFilter: boolean): string {
+  if (subTypeFilter === HASAR_EXPERT_CUSTOMER_SUB_TYPE || subTypeFilter === 'eksper') {
+    return hasFilter
+      ? 'Eksper Ofisi Bulunamadı.'
+      : 'Kayıtlı eksper ofisi bulunamadı. Müşteriler’den Eksper Firması olarak ekleyin.';
+  }
+  if (subTypeFilter === 'asistan_firmasi') {
+    return hasFilter ? 'Asistans Firma Bulunamadı.' : 'Kayıtlı asistans firma bulunamadı.';
+  }
+  return hasFilter ? 'Müşteri Bulunamadı.' : 'Arama Yapın veya Tüm Müşterileri Görüntüleyin.';
+}
+
 export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subTypeFilter, hideTypeColumn }: Props) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
@@ -35,13 +62,21 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const isExpertPicker =
+    subTypeFilter === HASAR_EXPERT_CUSTOMER_SUB_TYPE || subTypeFilter === 'eksper';
+  const isAssistantPicker = subTypeFilter === 'asistan_firmasi';
+  const hideEntityTypeFilter = Boolean(hideTypeColumn || isExpertPicker || isAssistantPicker);
 
   const load = useCallback(async (q: string, type: string) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '50' });
+      const params = new URLSearchParams({
+        limit: isExpertPicker || isAssistantPicker ? '500' : '50',
+        status: 'active',
+      });
       if (q.trim()) params.set('search', q.trim());
       if (type) params.set('customerType', type);
+      else if (isExpertPicker || isAssistantPicker) params.set('customerType', 'corporate');
       if (subTypeFilter) params.set('subType', subTypeFilter);
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       const rows = (r.data.data || []).map((c: Customer & { entityType?: string; subType?: string | null }) => ({
@@ -50,9 +85,9 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
         subType: c.subType ?? null,
       }));
       setCustomers(rows);
-      setTotal(r.data.meta?.total ?? 0);
+      setTotal(r.data.meta?.total ?? rows.length);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, [subTypeFilter]);
+  }, [subTypeFilter, isExpertPicker, isAssistantPicker]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +108,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
   const modalTitle =
     subTypeFilter === 'asistan_firmasi'
       ? 'Asistans Firma Seç'
-      : subTypeFilter === 'eksper_firmasi'
+      : subTypeFilter === 'eksper_firmasi' || subTypeFilter === 'eksper'
         ? 'Eksper Ofisi Seç'
         : subTypeFilter
           ? 'Müşteri Seç'
@@ -109,15 +144,17 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="">Tüm Tipler</option>
-            <option value="individual">Bireysel</option>
-            <option value="corporate">Kurumsal</option>
-          </select>
+          {!hideEntityTypeFilter && (
+            <select
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">Tüm Tipler</option>
+              <option value="individual">Bireysel</option>
+              <option value="corporate">Kurumsal</option>
+            </select>
+          )}
         </div>
 
         {/* Table */}
@@ -126,7 +163,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
             <div className="text-gray-400 text-sm py-12 text-center">Yükleniyor...</div>
           ) : customers.length === 0 ? (
             <div className="text-gray-400 text-sm py-12 text-center">
-              {search || typeFilter ? 'Müşteri Bulunamadı.' : 'Arama Yapın veya Tüm Müşterileri Görüntüleyin.'}
+              {emptyStateLabel(subTypeFilter, Boolean(search || typeFilter))}
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -164,14 +201,14 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-xs text-gray-400">{total > 0 ? `${total} Müşteri Bulundu` : ''}</span>
+          <span className="text-xs text-gray-400">{resultCountLabel(subTypeFilter, total)}</span>
           <div className="flex gap-2">
             {onCreateNew && (
               <button type="button"
                 onClick={() => { onCreateNew(); onClose(); }}
                 className="text-sm bg-green-50 text-green-700 border border-green-200 px-4 py-1.5 rounded-lg hover:bg-green-100"
               >
-                + Yeni Müşteri Ekle
+                {isExpertPicker ? '+ Yeni Eksper Ofisi' : isAssistantPicker ? '+ Yeni Asistans Firma' : '+ Yeni Müşteri Ekle'}
               </button>
             )}
             <button type="button"
