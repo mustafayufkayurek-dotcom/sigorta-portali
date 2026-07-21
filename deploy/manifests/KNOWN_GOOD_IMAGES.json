@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-21",
-  "label": "v386-planlayici-randevu-aktif",
-  "description": "Web-only: Hasar Operasyon Planlayıcısı randevu tarih/saat/süre alanları düzenlenebilir; Kaydet main-appointment ile uyumlu. Backend değişmedi (v383). Commit 1424161. Health PASS, nginx→web PASS, route smoke PASS (auth login env yok). Rollback web v385 / backend v383.",
+  "label": "v387-eksper-ofisi-liste",
+  "description": "Full: Hasar Eksper Ofisi seçicisinde alt tipsiz ekspertiz kayıtları + canlı sub_type=eksper_firmasi veri düzeltmesi (8 kayıt). Commit 8fc612c. Health PASS, nginx→web PASS, migrate yok. Rollback web v386 / backend v383.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v383-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v386-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v387-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v387-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v385-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v386-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v383-amd64"
   },
   "mustPassSmokeRoutes": [
