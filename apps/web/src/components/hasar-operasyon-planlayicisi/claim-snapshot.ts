@@ -18,6 +18,8 @@ export type PlannerInspector = {
   lastWork: string;
   completedJobs: number;
   phone: string;
+  /** Meridyen saha personeli veya tespitçi olarak görevlendirilmiş tedarikçi */
+  source: 'meridyen' | 'vendor';
 };
 
 export type PlannerSupplier = {
@@ -237,6 +239,14 @@ type ClaimFileLite = {
   customer?: { fullName?: string; companyName?: string; phone?: string } | null;
   assignedUser?: { firstName?: string; lastName?: string } | null;
   assignedOfficeUser?: { firstName?: string; lastName?: string } | null;
+  assignedFieldUser?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+  } | null;
+  assignedFieldUserId?: string | null;
+  assignedInspectorVendorId?: string | null;
   latestRepairReport?: {
     reportNo?: string | null;
     status?: string | null;
@@ -254,10 +264,13 @@ export function mapLiveSnapshot(
 ): PlannerClaimSnapshot {
   const appt = fmtDateTime(op.mainAppointment?.scheduledAt);
   const notice = fmtDateTime(claimFile?.createdAt);
+  const fieldInspectorName = claimFile?.assignedFieldUser
+    ? `${claimFile.assignedFieldUser.firstName ?? ''} ${claimFile.assignedFieldUser.lastName ?? ''}`.trim()
+    : '';
   const inspectorName =
     op.assignedInspector?.name ??
     op.assignedInspector?.companyName ??
-    null;
+    (fieldInspectorName || null);
   const ownerName = claimFile?.assignedOfficeUser
     ? `${claimFile.assignedOfficeUser.firstName ?? ''} ${claimFile.assignedOfficeUser.lastName ?? ''}`.trim()
     : claimFile?.assignedUser
@@ -265,7 +278,9 @@ export function mapLiveSnapshot(
       : '—';
 
   const hasAppt = Boolean(op.mainAppointment?.scheduledAt);
-  const hasInspector = Boolean(op.assignedInspector?.id);
+  const hasInspector = Boolean(
+    op.assignedInspector?.id || claimFile?.assignedFieldUserId || claimFile?.assignedFieldUser?.id,
+  );
   const hasSupplier = op.assignedSuppliers.length > 0;
 
   const stepStatuses: Record<StepId, StepStatus> = {
@@ -305,9 +320,24 @@ export function mapLiveSnapshot(
               lastWork: '—',
               completedJobs: 0,
               phone: op.assignedInspector.phone ?? '',
+              source: 'vendor' as const,
             },
           ]
-        : [];
+        : claimFile?.assignedFieldUser
+          ? [
+              {
+                id: claimFile.assignedFieldUser.id,
+                name: fieldInspectorName || 'Tespitçi',
+                region: op.claim.district ?? '—',
+                available: true,
+                score: 0,
+                lastWork: '—',
+                completedJobs: 0,
+                phone: claimFile.assignedFieldUser.phone ?? '',
+                source: 'meridyen' as const,
+              },
+            ]
+          : [];
 
   const suppliers =
     candidateSuppliers.length > 0
@@ -464,7 +494,11 @@ export function mapLiveSnapshot(
     completionPct: Math.round((completedCount / 8) * 100),
     eta: '—',
     stepStatuses,
-    preAssignedInspectorId: op.assignedInspector?.id ?? null,
+    preAssignedInspectorId:
+      op.assignedInspector?.id ??
+      claimFile?.assignedFieldUserId ??
+      claimFile?.assignedFieldUser?.id ??
+      null,
     preAssignedSupplierIds: op.assignedSuppliers.map((s) => s.id),
   };
 }

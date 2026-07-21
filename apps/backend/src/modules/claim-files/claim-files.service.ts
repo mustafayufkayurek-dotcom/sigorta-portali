@@ -20,6 +20,7 @@ import {
 } from '@/common/utils/file-no-helpers';
 import {
   buildVendorNearbyWhere,
+  buildInspectorFallbackWhere,
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
@@ -1639,6 +1640,47 @@ export class ClaimFilesService {
       }
     }
 
+    // Saha personeli: hiç hizmet bölgesi yoksa Türkiye geneli kabul edilir
+    if (roleCode === 'field_staff') {
+      const nationwide = await this.prisma.user.findMany({
+        where: {
+          status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
+          role: { code: { in: ['field_staff', 'FIELD_STAFF'] } },
+          serviceAreas: { none: {} },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          role: { select: { id: true, name: true, code: true } },
+          _count: {
+            select: {
+              assignedFieldClaimFiles: {
+                where: { currentStatus: { isClosedState: false } },
+              },
+              assignedOfficeClaimFiles: {
+                where: { currentStatus: { isClosedState: false } },
+              },
+            },
+          },
+        },
+        take: 50,
+      });
+      for (const user of nationwide) {
+        if (userMap.has(user.id)) continue;
+        userMap.set(user.id, {
+          userId: user.id,
+          provinceId: province.id,
+          districtId: null,
+          user,
+          province: { id: province.id, name: province.name },
+          district: null,
+        } as typeof serviceAreas[number]);
+      }
+    }
+
     return Array.from(userMap.values())
       .sort((a, b) => {
         const aLoad = a.user._count?.[countKey] ?? 0;
@@ -2289,16 +2331,38 @@ export class ClaimFilesService {
       purpose,
     });
 
-    const vendors = await this.prisma.vendor.findMany({
+    const vendorSelect = {
+      id: true, name: true, type: true, phone: true, email: true, authorizedPhone: true,
+      city: true, district: true, category: true, canActAsInspector: true,
+      serviceAreas: { include: { province: true, district: true } },
+    } as const;
+
+    let vendors = await this.prisma.vendor.findMany({
       where,
-      select: {
-        id: true, name: true, type: true, phone: true, email: true, authorizedPhone: true,
-        city: true, district: true, category: true, canActAsInspector: true,
-        serviceAreas: { include: { province: true, district: true } },
-      },
+      select: vendorSelect,
       take: 100,
       orderBy: { name: 'asc' },
     });
+
+    // Tespitçi: bölge eşleşmesi yoksa operasyonu kilitleme — aktif tespitçi havuzunu göster
+    if (purpose === 'inspector' && vendors.length === 0) {
+      vendors = await this.prisma.vendor.findMany({
+        where: buildInspectorFallbackWhere(),
+        select: vendorSelect,
+        take: 100,
+        orderBy: { name: 'asc' },
+      });
+    }
+
+    if (purpose === 'inspector' && city && vendors.length > 1) {
+      const cityLower = city.toLocaleLowerCase('tr-TR');
+      vendors = [...vendors].sort((a, b) => {
+        const aCity = (a.city ?? '').toLocaleLowerCase('tr-TR') === cityLower ? 0 : 1;
+        const bCity = (b.city ?? '').toLocaleLowerCase('tr-TR') === cityLower ? 0 : 1;
+        if (aCity !== bCity) return aCity - bCity;
+        return a.name.localeCompare(b.name, 'tr');
+      });
+    }
 
     return vendors;
   }

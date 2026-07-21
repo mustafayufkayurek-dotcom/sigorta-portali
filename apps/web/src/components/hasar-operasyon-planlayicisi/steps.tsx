@@ -530,12 +530,22 @@ export function StepInspector() {
       )}
 
       <Card title="Kayıtlı Tespitçi Listesi" icon={UserCog}>
+        <p className="mb-2 text-[10px] leading-relaxed text-slate-500">
+          Önce Meridyen saha tespitçisi atanır. Saha personeli dosyaya gidemiyorsa, «Tespitçi Olarak
+          Görevlendir» işaretli tedarikçi seçilir.
+        </p>
         <div className="space-y-2">
+          {claim.inspectors.length === 0 ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-800">
+              Atanabilir tespitçi bulunamadı. Kullanıcılar’da saha personeli veya Tedarikçiler’de
+              «Tespitçi Olarak Görevlendir» kayıtlarını kontrol edin.
+            </p>
+          ) : null}
           {claim.inspectors.map((ins) => {
             const wa = toWhatsAppLink(ins.phone);
             return (
               <div
-                key={ins.id}
+                key={`${ins.source}-${ins.id}`}
                 className="rounded-xl border border-slate-200 px-3 py-2.5"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -545,6 +555,10 @@ export function StepInspector() {
                       {ins.region} · Son Çalışma: {ins.lastWork}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <StatusPill
+                        label={ins.source === 'meridyen' ? 'Meridyen Saha' : 'Tedarikçi Tespitçi'}
+                        tone={ins.source === 'meridyen' ? 'blue' : 'green'}
+                      />
                       <StatusPill
                         label={ins.available ? 'Müsait' : 'Meşgul'}
                         tone={ins.available ? 'green' : 'orange'}

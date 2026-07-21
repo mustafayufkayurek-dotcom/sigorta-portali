@@ -76,5 +76,22 @@ describe('vendor-area-match.util', () => {
         ]),
       );
     });
+
+    it('tespitçi için il eşleşmesinde ilçe zorunlu değildir', () => {
+      const where = buildVendorNearbyWhere({
+        provinceId: 'prov-istanbul',
+        districtId: 'dist-pendik',
+        city: 'İstanbul',
+        districtName: 'Pendik',
+        purpose: 'inspector',
+      });
+      expect(where.canActAsInspector).toBe(true);
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          { city: { equals: 'İstanbul', mode: 'insensitive' } },
+          { district: { equals: 'Pendik', mode: 'insensitive' } },
+        ]),
+      );
+    });
   });
 });

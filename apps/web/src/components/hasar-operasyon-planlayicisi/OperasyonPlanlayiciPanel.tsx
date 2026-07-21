@@ -396,7 +396,7 @@ export function OperasyonPlanlayiciPanel({
       setError(null);
       if (!opts?.soft) setLoading(true);
       try {
-        const [opRes, inspRes, vendorRes] = await Promise.all([
+        const [opRes, inspRes, vendorRes, fieldStaffRes] = await Promise.all([
           axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
           axios
             .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=inspector`, {
@@ -408,23 +408,49 @@ export function OperasyonPlanlayiciPanel({
               headers: authHeader(),
             })
             .catch(() => ({ data: null })),
+          axios
+            .get(`${API}/claim-files/assignable-staff?role=field_staff`, { headers: authHeader() })
+            .catch(() => ({ data: null })),
         ]);
 
         const op = opRes.data?.data ?? opRes.data;
         const inspRaw = inspRes.data?.data ?? inspRes.data;
         const vendorRaw = vendorRes.data?.data ?? vendorRes.data;
-        const inspList: PlannerInspector[] = Array.isArray(inspRaw)
-          ? inspRaw.slice(0, 12).map((v: any) => ({
+        const fieldStaffRaw = fieldStaffRes.data?.data ?? fieldStaffRes.data;
+
+        const staffList: PlannerInspector[] = Array.isArray(fieldStaffRaw)
+          ? fieldStaffRaw.map((u: any) => ({
+              id: u.id,
+              name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || 'Saha Personeli',
+              region: 'Meridyen Saha · Türkiye',
+              available: true,
+              score: 0,
+              lastWork: '—',
+              completedJobs: 0,
+              phone: u.phone ?? '',
+              source: 'meridyen' as const,
+            }))
+          : [];
+
+        const vendorInspectors: PlannerInspector[] = Array.isArray(inspRaw)
+          ? inspRaw.slice(0, 20).map((v: any) => ({
               id: v.id,
               name: v.name ?? v.companyName ?? 'Tespitçi',
-              region: v.district ?? v.city ?? '—',
+              region: [v.district, v.city].filter(Boolean).join(' / ') || '—',
               available: true,
               score: Number(v.rating ?? 0),
               lastWork: '—',
               completedJobs: Number(v.jobCount ?? 0),
-              phone: v.phone ?? '',
+              phone: v.phone ?? v.authorizedPhone ?? '',
+              source: 'vendor' as const,
             }))
           : [];
+
+        // Kural: önce Meridyen saha; Meridyen gidemezse tespitçi tedarikçi
+        const inspList: PlannerInspector[] = [
+          ...staffList,
+          ...vendorInspectors.filter((v) => !staffList.some((s) => s.id === v.id)),
+        ];
         const vendorList: PlannerSupplier[] = Array.isArray(vendorRaw)
           ? vendorRaw.slice(0, 12).map((v: any) => ({
               id: v.id,

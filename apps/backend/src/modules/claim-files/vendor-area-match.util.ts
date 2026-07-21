@@ -95,19 +95,32 @@ export function buildVendorNearbyWhere(params: {
   }
 
   const areaMatch = buildVendorServiceAreaWhere(params.provinceId, params.districtId);
-  base.OR = [
-    { serviceAreas: { some: areaMatch } },
-    ...(city
-      ? [{
-          AND: [
-            { city: { equals: city, mode: 'insensitive' as const } },
-            ...(districtName
-              ? [{ district: { equals: districtName, mode: 'insensitive' as const } }]
-              : []),
-          ],
-        }]
-      : []),
-  ];
+  const locationOr: Prisma.VendorWhereInput[] = [{ serviceAreas: { some: areaMatch } }];
 
+  if (city) {
+    if (params.purpose === 'inspector') {
+      // Tespitçi havuzu dar: aynı il yeterli; ilçe zorunlu değil.
+      locationOr.push({ city: { equals: city, mode: 'insensitive' } });
+      if (districtName) {
+        locationOr.push({ district: { equals: districtName, mode: 'insensitive' } });
+      }
+    } else {
+      locationOr.push({
+        AND: [
+          { city: { equals: city, mode: 'insensitive' as const } },
+          ...(districtName
+            ? [{ district: { equals: districtName, mode: 'insensitive' as const } }]
+            : []),
+        ],
+      });
+    }
+  }
+
+  base.OR = locationOr;
   return base;
+}
+
+/** Bölge eşleşmesi boşsa tespitçi atamasını kilitlememek için ulusal havuz. */
+export function buildInspectorFallbackWhere(): Prisma.VendorWhereInput {
+  return { status: 'active', canActAsInspector: true };
 }

@@ -364,11 +364,20 @@ export function PlannerProvider({
             if (!assignedInspectorId) {
               return { ok: false, message: 'Tespitçi seçiniz.' };
             }
-            await axios.post(
-              `${API}/claim-files/${claimId}/assign-inspector-vendor`,
-              { vendorId: assignedInspectorId, note: meetingNote || undefined },
-              { headers: authHeader() },
-            );
+            const selected = claim.inspectors.find((i) => i.id === assignedInspectorId);
+            if (selected?.source === 'meridyen') {
+              await axios.post(
+                `${API}/claim-files/${claimId}/assign`,
+                { assignedFieldUserId: assignedInspectorId },
+                { headers: authHeader() },
+              );
+            } else {
+              await axios.post(
+                `${API}/claim-files/${claimId}/assign-inspector-vendor`,
+                { vendorId: assignedInspectorId, note: meetingNote || undefined },
+                { headers: authHeader() },
+              );
+            }
             await refreshClaim();
             return { ok: true, message: 'Tespitçi ataması kaydedildi.' };
           }

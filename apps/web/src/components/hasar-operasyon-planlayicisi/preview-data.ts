@@ -65,6 +65,7 @@ export const PREVIEW = {
       lastWork: '16.07.2026',
       completedJobs: 42,
       phone: '0532 111 22 33',
+      source: 'meridyen' as const,
     },
     {
       id: 'i2',
@@ -75,6 +76,7 @@ export const PREVIEW = {
       lastWork: '14.07.2026',
       completedJobs: 31,
       phone: '0533 222 33 44',
+      source: 'meridyen' as const,
     },
     {
       id: 'i3',
@@ -85,6 +87,7 @@ export const PREVIEW = {
       lastWork: '12.07.2026',
       completedJobs: 28,
       phone: '0534 333 44 55',
+      source: 'vendor' as const,
     },
   ],
   suppliers: [
