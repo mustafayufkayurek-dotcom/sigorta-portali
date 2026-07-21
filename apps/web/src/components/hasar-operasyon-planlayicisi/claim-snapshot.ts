@@ -120,8 +120,11 @@ function fmtDateTime(iso: string | null | undefined): { date: string; time: stri
   if (!iso) return { date: '', time: '', at: '—' };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: '', time: '', at: '—' };
-  const date = d.toLocaleDateString('tr-TR');
-  const time = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const date = `${dd}.${mm}.${yyyy}`;
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   return { date, time, at: `${date} ${time}` };
 }
 

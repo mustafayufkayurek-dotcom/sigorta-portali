@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import {
   ArrowRight,
   Bell,
@@ -28,7 +28,9 @@ import {
   WalletCards,
   Wrench,
 } from 'lucide-react';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toWhatsAppLink } from '@/utils/date-helpers';
+import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import type { StepId } from './types';
 import { usePlanner } from './planner-context';
 import {
@@ -38,6 +40,19 @@ import {
   templateTypeForRecipient,
   type HasarWaTemplateType,
 } from './hasar-templates';
+
+function openNativePicker(el: HTMLInputElement | null) {
+  if (!el) return;
+  try {
+    if (typeof el.showPicker === 'function') {
+      el.showPicker();
+    } else {
+      el.click();
+    }
+  } catch {
+    el.click();
+  }
+}
 
 /** Eski model: mesaj hazır gelir; kopyala butonu yok. */
 function WhatsAppOpenButton({
@@ -230,6 +245,9 @@ function StatusPill({
 export function StepInsuredAppointment() {
   const {
     claim,
+    setClaim,
+    canEdit,
+    mode,
     meetingNote,
     setMeetingNote,
     apptNote,
@@ -241,7 +259,20 @@ export function StepInsuredAppointment() {
   } = usePlanner();
   const [sent, setSent] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const apptDateWrapRef = useRef<HTMLDivElement>(null);
+  const apptTimeRef = useRef<HTMLInputElement>(null);
   const waText = buildInsuredApptMessage();
+  const apptEditable = canEdit;
+
+  const focusAppointmentEditors = () => {
+    const dateInput = apptDateWrapRef.current?.querySelector('input');
+    if (dateInput instanceof HTMLInputElement) {
+      dateInput.focus();
+      dateInput.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    apptTimeRef.current?.focus();
+  };
 
   return (
     <div className="mt-3 space-y-3">
@@ -270,27 +301,92 @@ export function StepInsuredAppointment() {
       <Card title="Randevu" icon={CalendarDays}>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Randevu Tarihi" icon={CalendarDays}>
-            <Input value={claim.appointmentDate} readOnly />
+            <div ref={apptDateWrapRef}>
+              {apptEditable ? (
+                <TrDateInput
+                  value={claim.appointmentDate}
+                  onChange={(value) =>
+                    setClaim((prev) => ({
+                      ...prev,
+                      appointmentDate: isoToTrDateDisplay(value) || value,
+                      appointmentAt:
+                        `${isoToTrDateDisplay(value) || value} ${prev.appointmentTime}`.trim() ||
+                        prev.appointmentAt,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-blue-400"
+                  aria-label="Randevu Tarihi"
+                />
+              ) : (
+                <Input value={claim.appointmentDate} readOnly />
+              )}
+            </div>
           </Field>
           <Field label="Randevu Saati" icon={Clock3}>
-            <Input value={claim.appointmentTime} readOnly />
+            {apptEditable ? (
+              <input
+                ref={apptTimeRef}
+                type="time"
+                value={claim.appointmentTime}
+                onChange={(e) =>
+                  setClaim((prev) => ({
+                    ...prev,
+                    appointmentTime: e.target.value,
+                    appointmentAt: `${prev.appointmentDate} ${e.target.value}`.trim() || prev.appointmentAt,
+                  }))
+                }
+                onClick={(e) => openNativePicker(e.currentTarget)}
+                onFocus={(e) => openNativePicker(e.currentTarget)}
+                className="w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-blue-400"
+                aria-label="Randevu Saati"
+              />
+            ) : (
+              <Input value={claim.appointmentTime} readOnly />
+            )}
           </Field>
         </div>
         <div className="mt-2">
           <Field label="Tahmini Süre">
-            <Input value={`${claim.durationMinutes} Dakika`} readOnly />
+            {apptEditable ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={claim.durationMinutes}
+                  onChange={(e) =>
+                    setClaim((prev) => ({
+                      ...prev,
+                      durationMinutes: e.target.value.replace(/\D/g, '').slice(0, 4),
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-blue-400"
+                  aria-label="Tahmini Süre"
+                />
+                <span className="shrink-0 text-[11px] font-medium text-slate-500">Dakika</span>
+              </div>
+            ) : (
+              <Input
+                value={claim.durationMinutes ? `${claim.durationMinutes} Dakika` : ''}
+                readOnly
+              />
+            )}
           </Field>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Btn tone="secondary">
             <PhoneCall className="h-3 w-3" /> Ara
           </Btn>
-          <Btn tone="secondary">Randevuyu Düzenle</Btn>
+          <Btn tone="secondary" onClick={focusAppointmentEditors} disabled={!apptEditable}>
+            Randevuyu Düzenle
+          </Btn>
           <Btn tone="secondary">
             <MapPin className="h-3 w-3" /> Konumu Doğrula
           </Btn>
         </div>
-        <ApiNote text="Kaydet / düzenle için claim-operation-center main-appointment API’si gerekir. Lokal önizlemede sahte başarı gösterilmez." />
+        {mode === 'preview' ? (
+          <ApiNote text="Lokal önizlemede Kaydet API’ye yazılmaz; sahte başarı gösterilmez." />
+        ) : null}
       </Card>
 
       <Card title="Notlar" icon={MessageSquareText}>

@@ -20,6 +20,7 @@ import {
   templateTypeForRecipient,
   type HasarTemplateRecord,
 } from './hasar-templates';
+import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
 import {
@@ -334,10 +335,12 @@ export function PlannerProvider({
       try {
         switch (step) {
           case 'insured_appointment': {
-            const [dd, mm, yyyy] = claim.appointmentDate.split('.');
-            const scheduledAt = new Date(
-              `${yyyy}-${mm}-${dd}T${claim.appointmentTime || '00:00'}:00`,
-            );
+            const isoDate = normalizeTrDateValue(claim.appointmentDate);
+            const timePart = (claim.appointmentTime || '00:00').slice(0, 5);
+            if (!isoDate || !/^\d{2}:\d{2}$/.test(timePart)) {
+              return { ok: false, message: 'Randevu tarih/saat geçersiz.' };
+            }
+            const scheduledAt = new Date(`${isoDate}T${timePart}:00`);
             if (Number.isNaN(scheduledAt.getTime())) {
               return { ok: false, message: 'Randevu tarih/saat geçersiz.' };
             }
