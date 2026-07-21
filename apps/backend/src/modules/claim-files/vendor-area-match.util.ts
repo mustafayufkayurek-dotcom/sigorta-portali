@@ -98,21 +98,10 @@ export function buildVendorNearbyWhere(params: {
   const locationOr: Prisma.VendorWhereInput[] = [{ serviceAreas: { some: areaMatch } }];
 
   if (city) {
-    if (params.purpose === 'inspector') {
-      // Tespitçi havuzu dar: aynı il yeterli; ilçe zorunlu değil.
-      locationOr.push({ city: { equals: city, mode: 'insensitive' } });
-      if (districtName) {
-        locationOr.push({ district: { equals: districtName, mode: 'insensitive' } });
-      }
-    } else {
-      locationOr.push({
-        AND: [
-          { city: { equals: city, mode: 'insensitive' as const } },
-          ...(districtName
-            ? [{ district: { equals: districtName, mode: 'insensitive' as const } }]
-            : []),
-        ],
-      });
+    // Aynı il yeterli; ilçe zorunlu değil — uzak/seyrek ilçelerde (örn. Başkale) havuzu kilitleme.
+    locationOr.push({ city: { equals: city, mode: 'insensitive' } });
+    if (districtName) {
+      locationOr.push({ district: { equals: districtName, mode: 'insensitive' } });
     }
   }
 
@@ -123,4 +112,19 @@ export function buildVendorNearbyWhere(params: {
 /** Bölge eşleşmesi boşsa tespitçi atamasını kilitlememek için ulusal havuz. */
 export function buildInspectorFallbackWhere(): Prisma.VendorWhereInput {
   return { status: 'active', canActAsInspector: true };
+}
+
+/**
+ * Bölge eşleşmesi boşsa tedarikçi atamasını kilitlememek için ulusal havuz.
+ * categoryFilter zorunlu tutulmalı: acil → ['acil','her_ikisi'], hasar → ['hasar','her_ikisi']
+ * null/boş = kategori filtresi yok (yalnızca bilinçli çağrılarda).
+ */
+export function buildSupplierFallbackWhere(
+  categoryFilter?: string[] | null,
+): Prisma.VendorWhereInput {
+  const base: Prisma.VendorWhereInput = { status: 'active' };
+  if (categoryFilter?.length) {
+    base.category = { in: categoryFilter };
+  }
+  return base;
 }

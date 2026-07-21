@@ -21,6 +21,7 @@ import {
 import {
   buildVendorNearbyWhere,
   buildInspectorFallbackWhere,
+  buildSupplierFallbackWhere,
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
@@ -2344,17 +2345,20 @@ export class ClaimFilesService {
       orderBy: { name: 'asc' },
     });
 
-    // Tespitçi: bölge eşleşmesi yoksa operasyonu kilitleme — aktif tespitçi havuzunu göster
-    if (purpose === 'inspector' && vendors.length === 0) {
+    // Bölge eşleşmesi yoksa operasyonu kilitleme — hasar dosyası → hasar havuzu
+    if (vendors.length === 0) {
       vendors = await this.prisma.vendor.findMany({
-        where: buildInspectorFallbackWhere(),
+        where:
+          purpose === 'inspector'
+            ? buildInspectorFallbackWhere()
+            : buildSupplierFallbackWhere(['hasar', 'her_ikisi']),
         select: vendorSelect,
         take: 100,
         orderBy: { name: 'asc' },
       });
     }
 
-    if (purpose === 'inspector' && city && vendors.length > 1) {
+    if (city && vendors.length > 1) {
       const cityLower = city.toLocaleLowerCase('tr-TR');
       vendors = [...vendors].sort((a, b) => {
         const aCity = (a.city ?? '').toLocaleLowerCase('tr-TR') === cityLower ? 0 : 1;

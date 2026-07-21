@@ -1,4 +1,5 @@
 import {
+  buildSupplierFallbackWhere,
   buildVendorNearbyWhere,
   buildVendorServiceAreaWhere,
   isUnresolvedLocationLabel,
@@ -48,7 +49,7 @@ describe('vendor-area-match.util', () => {
       ).toEqual({ status: 'active' });
     });
 
-    it('il bilindiğinde birden fazla eşleşme yolunu açar', () => {
+    it('il bilindiğinde hizmet bölgesi ve il/ilçe metin eşleşmesini açar', () => {
       const where = buildVendorNearbyWhere({
         provinceId: 'prov-mugla',
         districtId: 'dist-milas',
@@ -67,12 +68,32 @@ describe('vendor-area-match.util', () => {
               },
             },
           },
-          {
-            AND: [
-              { city: { equals: 'Muğla', mode: 'insensitive' } },
-              { district: { equals: 'Milas', mode: 'insensitive' } },
-            ],
-          },
+          { city: { equals: 'Muğla', mode: 'insensitive' } },
+          { district: { equals: 'Milas', mode: 'insensitive' } },
+        ]),
+      );
+    });
+
+    it('tedarikçi için il eşleşmesinde ilçe zorunlu değildir', () => {
+      const where = buildVendorNearbyWhere({
+        provinceId: 'prov-van',
+        districtId: 'dist-baskale',
+        city: 'Van',
+        districtName: 'Başkale',
+        purpose: 'supplier',
+      });
+      expect(where.status).toBe('active');
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          { city: { equals: 'Van', mode: 'insensitive' } },
+          { district: { equals: 'Başkale', mode: 'insensitive' } },
+        ]),
+      );
+      expect(where.OR).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            AND: expect.any(Array),
+          }),
         ]),
       );
     });
@@ -92,6 +113,26 @@ describe('vendor-area-match.util', () => {
           { district: { equals: 'Pendik', mode: 'insensitive' } },
         ]),
       );
+    });
+  });
+
+  describe('buildSupplierFallbackWhere', () => {
+    it('acil havuzu için yalnızca acil + her_ikisi döner', () => {
+      expect(buildSupplierFallbackWhere(['acil', 'her_ikisi'])).toEqual({
+        status: 'active',
+        category: { in: ['acil', 'her_ikisi'] },
+      });
+    });
+
+    it('hasar havuzu için yalnızca hasar + her_ikisi döner', () => {
+      expect(buildSupplierFallbackWhere(['hasar', 'her_ikisi'])).toEqual({
+        status: 'active',
+        category: { in: ['hasar', 'her_ikisi'] },
+      });
+    });
+
+    it('kategori yoksa yalnızca aktif durumu ister', () => {
+      expect(buildSupplierFallbackWhere(null)).toEqual({ status: 'active' });
     });
   });
 });

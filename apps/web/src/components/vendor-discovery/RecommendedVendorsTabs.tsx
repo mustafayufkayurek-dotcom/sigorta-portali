@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
+import { getEmergencyVendors, type VendorOption } from '@/utils/emergencyApi';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
@@ -86,7 +87,7 @@ type Props = {
 /**
  * Önerilen Tedarikçiler — karar destek sekmeleri.
  * Sekme 1: Kayıtlı Tedarikçiler (varsayılan)
- * Sekme 2: Google Alternatifleri — yalnızca sekmeden
+ * Sekme 2: Alternatif Öneriler — yalnızca sekmeden
  */
 export function RecommendedVendorsTabs({
   title = 'Önerilen Tedarikçiler',
@@ -177,7 +178,7 @@ export function RecommendedVendorsTabs({
           }`}
           data-testid="sekme-alternatif-oneriler"
         >
-          Google Alternatifleri
+          Alternatif Öneriler
         </button>
       </div>
 
@@ -218,15 +219,11 @@ export function RecommendedVendorsTabs({
               })}
             </ul>
           ) : (
-            <div
-              className="flex-1 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-4 min-h-[4.5rem]"
-              data-testid="tedarikci-havuz-bos"
-              role="status"
-            >
-              <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
-                Kayıtlı Tedarikçi Bulunamadı
-              </p>
-            </div>
+            <RegisteredVendorPoolPicker
+              assignedVendorId={assignedVendorId}
+              assignLoading={assignLoading}
+              onAssign={onAssign}
+            />
           )}
         </div>
       ) : (
@@ -247,6 +244,103 @@ export function RecommendedVendorsTabs({
             onSavedToPool={onSavedToPool}
           />
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Öneri motoru boş dönse bile kayıtlı acil havuzundan seçim — operasyon kilidi olmasın.
+ */
+function RegisteredVendorPoolPicker({
+  assignedVendorId,
+  assignLoading,
+  onAssign,
+}: {
+  assignedVendorId?: string | null;
+  assignLoading: boolean;
+  onAssign: (vendorId: string) => void | Promise<void>;
+}) {
+  const [search, setSearch] = useState('');
+  const [options, setOptions] = useState<VendorOption[]>([]);
+  const [poolLoading, setPoolLoading] = useState(true);
+
+  const load = useCallback(async (q: string) => {
+    setPoolLoading(true);
+    try {
+      const res = await getEmergencyVendors(q.trim() || undefined);
+      setOptions(res.data ?? []);
+    } catch {
+      setOptions([]);
+    } finally {
+      setPoolLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void load(search);
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [search, load]);
+
+  return (
+    <div
+      className="flex flex-col gap-2 min-h-0"
+      data-testid="tedarikci-havuz-bos"
+      role="status"
+    >
+      <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
+        Bu Bölgede Acil Yardım Önerisi Yok — Kayıtlı Havuzdan Seçin
+      </p>
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Tedarikçi Ara"
+        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-testid="tedarikci-havuz-ara"
+        aria-label="Kayıtlı tedarikçi ara"
+      />
+      {poolLoading ? (
+        <p className="text-xs text-slate-400 py-1 text-center">Havuz yükleniyor...</p>
+      ) : options.length === 0 ? (
+        <p className="text-xs text-slate-500 text-center py-2 leading-snug">
+          Kayıtlı Acil Yardım Tedarikçisi Bulunamadı
+        </p>
+      ) : (
+        <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+          {options.slice(0, 12).map((v) => {
+            const selected = assignedVendorId === v.id;
+            return (
+              <li
+                key={v.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2"
+                data-testid="tedarikci-havuz-satir"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">{v.name}</p>
+                  {v.phone ? (
+                    <p className="text-[11px] text-slate-500 truncate">{v.phone}</p>
+                  ) : null}
+                </div>
+                {selected ? (
+                  <span className="shrink-0 text-[11px] font-medium text-emerald-700">Seçili</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void onAssign(v.id)}
+                    disabled={assignLoading || Boolean(assignedVendorId)}
+                    className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid="tedarikci-ata"
+                  >
+                    Dosyaya Ata
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

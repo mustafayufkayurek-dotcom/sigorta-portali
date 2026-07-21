@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { VendorCostMemoryService } from '@/modules/vendor-cost-memory/vendor-cost-memory.service';
 import {
+  buildSupplierFallbackWhere,
   buildVendorNearbyWhere,
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
@@ -329,25 +330,59 @@ export class VendorRecommendationService {
       where.vendorWorkGroups = { some: { workGroupId: query.workGroupId } };
     }
 
-    const rows = await this.prisma.vendor.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        city: true,
-        district: true,
-        category: true,
-        serviceBranches: true,
-        vendorWorkGroups: {
-          select: {
-            workGroup: { select: { code: true, name: true } },
-          },
+    const vendorSelect = {
+      id: true,
+      name: true,
+      phone: true,
+      city: true,
+      district: true,
+      category: true,
+      serviceBranches: true,
+      vendorWorkGroups: {
+        select: {
+          workGroup: { select: { code: true, name: true } },
         },
       },
+    } as const;
+
+    let rows = await this.prisma.vendor.findMany({
+      where,
+      select: vendorSelect,
       take: 80,
       orderBy: { name: 'asc' },
     });
+
+    // Bölgede aday yoksa operasyonu kilitleme — yalnızca aynı kategori havuzu (acil ≠ hasar)
+    if (rows.length === 0 && categoryFilter) {
+      const fallbackWhere = buildSupplierFallbackWhere(categoryFilter);
+      if (query.workGroupId) {
+        fallbackWhere.vendorWorkGroups = { some: { workGroupId: query.workGroupId } };
+      }
+      rows = await this.prisma.vendor.findMany({
+        where: fallbackWhere,
+        select: vendorSelect,
+        take: 80,
+        orderBy: { name: 'asc' },
+      });
+      if (rows.length > 0) {
+        this.logger.warn(
+          `[VendorRecommendation] Bölge eşleşmesi boş — aynı kategori ulusal havuz `
+          + `city=${city ?? '—'} district=${districtName ?? '—'} category=${query.category ?? '—'} `
+          + `count=${rows.length}`,
+        );
+      }
+    }
+
+    // Aynı ildeki kayıtlar önce gelsin (ulusal fallback sonrası karar kolaylığı)
+    if (city && rows.length > 1) {
+      const cityLower = city.toLocaleLowerCase('tr-TR');
+      rows = [...rows].sort((a, b) => {
+        const aCity = (a.city ?? '').toLocaleLowerCase('tr-TR') === cityLower ? 0 : 1;
+        const bCity = (b.city ?? '').toLocaleLowerCase('tr-TR') === cityLower ? 0 : 1;
+        if (aCity !== bCity) return aCity - bCity;
+        return a.name.localeCompare(b.name, 'tr');
+      });
+    }
 
     const mapped = rows.map((v) => {
       const branches = Array.isArray(v.serviceBranches)

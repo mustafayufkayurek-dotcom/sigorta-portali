@@ -297,7 +297,6 @@ export function AlternativeVendorServicePanel({
                 rating={c.rating}
                 reviewCount={c.reviewCount}
                 systemSuggestion={index === 0}
-                sourceBadge={{ label: 'Google İle Bulundu', testId: 'google-ile-bulundu' }}
                 directionsUrl={buildDirectionsUrl(c)}
                 showDirections
                 showWebsite
