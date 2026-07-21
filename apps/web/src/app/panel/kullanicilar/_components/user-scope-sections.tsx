@@ -46,7 +46,7 @@ interface Props {
   onScopeChange: (field: keyof ScopeFormState, value: any) => void;
   onToggleWorkflow: (value: string) => void;
   onToggleServiceArea: (provinceId: string, districtId: string | null) => void;
-  /** Tüm ilçeleri tek tek seçer — checkbox'ların işaretlenmesi için addAllDistrictsInProvince kullanın */
+  /** İl geneli: addWholeProvinceEntry (districtId null). İlçe listesi boş olsa bile çalışmalı. */
   onAddWholeProvince: () => void;
 }
 

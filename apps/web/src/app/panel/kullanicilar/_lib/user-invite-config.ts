@@ -81,9 +81,13 @@ export function showsAcilYardimCustomerScope(operationArea: OperationAreaCode) {
   return operationArea === 'acil' || operationArea === 'both';
 }
 
-/** Dosya sorumlusu: acil yardımda il/ilçe kapsamı uygulanmaz; yalnız hasar veya her ikisi. */
+/**
+ * Dosya sorumlusu bölge kapsamı: Hasar Onarım VE Acil Yardımda zorunlu.
+ * REGRESYON KİLİDİ: Acil’i dışarıda bırakma — geçmişte acil→countrywide zorlaması
+ * “Tüm İlçeler / ilçe seçimi”ni kapatmıştı. hasar | acil | both hepsi true olmalı.
+ */
 export function showsOperationsServiceAreaScope(operationArea: OperationAreaCode) {
-  return operationArea === 'hasar' || operationArea === 'both';
+  return operationArea === 'hasar' || operationArea === 'acil' || operationArea === 'both';
 }
 
 /** Müşteriler → kurumsal → alt tip Asistan Firması */

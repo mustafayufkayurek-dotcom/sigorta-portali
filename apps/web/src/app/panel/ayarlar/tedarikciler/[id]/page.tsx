@@ -11,7 +11,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { BANK_CONFIRMATION_STATUS_LABELS } from '@/utils/vendor-bank-confirmation';
 import {
-  addAllDistrictsInProvince,
+  addWholeProvinceEntry,
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
@@ -184,9 +184,9 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const addAllDistrictsForProvince = () => {
-    if (!selectedProvince || districts.length === 0) return;
+    if (!selectedProvince) return;
     setServiceAreas((prev) =>
-      addAllDistrictsInProvince(prev, selectedProvince.id, districts, selectedProvince.name),
+      addWholeProvinceEntry(prev, selectedProvince.id, selectedProvince.name),
     );
   };
 

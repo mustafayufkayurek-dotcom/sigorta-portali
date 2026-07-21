@@ -42,6 +42,11 @@ interface GeographicRegionScopePanelProps {
     districtId: string,
     districtsInProvince: DistrictOption[],
   ) => void;
+  /** İl geneli (tüm ilçeler) — ilçe ince ayarını temizler / il kaydı ekler */
+  onSelectAllDistrictsInProvince?: (
+    provinceId: string,
+    districtsInProvince: DistrictOption[],
+  ) => void;
   loadDistricts: (provinceId: string) => Promise<DistrictOption[]>;
   error?: string;
 }
@@ -55,6 +60,7 @@ export function GeographicRegionScopePanel({
   onCountrywideChange,
   onToggleRegion,
   onToggleDistrict,
+  onSelectAllDistrictsInProvince,
   loadDistricts,
   error,
 }: GeographicRegionScopePanelProps) {
@@ -179,7 +185,8 @@ export function GeographicRegionScopePanel({
                   {checked && expanded && regionProvinces.length > 0 && (
                     <div className="border-t border-slate-100 px-3 pb-3 pt-2 space-y-2">
                       <p className="text-[11px] text-slate-500">
-                        İlçe seçimi isteğe bağlıdır; seçilmezse bölgedeki tüm il kapsanır.
+                        İl seçildiğinde <span className="font-medium text-slate-600">Tüm İlçeler</span> veya tek tek
+                        ilçe seçebilirsiniz. İlçe seçilmezse bölgedeki tüm il kapsanır.
                       </p>
                       {regionProvinces
                         .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
@@ -189,6 +196,18 @@ export function GeographicRegionScopePanel({
                           const hasDistrictRefinement = serviceAreas.some(
                             (area) => area.provinceId === province.id && area.districtId,
                           );
+                          const hasWholeProvince = serviceAreas.some(
+                            (area) => area.provinceId === province.id && !area.districtId,
+                          );
+                          const allDistrictsActive =
+                            hasWholeProvince
+                            || (!hasDistrictRefinement && checked)
+                            || (
+                              districts.length > 0
+                              && districts.every((d) =>
+                                isDistrictAreaChecked(serviceAreas, province.id, d.id),
+                              )
+                            );
 
                           return (
                             <div key={province.id} className="rounded-lg border border-slate-100 bg-white">
@@ -205,26 +224,48 @@ export function GeographicRegionScopePanel({
                                   )}
                                   <span className="truncate">{province.name}</span>
                                 </span>
-                                {hasDistrictRefinement && (
+                                {hasDistrictRefinement ? (
                                   <span className="text-[11px] text-blue-600 flex-shrink-0">İlçe İnce Ayarı</span>
-                                )}
+                                ) : allDistrictsActive ? (
+                                  <span className="text-[11px] text-emerald-600 flex-shrink-0">Tüm İlçeler</span>
+                                ) : null}
                               </button>
 
                               {provinceExpanded && (
-                                <div className="border-t border-slate-100 px-3 pb-3 pt-2">
+                                <div className="border-t border-slate-100 px-3 pb-3 pt-2 space-y-2">
                                   {loadingProvinceId === province.id && districts.length === 0 ? (
                                     <p className="text-xs text-slate-400 py-2">İlçeler yükleniyor…</p>
                                   ) : (
-                                    <DistrictCheckboxGrid
-                                      districts={districts}
-                                      maxHeightClass="max-h-36"
-                                      gridClassName="grid gap-2 sm:grid-cols-3"
-                                      accentClass="accent-blue-600"
-                                      isChecked={(districtId) =>
-                                        isDistrictAreaChecked(serviceAreas, province.id, districtId)
-                                      }
-                                      onToggle={(districtId) => onToggleDistrict(province.id, districtId, districts)}
-                                    />
+                                    <>
+                                      {onSelectAllDistrictsInProvince && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            onSelectAllDistrictsInProvince(province.id, districts)
+                                          }
+                                          className={`w-full rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                                            allDistrictsActive && !hasDistrictRefinement
+                                              ? 'border-blue-300 bg-blue-50 text-blue-800'
+                                              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                          }`}
+                                          data-testid="bolge-tum-ilceler"
+                                        >
+                                          Tüm İlçeler
+                                        </button>
+                                      )}
+                                      <DistrictCheckboxGrid
+                                        districts={districts}
+                                        maxHeightClass="max-h-36"
+                                        gridClassName="grid gap-2 sm:grid-cols-3"
+                                        accentClass="accent-blue-600"
+                                        isChecked={(districtId) =>
+                                          isDistrictAreaChecked(serviceAreas, province.id, districtId)
+                                        }
+                                        onToggle={(districtId) =>
+                                          onToggleDistrict(province.id, districtId, districts)
+                                        }
+                                      />
+                                    </>
                                   )}
                                 </div>
                               )}

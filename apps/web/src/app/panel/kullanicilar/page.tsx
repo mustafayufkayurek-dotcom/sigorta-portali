@@ -24,7 +24,6 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
-  addAllDistrictsInProvince,
   addWholeProvinceEntry,
   isDistrictAreaChecked,
   toggleDistrictArea,
@@ -1328,11 +1327,10 @@ export default function KullanicilarPage() {
       acilYardimCustomerIds: area === 'hasar' ? [] : prev.acilYardimCustomerIds,
       selectedSubjects: prev.userTask === 'field_operations' ? [] : prev.selectedSubjects,
       otherSubjectNotes: prev.userTask === 'field_operations' ? '' : prev.otherSubjectNotes,
-      ...(prev.userTask === 'operations' && area === 'acil'
-        ? { serviceAreas: [], countrywide: true, selectedGeographicRegionIds: [] }
-        : prev.userTask === 'operations' && area === 'hasar'
-          ? { countrywide: false }
-          : {}),
+      // Hasar ve Acil: il / tüm ilçeler / ilçe seçimi açık kalır (acil’de countrywide zorlaması yok)
+      ...(prev.userTask === 'operations' && (area === 'hasar' || area === 'acil' || area === 'both')
+        ? { countrywide: false }
+        : {}),
     }));
     setFormErrors((prev) => ({
       ...prev,
@@ -1445,15 +1443,16 @@ export default function KullanicilarPage() {
     toggleServiceArea(selectedProvinceId, null);
   };
 
+  /** İl geneli tek kayıt — ilçe listesi yüklenmeden de çalışır (regresyon kilidi). */
   const addAllDistrictsInProvinceHandler = () => {
-    if (!selectedProvinceId || districts.length === 0) return;
+    if (!selectedProvinceId) return;
     const province = provinces.find((item) => item.id === selectedProvinceId);
     setForm((prev) => ({
       ...prev,
-      serviceAreas: addAllDistrictsInProvince(
+      countrywide: false,
+      serviceAreas: addWholeProvinceEntry(
         prev.serviceAreas,
         selectedProvinceId,
-        districts,
         province?.name,
       ) as ServiceAreaSelection[],
     }));
@@ -2843,6 +2842,23 @@ export default function KullanicilarPage() {
 	                    }}
 	                    onToggleRegion={toggleGeographicRegion}
 	                    onToggleDistrict={toggleOperationsDistrict}
+	                    onSelectAllDistrictsInProvince={(provinceId) => {
+	                      const province = provinces.find((p) => p.id === provinceId);
+	                      setForm((prev) => ({
+	                        ...prev,
+	                        countrywide: false,
+	                        serviceAreas: addWholeProvinceEntry(
+	                          prev.serviceAreas,
+	                          provinceId,
+	                          province?.name,
+	                        ) as ServiceAreaSelection[],
+	                      }));
+	                      setFormErrors((prev) => ({
+	                        ...prev,
+	                        selectedGeographicRegionIds: undefined,
+	                        general: undefined,
+	                      }));
+	                    }}
 	                    loadDistricts={fetchDistrictsForPanel}
 	                    error={formErrors.selectedGeographicRegionIds}
 	                  />

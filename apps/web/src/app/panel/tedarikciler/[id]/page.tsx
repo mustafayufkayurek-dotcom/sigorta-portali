@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
-  addAllDistrictsInProvince,
+  addWholeProvinceEntry,
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
@@ -475,9 +475,10 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const addAllDistrictsForProvince = () => {
-    if (!selectedProvinceId || districts.length === 0) return;
+    if (!selectedProvinceId) return;
+    // İl geneli tek kayıt — ilçe listesi boş olsa bile kalıcı olarak çalışır
     setServiceAreas((p) =>
-      addAllDistrictsInProvince(p, selectedProvinceId, districts, selectedProvince?.name),
+      addWholeProvinceEntry(p, selectedProvinceId, selectedProvince?.name),
     );
   };
 

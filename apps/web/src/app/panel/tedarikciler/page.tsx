@@ -11,7 +11,7 @@ import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
-  addAllDistrictsInProvince,
+  addWholeProvinceEntry,
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
@@ -1389,8 +1389,8 @@ export default function VendorsPage() {
   };
 
   const addAllDistrictsForProvince = (prov: Province) => {
-    if (serviceDistricts.length === 0) return;
-    setServiceAreas((p) => addAllDistrictsInProvince(p, prov.id, serviceDistricts, prov.name));
+    // İl geneli tek kayıt (districtId: null) — ilçe listesi yüklenmese bile çalışır
+    setServiceAreas((p) => addWholeProvinceEntry(p, prov.id, prov.name));
   };
 
   const handleAddVendorType = async () => {
