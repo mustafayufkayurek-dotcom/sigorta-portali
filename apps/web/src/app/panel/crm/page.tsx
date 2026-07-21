@@ -1260,7 +1260,7 @@ export default function CrmPage() {
 
                 <div className="space-y-2.5 p-3">
                   <details className="rounded-lg border border-slate-200 bg-white" open>
-                    <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-semibold text-slate-600">Operasyon Hafızası</summary>
+                    <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-semibold text-slate-600">İlişki Özeti</summary>
                     <div className="border-t border-slate-100 p-2.5">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs">
                         <div className="grid gap-1.5">

@@ -269,6 +269,24 @@ export function mapCustomerContactInfosToForm(contactInfos: Array<{
   }));
 }
 
+/** Liste/detay rozeti — API hasar|HASAR|acil_yardim karışıklığını tek dilde çözer */
+export function isHasarCustomerServiceType(serviceType?: string | null): boolean {
+  const v = String(serviceType ?? '').trim().toLowerCase().replace(/-/g, '_');
+  return v === 'hasar' || v === 'hasar_onarim';
+}
+
+export function isAcilCustomerServiceType(serviceType?: string | null): boolean {
+  const v = String(serviceType ?? '').trim().toLowerCase().replace(/-/g, '_');
+  return v === 'acil_yardim' || v === 'acil' || v === 'acil_yardım';
+}
+
+export function customerServiceTypeLabel(serviceType?: string | null): string {
+  if (!serviceType) return '';
+  if (isHasarCustomerServiceType(serviceType)) return 'Hasar Onarım';
+  if (isAcilCustomerServiceType(serviceType)) return 'Acil Yardım';
+  return String(serviceType);
+}
+
 /** API müşteri kaydı → tam müşteri formu (düzenleme) */
 export function mapCustomerRecordToForm(
   customer: Record<string, unknown>,

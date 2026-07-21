@@ -39,6 +39,8 @@ import {
   subTypeActiveClass,
   customerPhoneValidationError,
   formatCustomerUpdatedMeta,
+  customerServiceTypeLabel,
+  isHasarCustomerServiceType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
 import {
@@ -302,13 +304,6 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
       style={{ top: pos.top, left: pos.left, position: 'fixed', zIndex: 9999, width: 340 }}
       className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden pointer-events-none animate-in fade-in-0 zoom-in-95 duration-150"
     >
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-emerald-600 transition-colors">Dashboard</a>
-        <span>/</span>
-        <span className="text-slate-600 font-medium">Müşteriler</span>
-      </nav>
-
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-100">
         <div className="flex items-start justify-between gap-2">
@@ -613,11 +608,11 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
               </div>
               {customer.serviceType && (
                 <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border mb-2 ${
-                  customer.serviceType === 'hasar'
+                  isHasarCustomerServiceType(customer.serviceType)
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                     : 'bg-orange-50 text-orange-700 border-orange-100'
                 }`}>
-                  {customer.serviceType === 'hasar' ? 'Hasar' : 'Acil Yardım'}
+                  {customerServiceTypeLabel(customer.serviceType)}
                 </span>
               )}
               {customer.serviceBranches && customer.serviceBranches.length > 0 && (
@@ -1515,7 +1510,7 @@ export default function MusterilerPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? '';
       if (msg.includes('yapılandırılmamış') || err?.response?.status === 503) {
-        setGibError('TÜRMOB entegrasyonu henüz yapılandırılmamış. Ayarlar > Sistem > Entegrasyonlar sayfasından yapılandırın.');
+        setGibError('TÜRMOB ünvan sorgusu şu an kullanılamıyor. Ayarlar > Sistem sayfasından yapılandırın veya ünvanı manuel girin.');
       } else {
         setGibError('TÜRMOB sorgulaması başarısız — ünvanı manuel girebilirsiniz.');
       }
@@ -1804,7 +1799,7 @@ export default function MusterilerPage() {
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-emerald-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-emerald-600 transition-colors">Panel</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Müşteriler</span>
       </nav>
@@ -2349,11 +2344,11 @@ export default function MusterilerPage() {
                       <PanelTableTd colId="service" className="table-td">
                         {c.serviceType ? (
                           <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                            c.serviceType === 'hasar'
+                            isHasarCustomerServiceType(c.serviceType)
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                               : 'bg-orange-50 text-orange-700 border-orange-100'
                           }`}>
-                            {c.serviceType === 'hasar' ? 'Hasar' : 'Acil'}
+                            {customerServiceTypeLabel(c.serviceType)}
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-300">—</span>
@@ -2382,7 +2377,7 @@ export default function MusterilerPage() {
                       <PanelTableTd colId="status" className="table-td text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
-                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara' : 'Arşiv'}
+                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
                         </span>
                       </PanelTableTd>
                       {/* Operasyon */}

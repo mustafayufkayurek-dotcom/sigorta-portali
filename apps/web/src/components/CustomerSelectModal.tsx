@@ -38,7 +38,7 @@ function resultCountLabel(subTypeFilter: string | undefined, total: number): str
     return `${total} Eksper Ofisi Bulundu`;
   }
   if (subTypeFilter === 'asistan_firmasi') {
-    return `${total} Asistans Firma Bulundu`;
+    return `${total} Asistan Firması Bulundu`;
   }
   return `${total} Müşteri Bulundu`;
 }
@@ -50,7 +50,7 @@ function emptyStateLabel(subTypeFilter: string | undefined, hasFilter: boolean):
       : 'Kayıtlı eksper ofisi bulunamadı. Müşteriler’den Eksper Firması olarak ekleyin.';
   }
   if (subTypeFilter === 'asistan_firmasi') {
-    return hasFilter ? 'Asistans Firma Bulunamadı.' : 'Kayıtlı asistans firma bulunamadı.';
+    return hasFilter ? 'Asistan Firması Bulunamadı.' : 'Kayıtlı asistan firması bulunamadı.';
   }
   return hasFilter ? 'Müşteri Bulunamadı.' : 'Arama Yapın veya Tüm Müşterileri Görüntüleyin.';
 }
@@ -107,7 +107,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
 
   const modalTitle =
     subTypeFilter === 'asistan_firmasi'
-      ? 'Asistans Firma Seç'
+      ? 'Asistan Firması Seç'
       : subTypeFilter === 'eksper_firmasi' || subTypeFilter === 'eksper'
         ? 'Eksper Ofisi Seç'
         : subTypeFilter
@@ -208,7 +208,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
                 onClick={() => { onCreateNew(); onClose(); }}
                 className="text-sm bg-green-50 text-green-700 border border-green-200 px-4 py-1.5 rounded-lg hover:bg-green-100"
               >
-                {isExpertPicker ? '+ Yeni Eksper Ofisi' : isAssistantPicker ? '+ Yeni Asistans Firma' : '+ Yeni Müşteri Ekle'}
+                {isExpertPicker ? '+ Yeni Eksper Ofisi' : isAssistantPicker ? '+ Yeni Asistan Firması' : '+ Yeni Müşteri Ekle'}
               </button>
             )}
             <button type="button"

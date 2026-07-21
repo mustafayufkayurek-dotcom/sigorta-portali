@@ -14,7 +14,7 @@ type CardNotesDisplayProps = {
 
 export function CardNotesDisplay({
   notesRaw,
-  emptyMessage = 'Henüz kart notu girilmemiş.',
+  emptyMessage = 'Kart Notu Girilmemiş.',
 }: CardNotesDisplayProps) {
   const { roleCode } = usePanelAccess();
   const allNotes = parseCardNotes(notesRaw);

@@ -4,6 +4,7 @@ import {
   CARD_NOTE_VISIBILITY_OPTIONS,
   type CardNoteFormEntry,
 } from '@/utils/card-notes';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 type Accent = 'emerald' | 'indigo';
 
@@ -62,9 +63,13 @@ export function CardNotesEditor({
           <textarea
             rows={3}
             className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 ${ring}`}
-            placeholder="Operasyonel tespit veya ilişki notu..."
+            placeholder="Operasyonel Tespit Veya İlişki Notu..."
             value={entry.text}
             onChange={(e) => updateEntry(index, { text: e.target.value })}
+            onBlur={(e) => {
+              const v = toTitleCaseTR(e.target.value.trim());
+              if (v !== entry.text) updateEntry(index, { text: v });
+            }}
           />
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Kimler Görsün</label>

@@ -11,7 +11,7 @@ import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel } from '@/utils/text-helpers';
-import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, formatCustomerUpdatedMeta } from '@/utils/customer-form-helpers';
+import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -269,11 +269,11 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
           <div className="flex flex-wrap gap-2">
             {customer.serviceType && (
               <span className={`inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full border ${
-                customer.serviceType === 'HASAR'
+                isHasarCustomerServiceType(customer.serviceType)
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-red-50 text-red-700 border-red-200'
               }`}>
-                {customer.serviceType === 'HASAR' ? 'Hasar' : 'Acil Yardım'}
+                {customerServiceTypeLabel(customer.serviceType)}
               </span>
             )}
             {Array.isArray(customer.serviceBranches) && customer.serviceBranches.map((b: string) => (
@@ -359,9 +359,6 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewFile, setPreviewFile] = useState<any>(null);
-  const [rejectionReasonFileId, setRejectionReasonFileId] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -370,25 +367,6 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
   };
 
   useEffect(() => { load(); }, [customerId]);
-
-  const handleApprove = async (fileId: string) => {
-    setActionLoading(fileId + '-approve');
-    try {
-      await axios.patch(`${API}/claim-files/${fileId}`, { approvalStatus: 'approved' }, { headers: authHeader() });
-      load();
-    } catch (e) { console.error(e); } finally { setActionLoading(null); }
-  };
-
-  const handleReject = async (fileId: string) => {
-    if (!rejectionReason.trim()) return;
-    setActionLoading(fileId + '-reject');
-    try {
-      await axios.patch(`${API}/claim-files/${fileId}`, { approvalStatus: 'rejected', rejectionReason: rejectionReason.trim() }, { headers: authHeader() });
-      setRejectionReasonFileId(null);
-      setRejectionReason('');
-      load();
-    } catch (e) { console.error(e); } finally { setActionLoading(null); }
-  };
 
   if (loading) return <div className="text-slate-400 py-12 text-center">Yükleniyor...</div>;
 
@@ -428,57 +406,8 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                     </button>
-                    {/* Onayla */}
-                    <button
-                      type="button"
-                      title="Onayla"
-                      onClick={() => handleApprove(f.id)}
-                      disabled={actionLoading === f.id + '-approve'}
-                      className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </button>
-                    {/* Reddet */}
-                    <button
-                      type="button"
-                      title="Reddet"
-                      onClick={() => {
-                        setRejectionReasonFileId(rejectionReasonFileId === f.id ? null : f.id);
-                        setRejectionReason('');
-                      }}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
-                {/* Red Nedeni alanı */}
-                {rejectionReasonFileId === f.id && (
-                  <div className="px-4 pb-3 border-t border-slate-50 pt-3 bg-red-50/40">
-                    <p className="text-xs font-medium text-red-700 mb-1.5">Red Nedeni</p>
-                    <div className="flex gap-2">
-                      <input
-                        className="flex-1 border border-red-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
-                        placeholder="Red nedenini girin..."
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleReject(f.id); }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleReject(f.id)}
-                        disabled={!rejectionReason.trim() || actionLoading === f.id + '-reject'}
-                        className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        Reddet
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
