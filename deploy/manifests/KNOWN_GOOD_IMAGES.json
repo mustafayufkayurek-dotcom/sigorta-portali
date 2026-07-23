@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-07-23",
   "label": "v393-dalga1-route-gate",
-  "description": "Web-only Dalga 1: form/route-gate stabilizasyonu (ed1ef40). Health PASS, nginx→web PASS, route-gate smoke PASS (logout PARTIAL — credential yok). Migrate yok. Rollback web v392 / backend v390.",
+  "description": "Web-only Dalga 1: form/seçim güvenliği, il-ilçe AbortSignal, kaydet in-flight, sessiz catch→toast, apiClient 401 hizası, ErrorBoundary, Route Gate (exact /panel + portal allowlist), smoke-route-gate. Commit ed1ef40. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (çıkış sonrası URL PARTIAL/Login dalgası). Login smoke yerel credential. Rollback web v392 / backend v390.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
@@ -27,6 +27,8 @@
     "/panel/hasar-dosyalari",
     "/panel/pazartesi-toplantisi",
     "/panel/sahiplik",
-    "/panel/anketler/sonuclar"
+    "/panel/anketler/sonuclar",
+    "/panel/eksper-portal",
+    "/panel/sigorta-portal"
   ]
 }
