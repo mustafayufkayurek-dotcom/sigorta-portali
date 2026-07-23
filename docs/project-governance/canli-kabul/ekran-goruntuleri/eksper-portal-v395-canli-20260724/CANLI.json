@@ -1,0 +1,5 @@
+{
+  "giris": "https://app.meridyen-tr.com/giris",
+  "eksper": "https://app.meridyen-tr.com/panel/eksper-portal",
+  "note": "Production UI login Cursor tarafından yapılmaz; eksper panel ekran doğrulaması kullanıcı kabulüne aittir. Local PREDEPLOY-SMOKE PASS."
+}

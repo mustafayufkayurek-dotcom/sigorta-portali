@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-23",
-  "label": "v394-bekleyen-operasyonlar",
-  "description": "Web-only: Dosya Sorumlusu Merkezi — Bekleyen Operasyonlar UX (office_staff). Commit 73d1830. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (çıkış sonrası URL PARTIAL). Login smoke yerel credential FAIL (varsayılan test şifresi; ürün regresyonu değil). WIP/Dalga2-4 hariç. Rollback web v393 / backend v390.",
+  "updatedAt": "2026-07-24",
+  "label": "v395-eksper-portal-final",
+  "description": "Web-only: Eksper Paneli FINAL kullanıcı kabulü + Feature Freeze. KPI ibreleri, iletişim satırı (başlık sağı), Süre Analizi, Güncel Dosya Hareketleri, kuyruk nav (Dosyalarım). Commit 7c386e4. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (login credential PARTIAL — üretim şifresi varsayılan test değil). Dosya Sorumlusu WIP hariç. Rollback web v394 / backend v390.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v390-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v394-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v395-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v393-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v394-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v390-amd64"
   },
   "mustPassSmokeRoutes": [
