@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-23",
-  "label": "v393-dalga1-route-gate",
-  "description": "Web-only Dalga 1: form/seçim güvenliği, il-ilçe AbortSignal, kaydet in-flight, sessiz catch→toast, apiClient 401 hizası, ErrorBoundary, Route Gate (exact /panel + portal allowlist), smoke-route-gate. Commit ed1ef40. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (çıkış sonrası URL PARTIAL/Login dalgası). Login smoke yerel credential. Rollback web v392 / backend v390.",
+  "label": "v394-bekleyen-operasyonlar",
+  "description": "Web-only: Dosya Sorumlusu Merkezi — Bekleyen Operasyonlar UX (office_staff). Commit 73d1830. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (çıkış sonrası URL PARTIAL). Login smoke yerel credential FAIL (varsayılan test şifresi; ürün regresyonu değil). WIP/Dalga2-4 hariç. Rollback web v393 / backend v390.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v390-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v393-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v394-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v392-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v393-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v390-amd64"
   },
   "mustPassSmokeRoutes": [
