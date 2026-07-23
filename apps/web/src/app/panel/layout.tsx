@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
 import { SESSION_KEEPALIVE_MS } from '@/utils/api';
@@ -17,13 +18,10 @@ import { LoadingScreen } from '@/components/ui/LoadingIndicator';
 import { SidebarNavTooltip } from '@/components/ui/SidebarNavTooltip';
 import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole, roleAllowedForNav } from '@/hooks/usePanelRole';
 import {
-  type OperationAreaCode,
-} from '@/app/panel/kullanicilar/_lib/user-invite-config';
-import {
   canAccessAcilYardim,
-  canAccessAcilYardimRoute,
+  getSafePanelHomePath,
+  hasPanelRouteAccess,
   userOperationArea,
-  type OperationalAccessGrantSummary,
 } from '@/utils/panel-access';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -79,59 +77,8 @@ import {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
 
-// ── Rol Bazlı Erişim ──────────────────────────────────────────────────────────
+// ── Rol Bazlı Erişim (nav görünürlüğü) ────────────────────────────────────────
 type RoleCode = string;
-
-interface RouteAccess {
-  path: string;
-  roles: RoleCode[];
-}
-
-const ROUTE_ACCESS: RouteAccess[] = [
-  { path: '/panel', roles: [] },
-  { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
-  { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/eksper-crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
-  { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
-  { path: '/panel/anketler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
-  { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
-  { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
-  { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
-  { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
-  { path: '/panel/harita', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
-  { path: '/panel/acil-yardim', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
-  { path: '/panel/operasyon/gelen-kutusu', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
-  { path: '/panel/operasyon', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/carilerim', roles: ['field_staff', 'FIELD_STAFF', 'admin', 'ADMIN', 'FINANS', 'OFFICE_STAFF', 'office_staff', 'MANAGER'] },
-];
-
-function hasRouteAccess(
-  pathname: string,
-  roleCode: string,
-  operationArea: OperationAreaCode = '',
-  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
-  allowedScreens?: string[] | null,
-): boolean {
-  if (pathname === '/panel/acil-yardim' || pathname.startsWith('/panel/acil-yardim/')) {
-    return canAccessAcilYardimRoute(pathname, roleCode, operationArea, operationalAccessGrants, allowedScreens);
-  }
-
-  const matching = ROUTE_ACCESS
-    .filter((r) => pathname === r.path || pathname.startsWith(r.path + '/'))
-    .sort((a, b) => b.path.length - a.path.length);
-  if (matching.length === 0) return true;
-  const rule = matching[0];
-  if (rule.roles.length === 0) return true;
-  return roleAllowedForNav(roleCode, rule.roles);
-}
 
 interface NavItemAccess {
   path: string;
@@ -1401,11 +1348,20 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const accessDenied =
     !loading
     && allowedScreens !== null
-    && !isPortalUser
     && !isPublicPanelPath
     && !mustChangePassword
     && roleCode !== ''
-    && !hasRouteAccess(pathname, roleCode, operationArea, user?.operationalAccessGrants, allowedScreens);
+    && !hasPanelRouteAccess(pathname, roleCode, operationArea, user?.operationalAccessGrants, allowedScreens);
+
+  const safeHomePath = getSafePanelHomePath(roleCode);
+  const safeHomeLabel =
+    safeHomePath === '/panel/eksper-portal'
+      ? 'Eksper Paneline Dön'
+      : safeHomePath === '/panel/sigorta-portal'
+        ? 'Sigorta Paneline Dön'
+        : safeHomePath === '/panel/finans'
+          ? 'Finans Merkezine Dön'
+          : 'Panele Dön';
 
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
@@ -1491,11 +1447,24 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-11a2 2 0 00-2 2v6a2 2 0 004 0V8a2 2 0 00-2-2zm-7 9a9 9 0 1118 0 9 9 0 01-18 0z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Erişim Yetkiniz Yok</h2>
-            <p className="text-slate-500 text-sm mb-6">Bu sayfayı görüntülemek için gerekli yetkiye sahip değilsiniz.</p>
-            <div className="flex gap-3 justify-center">
-              <Link href="/panel" className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200/60">Dashboard&apos;a Dön</Link>
-              <button type="button" onClick={() => router.back()} className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 shadow-sm">Geri Git</button>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Yetkiniz Bulunmamaktadır</h2>
+            <p className="text-slate-500 text-sm mb-6">
+              Bu sayfayı görüntülemek için gerekli yetkiye sahip değilsiniz. Adres çubuğundaki bağlantı korunur; geri veya panele dönebilirsiniz.
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Link
+                href={safeHomePath}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200/60"
+              >
+                {safeHomeLabel}
+              </Link>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 shadow-sm"
+              >
+                Geri Git
+              </button>
             </div>
             <p className="mt-4 text-xs text-slate-400">
               Hata kodu: 403 — Rol: {user?.role?.name ?? roleCode}
@@ -1599,9 +1568,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               </Link>
             )}
             <ToastProvider>
-              <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-clip' : undefined}>
-                {children}
-              </div>
+              <ErrorBoundary>
+                <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-clip' : undefined}>
+                  {children}
+                </div>
+              </ErrorBoundary>
             </ToastProvider>
           </div>
         </main>

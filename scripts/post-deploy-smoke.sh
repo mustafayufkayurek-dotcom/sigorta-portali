@@ -2,6 +2,8 @@
 
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BASE_URL="${BASE_URL:-https://app.meridyen-tr.com}"
 LOGIN_EMAIL="${LOGIN_EMAIL:-admin@meridyenassistance.com}"
 LOGIN_PASSWORD="${LOGIN_PASSWORD:-admin123}"
@@ -200,6 +202,13 @@ assert_frontend_route "GET /panel/ayarlar/mahaller returns 200" "/panel/ayarlar/
 assert_frontend_route "GET /panel/ayarlar/hizmet-turleri returns 200" "/panel/ayarlar/hizmet-turleri"
 assert_frontend_route "GET /panel/ayarlar/tedarikci-hizmet-kollari returns 200" "/panel/ayarlar/tedarikci-hizmet-kollari"
 assert_frontend_route "GET /panel/guvenlik returns 200" "/panel/guvenlik"
+
+echo "=== Route Gate kalıcı smoke ==="
+if bash "$SCRIPT_DIR/smoke-route-gate.sh"; then
+  pass "Route Gate kalıcı smoke seti"
+else
+  fail "Route Gate kalıcı smoke seti"
+fi
 
 if [ "$FAILURES" -gt 0 ]; then
   exit 1

@@ -46,8 +46,11 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     "$SCRIPT_DIR/restart-web-production.sh" \
     "$SCRIPT_DIR/pre-deploy-safety.sh" \
     "$SCRIPT_DIR/post-deploy-smoke.sh" \
+    "$SCRIPT_DIR/smoke-route-gate.sh" \
     "$SCRIPT_DIR/verify-critical-paths.sh" \
     "$REMOTE_HOST:$REMOTE_APP/scripts/"
+  run_remote "mkdir -p $REMOTE_APP/scripts/lib"
+  rsync -avz "$SCRIPT_DIR/lib/route-gate-smoke.mjs" "$REMOTE_HOST:$REMOTE_APP/scripts/lib/"
 fi
 
 run_remote "set -e

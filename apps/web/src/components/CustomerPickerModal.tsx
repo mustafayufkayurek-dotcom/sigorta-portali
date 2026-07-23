@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { API, authHeader, ensureSessionBeforeMutation } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { createInFlightGuard } from '@/utils/in-flight-guard';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 export type PickedCustomer = {
   id: string;
@@ -49,6 +52,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
   const [newForm, setNewForm] = useState({ ...emptyNew });
   const [saving, setSaving] = useState(false);
   const [newError, setNewError] = useState('');
+  const submitGuard = useRef(createInFlightGuard());
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
@@ -59,7 +63,11 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       setCustomers(r.data.data || []);
       setTotal(r.data.meta?.total ?? (r.data.data?.length ?? 0));
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) {
+      reportCaughtError(e, 'Müşteri listesi yüklenemedi. Lütfen tekrar deneyin.');
+      setCustomers([]);
+      setTotal(0);
+    } finally { setLoading(false); }
   }, [search, typeFilter, page]);
 
   useEffect(() => { loadCustomers(); }, [loadCustomers]);
@@ -99,6 +107,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
     if (newForm.customerType === 'corporate' && !newForm.companyName.trim()) {
       setNewError('Şirket Adı Zorunludur.'); return;
     }
+    if (!submitGuard.current.tryStart()) return;
     setSaving(true);
     try {
       const sessionOk = await ensureSessionBeforeMutation();
@@ -123,9 +132,12 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
       const r = await axios.post(`${API}/customers`, payload, { headers: authHeader() });
       const created = r.data.data;
       handleSelect({ ...created, fullName: newForm.fullName || newForm.companyName });
-    } catch (e: any) {
-      setNewError(e.response?.data?.message ?? 'Müşteri Oluşturulamadı.');
-    } finally { setSaving(false); }
+    } catch (e: unknown) {
+      setNewError(getApiErrorMessage(e, 'Müşteri Oluşturulamadı.'));
+    } finally {
+      setSaving(false);
+      submitGuard.current.end();
+    }
   };
 
   const getDisplayName = (c: any) => {

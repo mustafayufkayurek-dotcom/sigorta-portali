@@ -15,6 +15,7 @@ import {
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
 import { VendorDiscoveryPanel, type ExternalVendorCandidate, type VendorDiscoverySearchContext } from '@/components/vendor-discovery/VendorDiscoveryPanel';
@@ -1369,10 +1370,8 @@ export default function VendorsPage() {
   };
 
   const loadServiceDistricts = async (provinceId: string) => {
-    try {
-      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
-      setServiceDistricts(r.data.data || []);
-    } catch (e) { console.error(e); }
+    const list = await fetchProvinceDistricts(provinceId, { toastOnError: true });
+    setServiceDistricts(list.map((d) => ({ ...d, provinceId })));
   };
 
   const toggleServiceArea = (provinceId: string, districtId?: string | null) => {
@@ -1892,7 +1891,7 @@ export default function VendorsPage() {
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Panel</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Tedarikçiler</span>
       </nav>

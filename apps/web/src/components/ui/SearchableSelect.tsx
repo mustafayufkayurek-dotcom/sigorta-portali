@@ -16,6 +16,14 @@ interface SearchableSelectProps {
   onQueryChange?: (query: string) => void;
   placeholder?: string;
   emptyText?: string;
+  /** Seçenekler yüklenirken liste yerine gösterilir */
+  loading?: boolean;
+  loadingText?: string;
+  /**
+   * value options içinde yokken (düzenleme / async yükleme) gösterilecek etiket.
+   * Kök neden: seçim kaybolmuş gibi görünmesi.
+   */
+  fallbackLabel?: string;
   disabled?: boolean;
   className?: string;
   inputClassName?: string;
@@ -32,6 +40,9 @@ export function SearchableSelect({
   onQueryChange,
   placeholder = 'Ara veya seç...',
   emptyText = 'Sonuç bulunamadı',
+  loading = false,
+  loadingText = 'Yükleniyor…',
+  fallbackLabel,
   disabled = false,
   className = '',
   inputClassName = '',
@@ -44,10 +55,11 @@ export function SearchableSelect({
   const [query, setQuery] = useState('');
 
   const selected = options.find((o) => o.value === value);
+  const displayLabel = selected?.label ?? (value ? (fallbackLabel ?? '') : '');
 
   useEffect(() => {
-    if (!open) setQuery(selected?.label ?? '');
-  }, [open, selected?.label]);
+    if (!open) setQuery(displayLabel);
+  }, [open, displayLabel]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -86,7 +98,7 @@ export function SearchableSelect({
         aria-controls={listId}
         disabled={disabled}
         placeholder={placeholder}
-        value={open ? query : (selected?.label ?? query)}
+        value={open ? query : displayLabel || query}
         name={disableBrowserAutocomplete ? `meridyen-select-${inputName}` : undefined}
         autoComplete={disableBrowserAutocomplete ? 'off' : undefined}
         autoCorrect={disableBrowserAutocomplete ? 'off' : undefined}
@@ -109,7 +121,9 @@ export function SearchableSelect({
           id={listId}
           className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800"
         >
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{loadingText}</div>
+          ) : filtered.length === 0 ? (
             <div className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{emptyText}</div>
           ) : (
             filtered.map((o) => (

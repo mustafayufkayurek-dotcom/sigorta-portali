@@ -14,6 +14,9 @@ import {
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { getApiErrorMessage } from '@/utils/api-error';
 import {
   buildDepartmentCodeMap,
   filterDocumentTypesForCategory,
@@ -440,13 +443,9 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
     }
     setLoadingDistricts(true);
     try {
-      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
-      const data: { id: string; name: string }[] = r.data.data || [];
+      const data = await fetchProvinceDistricts(provinceId, { toastOnError: true });
       setDistrictCache((prev) => new Map(prev).set(provinceId, data));
       setDistricts(data);
-    } catch (e) {
-      console.error(e);
-      setDistricts([]);
     } finally {
       setLoadingDistricts(false);
     }
@@ -500,11 +499,14 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await axios.patch(`${API}/vendors/${vendor.id}/service-areas`, { serviceAreas }, { headers: authHeader() });
       onUpdate();
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      reportCaughtError(e, getApiErrorMessage(e, 'Hizmet bölgeleri kaydedilemedi.'));
+    } finally { setSaving(false); }
   };
 
   const selectedProvince = provinces.find((p) => p.id === selectedProvinceId);
@@ -610,11 +612,14 @@ function IsGruplariTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void
   const toggle = (id: string) => setSelectedIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await axios.patch(`${API}/vendors/${vendor.id}/work-groups`, { workGroupIds: selectedIds }, { headers: authHeader() });
       onUpdate();
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      reportCaughtError(e, getApiErrorMessage(e, 'İş grupları kaydedilemedi.'));
+    } finally { setSaving(false); }
   };
 
   const assigned = workGroups.filter((wg) => selectedIds.includes(wg.id));

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:route-gate": "bash ../../scripts/smoke-route-gate.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

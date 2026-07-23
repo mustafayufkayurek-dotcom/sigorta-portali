@@ -33,20 +33,16 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Bir hata oluştu</h2>
-            <p className="text-gray-600 mb-6">
-              Beklenmedik bir hata meydana geldi. Lütfen sayfayı yenileyin.
+        <div className="min-h-[40vh] flex items-center justify-center bg-slate-50 p-6">
+          <div className="max-w-md w-full bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">Beklenmeyen Bir Hata Oluştu</h2>
+            <p className="text-sm text-slate-600 mb-6">
+              Sayfa yüklenirken sorun oluştu. Lütfen tekrar deneyin. Sorun sürerse sayfayı yenileyin.
             </p>
-            {this.state.error && (
-              <p className="text-sm text-red-500 mb-6 font-mono">
-                {this.state.error.message}
-              </p>
-            )}
             <button
+              type="button"
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
             >
               Tekrar Dene
             </button>

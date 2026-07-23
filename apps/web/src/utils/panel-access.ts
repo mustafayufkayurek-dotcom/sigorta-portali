@@ -1,8 +1,9 @@
 import {
   operationAreaFromDepartmentCodes,
   type OperationAreaCode,
-} from '@/app/panel/kullanicilar/_lib/user-invite-config';
-import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole } from '@/hooks/usePanelRole';
+} from '../app/panel/kullanicilar/_lib/user-invite-config';
+import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole, roleAllowedForNav } from '../hooks/usePanelRole';
+import panelRouteAccessRules from './panel-route-access.rules.json';
 
 export type PanelUserLike = {
   role?: { code?: string | null } | null;
@@ -18,6 +19,55 @@ export type PanelUserLike = {
 };
 
 export type OperationalAccessGrantSummary = NonNullable<PanelUserLike['operationalAccessGrants']>[number];
+
+function normalizeRoleCode(roleCode: string): string {
+  return String(roleCode ?? '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
+}
+
+export function isPortalRole(roleCode: string): boolean {
+  const role = normalizeRoleCode(roleCode);
+  return role === 'expert' || role === 'insurance_company_user';
+}
+
+/** Portal deep-link / refresh: yalnızca kendi portal ağacı + profil (+ /panel ana yönlendirme) */
+export function portalAllowsPath(roleCode: string, pathname: string): boolean {
+  if (pathname === '/panel/profil' || pathname.startsWith('/panel/profil/')) return true;
+  // Ana panel: layout home redirect’i için açık (sert deny yok)
+  if (pathname === '/panel') return true;
+
+  const role = normalizeRoleCode(roleCode);
+  if (role === 'expert') {
+    return pathname === '/panel/eksper-portal' || pathname.startsWith('/panel/eksper-portal/');
+  }
+  if (role === 'insurance_company_user') {
+    return pathname === '/panel/sigorta-portal' || pathname.startsWith('/panel/sigorta-portal/');
+  }
+  return false;
+}
+
+export function getSafePanelHomePath(roleCode: string): string {
+  const role = normalizeRoleCode(roleCode);
+  if (role === 'expert') return '/panel/eksper-portal';
+  if (role === 'insurance_company_user') return '/panel/sigorta-portal';
+  if (isFinanceRole(role)) return '/panel/finans';
+  return '/panel';
+}
+
+/**
+ * Panel route kuralları (en uzun path kazanır).
+ * Tek kaynak: panel-route-access.rules.json (smoke ile paylaşılır).
+ * `/panel` yalnızca exact eşleşir — alt path’leri gölgelemez.
+ * roles: [] = oturum açmış panel personeli (portal hariç; portal ayrı allowlist).
+ */
+export const PANEL_ROUTE_ACCESS: ReadonlyArray<{ path: string; roles: readonly string[] }> =
+  panelRouteAccessRules as ReadonlyArray<{ path: string; roles: readonly string[] }>;
+
+function routeRuleMatchesPath(pathname: string, rulePath: string): boolean {
+  if (pathname === rulePath) return true;
+  // Dashboard catch-all deliğini kapat: /panel altındaki her şey ayrı kural ister
+  if (rulePath === '/panel') return false;
+  return pathname.startsWith(`${rulePath}/`);
+}
 
 export function hasActiveFunctionDelegation(
   grants: OperationalAccessGrantSummary[] | null | undefined,
@@ -116,6 +166,54 @@ export function canAccessAcilYardimRoute(
   }
 
   return false;
+}
+
+/**
+ * Frontend route gate (Dalga 1).
+ * API yetkilendirmesinin yerine geçmez; yalnızca UI erişimini sınırlar.
+ * Eşleşmeyen path → deny. Portal → allowlist. /panel → exact only.
+ */
+export function hasPanelRouteAccess(
+  pathname: string,
+  roleCode: string,
+  operationArea: OperationAreaCode = '',
+  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
+  allowedScreens?: string[] | null,
+): boolean {
+  if (!pathname || !roleCode) return false;
+
+  if (pathname === '/panel/profil' || pathname.startsWith('/panel/profil/')) {
+    return true;
+  }
+
+  if (isPortalRole(roleCode)) {
+    return portalAllowsPath(roleCode, pathname);
+  }
+
+  if (pathname === '/panel/acil-yardim' || pathname.startsWith('/panel/acil-yardim/')) {
+    return canAccessAcilYardimRoute(pathname, roleCode, operationArea, operationalAccessGrants, allowedScreens);
+  }
+
+  const matching = PANEL_ROUTE_ACCESS
+    .filter((rule) => routeRuleMatchesPath(pathname, rule.path))
+    .sort((a, b) => b.path.length - a.path.length);
+
+  if (matching.length === 0) return false;
+
+  const rule = matching[0];
+  if (rule.roles.length === 0) return true;
+  return roleAllowedForNav(roleCode, [...rule.roles]);
+}
+
+/** @deprecated Eski ad — hasPanelRouteAccess kullanın */
+export function hasRouteAccess(
+  pathname: string,
+  roleCode: string,
+  operationArea: OperationAreaCode = '',
+  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
+  allowedScreens?: string[] | null,
+): boolean {
+  return hasPanelRouteAccess(pathname, roleCode, operationArea, operationalAccessGrants, allowedScreens);
 }
 
 export function panelShowsFinanceWidgets(roleCode: string): boolean {

@@ -1,6 +1,9 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -86,21 +89,23 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
   // Pre-load districts for existing areas
   useEffect(() => {
     const provinceIds = [...new Set(serviceAreas.filter(sa => sa.districtId).map(sa => sa.provinceId))];
+    const controllers: AbortController[] = [];
     provinceIds.forEach((pid) => {
-      axios.get(`${API}/locations/provinces/${pid}/districts`, { headers: authHeader() })
-        .then((r) => {
-          const dists: any[] = r.data.data || [];
+      const controller = new AbortController();
+      controllers.push(controller);
+      void fetchProvinceDistricts(pid, { signal: controller.signal, toastOnError: false })
+        .then((dists) => {
+          if (controller.signal.aborted) return;
           const map: Record<string, string> = {};
           dists.forEach((d) => { map[d.id] = d.name; });
           setDistrictNames((prev) => ({ ...prev, ...map }));
-        })
-        .catch(console.error);
+        });
     });
+    return () => { controllers.forEach((c) => c.abort()); };
   }, []);
 
   const loadDistricts = async (id: string) => {
-    const r = await axios.get(`${API}/locations/provinces/${id}/districts`, { headers: authHeader() });
-    const dists: any[] = r.data.data || [];
+    const dists = await fetchProvinceDistricts(id, { toastOnError: true });
     setDistricts(dists);
     const map: Record<string, string> = {};
     dists.forEach((d) => { map[d.id] = d.name; });
@@ -138,11 +143,14 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await axios.patch(`${API}/users/${user.id}/service-areas`, { serviceAreas }, { headers: authHeader() });
       onUpdate();
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      reportCaughtError(e, getApiErrorMessage(e, 'Hizmet bölgeleri kaydedilemedi.'));
+    } finally { setSaving(false); }
   };
 
   const provinceOptions = useMemo(

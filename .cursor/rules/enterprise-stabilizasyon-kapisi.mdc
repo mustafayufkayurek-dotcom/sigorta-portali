@@ -1,0 +1,38 @@
+---
+description: Enterprise stabilizasyon kapısı — READY öncesi yeni özellik/push/deploy yasak
+alwaysApply: true
+---
+
+# Enterprise Stabilizasyon Kapısı
+
+**Kaynak:** `docs/project-governance/ENTERPRISE_STABILIZASYON_PROGRAMI.md`  
+**Dalga planı:** `docs/project-governance/ENTERPRISE_DALGA_PLANI.md`  
+**Freeze:** `docs/project-governance/ENTERPRISE_FEATURE_FREEZE.md` (Feature Freeze **AKTİF**)
+
+## Anlık durum
+
+- Dalga 1: ✅ **KAPANDI (PASS)** — akışlar Feature Freeze (D1-*)  
+- Dalga 2: 🔒 Uygulama yok — Mustafa yeni görev + kapsam onayı olmadan başlama  
+- Push / deploy / canlı: yok (ayrı onay)
+
+## Program açıkken (genel sonuç 🔴)
+
+1. **Yeni özellik / yeni ekran / yeni menü yok.**
+2. **Push yok. Deploy yok. Canlıya alma yok** — Mustafa açıkça «READY sonrası deploy» demeden.
+3. Yalnızca stabilizasyon: hata-sınıfı düzeltme, ortak altyapı, test, rapor.
+4. Feature Freeze: kabuk/dashboard/portal shell **ve Dalga 1 akışları (D1-*)** — onaysız bozulmaz.
+5. Uncommitted WIP (ör. sigorta-portal OperationReference) rsync/deploy’a karışmasın.
+6. **Akış bazlı dalgalar:** Önceki dalga tamam + Mustafa onayı olmadan sonraki dalgaya geçme.
+7. Her dalga sonu: Typecheck, Build, Lint, Smoke (`scripts/smoke-route-gate.sh` dahil), kullanıcı kabulü — sonra onay bekle.
+8. Route Gate smoke (`pnpm smoke:route-gate`) regresyon kapısıdır; FAIL ise ilerleme yok.
+9. Dalga 1 tekrar açılmaz. «Çıkış sonrası eski URL» PARTIAL → Login dalgası.
+
+## İzinli sınıf düzeltmeleri
+
+Ölü UI · yasak etiket · dil tutarlılığı · case/ID normalize · bağımlı alan no-op kilidi · kaydet toast/hata görünürlüğü  
+
+Bunlar bile D1-* veya `smoke:route-gate` bozuyorsa dur; onay iste.
+
+## READY verilmeden
+
+Kullanıcıya «canlıya alalım / yeni özellik» derse: önce program durumunu hatırlat; READY değilse deploy/push önerme.

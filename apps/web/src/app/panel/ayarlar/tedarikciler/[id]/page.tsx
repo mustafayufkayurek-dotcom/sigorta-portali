@@ -15,6 +15,9 @@ import {
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return '—';
@@ -46,7 +49,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-blue-600 transition-colors">Panel</a>
         <span>/</span>
         <a href="/panel/ayarlar" className="hover:text-blue-600 transition-colors">Ayarlar</a>
         <span>/</span>
@@ -156,8 +159,7 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   }, []);
 
   const loadDistricts = async (id: string) => {
-    const r = await axios.get(`${API}/locations/provinces/${id}/districts`, { headers: authHeader() });
-    setDistricts(r.data.data || []);
+    setDistricts(await fetchProvinceDistricts(id, { toastOnError: true }));
   };
 
   const handleSelectProvince = (id: string) => {
@@ -191,11 +193,14 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await axios.patch(`${API}/vendors/${vendor.id}/service-areas`, { serviceAreas }, { headers: authHeader() });
       onUpdate();
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      reportCaughtError(e, getApiErrorMessage(e, 'Hizmet bölgeleri kaydedilemedi.'));
+    } finally { setSaving(false); }
   };
 
   const provinceOptions = useMemo(
@@ -298,11 +303,14 @@ function IsGruplariTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void
   const toggle = (id: string) => setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await axios.patch(`${API}/vendors/${vendor.id}/work-groups`, { workGroupIds: selectedIds }, { headers: authHeader() });
       onUpdate();
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      reportCaughtError(e, getApiErrorMessage(e, 'İş grupları kaydedilemedi.'));
+    } finally { setSaving(false); }
   };
 
   const assigned = workGroups.filter((wg) => selectedIds.includes(wg.id));

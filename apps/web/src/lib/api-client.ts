@@ -1,4 +1,10 @@
-import { ensureValidSession, getAccessToken, getRefreshToken, persistTokens } from '@/utils/auth-session';
+import {
+  clearAuth,
+  ensureValidSession,
+  getAccessToken,
+  getRefreshToken,
+  persistTokens,
+} from '@/utils/auth-session';
 
 export class ApiError extends Error {
   status: number;
@@ -102,6 +108,15 @@ async function request<T>(url: string, init: RequestInit = {}, params?: QueryPar
         /* refresh başarısız */
       }
     }
+  }
+
+  // Axios / authFetch ile aynı oturum ölümü: refresh sonrası hâlâ 401 ise girişe yönlendir
+  if (response.status === 401) {
+    clearAuth();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/giris')) {
+      window.location.href = '/giris?reason=session_expired';
+    }
+    throw new ApiError(401, 'Oturum süresi doldu. Lütfen tekrar giriş yapın.', data);
   }
 
   if (!response.ok) {

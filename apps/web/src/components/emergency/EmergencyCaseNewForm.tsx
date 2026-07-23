@@ -21,6 +21,9 @@ import {
   type VendorOption,
 } from '@/utils/emergencyApi';
 import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { createInFlightGuard } from '@/utils/in-flight-guard';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
   { value: 'DUSUK', label: 'Düşük', color: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -141,8 +144,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [issueTypes, setIssueTypes] = useState<string[]>([]);
+  const [subjectsLoadFailed, setSubjectsLoadFailed] = useState(false);
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [users, setUsers] = useState<PanelUser[]>([]);
+  const submitGuard = useRef(createInFlightGuard());
 
   const [fileNo, setFileNo] = useState('');
   const [fileNoError, setFileNoError] = useState<string | null>(null);
@@ -199,7 +204,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
     ? assistantDisplayName(selectedCustomer)
     : showNewCustomerForm
       ? 'Yeni asistans firması'
-      : customerSearch.trim() || 'Asistans firması seçin';
+      : customerSearch.trim() || 'Asistan Firması Seçin';
 
   const dosyaSummary = [
     insuredName.trim(),
@@ -217,25 +222,29 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   const loadLookups = useCallback(async () => {
     try {
       const [subjectsRes, vendorsRes, usersRes] = await Promise.all([
-        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch(() => null),
+        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
+          reportCaughtError(err, 'Acil konular yüklenemedi. Varsayılan liste kullanılıyor.', { toastType: 'warning' });
+          return null;
+        }),
         getEmergencyVendors(),
         axios.get(`${API}/users`, { headers: authHeader(), params: { limit: 100 } }),
       ]);
       const subjectData = subjectsRes?.data?.data;
       const acil = Array.isArray(subjectData?.acil) ? subjectData.acil : [];
-      setIssueTypes(
-        (acil.length > 0 ? acil : FALLBACK_ISSUE_TYPES)
-          .map((s: string) => {
-            const raw = String(s).trim();
-            return mapInboundLossTypeToMeridyen(raw) ?? toTitleCaseTR(raw);
-          })
-          .filter(Boolean),
-      );
+      const normalized = (acil.length > 0 ? acil : FALLBACK_ISSUE_TYPES)
+        .map((s: string) => {
+          const raw = String(s).trim();
+          return mapInboundLossTypeToMeridyen(raw) ?? toTitleCaseTR(raw);
+        })
+        .filter(Boolean);
+      setIssueTypes(normalized);
+      setSubjectsLoadFailed(!subjectsRes);
       setVendors(vendorsRes.data ?? []);
       setUsers((usersRes.data?.data ?? []) as PanelUser[]);
     } catch (e) {
-      console.error(e);
+      reportCaughtError(e, 'Form seçenekleri yüklenemedi. Varsayılan konular kullanılıyor.');
       setIssueTypes(FALLBACK_ISSUE_TYPES);
+      setSubjectsLoadFailed(true);
     }
   }, []);
 
@@ -296,7 +305,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           phone: (c.phone as string | null) ?? null,
         })));
         setShowCustomerDropdown(true);
-      } catch { /* ignore */ } finally {
+      } catch (e) {
+        reportCaughtError(e, 'Asistan firması araması başarısız. Lütfen tekrar deneyin.');
+        setCustomerResults([]);
+      } finally {
         setCustomerSearchLoading(false);
       }
     }, 300);
@@ -320,7 +332,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       } else {
         setPhoneDupError(null);
       }
-    } catch { setPhoneDupError(null); }
+    } catch (e) {
+      reportCaughtError(e, 'Telefon kontrolü yapılamadı. Kaydetmeden önce tekrar deneyin.', { toastType: 'warning' });
+      setPhoneDupError('Telefon kontrolü yapılamadı. Lütfen tekrar deneyin.');
+    }
   };
 
   const checkFileNoDuplicate = async (value: string) => {
@@ -335,13 +350,16 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       } else {
         setFileNoError(null);
       }
-    } catch { setFileNoError(null); }
+    } catch (e) {
+      reportCaughtError(e, 'Dosya no kontrolü yapılamadı. Kaydetmeden önce tekrar deneyin.', { toastType: 'warning' });
+      setFileNoError('Dosya no kontrolü yapılamadı. Lütfen tekrar deneyin.');
+    }
     finally { setFileNoChecking(false); }
   };
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!selectedCustomer && !showNewCustomerForm) errs.assistant = 'Asistans firması seçiniz.';
+    if (!selectedCustomer && !showNewCustomerForm) errs.assistant = 'Asistan Firması Seçiniz.';
     if (showNewCustomerForm) {
       if (!newCustomerCompanyName.trim()) errs.assistant = 'Şirket adı zorunludur.';
       if (phoneDupError) errs.assistant = phoneDupError;
@@ -363,6 +381,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    if (!submitGuard.current.tryStart()) return;
     setSaving(true);
     setErrors((prev) => ({ ...prev, general: '' }));
     try {
@@ -401,13 +420,12 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       });
       onSuccess(res.data.id);
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : (err as Error)?.message ?? 'Kayıt oluşturulamadı';
-      const errorText = Array.isArray(msg) ? msg.join(', ') : msg;
+      const errorText = getApiErrorMessage(err, 'Kayıt oluşturulamadı. Lütfen tekrar deneyin.');
+      reportCaughtError(err, errorText, { toast: false });
       setErrors((prev) => ({ ...prev, general: errorText }));
     } finally {
       setSaving(false);
+      submitGuard.current.end();
     }
   };
 
@@ -435,7 +453,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       ) : !showNewCustomerForm ? (
         <>
           <div ref={customerSearchRef} className="relative">
-            <label className={label}>Asistans Firma Ara</label>
+            <label className={label}>Asistan Firması Ara</label>
             <input
               type="text"
               className={`${field} ${errors.assistant ? 'border-red-400' : ''}`}
@@ -478,7 +496,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
               onClick={() => { setShowNewCustomerForm(true); setSelectedCustomer(null); setCustomerSearch(''); setOpenSections((p) => ({ ...p, asistans: true })); }}
               className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50"
             >
-              Yeni Asistans Firması
+              Yeni Asistan Firması
             </button>
           </div>
         </>
@@ -487,7 +505,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       {showNewCustomerForm && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-600">Yeni Asistans Firması</p>
+            <p className="text-xs font-medium text-slate-600">Yeni Asistan Firması</p>
             <button
               type="button"
               onClick={() => { setShowNewCustomerForm(false); setPhoneDupError(null); }}
@@ -559,6 +577,9 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
             <option value="">Seçiniz...</option>
             {issueTypes.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
+          {subjectsLoadFailed && (
+            <p className="text-xs text-amber-600 mt-0.5">Konular yüklenemedi; varsayılan liste gösteriliyor. Gerekirse sayfayı yenileyin.</p>
+          )}
           {errors.issueType && <p className="text-xs text-red-500 mt-0.5">{errors.issueType}</p>}
         </div>
         <div className="min-w-0">
@@ -696,8 +717,8 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   const pagePanels = (
     <>
       <CollapsibleFormPanel
-        title="Asistans Firma"
-        hint="Dosyanın bağlı olduğu asistans firması"
+        title="Asistan Firması"
+        hint="Dosyanın bağlı olduğu asistan firması"
         open={openSections.asistans}
         onToggle={() => toggleSection('asistans')}
         summary={asistansSummary}

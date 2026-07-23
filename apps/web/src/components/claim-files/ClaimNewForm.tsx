@@ -22,6 +22,9 @@ import {
   customerDisplayName,
   customerSubTypeLabel,
 } from '@/utils/customer-form-helpers';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { reportCaughtError } from '@/utils/report-caught-error';
+import { createInFlightGuard } from '@/utils/in-flight-guard';
 
 
 
@@ -123,8 +126,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
   const [claimSubjects, setClaimSubjects] = useState<string[]>([]);
+  const [subjectsLoadFailed, setSubjectsLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const submitGuard = useRef(createInFlightGuard());
 
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [fileNo, setFileNo] = useState('');
@@ -192,7 +197,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
     try {
       const [icRes, subjectsRes, meRes] = await Promise.all([
         axios.get(`${API}/insurance-companies?limit=200`, { headers: authHeader() }),
-        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch(() => null),
+        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
+          reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
+          return null;
+        }),
         axios.get(`${API}/auth/me`, { headers: authHeader() }).catch(() => null),
       ]);
       let companies: { id: string; name: string }[] = icRes.data.data || [];
@@ -223,8 +231,13 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         : Array.isArray(subjectData)
           ? subjectData
           : [];
-      setClaimSubjects(subjects.map((s: string) => toTitleCaseTR(String(s).trim())).filter(Boolean));
-    } catch (e) { console.error(e); }
+      const normalized = subjects.map((s: string) => toTitleCaseTR(String(s).trim())).filter(Boolean);
+      setClaimSubjects(normalized);
+      setSubjectsLoadFailed(!subjectsRes);
+    } catch (e) {
+      reportCaughtError(e, 'Form seçenekleri yüklenemedi. Lütfen sayfayı yenileyin.');
+      setSubjectsLoadFailed(true);
+    }
   }, []);
 
   const loadStatuses = useCallback(async () => {
@@ -233,7 +246,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       const data: ClaimStatus[] = res.data.data || [];
       const newStatus = data.find((s) => s.code === 'new');
       if (newStatus) setCurrentStatusId(newStatus.id);
-    } catch { /* optional */ }
+    } catch (e) {
+      reportCaughtError(e, 'Dosya durumu yüklenemedi. Kayıt yine de denenebilir.', { toastType: 'warning' });
+    }
   }, []);
 
   useEffect(() => { loadLookups(); loadStatuses(); }, [loadLookups, loadStatuses]);
@@ -300,7 +315,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           phone: (c.phone as string | null) ?? null,
         })));
         setShowCustomerDropdown(true);
-      } catch { /* ignore */ } finally {
+      } catch (e) {
+        reportCaughtError(e, 'Müşteri araması başarısız. Lütfen tekrar deneyin.');
+        setCustomerResults([]);
+      } finally {
         setCustomerSearchLoading(false);
       }
     }, 300);
@@ -324,7 +342,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       } else {
         setPhoneDupError(null);
       }
-    } catch { setPhoneDupError(null); }
+    } catch (e) {
+      reportCaughtError(e, 'Telefon kontrolü yapılamadı. Kaydetmeden önce tekrar deneyin.', { toastType: 'warning' });
+      setPhoneDupError('Telefon kontrolü yapılamadı. Lütfen tekrar deneyin.');
+    }
   };
 
   const checkFileNoDuplicate = async (value: string) => {
@@ -339,7 +360,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       } else {
         setFileNoError(null);
       }
-    } catch { setFileNoError(null); }
+    } catch (e) {
+      reportCaughtError(e, 'Dosya no kontrolü yapılamadı. Kaydetmeden önce tekrar deneyin.', { toastType: 'warning' });
+      setFileNoError('Dosya no kontrolü yapılamadı. Lütfen tekrar deneyin.');
+    }
     finally { setFileNoChecking(false); }
   };
 
@@ -379,6 +403,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
     const ihbarToday = todayTrDateDisplay();
     setNotificationDate(ihbarToday);
     if (!validate()) return;
+    if (!submitGuard.current.tryStart()) return;
     setSaving(true);
     setErrors((prev) => ({ ...prev, general: '' }));
     try {
@@ -447,13 +472,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       saveClaimNewPrefs({ lossType });
       onSuccess(createdId);
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : (err as Error)?.message ?? 'Kayıt başarısız';
-      const errorText = Array.isArray(msg) ? msg.join(', ') : msg;
+      const errorText = getApiErrorMessage(err, 'Kayıt başarısız. Lütfen tekrar deneyin.');
+      reportCaughtError(err, errorText, { toast: false });
       setErrors((prev) => ({ ...prev, general: errorText }));
     } finally {
       setSaving(false);
+      submitGuard.current.end();
     }
   };
 
@@ -617,6 +641,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
             {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
             {claimSubjects.length === 0 && <option value="Diğer">Diğer</option>}
           </select>
+          {subjectsLoadFailed && (
+            <p className="text-xs text-amber-600 mt-0.5">Hasar konuları yüklenemedi. «Diğer» seçilebilir veya sayfayı yenileyin.</p>
+          )}
           {errors.lossType && <p className="text-xs text-red-500 mt-0.5">{errors.lossType}</p>}
         </div>
         <div className="min-w-0">

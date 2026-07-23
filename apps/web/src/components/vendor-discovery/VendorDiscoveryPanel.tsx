@@ -8,6 +8,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { useToast } from '@/contexts/ToastContext';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 
 type Province = { id: string; name: string; plateCode?: number };
 
@@ -55,10 +56,10 @@ const MIN_RATING_OPTIONS = [
 ];
 
 const SOURCE_LABELS: Record<ExternalVendorSource, string> = {
-  google_places: 'Google',
-  google_mock: 'Google (Mock)',
-  instagram_mock: 'Instagram (Mock)',
-  facebook_mock: 'Facebook (Mock)',
+  google_places: 'Dış Kaynak',
+  google_mock: 'Örnek Sonuç',
+  instagram_mock: 'Örnek Sonuç',
+  facebook_mock: 'Örnek Sonuç',
 };
 
 const MAX_DISTRICTS_PER_SEARCH = 5;
@@ -118,20 +119,16 @@ export function VendorDiscoveryPanel({ open, onClose, provinces, onAddAsVendor }
     }
     setSelectedDistrictIds([]);
     setAllDistrictsMode(true);
-    let cancelled = false;
     setLoadingDistricts(true);
-    axios
-      .get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() })
-      .then((r) => {
-        if (!cancelled) setDistricts(r.data.data || []);
-      })
-      .catch(() => {
-        if (!cancelled) setDistricts([]);
+    const controller = new AbortController();
+    void fetchProvinceDistricts(provinceId, { signal: controller.signal, toastOnError: true })
+      .then((rows) => {
+        if (!controller.signal.aborted) setDistricts(rows);
       })
       .finally(() => {
-        if (!cancelled) setLoadingDistricts(false);
+        if (!controller.signal.aborted) setLoadingDistricts(false);
       });
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [provinceId]);
 
   const selectedDistrictNames = useMemo(
@@ -234,21 +231,21 @@ export function VendorDiscoveryPanel({ open, onClose, provinces, onAddAsVendor }
       open={open}
       onClose={onClose}
       title="Dış Kaynakta Ara"
-      subtitle="Google ve sosyal medya kaynaklarından tedarikçi adayı bulun"
+      subtitle="Dış kaynaklardan tedarikçi adayı bulun"
       width={520}
     >
       <div className="p-5 space-y-5">
         {searched && searchSource === 'google_places' && (
           <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
             <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              Canlı Google
+              Canlı Sonuç
             </span>
-            <span>Sonuçlar Google Places API üzerinden getirildi.</span>
+            <span>Dış kaynak sonuçları getirildi.</span>
           </div>
         )}
         {searched && searchSource === 'mock' && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-            Google Places API key tanımlı değil veya devre dışı — sonuçlar mock veridir. Ayarlar → Entegrasyonlar → Google Places bölümünden etkinleştirebilirsiniz.
+            Alternatif tedarikçi şu anda önerilemiyor. Lütfen daha sonra tekrar deneyin.
           </div>
         )}
 

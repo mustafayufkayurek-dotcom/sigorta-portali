@@ -42,6 +42,7 @@ import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { normalizeEmailAddress } from '@/utils/normalize-email';
 import { API, authHeader } from '@/utils/api';
+import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 import { ensureValidSession, getAccessToken } from '@/utils/auth-session';
 import {
   getProvincesForRegionCode,
@@ -930,15 +931,9 @@ export default function KullanicilarPage() {
     }
   }, []);
 
-  const fetchDistrictsForPanel = useCallback(async (provinceId: string) => {
+  const fetchDistrictsForPanel = useCallback(async (provinceId: string, signal?: AbortSignal) => {
     if (!provinceId) return [];
-    try {
-      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
-      const list = r.data?.data ?? r.data ?? [];
-      return Array.isArray(list) ? list : [];
-    } catch {
-      return [];
-    }
+    return fetchProvinceDistricts(provinceId, { signal, toastOnError: true });
   }, []);
 
   const loadDistricts = useCallback(async (provinceId: string) => {
@@ -946,13 +941,8 @@ export default function KullanicilarPage() {
       setDistricts([]);
       return;
     }
-    try {
-      const r = await axios.get(`${API}/locations/provinces/${provinceId}/districts`, { headers: authHeader() });
-      const list = r.data?.data ?? r.data ?? [];
-      setDistricts(Array.isArray(list) ? list : []);
-    } catch {
-      setDistricts([]);
-    }
+    const list = await fetchProvinceDistricts(provinceId, { toastOnError: true });
+    setDistricts(list);
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { isDistrictAreaChecked } from '@/utils/service-area-helpers';
@@ -47,7 +47,8 @@ interface GeographicRegionScopePanelProps {
     provinceId: string,
     districtsInProvince: DistrictOption[],
   ) => void;
-  loadDistricts: (provinceId: string) => Promise<DistrictOption[]>;
+  /** AbortSignal: hızlı il değiştirmede eski ilçe yanıtının ezmesini önler */
+  loadDistricts: (provinceId: string, signal?: AbortSignal) => Promise<DistrictOption[]>;
   error?: string;
 }
 
@@ -68,6 +69,12 @@ export function GeographicRegionScopePanel({
   const [expandedProvinces, setExpandedProvinces] = useState<Set<string>>(new Set());
   const [districtCache, setDistrictCache] = useState<Record<string, DistrictOption[]>>({});
   const [loadingProvinceId, setLoadingProvinceId] = useState<string | null>(null);
+  const districtAbortRef = useRef<Record<string, AbortController>>({});
+
+  useEffect(() => () => {
+    Object.values(districtAbortRef.current).forEach((c) => c.abort());
+    districtAbortRef.current = {};
+  }, []);
 
   const sortedRegions = useMemo(
     () => [...regions].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
@@ -90,13 +97,20 @@ export function GeographicRegionScopePanel({
 
   const ensureDistrictsLoaded = useCallback(async (provinceId: string) => {
     if (districtCache[provinceId]) return districtCache[provinceId];
+    districtAbortRef.current[provinceId]?.abort();
+    const controller = new AbortController();
+    districtAbortRef.current[provinceId] = controller;
     setLoadingProvinceId(provinceId);
     try {
-      const list = await loadDistricts(provinceId);
+      const list = await loadDistricts(provinceId, controller.signal);
+      if (controller.signal.aborted) return [];
       setDistrictCache((prev) => ({ ...prev, [provinceId]: list }));
       return list;
     } finally {
-      setLoadingProvinceId((current) => (current === provinceId ? null : current));
+      if (districtAbortRef.current[provinceId] === controller) {
+        delete districtAbortRef.current[provinceId];
+        setLoadingProvinceId((current) => (current === provinceId ? null : current));
+      }
     }
   }, [districtCache, loadDistricts]);
 

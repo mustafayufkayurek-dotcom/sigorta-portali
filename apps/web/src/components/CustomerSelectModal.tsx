@@ -5,6 +5,7 @@ import axios from 'axios';
 import { customerDisplayName } from '@/utils/customer-form-helpers';
 import { API, authHeader } from '@/utils/api';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { reportCaughtError } from '@/utils/report-caught-error';
 
 type Customer = {
   id: string;
@@ -86,7 +87,11 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
       }));
       setCustomers(rows);
       setTotal(r.data.meta?.total ?? rows.length);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) {
+      reportCaughtError(e, 'Müşteri listesi yüklenemedi. Lütfen tekrar deneyin.');
+      setCustomers([]);
+      setTotal(0);
+    } finally { setLoading(false); }
   }, [subTypeFilter, isExpertPicker, isAssistantPicker]);
 
   useEffect(() => {

@@ -16,7 +16,8 @@ Canlı deploy veya büyük ayarlar/panel değişikliği yapmadan önce **mutlaka
 5. Web restart: `scripts/restart-web-production.sh` veya `scripts/deploy-web-production.sh ETİKET` — **`-p sigorta-hasar-sistemi` zorunlu**
 6. Routing doğrulama: `scripts/verify-nginx-web-routing.sh` (sunucuda, PASS olmadan deploy bitmiş sayılmaz)
 7. Hash doğrulama: `scripts/verify-critical-paths.sh --remote`
-8. Deploy sonrası: `scripts/post-deploy-smoke.sh`
+8. Deploy sonrası: `scripts/post-deploy-smoke.sh` (içinde `scripts/smoke-route-gate.sh` zorunlu)
+8b. Geliştirme sırasında Route Gate: `pnpm smoke:route-gate` veya `bash scripts/smoke-route-gate.sh`
 9. Sorun varsa: `scripts/rollback-production.sh` — onay almadan force push / hard reset yok
 
 ## Yasaklar

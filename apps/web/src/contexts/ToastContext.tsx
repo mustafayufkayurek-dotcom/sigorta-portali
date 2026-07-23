@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import ToastContainer, { ToastItem, ToastType } from '@/components/Toast';
+import { registerToastBridge } from '@/utils/report-caught-error';
 
 interface ToastContextValue {
   showToast: (type: ToastType, message: string, duration?: number) => void;
@@ -20,6 +21,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setToasts((prev) => [...prev, { id, type, message, duration }]);
   }, []);
+
+  useEffect(() => {
+    registerToastBridge(showToast);
+    return () => registerToastBridge(null);
+  }, [showToast]);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
