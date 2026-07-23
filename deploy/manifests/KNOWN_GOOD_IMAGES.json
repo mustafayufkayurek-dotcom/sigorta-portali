@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-22",
-  "label": "v392-musteri-kabul-kilidi",
-  "description": "Web-only: Müşteri Cuma kabul — ölü Onayla/Reddet kaldırıldı; hizmet tipi normalize; Asistan dili/Kara Liste; CRM Operasyon Hafızası→İlişki Özeti; kart notu Title Case. Commit 2b4bc44. Health PASS, nginx→web PASS, /panel/musteriler PASS, migrate yok. Login smoke yerel credential. Rollback web v391 / backend v390.",
+  "updatedAt": "2026-07-23",
+  "label": "v393-dalga1-route-gate",
+  "description": "Web-only Dalga 1: form/route-gate stabilizasyonu (ed1ef40). Health PASS, nginx→web PASS, route-gate smoke PASS (logout PARTIAL — credential yok). Migrate yok. Rollback web v392 / backend v390.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v390-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v392-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v393-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v391-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v392-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v390-amd64"
   },
   "mustPassSmokeRoutes": [
