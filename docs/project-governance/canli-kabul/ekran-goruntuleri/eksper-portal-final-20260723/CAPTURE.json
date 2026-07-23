@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "title": "",
+  "url": "http://localhost:3001/panel/eksper-portal",
+  "role": "expert",
+  "email": "admin@meridyenassistance.com",
+  "checks": {
+    "hasDosyalarimAktif": 0,
+    "hasWhatsApp": 0,
+    "hasDosyaHareket": 0,
+    "hasSureAnalizi": 0,
+    "hasHizliOzet": 0,
+    "hasOldTitle": 0,
+    "hasIsYuku": 0,
+    "hasHizliIslemler": 0,
+    "denied": 0,
+    "contactAboveYeniIhbar": 0
+  },
+  "bodySnippet": "",
+  "screenshots": [
+    "desktop-1440-full.png"
+  ]
+}

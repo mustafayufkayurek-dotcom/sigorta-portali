@@ -87,32 +87,11 @@ export function PortalLiveClock({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export const EXPERT_WHATSAPP_SUPPORT_URL = 'https://wa.me/905336330713';
-export const EXPERT_WHATSAPP_SUPPORT_PHONE = '0533 633 07 13';
-
-export function ExpertPortalContactStrip() {
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/90 px-3 py-2 sm:px-5">
-      <a
-        href={EXPERT_WHATSAPP_SUPPORT_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800 transition hover:bg-emerald-100"
-      >
-        WhatsApp Destek · {EXPERT_WHATSAPP_SUPPORT_PHONE}
-      </a>
-      <a
-        href="tel:+908508852555"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
-      >
-        0 850 885 25 55
-      </a>
-      <a
-        href="mailto:info@meridyenassistance.com"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
-      >
-        info@meridyenassistance.com
-      </a>
-    </div>
-  );
-}
+export {
+  EXPERT_WHATSAPP_SUPPORT_URL,
+  EXPERT_WHATSAPP_SUPPORT_PHONE,
+  EXPERT_CALL_CENTER_PHONE,
+  EXPERT_CALL_CENTER_TEL,
+  EXPERT_SUPPORT_EMAIL,
+  ExpertPortalContactStrip,
+} from '@/components/panel/expert-portal-contact-strip';

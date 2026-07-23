@@ -10,11 +10,8 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
 import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
-import {
-  ExpertPortalContactStrip,
-  PortalExchangeRates,
-  PortalLiveClock,
-} from '@/components/panel/portal-header-widgets';
+import { ExpertPortalContactStrip } from '@/components/panel/expert-portal-contact-strip';
+import { classifyExpertQueue, countExpertQueues } from '@/utils/expert-portal-queues';
 
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
@@ -950,7 +947,7 @@ function IhbarSuccessToast({ fileNo, onClose }: { fileNo: string; onClose: () =>
   );
 }
 
-// ─── Gauge Component (SVG-based animated dial) ─────────────────────────────────
+// ─── Gauge Component (SVG-based animated dial) — referans FINAL ibre + ok ─────
 
 function GaugeChart({
   value,
@@ -959,7 +956,8 @@ function GaugeChart({
   label,
   subtitle,
   unit = '',
-  size = 120,
+  size = 128,
+  trend,
 }: {
   value: number;
   displayValue?: number;
@@ -968,6 +966,7 @@ function GaugeChart({
   subtitle?: string;
   unit?: string;
   size?: number;
+  trend?: { direction: 'up' | 'down'; label: string } | null;
 }) {
   const [animated, setAnimated] = useState(0);
   const shown = displayValue ?? value;
@@ -977,11 +976,11 @@ function GaugeChart({
     return () => clearTimeout(timer);
   }, [value]);
 
-  const pct = Math.min(100, Math.max(0, (animated / max) * 100));
+  const pct = Math.min(100, Math.max(0, (animated / Math.max(max, 1)) * 100));
   const cx = size / 2;
   const cy = size * 0.58;
-  const r = size * 0.38;
-  const strokeWidth = size * 0.1;
+  const r = size * 0.4;
+  const strokeWidth = size * 0.095;
 
   function polarToXY(deg: number, radius: number) {
     const rad = ((deg - 180) * Math.PI) / 180;
@@ -995,22 +994,32 @@ function GaugeChart({
     return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
   }
 
+  // Referans FINAL: mavi → mor → pembe → mercan renk geçişi (tam yay görünür)
   const zones = [
-    { from: 0, to: 60, color: '#EF4444' },
-    { from: 60, to: 80, color: '#F59E0B' },
-    { from: 80, to: 100, color: '#10B981' },
+    { from: 0, to: 22, color: '#1D4ED8' },
+    { from: 22, to: 42, color: '#4F46E5' },
+    { from: 42, to: 58, color: '#7C3AED' },
+    { from: 58, to: 74, color: '#C026D3' },
+    { from: 74, to: 88, color: '#E11D48' },
+    { from: 88, to: 100, color: '#F97316' },
   ];
 
-  const needle = polarToXY(pct * 1.8, r * 0.72);
-  const gaugeColor = pct >= 80 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
-  const valueTextClass =
-    pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : shown > 0 ? 'text-red-600' : 'text-slate-700';
+  const needleDeg = pct * 1.8;
+  const needleLen = r * 0.82;
+  const tip = polarToXY(needleDeg, needleLen);
+  const hubBack = polarToXY(needleDeg, r * 0.08);
+  const rad = ((needleDeg - 180) * Math.PI) / 180;
+  const baseW = size * 0.038;
+  const bx1 = hubBack.x + baseW * Math.cos(rad + Math.PI / 2);
+  const by1 = hubBack.y + baseW * Math.sin(rad + Math.PI / 2);
+  const bx2 = hubBack.x + baseW * Math.cos(rad - Math.PI / 2);
+  const by2 = hubBack.y + baseW * Math.sin(rad - Math.PI / 2);
 
   return (
-    <div className="flex flex-col items-center w-full">
-      <p className="text-sm font-semibold text-slate-700 text-center leading-snug mb-1 px-1">{label}</p>
+    <div className="flex w-full flex-col items-center">
+      <p className="mb-1 px-1 text-center text-sm font-semibold leading-snug text-slate-700">{label}</p>
       <svg width={size} height={size * 0.62} viewBox={`0 0 ${size} ${size * 0.62}`} className="flex-shrink-0">
-        <path d={arcPath(0, 180)} fill="none" stroke="#e2e8f0" strokeWidth={strokeWidth} strokeLinecap="round" />
+        <path d={arcPath(0, 180)} fill="none" stroke="#E2E8F0" strokeWidth={strokeWidth} strokeLinecap="round" />
         {zones.map((z) => (
           <path
             key={z.from}
@@ -1018,35 +1027,34 @@ function GaugeChart({
             fill="none"
             stroke={z.color}
             strokeWidth={strokeWidth}
-            opacity={0.35}
+            strokeLinecap="butt"
           />
         ))}
-        {pct > 0 && (
-          <path
-            d={arcPath(0, Math.max(1, pct * 1.8))}
-            fill="none"
-            stroke={gaugeColor}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            style={{ transition: 'all 0.9s cubic-bezier(0.34,1.56,0.64,1)' }}
-          />
-        )}
-        <line
-          x1={cx} y1={cy}
-          x2={needle.x} y2={needle.y}
-          stroke="#334155"
-          strokeWidth={size * 0.018}
-          strokeLinecap="round"
+        {/* Gösterge oku (ibre) — referans: sivri üçgen ok + göbek */}
+        <polygon
+          points={`${tip.x},${tip.y} ${bx1},${by1} ${bx2},${by2}`}
+          fill="#0F172A"
           style={{ transition: 'all 0.9s cubic-bezier(0.34,1.56,0.64,1)' }}
         />
-        <circle cx={cx} cy={cy} r={size * 0.05} fill="#334155" />
+        <circle cx={cx} cy={cy} r={size * 0.058} fill="#0F172A" />
+        <circle cx={cx} cy={cy} r={size * 0.024} fill="#F8FAFC" />
       </svg>
-      <p className={`text-3xl font-bold tabular-nums leading-none mt-1 ${valueTextClass}`}>
-        {shown}{unit}
+      <p className="mt-1 text-3xl font-bold tabular-nums leading-none text-slate-900">
+        {shown}
+        {unit}
       </p>
-      {subtitle && (
-        <p className="text-xs text-slate-500 text-center mt-2 leading-snug px-2">{subtitle}</p>
-      )}
+      {subtitle ? (
+        <p className="mt-1.5 px-2 text-center text-xs leading-snug text-slate-500">{subtitle}</p>
+      ) : null}
+      {trend ? (
+        <p
+          className={`mt-1 text-center text-xs font-semibold ${
+            trend.direction === 'up' ? 'text-emerald-600' : 'text-red-500'
+          }`}
+        >
+          {trend.direction === 'up' ? '↑' : '↓'} {trend.label}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1057,15 +1065,6 @@ function statusLabel(s: string) {
   const map: Record<string, string> = { pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi', expired: 'Süresi Doldu' };
   return map[s] ?? s;
 }
-function statusDot(s: string) {
-  const map: Record<string, string> = {
-    pending: 'bg-amber-400',
-    approved: 'bg-emerald-400',
-    rejected: 'bg-red-400',
-    expired: 'bg-slate-400',
-  };
-  return map[s] ?? 'bg-slate-400';
-}
 
 function formatShortDate(value?: string | null) {
   if (!value) return 'Tarih yok';
@@ -1074,8 +1073,115 @@ function formatShortDate(value?: string | null) {
   return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatRelativeTr(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffMin = Math.round((Date.now() - date.getTime()) / 60000);
+  if (diffMin < 1) return 'Az önce';
+  if (diffMin < 60) return `${diffMin} dakika önce`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} saat önce`;
+  return formatShortDate(value);
+}
+
 function fileNumberOf(file?: Pick<ExpertClaimFile, 'fileNo' | 'fileNumber'> | null) {
   return file?.fileNo ?? file?.fileNumber ?? 'Dosya no yok';
+}
+
+function activityBadgeFromFile(statusName?: string | null): { label: string; className: string } {
+  const kind = classifyExpertQueue(statusName);
+  if (kind === 'inceleme') return { label: 'İnceleme', className: 'bg-sky-50 text-sky-700' };
+  if (kind === 'rapor') return { label: 'Rapor', className: 'bg-violet-50 text-violet-700' };
+  const s = (statusName ?? '').toLocaleLowerCase('tr-TR');
+  if (/evrak|belge/.test(s)) return { label: 'Evrak', className: 'bg-amber-50 text-amber-800' };
+  if (/ihbar/.test(s)) return { label: 'İhbar', className: 'bg-blue-50 text-blue-700' };
+  return { label: 'Dosya', className: 'bg-slate-100 text-slate-700' };
+}
+
+function ActivityDocIcon() {
+  return (
+    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden>
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    </span>
+  );
+}
+
+type WorkloadMetrics = {
+  avgFileWaitDays: number | null;
+  avgReportWaitDays: number | null;
+  avgApprovalWaitDays: number | null;
+  closedThisWeek: number;
+  closedByDay: number[]; // son 7 gün, eski → yeni
+};
+
+function daysSince(iso?: string | null): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, (Date.now() - t) / 86_400_000);
+}
+
+function avg(nums: number[]): number | null {
+  if (nums.length === 0) return null;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function formatWaitDays(days: number | null): string {
+  if (days == null) return '—';
+  if (days < 1) return '< 1 Gün';
+  return `${days.toLocaleString('tr-TR', { maximumFractionDigits: 1, minimumFractionDigits: 0 })} Gün`;
+}
+
+function isClosedStatus(name?: string | null): boolean {
+  const s = (name ?? '').toLocaleLowerCase('tr-TR');
+  return /tamam|kapan|kapandı|kapandi|closed|completed|sonuç|sonuc/.test(s);
+}
+
+function computeWorkloadMetrics(
+  files: ExpertClaimFile[],
+  approvals: ApprovalItem[],
+): WorkloadMetrics {
+  const fileWaits = files
+    .map((f) => daysSince(f.lastActivityAt || f.updatedAt || f.createdAt))
+    .filter((d): d is number => d != null);
+
+  const reportWaits = files
+    .filter((f) => classifyExpertQueue(f.currentStatus?.name) === 'rapor')
+    .map((f) => daysSince(f.lastActivityAt || f.updatedAt || f.createdAt))
+    .filter((d): d is number => d != null);
+
+  const approvalWaits = approvals
+    .filter((a) => a.status === 'pending')
+    .map((a) => daysSince(a.sentAt || a.createdAt || a.expiresAt))
+    .filter((d): d is number => d != null);
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const closedByDay = Array.from({ length: 7 }, () => 0);
+  let closedThisWeek = 0;
+  for (const f of files) {
+    if (!isClosedStatus(f.currentStatus?.name)) continue;
+    const raw = f.lastActivityAt || f.updatedAt || f.createdAt;
+    if (!raw) continue;
+    const t = new Date(raw).getTime();
+    if (Number.isNaN(t)) continue;
+    const dayOffset = Math.floor((startOfToday - new Date(t).setHours(0, 0, 0, 0)) / 86_400_000);
+    if (dayOffset >= 0 && dayOffset < 7) {
+      closedByDay[6 - dayOffset] += 1;
+      closedThisWeek += 1;
+    }
+  }
+
+  return {
+    avgFileWaitDays: avg(fileWaits),
+    avgReportWaitDays: avg(reportWaits),
+    avgApprovalWaitDays: avg(approvalWaits),
+    closedThisWeek,
+    closedByDay,
+  };
 }
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
@@ -1087,14 +1193,30 @@ export default function EksperPortalPage() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [expiredCount, setExpiredCount] = useState<number>(0);
   const [assignedCount, setAssignedCount] = useState<number>(0);
+  const [reviewCount, setReviewCount] = useState<number>(0);
+  const [reportCount, setReportCount] = useState<number>(0);
   const [assignedFiles, setAssignedFiles] = useState<ExpertClaimFile[]>([]);
   const [recentApprovals, setRecentApprovals] = useState<ApprovalItem[]>([]);
+  const [workload, setWorkload] = useState<WorkloadMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [approvalLoadWarning, setApprovalLoadWarning] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [showIhbarModal, setShowIhbarModal] = useState(false);
   const [successFileNo, setSuccessFileNo] = useState<string | null>(null);
+
+  const applyFilesPayload = useCallback((
+    files: { data?: ExpertClaimFile[]; meta?: { total?: number } } | null,
+    approvalsForWorkload?: ApprovalItem[],
+  ) => {
+    const list = files?.data ?? [];
+    const queues = countExpertQueues(list);
+    setAssignedCount(files?.meta?.total ?? list.length);
+    setAssignedFiles(list.slice(0, 5));
+    setReviewCount(queues.inceleme);
+    setReportCount(queues.rapor);
+    setWorkload(computeWorkloadMetrics(list, approvalsForWorkload ?? []));
+  }, []);
 
   const handleIhbarSuccess = useCallback((fileNo: string) => {
     setShowIhbarModal(false);
@@ -1106,7 +1228,7 @@ export default function EksperPortalPage() {
     if (!expertUserId) return;
     Promise.all([
       fetch(`${API}/external-approvals/pending?approverType=expert&approverId=${expertUserId}&includeExpired=true`, { headers: getHeaders() }).then((r) => r.json()),
-      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then((r) => r.json()),
+      fetch(`${API}/claim-files?limit=50`, { headers: getHeaders() }).then((r) => r.json()),
     ])
       .then(([approvals, files]) => {
         const list: ApprovalItem[] = approvals?.data ?? [];
@@ -1115,11 +1237,10 @@ export default function EksperPortalPage() {
         setPendingCount(pending.length);
         setExpiredCount(expired.length);
         setRecentApprovals(list.slice(0, 5));
-        setAssignedCount(files?.meta?.total ?? 0);
-        setAssignedFiles((files?.data ?? []).slice(0, 5));
+        applyFilesPayload(files, list);
       })
       .catch(() => {});
-  }, []);
+  }, [applyFilesPayload]);
 
   useEffect(() => {
     if (searchParams.get('openIhbar') === '1') {
@@ -1149,7 +1270,7 @@ export default function EksperPortalPage() {
         }
         return body;
       }),
-      fetch(`${API}/claim-files?limit=5`, { headers: getHeaders() }).then(async (r) => {
+      fetch(`${API}/claim-files?limit=50`, { headers: getHeaders() }).then(async (r) => {
         const body = await r.json().catch(() => null);
         if (!r.ok) {
           throw new Error(body?.message ?? 'Dosya listesi yüklenemedi');
@@ -1158,13 +1279,14 @@ export default function EksperPortalPage() {
       }),
     ])
       .then(([approvalsResult, filesResult]) => {
+        let approvalList: ApprovalItem[] = [];
         if (approvalsResult.status === 'fulfilled') {
-          const list: ApprovalItem[] = approvalsResult.value?.data ?? [];
-          const pending = list.filter((item) => item.status === 'pending');
-          const expired = list.filter((item) => item.status === 'expired');
+          approvalList = approvalsResult.value?.data ?? [];
+          const pending = approvalList.filter((item) => item.status === 'pending');
+          const expired = approvalList.filter((item) => item.status === 'expired');
           setPendingCount(pending.length);
           setExpiredCount(expired.length);
-          setRecentApprovals(list.slice(0, 5));
+          setRecentApprovals(approvalList.slice(0, 5));
         } else {
           setPendingCount(0);
           setExpiredCount(0);
@@ -1173,16 +1295,18 @@ export default function EksperPortalPage() {
         }
 
         if (filesResult.status === 'fulfilled') {
-          setAssignedCount(filesResult.value?.meta?.total ?? 0);
-          setAssignedFiles((filesResult.value?.data ?? []).slice(0, 5));
+          applyFilesPayload(filesResult.value, approvalList);
         } else {
           setAssignedCount(0);
           setAssignedFiles([]);
+          setReviewCount(0);
+          setReportCount(0);
+          setWorkload(computeWorkloadMetrics([], approvalList));
           setLoadError(filesResult.reason?.message ?? 'Dosya listesi yüklenemedi');
         }
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, applyFilesPayload]);
 
   if (loading) {
     return (
@@ -1214,7 +1338,20 @@ export default function EksperPortalPage() {
 
   const approvalPendingCount = pendingCount;
   const approvalExpiredCount = expiredCount;
-  const activeFileGaugeMax = Math.max(10, assignedCount, approvalPendingCount + approvalExpiredCount);
+  const gaugeMax = Math.max(10, assignedCount, reviewCount, reportCount, approvalPendingCount);
+
+  const queueChip = (count: number, tone: 'amber' | 'orange' | 'rose') => {
+    const map = {
+      amber: 'bg-amber-100 text-amber-800',
+      orange: 'bg-orange-100 text-orange-800',
+      rose: 'bg-rose-100 text-rose-800',
+    };
+    return (
+      <span className={`ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold ${map[tone]}`}>
+        {count}
+      </span>
+    );
+  };
 
   const headerActions = (
     <>
@@ -1233,33 +1370,30 @@ export default function EksperPortalPage() {
         Dosyalarım
       </Link>
       <Link
-        href="/panel/eksper-portal/randevular"
+        href="/panel/eksper-portal/dosyalar?queue=inceleme"
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        Dosya Akışı
+        İnceleme Bekleyenler
+        {queueChip(reviewCount, 'rose')}
+      </Link>
+      <Link
+        href="/panel/eksper-portal/dosyalar?queue=rapor"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+      >
+        Rapor Bekleyenler
+        {queueChip(reportCount, 'orange')}
       </Link>
       <Link
         href="/panel/eksper-portal/onaylar"
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        Onay Bekleyen
-        <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold text-amber-800">
-          {approvalPendingCount}
-        </span>
-      </Link>
-      <Link
-        href="/panel/eksper-portal/onaylar?filter=expired"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-      >
-        Süresi Geçmiş
-        {approvalExpiredCount > 0 ? (
-          <span className="ml-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-100 px-1 text-[10px] font-bold text-red-800">
-            {approvalExpiredCount}
-          </span>
-        ) : null}
+        Onay Bekleyenler
+        {queueChip(approvalPendingCount, 'amber')}
       </Link>
     </>
   );
+
+  const activityEmpty = recentApprovals.length === 0 && assignedFiles.length === 0;
 
   return (
     <DashboardShell>
@@ -1274,306 +1408,194 @@ export default function EksperPortalPage() {
           </div>
         )}
 
-        <DashboardHeader
-          title="Eksper Portalı"
-          subtitle={`Hoş Geldiniz, ${userName}`}
-          hideDefaultActions
-          actions={
-            <>
-              <PortalExchangeRates tone="light" />
-              <PortalLiveClock compact />
-              {headerActions}
-            </>
-          }
-        />
+        <div className="space-y-3 border-b border-slate-200/80 pb-3 dark:border-slate-800 [&>div:first-child]:border-b-0 [&>div:first-child]:pb-0">
+          <DashboardHeader
+            title="Eksper Paneli"
+            subtitle={`Hoş Geldiniz, ${userName}`}
+            hideDefaultActions
+            actions={<ExpertPortalContactStrip compact />}
+          />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            <span className="text-xs font-semibold text-amber-800">{approvalPendingCount} Onay Bekliyor</span>
+          <div className="flex flex-nowrap items-center justify-end gap-2 overflow-x-auto">
+            {headerActions}
           </div>
-          {approvalExpiredCount > 0 ? (
-            <div className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-              <span className="text-xs font-semibold text-red-800">{approvalExpiredCount} Süresi Geçmiş</span>
-            </div>
-          ) : null}
         </div>
 
-        <ExpertPortalContactStrip />
-
-        {/* ── Operasyon göstergeleri ───────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-col items-center hover:border-slate-300 hover:shadow-sm transition-all">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <GaugeChart
-              value={Math.min(assignedCount, activeFileGaugeMax)}
+              value={Math.min(assignedCount, gaugeMax)}
               displayValue={assignedCount}
-              max={activeFileGaugeMax}
-              label="Atanmış Dosya Sayısı"
-              subtitle={assignedCount === 1 ? '1 aktif dosya' : `${assignedCount} aktif dosya`}
+              max={gaugeMax}
+              label="Dosyalarım (Aktif)"
+              subtitle="Aktif dosya"
             />
           </div>
-          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl bg-white border border-amber-200 p-4 flex flex-col items-center hover:border-amber-300 hover:shadow-sm transition-all">
+          <Link href="/panel/eksper-portal/dosyalar?queue=inceleme" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <GaugeChart
-              value={approvalPendingCount}
-              displayValue={approvalPendingCount}
-              max={Math.max(5, approvalPendingCount + approvalExpiredCount)}
-              label="Onay Bekleyen Dosyalar"
-              subtitle="İnceleme bekleyen dış onaylar"
+              value={Math.min(reviewCount, gaugeMax)}
+              displayValue={reviewCount}
+              max={gaugeMax}
+              label="İnceleme Bekleyenler"
+              subtitle="İnceleme bekleyen"
             />
           </Link>
-          <Link href="/panel/eksper-portal/onaylar?filter=expired" className="rounded-xl bg-white border border-red-200 p-4 flex flex-col items-center hover:border-red-300 hover:shadow-sm transition-all">
+          <Link href="/panel/eksper-portal/dosyalar?queue=rapor" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <GaugeChart
-              value={approvalExpiredCount}
-              displayValue={approvalExpiredCount}
-              max={Math.max(5, approvalPendingCount + approvalExpiredCount)}
-              label="Süresi Geçmiş Onaylar"
-              subtitle={approvalExpiredCount === 0 ? 'Süresi dolmuş onay yok' : 'Acil inceleme gerektirir'}
+              value={Math.min(reportCount, gaugeMax)}
+              displayValue={reportCount}
+              max={gaugeMax}
+              label="Rapor Bekleyenler"
+              subtitle="Rapor bekleyen"
+            />
+          </Link>
+          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+            <GaugeChart
+              value={Math.min(approvalPendingCount, gaugeMax)}
+              displayValue={approvalPendingCount}
+              max={gaugeMax}
+              label="Onay Bekleyenler"
+              subtitle={approvalExpiredCount > 0 ? `${approvalExpiredCount} Süresi Geçmiş` : 'Onay bekleyen'}
             />
           </Link>
         </div>
 
-        {/* ── Alt Grid: Aktiviteler + İstatistikler ────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-
-          {/* Son Aktiviteler */}
-          <div className="lg:col-span-2 rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-4 w-1 rounded-full bg-emerald-500" />
-                <h3 className="text-sm font-semibold text-slate-800">Son Dosya Aktiviteleri</h3>
-              </div>
-              <Link href="/panel/eksper-portal/onaylar" className="text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">Güncel Dosya Hareketleri</h3>
+              <Link href="/panel/eksper-portal/dosyalar" className="text-xs font-semibold text-blue-600 hover:underline">
                 Tümünü Gör →
               </Link>
             </div>
-            {recentApprovals.length === 0 && assignedFiles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-500">Bugün gösterilecek dosya aktivitesi yok</p>
-                <p className="text-xs text-slate-400">Yeni atama veya onay talebi oluştuğunda burada görünecek.</p>
+            {activityEmpty ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <p className="text-sm font-medium text-slate-500">Bugün Gösterilecek Dosya Hareketi Yok</p>
+                <p className="text-xs text-slate-400">Yeni ihbar veya onay talebi oluştuğunda burada görünecek.</p>
               </div>
             ) : (
-              <div className="space-y-1">
-                {recentApprovals.map((a, i) => (
-                  <div
-                    key={a.id}
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group"
-                  >
-                    {/* Timeline dot */}
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <div className={`w-2.5 h-2.5 rounded-full ${statusDot(a.status)}`} />
-                      {i < recentApprovals.length - 1 && (
-                        <div className="w-px h-6 bg-slate-200 mt-1" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-700 truncate">
-                          {fileNumberOf(a.report?.claimFile) ?? a.report?.reportNo ?? a.report?.reportNumber ?? `Dosya #${a.id.slice(-6)}`}
-                        </p>
-                        <span className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          a.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          a.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                          a.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-slate-100 text-slate-500'
-                        }`}>
+              <ul className="space-y-1">
+                {recentApprovals.map((a) => (
+                  <li key={a.id}>
+                    <Link
+                      href="/panel/eksper-portal/onaylar"
+                      className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-50"
+                    >
+                      <ActivityDocIcon />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {fileNumberOf(a.report?.claimFile) ?? a.report?.reportNo ?? a.report?.reportNumber ?? `Dosya #${a.id.slice(-6)}`}
+                          </span>
+                          <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                            Onay
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
                           {statusLabel(a.status)}
+                          {a.expiresAt ? ` · ${formatRelativeTr(a.expiresAt) || formatShortDate(a.expiresAt)}` : ''}
                         </span>
-                      </div>
-                      {(a.report?.reportNo || a.report?.reportNumber || a.expiresAt) && (
-                        <p className="text-xs text-slate-400 truncate">
-                          {a.report?.reportNo ?? a.report?.reportNumber ?? 'Onay talebi'}
-                          {a.expiresAt ? ` · Son tarih: ${formatShortDate(a.expiresAt)}` : ''}
-                        </p>
-                      )}
-                    </div>
-                    {a.status === 'pending' && (
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+                {assignedFiles.slice(0, Math.max(0, 5 - recentApprovals.length)).map((file) => {
+                  const badge = activityBadgeFromFile(file.currentStatus?.name);
+                  return (
+                    <li key={file.id}>
                       <Link
-                        href="/panel/eksper-portal/onaylar"
-                        className="flex-shrink-0 text-xs bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded-lg hover:bg-blue-100 transition-colors opacity-0 group-hover:opacity-100"
+                        href="/panel/eksper-portal/dosyalar"
+                        className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-50"
                       >
-                        İncele
-                      </Link>
-                    )}
-                  </div>
-                ))}
-                {assignedFiles.slice(0, Math.max(0, 5 - recentApprovals.length)).map((file, i) => (
-                  <Link
-                    key={file.id}
-                    href="/panel/eksper-portal/dosyalar"
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors group"
-                  >
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-                      {i < assignedFiles.length - 1 && (
-                        <div className="w-px h-6 bg-slate-200 mt-1" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-700 truncate">{fileNumberOf(file)}</p>
-                        <span className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          Atanmış Dosya
+                        <ActivityDocIcon />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-800">{fileNumberOf(file)}</span>
+                            <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block text-xs text-slate-500">
+                            {file.currentStatus?.name ?? 'Durum Yok'}
+                            {file.lastActivityAt || file.updatedAt
+                              ? ` · ${formatRelativeTr(file.lastActivityAt || file.updatedAt)}`
+                              : ''}
+                            {file.insuranceCompany?.name ? ` · ${file.insuranceCompany.name}` : ''}
+                          </span>
                         </span>
-                      </div>
-                      <p className="text-xs text-slate-400 truncate">
-                        {file.currentStatus?.name ?? 'Durum yok'}
-                        {file.insuranceCompany?.name ? ` · ${file.insuranceCompany.name}` : ''}
-                        {file.lastActivityAt || file.updatedAt ? ` · Son işlem: ${formatShortDate(file.lastActivityAt ?? file.updatedAt)}` : ''}
-                      </p>
-                    </div>
-                    <span className="flex-shrink-0 text-xs bg-slate-50 text-slate-500 border border-slate-200 px-3 py-1 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
-                      Aç
-                    </span>
-                  </Link>
-                ))}
-              </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-          </div>
-
-          {/* Sağ: Özet KPI'lar + Tanıtım */}
-          <div className="space-y-3">
-            {/* KPI Cards */}
-            {[
-              {
-                label: 'Bekleyen Onaylar',
-                value: approvalPendingCount,
-                icon: (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/></svg>
-                ),
-                href: '/panel/eksper-portal/onaylar',
-                color: approvalPendingCount > 0 ? 'from-amber-500 to-orange-600' : 'from-slate-400 to-slate-500',
-                textColor: approvalPendingCount > 0 ? 'text-amber-700' : 'text-slate-600',
-                pulse: approvalPendingCount > 0,
-              },
-              {
-                label: 'Süresi Geçmiş Onaylar',
-                value: approvalExpiredCount,
-                icon: (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
-                ),
-                href: '/panel/eksper-portal/onaylar?filter=expired',
-                color: approvalExpiredCount > 0 ? 'from-red-500 to-rose-600' : 'from-slate-400 to-slate-500',
-                textColor: approvalExpiredCount > 0 ? 'text-red-700' : 'text-slate-600',
-                pulse: approvalExpiredCount > 0,
-              },
-              {
-                label: 'Atanmış Dosyalar',
-                value: assignedCount,
-                icon: (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"/><path d="M3 8a2 2 0 012-2v10h8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
-                ),
-                href: '/panel/eksper-portal/dosyalar',
-                color: 'from-blue-500 to-indigo-600',
-                textColor: 'text-blue-700',
-                pulse: false,
-              },
-            ].map((kpi) => (
-              <Link
-                key={kpi.label}
-                href={kpi.href}
-                className="flex items-center gap-3 rounded-xl bg-white border border-slate-200 p-3 hover:border-slate-300 hover:shadow-sm transition-all duration-150 group"
-              >
-                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${kpi.color} flex items-center justify-center text-white flex-shrink-0 shadow-md`}>
-                  {kpi.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500">{kpi.label}</p>
-                  <div className="flex items-center gap-2">
-                    <p className={`text-xl font-bold tabular-nums ${kpi.textColor}`}>{kpi.value}</p>
-                    {kpi.pulse && <span className={`w-2 h-2 rounded-full animate-pulse ${kpi.label.includes('Geçmiş') ? 'bg-red-500' : 'bg-amber-400'}`} />}
-                  </div>
-                </div>
-                <svg className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            ))}
-
-            {/* Meridyen Tanıtım Kartı */}
-            <div className="rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 p-4 relative shadow-md">
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full blur-lg" />
-                <div className="absolute -bottom-3 -left-3 w-14 h-14 bg-black/10 rounded-full blur-lg" />
-              </div>
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <span className="text-white font-bold text-sm">Meridyen Assistance</span>
-                </div>
-                <p className="text-blue-100 text-xs leading-relaxed">
-                  Türkiye&apos;nin önde gelen 10 sigorta şirketiyle çalışan, güvenilir hasar yönetimi partneri.
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div className="bg-white/10 rounded-lg p-1.5 text-center">
-                    <p className="text-white font-bold text-base tabular-nums">1.030+</p>
-                    <p className="text-blue-200 text-[10px]">Toplam Dosya</p>
-                  </div>
-                  <div className="bg-white/10 rounded-lg p-1.5 text-center">
-                    <p className="text-white font-bold text-base tabular-nums">%94</p>
-                    <p className="text-blue-200 text-[10px]">Memnuniyet</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      {/* ── Sigorta Şirketleri — Alt Partner Bandı ──────────────────────────── */}
-      <div className="sticky bottom-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center h-8 overflow-hidden">
-          <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-slate-800 text-white text-[11px] font-semibold whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Partnerler
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <div
-              className="inline-flex items-center gap-8 whitespace-nowrap"
-              style={{ animation: 'marqueeInsuranceFixed 32s linear infinite', willChange: 'transform' }}
+            <Link
+              href="/panel/eksper-portal/dosyalar"
+              className="mt-3 inline-flex text-xs font-semibold text-blue-600 hover:underline"
             >
-              {[...INSURANCE_COMPANIES, ...INSURANCE_COMPANIES].map((co, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border"
-                  style={{
-                    color: co.color,
-                    borderColor: `${co.color}40`,
-                    backgroundColor: `${co.color}0d`,
-                  }}
-                >
-                  <span
-                    className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-                    style={{ background: co.color }}
-                  >
-                    {co.name.charAt(0)}
-                  </span>
-                  {co.name}
-                </span>
-              ))}
-            </div>
-            <style>{`
-              @keyframes marqueeInsuranceFixed {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-              }
-            `}</style>
-          </div>
-          <div className="flex-shrink-0 px-4 text-[10px] text-slate-400 whitespace-nowrap hidden sm:block">
-            {INSURANCE_COMPANIES.length} aktif partner
-          </div>
-        </div>
-      </div>
+              Tüm Hareketler →
+            </Link>
+          </article>
 
-      {/* ── İhbar Modal ──────────────────────────────────────────────────────── */}
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">Süre Analizi</h3>
+            <p className="mt-1 text-xs leading-snug text-slate-500">
+              Dosya süreçlerinin genel görünümü. Performans puanı değildir.
+            </p>
+            <ul className="mt-3 divide-y divide-slate-100">
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
+                <span className="text-xs font-medium text-slate-600">Ortalama Dosya Bekleme Süresi</span>
+                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                  {formatWaitDays(workload?.avgFileWaitDays ?? null)}
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
+                <span className="text-xs font-medium text-slate-600">Ortalama Rapor Hazırlama Süresi</span>
+                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                  {formatWaitDays(workload?.avgReportWaitDays ?? null)}
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
+                <span className="text-xs font-medium text-slate-600">Ortalama Onay Bekleme Süresi</span>
+                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                  {formatWaitDays(workload?.avgApprovalWaitDays ?? null)}
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
+                <span className="text-xs font-medium text-slate-600">Bu Hafta Tamamlanan Dosya</span>
+                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                  {workload ? workload.closedThisWeek : '—'}
+                </span>
+              </li>
+            </ul>
+          </article>
+
+          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Hızlı Özet</h3>
+            <ul className="space-y-2">
+              {[
+                { label: 'İnceleme Bekleyenler', value: reviewCount, href: '/panel/eksper-portal/dosyalar?queue=inceleme', tone: 'bg-rose-500' },
+                { label: 'Rapor Bekleyenler', value: reportCount, href: '/panel/eksper-portal/dosyalar?queue=rapor', tone: 'bg-orange-500' },
+                { label: 'Onay Bekleyenler', value: approvalPendingCount, href: '/panel/eksper-portal/onaylar', tone: 'bg-amber-500' },
+                { label: 'Aktif Dosyalarım', value: assignedCount, href: '/panel/eksper-portal/dosyalar', tone: 'bg-blue-600' },
+              ].map((row) => (
+                <li key={row.label}>
+                  <Link
+                    href={row.href}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-2 transition hover:bg-slate-50"
+                  >
+                    <span className="flex items-center gap-2 text-sm text-slate-700">
+                      <span className={`h-2 w-2 rounded-full ${row.tone}`} aria-hidden />
+                      {row.label}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums text-slate-900">{row.value}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+
       {showIhbarModal && (
         <IhbarModal
           onClose={() => setShowIhbarModal(false)}
@@ -1581,7 +1603,6 @@ export default function EksperPortalPage() {
         />
       )}
 
-      {/* ── İhbar Başarı Toast ───────────────────────────────────────────────── */}
       {successFileNo && (
         <IhbarSuccessToast
           fileNo={successFileNo}

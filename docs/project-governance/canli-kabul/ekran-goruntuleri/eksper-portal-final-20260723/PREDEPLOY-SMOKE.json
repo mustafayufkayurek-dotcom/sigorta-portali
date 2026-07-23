@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "failed": [],
+  "checks": {
+    "loginExpertView": 1,
+    "hasWhatsApp": 1,
+    "hasCall": 1,
+    "hasEmail": 1,
+    "hasKpi": 1,
+    "hasSureAnalizi": 1,
+    "hasHizliOzet": 1,
+    "hasDosyaHareket": 1,
+    "gaugeNeedles": 1,
+    "navDosyalarim": 1,
+    "navInceleme": 1,
+    "navRapor": 1,
+    "navOnay": 1,
+    "emptyOrList": 1,
+    "authDeniedMessage": 1,
+    "authDeniedUrl": "http://localhost:3001/giris",
+    "adminPanelAlive": 1,
+    "adminNotEksperShell": 1,
+    "sigortaPortalGate": 1,
+    "responsiveDesktop": 1,
+    "responsiveTablet": 1,
+    "responsiveMobile": 1,
+    "consoleErrorZero": 1,
+    "networkErrorZero": 1,
+    "runtimeErrorZero": 1
+  },
+  "errors": {
+    "console": [],
+    "page": [],
+    "requestfailed": []
+  }
+}

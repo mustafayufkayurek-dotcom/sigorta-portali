@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
@@ -18,6 +18,7 @@ import {
 import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
+import { classifyExpertQueue } from '@/utils/expert-portal-queues';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
 const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
@@ -56,19 +57,46 @@ function fileNoOf(f: ClaimFile) {
   return f.fileNo ?? f.fileNumber ?? '—';
 }
 
+function queuePageCopy(queue: string | null): { title: string; subtitle: string } {
+  if (queue === 'inceleme') {
+    return {
+      title: 'İnceleme Bekleyenler',
+      subtitle: 'İnceleme Bekleyen Dosyalarım',
+    };
+  }
+  if (queue === 'rapor') {
+    return {
+      title: 'Rapor Bekleyenler',
+      subtitle: 'Rapor Bekleyen Dosyalarım',
+    };
+  }
+  return {
+    title: 'Dosyalarım',
+    subtitle: 'İhbarını Yaptığım Ve İşlem Yaptığım Dosyalar',
+  };
+}
+
 export default function EksperDosyalarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queue = searchParams.get('queue');
+  const pageCopy = queuePageCopy(queue);
   const [files, setFiles] = useState<ClaimFile[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const tableColumns = usePanelTableColumns('table-cols:eksper-portal-dosyalar', EKSPER_FILE_TABLE_COLUMNS);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/giris'); return; }
+    if (!raw) {
+      router.push('/giris');
+      return;
+    }
     const u = JSON.parse(raw);
-    if (u?.role?.code !== 'expert') { router.push('/panel'); return; }
+    if (u?.role?.code !== 'expert') {
+      router.push('/panel');
+      return;
+    }
 
     setError(null);
     fetch(`${API}/claim-files?limit=50`, { headers: getHeaders() })
@@ -78,47 +106,56 @@ export default function EksperDosyalarPage() {
       })
       .then((res) => {
         setFiles(res?.data ?? []);
-        setTotal(res?.meta?.total ?? 0);
       })
       .catch((err: Error) => setError(err.message ?? 'Dosyalar yüklenemedi.'))
       .finally(() => setLoading(false));
   }, [router]);
 
+  const visibleFiles = useMemo(() => {
+    if (queue !== 'inceleme' && queue !== 'rapor') return files;
+    return files.filter((f) => classifyExpertQueue(f.currentStatus?.name) === queue);
+  }, [files, queue]);
+
   const fmt = (d: string) => fmtDate(d);
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
+  if (loading) return <div className="flex h-64 items-center justify-center text-slate-500">Yükleniyor...</div>;
 
   return (
     <div className="min-w-0 max-w-full space-y-4">
       <PortalPageHeader
         portalHomeHref={EKSPER_PORTAL_HOME}
         portalHomeLabel={EKSPER_PORTAL_LABEL}
-        currentLabel="Dosyalarım"
-        title="Dosyalarım"
+        currentLabel={pageCopy.title}
+        title={pageCopy.title}
         actions={
-          <span className="w-fit shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">{total} dosya</span>
+          <span className="w-fit shrink-0 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+            {visibleFiles.length} dosya
+          </span>
         }
       />
+      <p className="text-sm text-slate-500">{pageCopy.subtitle}</p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-red-700 hover:text-red-900 ml-4 font-bold">&times;</button>
+          <button type="button" onClick={() => setError(null)} className="ml-4 font-bold text-red-700 hover:text-red-900">
+            &times;
+          </button>
         </div>
       )}
 
-      {!error && files.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
-          <svg className="mx-auto h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {!error && visibleFiles.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
+          <svg className="mx-auto mb-3 h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
-          <p className="text-slate-500 font-medium">Henüz dosya bulunmuyor.</p>
-          <p className="text-slate-400 text-sm mt-1">Yeni ihbar verdiğiniz veya size atanan dosyalar burada listelenir.</p>
+          <p className="font-medium text-slate-500">Henüz Dosya Bulunmuyor.</p>
+          <p className="mt-1 text-sm text-slate-400">İhbarını yaptığınız veya işlem yaptığınız dosyalar burada listelenir.</p>
         </div>
       ) : (
         <>
           <PortalMobileFileList
-            items={files.map((f) => ({
+            items={visibleFiles.map((f) => ({
               id: f.id,
               fileNo: fileNoOf(f),
               insuranceCompany: f.insuranceCompany?.name,
@@ -138,33 +175,56 @@ export default function EksperDosyalarPage() {
               <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
                 <thead className="bg-slate-50">
                   <tr>
-                    <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="insuranceCompany" className="table-th-center">Sigorta Şirketi</PanelTableTh>
-                    <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
-                    <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                    <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
-                    <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
+                    <PanelTableTh colId="fileNumber" className="table-th-center">
+                      Dosya No
+                    </PanelTableTh>
+                    <PanelTableTh colId="insuranceCompany" className="table-th-center">
+                      Sigorta Şirketi
+                    </PanelTableTh>
+                    <PanelTableTh colId="subject" className="table-th-center">
+                      Konu
+                    </PanelTableTh>
+                    <PanelTableTh colId="status" className="table-th-center">
+                      Durum
+                    </PanelTableTh>
+                    <PanelTableTh colId="createdAt" className="table-th-center">
+                      Tarih
+                    </PanelTableTh>
+                    <PanelTableTh colId="flow" className="table-th-center">
+                      Akış
+                    </PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {files.map((f) => (
+                  {visibleFiles.map((f) => (
                     <tr
                       key={f.id}
                       className="cursor-pointer transition-colors hover:bg-slate-50"
                       onClick={() => router.push(`/panel/eksper-portal/randevular?fileId=${f.id}`)}
                     >
-                      <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
-                      <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-sm text-slate-600">{f.insuranceCompany?.name ?? '—'}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">{formatClaimSubjectLabel(f.lossType, undefined, f.subject)}</PanelTableTd>
+                      <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">
+                        {fileNoOf(f)}
+                      </PanelTableTd>
+                      <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-sm text-slate-600">
+                        {f.insuranceCompany?.name ?? '—'}
+                      </PanelTableTd>
+                      <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">
+                        {formatClaimSubjectLabel(f.lossType, undefined, f.subject)}
+                      </PanelTableTd>
                       <PanelTableTd colId="status" className="px-4 py-3">
                         <span
                           className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
-                          style={{ background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6', color: f.currentStatus?.colorCode ?? '#374151' }}
+                          style={{
+                            background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6',
+                            color: f.currentStatus?.colorCode ?? '#374151',
+                          }}
                         >
                           {f.currentStatus?.name ?? '—'}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmt(f.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">
+                        {fmt(f.createdAt)}
+                      </PanelTableTd>
                       <PanelTableTd colId="flow" className="px-4 py-3">
                         <Link
                           href={`/panel/eksper-portal/randevular?fileId=${f.id}`}

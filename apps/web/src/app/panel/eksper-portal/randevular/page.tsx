@@ -12,7 +12,7 @@ export default function EksperDosyaAkisiPage() {
       portalHomeHref="/panel/eksper-portal"
       portalHomeLabel="Eksper Paneli"
       listTitle="Dosyalarınız"
-      emptyHint="Size atanan veya ihbar ettiğiniz dosyalar burada listelenir."
+      emptyHint="İhbarını yaptığınız veya işlem yaptığınız dosyalar burada listelenir."
       filesLinkHref="/panel/eksper-portal/dosyalar"
       filesLinkLabel="Dosyalarım"
       assertAccess={assertExpertAccess}

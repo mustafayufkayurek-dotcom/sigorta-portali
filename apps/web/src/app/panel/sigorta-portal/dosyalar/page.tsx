@@ -101,8 +101,8 @@ export default function SigortaDosyalarPage() {
       <PortalPageHeader
         portalHomeHref={SIGORTA_PORTAL_HOME}
         portalHomeLabel={SIGORTA_PORTAL_LABEL}
-        currentLabel="Dosyalar"
-        title="Dosyalar"
+        currentLabel="Atanmış Dosyalar"
+        title="Atanmış Dosyalar"
         actions={
           <>
             <Link
