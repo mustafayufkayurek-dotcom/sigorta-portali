@@ -1,11 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardShell, DashboardHeader, DashboardGrid } from './_components';
 import { PrimaryKpiGroup } from '@/features/dashboard/components/kpi';
 import { OperationFlowStrip } from '@/features/dashboard/components/flow';
-import { CriticalAlertsWidget, ApprovalDelayWidget } from '@/features/dashboard/components/alerts';
-import { PendingActionsWidget } from '@/features/dashboard/components/queue';
+import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
+import { PendingActionsWidget, PendingOperationsPanel } from '@/features/dashboard/components/queue';
 import { SlaRiskWidget } from '@/features/dashboard/components/sla';
 import { OwnershipLoadWidget } from '@/features/dashboard/components/ownership';
 import {
@@ -32,8 +33,20 @@ function operationAreaDashboardLabel(area: string): string | null {
   return null;
 }
 
+function useLocalOfficeDemo(): boolean {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') return;
+    setEnabled(new URLSearchParams(window.location.search).get('demo') === 'bekleyen-operasyonlar');
+  }, []);
+  return enabled;
+}
+
 export default function PanelPage() {
   const router = useRouter();
+  const localOfficeDemo = useLocalOfficeDemo();
 
   const access = usePanelAccess();
   const {
@@ -65,11 +78,13 @@ export default function PanelPage() {
   };
 
   const scopeLabel = operationAreaDashboardLabel(operationArea);
+  /** Bekleyen Operasyonlar UX yalnız Dosya Sorumlusu; diğer layout’lara sızmaz */
+  const showOfficeLayout = layout.layoutId === 'office_staff' || localOfficeDemo;
 
   const title =
     layout.layoutId === 'field_staff'
       ? 'Saha Operasyon Merkezi'
-      : layout.layoutId === 'office_staff'
+      : showOfficeLayout
         ? 'Dosya Sorumlusu Merkezi'
         : layout.layoutId === 'management'
           ? 'Yönetim Dashboard'
@@ -80,40 +95,42 @@ export default function PanelPage() {
       ? scopeLabel
         ? `${scopeLabel} kapsamındaki atanan dosyalarınız, SLA riskleri ve saha aksiyonları.`
         : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
-      : layout.layoutId === 'office_staff'
+      : showOfficeLayout
         ? scopeLabel
-          ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
-          : 'Dosya kapsamı tanımlanmamış. Kullanıcı yönetiminden Hasar / Acil kapsamı atanmalıdır.'
+          ? `${scopeLabel} kapsamındaki günlük operasyon yönetimi ve bekleyen operasyonlar.`
+          : 'Hasar ve Acil Yardım dosyalarında bekleyen operasyonları tek yerden yönetin.'
         : layout.layoutId === 'management'
           ? 'Kurumsal finans, operasyon ve personel performansını tek ekranda izleyin.'
           : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
-  const hideAcil = !layout.showAcilInFlow;
+  const hideAcil = localOfficeDemo ? false : !layout.showAcilInFlow;
 
-  /** MASTER Yönetim Dashboard — mockup referansı; eski yönetim yerleşimi kullanılmaz */
-  if (layout.layoutId === 'management') {
+  /** Yönetim Dashboard — bu epic/UX dokunmaz */
+  if (layout.layoutId === 'management' && !localOfficeDemo) {
     return <ManagementDashboard />;
   }
 
-  /** Dosya sorumlusu: KPI → Operasyon panelleri → Akış | Onay */
-  if (layout.layoutId === 'office_staff') {
+  /**
+   * Dosya Sorumlusu Merkezi (yalnız office_staff).
+   * PendingOperationsPanel burada; Admin/Yönetim/default layout’a taşınmaz.
+   */
+  if (showOfficeLayout) {
     return (
       <DashboardShell>
         <DashboardHeader
           title={title}
           subtitle={subtitle}
-          showAcilAction={showAcilYardim}
+          showAcilAction={showAcilYardim || localOfficeDemo}
           isOfficeStaff
         />
 
         <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
 
-        <OfficeBottomRow staggerIndex={1} />
+        <PendingOperationsPanel staggerIndex={1} />
 
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <OfficeDailyFlowSection staggerIndex={2} hideAcil={hideAcil} />
-          <ApprovalDelayWidget staggerIndex={3} compact />
-        </section>
+        <OfficeBottomRow staggerIndex={2} />
+
+        <OfficeDailyFlowSection staggerIndex={3} hideAcil={hideAcil} />
       </DashboardShell>
     );
   }

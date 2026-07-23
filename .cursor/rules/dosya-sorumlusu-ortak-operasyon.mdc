@@ -1,0 +1,50 @@
+---
+description: Dosya Sorumlusu Merkezi ortak operasyon; yalnız office_staff UX — diğer dashboard’lara sızmaz
+alwaysApply: true
+---
+
+# Dosya Sorumlusu Merkezi — Ortak Operasyon (ürün kararı)
+
+**Kaynak (kilitli · mimari onaylı):** `docs/project-governance/URUN_KARARI_DOSYA_SORUMLUSU_ORTAK_OPERASYON.md`
+
+**Temel cümle:** Dosya Sorumlusu Merkezi yalnız Hasar’a özel değildir; Meridyen Operasyon Platformunun **ortak operasyon yönetim ekranıdır** (Hasar + Acil).
+
+## Kapsam kilidi (zorunlu)
+
+Bu geliştirme **yalnız** `layout.layoutId === 'office_staff'` (Dosya Sorumlusu Merkezi) UX’ini olgunlaştırır.
+
+**Değiştirilmez:**
+- Admin / Yönetim Dashboard (`management` → `ManagementDashboard`)
+- Varsayılan operasyon dashboard (`default`)
+- Saha Operasyon Merkezi (`field_staff`)
+- Diğer yönetim ekranlarının amacı, yerleşimi ve davranışı
+
+Ortak util / hook kullanılabilir; **başka dashboard’a mount edilmez**, davranış sızdırılmaz.
+`PendingOperationsPanel` yalnız ofis layout’unda.
+
+## Zorunlu
+
+- Geliştirme Hasar + Acil Yardım operasyon akışlarında ortak kullanılır (Dosya Sorumlusu ekranı içinde).
+- Aynı ekran yapısı korunur; yalnız veri ve iş kuralları değişir.
+- Tasarım dili Hasar / Acil arasında ayrışmaz.
+- Mevcut mimari korunur; mevcut iş kuralları değiştirilmez.
+- Geliştirme **yeni ekran olmadan**, mevcut Dosya Sorumlusu Merkezi içinde yapılır.
+
+## Yasak (açık onay yoksa)
+
+- Yeni modül, yeni ekran, yeni ürün kurgusu
+- Yeni tasarım üretme
+- Hasar’a ve Acil’e ayrı «merkez» ekranları
+- Bekleyen Operasyonlar’ı yalnızca uyarı listesi olarak ele almak
+- Görev merkezi UX’ini management / default / field layout’lara taşımak
+
+## Bekleyen Operasyonlar
+
+**Uyarı listesi değildir** — Dosya Sorumlusunun **günlük öncelik / operasyon yönetim alanıdır**.
+
+Öncelik: gelir etkisi + akış etkisi + SLA (çalışma günü/saati).  
+Ekran dili: operasyon dili (teknik state adı yok).
+
+## Durdurma
+
+Yönetim dashboard’una sızıntı / yeni sayfa / yalnız uyarı listesi → **dur, Mustafa onayı iste**.

@@ -32,7 +32,7 @@
 |-----|--------|--------|
 | SHELL | Topbar, sidebar 260/72, tema, BrandLogo | `DASHBOARD_RC1_FREEZE.md` |
 | DASH-A | Admin Operasyon Yönetim Merkezi | ONAYLI_UI A |
-| DASH-D | Dosya Sorumlusu Merkezi | ONAYLI_UI D |
+| DASH-D | Dosya Sorumlusu Merkezi (ortak operasyon — Hasar+Acil; yeni ekran yok) | ONAYLI_UI D · `URUN_KARARI_DOSYA_SORUMLUSU_ORTAK_OPERASYON.md` |
 | DASH-F | Saha Operasyon Merkezi | ONAYLI_UI F |
 | LOGIN | `/giris` logo / marka | ONAYLI_UI L |
 | PORTAL-SHELL | Eksper + Sigorta portal `PortalPageHeader` | ONAYLI_UI P |

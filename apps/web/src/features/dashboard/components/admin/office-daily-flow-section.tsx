@@ -4,10 +4,9 @@ import { ArrowRight, ClipboardCheck, ListTodo } from 'lucide-react';
 import Link from 'next/link';
 import { HASAR_OPERATION_ICON, ACIL_OPERATION_ICON } from '@/constants/operation-icons';
 import {
-  useApprovalDelays,
   useDashboardOperations,
-  usePendingActions,
 } from '../../hooks/use-dashboard-data';
+import { usePendingOperations } from '../../hooks/use-pending-operations';
 
 type OfficeDailyFlowSectionProps = {
   hideAcil?: boolean;
@@ -17,13 +16,12 @@ type OfficeDailyFlowSectionProps = {
 /** Dosya sorumlusu: Günün Akışı — finans kartı yok; admin görsel dili */
 export function OfficeDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: OfficeDailyFlowSectionProps) {
   const opsQuery = useDashboardOperations();
-  const pendingQuery = usePendingActions();
-  const approvalQuery = useApprovalDelays();
+  const pendingOps = usePendingOperations();
 
   const ops = opsQuery.data;
-  const pendingCount = Array.isArray(pendingQuery.data?.items) ? pendingQuery.data.items.length : 0;
-  const approvalTotal = approvalQuery.data?.summary?.total ?? 0;
-  const loading = opsQuery.isLoading || pendingQuery.isLoading || approvalQuery.isLoading;
+  const pendingCount = pendingOps.view.summary.total;
+  const criticalCount = pendingOps.view.summary.critical;
+  const loading = opsQuery.isLoading || pendingOps.isLoading;
 
   const flowItems = [
     {
@@ -47,20 +45,20 @@ export function OfficeDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: O
           },
         ]),
     {
-      title: 'Onay Gecikmesi',
-      value: loading ? '—' : approvalTotal,
-      detail: approvalTotal > 0 ? '24 saat üzeri bekleyen rapor' : 'Geciken onay yok',
-      icon: ClipboardCheck,
-      iconClassName: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
-      path: '/panel/hasar-dosyalari?repairReportStatus=pending_approval',
-    },
-    {
-      title: 'Bekleyen Aksiyonlarım',
+      title: 'Günlük Görevler',
       value: loading ? '—' : pendingCount,
-      detail: pendingCount > 0 ? 'İşlem bekleyen kayıtlar' : 'Bekleyen kayıt yok',
+      detail: pendingCount > 0 ? 'Görev merkezinde aksiyon alın' : 'Bekleyen görev yok',
       icon: ListTodo,
       iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-      path: '/panel/hasar-dosyalari?status=open',
+      path: '#bekleyen-operasyonlar',
+    },
+    {
+      title: 'Kritik Görev',
+      value: loading ? '—' : criticalCount,
+      detail: criticalCount > 0 ? 'İlk 5 görevde öncelikli' : 'Kritik görev yok',
+      icon: ClipboardCheck,
+      iconClassName: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
+      path: '#bekleyen-operasyonlar',
     },
   ];
 
@@ -74,7 +72,7 @@ export function OfficeDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: O
       <div className="mb-2">
         <h2 className="text-sm font-semibold text-slate-950 dark:text-white sm:text-base">Günün Akışı</h2>
         <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs">
-          Atanan dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar
+          Atanan dosyalarınız ve bekleyen operasyon özeti
         </p>
       </div>
 
