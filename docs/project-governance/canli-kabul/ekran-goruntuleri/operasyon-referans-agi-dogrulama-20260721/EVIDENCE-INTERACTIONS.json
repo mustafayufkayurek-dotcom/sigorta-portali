@@ -1,0 +1,38 @@
+{
+  "at": "2026-07-21T09:57:27.764Z",
+  "popups": [
+    {
+      "i": 1,
+      "title": "ROKETSAN",
+      "popupText": "TÜRKİYE GENELİ\nKonut Hasar Yönetimi\nOperasyon\nKonut Yangın Hasar Onarımı\nKategori\nKonut Operasyonları\nTarih\n2019 – 2025\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+    },
+    {
+      "i": 2,
+      "title": "DHMİ",
+      "popupText": "TÜRKİYE GENELİ\nKonut Hasar Yönetimi\nOperasyon\nKonut Dahili Su Hasar Onarımı\nKategori\nKonut Operasyonları\nTarih\n2019 – 2025\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+    },
+    {
+      "i": 3,
+      "title": "Endüstriyel Üretim Tesisleri",
+      "popupText": "İZMİR / Gaziemir\nDHMİ\nOperasyon\nHavalimanı Altyapı Onarımı\nKategori\nKamu / Kritik Altyapı\nTarih\nŞubat 2024\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+    },
+    {
+      "i": 4,
+      "title": "Afet Bölgesi Operasyonları",
+      "popupText": "İZMİR / Karaburun\nDHMİ\nOperasyon\nRadar ve Elektronik Sistem Onarımı\nKategori\nKamu / Kritik Altyapı\nTarih\nAralık 2023\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+    },
+    {
+      "i": 5,
+      "title": "Konut Hasar Yönetimi",
+      "popupText": "MERSİN / Mut\nDHMİ\nOperasyon\nRadar ve Elektronik Sistem Onarımı\nKategori\nKamu / Kritik Altyapı\nTarih\nEkim 2023\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+    }
+  ],
+  "filters": {
+    "industrialPins": 3,
+    "industrialAnkaraPins": 1,
+    "clearedPins": 21
+  },
+  "flyto": {
+    "popup": ""
+  }
+}

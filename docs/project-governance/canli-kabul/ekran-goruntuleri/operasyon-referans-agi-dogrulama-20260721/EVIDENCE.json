@@ -1,0 +1,23 @@
+{
+  "at": "2026-07-21T09:51:05.183Z",
+  "base": "http://127.0.0.1:3010",
+  "shots": [
+    "01-masaustu-tam-ekran-1440.png",
+    "05-sag-panel-secim-flyto.png",
+    "04-harita-popup-01.png",
+    "04-harita-popup-02.png",
+    "04-harita-popup-03.png",
+    "04-harita-popup-04.png",
+    "04-harita-popup-05.png",
+    "06a-filtre-kategori-endustriyel.png",
+    "06b-filtre-il-ankara.png",
+    "06c-filtre-temizlendi.png",
+    "07-operasyon-gizliligi-taahhut.png",
+    "08-alt-mesaj-bandi.png",
+    "02-tablet-768.png",
+    "03-mobil-390.png"
+  ],
+  "notes": [
+    "insurance_company_user mock + scope ile kurum adı görünür"
+  ]
+}

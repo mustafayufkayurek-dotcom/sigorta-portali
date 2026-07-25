@@ -1,0 +1,32 @@
+[
+  {
+    "n": 1,
+    "idx": 0,
+    "popupText": "TÜRKİYE GENELİ\nKonut Hasar Yönetimi\nOperasyon\nKonut Yangın Hasar Onarımı\nKategori\nKonut Operasyonları\nTarih\n2019 – 2025\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+  },
+  {
+    "n": 2,
+    "idx": 2,
+    "popupText": "TÜRKİYE GENELİ\nKonut Hasar Yönetimi\nOperasyon\nKonut Yangın Hasar Onarımı\nKategori\nKonut Operasyonları\nTarih\n2019 – 2025\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+  },
+  {
+    "n": 3,
+    "idx": 5,
+    "popupText": "İZMİR / Gaziemir\nDHMİ\nOperasyon\nHavalimanı Altyapı Onarımı\nKategori\nKamu / Kritik Altyapı\nTarih\nŞubat 2024\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+  },
+  {
+    "n": 4,
+    "idx": 12,
+    "popupText": "ŞANLIURFA\nDHMİ\nOperasyon\nElektrik Altyapı Yenileme\nKategori\nKamu / Kritik Altyapı\nTarih\nAğustos 2023\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+  },
+  {
+    "n": 5,
+    "idx": 19,
+    "popupText": "GAZİANTEP\nEndüstriyel Üretim Tesisleri\nOperasyon\nEndüstriyel Yangın Emtia Kurtarma\nKategori\nEndüstriyel Operasyonlar\nTarih\nOcak 2024\nDurum\nBaşarıyla Tamamlandı\nDetayları Gör →\n×"
+  },
+  {
+    "type": "flyto",
+    "popup": "",
+    "transform": "translate3d(0px, 2275px, 0px)"
+  }
+]

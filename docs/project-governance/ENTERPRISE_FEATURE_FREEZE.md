@@ -53,7 +53,7 @@
 
 | Madde | Durum |
 |-------|--------|
-| Sigorta portalı Operasyon Referans Ağı | Local WIP — deploy edilmedi |
+| Sigorta portalı Operasyon Referans Ağı | Canlı v396 — Türkiye Operasyon Referans Ağı |
 | Geliştirilebilir Müşteri Faz 2 | Strateji notu — kapsam dışı |
 | AK-001 ürün teyidi (kimler görsün listesi) | Kart notları kodda var; ürün teyidi açık |
 

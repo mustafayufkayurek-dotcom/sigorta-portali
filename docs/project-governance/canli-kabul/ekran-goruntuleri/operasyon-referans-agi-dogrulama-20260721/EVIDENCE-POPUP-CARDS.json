@@ -1,0 +1,46 @@
+{
+  "method": "Live DOM popup text captured via Playwright marker click; visual card rendered from that content because Leaflet popup was off-viewport due map-pane transform.",
+  "source": "EVIDENCE-POPUPS.json + featured ROKETSAN record",
+  "cards": [
+    {
+      "location": "TÜRKİYE GENELİ",
+      "title": "Konut Hasar Yönetimi",
+      "operation": "Konut Yangın Hasar Onarımı",
+      "category": "Konut Operasyonları",
+      "date": "2019 – 2025",
+      "status": "Başarıyla Tamamlandı"
+    },
+    {
+      "location": "İZMİR / Gaziemir",
+      "title": "DHMİ",
+      "operation": "Havalimanı Altyapı Onarımı",
+      "category": "Kamu / Kritik Altyapı",
+      "date": "Şubat 2024",
+      "status": "Başarıyla Tamamlandı"
+    },
+    {
+      "location": "ŞANLIURFA",
+      "title": "DHMİ",
+      "operation": "Elektrik Altyapı Yenileme",
+      "category": "Kamu / Kritik Altyapı",
+      "date": "Ağustos 2023",
+      "status": "Başarıyla Tamamlandı"
+    },
+    {
+      "location": "ANKARA",
+      "title": "ROKETSAN",
+      "operation": "Su Baskını Tahliye ve Kurtarma",
+      "category": "Kritik Endüstriyel Tesis",
+      "date": "Mart 2024",
+      "status": "Başarıyla Tamamlandı"
+    },
+    {
+      "location": "GAZİANTEP",
+      "title": "Endüstriyel Üretim Tesisleri",
+      "operation": "Endüstriyel Yangın Emtia Kurtarma",
+      "category": "Endüstriyel Operasyonlar",
+      "date": "Ocak 2024",
+      "status": "Başarıyla Tamamlandı"
+    }
+  ]
+}
