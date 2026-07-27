@@ -223,7 +223,7 @@ function InsuredNameEditor({
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
@@ -322,7 +322,7 @@ export function DosyaBilgileriDetay({
                 setOpen(true);
                 setEditOpen(true);
               }}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50"
+              className="text-xs font-medium text-brand-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50"
             >
               Düzenle
             </button>

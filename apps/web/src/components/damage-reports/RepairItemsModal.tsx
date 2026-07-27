@@ -151,7 +151,7 @@ function RepairItemRow({
 }) {
   return (
     <div className={`grid gap-3 rounded-xl border p-3 md:grid-cols-[32px_1fr_90px_120px_1fr_110px] md:items-center ${checked ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 bg-slate-50'}`}>
-      <input type="checkbox" checked={checked} onChange={onToggle} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
+      <input type="checkbox" checked={checked} onChange={onToggle} className="h-4 w-4 rounded border-slate-300 text-brand-600" />
       <div>
         <p className="text-sm font-semibold text-slate-800">{formatDisplayLabel(item.name)}</p>
         <p className="text-xs text-slate-400">{item.code}</p>
@@ -325,7 +325,7 @@ export default function RepairItemsModal({
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">İptal</button>
-          <button type="button" onClick={handleAdd} disabled={selected.size === 0 || saving} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">Seçilenleri Ekle ({selected.size})</button>
+          <button type="button" onClick={handleAdd} disabled={selected.size === 0 || saving} className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">Seçilenleri Ekle ({selected.size})</button>
         </div>
       </div>
     </div>

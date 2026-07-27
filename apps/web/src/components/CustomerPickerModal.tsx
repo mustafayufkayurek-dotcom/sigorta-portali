@@ -163,7 +163,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
               <div className="flex gap-2">
                 <button type="button"
                   onClick={() => { setView('new'); setNewForm({ ...emptyNew }); setNewError(''); }}
-                  className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"
+                  className="text-sm bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"
                 >
                   + Yeni Müşteri Ekle
                 </button>
@@ -283,7 +283,7 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
                 <button
                   type="button"
                   onClick={() => setNewForm((p) => ({ ...p, customerType: 'corporate' }))}
-                  className={`flex-1 py-2 rounded-lg text-sm border transition-all ${newForm.customerType === 'corporate' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  className={`flex-1 py-2 rounded-lg text-sm border transition-all ${newForm.customerType === 'corporate' ? 'bg-brand-600 text-white border-brand-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                   Kurumsal
                 </button>
@@ -357,13 +357,13 @@ export function CustomerPickerModal({ onSelect, onClose }: Props) {
                 </div>
               </div>
 
-              {newError && <p className="text-xs text-red-500">{newError}</p>}
+              {newError && <p className="text-xs text-status-danger">{newError}</p>}
 
               <div className="flex gap-2 pt-2">
                 <button type="button"
                   onClick={handleSaveNew}
                   disabled={saving}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Oluştur ve Seç'}
                 </button>

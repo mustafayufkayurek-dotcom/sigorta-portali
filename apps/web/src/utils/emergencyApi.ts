@@ -70,6 +70,7 @@ export interface EmergencyCase {
   assignedVendorId?: string | null;
   assignedUserId?: string | null;
   notes?: string | null;
+  findingsText?: string | null;
   resolvedAt?: string | null;
   invoicedAt?: string | null;
   createdByUserId: string;
@@ -236,6 +237,7 @@ export async function createCase(body: {
   assignedVendorId?: string;
   assignedUserId?: string;
   notes?: string;
+  findingsText: string;
 }): Promise<{ data: EmergencyCase }> {
   const data = await apiClient.post<unknown>('/emergency/cases', body);
   return { data: asEntity<EmergencyCase>(data) };

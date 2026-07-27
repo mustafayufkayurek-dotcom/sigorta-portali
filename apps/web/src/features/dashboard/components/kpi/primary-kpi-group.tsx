@@ -70,7 +70,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               icon={FileText}
               label="Toplam Operasyon"
               value={opsFailed ? '—' : (ops?.totalOperationalFiles ?? ops?.totalClaims ?? '—')}
-              color="bg-blue-600"
+              color="bg-brand-600"
               subtext={ops && !opsFailed ? `${ops.openOperationalFiles} açık takip` : undefined}
               emptyHint="Henüz kayıtlı operasyon dosyası bulunmuyor."
               href="/panel/hasar-dosyalari"

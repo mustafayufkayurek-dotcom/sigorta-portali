@@ -144,12 +144,12 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
           <p className="mt-1 text-[10px] text-slate-400">PNG, JPG veya PDF — Maks. 10 MB</p>
         </FileDropZone>
         <div className="mt-1 text-[10px] text-slate-400">Seçilen dosya güvenli olarak yüklenecek ve storage key alanı otomatik doldurulacaktır.</div>
-        {uploading && <div className="mt-1 text-xs text-blue-600">Yükleniyor...</div>}
+        {uploading && <div className="mt-1 text-xs text-brand-600">Yükleniyor...</div>}
         {uploadError && <div className="mt-1 text-xs text-red-600">{uploadError}</div>}
         {previewUrl && (
           <div className="mt-2">
             {/\.(pdf)(\?|$)/i.test(previewUrl) ? (
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">Kanıt dosyasını görüntüle</a>
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 underline">Kanıt dosyasını görüntüle</a>
             ) : (
               <a href={previewUrl} target="_blank" rel="noreferrer">
                 <img src={previewUrl} alt="Kanıt önizleme" className="h-24 w-auto rounded border border-slate-200 object-cover" />
@@ -202,7 +202,7 @@ export function TestNotuForm({ initial, onCancel, onSubmit, saving }: Props) {
       </div>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" onClick={onCancel} disabled={uploading} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-600 disabled:opacity-50 sm:w-auto sm:py-2">İptal</button>
-        <button type="submit" disabled={!canSubmit} className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto sm:py-2">
+        <button type="submit" disabled={!canSubmit} className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto sm:py-2">
           {saving ? 'Kaydediliyor...' : uploading ? 'Yükleniyor...' : initial ? 'Güncelle' : 'Kaydet'}
         </button>
       </div>

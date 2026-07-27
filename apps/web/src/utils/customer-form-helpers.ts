@@ -170,7 +170,7 @@ export function subTypeActiveClass(color: CustomerSubTypeDef['color']): string {
     case 'orange': return 'bg-orange-500 text-white border-orange-500';
     case 'green': return 'bg-green-600 text-white border-green-600';
     case 'purple': return 'bg-purple-600 text-white border-purple-600';
-    case 'blue': return 'bg-blue-600 text-white border-blue-600';
+    case 'blue': return 'bg-brand-600 text-white border-brand-600';
     default: return 'bg-slate-600 text-white border-slate-600';
   }
 }

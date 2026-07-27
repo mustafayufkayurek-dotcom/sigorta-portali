@@ -113,7 +113,7 @@ export function MondayMeetingBriefingBand({
         label="Bugün"
         value={todayLabel.split(',')[0] ?? todayLabel}
         hint={todayLabel.includes(',') ? todayLabel.split(',').slice(1).join(',').trim() : undefined}
-        icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
+        icon={<CalendarDays className="h-4 w-4 text-brand-600" />}
       />
       <BriefingStat
         label="Toplantı Haftası"

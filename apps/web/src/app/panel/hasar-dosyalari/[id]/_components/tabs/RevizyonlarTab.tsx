@@ -54,7 +54,7 @@ const REV_PRIORITY_LABELS: Record<RevisionPriority, string> = {
 
 const REV_PRIORITY_BADGE: Record<RevisionPriority, string> = {
   LOW: 'bg-slate-50 text-slate-500 border border-slate-200',
-  NORMAL: 'bg-blue-50 text-blue-600 border border-blue-200',
+  NORMAL: 'bg-blue-50 text-brand-600 border border-blue-200',
   HIGH: 'bg-orange-50 text-orange-600 border border-orange-200',
   CRITICAL: 'bg-red-50 text-red-700 border border-red-200',
 };
@@ -166,7 +166,7 @@ export function RevizyonTalepleriPanel({ claimId }: { claimId: string }) {
                       <span className="text-sm font-medium text-slate-900">{rev.reportNo}</span>
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${REV_STATUS_BADGE[rev.status]}`}>
                         {rev.status === 'ESCALATED' && (
-                          <span className="mr-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                          <span className="mr-1 w-1.5 h-1.5 rounded-full bg-status-danger animate-pulse inline-block" />
                         )}
                         {REV_STATUS_LABELS[rev.status]}
                       </span>

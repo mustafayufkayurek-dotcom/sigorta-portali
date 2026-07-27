@@ -20,11 +20,11 @@ function SectionCard({ title, children }: { title: string; children: React.React
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/ayarlar" className="hover:text-blue-600 transition-colors">Ayarlar</a>
+        <a href="/panel/ayarlar" className="hover:text-brand-600 transition-colors">Ayarlar</a>
         <span>/</span>
-        <a href="/panel/ayarlar/sigorta-sirketleri" className="hover:text-blue-600 transition-colors">Sigorta Sirketleri</a>
+        <a href="/panel/ayarlar/sigorta-sirketleri" className="hover:text-brand-600 transition-colors">Sigorta Sirketleri</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Id</span>
       </nav>

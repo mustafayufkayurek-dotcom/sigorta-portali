@@ -826,7 +826,7 @@ export default function MasraflarPage() {
         </div>
         <button
           onClick={() => (showForm ? closeExpenseForm() : openExpenseForm())}
-          className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 shadow-sm font-medium transition-colors"
+          className="flex items-center gap-1.5 text-sm bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 shadow-sm font-medium transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -851,7 +851,7 @@ export default function MasraflarPage() {
           <p className="text-[10px] text-slate-400">{budgetSummary?.fileCount ?? 0} dosya</p>
         </div>
         <div className={`rounded-lg border px-4 py-3 ${PLAN_META[PLAN_BUTCE].cardCls}`}>
-          <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400">Harcanan (Bütçe)</p>
+          <p className="text-[11px] font-medium text-brand-600 dark:text-blue-400">Harcanan (Bütçe)</p>
           <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{fmt(budgetSummary?.totalSpentButce ?? butceTotal)}</p>
           <p className="text-[10px] text-blue-400">
             {budgetSummary?.usagePercent != null ? `%${budgetSummary.usagePercent} kullanım` : '—'}
@@ -939,7 +939,7 @@ export default function MasraflarPage() {
                       return (
                         <div key={plan}>
                           <div className="flex items-center justify-between mb-0.5">
-                            <span className={`text-xs font-semibold ${plan === PLAN_BUTCE ? 'text-blue-600' : 'text-amber-600'}`}>{m.label}</span>
+                            <span className={`text-xs font-semibold ${plan === PLAN_BUTCE ? 'text-brand-600' : 'text-amber-600'}`}>{m.label}</span>
                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fmt(value)}</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
@@ -1068,7 +1068,7 @@ export default function MasraflarPage() {
                     type="button"
                     disabled={scanning}
                     onClick={startReceiptCapture}
-                    className="inline-flex items-center gap-1.5 text-sm bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                    className="inline-flex items-center gap-1.5 text-sm bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -1112,7 +1112,7 @@ export default function MasraflarPage() {
             {/* Hasar Dosyası — arama ile seçim */}
             <div className="md:col-span-2">
               <label className={labelCls}>
-                İlgili Dosya / Sigortalı <span className="text-red-500">*</span>
+                İlgili Dosya / Sigortalı <span className="text-status-danger">*</span>
               </label>
               <div className="flex gap-2">
                 <SearchableSelect
@@ -1233,7 +1233,7 @@ export default function MasraflarPage() {
                   {selectedFileBudget.budgetLimit > 0 && form.expensePlan === PLAN_BUTCE && (
                     <div className="mt-2 h-1.5 rounded-full bg-white/80 dark:bg-slate-900/40 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${selectedFileBudget.usagePercent != null && selectedFileBudget.usagePercent > 100 ? 'bg-red-500' : selectedFileBudget.usagePercent != null && selectedFileBudget.usagePercent >= 85 ? 'bg-amber-400' : 'bg-blue-500'}`}
+                        className={`h-full rounded-full transition-all ${selectedFileBudget.usagePercent != null && selectedFileBudget.usagePercent > 100 ? 'bg-status-danger' : selectedFileBudget.usagePercent != null && selectedFileBudget.usagePercent >= 85 ? 'bg-amber-400' : 'bg-blue-500'}`}
                         style={{ width: `${Math.min(selectedFileBudget.usagePercent ?? 0, 100)}%` }}
                       />
                     </div>
@@ -1251,7 +1251,7 @@ export default function MasraflarPage() {
             {/* Bütçe Tipi — Dosya Bütçesi / Ek İşler */}
             <div className="md:col-span-2">
               <label className={labelCls}>
-                Bütçe Tipi <span className="text-red-500">*</span>
+                Bütçe Tipi <span className="text-status-danger">*</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -1290,7 +1290,7 @@ export default function MasraflarPage() {
 
             <div className="md:col-span-2">
               <label className={labelCls}>
-                Masraf Grubu / Alt Grubu <span className="text-red-500">*</span>
+                Masraf Grubu / Alt Grubu <span className="text-status-danger">*</span>
               </label>
               {categoryTree.length === 0 ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
@@ -1324,7 +1324,7 @@ export default function MasraflarPage() {
                       <div className={`${inputCls} text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50`}>
                         Bu grupta alt grup tanımlı değil — grup doğrudan kullanılacak.
                         {' '}
-                        <a href="/panel/ayarlar/masraf-kategorileri" className="text-blue-600 underline">
+                        <a href="/panel/ayarlar/masraf-kategorileri" className="text-brand-600 underline">
                           Alt grup ekle
                         </a>
                       </div>
@@ -1386,7 +1386,7 @@ export default function MasraflarPage() {
 
             {/* Tutar */}
             <div>
-              <label className={labelCls}>Tutar (₺) <span className="text-red-500">*</span></label>
+              <label className={labelCls}>Tutar (₺) <span className="text-status-danger">*</span></label>
               <TrAmountInput
                 className={inputCls}
                 placeholder="0"
@@ -1397,7 +1397,7 @@ export default function MasraflarPage() {
 
             {/* Tarih */}
             <div>
-              <label className={labelCls}>Tarih <span className="text-red-500">*</span></label>
+              <label className={labelCls}>Tarih <span className="text-status-danger">*</span></label>
               <TrDateInput
                 className={inputCls}
                 value={form.date}
@@ -1412,7 +1412,7 @@ export default function MasraflarPage() {
               <ul className="space-y-1">
                 {formSaveBlockers.map((b) => (
                   <li key={b} className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-status-danger mt-0.5">•</span>
                     {b}
                   </li>
                 ))}
@@ -1433,7 +1433,7 @@ export default function MasraflarPage() {
                 type="button"
                 onClick={() => handleSave('close')}
                 disabled={saving || !formCanSave}
-                className="text-sm bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                className="text-sm bg-brand-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
               >
                 {saving ? 'Kaydediliyor...' : 'Güncelle'}
               </button>
@@ -1451,7 +1451,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('new')}
                   disabled={saving || !formCanSave}
-                  className="text-sm bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                  className="text-sm bg-brand-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
                 >
                   {saving ? 'Kaydediliyor...' : 'Kaydet ve Yeni'}
                 </button>
@@ -1551,7 +1551,7 @@ export default function MasraflarPage() {
             </svg>
             <p className="text-sm text-slate-400 dark:text-slate-500">Henüz veri bulunmamaktadır.</p>
             <button type="button" onClick={() => openExpenseForm()}
-              className="mt-3 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+              className="mt-3 text-xs text-brand-600 dark:text-blue-400 hover:underline">
               + İlk masrafı ekle
             </button>
           </div>
@@ -1605,13 +1605,13 @@ export default function MasraflarPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button type="button" onClick={() => handleEdit(e)} title="Düzenle"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
                           <button type="button" onClick={() => handleDelete(e.id)} title="Sil"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>

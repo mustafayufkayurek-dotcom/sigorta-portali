@@ -27,7 +27,7 @@ export function GlobalActivityStrip() {
       className="pointer-events-none sticky top-0 z-20 h-0.5 w-full overflow-hidden bg-slate-200/60 dark:bg-slate-800/60"
       aria-hidden="true"
     >
-      <div className="meridyen-indeterminate-bar h-full w-1/3 bg-blue-600 dark:bg-blue-500" />
+      <div className="meridyen-indeterminate-bar h-full w-1/3 bg-brand-600 dark:bg-blue-500" />
     </div>
   );
 }

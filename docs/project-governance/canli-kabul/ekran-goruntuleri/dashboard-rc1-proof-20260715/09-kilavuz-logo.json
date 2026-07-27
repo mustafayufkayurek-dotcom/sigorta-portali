@@ -1,0 +1,18 @@
+{
+  "url": "http://localhost:3001/docs/01-personel-kullanim-kilavuzu.html",
+  "route": "/docs/01-personel-kullanim-kilavuzu.html",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "deviceScaleFactor": 1,
+  "zoom": "100%",
+  "at": "2026-07-15T07:33:46.668Z",
+  "source": "real-nextjs+playwright-chromium",
+  "checklist": [
+    9
+  ],
+  "network": [
+    "http://localhost:3001/docs/meridyen-logo-original.png"
+  ]
+}

@@ -12,7 +12,7 @@ type ActionConfig = {
 
 const actionVariants = {
   primary: {
-    idle: 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700',
+    idle: 'border border-brand-600 bg-brand-600 text-white hover:bg-blue-700',
     active: 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50',
   },
   success: {
@@ -117,7 +117,7 @@ export function FinansFormPanel({
           type="button"
           onClick={onSubmit}
           disabled={saving}
-          className="inline-flex items-center rounded-lg border border-blue-600 bg-blue-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center rounded-lg border border-brand-600 bg-brand-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor…' : submitLabel}
         </button>
@@ -147,7 +147,7 @@ export function FinansFieldLabel({
   return (
     <label className="block text-xs font-medium text-slate-600 mb-1">
       {children}
-      {required && <span className="text-red-500 ml-0.5">*</span>}
+      {required && <span className="text-status-danger ml-0.5">*</span>}
     </label>
   );
 }

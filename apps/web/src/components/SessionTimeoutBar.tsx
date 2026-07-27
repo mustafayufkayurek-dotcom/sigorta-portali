@@ -105,7 +105,7 @@ export default function SessionTimeoutBar() {
   const isUrgent = remainingMs <= 60000;
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all ${isUrgent ? 'bg-red-600' : 'bg-amber-500'}`}>
+    <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all ${isUrgent ? 'bg-red-600' : 'bg-status-warning'}`}>
       <div className="h-1 bg-black/20">
         <div
           className="h-full bg-white/60 transition-all duration-1000"

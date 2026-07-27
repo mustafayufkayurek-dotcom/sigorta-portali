@@ -126,7 +126,7 @@ function buildPopupHtml(point: FieldMapPoint): string {
              ${jobLabel ? `<div class="text-slate-500">${jobLabel}</div>` : ''}
              ${
                point.activeJob.href
-                 ? `<a href="${point.activeJob.href}" class="mt-1 inline-block text-blue-600 underline">Dosyaya Git</a>`
+                 ? `<a href="${point.activeJob.href}" class="mt-1 inline-block text-brand-600 underline">Dosyaya Git</a>`
                  : ''
              }`
           : ''
@@ -346,7 +346,7 @@ export default function HaritaPage() {
               onClick={fetchRota}
               disabled={!seciliPersonel}
               className={`rounded-lg px-3 py-2.5 text-xs font-semibold text-white sm:py-1.5 sm:text-[13px] ${
-                seciliPersonel ? 'bg-blue-600 hover:bg-blue-700' : 'cursor-default bg-slate-300'
+                seciliPersonel ? 'bg-brand-600 hover:bg-blue-700' : 'cursor-default bg-slate-300'
               }`}
             >
               Rotayı Göster
@@ -364,11 +364,11 @@ export default function HaritaPage() {
         {/* Lejant */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:text-xs">
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-status-success" />
             Personel Aktif · {activePersonelCount}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-blue-600" />
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600" />
             Onarım · {counts.vendor_hasar}
           </span>
           <span className="flex items-center gap-1">

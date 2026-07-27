@@ -79,7 +79,7 @@ const STATUS_UI: Record<
 > = {
   active: {
     label: 'Operasyon Aktif',
-    dot: 'bg-emerald-500',
+    dot: 'bg-status-success',
     border: 'border-emerald-200 dark:border-emerald-800',
     bg: 'bg-emerald-50 dark:bg-emerald-950/40',
     text: 'text-emerald-700 dark:text-emerald-300',
@@ -87,7 +87,7 @@ const STATUS_UI: Record<
   },
   degraded: {
     label: 'Bozulmuş',
-    dot: 'bg-amber-500',
+    dot: 'bg-status-warning',
     border: 'border-amber-200 dark:border-amber-800',
     bg: 'bg-amber-50 dark:bg-amber-950/40',
     text: 'text-amber-800 dark:text-amber-300',
@@ -126,9 +126,9 @@ const TONE_CLASS: Record<ServiceTone, string> = {
 };
 
 const TONE_DOT: Record<ServiceTone, string> = {
-  up: 'bg-emerald-500',
-  down: 'bg-red-500',
-  degraded: 'bg-amber-500',
+  up: 'bg-status-success',
+  down: 'bg-status-danger',
+  degraded: 'bg-status-warning',
   unknown: 'bg-slate-300',
 };
 
@@ -287,7 +287,7 @@ export function PanelSystemHealth() {
             <button
               type="button"
               onClick={() => void fetchHealth()}
-              className="text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="text-xs font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               Yenile
             </button>

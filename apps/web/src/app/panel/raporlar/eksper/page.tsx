@@ -74,9 +74,9 @@ export default function EksperPerformansPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Eksper Performans</span>
       </nav>
@@ -129,7 +129,7 @@ export default function EksperPerformansPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
         />
-        <button type="button" onClick={load} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Yenile</button>
+        <button type="button" onClick={load} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Yenile</button>
       </div>
 
       {loading ? (
@@ -181,7 +181,7 @@ export default function EksperPerformansPage() {
                     <tr key={a.id} className="hover:bg-slate-50">
                       <PanelTableTd colId="rank" className="px-4 py-3 text-center text-slate-400 text-xs">{a.rank}</PanelTableTd>
                       <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800">
-                        <a href={`/panel/eksperler/${a.id}`} className="hover:text-blue-600 hover:underline">{a.name}</a>
+                        <a href={`/panel/eksperler/${a.id}`} className="hover:text-brand-600 hover:underline">{a.name}</a>
                       </PanelTableTd>
                       <PanelTableTd colId="company" className="px-4 py-3 text-slate-500 text-xs">{a.company ?? '—'}</PanelTableTd>
                       <PanelTableTd colId="city" className="px-4 py-3 text-slate-500 text-xs">{a.city ?? '—'}</PanelTableTd>

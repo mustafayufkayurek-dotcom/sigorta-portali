@@ -5,7 +5,7 @@ import type { PerformanceRow, ScoreTrend, UiSurveyStatus } from '../_lib/survey-
 
 const STATUS_CLASS: Record<UiSurveyStatus, string> = {
   Aktif: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  Tamamlandı: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+  Tamamlandı: 'bg-blue-50 text-blue-700 ring-brand-600/20',
   Taslak: 'bg-slate-100 text-slate-600 ring-slate-500/20',
 };
 
@@ -96,7 +96,7 @@ export function SurveyPerformanceTable({
                         <button
                           type="button"
                           onClick={() => onAnalyze(row)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-brand-600"
                           title="Analizi Gör"
                           aria-label="Analizi Gör"
                         >
@@ -122,7 +122,7 @@ export function SurveyPerformanceTable({
             <button
               type="button"
               onClick={onScrollAll}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              className="text-xs font-medium text-brand-600 hover:text-blue-700"
             >
               Tüm Anketleri Gör →
             </button>

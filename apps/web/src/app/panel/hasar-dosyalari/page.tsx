@@ -313,7 +313,7 @@ function ClaimFilesPageContent() {
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Hasar Dosyaları</span>
       </nav>
@@ -341,11 +341,11 @@ function ClaimFilesPageContent() {
               <p className="page-subtitle">
                 {total} dosya bulundu
                 {urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
-                {urlStatusCode === 'closed' && <span className="ml-2 text-emerald-500 font-semibold">· Kapalı Dosyalar</span>}
-                {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-red-500 font-semibold">· SLA Aşanlar</span>}
+                {urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
+                {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-status-danger font-semibold">· SLA Aşanlar</span>}
                 {search && <span className="ml-2 text-blue-500 font-semibold">· Arama: {search}</span>}
-                {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-red-500 font-semibold">· Gecikmiş fatura</span>}
-                {invoiceStatusFilter === 'pending' && <span className="ml-2 text-amber-500 font-semibold">· Bekleyen tahsilat</span>}
+                {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-status-danger font-semibold">· Gecikmiş fatura</span>}
+                {invoiceStatusFilter === 'pending' && <span className="ml-2 text-status-warning font-semibold">· Bekleyen tahsilat</span>}
               </p>
             )}
           </div>
@@ -403,9 +403,8 @@ function ClaimFilesPageContent() {
 
       {/* Filter Bar */}
       <div className="filter-bar">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-          <div className="relative md:col-span-2 xl:col-span-1">
-            <label className="mb-1 block text-[11px] font-semibold text-slate-500">Arama</label>
+        <div className="panel-filter-bar">
+          <div className="panel-filter-search-wrap">
             <SearchInput
               placeholder="Dosya No, Sigortalı..."
               value={search}
@@ -413,60 +412,46 @@ function ClaimFilesPageContent() {
               onClear={() => { setSearch(''); setPage(1); }}
             />
           </div>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Sigorta Şirketi</span>
-            <select className="input-base-sm w-full" value={insuranceFilter} onChange={(e) => { setInsuranceFilter(e.target.value); setPage(1); }}>
-              <option value="">Tüm Sigorta Şirketleri</option>
-              {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Durum</span>
-            <select className="input-base-sm w-full" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-              <option value="">Tüm Durumlar</option>
-              <option value="__sla_exceeded__">SLA Aşanlar</option>
-              {claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Fatura</span>
-            <select className="input-base-sm w-full" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
-              <option value="">Tüm Faturalar</option>
-              <option value="none">Fatura Yok</option>
-              <option value="draft">Taslak</option>
-              <option value="sent">Gönderildi</option>
-              <option value="paid">Ödendi</option>
-              <option value="partial">Kısmi Ödendi</option>
-              <option value="overdue">Gecikmiş</option>
-              <option value="cancelled">İptal</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Öncelik</span>
-            <select className="input-base-sm w-full" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}>
-              <option value="">Tüm Öncelikler</option>
-              <option value="low">Düşük</option>
-              <option value="normal">Normal</option>
-              <option value="high">Yüksek</option>
-              <option value="critical">Kritik</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Başlangıç</span>
-            <TrDateInput className="input-base-sm w-full" value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-500">Bitiş</span>
-            <TrDateInput className="input-base-sm w-full" value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} />
-          </label>
+          <select className="panel-filter-control" value={insuranceFilter} onChange={(e) => { setInsuranceFilter(e.target.value); setPage(1); }}>
+            <option value="">Tüm Sigorta Şirketleri</option>
+            {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="panel-filter-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+            <option value="">Tüm Durumlar</option>
+            <option value="__sla_exceeded__">SLA Aşanlar</option>
+            {claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select className="panel-filter-control" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
+            <option value="">Tüm Faturalar</option>
+            <option value="none">Fatura Yok</option>
+            <option value="draft">Taslak</option>
+            <option value="sent">Gönderildi</option>
+            <option value="paid">Ödendi</option>
+            <option value="partial">Kısmi Ödendi</option>
+            <option value="overdue">Gecikmiş</option>
+            <option value="cancelled">İptal</option>
+          </select>
+          <select className="panel-filter-control" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}>
+            <option value="">Tüm Öncelikler</option>
+            <option value="low">Düşük</option>
+            <option value="normal">Normal</option>
+            <option value="high">Yüksek</option>
+            <option value="critical">Kritik</option>
+          </select>
+          <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]">
+            <TrDateInput className="input-base-sm w-full" value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} placeholder="Başlangıç" />
+          </div>
+          <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]">
+            <TrDateInput className="input-base-sm w-full" value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} placeholder="Bitiş" />
+          </div>
           {hasFilters && (
-            <button type="button" onClick={clearFilters} className="self-end text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap">
+            <button type="button" onClick={clearFilters} className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap">
               Temizle ×
             </button>
           )}
-        </div>
-        <div className="mt-2 flex justify-end gap-2">
-          <PanelTableColumnPicker tableColumns={tableColumns} />
+          <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+          </div>
         </div>
       </div>
 
@@ -474,7 +459,7 @@ function ClaimFilesPageContent() {
       {isError && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm text-red-700">Dosyalar yüklenirken hata oluştu.</span>

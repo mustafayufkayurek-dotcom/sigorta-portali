@@ -150,7 +150,7 @@ export function ReceiptCameraModal({ open, onClose, onCapture }: ReceiptCameraMo
             type="button"
             disabled={!ready}
             onClick={capture}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             Fotoğraf Çek
           </button>

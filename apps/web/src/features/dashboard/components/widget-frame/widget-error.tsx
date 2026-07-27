@@ -10,7 +10,7 @@ interface WidgetErrorProps {
 export function WidgetError({ message = 'Yüklenemedi', onRetry }: WidgetErrorProps) {
   return (
     <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-red-200/70 bg-red-50/80 px-4 py-8 text-center dark:border-red-900/30 dark:bg-red-950/20">
-      <div className="mb-3 rounded-full bg-white/80 p-3 text-red-500 shadow-sm dark:bg-red-950/40">
+      <div className="mb-3 rounded-full bg-white/80 p-3 text-status-danger shadow-sm dark:bg-red-950/40">
         <AlertCircle className="h-6 w-6" />
       </div>
       <p className="text-sm font-semibold text-red-700 dark:text-red-400">Yüklenemedi</p>

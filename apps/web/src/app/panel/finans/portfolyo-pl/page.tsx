@@ -128,7 +128,7 @@ export default function PortfolyoPLPage() {
       color: 'text-red-700 dark:text-red-400',
       bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
       icon: (
-        <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17H5m0 0V9m0 8l8-8 4 4 6-6" />
         </svg>
       ),
@@ -141,7 +141,7 @@ export default function PortfolyoPLPage() {
         ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
         : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
       icon: (
-        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
@@ -196,7 +196,7 @@ export default function PortfolyoPLPage() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Sigorta Şirketi Bazlı KZ — <span className="text-blue-600 dark:text-blue-400">{period}</span>
+            Sigorta Şirketi Bazlı KZ — <span className="text-brand-600 dark:text-blue-400">{period}</span>
           </p>
           <div className="flex items-center gap-2">
             {!loading && <span className="text-xs text-slate-400 dark:text-slate-500">{rows.length} şirket</span>}

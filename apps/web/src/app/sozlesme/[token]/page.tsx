@@ -85,7 +85,7 @@ export default function SozlesmePage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-md w-full text-center">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-status-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           </div>
           <h2 className="text-base font-bold text-slate-800 mb-2">Sözleşme Bulunamadı</h2>
           <p className="text-sm text-slate-500">{error}</p>
@@ -204,7 +204,7 @@ export default function SozlesmePage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Ad Soyad <span className="text-red-500">*</span>
+                  Ad Soyad <span className="text-status-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -222,7 +222,7 @@ export default function SozlesmePage() {
                   aria-checked={agreed}
                   onClick={() => setAgreed(!agreed)}
                   className={`mt-0.5 w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
-                    agreed ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300 hover:border-indigo-400'
+                    agreed ? 'bg-brand-600 border-brand-600' : 'bg-white border-slate-300 hover:border-indigo-400'
                   }`}
                 >
                   {agreed && (

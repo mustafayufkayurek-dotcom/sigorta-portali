@@ -1,22 +1,22 @@
 {
-  "ok": false,
-  "title": "",
+  "ok": true,
+  "title": "Eksper Paneli",
   "url": "http://localhost:3001/panel/eksper-portal",
   "role": "expert",
   "email": "admin@meridyenassistance.com",
   "checks": {
-    "hasDosyalarimAktif": 0,
-    "hasWhatsApp": 0,
-    "hasDosyaHareket": 0,
-    "hasSureAnalizi": 0,
-    "hasHizliOzet": 0,
+    "hasDosyalarimAktif": 1,
+    "hasWhatsApp": 1,
+    "hasDosyaHareket": 1,
+    "hasSureAnalizi": 1,
+    "hasHizliOzet": 1,
     "hasOldTitle": 0,
     "hasIsYuku": 0,
     "hasHizliIslemler": 0,
     "denied": 0,
-    "contactAboveYeniIhbar": 0
+    "contactAboveYeniIhbar": 1
   },
-  "bodySnippet": "",
+  "bodySnippet": "Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…\n⌘K\n11\nYardım\nTema\nET\nEksper Test\nEksper Paneli\nDosyalarım\nİnceleme Bekleyenler\nRapor Bekleyenler\nOnay Bekleyenler\nYardım\nMenüyü Daralt\n\nWeb v356 · v356-dashboard-rc1 · Kılavuz 2026-07-11b\n\nEksper Paneli\n24 Temmuz 2026\n\nHoş Geldiniz, Eksper Test\n\nWhatsApp Destek\n0533 633 07 13\nÇağrı Merkezi\n0850 885 25 55\nE-posta\ninfo@meridyenasistans.com\nYeni İhbar\nDosyalarım\nİnceleme Bekleyenler\n0\nRapor Bekleyenler\n0\nOnay Bekleyenler\n0\n\nDosyalarım (Aktif)\n\n6\n\nAktif dosya\n\nİnceleme Bekleyenler\n\n0\n\nİnceleme bekleyen\n\nRapor Bekleyenler\n\n0\n\nRapor bekleyen\n\nOnay Bekleyenler\n\n0\n\nOnay bekleyen\n\nGüncel Dosya Hareketleri\nTümünü Gör →\nD278F-1781628345390-DOSYA\nDosya\nD278F Açık · 16 Tem 15:48 · D278F Local Sigorta\nD278F-1781627332590-DOSYA\nDosya\nD278F Açık · 16 Tem 01:20 · D278F Local Sigorta\nD278F-1781627203175-DOSYA\nDosya\nD278F Açık · 16 Tem 01:20 · D278F Local Sigorta\nD278F-1781626555513-DOSYA\nDosya\nD278F Açık · 16 Tem 01:20 · D278F Local Sigorta\nD278F-1781",
   "screenshots": [
     "desktop-1440-full.png"
   ]

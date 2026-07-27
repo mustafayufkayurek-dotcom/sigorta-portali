@@ -119,7 +119,7 @@ export default function EksperSigortaIliskileriPage() {
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
@@ -165,7 +165,7 @@ export default function EksperSigortaIliskileriPage() {
                       <td key={ins.id} className="px-3 py-2 text-center">
                         <input
                           type="checkbox"
-                          className="rounded accent-blue-600"
+                          className="rounded accent-brand-600"
                           checked={links.has(linkKey(expert.id, ins.id))}
                           onChange={() => toggle(expert.id, ins.id)}
                           aria-label={`${expert.name} — ${ins.name}`}

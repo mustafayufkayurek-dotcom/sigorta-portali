@@ -64,7 +64,7 @@ const PRIORITY_LABELS: Record<RevisionPriority, string> = {
 
 const PRIORITY_BADGE: Record<RevisionPriority, string> = {
   LOW: 'bg-slate-50 text-slate-500 border border-slate-200',
-  NORMAL: 'bg-blue-50 text-blue-600 border border-blue-200',
+  NORMAL: 'bg-blue-50 text-brand-600 border border-blue-200',
   HIGH: 'bg-orange-50 text-orange-600 border border-orange-200',
   CRITICAL: 'bg-red-50 text-red-700 border border-red-200',
 };
@@ -182,7 +182,7 @@ export default function RevisionRequestsPage() {
     <div>
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Revizyon Talepleri</span>
       </nav>
@@ -256,7 +256,7 @@ export default function RevisionRequestsPage() {
             </select>
           </div>
           {hasFilters && (
-            <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500 border border-slate-200 px-3 py-2 rounded-lg hover:border-red-200 self-end">
+            <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-status-danger border border-slate-200 px-3 py-2 rounded-lg hover:border-red-200 self-end">
               Temizle ×
             </button>
           )}
@@ -289,7 +289,7 @@ export default function RevisionRequestsPage() {
       ) : filteredRevisions.length === 0 && !error ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white">
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-500">
+            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-status-success">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <p className="text-sm font-semibold text-slate-600">
@@ -351,7 +351,7 @@ export default function RevisionRequestsPage() {
                     <PanelTableTd colId="status" className="px-4 py-3.5">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[rev.status]}`}>
                         {rev.status === 'ESCALATED' && (
-                          <span className="mr-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                          <span className="mr-1 w-1.5 h-1.5 rounded-full bg-status-danger animate-pulse inline-block" />
                         )}
                         {STATUS_LABELS[rev.status]}
                       </span>

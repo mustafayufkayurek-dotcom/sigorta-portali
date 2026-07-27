@@ -221,7 +221,7 @@ export function FinansRaporOzeti({
           </div>
           <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${tahsilatOrani >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+              className={`h-full rounded-full transition-all ${tahsilatOrani >= 100 ? 'bg-status-success' : 'bg-blue-500'}`}
               style={{ width: `${tahsilatOrani}%` }}
             />
           </div>

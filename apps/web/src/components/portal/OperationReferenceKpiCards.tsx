@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 const KPI_ICON_COLORS: Record<string, { bg: string; text: string }> = {
-  residential: { bg: 'bg-blue-50', text: 'text-blue-600' },
+  residential: { bg: 'bg-blue-50', text: 'text-brand-600' },
   industrial: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
   public_critical: { bg: 'bg-violet-50', text: 'text-violet-600' },
   maritime: { bg: 'bg-cyan-50', text: 'text-cyan-600' },

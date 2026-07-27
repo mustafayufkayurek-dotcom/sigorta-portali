@@ -27,7 +27,7 @@ export function DepartmentTabSelector({
     return (
       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
         Henüz departman tanımlı değil.{' '}
-        <Link href={emptyHref} className="text-blue-600 hover:underline font-medium">
+        <Link href={emptyHref} className="text-brand-600 hover:underline font-medium">
           Departman oluşturun
         </Link>
       </div>
@@ -56,7 +56,7 @@ export function DepartmentTabSelector({
             />
             {d.name}
             {count !== undefined && (
-              <span className={`text-xs ${active ? 'text-blue-600' : 'text-slate-400'}`}>
+              <span className={`text-xs ${active ? 'text-brand-600' : 'text-slate-400'}`}>
                 ({count})
               </span>
             )}
@@ -131,7 +131,7 @@ export function DepartmentContextBand({
         </span>
       </p>
       {code && (
-        <p className="text-[11px] text-blue-600/80 mt-0.5 font-mono pl-4">{code}</p>
+        <p className="text-[11px] text-brand-600/80 mt-0.5 font-mono pl-4">{code}</p>
       )}
     </div>
   );

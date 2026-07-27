@@ -57,7 +57,7 @@ export function TeamWorkloadChart({
               </div>
               <span
                 className={`text-[10px] font-medium ${
-                  isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
+                  isToday ? 'text-brand-600 dark:text-blue-400' : 'text-slate-500'
                 }`}
               >
                 {item.label}

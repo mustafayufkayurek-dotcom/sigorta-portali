@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dosyalarım — Facelift (Mevcut Yerleşim)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div class="mx-auto max-w-5xl space-y-3 p-6">
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      Bu önizleme <strong>yeniden tasarım değildir</strong>. Mevcut Dosyalarım yerleşimi korunur; yalnızca tablo satırı, badge, ikon ve hover kalitesi yükseltilir.
+      Gerçek ekran: <code class="rounded bg-white px-1">/panel/eksper-portal/dosyalar</code>
+    </p>
+
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-xs text-slate-400">Eksper Paneli / Dosyalarım</p>
+        <h1 class="text-lg font-bold text-slate-900">Dosyalarım</h1>
+        <p class="text-sm text-slate-500">İhbarını Yaptığım Ve İşlem Yaptığım Dosyalar</p>
+      </div>
+      <span class="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 ring-1 ring-blue-100">3 Dosya</span>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-slate-100 text-sm">
+        <thead class="bg-slate-50/90 text-xs font-semibold text-slate-500">
+          <tr>
+            <th class="px-4 py-2.5 text-left">Dosya No</th>
+            <th class="px-4 py-2.5 text-left">Sigorta Şirketi</th>
+            <th class="px-4 py-2.5 text-left">Konu</th>
+            <th class="px-4 py-2.5 text-left">Durum</th>
+            <th class="px-4 py-2.5 text-left">Tarih</th>
+            <th class="px-4 py-2.5 text-left">Akış</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr class="hover:bg-slate-50/90">
+            <td class="px-4 py-2.5 font-semibold">HS-2026-0142</td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>🏢</span> Axa Sigorta</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>🔥</span> Yangın Hasarı</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex h-6 items-center rounded-full bg-amber-50 px-2.5 text-[11px] font-semibold text-amber-800">İncelemede</span></td>
+            <td class="px-4 py-2.5 tabular-nums text-slate-500">18.07.2026</td>
+            <td class="px-4 py-2.5"><span class="inline-flex rounded-lg border border-transparent px-2 py-1 font-semibold text-blue-600 hover:border-blue-100 hover:bg-blue-50">Akış</span></td>
+          </tr>
+          <tr class="hover:bg-slate-50/90">
+            <td class="px-4 py-2.5 font-semibold">HS-2026-0138</td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>🏢</span> Allianz</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>💧</span> Su Baskını</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex h-6 items-center rounded-full bg-rose-50 px-2.5 text-[11px] font-semibold text-rose-700">Rapor Bekliyor</span></td>
+            <td class="px-4 py-2.5 tabular-nums text-slate-500">17.07.2026</td>
+            <td class="px-4 py-2.5"><span class="inline-flex rounded-lg border border-transparent px-2 py-1 font-semibold text-blue-600">Akış</span></td>
+          </tr>
+          <tr class="hover:bg-slate-50/90">
+            <td class="px-4 py-2.5 font-semibold">HS-2026-0120</td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>🏢</span> Türkiye Sigorta</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1.5"><span>🛡️</span> Hırsızlık</span></td>
+            <td class="px-4 py-2.5"><span class="inline-flex h-6 items-center rounded-full bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-700">Tamamlandı</span></td>
+            <td class="px-4 py-2.5 tabular-nums text-slate-500">12.07.2026</td>
+            <td class="px-4 py-2.5"><span class="inline-flex rounded-lg border border-transparent px-2 py-1 font-semibold text-blue-600">Akış</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

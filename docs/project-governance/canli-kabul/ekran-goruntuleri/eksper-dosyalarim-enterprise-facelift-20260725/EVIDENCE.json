@@ -1,0 +1,10 @@
+{
+  "at": "2026-07-25T11:25:52.040Z",
+  "auth": {
+    "email": "admin@meridyenassistance.com",
+    "role": "admin"
+  },
+  "url": "http://localhost:3001/panel",
+  "kpi": 0,
+  "filtre": 0
+}

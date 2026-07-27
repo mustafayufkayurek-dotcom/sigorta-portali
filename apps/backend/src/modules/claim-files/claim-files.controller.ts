@@ -112,6 +112,25 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Post(':id/responsible-email')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: 'Dosya sorumlusuna eksper notunu e-posta ile gönder' })
+  async sendResponsibleEmail(
+    @Param('id') id: string,
+    @Body() body: { message?: string },
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.claimFilesService.sendResponsibleEmail(
+      id,
+      body?.message ?? '',
+      {
+        id: user?.id ?? user?.userId,
+        roleCode: user?.roleCode ?? user?.role?.code,
+      },
+    );
+    return { success: true, data };
+  }
+
   @Post('scan-intake-document')
   @RequirePermissions('claim_file.create')
   @UseInterceptors(FileInterceptor('file'))

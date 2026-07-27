@@ -56,7 +56,7 @@ export function SettingsHubSearch({ links }: { links: SettingsNavLink[] }) {
                         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{item.description}</p>
                       ) : null}
                     </div>
-                    <span className="shrink-0 text-xs font-medium text-blue-600">Git →</span>
+                    <span className="shrink-0 text-xs font-medium text-brand-600">Git →</span>
                   </Link>
                 </li>
               ))}

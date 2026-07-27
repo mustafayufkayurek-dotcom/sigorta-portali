@@ -74,7 +74,7 @@ export function TalimatlarTab({ claimId }: { claimId: string }) {
             type="button"
             onClick={handleSave}
             disabled={saving || !content.trim()}
-            className="px-4 py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-status-warning text-white text-sm rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors"
           >
             {saving ? 'Kaydediliyor...' : 'Talimat Kaydet'}
           </button>

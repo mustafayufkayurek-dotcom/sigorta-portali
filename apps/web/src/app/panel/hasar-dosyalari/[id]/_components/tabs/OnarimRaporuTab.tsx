@@ -63,7 +63,7 @@ const REPORT_TYPE_SHORT: Record<string, string> = {
 };
 
 const REPORT_TYPE_STYLE: Record<string, string> = {
-  single: 'bg-blue-50 text-blue-600',
+  single: 'bg-blue-50 text-brand-600',
   multi: 'bg-indigo-50 text-indigo-600',
   emergency: 'bg-red-50 text-red-600',
 };
@@ -200,7 +200,7 @@ function ReportChainRow({
             onClick={() =>
               router.push(`/panel/hasar-dosyalari/${claimId}/onarim-raporu/${report.id}`)
             }
-            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 font-medium"
+            className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 font-medium"
           >
             Rapora Git
           </button>
@@ -418,7 +418,7 @@ function YeniRaporWizard({
           {wizardDepartments.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">
               <p>Henüz operasyon hattı tanımlanmamış.</p>
-              <a href="/panel/ayarlar/departmanlar" className="text-blue-600 hover:underline mt-1 block">Departman ayarlarına gidin</a>
+              <a href="/panel/ayarlar/departmanlar" className="text-brand-600 hover:underline mt-1 block">Departman ayarlarına gidin</a>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -447,7 +447,7 @@ function YeniRaporWizard({
                   onClick={() => handleDeptSelect(d)}
                   className={`border-2 rounded-xl p-4 text-left transition-all ${
                     selectedDept?.id === d.id
-                      ? 'border-red-500 bg-red-50 ring-2 ring-red-200'
+                      ? 'border-status-danger bg-red-50 ring-2 ring-red-200'
                       : 'border-slate-200 hover:border-red-300 hover:bg-red-50/40'
                   }`}
                 >
@@ -467,7 +467,7 @@ function YeniRaporWizard({
             <button type="button"
               onClick={proceedFromDept}
               disabled={!selectedDept}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 bg-brand-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Devam
             </button>
@@ -540,7 +540,7 @@ function YeniRaporWizard({
             <button type="button"
               onClick={() => { if (reportType) setStep('config'); }}
               disabled={!reportType}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 bg-brand-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Devam
             </button>
@@ -583,7 +583,7 @@ function YeniRaporWizard({
               ) : damageReasons.length === 0 ? (
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {selectedDept?.name ?? 'Seçilen operasyon hattı'} için tanımlı hasar nedeni bulunamadı.
-                  <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
+                  <a href="/panel/ayarlar/dosya-konulari" className="block text-brand-600 hover:underline mt-1">
                     Dosya konuları ayarlarından tanımlayın
                   </a>
                 </div>
@@ -618,7 +618,7 @@ function YeniRaporWizard({
               ) : damageReasons.length === 0 ? (
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {selectedDept?.name ?? 'Seçilen operasyon hattı'} için tanımlı hasar nedeni bulunamadı.
-                  <a href="/panel/ayarlar/dosya-konulari" className="block text-blue-600 hover:underline mt-1">
+                  <a href="/panel/ayarlar/dosya-konulari" className="block text-brand-600 hover:underline mt-1">
                     Dosya konuları ayarlarından tanımlayın
                   </a>
                 </div>
@@ -654,13 +654,13 @@ function YeniRaporWizard({
           </div>
         )}
 
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        {error && <p className="text-xs text-status-danger mt-2">{error}</p>}
 
         <div className="flex gap-2 mt-5">
           <button type="button"
             onClick={handleCreate}
             disabled={creating || !canProceed()}
-            className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 bg-brand-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {creating ? 'Oluşturuluyor...' : 'Raporu Oluştur'}
           </button>
@@ -785,7 +785,7 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
             <button
               type="button"
               onClick={() => setShowWizard(true)}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
+              className="bg-brand-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
             >
               Yeni Rapor Oluştur
             </button>

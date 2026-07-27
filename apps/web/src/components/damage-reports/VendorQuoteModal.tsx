@@ -160,7 +160,7 @@ export default function VendorQuoteModal({
                 </button>
               </div>
             ))}
-            <button type="button" onClick={addAlt} className="text-xs font-medium text-blue-600 hover:text-blue-800">
+            <button type="button" onClick={addAlt} className="text-xs font-medium text-brand-600 hover:text-blue-800">
               + Alternatif Ekle
             </button>
           </div>

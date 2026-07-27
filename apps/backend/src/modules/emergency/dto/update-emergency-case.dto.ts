@@ -49,4 +49,8 @@ export class UpdateEmergencyCaseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  findingsText?: string;
 }

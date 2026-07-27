@@ -43,7 +43,7 @@ export function PortalCompactHeader({
 
   return (
     <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
-      <div className="h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+      <div className="h-1 bg-gradient-to-r from-brand-600 to-indigo-600" />
       <div className="px-3 py-3 sm:px-5 sm:py-3.5">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export function PortalSubpageHeader({
 }: PortalSubpageHeaderProps) {
   return (
     <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
-      <div className="h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+      <div className="h-1 bg-gradient-to-r from-brand-600 to-indigo-600" />
       <div className="space-y-2 px-3 py-3 sm:px-5 sm:py-3.5">
         {breadcrumb}
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -201,13 +201,13 @@ export function InboxComposeModal({
               Dosya Bağla (İsteğe Bağlı)
             </button>
             {linkedLabel && (
-              <span className="text-xs text-blue-600 font-medium">{linkedLabel}</span>
+              <span className="text-xs text-brand-600 font-medium">{linkedLabel}</span>
             )}
             {(linkedClaim || linkedEmergency) && (
               <button
                 type="button"
                 onClick={() => { setLinkedClaim(null); setLinkedEmergency(null); }}
-                className="text-xs text-slate-400 hover:text-red-500"
+                className="text-xs text-slate-400 hover:text-status-danger"
               >
                 Kaldır
               </button>
@@ -231,7 +231,7 @@ export function InboxComposeModal({
               type="button"
               onClick={() => void handleSend()}
               disabled={!canSend}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
             >
               {loading ? 'Gönderiliyor…' : 'Gönder'}
             </button>

@@ -104,7 +104,7 @@ function FieldsToggleSection({
             <div className="col-span-4 flex justify-center">
               <button type="button"
                 onClick={() => onToggle(key)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${rule.required ? 'bg-blue-600' : 'bg-slate-200'}`}
+                className={`relative w-10 h-5 rounded-full transition-colors ${rule.required ? 'bg-brand-600' : 'bg-slate-200'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rule.required ? 'translate-x-5' : ''}`} />
               </button>
@@ -119,7 +119,7 @@ function FieldsToggleSection({
         <button type="button"
           onClick={onSave}
           disabled={saving}
-          className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+          className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${saved ? 'bg-green-600 text-white' : 'bg-brand-600 text-white hover:bg-blue-700'}`}
         >
           {saving ? 'Kaydediliyor...' : saved ? 'Kaydedildi!' : 'Değişiklikleri Kaydet'}
         </button>
@@ -419,7 +419,7 @@ export default function AlanZorunluluklariPage() {
                       value={newField.fieldLabel}
                       onChange={(e) => setNewField({ ...newField, fieldLabel: e.target.value })}
                     />
-                    <button type="button" onClick={handleAddField} className="bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700">Ekle</button>
+                    <button type="button" onClick={handleAddField} className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700">Ekle</button>
                     <button type="button" onClick={() => setShowAddField(false)} className="text-sm text-slate-500 hover:text-slate-700">İptal</button>
                   </div>
                 )}
@@ -447,7 +447,7 @@ export default function AlanZorunluluklariPage() {
                         <div className="col-span-2 flex justify-center">
                           <button type="button"
                             onClick={() => toggleRequired(cfg.fieldKey)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${cfg.isRequired ? 'bg-blue-600' : 'bg-slate-200'}`}
+                            className={`relative w-10 h-5 rounded-full transition-colors ${cfg.isRequired ? 'bg-brand-600' : 'bg-slate-200'}`}
                           >
                             <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${cfg.isRequired ? 'translate-x-5' : ''}`} />
                           </button>
@@ -470,7 +470,7 @@ export default function AlanZorunluluklariPage() {
                   <button type="button"
                     onClick={handleSave}
                     disabled={saving || configs.length === 0}
-                    className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                    className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${saved ? 'bg-green-600 text-white' : 'bg-brand-600 text-white hover:bg-blue-700'}`}
                   >
                     {saving ? 'Kaydediliyor...' : saved ? 'Kaydedildi!' : 'Değişiklikleri Kaydet'}
                   </button>
@@ -554,7 +554,7 @@ export default function AlanZorunluluklariPage() {
                     <button
                       type="button"
                       onClick={() => setFieldRequirements((prev) => ({ ...prev, customerSubTypeRequired: !prev.customerSubTypeRequired }))}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${fieldRequirements.customerSubTypeRequired ? 'bg-blue-600' : 'bg-slate-200'}`}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${fieldRequirements.customerSubTypeRequired ? 'bg-brand-600' : 'bg-slate-200'}`}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${fieldRequirements.customerSubTypeRequired ? 'translate-x-5' : ''}`} />
                     </button>
@@ -569,7 +569,7 @@ export default function AlanZorunluluklariPage() {
                   type="button"
                   onClick={handleSaveFieldRequirements}
                   disabled={frSaving}
-                  className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${frSaved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  className={`text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition-colors ${frSaved ? 'bg-green-600 text-white' : 'bg-brand-600 text-white hover:bg-blue-700'}`}
                 >
                   {frSaving ? 'Kaydediliyor...' : frSaved ? 'Kaydedildi!' : 'Değişiklikleri Kaydet'}
                 </button>

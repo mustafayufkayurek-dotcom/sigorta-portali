@@ -73,33 +73,43 @@ async function main() {
   await heading.waitFor({ state: 'visible', timeout: 45000 });
   const title = await heading.textContent();
 
+  // FINAL layout blokları (gerçek API — boş durum kabul)
+  for (const label of [
+    'Dosyaların Durum Dağılımı',
+    'Haftalık Operasyon Trendi',
+    'Aksiyon Gecikmeleri',
+    'Kritik Uyarılar',
+    'Son Aktiviteler',
+    'Onay Gecikmeleri',
+  ]) {
+    await page.getByText(label, { exact: true }).first().waitFor({ state: 'visible', timeout: 30000 });
+  }
+
   const section = page.locator('#bekleyen-operasyonlar');
   await section.waitFor({ state: 'visible', timeout: 30000 });
 
   const cards = section.locator('article');
   const cardCount = await cards.count();
-  if (cardCount < 1 || cardCount > 5) {
-    // İlk ekranda en fazla 5; en az 1 (boş değilse). Demo veri ile 5 beklenir.
-    if (cardCount > 5) throw new Error(`İlk ekranda 5’ten fazla kart: ${cardCount}`);
-  }
+  if (cardCount > 5) throw new Error(`İlk ekranda 5’ten fazla kart: ${cardCount}`);
 
   const body = await section.innerText();
-  if (!/Bekleyen Operasyon/i.test(body)) throw new Error('Bekleyen Operasyon satırı yok');
+  if (!/Bekleyen Operasyon/i.test(body)) throw new Error('Bekleyen Operasyon bölümü yok');
   if (/pending_approval|external_approval|submitted|workflow|enum/i.test(body)) {
     throw new Error('Teknik state/workflow metni ekranda görünüyor');
   }
 
-  const cta = section.getByRole('link').filter({ hasText: /Hatırlat|Aktar|İncele|Talep Et|Devam Et/ }).first();
-  await cta.waitFor({ state: 'visible', timeout: 10000 });
+  if (cardCount >= 1) {
+    const cta = section.getByRole('link').filter({ hasText: /Hatırlat|Aktar|İncele|Talep Et|Devam Et/ }).first();
+    await cta.waitFor({ state: 'visible', timeout: 10000 });
 
-  // Açıklama ↔ buton hizası (görünen ilk kart)
-  const firstCard = cards.first();
-  const firstText = await firstCard.innerText();
-  if (/Sigorta şirketinden onay bekleniyor/.test(firstText) && !/Sigortayı Hatırlat/.test(firstText)) {
-    throw new Error('Açıklama/buton hizasız: sigorta');
-  }
-  if (/Eksperden rapor bekleniyor/.test(firstText) && !/Eksperi Hatırlat/.test(firstText)) {
-    throw new Error('Açıklama/buton hizasız: eksper');
+    const firstCard = cards.first();
+    const firstText = await firstCard.innerText();
+    if (/Sigorta şirketinden onay bekleniyor/.test(firstText) && !/Sigortayı Hatırlat/.test(firstText)) {
+      throw new Error('Açıklama/buton hizasız: sigorta');
+    }
+    if (/Eksperden rapor bekleniyor/.test(firstText) && !/Eksperi Hatırlat/.test(firstText)) {
+      throw new Error('Açıklama/buton hizasız: eksper');
+    }
   }
 
   const showAll = page.getByRole('button', { name: /Tümünü Gör/i }).first();

@@ -32,7 +32,7 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
 const ACTIVITY_ACTION_COLORS: Record<string, string> = {
   SUPPLIER_ASSIGNED: 'bg-purple-100 text-purple-700 border-purple-200',
   APPOINTMENT_SCHEDULED: 'bg-blue-100 text-blue-700 border-blue-200',
-  APPOINTMENT_UPDATED: 'bg-blue-50 text-blue-600 border-blue-100',
+  APPOINTMENT_UPDATED: 'bg-blue-50 text-brand-600 border-blue-100',
   INSPECTION_DONE: 'bg-amber-100 text-amber-700 border-amber-200',
   COST_REPORT_SUBMITTED: 'bg-green-100 text-green-700 border-green-200',
   ATTACHMENT_ADDED: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -147,7 +147,7 @@ export function TakipTab({
                 onClick={() => setSubTab(tab.id)}
                 className={`shrink-0 border-b-2 -mb-px whitespace-nowrap px-4 py-2 text-sm font-medium transition-colors ${
                   subTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >

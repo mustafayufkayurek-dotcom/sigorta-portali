@@ -104,7 +104,7 @@ export function InboxQuickActions({
           <button
             type="button"
             onClick={onOpenClaim}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-blue-700 transition-colors"
           >
             Hasar Dosyası Aç
           </button>
@@ -114,7 +114,7 @@ export function InboxQuickActions({
           <button
             type="button"
             onClick={onOpenEmergency}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-blue-700 transition-colors"
           >
             Acil Dosya Aç
           </button>

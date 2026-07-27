@@ -10,7 +10,7 @@ export function SettingsBreadcrumbs({ items }: { items: SettingsBreadcrumb[] }) 
     <nav aria-label="Ayarlar konumu" className="mb-3 flex flex-wrap items-center gap-1.5 text-sm">
       <Link
         href="/panel"
-        className="text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500"
+        className="text-slate-400 transition-colors hover:text-brand-600 dark:text-slate-500"
       >
         Operasyon Paneli
       </Link>
@@ -20,7 +20,7 @@ export function SettingsBreadcrumbs({ items }: { items: SettingsBreadcrumb[] }) 
           {item.href && index < items.length - 1 ? (
             <Link
               href={item.href}
-              className="font-medium text-slate-500 transition-colors hover:text-blue-600 dark:text-slate-400"
+              className="font-medium text-slate-500 transition-colors hover:text-brand-600 dark:text-slate-400"
             >
               {item.label}
             </Link>

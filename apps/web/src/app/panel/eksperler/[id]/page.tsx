@@ -97,7 +97,7 @@ export default function AdjusterProfilePage() {
   if (loading) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
   if (!adjuster) return <div className="text-slate-400 py-16 text-center">Eksper bulunamadı.</div>;
 
-  const scoreColor = (s: number) => s >= 80 ? 'text-green-600' : s >= 60 ? 'text-yellow-500' : 'text-red-500';
+  const scoreColor = (s: number) => s >= 80 ? 'text-green-600' : s >= 60 ? 'text-yellow-500' : 'text-status-danger';
 
   const radarData = metrics ? [
     { subject: 'Tamamlanma', value: metrics.completionRate },
@@ -141,7 +141,7 @@ export default function AdjusterProfilePage() {
           <MetricCard label="Toplam Atama" value={metrics.total} />
           <MetricCard label="Tamamlanan" value={metrics.completed} color="text-green-600" />
           <MetricCard label="Ort. Rapor Süresi" value={metrics.avgReportDays ? `${metrics.avgReportDays} gün` : '—'} />
-          <MetricCard label="Revizyon Oranı" value={`%${metrics.revisionRate}`} color={metrics.revisionRate > 20 ? 'text-red-500' : 'text-green-600'} />
+          <MetricCard label="Revizyon Oranı" value={`%${metrics.revisionRate}`} color={metrics.revisionRate > 20 ? 'text-status-danger' : 'text-green-600'} />
         </div>
       )}
 
@@ -232,7 +232,7 @@ export default function AdjusterProfilePage() {
                   <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" rows={3} value={editForm.notes ?? ''} onChange={(e) => setEditForm((p: any) => ({ ...p, notes: e.target.value }))} />
                 </div>
               </div>
-              <button type="button" onClick={handleSave} disabled={saving} className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-xl text-sm hover:bg-blue-700 disabled:opacity-50">
+              <button type="button" onClick={handleSave} disabled={saving} className="mt-4 bg-brand-600 text-white px-6 py-2 rounded-xl text-sm hover:bg-blue-700 disabled:opacity-50">
                 {saving ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </SectionCard>
@@ -359,7 +359,7 @@ export default function AdjusterProfilePage() {
                       <p>Tarih: {fmtDate(a.report.reportDate)}</p>
                       {a.report.estimatedDamage && <p>Tahmini Hasar: {fmtCurrency(a.report.estimatedDamage)}</p>}
                       {a.report.recommendation && <p>Tavsiye: {a.report.recommendation}</p>}
-                      {a.report.rejectionReason && <p className="text-red-500">Red Sebebi: {a.report.rejectionReason}</p>}
+                      {a.report.rejectionReason && <p className="text-status-danger">Red Sebebi: {a.report.rejectionReason}</p>}
                     </div>
                   </div>
                 )}
@@ -408,7 +408,7 @@ export default function AdjusterProfilePage() {
                   <div className="flex justify-between"><span className="text-slate-400">Tamamlanan</span><span className="font-medium text-green-600">{metrics.completed}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Bekleyen</span><span className="font-medium text-yellow-500">{metrics.pending}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Toplam Rapor</span><span className="font-medium">{metrics.totalReports}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Reddedilen Rapor</span><span className="font-medium text-red-500">{metrics.rejectedReports}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Reddedilen Rapor</span><span className="font-medium text-status-danger">{metrics.rejectedReports}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Ort. Rapor Süresi</span><span className="font-medium">{metrics.avgReportDays ? `${metrics.avgReportDays} gün` : '—'}</span></div>
                 </div>
               </div>

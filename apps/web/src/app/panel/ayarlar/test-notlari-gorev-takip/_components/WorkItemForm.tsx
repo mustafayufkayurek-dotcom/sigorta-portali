@@ -107,7 +107,7 @@ export function WorkItemForm({ initial, users, onCancel, onSubmit, saving }: Pro
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600">İptal</button>
-        <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button type="submit" disabled={saving} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
           {saving ? 'Kaydediliyor...' : initial ? 'Güncelle' : 'Kaydet'}
         </button>
       </div>

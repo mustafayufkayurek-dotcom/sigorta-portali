@@ -35,6 +35,9 @@ import {
   writeHistoricalFinanceOptIn,
 } from './historical-file';
 import { RecommendedVendorsTabs } from '@/components/vendor-discovery/RecommendedVendorsTabs';
+import SpeechToText from '@/components/SpeechToText';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { reportCaughtError } from '@/utils/report-caught-error';
 import {
   ACIL_STAGES,
   AcilLocalFlow,
@@ -156,7 +159,7 @@ function QuickActionCard({
     resolvedState === 'completed'
       ? 'text-emerald-600'
       : resolvedState === 'next'
-        ? 'text-blue-600'
+        ? 'text-brand-600'
         : resolvedState === 'waiting'
           ? 'text-slate-400'
           : variant === 'danger'
@@ -164,7 +167,7 @@ function QuickActionCard({
             : variant === 'success'
               ? 'text-emerald-600'
               : variant === 'primary'
-                ? 'text-blue-600'
+                ? 'text-brand-600'
                 : 'text-slate-600';
 
   return (
@@ -567,7 +570,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && onChange(null)}
             onClick={(e) => { e.stopPropagation(); onChange(null); }}
-            className="text-slate-400 hover:text-red-500 text-xs ml-2 cursor-pointer"
+            className="text-slate-400 hover:text-status-danger text-xs ml-2 cursor-pointer"
           >
             ✕
           </span>
@@ -609,7 +612,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
                 className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg"
               />
               <div className="flex gap-2">
-                <button type="button" onClick={handleAddVendor} disabled={addLoading} className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
+                <button type="button" onClick={handleAddVendor} disabled={addLoading} className="flex-1 py-1.5 bg-brand-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
                   {addLoading ? 'Kaydediliyor...' : 'Kaydet'}
                 </button>
                 <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg">
@@ -637,7 +640,7 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
                 ))
               )}
               <div className="border-t border-slate-100 p-2">
-                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg px-2 py-1.5">
+                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-semibold text-brand-600 hover:bg-blue-50 rounded-lg px-2 py-1.5">
                   Yeni Tedarikçi Ekle
                 </button>
               </div>
@@ -746,6 +749,11 @@ export default function AcilDosyaDetayPage() {
   const [showVatDetail, setShowVatDetail] = useState(false);
   /** Kayıtlı bütçe varken özet; Düzelt ile düzenleme açılır. */
   const [budgetEditing, setBudgetEditing] = useState(true);
+  const [draftFindings, setDraftFindings] = useState('');
+  const [findingsError, setFindingsError] = useState<string | null>(null);
+  const [findingsSaving, setFindingsSaving] = useState(false);
+  const findingsFormRef = useRef<HTMLDivElement | null>(null);
+  const findingsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const alisRef = useRef<number | null>(null);
   const satisRef = useRef<number | null>(null);
 
@@ -773,6 +781,8 @@ export default function AcilDosyaDetayPage() {
     try {
       const [caseRes, costRes] = await Promise.all([getCase(id), getCostEntries(id)]);
       setVaka(caseRes.data);
+      setDraftFindings(caseRes.data.findingsText ?? '');
+      setFindingsError(null);
       setCosts(costRes.data);
       setCostSummary(costRes.summary);
       const gelir = costRes.data.find((c) => c.entryType === 'gelir');
@@ -909,6 +919,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   function openBudgetEdit() {
+    if (!ensureFindingsBeforeBudget()) return;
     syncPriceDraftsFromSaved();
     setBudgetEditing(true);
     setPriceFormError(null);
@@ -921,7 +932,58 @@ export default function AcilDosyaDetayPage() {
     setMarginToast(null);
   }
 
+  function focusFindingsForm() {
+    requestAnimationFrame(() => {
+      findingsFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      findingsTextareaRef.current?.focus();
+    });
+  }
+
+  function ensureFindingsBeforeBudget(): boolean {
+    const text = draftFindings.trim() || (vaka?.findingsText || '').trim();
+    if (!text) {
+      setFindingsError('Tespit Bulguları zorunludur. Önce bulguları girin, sonra maliyet girin.');
+      setPriceFormError('Önce Tespit Bulguları girilmelidir.');
+      focusFindingsForm();
+      return false;
+    }
+    setFindingsError(null);
+    if (draftFindings.trim() && draftFindings.trim() !== (vaka?.findingsText || '').trim()) {
+      void saveFindingsText();
+    }
+    return true;
+  }
+
+  async function saveFindingsText(): Promise<boolean> {
+    const text = draftFindings.trim();
+    if (!text) {
+      setFindingsError('Tespit Bulguları zorunludur.');
+      return false;
+    }
+    if (!id) return false;
+    if ((vaka?.findingsText || '').trim() === text) {
+      setFindingsError(null);
+      return true;
+    }
+    setFindingsSaving(true);
+    try {
+      const res = await updateCase(id, { findingsText: text } as Partial<EmergencyCase>);
+      setVaka(res.data);
+      setDraftFindings(res.data.findingsText ?? text);
+      setFindingsError(null);
+      return true;
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Tespit Bulguları kaydedilemedi.');
+      reportCaughtError(err, msg);
+      setFindingsError(msg);
+      return false;
+    } finally {
+      setFindingsSaving(false);
+    }
+  }
+
   function focusPriceForm() {
+    if (!ensureFindingsBeforeBudget()) return;
     openBudgetEdit();
     requestAnimationFrame(() => {
       priceFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -936,6 +998,9 @@ export default function AcilDosyaDetayPage() {
 
   /** @returns true if fiyat kaydı geçerli ve uygulandı (veya değişiklik yok ama form geçerli) */
   function savePriceForm(): boolean {
+    if (!ensureFindingsBeforeBudget()) {
+      return false;
+    }
     if (!requireAssignedVendor()) {
       setPriceFormError('İlerlemek İçin Tedarikçi Seçimi Zorunludur.');
       return false;
@@ -1734,22 +1799,11 @@ export default function AcilDosyaDetayPage() {
   }
 
   function handleBack() {
-    if (typeof window !== 'undefined' && document.referrer) {
-      try {
-        const ref = new URL(document.referrer);
-        if (
-          ref.origin === window.location.origin
-          && ref.pathname.startsWith('/panel')
-          && !ref.pathname.startsWith(`/panel/acil-yardim/${id}`)
-        ) {
-          router.back();
-          return;
-        }
-      } catch {
-        /* listeye düş */
-      }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
     }
-    router.push('/panel/acil-yardim');
+    router.push('/panel/operasyon?filter=acil');
   }
 
   return (
@@ -1788,7 +1842,7 @@ export default function AcilDosyaDetayPage() {
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400">Dosya Konusu</p>
-            <p className="mt-0.5 text-sm font-semibold text-blue-600 truncate" title={dosyaKonusuLabel}>
+            <p className="mt-0.5 text-sm font-semibold text-brand-600 truncate" title={dosyaKonusuLabel}>
               {dosyaKonusuLabel}
             </p>
           </div>
@@ -1817,7 +1871,7 @@ export default function AcilDosyaDetayPage() {
             <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
               {assigneeName !== '—' ? (
                 <span
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[8px] font-bold text-white"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[8px] font-bold text-white"
                   aria-hidden
                 >
                   {assigneeInitials}
@@ -1837,7 +1891,7 @@ export default function AcilDosyaDetayPage() {
           </div>
           <div className="min-w-0">
             <p className="text-xs text-slate-400">Güncel Durum</p>
-            <p className="mt-0.5 text-sm font-bold text-blue-600 leading-snug" data-testid="guncel-durum">
+            <p className="mt-0.5 text-sm font-bold text-brand-600 leading-snug" data-testid="guncel-durum">
               {guncelDurum}
             </p>
           </div>
@@ -1912,61 +1966,60 @@ export default function AcilDosyaDetayPage() {
         </span>
       </div>
 
-      {/* 2. Dosya Aşamaları */}
+      {/* 2. Dosya Aşamaları — Hasar Dosyaları'ndaki ClaimStageStrip ile aynı ince/soluk görünüm */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-3 py-2.5" data-testid="surec-strip">
-        <SectionTitle icon={History} title="Dosya Aşamaları" iconClassName="text-blue-600" />
-        <div className="mt-2 flex items-start w-full min-w-0 overflow-x-auto pb-0.5">
-          {ACIL_STAGES.map((s, i) => {
-            const isActive = i === stageIdx;
-            const isDone = i < stageIdx;
-            const connectorDone = i <= stageIdx;
-            return (
-              <div key={s.key} className="flex-1 flex flex-col items-center relative min-w-[4rem] sm:min-w-0">
-                {i > 0 && (
-                  <div
-                    className={`absolute top-[11px] h-px ${connectorDone ? 'bg-blue-600' : 'bg-slate-200'}`}
-                    style={{ left: 'calc(-50% + 11px)', right: 'calc(50% + 11px)' }}
-                    aria-hidden
-                  />
-                )}
-                <div
-                  className={`relative z-10 flex items-center justify-center rounded-full font-semibold ${
-                    isActive
-                      ? 'h-6 w-6 text-[11px] bg-blue-600 text-white'
-                      : isDone
-                        ? 'h-5 w-5 text-[10px] bg-blue-600 text-white'
-                        : 'h-5 w-5 text-[10px] bg-slate-200 text-slate-500'
-                  }`}
-                  aria-current={isActive ? 'step' : undefined}
-                >
-                  {isDone ? (
-                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" aria-hidden>
-                      <path
-                        d="M3.5 8.2 6.4 11l6.1-6.4"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    i + 1
+        <SectionTitle icon={History} title="Dosya Aşamaları" iconClassName="text-brand-600" />
+        <div className="mt-2 min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
+          <div className="relative flex w-full min-w-0 items-start py-1">
+            {ACIL_STAGES.map((s, i) => {
+              const isActive = i === stageIdx;
+              const isDone = i < stageIdx;
+              const isLast = i === ACIL_STAGES.length - 1;
+              const doneUpToHere = i <= stageIdx;
+              const dotClass = isActive
+                ? 'h-5 w-5 border-2 border-red-600 bg-white ring-2 ring-red-100 shadow-sm'
+                : isDone
+                  ? 'h-5 w-5 border-2 border-slate-300 bg-slate-300'
+                  : 'h-5 w-5 border-2 border-slate-200 bg-white';
+              const labelClass = isActive
+                ? 'text-slate-800 font-semibold'
+                : isDone
+                  ? 'text-slate-400'
+                  : 'text-slate-300';
+              const stemConnectorClass = doneUpToHere ? 'bg-slate-300' : 'bg-slate-100';
+              const prevConnectorClass = i > 0 && i - 1 < stageIdx ? 'bg-slate-300' : 'bg-slate-100';
+              return (
+                <div key={s.key} className={`flex items-start ${i > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}>
+                  {i === 0 && (
+                    <div
+                      className={`relative z-0 mt-2.5 h-0.5 w-3 shrink-0 rounded-full sm:w-5 ${stemConnectorClass}`}
+                      aria-hidden
+                    />
+                  )}
+                  {i > 0 && (
+                    <div
+                      className={`relative z-0 mt-2.5 h-0.5 min-w-[0.75rem] flex-1 rounded-full ${prevConnectorClass}`}
+                      aria-hidden
+                    />
+                  )}
+                  <div className="group relative z-10 flex shrink-0 flex-col items-center" title={s.label}>
+                    <div className={`rounded-full ${dotClass}`} aria-hidden />
+                    <span
+                      className={`mt-1.5 max-w-[4.75rem] text-center text-[9px] leading-tight sm:max-w-[5.5rem] sm:text-[10px] ${labelClass}`}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                  {isLast && (
+                    <div
+                      className={`relative z-0 mt-2.5 h-0.5 w-3 shrink-0 rounded-full sm:w-5 ${stemConnectorClass}`}
+                      aria-hidden
+                    />
                   )}
                 </div>
-                <p
-                  className={`mt-1 text-center text-[9px] leading-tight px-0.5 ${
-                    isActive
-                      ? 'font-semibold text-blue-600'
-                      : isDone
-                        ? 'font-medium text-slate-600'
-                        : 'font-medium text-slate-500'
-                  }`}
-                >
-                  {s.label}
-                </p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -2001,7 +2054,7 @@ export default function AcilDosyaDetayPage() {
           <button
             type="button"
             onClick={focusPriceForm}
-            className="inline-flex items-center justify-center rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+            className="inline-flex items-center justify-center rounded-md bg-brand-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
             data-testid="guncel-alis-satis-gir"
           >
             Dosya Bütçesi Gir
@@ -2046,10 +2099,10 @@ export default function AcilDosyaDetayPage() {
           </div>
 <div
           id="hizli-islemler"
-          className="bg-white rounded-xl border border-slate-100 shadow-sm p-2 space-y-1.5 min-w-0 order-4 xl:shrink-0"
+          className="bg-white rounded-xl border border-slate-100 shadow-sm p-2 space-y-1.5 min-w-0 order-5 xl:shrink-0"
           data-testid="hizli-islemler"
         >
-          <SectionTitle icon={Send} title="Operasyon İşlemleri" iconClassName="text-blue-600" />
+          <SectionTitle icon={Send} title="Operasyon İşlemleri" iconClassName="text-brand-600" />
           <div
             className="grid grid-cols-2 sm:grid-cols-3 gap-1.5"
             data-testid="hizli-islem-kartlari"
@@ -2179,7 +2232,7 @@ export default function AcilDosyaDetayPage() {
               data-visual-state={closeFinanceReady ? 'next' : 'waiting'}
               className={`w-full inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
                 closeFinanceReady
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-2 ring-blue-200 ring-offset-1 hover:bg-blue-700 focus-visible:ring-blue-500'
+                  ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25 ring-2 ring-blue-200 ring-offset-1 hover:bg-blue-700 focus-visible:ring-blue-500'
                   : 'border border-slate-200 bg-slate-100 text-slate-500 opacity-80'
               }`}
             >
@@ -2219,9 +2272,66 @@ export default function AcilDosyaDetayPage() {
           className="flex flex-col gap-2 min-w-0 max-xl:contents xl:h-full"
           data-testid="sag-operasyon-kolon"
         >
-<div
-            ref={priceFormRef}
+          <div
+            ref={findingsFormRef}
             className="rounded-xl border border-slate-100 bg-white shadow-sm p-2.5 space-y-1.5 min-w-0 order-2"
+            data-testid="tespit-bulgulari-section"
+            id="tespit-bulgulari-section"
+          >
+            <SectionTitle icon={ClipboardList} title="Tespit Bulguları *" iconClassName="text-slate-600" />
+            <div
+              className={`border rounded-lg overflow-hidden ${
+                findingsError ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'
+              }`}
+            >
+              <div className="px-3 pt-2 pb-0.5 bg-slate-50 border-b border-slate-100">
+                <span className="text-sm font-bold italic text-slate-800 select-none">
+                  Riziko adreste yapılan incelemeler sonucunda;
+                </span>
+              </div>
+              <div className="relative">
+                <textarea
+                  ref={findingsTextareaRef}
+                  rows={3}
+                  className="w-full px-3 py-2 pr-12 text-sm text-slate-800 focus:outline-none resize-y min-h-[72px] bg-white"
+                  placeholder="bulgular buraya yazılır..."
+                  value={draftFindings}
+                  onChange={(e) => {
+                    setDraftFindings(e.target.value);
+                    if (findingsError) setFindingsError(null);
+                    if (priceFormError?.includes('Tespit Bulguları')) setPriceFormError(null);
+                  }}
+                  onBlur={() => { void saveFindingsText(); }}
+                  data-testid="tespit-bulgulari-input"
+                  aria-required
+                  aria-invalid={Boolean(findingsError)}
+                />
+                <div className="absolute bottom-2 right-2">
+                  <SpeechToText
+                    size="sm"
+                    onTranscript={(text) => {
+                      const next = draftFindings.trim()
+                        ? `${draftFindings.trim()} ${text}`
+                        : text;
+                      setDraftFindings(next);
+                      if (next.trim()) setFindingsError(null);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            {findingsError ? (
+              <p className="text-xs text-status-danger" data-testid="tespit-bulgulari-error">{findingsError}</p>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                {findingsSaving ? 'Kaydediliyor…' : 'Önce tespit bulguları, sonra dosya bütçesi girilir.'}
+              </p>
+            )}
+          </div>
+
+          <div
+            ref={priceFormRef}
+            className="rounded-xl border border-slate-100 bg-white shadow-sm p-2.5 space-y-1.5 min-w-0 order-3"
             data-testid="fiyat-giris"
             id="maliyet-onay"
           >
@@ -2434,7 +2544,7 @@ export default function AcilDosyaDetayPage() {
                 <button
                   type="button"
                   onClick={savePriceFormAndClose}
-                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 h-9 px-3 text-xs font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center justify-center rounded-lg bg-brand-600 h-9 px-3 text-xs font-semibold text-white hover:bg-blue-700"
                   data-testid="fiyat-kaydet-ve-kapat"
                 >
                   Kaydet Ve Kapat
@@ -2473,7 +2583,7 @@ export default function AcilDosyaDetayPage() {
             )}
           </div>
 <div
-            className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 space-y-1.5 order-3"
+            className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 space-y-1.5 order-4"
             data-testid="zorunlu-islemler"
           >
             <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -2519,7 +2629,7 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 onClick={() => requestInsuredWhatsAppSend('initial')}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                 data-testid="kapanis-ilk-bilgilendirme"
               >
                 <MessageCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -2531,7 +2641,7 @@ export default function AcilDosyaDetayPage() {
                 type="button"
                 onClick={() => requestInsuredWhatsAppSend('closure_survey')}
                 disabled={!closureSurveyUnlocked}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="kapanis-anket-mesaji"
                 title={
                   closureSurveyUnlocked
@@ -2547,7 +2657,7 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 onClick={() => void openClosureEmailModal()}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 data-testid="kapanis-email-onizle"
               >
                 <Mail className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -2594,7 +2704,7 @@ export default function AcilDosyaDetayPage() {
             <button
               type="button"
               onClick={() => void confirmDetectedCost()}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+              className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold"
               data-testid="maliyet-onayla"
             >
               Onayla
@@ -2621,7 +2731,7 @@ export default function AcilDosyaDetayPage() {
             <button
               type="button"
               onClick={() => handleCustomerApproval(true)}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+              className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold"
               data-testid="asistans-onayla"
             >
               Onayla
@@ -2769,7 +2879,7 @@ export default function AcilDosyaDetayPage() {
                 <button
                   type="button"
                   onClick={() => requestInsuredWhatsAppSend('initial')}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
                   data-testid="whatsapp-ilk-bilgilendirme-btn"
                 >
                   <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />
@@ -2779,7 +2889,7 @@ export default function AcilDosyaDetayPage() {
                   type="button"
                   onClick={() => requestInsuredWhatsAppSend('closure_survey')}
                   disabled={!closureSurveyUnlocked}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="whatsapp-kapanis-anket-btn"
                 >
                   <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />
@@ -2821,7 +2931,7 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 onClick={requestVendorWhatsAppSend}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500 bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
                 data-testid="whatsapp-gonder-btn"
               >
                 <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />
@@ -2848,7 +2958,7 @@ export default function AcilDosyaDetayPage() {
                 className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-400 bg-blue-50/60 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors shrink-0"
                 data-testid="whatsapp-musteri-gonder-btn"
               >
-                <WhatsAppBrandIcon className="h-3.5 w-3.5 text-blue-600" />
+                <WhatsAppBrandIcon className="h-3.5 w-3.5 text-brand-600" />
                 Müşteri Mesajı Önizle
               </button>
             </div>
@@ -2929,10 +3039,16 @@ export default function AcilDosyaDetayPage() {
                 ) : (
                   <p className="text-xs text-slate-400">İşlem geçmişi henüz yok.</p>
                 )}
+                {vaka.findingsText && (
+                  <div data-testid="tespit-bulgulari-ozet">
+                    <p className="text-xs text-slate-400">Tespit Bulguları</p>
+                    <p className="text-slate-700 mt-0.5 whitespace-pre-wrap">{vaka.findingsText}</p>
+                  </div>
+                )}
                 {vaka.notes && (
                   <div>
                     <p className="text-xs text-slate-400">Notlar</p>
-                    <p className="text-slate-700 mt-0.5">{vaka.notes}</p>
+                    <p className="text-slate-700 mt-0.5 whitespace-pre-wrap">{vaka.notes}</p>
                   </div>
                 )}
               </div>
@@ -2957,7 +3073,7 @@ export default function AcilDosyaDetayPage() {
                 <p className="text-xs font-bold text-red-700 mt-0.5">{fmtCurrency(costSummary.totalGider)}</p>
               </div>
               <div className="rounded-xl bg-blue-50 border border-blue-100 px-2 py-2">
-                <p className="text-[10px] text-blue-600 font-medium">Net Kâr</p>
+                <p className="text-[10px] text-brand-600 font-medium">Net Kâr</p>
                 <p className="text-xs font-bold text-blue-700 mt-0.5">{fmtCurrency(costSummary.netKar)}</p>
               </div>
               <div className="rounded-xl bg-slate-50 border border-slate-100 px-2 py-2">
@@ -3029,7 +3145,7 @@ export default function AcilDosyaDetayPage() {
                             {editError && <p className="text-xs text-red-600">{editError}</p>}
                             <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-2 py-1 text-xs border rounded" />
                             <div className="flex gap-1">
-                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-blue-600 text-white text-[10px] rounded">Kaydet</button>
+                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-brand-600 text-white text-[10px] rounded">Kaydet</button>
                               <button type="button" onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] border rounded">İptal</button>
                             </div>
                           </form>
@@ -3041,7 +3157,7 @@ export default function AcilDosyaDetayPage() {
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <span className="text-xs font-bold text-green-600">+{fmtCurrency(c.amount)}</span>
-                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-blue-600">Düzenle</button>
+                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-brand-600">Düzenle</button>
                               <button type="button" onClick={() => handleDeleteCost(c.id)} className="text-[10px] text-slate-400 hover:text-red-600">Sil</button>
                             </div>
                           </>
@@ -3089,7 +3205,7 @@ export default function AcilDosyaDetayPage() {
                             <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-2 py-1 text-xs border rounded" />
                             <VendorSelector value={editVendor} onChange={setEditVendor} />
                             <div className="flex gap-1">
-                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-blue-600 text-white text-[10px] rounded">Kaydet</button>
+                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-brand-600 text-white text-[10px] rounded">Kaydet</button>
                               <button type="button" onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] border rounded">İptal</button>
                             </div>
                           </form>
@@ -3104,7 +3220,7 @@ export default function AcilDosyaDetayPage() {
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <span className="text-xs font-bold text-red-600">-{fmtCurrency(c.amount)}</span>
-                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-blue-600">Düzenle</button>
+                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-brand-600">Düzenle</button>
                               <button type="button" onClick={() => handleDeleteCost(c.id)} className="text-[10px] text-slate-400 hover:text-red-600">Sil</button>
                             </div>
                           </>
@@ -3151,7 +3267,7 @@ export default function AcilDosyaDetayPage() {
           <button
             type="button"
             onClick={() => document.querySelector('[data-testid="tedarikci-onerileri"]')?.scrollIntoView({ behavior: 'smooth' })}
-            className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-blue-600 text-white text-xs font-semibold"
+            className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-brand-600 text-white text-xs font-semibold"
           >
             Tedarikçi
           </button>
@@ -3216,7 +3332,7 @@ export default function AcilDosyaDetayPage() {
                     name="approvalChannel"
                     checked={approvalChannel === opt.id}
                     onChange={() => setApprovalChannel(opt.id)}
-                    className="accent-blue-600"
+                    className="accent-brand-600"
                   />
                   <span className="text-sm font-medium text-slate-800">{opt.label}</span>
                 </label>
@@ -3234,7 +3350,7 @@ export default function AcilDosyaDetayPage() {
                 type="button"
                 disabled={approvalBusy}
                 onClick={handleApprovalSubmit}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-50"
                 data-testid="onay-talebi-gonder"
               >
                 {approvalBusy ? 'Gönderiliyor...' : 'Oluştur'}
@@ -3328,7 +3444,7 @@ export default function AcilDosyaDetayPage() {
                 type="button"
                 disabled={closureSendBusy || closurePreviewLoading || !closurePreview?.canSend}
                 onClick={() => void handleSendClosureEmail()}
-                className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-45"
+                className="w-full py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-45"
                 data-testid="kapanis-email-gonder"
               >
                 {closureSendBusy ? 'Gönderiliyor...' : 'Onayla Ve Gönder'}
@@ -3402,7 +3518,7 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 onClick={confirmCustomerGroupWhatsAppSend}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold"
                 data-testid="musteri-mesaj-onayla"
               >
                 Onayla Ve Gönder
@@ -3479,7 +3595,7 @@ export default function AcilDosyaDetayPage() {
                 type="button"
                 disabled={closeBusy || financeBusy}
                 onClick={() => { void handleCloseAndFinance(true); }}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-50"
                 data-testid="onay-dialog-onayla"
               >
                 Eksik İşlemlerle Devam Et

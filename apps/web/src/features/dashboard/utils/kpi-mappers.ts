@@ -35,10 +35,10 @@ export function mapSlaToCards(overall: SlaOverallMetrics): SlaCard[] {
     {
       label: 'Sağlıklı',
       value: overall.healthy,
-      color: 'bg-emerald-500',
+      color: 'bg-status-success',
       text: 'text-emerald-700 dark:text-emerald-300',
     },
-    { label: 'Riskli', value: overall.atRisk, color: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-300' },
-    { label: 'Kritik', value: overall.critical, color: 'bg-red-500', text: 'text-red-700 dark:text-red-300' },
+    { label: 'Riskli', value: overall.atRisk, color: 'bg-status-warning', text: 'text-amber-700 dark:text-amber-300' },
+    { label: 'Kritik', value: overall.critical, color: 'bg-status-danger', text: 'text-red-700 dark:text-red-300' },
   ];
 }

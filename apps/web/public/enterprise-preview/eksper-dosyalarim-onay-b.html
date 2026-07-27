@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dosyalarım — Öneri B (Mevcut Kabuk, Minimal)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .badge { display:inline-flex;align-items:center;height:23px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;line-height:1; }
+  </style>
+</head>
+<body class="min-h-screen bg-[#F5F7FA] text-slate-800 antialiased">
+  <header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-3 lg:px-4">
+    <div class="flex items-center gap-2 pl-1">
+      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B3A6E] text-[9px] font-bold text-white">M</div>
+      <div class="leading-tight">
+        <p class="text-[13px] font-bold tracking-wide text-[#0B3A6E]">MERİDYEN</p>
+        <p class="text-[9px] font-semibold tracking-[0.12em] text-sky-600">ASSISTANCE</p>
+      </div>
+    </div>
+    <div class="mx-auto flex h-10 w-full max-w-xl items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-sm text-slate-400">
+      <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
+      Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…
+      <span class="ml-auto text-[11px] text-slate-400">⌘K</span>
+    </div>
+    <div class="ml-auto flex items-center gap-3 text-sm text-slate-600">
+      <span class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100">🔔</span>
+      <span class="hidden items-center gap-1 sm:inline-flex">❓ Yardım</span>
+      <span class="hidden items-center gap-1 sm:inline-flex">☀ Tema</span>
+      <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">ET</span>
+        <span class="text-sm font-medium">Eksper Test</span>
+      </span>
+    </div>
+  </header>
+
+  <div class="flex min-h-[calc(100vh-3.5rem)]">
+    <aside class="hidden w-[232px] shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+      <div class="px-4 pb-2 pt-5">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Eksper Paneli</p>
+      </div>
+      <nav class="space-y-0.5 px-2">
+        <a class="flex items-center gap-2.5 rounded-lg bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-800 ring-1 ring-sky-100" href="#">
+          <span class="text-sky-700">📁</span> Dosyalarım
+        </a>
+        <a class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50" href="#"><span>🔎</span> İnceleme Bekleyenler</a>
+        <a class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50" href="#"><span>📄</span> Rapor Bekleyenler</a>
+        <a class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50" href="#"><span>🛡️</span> Onay Bekleyenler</a>
+      </nav>
+      <div class="mt-auto space-y-1 border-t border-slate-100 p-3 text-sm text-slate-500">
+        <a class="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-50" href="#">❓ Yardım</a>
+        <button class="flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-50">‹ Menüyü Daralt</button>
+        <p class="px-2 pt-2 text-[10px] text-slate-400">Web v356 · v356-dashboard-rc1</p>
+      </div>
+    </aside>
+
+    <main class="min-w-0 flex-1 p-4 lg:p-6">
+      <div class="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+        <strong>Öneri B — Onay için:</strong> Mevcut kabuk + mevcut sayfa düzeni aynı kalır. KPI ve filtre şeridi eklenmez.
+        Yalnızca tablo satırı / badge / şirket avatarı / tipografi / boşluk kalitesi yükseltilir (facelift).
+      </div>
+
+      <div class="mb-1 text-xs text-slate-400">
+        <span>Dashboard</span> <span class="mx-1">/</span>
+        <span>Eksper Paneli</span> <span class="mx-1">/</span>
+        <span class="font-medium text-slate-600">Dosyalarım</span>
+      </div>
+
+      <div class="mb-1 flex items-center justify-between gap-3">
+        <h1 class="text-[20px] font-bold tracking-tight text-[#10151F]">Dosyalarım</h1>
+        <span class="rounded-full bg-blue-50 px-3 py-1 text-[12.5px] font-semibold text-blue-700 ring-1 ring-blue-100">8 Dosya</span>
+      </div>
+      <p class="mb-4 text-[13px] text-[#9AA3AF]">İhbarını Yaptığım Ve İşlem Yaptığım Dosyalar</p>
+
+      <section class="overflow-hidden rounded-[12px] border border-[#E7E9EE] bg-white shadow-[0_1px_2px_rgba(16,21,31,0.05)]">
+        <table class="min-w-full text-left">
+          <thead class="bg-[#F5F6F8]">
+            <tr class="border-b border-[#E7E9EE] text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">
+              <th class="px-4 py-3">Dosya No</th>
+              <th class="px-4 py-3">Sigorta Şirketi</th>
+              <th class="px-4 py-3">Konu</th>
+              <th class="px-4 py-3">Durum</th>
+              <th class="px-4 py-3">Tarih</th>
+              <th class="px-4 py-3">Akış</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#E7E9EE] text-[13.5px]" id="rows"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const rows = [
+      ['HS-2026-0142','İHB-88421','Axa Sigorta','AX','bg-sky-100 text-sky-800','Yangın Hasarı','İncelemede','bg-[#FEF3C7] text-[#B45309]','18.07.2026'],
+      ['HS-2026-0138','İHB-88390','Allianz','AL','bg-indigo-100 text-indigo-800','Su Baskını','Rapor Bekliyor','bg-[#FBE4E1] text-[#C0392B]','17.07.2026'],
+      ['HS-2026-0131','İHB-88312','Sompo Sigorta','SO','bg-violet-100 text-violet-800','Elektrik Arızası','Onay Bekliyor','bg-[#F1E9FC] text-[#7C3AED]','16.07.2026'],
+      ['HS-2026-0128','İHB-88277','Ray Sigorta','RA','bg-amber-100 text-amber-800','Cam Kırılması','Ekspertizde','bg-[#E9EEFB] text-[#2648C7]','15.07.2026'],
+      ['HS-2026-0120','İHB-88155','Türkiye Sigorta','TS','bg-emerald-100 text-emerald-800','Hırsızlık','Tamamlandı','bg-[#E4F3EA] text-[#166B3F]','12.07.2026'],
+      ['HS-2026-0114','İHB-88002','HDI Sigorta','HD','bg-rose-100 text-rose-800','Makine Kırılması','İncelemede','bg-[#FEF3C7] text-[#B45309]','11.07.2026'],
+    ];
+    document.getElementById('rows').innerHTML = rows.map((r) => `
+      <tr class="h-[54px] hover:bg-[#F5F6F8]">
+        <td class="px-4 py-3"><div class="font-semibold text-[#10151F]">${r[0]}</div><div class="text-[11.5px] text-[#9AA3AF]">${r[1]}</div></td>
+        <td class="px-4 py-3"><span class="inline-flex items-center gap-2"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold ${r[4]}">${r[3]}</span><span class="font-medium">${r[2]}</span></span></td>
+        <td class="px-4 py-3 text-[#5B6472]">${r[5]}</td>
+        <td class="px-4 py-3"><span class="badge ${r[7]}">${r[6]}</span></td>
+        <td class="px-4 py-3 text-[11.5px] tabular-nums text-[#9AA3AF]">${r[8]}</td>
+        <td class="px-4 py-3"><button class="rounded-lg px-2 py-1 text-[12.5px] font-semibold text-blue-600 hover:bg-blue-50">Akış</button></td>
+      </tr>`).join('');
+  </script>
+</body>
+</html>

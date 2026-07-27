@@ -287,7 +287,7 @@ export default function TahsilatlarPage() {
                         </PanelTableTd>
                         <PanelTableTd colId="fileCase" className="px-4 py-3">
                           {p.claimFileId ? (
-                            <a href={`/panel/hasar-dosyalari/${p.claimFileId}`} className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs">
+                            <a href={`/panel/hasar-dosyalari/${p.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
                               {p.claimFile?.fileNo ?? '—'}
                             </a>
                           ) : '—'}
@@ -369,7 +369,7 @@ function FinanceSummaryStrip({
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
       <div className="flex flex-col lg:flex-row lg:items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800">
-        <section className="flex-1 min-w-0 px-3 py-2.5 border-l-[3px] border-l-emerald-500">
+        <section className="flex-1 min-w-0 px-3 py-2.5 border-l-[3px] border-l-status-success">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1">
               <ArrowDownLeft className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -378,7 +378,7 @@ function FinanceSummaryStrip({
             <PipelineBar
               realized={summary.totalIncoming}
               open={tahsilatOpen}
-              realizedClass="bg-emerald-500"
+              realizedClass="bg-status-success"
               openClass="bg-emerald-200 dark:bg-emerald-900/50"
               className="w-20 hidden sm:block"
             />
@@ -396,7 +396,7 @@ function FinanceSummaryStrip({
           <PipelineBar
             realized={summary.totalIncoming}
             open={tahsilatOpen}
-            realizedClass="bg-emerald-500"
+            realizedClass="bg-status-success"
             openClass="bg-emerald-200 dark:bg-emerald-900/50"
             className="mt-2 sm:hidden"
           />
@@ -576,7 +576,7 @@ function CashFlowBar({ incoming, outgoing }: { incoming: number; outgoing: numbe
   const inPct = pct(incoming, total);
   return (
     <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex">
-      <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${inPct}%` }} />
+      <div className="bg-status-success transition-all duration-500" style={{ width: `${inPct}%` }} />
       <div className="bg-orange-400 flex-1 transition-all duration-500" />
     </div>
   );

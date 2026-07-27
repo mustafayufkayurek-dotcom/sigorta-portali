@@ -870,6 +870,7 @@ function GenelBakisTab({
   const [historyQuery, setHistoryQuery] = useState('');
   const [selectedArchive, setSelectedArchive] = useState<any>(null);
   const [selfSender, setSelfSender] = useState('');
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const serviceTypes = resolveServiceTypeSummary(vendor);
   const whatsappValue = resolveWhatsappValue(vendor);
 
@@ -891,13 +892,14 @@ function GenelBakisTab({
   }, [loadOverview]);
 
   const openArchive = useCallback(async (archiveId: string) => {
+    setArchiveError(null);
     try {
       const response = await axios.get(`${API}/chat-archives/${archiveId}`, { headers: authHeader() });
       const detail = response.data.data;
       setSelectedArchive(detail);
       setSelfSender(detail?.parsedMessages?.[0]?.sender ?? '');
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      setArchiveError(error?.response?.data?.message ?? 'Yazışma açılamadı.');
     }
   }, []);
 
@@ -1117,6 +1119,9 @@ function GenelBakisTab({
       </SectionCard>
 
       <SectionCard title="WhatsApp Geçmişi" subtitle="Yazışmalar ve belge gönderimleri dosya bazında görünür">
+        {archiveError ? (
+          <p className="mb-3 text-sm font-medium text-red-600">{archiveError}</p>
+        ) : null}
         {whatsappHistory.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-400">Henüz WhatsApp geçmişi oluşmadı.</p>
         ) : (
@@ -1603,10 +1608,12 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
   const [filePayments, setFilePayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [stmtRes, summaryRes, payRes] = await Promise.all([
         axios.get(`${API}/vendor-statements?vendorId=${vendorId}&limit=50`, { headers: authHeader() }),
@@ -1616,7 +1623,9 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
       setStatements(stmtRes.data.data ?? []);
       setSummary(summaryRes.data);
       setFilePayments(payRes.data.data ?? []);
-    } catch { /* ignore */ }
+    } catch {
+      setLoadError(true);
+    }
     setLoading(false);
   }, [vendorId]);
 
@@ -1646,6 +1655,11 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
 
   return (
     <div className="space-y-5">
+      {loadError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Finans bilgileri yüklenemedi. Lütfen sayfayı yenileyin.
+        </div>
+      ) : null}
       {/* Özet Kartlar */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1756,7 +1770,7 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
                     {stmt.status === 'DRAFT' && (
                       <button
                         onClick={() => handleSend(stmt.id)}
-                        className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
+                        className="text-xs px-2 py-1 bg-brand-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
                       >
                         Gönder
                       </button>

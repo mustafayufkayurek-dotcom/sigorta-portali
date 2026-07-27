@@ -130,7 +130,7 @@ function CollapsibleSectionCard({
           <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
           {subtitle && !open && <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <span className="text-xs font-medium text-blue-600 shrink-0">{open ? 'Gizle' : 'Detayları Göster'}</span>
+        <span className="text-xs font-medium text-brand-600 shrink-0">{open ? 'Gizle' : 'Detayları Göster'}</span>
       </button>
       {open && <div className="px-4 pb-4 pt-0 border-t border-slate-100">{children}</div>}
     </div>
@@ -288,7 +288,7 @@ function DosyaSayfaUstu({
       {claim.customer && (
         <div className="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100/80 flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-7 h-7 rounded-lg bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <span className="w-7 h-7 rounded-lg bg-brand-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
               {(claim.customer.fullName ?? claim.customer.companyName ?? '?').charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0">
@@ -705,7 +705,8 @@ function DosyadaKimlerVarCard({
     }
   };
 
-  const handleRemoveSupplier = async (vendorId: string) => {
+  const handleRemoveSupplier = async (vendorId: string, vendorName?: string) => {
+    if (!window.confirm(`${vendorName ? `"${vendorName}" tedarikçisini` : 'Bu tedarikçiyi'} dosyadan kaldırmak istediğinize emin misiniz?`)) return;
     setRemovingSupplierId(vendorId);
     setAssignError('');
     setAssignSuccess('');
@@ -834,14 +835,14 @@ function DosyadaKimlerVarCard({
               <button
                 type="button"
                 onClick={() => togglePanel('office')}
-                className="text-[11px] font-medium text-blue-600 hover:text-blue-800 shrink-0"
+                className="text-[11px] font-medium text-brand-600 hover:text-blue-800 shrink-0"
               >
                 {activePanel === 'office' ? 'Kapat' : 'Değiştir'}
               </button>
             )}
           </div>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-full bg-brand-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
               {currentOfficeUser ? userInitial(currentOfficeUser) : '—'}
             </div>
             <p className={`text-base font-semibold truncate ${currentOfficeUser ? 'text-slate-900' : 'text-slate-400 italic'}`}>
@@ -864,7 +865,7 @@ function DosyadaKimlerVarCard({
                 staffPool.office,
                 manualOfficeId,
                 setManualOfficeId,
-                'bg-blue-600',
+                'bg-brand-600',
               )}
             </AssignPopover>
           )}
@@ -1041,7 +1042,7 @@ function DosyadaKimlerVarCard({
                         <span className="font-medium text-purple-900 truncate">{s.name}</span>
                         <button
                           type="button"
-                          onClick={() => handleRemoveSupplier(s.id)}
+                          onClick={() => handleRemoveSupplier(s.id, s.name)}
                           disabled={removingSupplierId === s.id}
                           className="shrink-0 text-[11px] font-medium text-red-600 hover:text-red-800 disabled:opacity-50"
                         >
@@ -1393,7 +1394,7 @@ export default function ClaimFileDetailPage() {
     return (
       <div className="py-16 text-center space-y-3">
         <p className="text-slate-500">{loadError ?? 'Dosya Bulunamadı.'}</p>
-        <button type="button" onClick={() => router.push('/panel/operasyon')} className="text-sm text-blue-600 hover:underline">
+        <button type="button" onClick={() => router.push('/panel/operasyon')} className="text-sm text-brand-600 hover:underline">
           Operasyon sayfasına dön
         </button>
       </div>
@@ -1404,7 +1405,13 @@ export default function ClaimFileDetailPage() {
     <div>
       <DosyaSayfaUstu
         claim={claim}
-        onBack={() => router.push('/panel/hasar-dosyalari')}
+        onBack={() => {
+          if (typeof window !== 'undefined' && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push('/panel/hasar-dosyalari');
+          }
+        }}
         reportEditHref={reportEditHref}
         onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
         focusSigortali={focusSigortali}

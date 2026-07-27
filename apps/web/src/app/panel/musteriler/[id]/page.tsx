@@ -790,7 +790,7 @@ export default function CustomerDetailPage() {
                   <Badge variant="red">⛔ Kara Liste</Badge>
                 )}
                 <Badge variant={customer.status === 'active' ? 'green' : customer.status === 'blacklisted' ? 'red' : 'gray'}>
-                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${customer.status === 'active' ? 'bg-green-500' : customer.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${customer.status === 'active' ? 'bg-green-500' : customer.status === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
                   {customer.status === 'active' ? 'Aktif' : customer.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
                 </Badge>
               </div>

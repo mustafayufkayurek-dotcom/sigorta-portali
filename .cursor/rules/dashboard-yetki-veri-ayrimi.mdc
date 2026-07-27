@@ -1,0 +1,29 @@
+---
+description: Dashboard/panel widget'larında rol bazlı veri erişimi ve kısmi hata izolasyonu — "bir kaynağın izni yok diye tüm panel kırılmasın" kalıcı kuralı
+alwaysApply: true
+---
+
+# Dashboard Yetki ve Veri Ayrımı (kalıcı kural)
+
+**Kaynak olay:** "Bekleyen Operasyonlar" paneli ve "Günün Akışı" grafik satırı, Dosya Sorumlusu (`office_staff`) rolü için finans-kısıtlı bir veri kaynağını (`/dashboard/daily-flow`, `/dashboard/finance-bottlenecks`) sessizce çağırdığı için canlıda hatalı/kırık görünüyordu. Kök neden: bir uç nokta başlangıçta yalnız Yönetim Dashboard'u için yazılmış, sonradan başka bir rolün ekranına eklenmiş, izin kısıtı güncellenmemiş.
+
+## Zorunlu kontrol — yeni widget veya mevcut hook'u yeni bir role eklerken
+
+1. **Önce arka uç izin kısıtını kontrol et.** Kullanacağın hook hangi `/dashboard/...` uç noktasını çağırıyor? O uç nokta backend'de (`dashboard.controller.ts`) `assertDashboardFinanceAccess` gibi bir rol kısıtına sahip mi? Hedef rolün (örn. `office_staff`, `field_staff`) bu kısıtı geçip geçemediğini doğrula.
+2. **Bir widget/hook birden fazla veri kaynağını birleştiriyorsa**, kaynaklardan biri izin hatası (403) verebiliyorsa, bu hata **tüm widget'ı çökertmemeli**. `isError = a.isError || b.isError` gibi OR'lu birleşik hata durumları YASAK eğer kaynaklardan biri role göre kısıtlıysa — o kaynağın hatası sessizce/eksik veri olarak ele alınmalı, widget'ın geri kalanı çalışmaya devam etmeli.
+3. **Rol bazlı veri görünürlüğü iş kuralıdır, teknik detay değildir.** Ofis/saha rolleri finans özetine (tahsilat tutarı vb. parasal alanlar) erişemez — bu kasıtlı bir karardır. **Güncelleme (27.07.2026, Mustafa onayı):** "Haftalık Operasyon Trendi" grafiği ve KPI sparkline'ları (`teamDensity`/`today` — operasyon sayıları, parasal değer değil) artık Dosya Sorumlusu (`office_staff`) ekranında **bilerek gösteriliyor**; İK riski değerlendirilip kabul edildi. `/dashboard/daily-flow` uç noktası tüm rollere açık, yalnızca `lastWeek.collectionAmount` (tahsilat tutarı) finans/yönetici dışı rollerden backend'de gizlenir (`getDailyFlow` → `hasDashboardFinanceAccess` redaksiyonu). Bu grafiği bir daha "hata" sanıp kaldırma — yeniden kaldırmak/gizlemek yeni bir ürün kararı gerektirir, Mustafa'ya sor.
+4. **Var olan bir hook'u "hazır zaten var" diye yeni bir role/ekrana taşıma.** Önce o hook'un hangi rol için tasarlandığını (dosya adı, yorum, `@Get` üstündeki izin notu) oku.
+
+## Test — yeni widget eklerken
+
+Widget'ı hedef rolün gerçekten sahip olduğu bir kullanıcıyla (veya en azından o rolün izin setiyle) kontrol et: sayfa hatasız açılıyor mu, yoksa arka planda 403 alıp sessizce/görünür şekilde bozuluyor mu?
+
+## Örnek
+
+```ts
+// ❌ BAD — finans kısıtlı kaynak widget'ın tamamını kırar
+const isError = pendingQuery.isError || financeQuery.isError;
+
+// ✅ GOOD — izin kısıtlı kaynağın hatası ayrı ele alınır, widget çalışmaya devam eder
+const isError = pendingQuery.isError; // financeQuery sadece yetkiliyse kullanılır, hatası fatal değildir
+```

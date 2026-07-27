@@ -1,0 +1,29 @@
+---
+description: Eksper/Sigorta portal operasyon dili — rol bakış açısı
+globs:
+  - apps/web/src/app/panel/eksper-portal/**/*
+  - apps/web/src/app/panel/sigorta-portal/**/*
+  - apps/web/src/config/portal-nav.ts
+  - apps/web/src/components/portal/**/*
+alwaysApply: false
+---
+
+# Portal Operasyon Dili
+
+Kaynak: `docs/project-governance/URUN_KARARI_PORTAL_OPERASYON_DILI.md`
+
+## Eksper Portalı
+
+- Kullanıcı metninde **Atanmış Dosyalar** yazma.
+- Kullan: **Dosyalarım**, **İhbarını Yaptığım Dosyalar**, **İşlem Yaptığım Dosyalar**.
+- Dil eksper bakış açısını yansıtır.
+
+## Sigorta Portalı
+
+- **Atanmış Dosyalar** ifadesi burada kullanılır.
+- Eksper dilini Sigorta ekranına kopyalama.
+
+## Ortak
+
+- Tasarım dili ortak; operasyon dili role göre değişir.
+- Yalnız UI metni; gereksiz redesign yok.

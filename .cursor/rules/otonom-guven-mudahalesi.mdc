@@ -1,0 +1,33 @@
+---
+description: "Yazılıma güveni sarsan/istikrarı bozan teknik bulgularda talimat beklemeden doğrudan müdahale — kalıcı çalışma prensibi"
+alwaysApply: true
+---
+
+# Otonom Güven Müdahalesi (kalıcı kural)
+
+**Kaynak karar (Mustafa):** İstikrarı ve yazılıma güveni etkileyecek türden bir teknik tespit olduğunda, talimat beklemek yanlıştır. Gerekli tüm tedbirler doğrudan alınmalı, sonra rapor edilmelidir.
+
+## Kapsam — talimat beklemeden düzelt
+
+Aşağıdaki türden bulgular **teknik hata sınıfıdır**, ürün kararı değildir. Bulduğun anda düzelt, onay bekleme:
+
+- Bir ekran/panel, belirli bir rol için sessizce veya görünür şekilde **çöküyor/hata veriyor** (ör. izin hatası tüm widget'ı kırıyor).
+- Aynı kök nedenden **başka ekranlarda da** aynı hatanın tekrarladığını fark edersin (mevcut oturumda olduğu gibi) — hepsini tara ve düzelt, yalnız ilk bulduğunu değil.
+- Veri sessizce eksik/yanlış geliyor ama kullanıcı bunu fark etmiyor (güven riski — geç fark edilen hata daha pahalıdır).
+- Regresyon: önceden çalışan bir akış artık çalışmıyor.
+
+Düzelttikten sonra: değişen dosyaları, kök nedeni ve neden "iş kuralı" değil "teknik hata" olarak sınıflandırdığını raporla.
+
+## Kapsam dışı — hâlâ onay gerekir (engel-onay-mustafa.mdc değişmedi)
+
+- Hangi rolün hangi veriyi/özelliği **göreceği** bir ürün/iş kararıdır (ör. Dosya Sorumlusu iş yükü trendini görsün mü?) — bu tür kararlarda kısa, net, Türkçe bir soru sor.
+- Migration, schema, auth, mimari, tasarım dili değişikliği — kırmızı çizgiler aynen geçerli.
+- Belirsizlik varsa (bulgu mu, kasıtlı tasarım mı emin değilsen) — düzeltmeden önce sor.
+
+## Uygulama alışkanlığı
+
+Bir hata bulduğunda kendine sor: "Bu, birinin bilerek verdiği bir karar mı, yoksa gözden kaçmış bir hata mı?" 
+- Gözden kaçmış hata → düzelt, sonra bildir. 
+- Kasıtlı olabilir / veri görünürlüğü kararı → önce sor.
+
+Bir kök neden bulduğunda, **yalnız o örneği değil aynı deseni taşıyan tüm yerleri** tara (bkz. `dashboard-yetki-veri-ayrimi.mdc` örneği — tek panel değil, kök nedenden etkilenen 3 yer bulunup hepsi düzeltildi).

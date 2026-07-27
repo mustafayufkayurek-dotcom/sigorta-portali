@@ -47,7 +47,7 @@ export function DoubleDeleteConfirm({
               <button type="button" onClick={close} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200">
                 Vazgeç
               </button>
-              <button type="button" onClick={confirmStep1} className="px-4 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white">
+              <button type="button" onClick={confirmStep1} className="px-4 py-2 rounded-xl text-sm font-semibold bg-status-warning hover:bg-amber-600 text-white">
                 Devam Et
               </button>
             </div>
@@ -59,7 +59,7 @@ export function DoubleDeleteConfirm({
               Onaylamak için dosya numarasını yazın: <span className="font-mono font-semibold">{fileNo}</span>
             </p>
             <input
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-status-danger/20 focus:border-red-400"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               placeholder="Dosya no"

@@ -215,12 +215,12 @@ export default function SozlesmelerPage() {
         title={editItem ? 'Sözleşmeyi Düzenle' : 'Yeni Sözleşme'}
         onSave={handleSave} saving={saving} error={error} maxWidth="xl">
         <div>
-          <label className={labelCls}>Başlık <span className="text-red-500">*</span></label>
+          <label className={labelCls}>Başlık <span className="text-status-danger">*</span></label>
           <input type="text" className={inputCls} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Sözleşme başlığı" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Tür <span className="text-red-500">*</span></label>
+            <label className={labelCls}>Tür <span className="text-status-danger">*</span></label>
             <select className={`${inputCls} bg-white`} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
               <option value="kvkk">KVKK Aydınlatma Metni</option>
               <option value="gizlilik">Gizlilik Taahhütnamesi</option>
@@ -235,9 +235,9 @@ export default function SozlesmelerPage() {
         </div>
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className={labelCls}>İçerik (HTML) <span className="text-red-500">*</span></label>
+            <label className={labelCls}>İçerik (HTML) <span className="text-status-danger">*</span></label>
             {!editItem && (
-              <button type="button" onClick={applyTemplate} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              <button type="button" onClick={applyTemplate} className="text-xs text-brand-600 hover:text-blue-700 font-medium">
                 Meridyen Şablonu Uygula
               </button>
             )}
@@ -249,7 +249,7 @@ export default function SozlesmelerPage() {
         <label className="flex items-center gap-3 cursor-pointer select-none">
           <button type="button" role="checkbox" aria-checked={form.isActive}
             onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
-            className={`w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${form.isActive ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 hover:border-blue-400'}`}>
+            className={`w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${form.isActive ? 'bg-brand-600 border-brand-600' : 'bg-white border-slate-300 hover:border-blue-400'}`}>
             {form.isActive && (
               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />

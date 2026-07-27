@@ -631,8 +631,7 @@ function OperasyonPageContent() {
         await axios.delete(`${API}/emergency/cases/${deleteTarget.id}`, { headers: authHeader() });
       }
       setDeleteTarget(null);
-      await loadClaims();
-      await loadStats();
+      await Promise.all([loadClaims(), loadCases(), loadStats()]);
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
         ? e.response?.data?.message ?? e.message
@@ -647,7 +646,7 @@ function OperasyonPageContent() {
     <TableColumnsProvider value={tableColumns}>
     <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Operasyon</span>
       </nav>
@@ -693,7 +692,7 @@ function OperasyonPageContent() {
         <OpsStripKpi
           label="Açık Dosya"
           value={opsStats?.open ?? '—'}
-          color="bg-blue-600"
+          color="bg-brand-600"
           icon={FolderOpen}
           active={opsPreset === 'open'}
           onClick={() => togglePreset('open')}
@@ -701,7 +700,7 @@ function OperasyonPageContent() {
         <OpsStripKpi
           label="Onay Bekleyen"
           value={opsStats?.approvalPending ?? '—'}
-          color="bg-amber-500"
+          color="bg-status-warning"
           icon={Hourglass}
           active={opsPreset === 'approval_pending'}
           onClick={() => togglePreset('approval_pending')}
@@ -808,7 +807,7 @@ function OperasyonPageContent() {
                     type="button"
                     onClick={() => applyFilterType(t)}
                     className={`px-3 py-1.5 transition-colors ${
-                      filterType === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                      filterType === t ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     {t === 'all' ? 'Hepsi' : t === 'hasar' ? 'Hasar' : 'Acil'}
@@ -854,7 +853,7 @@ function OperasyonPageContent() {
                   opsPreset === preset
                     ? preset === 'approval_72h' || preset === 'delay_risk'
                       ? 'bg-red-600 text-white border-red-600'
-                      : 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-brand-600 text-white border-brand-600'
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >

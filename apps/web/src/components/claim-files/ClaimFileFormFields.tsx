@@ -35,14 +35,14 @@ export function ClaimFileFieldInput({
   onBlur?: () => void;
 }) {
   const cls = error
-    ? `${claimFileInputClass} border-red-400 ring-2 ring-red-500/20`
+    ? `${claimFileInputClass} border-red-400 ring-2 ring-status-danger/20`
     : claimFileInputClass;
 
   return (
     <div>
       <label className="block text-xs font-medium text-slate-600 mb-1.5">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="text-status-danger ml-0.5">*</span>}
       </label>
       {multiline ? (
         <textarea
@@ -85,7 +85,7 @@ export function ClaimFileFieldInput({
           className={cls}
         />
       )}
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+      {error && <p className="text-xs text-status-danger mt-0.5">{error}</p>}
     </div>
   );
 }

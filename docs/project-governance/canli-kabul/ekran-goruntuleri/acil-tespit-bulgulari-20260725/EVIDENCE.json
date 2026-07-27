@@ -1,0 +1,8 @@
+{
+  "at": "2026-07-25T08:27:28.668Z",
+  "base": "http://localhost:3001",
+  "url": "http://localhost:3001/panel/operasyon?filter=acil&yeni=1",
+  "labelText": "Tespit Bulguları *",
+  "requiredErrorVisible": true,
+  "fieldPresent": true
+}

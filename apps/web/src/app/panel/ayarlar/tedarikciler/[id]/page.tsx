@@ -49,11 +49,11 @@ function SectionCard({ title, children }: { title: string; children: React.React
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Panel</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Panel</a>
         <span>/</span>
-        <a href="/panel/ayarlar" className="hover:text-blue-600 transition-colors">Ayarlar</a>
+        <a href="/panel/ayarlar" className="hover:text-brand-600 transition-colors">Ayarlar</a>
         <span>/</span>
-        <a href="/panel/ayarlar/tedarikciler" className="hover:text-blue-600 transition-colors">Tedarikciler</a>
+        <a href="/panel/ayarlar/tedarikciler" className="hover:text-brand-600 transition-colors">Tedarikciler</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Id</span>
       </nav>
@@ -255,7 +255,7 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
             districts={districts}
             maxHeightClass="max-h-32"
             gridClassName="grid grid-cols-3 gap-1"
-            accentClass="accent-blue-600"
+            accentClass="accent-brand-600"
             isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvince.id, districtId)}
             onToggle={(districtId) => toggleArea(selectedProvince.id, districtId)}
             className="mb-3"
@@ -272,13 +272,13 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
                   <button type="button" onClick={() => {
                     const key = sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`;
                     setServiceAreas((prev) => prev.filter((x) => (x.districtId ? `${x.provinceId}:${x.districtId}` : `${x.provinceId}:`) !== key));
-                  }} className="text-blue-400 hover:text-red-500">×</button>
+                  }} className="text-blue-400 hover:text-status-danger">×</button>
                 </span>
               );
             })}
           </div>
         )}
-        <button type="button" onClick={handleSave} disabled={saving} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+        <button type="button" onClick={handleSave} disabled={saving} className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </SectionCard>
@@ -331,13 +331,13 @@ function IsGruplariTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void
       <SectionCard title="İş Gruplarını Düzenle">
         <div className="grid grid-cols-3 gap-2 mb-4 max-h-48 overflow-y-auto">
           {workGroups.map((wg) => (
-            <label key={wg.id} className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer hover:text-indigo-600">
+            <label key={wg.id} className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer hover:text-brand-600">
               <input type="checkbox" checked={selectedIds.includes(wg.id)} onChange={() => toggle(wg.id)} className="rounded" />
               {wg.name}
             </label>
           ))}
         </div>
-        <button type="button" onClick={handleSave} disabled={saving} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+        <button type="button" onClick={handleSave} disabled={saving} className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50">
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </SectionCard>
@@ -368,7 +368,7 @@ function PerformansTab({ vendorId }: { vendorId: string }) {
           <p className="text-xs text-slate-500 mt-1">Toplam Tamamlanan İş</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-center">
-          <p className="text-3xl font-bold text-blue-600">{stats.activeJobs}</p>
+          <p className="text-3xl font-bold text-brand-600">{stats.activeJobs}</p>
           <p className="text-xs text-slate-500 mt-1">Aktif İş</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-center">
@@ -463,7 +463,7 @@ export default function VendorDetailPage() {
       {/* Tedarikçi Bilgileri Bandı — tüm sekmelerde sabit */}
       <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={`w-7 h-7 rounded-lg text-white text-xs font-bold flex items-center justify-center flex-shrink-0 ${vendor.entityType !== 'individual' ? 'bg-blue-600' : 'bg-purple-600'}`}>
+          <span className={`w-7 h-7 rounded-lg text-white text-xs font-bold flex items-center justify-center flex-shrink-0 ${vendor.entityType !== 'individual' ? 'bg-brand-600' : 'bg-purple-600'}`}>
             {(vendor.name ?? '?').charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">

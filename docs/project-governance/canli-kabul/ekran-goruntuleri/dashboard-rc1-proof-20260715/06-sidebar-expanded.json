@@ -1,0 +1,25 @@
+{
+  "url": "http://localhost:3001/panel",
+  "route": "/panel",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "zoom": "100%",
+  "at": "2026-07-15T07:33:41.413Z",
+  "source": "real-nextjs+playwright-chromium",
+  "checklist": [
+    6
+  ],
+  "sidebar": {
+    "found": true,
+    "width": "220px",
+    "minWidth": "220px",
+    "maxWidth": "220px",
+    "boundingWidth": 220,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "hasHorizontalScroll": false
+  }
+}

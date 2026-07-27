@@ -111,9 +111,9 @@ export default function SablonlarPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/ayarlar" className="hover:text-blue-600 transition-colors">Ayarlar</a>
+        <a href="/panel/ayarlar" className="hover:text-brand-600 transition-colors">Ayarlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Sablonlar</span>
       </nav>
@@ -142,7 +142,7 @@ export default function SablonlarPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
-                  activeTab === tab.id ? 'border-blue-600 text-blue-700 bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  activeTab === tab.id ? 'border-brand-600 text-blue-700 bg-blue-50/50' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 } ${idx > 0 ? 'border-l border-l-slate-100' : ''}`}
               >
                 <span className="text-base leading-none">{tab.icon}</span>
@@ -240,7 +240,7 @@ function EmailSablonlarTab() {
     <TabCard title="E-Posta Şablonları" description="Bildirim türleri için e-posta şablonları oluşturun ve yönetin.">
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-500">{templates.length} şablon</p>
-        <button type="button" onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
+        <button type="button" onClick={openCreate} className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Yeni Şablon
         </button>
@@ -315,7 +315,7 @@ function EmailSablonlarTab() {
           </div>
 
           <div className="flex items-center gap-2 mb-4">
-            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-brand-600' : 'bg-slate-300'}`}>
               <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
             </button>
             <span className="text-xs text-slate-600">Aktif</span>
@@ -417,7 +417,7 @@ function RaporSablonlarTab() {
             </FilterBtn>
           ))}
         </div>
-        <button type="button" onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
+        <button type="button" onClick={openCreate} className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Yeni Şablon
         </button>
@@ -487,7 +487,7 @@ function RaporSablonlarTab() {
             <textarea className={`${inputCls} font-mono text-xs`} rows={9} value={form.content} onChange={(e) => setForm(p => ({ ...p, content: e.target.value }))} />
           </div>
           <div className="flex items-center gap-2 mb-4">
-            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-brand-600' : 'bg-slate-300'}`}>
               <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
             </button>
             <span className="text-xs text-slate-600">Aktif</span>
@@ -570,7 +570,7 @@ function SozlesmeSablonlarTab() {
     <TabCard title="Sözleşme Şablonları" description="Müşteri, tedarikçi ve gizlilik sözleşmesi şablonlarını yönetin.">
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-500">{templates.length} şablon</p>
-        <button type="button" onClick={openCreate} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
+        <button type="button" onClick={openCreate} className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Yeni Şablon
         </button>
@@ -640,7 +640,7 @@ function SozlesmeSablonlarTab() {
             <textarea className={`${inputCls} font-mono text-xs`} rows={9} value={form.content} onChange={(e) => setForm(p => ({ ...p, content: e.target.value }))} />
           </div>
           <div className="flex items-center gap-2 mb-4">
-            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+            <button type="button" onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-brand-600' : 'bg-slate-300'}`}>
               <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
             </button>
             <span className="text-xs text-slate-600">Aktif</span>
@@ -699,7 +699,7 @@ function ConfirmModal({ title, message, loading, onConfirm, onCancel, danger }: 
         <p className="text-sm text-slate-600 mb-5">{message}</p>
         <div className="flex justify-end gap-2">
           <CancelBtn onClick={onCancel} />
-          <button type="button" onClick={onConfirm} disabled={loading} className={`px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+          <button type="button" onClick={onConfirm} disabled={loading} className={`px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-blue-700'}`}>
             {loading ? 'İşleniyor...' : 'Onayla'}
           </button>
         </div>
@@ -710,7 +710,7 @@ function ConfirmModal({ title, message, loading, onConfirm, onCancel, danger }: 
 
 function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+    <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${active ? 'bg-brand-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
       {children}
     </button>
   );
@@ -718,7 +718,7 @@ function FilterBtn({ active, onClick, children }: { active: boolean; onClick: ()
 
 function SaveBtn({ loading, onClick, label = 'Kaydet' }: { loading: boolean; onClick: () => void; label?: string }) {
   return (
-    <button type="button" onClick={onClick} disabled={loading} className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2">
+    <button type="button" onClick={onClick} disabled={loading} className="px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2">
       {loading && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
       {loading ? 'Kaydediliyor...' : label}
     </button>

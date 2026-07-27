@@ -88,7 +88,7 @@ export function FilterDrawer({
                     onClick={() => toggleStatus(opt.value)}
                     className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
                       active
-                        ? 'bg-blue-50 text-blue-700 ring-blue-600/30'
+                        ? 'bg-blue-50 text-blue-700 ring-brand-600/30'
                         : 'bg-white text-slate-600 ring-slate-200'
                     }`}
                   >
@@ -258,7 +258,7 @@ export function FilterDrawer({
           <button
             type="button"
             onClick={onApply}
-            className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             Uygula
           </button>

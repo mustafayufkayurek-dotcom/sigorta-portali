@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
-import { EmergencyStatus } from '@prisma/client';
+import { EmergencyStatus, EmergencyUrgency } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
@@ -17,6 +17,13 @@ import {
 
 const APPROVAL_DELAY_WARNING_HOURS = 24;
 const APPROVAL_DELAY_CRITICAL_HOURS = 48;
+
+/** Acil Yardım ekranındaki durum etiketleriyle birebir aynı (statusLabel, [id]/page.tsx) */
+const EMERGENCY_PENDING_ACTION_LABEL: Partial<Record<EmergencyStatus, string>> = {
+  GELEN: 'İhbar',
+  ATANDI: 'Tedarikçi Atandı',
+  SAHADA: 'Saha',
+};
 
 @Injectable()
 export class DashboardService {
@@ -1356,20 +1363,54 @@ export class DashboardService {
       Object.assign(where, await this.scopedOfficeStaffWhere(userId));
     }
 
-    const files = await this.prisma.claimFile.findMany({
-      where,
-      select: { id: true, fileNo: true, priority: true, updatedAt: true, currentStatus: { select: { name: true } } },
-      orderBy: { updatedAt: 'asc' },
-      take: 30,
-    });
+    const closedEmergencyStatuses: EmergencyStatus[] = [
+      EmergencyStatus.COZULDU,
+      EmergencyStatus.FATURALANDILDI,
+    ];
+    const emergencyScopeWhere = isOfficeStaff
+      ? (await this.buildDelegationScope(userId)).emergency
+      : { assignedUserId: userId };
+
+    const [files, emergencyCases] = await Promise.all([
+      this.prisma.claimFile.findMany({
+        where,
+        select: { id: true, fileNo: true, priority: true, updatedAt: true, currentStatus: { select: { name: true } } },
+        orderBy: { updatedAt: 'asc' },
+        take: 30,
+      }),
+      this.prisma.emergencyCase.findMany({
+        where: { ...emergencyScopeWhere, status: { notIn: closedEmergencyStatuses } },
+        select: { id: true, fileNo: true, caseNo: true, status: true, urgency: true, updatedAt: true },
+        orderBy: { updatedAt: 'asc' },
+        take: 30,
+      }),
+    ]);
 
     return {
-      items: files.map((f) => ({
-        id: f.id, fileNo: f.fileNo,
-        action: f.currentStatus?.name ?? 'Bekliyor',
-        pendingSince: f.updatedAt, priority: f.priority,
-      })),
-      total: files.length,
+      items: [
+        ...files.map((f) => ({
+          id: f.id,
+          fileNo: f.fileNo,
+          action: f.currentStatus?.name ?? 'Bekliyor',
+          pendingSince: f.updatedAt,
+          priority: f.priority,
+          module: 'hasar' as const,
+        })),
+        ...emergencyCases.map((c) => ({
+          id: c.id,
+          fileNo: c.fileNo ?? c.caseNo,
+          action: EMERGENCY_PENDING_ACTION_LABEL[c.status] ?? 'Bekliyor',
+          pendingSince: c.updatedAt,
+          priority:
+            c.urgency === EmergencyUrgency.KRITIK
+              ? ('critical' as const)
+              : c.urgency === EmergencyUrgency.YUKSEK
+                ? ('high' as const)
+                : undefined,
+          module: 'acil' as const,
+        })),
+      ],
+      total: files.length + emergencyCases.length,
     };
   }
 

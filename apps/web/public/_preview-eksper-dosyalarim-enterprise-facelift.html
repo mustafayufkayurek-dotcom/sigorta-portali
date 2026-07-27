@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dosyalarım — Enterprise Facelift Önizleme</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#F5F6F8] text-[#10151F]">
+  <div class="mx-auto max-w-6xl space-y-3 p-6" data-testid="eksper-dosyalarim-facelift">
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      Bu, düzenlediğimiz <strong>Eksper → Dosyalarım</strong> ekranının yerel görsel önizlemesidir (yeniden tasarım değil).
+      Gerçek rota: <code class="rounded bg-white px-1">/panel/eksper-portal/dosyalar</code> — yalnızca eksper rolüyle açılır.
+      Sigorta logosu yok; kısaltma + sabit renk avatar kullanılır.
+    </p>
+
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-xs text-[#9AA3AF]">Eksper Paneli / Dosyalarım</p>
+        <h1 class="text-[20px] font-bold text-[#10151F]">Dosyalarım</h1>
+        <p class="text-[13px] text-[#9AA3AF]">İhbarını Yaptığım Ve İşlem Yaptığım Dosyalar</p>
+      </div>
+      <span class="w-fit shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[12.5px] font-semibold text-blue-700 ring-1 ring-blue-100">3 Dosya</span>
+    </div>
+
+    <div class="overflow-hidden rounded-[12px] border border-[#E7E9EE] bg-white shadow-[0_1px_2px_rgba(16,21,31,0.05)]">
+      <table class="min-w-full divide-y divide-[#E7E9EE] text-left">
+        <thead class="bg-[#F5F6F8]">
+          <tr>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Dosya No</th>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Sigorta Şirketi</th>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Konu</th>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Durum</th>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Tarih</th>
+            <th class="px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#9AA3AF]">Akış</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#E7E9EE] bg-white">
+          <tr class="h-[54px] hover:bg-[#F5F6F8]">
+            <td class="px-4 py-3 text-[13.5px] font-semibold">HS-2026-0142</td>
+            <td class="px-4 py-3 text-[13.5px]">
+              <span class="inline-flex min-w-0 items-center gap-2">
+                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[9px] font-bold text-sky-800">AX</span>
+                <span class="truncate font-medium">Axa Sigorta</span>
+              </span>
+            </td>
+            <td class="px-4 py-3 text-[13.5px] text-[#5B6472]">
+              <span class="inline-flex items-center gap-2">
+                <svg class="h-4 w-4 text-[#9AA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3c1.5 3 4 5.5 4 9a4 4 0 11-8 0c0-3.5 2.5-6 4-9z"/></svg>
+                <span>Yangın Hasarı</span>
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-flex h-[23px] items-center rounded-full bg-[#FEF3C7] px-2.5 text-[11.5px] font-semibold text-[#B45309]">İncelemede</span>
+            </td>
+            <td class="px-4 py-3 text-[11.5px] tabular-nums text-[#9AA3AF]">18.07.2026</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex rounded-lg px-2 py-1 text-[12.5px] font-semibold text-blue-600 hover:bg-blue-50">Akış</span>
+            </td>
+          </tr>
+          <tr class="h-[54px] hover:bg-[#F5F6F8]">
+            <td class="px-4 py-3 text-[13.5px] font-semibold">HS-2026-0138</td>
+            <td class="px-4 py-3 text-[13.5px]">
+              <span class="inline-flex min-w-0 items-center gap-2">
+                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[9px] font-bold text-indigo-800">AL</span>
+                <span class="truncate font-medium">Allianz</span>
+              </span>
+            </td>
+            <td class="px-4 py-3 text-[13.5px] text-[#5B6472]">
+              <span class="inline-flex items-center gap-2">
+                <svg class="h-4 w-4 text-[#9AA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3v12m0 0l-3-3m3 3l3-3M5 19h14"/></svg>
+                <span>Su Baskını</span>
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-flex h-[23px] items-center rounded-full bg-[#FBE4E1] px-2.5 text-[11.5px] font-semibold text-[#C0392B]">Rapor Bekliyor</span>
+            </td>
+            <td class="px-4 py-3 text-[11.5px] tabular-nums text-[#9AA3AF]">17.07.2026</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex rounded-lg px-2 py-1 text-[12.5px] font-semibold text-blue-600 hover:bg-blue-50">Akış</span>
+            </td>
+          </tr>
+          <tr class="h-[54px] hover:bg-[#F5F6F8]">
+            <td class="px-4 py-3 text-[13.5px] font-semibold">HS-2026-0120</td>
+            <td class="px-4 py-3 text-[13.5px]">
+              <span class="inline-flex min-w-0 items-center gap-2">
+                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[9px] font-bold text-emerald-800">TS</span>
+                <span class="truncate font-medium">Türkiye Sigorta</span>
+              </span>
+            </td>
+            <td class="px-4 py-3 text-[13.5px] text-[#5B6472]">
+              <span class="inline-flex items-center gap-2">
+                <svg class="h-4 w-4 text-[#9AA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"/></svg>
+                <span>Hırsızlık</span>
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-flex h-[23px] items-center rounded-full bg-[#E4F3EA] px-2.5 text-[11.5px] font-semibold text-[#166B3F]">Tamamlandı</span>
+            </td>
+            <td class="px-4 py-3 text-[11.5px] tabular-nums text-[#9AA3AF]">12.07.2026</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex rounded-lg px-2 py-1 text-[12.5px] font-semibold text-blue-600 hover:bg-blue-50">Akış</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

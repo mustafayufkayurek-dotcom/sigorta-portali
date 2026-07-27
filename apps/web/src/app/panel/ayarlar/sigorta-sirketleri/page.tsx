@@ -423,7 +423,7 @@ export default function SigortaSirketleriPage() {
                   onClick={() => setStatusFilter(status)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     statusFilter === status
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -494,7 +494,7 @@ export default function SigortaSirketleriPage() {
                         setDrawerCompany(company);
                         setDrawerTab('evraklar');
                       }}
-                      className="rounded-lg p-1.5 text-xs text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                      className="rounded-lg p-1.5 text-xs text-slate-400 transition-colors hover:bg-indigo-50 hover:text-brand-600"
                     >
                       Evrak
                     </button>
@@ -524,7 +524,7 @@ export default function SigortaSirketleriPage() {
                   onClick={() => setAssistanceStatusFilter(status)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     assistanceStatusFilter === status
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -830,7 +830,7 @@ export default function SigortaSirketleriPage() {
                   onClick={() => setDrawerTab(tab)}
                   className={`border-b-2 px-5 py-2.5 text-sm font-medium ${
                     drawerTab === tab
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-brand-600 text-brand-600'
                       : 'border-transparent text-slate-500'
                   }`}
                 >
@@ -863,7 +863,7 @@ export default function SigortaSirketleriPage() {
                       openEdit(drawerCompany);
                       setDrawerCompany(null);
                     }}
-                    className="rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:col-span-2"
+                    className="rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:col-span-2"
                   >
                     Düzenle
                   </button>

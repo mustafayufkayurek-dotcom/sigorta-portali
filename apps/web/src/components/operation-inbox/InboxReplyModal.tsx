@@ -103,7 +103,7 @@ export function InboxReplyModal({
             checked={replyAll}
             onChange={(e) => setReplyAll(e.target.checked)}
             disabled={loading}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
+            className="rounded border-slate-300 text-brand-600 focus:ring-blue-500/30"
           />
           <span className="text-sm text-slate-600">Tümünü Yanıtla</span>
         </label>
@@ -125,7 +125,7 @@ export function InboxReplyModal({
             type="button"
             onClick={() => void handleSend()}
             disabled={!canSend}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
           >
             {loading ? 'Gönderiliyor…' : 'Gönder'}
           </button>

@@ -125,7 +125,7 @@ export function ApprovalDelayWidget({ staggerIndex = 0, compact = false }: Appro
           {total > 6 && (
             <Link
               href="/panel/hasar-dosyalari?repairReportStatus=pending_approval"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-blue-700 dark:text-blue-400"
             >
               <Send className="h-4 w-4" />
               Tüm Geciken Dosyaları Görüntüle

@@ -233,7 +233,7 @@ export function OperationRowActions({
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 z-30 min-w-[176px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
+          className="absolute right-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
           data-testid="ops-actions-menu"
         >
           {/* Hasar: Düzenle = ?edit=1 (Görüntüle’den ayrı). Acil: tek Görüntüle — menüde Düzenle yok. */}

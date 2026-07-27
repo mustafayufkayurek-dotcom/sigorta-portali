@@ -283,7 +283,7 @@ export function VendorDiscoveryPanel({ open, onClose, provinces, onAddAsVendor }
                       setAllDistrictsMode(checked);
                       if (checked) setSelectedDistrictIds([]);
                     }}
-                    className="rounded accent-blue-600"
+                    className="rounded accent-brand-600"
                   />
                   Tüm İlçeler (İl Geneli)
                 </label>
@@ -313,7 +313,7 @@ export function VendorDiscoveryPanel({ open, onClose, provinces, onAddAsVendor }
                       onToggle={toggleDistrict}
                       maxHeightClass="max-h-44"
                       gridClassName="grid grid-cols-2 gap-1.5"
-                      accentClass="accent-blue-600"
+                      accentClass="accent-brand-600"
                     />
                     {selectedDistrictIds.length > MAX_DISTRICTS_PER_SEARCH && (
                       <p className="text-[11px] text-amber-700">
@@ -419,14 +419,14 @@ export function VendorDiscoveryPanel({ open, onClose, provinces, onAddAsVendor }
                     href={candidate.mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                    className="text-xs font-medium text-brand-600 hover:text-blue-800"
                   >
                     Haritada Aç
                   </a>
                   <button
                     type="button"
                     onClick={() => handleAddAsVendor(candidate)}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    className="text-xs font-medium text-brand-600 hover:text-brand-800"
                   >
                     Tedarikçi Olarak Ekle
                   </button>

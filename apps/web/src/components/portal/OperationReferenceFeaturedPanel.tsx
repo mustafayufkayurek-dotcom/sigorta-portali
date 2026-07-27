@@ -86,7 +86,7 @@ export default function OperationReferenceFeaturedPanel({
           <button
             type="button"
             onClick={() => operations[0] && onSelect(operations[0].id)}
-            className="text-xs font-semibold text-blue-600 hover:underline"
+            className="text-xs font-semibold text-brand-600 hover:underline"
           >
             Tüm Operasyonları Görüntüle →
           </button>

@@ -224,9 +224,9 @@ export default function SlaRaporPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">SLA</span>
       </nav>
@@ -263,7 +263,7 @@ export default function SlaRaporPage() {
           <TrDateInput value={dateTo} onChange={setDateTo} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex items-end">
-          <button type="button" onClick={loadReport} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
+          <button type="button" onClick={loadReport} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
         </div>
       </div>
 
@@ -339,7 +339,7 @@ export default function SlaRaporPage() {
             onClick={() => setTab(key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               tab === key
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                ? 'border-brand-600 text-brand-600 dark:text-blue-400 dark:border-blue-400'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -363,7 +363,7 @@ export default function SlaRaporPage() {
                       title={`Toplam: ${d.total}`}
                     />
                     <div
-                      className="flex-1 rounded-t-sm bg-red-400 dark:bg-red-500 transition-all"
+                      className="flex-1 rounded-t-sm bg-red-400 dark:bg-status-danger transition-all"
                       style={{ height: `${Math.round((d.violated / maxTrendVal) * 100)}%` }}
                       title={`İhlal: ${d.violated}`}
                     />
@@ -374,7 +374,7 @@ export default function SlaRaporPage() {
             </div>
             <div className="flex items-center gap-4 mt-3">
               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-blue-400 dark:bg-blue-500" /><span className="text-xs text-slate-500 dark:text-slate-400">Toplam Açık</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-400 dark:bg-red-500" /><span className="text-xs text-slate-500 dark:text-slate-400">İhlal</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-400 dark:bg-status-danger" /><span className="text-xs text-slate-500 dark:text-slate-400">İhlal</span></div>
             </div>
           </div>
 
@@ -402,7 +402,7 @@ export default function SlaRaporPage() {
                   {deptSla.map((row) => {
                     const pct = row.compliancePct;
                     const slaColor = pct >= 90 ? 'text-green-700 dark:text-green-400' : pct >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
-                    const barColor = pct >= 90 ? 'bg-green-500' : pct >= 75 ? 'bg-amber-500' : 'bg-red-500';
+                    const barColor = pct >= 90 ? 'bg-green-500' : pct >= 75 ? 'bg-status-warning' : 'bg-status-danger';
                     return (
                       <tr key={row.dept} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
                         <PanelTableTd colId="dept" className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</PanelTableTd>
@@ -456,7 +456,7 @@ export default function SlaRaporPage() {
                   {violatedFiles.slice(0, 50).map((f) => (
                     <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                       <PanelTableTd colId="fileNo" className="px-4 py-2.5">
-                        <a href={`/panel/hasar-dosyalari/${f.id}`} className="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline">{f.fileNo}</a>
+                        <a href={`/panel/hasar-dosyalari/${f.id}`} className="font-mono text-xs text-brand-600 dark:text-blue-400 hover:underline">{f.fileNo}</a>
                       </PanelTableTd>
                       <PanelTableTd colId="claimNo" className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.claimNo}</PanelTableTd>
                       <PanelTableTd colId="branch" className="px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">{f.productBranch ?? '—'}</PanelTableTd>
@@ -481,7 +481,7 @@ export default function SlaRaporPage() {
       {tab === 'kurallar' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button type="button" onClick={() => setShowForm(!showForm)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+            <button type="button" onClick={() => setShowForm(!showForm)} className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
               + Yeni Kural Ekle
             </button>
           </div>
@@ -521,7 +521,7 @@ export default function SlaRaporPage() {
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
-                <button type="button" onClick={handleCreateRule} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Kaydet</button>
+                <button type="button" onClick={handleCreateRule} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Kaydet</button>
                 <button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-slate-200 dark:border-slate-600 px-4 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">İptal</button>
               </div>
             </div>
@@ -559,7 +559,7 @@ export default function SlaRaporPage() {
                       </button>
                     </PanelTableTd>
                     <PanelTableTd colId="action" className="px-4 py-3 text-right">
-                      <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Sil</button>
+                      <button type="button" onClick={() => handleDeleteRule(rule.id)} className="text-xs text-status-danger dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Sil</button>
                     </PanelTableTd>
                   </tr>
                 ))}

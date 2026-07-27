@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -251,14 +251,51 @@ function showReplyAction(row: InboundMessageRow): boolean {
     || row.classification === 'FATURA_ODEME';
 }
 
-function StatCard({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="flex flex-col bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 card-accent-blue">
-      <p className="text-[11px] font-medium text-slate-400 tracking-wide leading-none">{label}</p>
-      <span className="text-lg font-bold text-slate-900 leading-tight tabular-nums mt-1">
+function StatCard({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number | null;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <p
+        className={`text-[11px] font-medium tracking-wide leading-none ${active ? 'text-brand-700' : 'text-slate-400'}`}
+      >
+        {label}
+      </p>
+      <span
+        className={`text-lg font-bold leading-tight tabular-nums mt-1 ${active ? 'text-brand-700' : 'text-slate-900'}`}
+      >
         {value ?? '—'}
       </span>
-    </div>
+    </>
+  );
+
+  if (!onClick) {
+    return (
+      <div className="flex flex-col bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-3 card-accent-blue">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex flex-col text-left rounded-2xl border shadow-card px-4 py-3 transition-colors card-accent-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+        active ? 'bg-brand-50 border-brand-300' : 'bg-white border-slate-200/70 hover:border-slate-300'
+      }`}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -383,7 +420,7 @@ function InstructionModal({
           <>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
               Sigortalı Adı Soyadı
-              <span className="text-red-500 ml-0.5">*</span>
+              <span className="text-status-danger ml-0.5">*</span>
             </label>
             <input
               type="text"
@@ -479,7 +516,7 @@ function InstructionModal({
           <>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
               Sigorta Şirketi
-              {insuranceRequired && <span className="text-red-500 ml-0.5">*</span>}
+              {insuranceRequired && <span className="text-status-danger ml-0.5">*</span>}
             </label>
             <select
               value={insuranceCompanyId ?? ''}
@@ -527,7 +564,7 @@ function InstructionModal({
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
           >
             {loading ? 'İşleniyor…' : confirmLabel}
           </button>
@@ -549,6 +586,8 @@ export default function GelenKutusuPage() {
   const [syncMessage, setSyncMessage] = useState('');
   const [mailboxFilter, setMailboxFilter] = useState<'all' | InboundMailbox>('all');
   const [actionQueueFilter, setActionQueueFilter] = useState(true);
+  const [unownedOnly, setUnownedOnly] = useState(false);
+  const [todayOnly, setTodayOnly] = useState(false);
   const [detailModalId, setDetailModalId] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
 
@@ -893,6 +932,17 @@ export default function GelenKutusuPage() {
     load();
   }, [load]);
 
+  const visibleItems = useMemo(() => {
+    return items.filter((row) => {
+      if (unownedOnly && !row.isUnowned) return false;
+      if (todayOnly) {
+        const isToday = new Date(row.receivedAt).toDateString() === new Date().toDateString();
+        if (!isToday) return false;
+      }
+      return true;
+    });
+  }, [items, unownedOnly, todayOnly]);
+
   useEffect(() => {
     const messageId = searchParams.get('messageId')?.trim();
     if (!messageId) return;
@@ -1151,7 +1201,7 @@ export default function GelenKutusuPage() {
   const handleAssignSuccess = (messageId: string, assignee: AssignedUser) => {
     setItems((prev) =>
       prev.map((row) =>
-        row.id === messageId ? { ...row, assignedUser: assignee } : row,
+        row.id === messageId ? { ...row, assignedUser: assignee, isUnowned: false } : row,
       ),
     );
   };
@@ -1472,9 +1522,9 @@ export default function GelenKutusuPage() {
       />
 
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <Link href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+        <Link href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</Link>
         <span>/</span>
-        <Link href="/panel/operasyon" className="hover:text-blue-600 transition-colors">Operasyon</Link>
+        <Link href="/panel/operasyon" className="hover:text-brand-600 transition-colors">Operasyon</Link>
         <span>/</span>
         <span className="text-slate-600 font-medium">Gelen Kutusu</span>
       </nav>
@@ -1527,10 +1577,38 @@ export default function GelenKutusuPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Bekleyen" value={stats?.pending ?? null} />
-        <StatCard label="Sahipsiz" value={stats?.unownedCount ?? null} />
-        <StatCard label="Bugün Gelen" value={stats?.today ?? null} />
-        <StatCard label="İşlenen" value={stats?.actioned ?? null} />
+        <StatCard
+          label="Bekleyen"
+          value={stats?.pending ?? null}
+          active={actionQueueFilter && !unownedOnly && !todayOnly}
+          onClick={() => {
+            setActionQueueFilter(true);
+            setUnownedOnly(false);
+            setTodayOnly(false);
+          }}
+        />
+        <StatCard
+          label="Sahipsiz"
+          value={stats?.unownedCount ?? null}
+          active={unownedOnly}
+          onClick={() => setUnownedOnly((v) => !v)}
+        />
+        <StatCard
+          label="Bugün Gelen"
+          value={stats?.today ?? null}
+          active={todayOnly}
+          onClick={() => setTodayOnly((v) => !v)}
+        />
+        <StatCard
+          label="İşlenen"
+          value={stats?.actioned ?? null}
+          active={!actionQueueFilter && !unownedOnly && !todayOnly}
+          onClick={() => {
+            setActionQueueFilter(false);
+            setUnownedOnly(false);
+            setTodayOnly(false);
+          }}
+        />
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -1545,7 +1623,7 @@ export default function GelenKutusuPage() {
             onClick={() => setActionQueueFilter(key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               actionQueueFilter === key
-                ? 'bg-blue-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -1585,9 +1663,23 @@ export default function GelenKutusuPage() {
             Ayarlar → Entegrasyonlar → Microsoft 365 sekmesinden bağlantıyı yapılandırın.
           </p>
         </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center shadow-card">
+          <p className="text-sm font-medium text-slate-600">Bu Filtreye Uyan Mail Yok</p>
+          <button
+            type="button"
+            onClick={() => {
+              setUnownedOnly(false);
+              setTodayOnly(false);
+            }}
+            className="text-xs font-semibold text-brand-600 hover:underline mt-2"
+          >
+            Filtreyi Temizle
+          </button>
+        </div>
       ) : (
         <div className="grid gap-3">
-          {items.map((row) => (
+          {visibleItems.map((row) => (
             <article
               key={row.id}
               role="button"
@@ -1671,7 +1763,7 @@ export default function GelenKutusuPage() {
                   {row.claimFile && (
                     <Link
                       href={`/panel/hasar-dosyalari/${row.claimFile.id}`}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                      className="text-xs font-medium text-brand-600 hover:text-blue-800"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Hasar Dosyası: {row.claimFile.fileNo}
@@ -1680,7 +1772,7 @@ export default function GelenKutusuPage() {
                   {row.emergencyCase && (
                     <Link
                       href={`/panel/acil-yardim/${row.emergencyCase.id}`}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                      className="text-xs font-medium text-brand-600 hover:text-blue-800"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Acil Dosya: {row.emergencyCase.caseNo ?? row.emergencyCase.fileNo}
@@ -1732,7 +1824,7 @@ export default function GelenKutusuPage() {
                       type="button"
                       onClick={() => openLinkModal(row)}
                       disabled={linkLoading}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
                     >
                       Dosyaya Bağla
                     </button>
@@ -1741,7 +1833,7 @@ export default function GelenKutusuPage() {
                     <button
                       type="button"
                       onClick={() => openActionModal(row.id, 'claim', row.subject, { row })}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 text-white hover:bg-blue-700 transition-colors"
                     >
                       Hasar Aç
                     </button>

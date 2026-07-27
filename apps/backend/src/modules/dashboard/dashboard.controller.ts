@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Res, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Logger, Param, Query, Res, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { DashboardService } from './dashboard.service';
@@ -13,6 +13,8 @@ import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 @Controller()
 @UseGuards(PermissionsGuard)
 export class DashboardController {
+  private readonly logger = new Logger(DashboardController.name);
+
   constructor(
     private readonly dashboardService: DashboardService,
     private readonly exportService: ExportService,
@@ -144,7 +146,10 @@ export class DashboardController {
       const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
       const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
       return { success: true, data: await this.dashboardService.getCriticalAlerts(scopeUserId) };
-    } catch { return { success: true, data: { slaEscalations: [], inactiveFiles: [], totalCritical: 0 } }; }
+    } catch (e) {
+      this.logger.error('getCriticalAlerts başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { slaEscalations: [], inactiveFiles: [], totalCritical: 0 } };
+    }
   }
 
   @Get('dashboard/approval-delays')
@@ -155,7 +160,8 @@ export class DashboardController {
       const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
       const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
       return { success: true, data: await this.dashboardService.getApprovalDelays(scopeUserId) };
-    } catch {
+    } catch (e) {
+      this.logger.error('getApprovalDelays başarısız, boş veri döndürüldü', e as Error);
       return {
         success: true,
         data: {
@@ -172,7 +178,10 @@ export class DashboardController {
   async getPendingActions(@CurrentUser() user: any) {
     try {
       return { success: true, data: await this.dashboardService.getPendingActions(user) };
-    } catch { return { success: true, data: { items: [], total: 0 } }; }
+    } catch (e) {
+      this.logger.error('getPendingActions başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { items: [], total: 0 } };
+    }
   }
 
   @Get('dashboard/sla-summary')
@@ -183,7 +192,10 @@ export class DashboardController {
       const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
       const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
       return { success: true, data: await this.dashboardService.getSlaSummary(scopeUserId) };
-    } catch { return { success: true, data: { byStatus: [], overall: { total: 0, healthy: 0, atRisk: 0, critical: 0 } } }; }
+    } catch (e) {
+      this.logger.error('getSlaSummary başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { byStatus: [], overall: { total: 0, healthy: 0, atRisk: 0, critical: 0 } } };
+    }
   }
 
   @Get('dashboard/ownership-load')
@@ -193,7 +205,10 @@ export class DashboardController {
     this.assertDashboardFinanceAccess(user, 'Personel iş yükü raporu yalnızca yönetici kullanıcılar içindir');
     try {
       return { success: true, data: await this.dashboardService.getOwnershipLoad() };
-    } catch { return { success: true, data: { items: [] } }; }
+    } catch (e) {
+      this.logger.error('getOwnershipLoad başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { items: [] } };
+    }
   }
 
   @Get('dashboard/finance-bottlenecks')
@@ -203,7 +218,10 @@ export class DashboardController {
     this.assertDashboardFinanceAccess(user);
     try {
       return { success: true, data: await this.dashboardService.getFinanceBottlenecks() };
-    } catch { return { success: true, data: { pendingPayments: [], totalPendingAmount: 0, overdueInvoices: 0 } }; }
+    } catch (e) {
+      this.logger.error('getFinanceBottlenecks başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { pendingPayments: [], totalPendingAmount: 0, overdueInvoices: 0 } };
+    }
   }
 
   @Get('dashboard/activity-feed')
@@ -213,17 +231,29 @@ export class DashboardController {
     try {
       const take = Math.min(parseInt(limit || '20', 10) || 20, 50);
       return { success: true, data: await this.dashboardService.getActivityFeed(take) };
-    } catch { return { success: true, data: { items: [] } }; }
+    } catch (e) {
+      this.logger.error('getActivityFeed başarısız, boş veri döndürüldü', e as Error);
+      return { success: true, data: { items: [] } };
+    }
   }
 
   @Get('dashboard/daily-flow')
   @RequirePermissions('dashboard.view')
-  @ApiOperation({ summary: 'Günün akışı + ekip yoğunluğu + geçen hafta özeti (Admin A3/A4)' })
+  @ApiOperation({ summary: 'Günün akışı + ekip yoğunluğu + geçen hafta özeti (Admin A3/A4 + ofis operasyon trendi)' })
   async getDailyFlow(@CurrentUser() user: any) {
-    this.assertDashboardFinanceAccess(user);
+    // Not: Ekip yoğunluğu/operasyon trendi (teamDensity, today) tüm rollere açıktır.
+    // Yalnız "lastWeek.collectionAmount" (tahsilat tutarı) finans/yönetici dışı rollerden gizlenir.
+    const hasFinanceAccess = this.hasDashboardFinanceAccess(user);
     try {
-      return { success: true, data: await this.dashboardService.getDailyFlow() };
-    } catch {
+      const data = await this.dashboardService.getDailyFlow();
+      return {
+        success: true,
+        data: hasFinanceAccess
+          ? data
+          : { ...data, lastWeek: { ...data.lastWeek, collectionAmount: null } },
+      };
+    } catch (e) {
+      this.logger.error('getDailyFlow başarısız, boş veri döndürüldü', e as Error);
       return {
         success: true,
         data: {
@@ -235,7 +265,7 @@ export class DashboardController {
           })),
           lastWeek: {
             closedClaims: 0,
-            collectionAmount: 0,
+            collectionAmount: hasFinanceAccess ? 0 : null,
             avgCloseDays: null,
             slaCompliancePct: null,
             rangeStart: new Date().toISOString(),
@@ -247,15 +277,21 @@ export class DashboardController {
   }
 
   /**
-   * UI ile uyumlu: ofis/saha finans özetine erişemez.
    * İzin: admin, manager, finance (+ ops_manager).
    */
-  private assertDashboardFinanceAccess(user: any, message?: string) {
+  private hasDashboardFinanceAccess(user: any): boolean {
     const roleCode = String(user?.role?.code ?? user?.roleCode ?? '')
       .toLowerCase()
       .replace(/-/g, '_');
     const allowed = new Set(['admin', 'manager', 'finance', 'finans', 'accountant', 'ops_manager']);
-    if (allowed.has(roleCode)) return;
+    return allowed.has(roleCode);
+  }
+
+  /**
+   * UI ile uyumlu: ofis/saha finans özetine erişemez.
+   */
+  private assertDashboardFinanceAccess(user: any, message?: string) {
+    if (this.hasDashboardFinanceAccess(user)) return;
     throw new ForbiddenException(
       message ?? 'Finans özeti yalnızca yönetici ve finans rolleri içindir',
     );

@@ -162,7 +162,7 @@ export default function SigortaOnaylarPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Yorum {action === 'rejected' && <span className="text-red-500">*</span>}
+                Yorum {action === 'rejected' && <span className="text-status-danger">*</span>}
               </label>
               <textarea
                 value={comment}

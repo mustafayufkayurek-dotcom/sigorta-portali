@@ -283,7 +283,7 @@ export default function IliskiTurleriPage() {
               <label key={area.value} className="flex items-center gap-2.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50 transition-colors">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-blue-500"
                   checked={formUsageAreas.includes(area.value)}
                   onChange={() => toggleUsageArea(area.value)}
                 />

@@ -37,7 +37,7 @@ export function DepartmentFinanceTable({
         <button
           type="button"
           onClick={onDetailReport}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700"
+          className="text-xs font-medium text-brand-600 hover:text-blue-700"
         >
           Detaylı Rapor
         </button>

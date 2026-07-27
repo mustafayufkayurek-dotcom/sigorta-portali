@@ -106,9 +106,9 @@ export default function PersonelPerformansPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Personel Performansı</span>
       </nav>
@@ -141,14 +141,14 @@ export default function PersonelPerformansPage() {
           <TrDateInput value={dateTo} onChange={setDateTo} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex items-end">
-          <button type="button" onClick={load} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
+          <button type="button" onClick={load} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
         {([['staff', 'Ofis / Saha Personeli'], ['vendor', 'Tedarikçiler']] as [Tab, string][]).map(([key, label]) => (
-          <button type="button" key={key} onClick={() => setTab(key)} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+          <button type="button" key={key} onClick={() => setTab(key)} className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === key ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
             {label}
           </button>
         ))}
@@ -198,7 +198,7 @@ export default function PersonelPerformansPage() {
                     <PanelTableTd colId="userName" className="px-4 py-3 font-medium text-slate-800">{u.userName}</PanelTableTd>
                     <PanelTableTd colId="userType" className="px-4 py-3 text-slate-500">{u.userType}</PanelTableTd>
                     <PanelTableTd colId="totalFiles" className="px-4 py-3 text-right">{u.totalFiles}</PanelTableTd>
-                    <PanelTableTd colId="openFiles" className="px-4 py-3 text-right text-blue-600">{u.openFiles}</PanelTableTd>
+                    <PanelTableTd colId="openFiles" className="px-4 py-3 text-right text-brand-600">{u.openFiles}</PanelTableTd>
                     <PanelTableTd colId="closedFiles" className="px-4 py-3 text-right text-green-600">{u.closedFiles}</PanelTableTd>
                     <PanelTableTd colId="slaViolations" className="px-4 py-3 text-right text-red-600 font-medium">{u.slaViolations}</PanelTableTd>
                     <PanelTableTd colId="avgCloseDays" className="px-4 py-3 text-right">{u.avgCloseDays}</PanelTableTd>

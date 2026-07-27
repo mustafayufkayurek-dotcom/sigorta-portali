@@ -212,7 +212,7 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
             districts={districts}
             maxHeightClass="max-h-40"
             gridClassName="grid grid-cols-3 gap-1"
-            accentClass="accent-blue-600"
+            accentClass="accent-brand-600"
             isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvince.id, districtId)}
             onToggle={(districtId) => toggleArea(selectedProvince.id, districtId)}
             className="mb-3"
@@ -230,7 +230,7 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
                   className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100"
                 >
                   {label}
-                  <button type="button" onClick={() => toggleArea(sa.provinceId, sa.districtId)} className="hover:text-red-500">×</button>
+                  <button type="button" onClick={() => toggleArea(sa.provinceId, sa.districtId)} className="hover:text-status-danger">×</button>
                 </span>
               );
             })}
@@ -239,7 +239,7 @@ function BolgelerTab({ user, onUpdate }: { user: any; onUpdate: () => void }) {
         <button type="button"
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="w-full py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor...' : 'Bölgeleri Kaydet'}
         </button>
@@ -428,7 +428,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
                       type="checkbox"
                       checked={row.canView}
                       onChange={() => toggle(row.code, 'canView')}
-                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      className="w-4 h-4 accent-brand-600 cursor-pointer"
                     />
                   </td>
                   <td className="py-2.5 text-center">
@@ -437,7 +437,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
                       checked={row.canEdit}
                       onChange={() => toggle(row.code, 'canEdit')}
                       disabled={!row.canView}
-                      className="w-4 h-4 accent-blue-600 cursor-pointer disabled:opacity-30"
+                      className="w-4 h-4 accent-brand-600 cursor-pointer disabled:opacity-30"
                     />
                   </td>
                   <td className="py-2.5 text-center">
@@ -461,7 +461,7 @@ function EkranlarTab({ userId, roleCode }: { userId: string; roleCode: string })
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="px-5 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
             {saving ? 'Kaydediliyor...' : 'İzinleri Kaydet'}
           </button>
@@ -558,7 +558,7 @@ export default function KullaniciDetayPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >

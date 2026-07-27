@@ -108,7 +108,7 @@ export function PanelThemeToggle() {
                   <span className="block font-medium">{opt.label}</span>
                   <span className="block text-[10px] text-slate-400">{opt.description}</span>
                 </span>
-                {active ? <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" /> : null}
+                {active ? <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" /> : null}
               </button>
             );
           })}

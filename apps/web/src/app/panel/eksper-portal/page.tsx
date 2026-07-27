@@ -533,7 +533,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Eksper Portal</span>
       </nav>
@@ -545,7 +545,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         {/* Başlık */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow">
+            <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center shadow">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -577,7 +577,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             activeClassName="border-blue-300 bg-blue-100/80"
           >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -606,10 +606,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           {/* İhbar Konusu */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">
-              İhbar Konusu <span className="text-red-500">*</span>
+              İhbar Konusu <span className="text-status-danger">*</span>
             </label>
             <select
-              className={`input-base-sm text-base sm:text-sm ${errors.konu ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              className={`input-base-sm text-base sm:text-sm ${errors.konu ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
               value={form.konu}
               onChange={(e) => set('konu', e.target.value)}
               disabled={loadingLookups}
@@ -620,14 +620,14 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             {lookupError && !loadingLookups && (
               <p className="text-xs text-amber-600 mt-1">{lookupError}</p>
             )}
-            {errors.konu && <p className="text-xs text-red-500 mt-1">{errors.konu}</p>}
+            {errors.konu && <p className="text-xs text-status-danger mt-1">{errors.konu}</p>}
           </div>
 
           {/* Sigorta Şirketi */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">Sigorta Şirketi</label>
             <select
-              className={`input-base-sm ${errors.sigortaSirketi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              className={`input-base-sm ${errors.sigortaSirketi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
               value={form.sigortaSirketi}
               onChange={(e) => set('sigortaSirketi', e.target.value)}
             >
@@ -637,7 +637,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 : INSURANCE_COMPANIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)
               }
             </select>
-            {errors.sigortaSirketi && <p className="text-xs text-red-500 mt-1">{errors.sigortaSirketi}</p>}
+            {errors.sigortaSirketi && <p className="text-xs text-status-danger mt-1">{errors.sigortaSirketi}</p>}
           </div>
 
           {/* Dosya Numarası */}
@@ -657,10 +657,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           {/* Poliçe Türü */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">
-              Poliçe Türü <span className="text-red-500">*</span>
+              Poliçe Türü <span className="text-status-danger">*</span>
             </label>
             <select
-              className={`input-base-sm ${errors.policeTuru ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              className={`input-base-sm ${errors.policeTuru ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
               value={form.policeTuru}
               onChange={(e) => set('policeTuru', e.target.value as 'bireysel' | 'ticari' | '')}
             >
@@ -668,7 +668,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               <option value="bireysel">Bireysel</option>
               <option value="ticari">Ticari</option>
             </select>
-            {errors.policeTuru && <p className="text-xs text-red-500 mt-1">{errors.policeTuru}</p>}
+            {errors.policeTuru && <p className="text-xs text-status-danger mt-1">{errors.policeTuru}</p>}
           </div>
 
           {/* Kurumsal Bilgiler — sadece Ticari seçildiğinde */}
@@ -677,7 +677,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               {/* Amber uyarı */}
               {(!form.ticariUnvan.trim() || !form.vergiDairesi.trim() || !form.vergiNo.trim()) && (
                 <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
-                  <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <p className="text-xs text-amber-700 leading-relaxed">
@@ -688,35 +688,35 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1.5">Ticari Ünvan</label>
                 <input
-                  className={`input-base-sm ${errors.ticariUnvan ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                  className={`input-base-sm ${errors.ticariUnvan ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                   placeholder="Şirket ünvanı"
                   value={form.ticariUnvan}
                   onChange={(e) => set('ticariUnvan', e.target.value)}
                   onBlur={blurTitleCase('ticariUnvan')}
                 />
-                {errors.ticariUnvan && <p className="text-xs text-red-500 mt-1">{errors.ticariUnvan}</p>}
+                {errors.ticariUnvan && <p className="text-xs text-status-danger mt-1">{errors.ticariUnvan}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">Vergi Dairesi</label>
                   <input
-                    className={`input-base-sm ${errors.vergiDairesi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                    className={`input-base-sm ${errors.vergiDairesi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                     placeholder="Vergi dairesi"
                     value={form.vergiDairesi}
                     onChange={(e) => set('vergiDairesi', e.target.value)}
                     onBlur={blurTitleCase('vergiDairesi')}
                   />
-                  {errors.vergiDairesi && <p className="text-xs text-red-500 mt-1">{errors.vergiDairesi}</p>}
+                  {errors.vergiDairesi && <p className="text-xs text-status-danger mt-1">{errors.vergiDairesi}</p>}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">Vergi Numarası</label>
                   <input
-                    className={`input-base-sm ${errors.vergiNo ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                    className={`input-base-sm ${errors.vergiNo ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                     placeholder="Vergi numarası"
                     value={form.vergiNo}
                     onChange={(e) => set('vergiNo', e.target.value)}
                   />
-                  {errors.vergiNo && <p className="text-xs text-red-500 mt-1">{errors.vergiNo}</p>}
+                  {errors.vergiNo && <p className="text-xs text-status-danger mt-1">{errors.vergiNo}</p>}
                 </div>
               </div>
             </div>
@@ -726,25 +726,25 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                Sigortalı Adı Soyadı <span className="text-red-500">*</span>
+                Sigortalı Adı Soyadı <span className="text-status-danger">*</span>
               </label>
               <input
-                className={`input-base-sm ${errors.sigortaliAdi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                className={`input-base-sm ${errors.sigortaliAdi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                 placeholder="Ad Soyad"
                 value={form.sigortaliAdi}
                 onChange={(e) => set('sigortaliAdi', e.target.value)}
                 onBlur={blurTitleCase('sigortaliAdi')}
               />
-              {errors.sigortaliAdi && <p className="text-xs text-red-500 mt-1">{errors.sigortaliAdi}</p>}
+              {errors.sigortaliAdi && <p className="text-xs text-status-danger mt-1">{errors.sigortaliAdi}</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                Sigortalı Telefon <span className="text-red-500">*</span>
+                Sigortalı Telefon <span className="text-status-danger">*</span>
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                className={`input-base-sm ${errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                className={`input-base-sm ${errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                 placeholder="0 (5XX) XXX XX XX"
                 value={phoneDisplay}
                 maxLength={18}
@@ -754,19 +754,19 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                   set('sigortaliTelefon', digits);
                 }}
               />
-              {errors.sigortaliTelefon && <p className="text-xs text-red-500 mt-1">{errors.sigortaliTelefon}</p>}
+              {errors.sigortaliTelefon && <p className="text-xs text-status-danger mt-1">{errors.sigortaliTelefon}</p>}
             </div>
           </div>
 
           {/* Hasar Adresi */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">
-              Hasar Adresi <span className="text-red-500">*</span>
+              Hasar Adresi <span className="text-status-danger">*</span>
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-2">
               <div>
                 <select
-                  className={`input-base-sm w-full ${errors.il ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                  className={`input-base-sm w-full ${errors.il ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                   value={form.il}
                   onChange={async (e) => {
                     const provinceId = e.target.value;
@@ -782,11 +782,11 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                     ))
                     : TR_ILLER.map((il) => <option key={il} value={il}>{il}</option>)}
                 </select>
-                {errors.il && <p className="text-xs text-red-500 mt-1">{errors.il}</p>}
+                {errors.il && <p className="text-xs text-status-danger mt-1">{errors.il}</p>}
               </div>
               <div>
                 <select
-                  className={`input-base-sm w-full ${errors.ilce ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+                  className={`input-base-sm w-full ${errors.ilce ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
                   value={form.ilce}
                   onChange={(e) => set('ilce', e.target.value)}
                   disabled={!form.il || districts.length === 0 || loadingDistricts}
@@ -796,7 +796,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                     <option key={district.id} value={district.name}>{district.name}</option>
                   ))}
                 </select>
-                {errors.ilce && <p className="text-xs text-red-500 mt-1">{errors.ilce}</p>}
+                {errors.ilce && <p className="text-xs text-status-danger mt-1">{errors.ilce}</p>}
               </div>
             </div>
             <div className="relative">
@@ -818,12 +818,12 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">İhbar Tarihi</label>
             <TrDateInput
-              className={`input-base-sm w-full ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-red-500/20' : ''}`}
+              className={`input-base-sm w-full ${errors.hasarTarihi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
               value={form.hasarTarihi}
               onChange={(hasarTarihi) => set('hasarTarihi', hasarTarihi)}
               aria-label="İhbar tarihi"
             />
-            {errors.hasarTarihi && <p className="text-xs text-red-500 mt-1">{errors.hasarTarihi}</p>}
+            {errors.hasarTarihi && <p className="text-xs text-status-danger mt-1">{errors.hasarTarihi}</p>}
           </div>
 
           {/* Açıklama */}
@@ -899,7 +899,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             type="button"
             onClick={handleSubmit}
             disabled={saving || loadingLookups || loadingDistricts}
-            className="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-blue-700 text-white shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {saving ? (
               <>
@@ -1049,7 +1049,7 @@ function GaugeChart({
       {trend ? (
         <p
           className={`mt-1 text-center text-xs font-semibold ${
-            trend.direction === 'up' ? 'text-emerald-600' : 'text-red-500'
+            trend.direction === 'up' ? 'text-emerald-600' : 'text-status-danger'
           }`}
         >
           {trend.direction === 'up' ? '↑' : '↓'} {trend.label}
@@ -1101,7 +1101,7 @@ function activityBadgeFromFile(statusName?: string | null): { label: string; cla
 
 function ActivityDocIcon() {
   return (
-    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden>
+    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-brand-600" aria-hidden>
       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
@@ -1329,7 +1329,7 @@ export default function EksperPortalPage() {
           <p className="text-base font-semibold text-slate-800">Bu sayfa eksperler içindir</p>
           <p className="text-sm text-slate-500 mt-1">Eksper Portalı yalnızca eksper rolündeki kullanıcılar tarafından kullanılabilir.</p>
         </div>
-        <Link href="/panel" className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Dashboard&apos;a Dön</Link>
+        <Link href="/panel" className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Dashboard&apos;a Dön</Link>
       </div>
     );
   }
@@ -1358,7 +1358,7 @@ export default function EksperPortalPage() {
       <button
         type="button"
         onClick={() => setShowIhbarModal(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
       >
         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
         Yeni İhbar
@@ -1464,7 +1464,7 @@ export default function EksperPortalPage() {
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-slate-900">Güncel Dosya Hareketleri</h3>
-              <Link href="/panel/eksper-portal/dosyalar" className="text-xs font-semibold text-blue-600 hover:underline">
+              <Link href="/panel/eksper-portal/dosyalar" className="text-xs font-semibold text-brand-600 hover:underline">
                 Tümünü Gör →
               </Link>
             </div>
@@ -1531,7 +1531,7 @@ export default function EksperPortalPage() {
             )}
             <Link
               href="/panel/eksper-portal/dosyalar"
-              className="mt-3 inline-flex text-xs font-semibold text-blue-600 hover:underline"
+              className="mt-3 inline-flex text-xs font-semibold text-brand-600 hover:underline"
             >
               Tüm Hareketler →
             </Link>
@@ -1576,8 +1576,8 @@ export default function EksperPortalPage() {
               {[
                 { label: 'İnceleme Bekleyenler', value: reviewCount, href: '/panel/eksper-portal/dosyalar?queue=inceleme', tone: 'bg-rose-500' },
                 { label: 'Rapor Bekleyenler', value: reportCount, href: '/panel/eksper-portal/dosyalar?queue=rapor', tone: 'bg-orange-500' },
-                { label: 'Onay Bekleyenler', value: approvalPendingCount, href: '/panel/eksper-portal/onaylar', tone: 'bg-amber-500' },
-                { label: 'Aktif Dosyalarım', value: assignedCount, href: '/panel/eksper-portal/dosyalar', tone: 'bg-blue-600' },
+                { label: 'Onay Bekleyenler', value: approvalPendingCount, href: '/panel/eksper-portal/onaylar', tone: 'bg-status-warning' },
+                { label: 'Aktif Dosyalarım', value: assignedCount, href: '/panel/eksper-portal/dosyalar', tone: 'bg-brand-600' },
               ].map((row) => (
                 <li key={row.label}>
                   <Link

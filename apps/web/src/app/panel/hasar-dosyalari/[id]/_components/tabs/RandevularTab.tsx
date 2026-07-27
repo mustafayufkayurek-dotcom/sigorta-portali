@@ -97,6 +97,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
   };
 
   const handleStatusChange = async (apptId: string, status: string) => {
+    if (status === 'cancelled' && !window.confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?')) return;
     try {
       await axios.patch(`${API}/adjusters/appointments/${apptId}/status`, { status }, { headers: authHeader() });
       loadAppointments();
@@ -226,7 +227,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
                       )}
                       {appt.checkedOutAt && (
                         <>
-                          <span className="text-red-500 font-medium">
+                          <span className="text-status-danger font-medium">
                             Check-out: {new Date(appt.checkedOutAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <span>
@@ -244,7 +245,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
                   {/* Durum geçişi */}
                   {appt.status === 'planned' && (
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => handleStatusChange(appt.id, 'confirmed')} className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">Onayla</button>
+                      <button type="button" onClick={() => handleStatusChange(appt.id, 'confirmed')} className="px-2.5 py-1 text-xs bg-brand-600 text-white rounded-lg hover:bg-blue-700">Onayla</button>
                       <button type="button" onClick={() => handleStatusChange(appt.id, 'cancelled')} className="px-2.5 py-1 text-xs border border-red-200 text-red-600 rounded-lg hover:bg-red-50">İptal</button>
                     </div>
                   )}

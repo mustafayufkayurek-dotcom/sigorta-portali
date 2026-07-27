@@ -52,7 +52,7 @@ function PreviewShell() {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white"
+              className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white"
             >
               Operasyon Planlayıcısı
             </button>
@@ -128,7 +128,7 @@ function PreviewShell() {
                         {idx < PLANNER_STEPS.length - 1 ? (
                           <span
                             className={`pointer-events-none absolute left-[18px] top-8 h-[calc(100%-8px)] w-0.5 ${
-                              done && !active ? 'bg-emerald-500' : 'bg-slate-200'
+                              done && !active ? 'bg-status-success' : 'bg-slate-200'
                             }`}
                             aria-hidden
                           />
@@ -143,7 +143,7 @@ function PreviewShell() {
                           <span
                             className={`relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white ${
                               done && !active
-                                ? 'bg-emerald-500'
+                                ? 'bg-status-success'
                                 : waiting
                                   ? 'bg-orange-500 ring-4 ring-orange-200'
                                   : 'bg-slate-400'
@@ -213,7 +213,7 @@ function PreviewShell() {
                     <button
                       type="button"
                       disabled={saving}
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                      className="flex-1 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                       onClick={async () => {
                         const r = await saveStep(activeStep);
                         setSaveNotice(r.message);

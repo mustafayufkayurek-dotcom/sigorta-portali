@@ -57,7 +57,7 @@ export function FieldSurveyBriefList({ claimFileId, refreshKey = 0 }: FieldSurve
             <span className="text-xs text-slate-500">{itemTypeLabel(row.itemType)}</span>
             <a
               href={`${API}/claim-files/${claimFileId}/field-survey-briefs/${row.id}/pdf`}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-brand-600 hover:underline"
               onClick={(e) => {
                 e.preventDefault();
                 void axios

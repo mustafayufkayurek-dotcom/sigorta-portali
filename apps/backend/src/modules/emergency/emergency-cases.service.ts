@@ -355,6 +355,7 @@ export class EmergencyCasesService {
         assignedVendorId: dto.assignedVendorId,
         assignedUserId: dto.assignedUserId ?? userId,
         notes: dto.notes,
+        findingsText: dto.findingsText.trim(),
         createdByUserId: userId,
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
@@ -661,6 +662,7 @@ export class EmergencyCasesService {
         ...(dto.assignedVendorId !== undefined && { assignedVendorId: dto.assignedVendorId }),
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.findingsText !== undefined && { findingsText: dto.findingsText }),
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });

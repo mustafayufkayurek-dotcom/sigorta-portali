@@ -174,7 +174,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -240,11 +240,11 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
                       </button>
                     )}
                     <button type="button" title="İndir" onClick={() => handleDownload(d)}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100 transition-colors">
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border bg-blue-50 text-brand-600 hover:bg-blue-100 border-blue-100 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </button>
                     <button type="button" title="Sil" onClick={() => handleDelete(d.id, fa?.fileName || '')}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border bg-red-50 text-red-500 hover:bg-red-100 border-red-100 transition-colors">
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border bg-red-50 text-status-danger hover:bg-red-100 border-red-100 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
@@ -262,7 +262,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
             <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
               <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-800 truncate">{previewDoc.fileAsset?.fileName}</p></div>
               <button type="button" onClick={() => { handleDownload(previewDoc); setPreviewDoc(null); }}
-                className="inline-flex items-center gap-1.5 text-xs font-medium bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
+                className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 İndir
               </button>

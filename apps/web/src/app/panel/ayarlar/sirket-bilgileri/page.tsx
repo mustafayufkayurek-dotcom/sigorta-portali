@@ -200,7 +200,7 @@ export default function SirketBilgileriPage() {
         <p className="text-xs text-slate-500">Hasar dosyası süreçlerini yöneten taraf; KVKK veri sorumlusu olarak metinlerde yer alır.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className={labelCls}>Şirket Unvanı <span className="text-red-500">*</span></label>
+            <label className={labelCls}>Şirket Unvanı <span className="text-status-danger">*</span></label>
             <input
               className={`${inputCls}${fieldErrors.name ? ' border-red-300 focus:ring-red-400' : ''}`}
               value={form.name}
@@ -234,7 +234,7 @@ export default function SirketBilgileriPage() {
             {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
           </div>
           <div>
-            <label className={labelCls}>E-posta <span className="text-red-500">*</span></label>
+            <label className={labelCls}>E-posta <span className="text-status-danger">*</span></label>
             <input
               className={`${inputCls}${fieldErrors.email ? ' border-red-300 focus:ring-red-400' : ''}`}
               type="email"
@@ -280,7 +280,7 @@ export default function SirketBilgileriPage() {
         {form.payrollEmployerEnabled && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div className="md:col-span-2">
-              <label className={labelCls}>Bordro İşvereni Unvanı <span className="text-red-500">*</span></label>
+              <label className={labelCls}>Bordro İşvereni Unvanı <span className="text-status-danger">*</span></label>
               <input
                 className={`${inputCls}${fieldErrors.payrollEmployerName ? ' border-red-300 focus:ring-red-400' : ''}`}
                 value={form.payrollEmployerName ?? ''}
@@ -350,7 +350,7 @@ export default function SirketBilgileriPage() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>

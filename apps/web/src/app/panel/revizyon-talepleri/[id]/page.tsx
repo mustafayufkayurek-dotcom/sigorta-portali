@@ -85,7 +85,7 @@ const PRIORITY_LABELS: Record<RevisionPriority, string> = {
 };
 const PRIORITY_BADGE: Record<RevisionPriority, string> = {
   LOW: 'bg-slate-50 text-slate-500 border border-slate-200',
-  NORMAL: 'bg-blue-50 text-blue-600 border border-blue-200',
+  NORMAL: 'bg-blue-50 text-brand-600 border border-blue-200',
   HIGH: 'bg-orange-50 text-orange-600 border border-orange-200',
   CRITICAL: 'bg-red-50 text-red-700 border border-red-200',
 };
@@ -232,7 +232,7 @@ export default function RevisionDetailPage() {
     return (
       <div className="py-20 text-center">
         <p className="text-slate-400">{pageError ? 'Revizyon talebi yüklenirken hata oluştu.' : 'Revizyon talebi bulunamadı.'}</p>
-        <button type="button" onClick={() => router.push('/panel/revizyon-talepleri')} className="mt-4 text-sm text-blue-600 hover:text-blue-700">
+        <button type="button" onClick={() => router.push('/panel/revizyon-talepleri')} className="mt-4 text-sm text-brand-600 hover:text-blue-700">
           ← Geri Dön
         </button>
       </div>
@@ -254,7 +254,7 @@ export default function RevisionDetailPage() {
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold text-slate-800">{detail.report?.reportNo ?? 'Rapor'}</h2>
             <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[detail.status]}`}>
-              {detail.status === 'ESCALATED' && <span className="mr-1 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />}
+              {detail.status === 'ESCALATED' && <span className="mr-1 w-1.5 h-1.5 rounded-full bg-status-danger animate-pulse inline-block" />}
               {STATUS_LABELS[detail.status]}
             </span>
             <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${PRIORITY_BADGE[detail.priority]}`}>
@@ -342,7 +342,7 @@ export default function RevisionDetailPage() {
                     <div className="flex flex-col items-center">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${
                         isDone || isCurrent
-                          ? 'bg-blue-600 border-blue-600 text-white'
+                          ? 'bg-brand-600 border-brand-600 text-white'
                           : 'bg-white border-slate-200 text-slate-300'
                       }`}>
                         {isDone || isCurrent ? (
@@ -354,7 +354,7 @@ export default function RevisionDetailPage() {
                         )}
                       </div>
                       {!isLast && (
-                        <div className={`w-0.5 h-6 mt-1 mb-1 ${isDone ? 'bg-blue-600' : 'bg-slate-100'}`} />
+                        <div className={`w-0.5 h-6 mt-1 mb-1 ${isDone ? 'bg-brand-600' : 'bg-slate-100'}`} />
                       )}
                     </div>
                     <div className="pt-0.5">
@@ -368,7 +368,7 @@ export default function RevisionDetailPage() {
               })}
               {(detail.status === 'REJECTED' || detail.status === 'ESCALATED') && (
                 <div className="flex gap-3 mt-2">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500 border-2 border-red-500 text-white">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-status-danger border-2 border-status-danger text-white">
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
@@ -398,7 +398,7 @@ export default function RevisionDetailPage() {
                   type="button"
                   onClick={() => handleAction('start')}
                   disabled={actionLoading}
-                  className="w-full bg-blue-600 text-white text-sm px-4 py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
+                  className="w-full bg-brand-600 text-white text-sm px-4 py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
                 >
                   {actionLoading ? 'İşleniyor...' : 'Revizyonu Başlat'}
                 </button>
@@ -604,7 +604,7 @@ export default function RevisionDetailPage() {
                     )}
                     <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                       isMe
-                        ? 'bg-blue-600 text-white rounded-tr-sm'
+                        ? 'bg-brand-600 text-white rounded-tr-sm'
                         : 'bg-slate-100 text-slate-800 rounded-tl-sm'
                     }`}>
                       {msg.message}
@@ -638,7 +638,7 @@ export default function RevisionDetailPage() {
                   type="button"
                   onClick={handleSendMessage}
                   disabled={messageMutation.isPending || !msgInput.trim()}
-                  className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors flex-shrink-0"
+                  className="bg-brand-600 text-white p-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors flex-shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

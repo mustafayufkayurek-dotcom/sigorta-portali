@@ -53,4 +53,8 @@ export class CreateEmergencyCaseDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Tespit Bulguları zorunludur.' })
+  findingsText!: string;
 }

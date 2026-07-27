@@ -79,7 +79,7 @@ export default function OperationReferenceFilters({
       <button
         type="button"
         onClick={onClear}
-        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50"
+        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-brand-600 transition hover:bg-blue-50"
       >
         <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
         Filtreleri Temizle

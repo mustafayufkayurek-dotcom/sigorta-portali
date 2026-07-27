@@ -23,7 +23,7 @@ function ErisimToggle({
         onClick={() => onChange(true)}
         className={`px-2 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap disabled:opacity-50 ${
           value
-            ? 'border-blue-600 text-blue-600'
+            ? 'border-brand-600 text-brand-600'
             : 'border-transparent text-slate-500 hover:text-slate-700'
         }`}
       >
@@ -35,7 +35,7 @@ function ErisimToggle({
         onClick={() => onChange(false)}
         className={`px-2 py-1 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap disabled:opacity-50 ${
           !value
-            ? 'border-blue-600 text-blue-600'
+            ? 'border-brand-600 text-brand-600'
             : 'border-transparent text-slate-500 hover:text-slate-700'
         }`}
       >

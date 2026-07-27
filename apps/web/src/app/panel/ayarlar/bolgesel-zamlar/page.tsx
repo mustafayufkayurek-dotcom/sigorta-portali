@@ -230,7 +230,7 @@ export default function BolgeselZamlarPage() {
           {regions.length > 0 && (
             <button
               onClick={openBulkModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -255,7 +255,7 @@ export default function BolgeselZamlarPage() {
           </div>
           <p className="text-sm font-medium text-slate-700 mb-1">Henüz bölge tanımlanmamış</p>
           <p className="text-xs text-slate-400 mb-4">Türkiye&apos;nin 7 coğrafi bölgesini eklemek için düğmeye tıklayın.</p>
-          <button onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
             {seeding ? 'Yükleniyor...' : '7 Bölgeyi Yükle'}
           </button>
         </div>
@@ -269,7 +269,7 @@ export default function BolgeselZamlarPage() {
             </div>
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
               <p className="text-xs text-slate-400">Zam Tanımlı</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{regions.filter((r) => r.latestAdjustment).length}</p>
+              <p className="text-2xl font-bold text-brand-600 mt-1">{regions.filter((r) => r.latestAdjustment).length}</p>
             </div>
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
               <p className="text-xs text-slate-400">Ortalama Zam</p>
@@ -337,7 +337,7 @@ export default function BolgeselZamlarPage() {
                         </button>
                         <button
                           onClick={() => openZamModal(r)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-brand-600 hover:bg-blue-100 transition-colors"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4" />
@@ -423,7 +423,7 @@ export default function BolgeselZamlarPage() {
                     type="checkbox"
                     checked={bulkSelected.has(r.id)}
                     onChange={() => toggleBulkRegion(r.id)}
-                    className="rounded text-blue-600"
+                    className="rounded text-brand-600"
                   />
                   <span className="text-sm text-slate-700">{r.name}</span>
                   {r.latestAdjustment && (
@@ -433,7 +433,7 @@ export default function BolgeselZamlarPage() {
               ))}
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <button type="button" onClick={() => setBulkSelected(new Set(regions.map((r) => r.id)))} className="text-xs text-blue-600 hover:underline">Tümünü Seç</button>
+              <button type="button" onClick={() => setBulkSelected(new Set(regions.map((r) => r.id)))} className="text-xs text-brand-600 hover:underline">Tümünü Seç</button>
               <span className="text-slate-300">|</span>
               <button type="button" onClick={() => setBulkSelected(new Set())} className="text-xs text-slate-500 hover:underline">Seçimi Kaldır</button>
             </div>
@@ -495,7 +495,7 @@ export default function BolgeselZamlarPage() {
                     {h.notes && <p className="text-xs text-slate-400 mt-0.5 truncate">{h.notes}</p>}
                   </div>
                   {i === 0 && (
-                    <span className="shrink-0 text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">Güncel</span>
+                    <span className="shrink-0 text-xs bg-blue-50 text-brand-600 px-2 py-0.5 rounded-full font-medium">Güncel</span>
                   )}
                   <span className="shrink-0 text-xs text-slate-400">{fmtDate(h.createdAt)}</span>
                 </div>

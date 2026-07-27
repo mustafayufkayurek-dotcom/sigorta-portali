@@ -14,7 +14,7 @@ export default function GuvenlikPage() {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Link className="text-sm font-medium text-blue-600 hover:text-blue-700" href="/panel/guvenlik/erisim-loglari">
+        <Link className="text-sm font-medium text-brand-600 hover:text-blue-700" href="/panel/guvenlik/erisim-loglari">
           Erişim Logları
         </Link>
       </div>

@@ -27,7 +27,7 @@ export function DistrictCheckboxGrid({
   loading = false,
   maxHeightClass = 'max-h-40',
   gridClassName = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5',
-  accentClass = 'accent-indigo-600',
+  accentClass = 'accent-brand-600',
   searchPlaceholder = 'İlçe ara...',
   className = '',
 }: DistrictCheckboxGridProps) {
@@ -99,7 +99,7 @@ export function DistrictCheckboxGrid({
           {filtered.map((d) => (
             <label
               key={d.id}
-              className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-indigo-600 rounded px-1 py-0.5 min-w-0"
+              className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer hover:text-brand-600 rounded px-1 py-0.5 min-w-0"
             >
               <input
                 type="checkbox"

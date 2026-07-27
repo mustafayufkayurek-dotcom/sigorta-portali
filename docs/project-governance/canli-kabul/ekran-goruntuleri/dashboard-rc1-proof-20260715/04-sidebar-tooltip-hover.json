@@ -1,0 +1,23 @@
+{
+  "url": "http://localhost:3001/panel",
+  "route": "/panel",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "zoom": "100%",
+  "at": "2026-07-15T07:33:43.027Z",
+  "source": "real-nextjs+playwright-chromium",
+  "checklist": [
+    4
+  ],
+  "tooltip": {
+    "tipCount": 1,
+    "visibleCount": 1,
+    "texts": [
+      "Dashboard"
+    ],
+    "titleAttr": "Dashboard"
+  }
+}

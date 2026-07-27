@@ -281,7 +281,7 @@ export default function EPostaBildirimleriPage() {
               <button
                 type="button"
                 onClick={() => setShowSmtpGuide((value) => !value)}
-                className="flex items-center gap-2 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700"
+                className="flex items-center gap-2 text-xs font-medium text-brand-600 transition-colors hover:text-blue-700"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 {showSmtpGuide ? 'Sağlayıcı rehberini kapat' : 'Sağlayıcı rehberini göster (Yandex, Google, Office 365...)'}
@@ -379,7 +379,7 @@ export default function EPostaBildirimleriPage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-50 pt-4">
-              <button type="button" onClick={handleSaveMail} disabled={savingMail} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+              <button type="button" onClick={handleSaveMail} disabled={savingMail} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
                 {savingMail ? 'Kaydediliyor...' : 'SMTP Ayarlarını Kaydet'}
               </button>
               {mailSuccess && <span className="text-sm font-medium text-green-600">{mailSuccess}</span>}
@@ -402,7 +402,7 @@ export default function EPostaBildirimleriPage() {
                     onChange={(e) => { setTestEmail(e.target.value); setTestSuccess(''); setTestError(''); }}
                   />
                 </div>
-                <button type="button" onClick={handleTestMail} disabled={testing} className="w-fit rounded-lg border border-blue-600 px-5 py-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50">
+                <button type="button" onClick={handleTestMail} disabled={testing} className="w-fit rounded-lg border border-brand-600 px-5 py-2.5 text-sm font-medium text-brand-600 transition-colors hover:bg-blue-50 disabled:opacity-50">
                   {testing ? 'Gönderiliyor...' : 'Test Maili Gönder'}
                 </button>
               </div>
@@ -436,7 +436,7 @@ export default function EPostaBildirimleriPage() {
               <button
                 type="button"
                 onClick={() => setNotifSettings((prev) => ({ ...prev, emailEnabled: !prev.emailEnabled }))}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${notifSettings.emailEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${notifSettings.emailEnabled ? 'bg-brand-600' : 'bg-slate-300'}`}
                 title={notifSettings.emailEnabled ? 'E-posta bildirimlerini devre dışı bırak' : 'E-posta bildirimlerini etkinleştir'}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${notifSettings.emailEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -460,7 +460,7 @@ export default function EPostaBildirimleriPage() {
                 <button
                   type="button"
                   onClick={() => toggleNotification(n.key)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${n.enabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${n.enabled ? 'bg-brand-600' : 'bg-slate-300'}`}
                 >
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${n.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
@@ -469,7 +469,7 @@ export default function EPostaBildirimleriPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-50 pt-4">
-            <button type="button" onClick={handleSaveNotifications} disabled={savingNotif} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            <button type="button" onClick={handleSaveNotifications} disabled={savingNotif} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
               {savingNotif ? 'Kaydediliyor...' : 'Bildirim Kurallarını Kaydet'}
             </button>
             {notifSuccess && <span className="text-sm font-medium text-green-600">{notifSuccess}</span>}

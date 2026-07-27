@@ -26,7 +26,6 @@
   { "path": "/panel/acil-yardim", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "MANAGER"] },
   { "path": "/panel/operasyon/gelen-kutusu", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "finance", "accountant", "ACCOUNTANT", "MANAGER"] },
   { "path": "/panel/operasyon", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
-  { "path": "/panel/itirazlar", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
   { "path": "/panel/carilerim", "roles": ["field_staff", "FIELD_STAFF", "admin", "ADMIN", "FINANS", "OFFICE_STAFF", "office_staff", "MANAGER"] },
   { "path": "/panel/pazartesi-toplantisi", "roles": ["admin", "ADMIN", "MANAGER"] },
   { "path": "/panel/ozel-dosyalar", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "field_staff", "FIELD_STAFF", "FINANS", "finance", "accountant", "ACCOUNTANT", "MANAGER"] },

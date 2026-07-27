@@ -1,0 +1,19 @@
+{
+  "required": [
+    "apps/web/public/meridyen-logo-original.png",
+    "apps/web/public/docs/meridyen-logo-original.png",
+    "apps/web/src/constants/brand.ts",
+    "apps/web/src/components/brand/BrandLogo.tsx",
+    "apps/backend/assets/meridyen-logo-original.png",
+    "apps/backend/src/modules/notifications/email/email-brand.util.ts"
+  ],
+  "untrackedRequired": [],
+  "samplePorcelain": [
+    "M  apps/backend/assets/meridyen-logo-original.png",
+    "M  apps/backend/src/modules/notifications/email/email-brand.util.ts",
+    "A  apps/web/public/docs/meridyen-logo-original.png",
+    "M  apps/web/public/meridyen-logo-original.png",
+    "A  apps/web/src/components/brand/BrandLogo.tsx",
+    "M  apps/web/src/constants/brand.ts"
+  ]
+}

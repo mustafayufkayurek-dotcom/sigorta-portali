@@ -38,7 +38,7 @@ function buildPopupHtml(pin: InsuranceMapPin): string {
       ${pin.fileNumber ? `<div class="mt-2">Dosya No: <span class="font-semibold">${pin.fileNumber}</span></div>` : ''}
       ${pin.city ? `<div class="text-slate-500">${pin.city}</div>` : ''}
       ${pin.statusName ? `<div class="mt-1 text-xs text-slate-500">Durum: ${pin.statusName}</div>` : ''}
-      ${pin.fileId ? `<a href="/panel/sigorta-portal/dosyalar" class="mt-2 inline-block text-blue-600 underline text-xs">Dosyalara Git</a>` : ''}
+      ${pin.fileId ? `<a href="/panel/sigorta-portal/dosyalar" class="mt-2 inline-block text-brand-600 underline text-xs">Dosyalara Git</a>` : ''}
     </div>`;
 }
 

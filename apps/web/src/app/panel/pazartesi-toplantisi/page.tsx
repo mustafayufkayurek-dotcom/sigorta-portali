@@ -35,7 +35,7 @@ export default function PazartesiToplantisiPage() {
 
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/40">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
+              <CalendarDays className="h-5 w-5 text-brand-600" />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">

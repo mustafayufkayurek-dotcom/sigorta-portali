@@ -110,7 +110,7 @@ export default function KarlilikPage() {
               onClick={() => setGroupBy(g)}
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-medium ${
                 groupBy === g
-                  ? 'bg-blue-600 dark:bg-blue-500 text-white border-blue-600 dark:border-blue-500'
+                  ? 'bg-brand-600 dark:bg-blue-500 text-white border-brand-600 dark:border-blue-500'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
@@ -176,7 +176,7 @@ export default function KarlilikPage() {
           </div>
           <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${overallMargin >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
+              className={`h-full rounded-full transition-all duration-700 ${overallMargin >= 0 ? 'bg-status-success' : 'bg-status-danger'}`}
               style={{ width: `${Math.min(Math.abs(overallMargin), 100)}%` }}
             />
           </div>
@@ -226,7 +226,7 @@ export default function KarlilikPage() {
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${row.margin >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                            className={`h-full rounded-full ${row.margin >= 0 ? 'bg-status-success' : 'bg-status-danger'}`}
                             style={{ width: `${Math.min(Math.abs(row.margin), 100)}%` }}
                           />
                         </div>

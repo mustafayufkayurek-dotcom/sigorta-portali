@@ -327,9 +327,9 @@ function FinancialSummaryBar({
         ? 'bg-amber-50 border-amber-200'
         : 'bg-rose-50 border-rose-200'
     : margin >= 20
-      ? 'bg-emerald-500/15 border-emerald-400/30'
+      ? 'bg-status-success/15 border-emerald-400/30'
       : margin >= 10
-        ? 'bg-amber-500/15 border-amber-400/30'
+        ? 'bg-status-warning/15 border-amber-400/30'
         : 'bg-rose-500/15 border-rose-400/30';
 
   const chipClass = isLight
@@ -354,7 +354,7 @@ function FinancialSummaryBar({
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap min-w-0">
       <div className="hidden md:flex items-center gap-2 pr-1 flex-shrink-0">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+        <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" aria-hidden />
         <span className={`text-xs font-semibold tracking-wide ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Finansal Özet</span>
       </div>
       {metrics.map((metric) => (
@@ -694,7 +694,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
             <div>
               <h3 className="text-base font-bold text-slate-900">Metraj Hesaplama Asistanı</h3>
               {location && (
-                <p className="text-xs text-blue-600 font-medium mt-0.5">
+                <p className="text-xs text-brand-600 font-medium mt-0.5">
                   Mahal/Bölge: <span className="bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">{formatDisplayLabel(location)}</span>
                 </p>
               )}
@@ -714,7 +714,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                 key={t}
                 type="button"
                 onClick={() => setHesaplamaTuru(t)}
-                className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${hesaplamaTuru === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${hesaplamaTuru === t ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
                 {hesaplamaTuruLabel[t]}
               </button>
@@ -731,7 +731,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                 onChange={(e) => setOzelFormul(e.target.value)}
               />
               {ozelFormul && evaluateExpression(ozelFormul) !== null && (
-                <p className="text-xs text-blue-600 mt-1 font-mono">= {fmt2(evaluateExpression(ozelFormul)!)} m²</p>
+                <p className="text-xs text-brand-600 mt-1 font-mono">= {fmt2(evaluateExpression(ozelFormul)!)} m²</p>
               )}
             </div>
           )}
@@ -776,7 +776,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                     onChange={(e) => updateOda(oda.id, { ad: e.target.value })}
                   />
                   {odalar.length > 1 && (
-                    <button type="button" onClick={() => removeOda(oda.id)} className="text-slate-300 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded hover:bg-red-50">
+                    <button type="button" onClick={() => removeOda(oda.id)} className="text-slate-300 hover:text-status-danger w-6 h-6 flex items-center justify-center rounded hover:bg-red-50">
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                     </button>
                   )}
@@ -807,7 +807,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                 {/* Formüller — her zaman görünür */}
                 {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && (
                   <div className="bg-white border border-blue-100 rounded-lg px-3 py-2 space-y-1">
-                    <p className="text-xs font-semibold text-blue-600 mb-1.5">Otomatik Hesaplamalar</p>
+                    <p className="text-xs font-semibold text-brand-600 mb-1.5">Otomatik Hesaplamalar</p>
                     <div className="grid grid-cols-1 gap-1 text-xs font-mono">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500">Zemin/Tavan Alanı:</span>
@@ -868,7 +868,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                           <span className="text-xs font-mono text-slate-500 ml-auto flex-shrink-0">
                             {k.adet} × ({fmt2(k.en)} × {fmt2(k.boy)}) = <span className="font-semibold text-slate-700">{fmt2(k.adet * k.en * k.boy)} m²</span>
                           </span>
-                          <button type="button" onClick={() => removeKesinti(oda.id, k.id)} className="text-slate-300 hover:text-red-500 ml-1">×</button>
+                          <button type="button" onClick={() => removeKesinti(oda.id, k.id)} className="text-slate-300 hover:text-status-danger ml-1">×</button>
                         </div>
                       ))}
                       <div className="flex justify-between items-center px-2 pt-1 font-mono text-xs">
@@ -901,7 +901,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
           <button
             type="button"
             onClick={() => setOdalar((prev) => [...prev, newOda()])}
-            className="w-full border-2 border-dashed border-slate-200 rounded-xl py-2.5 text-sm text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/30 transition-colors font-medium"
+            className="w-full border-2 border-dashed border-slate-200 rounded-xl py-2.5 text-sm text-slate-500 hover:border-blue-300 hover:text-brand-600 hover:bg-blue-50/30 transition-colors font-medium"
           >
             + Oda Ekle
           </button>
@@ -933,7 +933,7 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
                 type="button"
                 disabled={genelToplam <= 0 || tumUyarilar.some((u) => u.includes('büyük'))}
                 onClick={() => { onAktar(fmt2(genelToplam)); onClose(); }}
-                className="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="bg-brand-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Miktarı Rapora Yansıt ({fmt2(genelToplam)} m²)
               </button>
@@ -1011,7 +1011,7 @@ function WorkDefinitionSelector({
           }}
           onBlur={commit}
         />
-        <button type="button" onClick={() => { setAddingNew(false); setNewVal(''); }} className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs">×</button>
+        <button type="button" onClick={() => { setAddingNew(false); setNewVal(''); }} className="text-slate-400 hover:text-status-danger flex-shrink-0 text-xs">×</button>
       </div>
     );
   }
@@ -1124,7 +1124,7 @@ function DetectionScopeSelector({
             setAddingNew(false);
             setNewVal('');
           }}
-          className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs"
+          className="text-slate-400 hover:text-status-danger flex-shrink-0 text-xs"
         >
           ×
         </button>
@@ -1231,7 +1231,7 @@ function WorkGroupSelector({
           }}
           onBlur={commit}
         />
-        <button type="button" onClick={() => { setAddingNew(false); setNewVal(''); }} className="text-slate-400 hover:text-red-500 flex-shrink-0 text-xs">×</button>
+        <button type="button" onClick={() => { setAddingNew(false); setNewVal(''); }} className="text-slate-400 hover:text-status-danger flex-shrink-0 text-xs">×</button>
       </div>
     );
   }
@@ -2347,7 +2347,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           type="button"
           disabled={zamApplying || !zamOraniInput || parseFloat(zamOraniInput.replace(',', '.')) === 0}
           onClick={handleApplyZamOrani}
-          className="text-xs bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="text-xs bg-status-warning text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {zamApplying ? 'Uygulanıyor...' : 'Revize Et'}
         </button>
@@ -2370,7 +2370,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           type="button"
           disabled={quickAdding}
           onClick={() => { void quickAddRow(); }}
-          className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:opacity-50"
+          className="text-xs font-medium text-brand-600 hover:text-blue-800 hover:underline disabled:opacity-50"
         >
           {quickAdding ? 'Ekleniyor...' : '+ Kalem Ekle'}
         </button>
@@ -2400,11 +2400,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           <tr className="bg-slate-50">
             {isEditable && <th className="sticky top-0 z-30 w-8 px-2 py-2 text-center text-slate-400 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">#</th>}
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Kategori</th>
-            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Tespit Alanı <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Tespit Alanı <span className="text-status-danger">*</span></th>
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[90px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Mahal/Bölge</th>
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[120px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Grubu</th>
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[160px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Tanımı</th>
-            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Açıklama <span className="text-red-500">*</span></th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Açıklama <span className="text-status-danger">*</span></th>
             <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Miktar</th>
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Birim</th>
             <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-24 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Satış Fiyatı</th>
@@ -2650,7 +2650,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         type="button"
                         title="Metraj Hesaplama Asistanı"
                         onClick={() => setMetrajModalRowId(row._id)}
-                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
+                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
                       >
                         📐
                       </button>
@@ -2693,7 +2693,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'salesUnitPrice', row._id)}
                       />
                       <div className="absolute right-1 flex items-center gap-0.5 pointer-events-none">
-                        {isLoss && <span title="Tedarikçi fiyatı satış fiyatından yüksek — bu kalemde zarar var" className="text-red-500 pointer-events-auto cursor-help text-xs">⚠</span>}
+                        {isLoss && <span title="Tedarikçi fiyatı satış fiyatından yüksek — bu kalemde zarar var" className="text-status-danger pointer-events-auto cursor-help text-xs">⚠</span>}
                         <span className="text-[10px] font-medium text-slate-400 select-none">TL.</span>
                       </div>
                     </div>
@@ -2912,7 +2912,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     type="button"
                     title="Metraj Hesaplama Asistanı"
                     onClick={() => setMetrajModalRowId('new')}
-                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
+                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
                   >
                     📐
                   </button>
@@ -2970,7 +2970,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               {/* Toplam preview */}
               <td className="px-2 py-3 text-right border-l border-slate-100">
                 {addingDirty && (
-                  <span className="text-xs text-blue-600 font-semibold">
+                  <span className="text-xs text-brand-600 font-semibold">
                     {fmtCurrency(calcTotal(addingRow))}
                   </span>
                 )}
@@ -3003,7 +3003,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             type="button"
             tabIndex={-1}
             onClick={() => { void quickAddRow(); }}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+            className="text-xs font-medium text-brand-600 hover:text-blue-800 hover:underline"
           >
             + Kalem Ekle
           </button>
@@ -4460,7 +4460,7 @@ export default function RepairReportPage() {
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {report.reportType === 'multi' && isEditable && (
-              <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Hasar Nedeni</button>
+              <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ Hasar Nedeni</button>
             )}
             {report.status === 'approved' && (
               <button type="button"
@@ -4657,7 +4657,7 @@ export default function RepairReportPage() {
                 <p className="text-xs font-semibold text-slate-600 shrink-0">Hasar Büyüklüğü</p>
                 {DAMAGE_SIZE_OPTIONS.map((option) => (
                   <label key={option.value} className="flex items-center gap-1.5 text-sm text-slate-700">
-                    <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-blue-600" />
+                    <input type="radio" disabled={!isEditable} checked={quickDamageSize === option.value} onChange={() => setQuickDamageSize(option.value)} className="text-brand-600" />
                     {option.label}
                   </label>
                 ))}
@@ -4667,7 +4667,7 @@ export default function RepairReportPage() {
               type="button"
               disabled={!isEditable || quickDamageTypes.length === 0}
               onClick={() => setShowQuickRepairModal(true)}
-              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
+              className="rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
             >
               ⚡ Hızlı Onarım Türü Ekle
             </button>
@@ -4717,7 +4717,7 @@ export default function RepairReportPage() {
             )}
           </div>
         </div>
-        {findingsError && <p className="text-xs text-red-500 mt-1">{findingsError}</p>}
+        {findingsError && <p className="text-xs text-status-danger mt-1">{findingsError}</p>}
       </SectionCard>
 
       {/* Onarım Kalemleri */}
@@ -4768,7 +4768,7 @@ export default function RepairReportPage() {
           onConfirm={askConfirm}
         />
         {itemsApprovalError && (
-          <p className="text-xs text-red-500 mt-3">{itemsApprovalError}</p>
+          <p className="text-xs text-status-danger mt-3">{itemsApprovalError}</p>
         )}
 
         {/* Toplamlar */}
@@ -4927,7 +4927,7 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-emerald-500/35 bg-white/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(15,23,42,0.12)] px-4 sm:px-6 lg:px-8 py-3">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-status-success/35 bg-white/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(15,23,42,0.12)] px-4 sm:px-6 lg:px-8 py-3">
         <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
           <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start max-w-[280px]">
             <p className="text-[10px] font-semibold text-slate-600 tracking-wide">Rapor Oluşturma Analizi</p>
@@ -5092,7 +5092,7 @@ export default function RepairReportPage() {
             </div>
             <div className="flex gap-2 mt-4">
               <button type="button" onClick={handleAddDamageType} disabled={!damageTypeForm.code}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">Ekle</button>
+                className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">Ekle</button>
               <button type="button" onClick={() => setShowDamageTypeModal(false)} className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600">İptal</button>
             </div>
           </div>
@@ -5174,7 +5174,7 @@ export default function RepairReportPage() {
                         setWhatsAppRecipientKey(first.key);
                         setWhatsAppPhone(first.phone);
                       }}
-                      className="mt-2 text-xs text-blue-600 hover:text-blue-700"
+                      className="mt-2 text-xs text-brand-600 hover:text-blue-700"
                     >
                       Dosyadan Alıcı Seç
                     </button>
@@ -5419,7 +5419,7 @@ export default function RepairReportPage() {
             {approvalHistory.map((h: any) => (
               <div key={h.id} className="flex items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                  h.action === 'approved' ? 'bg-green-500' : h.action === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
+                  h.action === 'approved' ? 'bg-green-500' : h.action === 'rejected' ? 'bg-status-danger' : 'bg-yellow-500'
                 }`} />
                 <div className="flex-1">
                   <span className="text-sm text-slate-800 font-medium">
@@ -5584,7 +5584,7 @@ export default function RepairReportPage() {
                                 return next;
                               });
                             }}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 flex-shrink-0"
+                            className="w-4 h-4 text-brand-600 rounded border-slate-300 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -5592,7 +5592,7 @@ export default function RepairReportPage() {
                               {item.workGroup && (
                                 <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{formatDisplayLabel(item.workGroup.name)}</span>
                               )}
-                              <span className={`text-xs px-1.5 py-0.5 rounded-full ${item.damageCategory === 'bina' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full ${item.damageCategory === 'bina' ? 'bg-blue-50 text-brand-600' : 'bg-amber-50 text-amber-600'}`}>
                                 {item.damageCategory === 'bina' ? 'Bina' : 'Eşya'}
                               </span>
                             </div>
@@ -5618,7 +5618,7 @@ export default function RepairReportPage() {
                     const allItems = templateSuggestions.flatMap((s: any) => s.items ?? []);
                     setSelectedTemplateItems(new Set(allItems.map((it: any) => it.id)));
                   }}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-brand-600 hover:underline"
                 >
                   Tümünü Seç
                 </button>
@@ -5639,7 +5639,7 @@ export default function RepairReportPage() {
                   type="button"
                   onClick={handleAddSuggestedItems}
                   disabled={selectedTemplateItems.size === 0 || addingTemplateItems}
-                  className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {addingTemplateItems ? 'Ekleniyor...' : `Seçilenleri Ekle (${selectedTemplateItems.size})`}
                 </button>
@@ -5679,7 +5679,7 @@ export default function RepairReportPage() {
                   confirmDialog.resolve(true);
                   setConfirmDialog(null);
                 }}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
+                className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
               >
                 Evet
               </button>

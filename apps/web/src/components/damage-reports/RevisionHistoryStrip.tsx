@@ -92,11 +92,11 @@ export function RevisionHistoryStrip({
   const dotTone = (item: RevHistoryItem | undefined) => {
     if (!item) return 'border-slate-200 bg-slate-50 text-slate-400';
     if (item.status === 'revision') return 'border-amber-400 bg-amber-50 text-amber-900';
-    if (item.status === 'approved') return 'border-emerald-500 bg-emerald-50 text-emerald-900';
+    if (item.status === 'approved') return 'border-status-success bg-emerald-50 text-emerald-900';
     return 'border-slate-300 bg-white text-slate-700';
   };
 
-  const connectorTone = 'bg-red-500';
+  const connectorTone = 'bg-status-danger';
   const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
   const stemWidth = compact ? 'w-5 sm:w-7' : 'w-7 sm:w-10';
   const maxReached = items.some((item) => item.version >= REPAIR_REPORT_MAX_VERSION);
@@ -167,7 +167,7 @@ export function RevisionHistoryStrip({
           <p className="text-[10px] font-semibold text-slate-500">Revizyon Geçmişi</p>
           <a
             href={`/panel/revizyon-talepleri?reportId=${reportId}`}
-            className="shrink-0 whitespace-nowrap text-[10px] text-blue-600 hover:text-blue-700"
+            className="shrink-0 whitespace-nowrap text-[10px] text-brand-600 hover:text-blue-700"
           >
             Tümünü Gör →
           </a>
@@ -188,7 +188,7 @@ export function RevisionHistoryStrip({
         <h4 className="text-xs font-semibold text-slate-600">Revizyon Geçmişi</h4>
         <a
           href={`/panel/revizyon-talepleri?reportId=${reportId}`}
-          className="text-[11px] text-blue-600 hover:text-blue-700"
+          className="text-[11px] text-brand-600 hover:text-blue-700"
         >
           Tümünü Gör →
         </a>

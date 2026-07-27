@@ -5,6 +5,7 @@ import axios from 'axios';
 import { FinansRaporOzeti } from '../FinansRaporOzeti';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { CollapsibleSectionCard } from '../claim-detail-ui';
+import { useToast } from '@/contexts/ToastContext';
 
 function PlAmountCell({
   amount,
@@ -89,6 +90,7 @@ export function FinansOzetPanel({
   claimId: string;
   reportEditHref?: string | null;
 }) {
+  const { showToast } = useToast();
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
@@ -111,9 +113,11 @@ export function FinansOzetPanel({
     setRecalculating(true);
     try {
       await axios.post(`${API}/finance/analytics/recalculate/${claimId}`, {}, { headers: authHeader() });
-      load();
-    } catch { /* sessiz */ }
-    finally { setRecalculating(false); }
+      await load();
+      showToast('success', 'Finans Özeti Güncellendi');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Finans özeti güncellenemedi');
+    } finally { setRecalculating(false); }
   };
 
   const s = summary;

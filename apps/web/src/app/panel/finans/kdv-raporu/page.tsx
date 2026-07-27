@@ -327,7 +327,7 @@ export default function KdvRaporuPage() {
                 emptyHint={
                   <span>
                     Satış faturası yok.{' '}
-                    <Link href="/panel/finans/faturalar" className="text-blue-600 underline">Faturalar</Link>
+                    <Link href="/panel/finans/faturalar" className="text-brand-600 underline">Faturalar</Link>
                     {' '}ekranından ekleyin.
                   </span>
                 }
@@ -340,7 +340,7 @@ export default function KdvRaporuPage() {
                 emptyHint={
                   <span>
                     Alış faturası yok.{' '}
-                    <Link href="/panel/finans/faturalar" className="text-blue-600 underline">Faturalar</Link>
+                    <Link href="/panel/finans/faturalar" className="text-brand-600 underline">Faturalar</Link>
                     {' '}ekranında alış olarak kaydedin.
                   </span>
                 }

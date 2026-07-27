@@ -11,17 +11,37 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          50:  '#eff6ff',
-          100: '#dbeafe',
+          50:  '#EFF6FF',
+          100: '#DBEAFE',
           200: '#bfdbfe',
           300: '#93c5fd',
           400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
           800: '#1e40af',
-          900: '#1e3a8a',
+          900: '#1E3A8A',
           950: '#0f2744',
+        },
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted: '#F9FAFB',
+          subtle: '#F3F4F6',
+        },
+        border: {
+          DEFAULT: '#E5E7EB',
+          strong: '#D1D5DB',
+        },
+        content: {
+          primary: '#111827',
+          secondary: '#6B7280',
+          tertiary: '#9CA3AF',
+        },
+        status: {
+          success: '#10B981',
+          warning: '#F59E0B',
+          danger: '#EF4444',
+          info: '#3B82F6',
         },
       },
       boxShadow: {
@@ -31,6 +51,8 @@ module.exports = {
       },
       borderRadius: {
         '2.5xl': '1.125rem',
+        card: '12px',
+        button: '8px',
       },
     },
   },

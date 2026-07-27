@@ -549,7 +549,7 @@ function EmptyState({ onReset }: { onReset: () => void }) {
         <p className="mt-1 text-xs text-slate-500">Havuzu yeniden taramak için filtreleri temizleyin veya kaynak ekrana gidin.</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onReset} className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700">
+        <button type="button" onClick={onReset} className="inline-flex h-9 items-center justify-center rounded-md bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-blue-700">
           Filtreleri temizle
         </button>
         <Link href="/panel/musteriler" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700">
@@ -582,6 +582,7 @@ export default function CrmPage() {
   const [corporateSignature, setCorporateSignature] = useState<CorporateEmailSignature | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [savingAction, setSavingAction] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<CrmStatus>('active');
   const [statusVisibility, setStatusVisibility] = useState<CrmVisibility>('everyone');
@@ -651,6 +652,7 @@ export default function CrmPage() {
   async function refreshCrmActivity(entity: CrmEntity) {
     setActivityLoading(true);
     setActionError(null);
+    setActionSuccess(null);
     try {
       const data = await apiClient.get<CrmActivity>(`/crm/relationships/${entity.kind}/${entity.id}/activity`);
       const key = relationshipKey(entity);
@@ -717,10 +719,12 @@ export default function CrmPage() {
     if (!selected) return;
     setSavingAction('status');
     setActionError(null);
+    setActionSuccess(null);
     try {
       await apiClient.patch(`/crm/relationships/${selected.kind}/${selected.id}/status`, { status: statusDraft, visibility: statusVisibility });
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
+      setActionSuccess('CRM durumu kaydedildi.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'CRM durumu kaydedilemedi'));
     } finally {
@@ -732,6 +736,7 @@ export default function CrmPage() {
     if (!selected) return;
     setSavingAction('note');
     setActionError(null);
+    setActionSuccess(null);
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/notes`, {
         noteType: noteForm.noteType,
@@ -743,6 +748,7 @@ export default function CrmPage() {
       setNoteForm({ occurredAt: todayInputDate(), noteType: 'general', visibility: 'everyone', summary: '', body: '' });
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
+      setActionSuccess('Not kaydedildi.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'CRM notu kaydedilemedi'));
     } finally {
@@ -754,6 +760,7 @@ export default function CrmPage() {
     if (!selected) return;
     setSavingAction('follow-up');
     setActionError(null);
+    setActionSuccess(null);
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
         status: followUpForm.status,
@@ -766,6 +773,7 @@ export default function CrmPage() {
       setActiveActionTab('followup');
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
+      setActionSuccess('Takip kaydedildi.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'Takip kaydedilemedi'));
     } finally {
@@ -777,6 +785,7 @@ export default function CrmPage() {
     if (!selected) return;
     setSavingAction('email');
     setActionError(null);
+    setActionSuccess(null);
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/email`, {
         to: emailForm.to,
@@ -786,6 +795,7 @@ export default function CrmPage() {
       });
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
+      setActionSuccess('E-posta gönderildi.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'E-posta gönderilemedi'));
     } finally {
@@ -836,7 +846,7 @@ export default function CrmPage() {
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-2">
         <header className="flex flex-col gap-1.5 border-b border-slate-200 pb-1.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold tracking-[0.02em] text-blue-600">
+            <p className="truncate text-xs font-semibold tracking-[0.02em] text-brand-600">
               Operasyon İlişkileri <span className="mx-1 text-slate-300">&gt;</span> CRM
             </p>
           </div>
@@ -848,49 +858,51 @@ export default function CrmPage() {
           </div>
         </header>
 
-        <div className="grid gap-1.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(240px,1.4fr)_minmax(150px,0.85fr)_minmax(130px,0.75fr)_minmax(115px,0.65fr)_auto]">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ad, telefon, e-posta veya sinyal ara"
-              className="h-8 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            />
-          </label>
-          <select
-            value={kindFilter}
-            onChange={(event) => setKindFilter(event.target.value as EntityKind | '')}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-blue-400"
-          >
-            <option value="">Tüm ilişkiler</option>
-            <option value="customer">Müşteri ilişkileri</option>
-            <option value="adjuster">Eksper ilişkileri</option>
-            <option value="vendor">Tedarikçi ilişkileri</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-blue-400"
-          >
-            <option value="">Durum</option>
-            {statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select
-            value={riskFilter}
-            onChange={(event) => setRiskFilter(event.target.value)}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-blue-400"
-          >
-            <option value="">Risk</option>
-            <option value="none">Yok</option>
-            <option value="low">Düşük</option>
-            <option value="medium">Orta</option>
-            <option value="high">Yüksek</option>
-          </select>
-          <label className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-600">
-            <input type="checkbox" checked={openFollowOnly} onChange={(event) => setOpenFollowOnly(event.target.checked)} />
-            Açık takip
-          </label>
+        <div className="rounded-2xl border border-slate-200/70 bg-white px-3 py-2.5 shadow-card">
+          <div className="panel-filter-bar">
+            <div className="panel-filter-search-wrap">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Ad, Telefon, E-posta..."
+                className="panel-search-input"
+              />
+            </div>
+            <select
+              value={kindFilter}
+              onChange={(event) => setKindFilter(event.target.value as EntityKind | '')}
+              className="panel-filter-control"
+            >
+              <option value="">Tüm İlişkiler</option>
+              <option value="customer">Müşteri İlişkileri</option>
+              <option value="adjuster">Eksper İlişkileri</option>
+              <option value="vendor">Tedarikçi İlişkileri</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="panel-filter-control"
+            >
+              <option value="">Tüm Durumlar</option>
+              {statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <select
+              value={riskFilter}
+              onChange={(event) => setRiskFilter(event.target.value)}
+              className="panel-filter-control"
+            >
+              <option value="">Tüm Riskler</option>
+              <option value="none">Risk Yok</option>
+              <option value="low">Düşük Risk</option>
+              <option value="medium">Orta Risk</option>
+              <option value="high">Yüksek Risk</option>
+            </select>
+            <label className="inline-flex h-10 flex-[1_1_calc(50%-0.25rem)] items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-600 sm:flex-[0_0_auto]">
+              <input type="checkbox" checked={openFollowOnly} onChange={(event) => setOpenFollowOnly(event.target.checked)} />
+              Açık Takip
+            </label>
+          </div>
         </div>
 
         <section className="grid gap-3 xl:grid-cols-[minmax(360px,0.4fr)_minmax(0,0.6fr)] 2xl:grid-cols-[minmax(420px,0.38fr)_minmax(0,0.62fr)]">
@@ -956,7 +968,7 @@ export default function CrmPage() {
                 <div className="border-b border-slate-200 bg-white p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold text-blue-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
+                      <p className="text-xs font-semibold text-brand-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
                       <h2 className="mt-0.5 text-base font-bold text-slate-950">{selected.name}</h2>
                       <p className="mt-0.5 text-xs text-slate-500">{[selected.city, selected.district].filter(Boolean).join(' / ') || 'Konum yok'}</p>
                     </div>
@@ -1053,7 +1065,7 @@ export default function CrmPage() {
                       </label>
                       <div className="mt-2.5 flex items-center justify-between gap-3">
                         <span className="text-xs text-slate-500">Sorumlu kişi: Oturumdaki kullanıcı</span>
-                        <button type="button" onClick={saveNote} disabled={savingAction === 'note' || !noteForm.summary.trim()} className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                        <button type="button" onClick={saveNote} disabled={savingAction === 'note' || !noteForm.summary.trim()} className="inline-flex h-8 items-center justify-center rounded-md bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                           {savingAction === 'note' ? 'Kaydediliyor' : 'Not Ekle'}
                         </button>
                       </div>
@@ -1101,7 +1113,7 @@ export default function CrmPage() {
                       </label>
                       <div className="mt-2.5 flex items-center justify-between gap-3">
                         <span className="text-xs text-slate-500">Sorumlu kişi: Oturumdaki kullanıcı</span>
-                        <button type="button" onClick={saveFollowUp} disabled={savingAction === 'follow-up' || !followUpForm.result.trim()} className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                        <button type="button" onClick={saveFollowUp} disabled={savingAction === 'follow-up' || !followUpForm.result.trim()} className="inline-flex h-8 items-center justify-center rounded-md bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                           {savingAction === 'follow-up' ? 'Kaydediliyor' : 'Takip Oluştur'}
                         </button>
                       </div>
@@ -1243,7 +1255,7 @@ export default function CrmPage() {
                           type="button"
                           onClick={sendCrmEmail}
                           disabled={savingAction === 'email' || !emailForm.to.trim() || !emailForm.subject.trim() || !emailForm.message.trim()}
-                          className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                          className="inline-flex h-8 items-center justify-center rounded-md bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                         >
                           {savingAction === 'email' ? 'Gönderiliyor' : 'E-posta Gönder'}
                         </button>
@@ -1254,6 +1266,11 @@ export default function CrmPage() {
                   {actionError && (
                     <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
                       {actionError}
+                    </div>
+                  )}
+                  {actionSuccess && !actionError && (
+                    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                      {actionSuccess}
                     </div>
                   )}
                 </div>
@@ -1339,7 +1356,7 @@ export default function CrmPage() {
                     </div>
                   </details>
 
-                  <Link href={entityPath(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                  <Link href={entityPath(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
                     Varlik detayina git <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>

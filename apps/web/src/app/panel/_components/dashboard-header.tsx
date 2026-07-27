@@ -183,7 +183,7 @@ export function DashboardHeader({
                       href="/panel/hasar-dosyalari?yeni=1"
                       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                         singlePrimaryAction
-                          ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200/60'
+                          ? 'bg-brand-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200/60'
                           : 'border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'
                       }`}
                     >

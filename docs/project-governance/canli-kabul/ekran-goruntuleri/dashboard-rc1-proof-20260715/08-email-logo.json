@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "EMAIL_BRAND_LOGO_PATH": "/docs/meridyen-logo-original.png",
+  "renderedLogoUrlInProductionHtml": "https://app.meridyen-tr.com/docs/meridyen-logo-original.png",
+  "previewLocalSrc": "./meridyen-logo-original.png",
+  "renderedImg": {
+    "src": "./meridyen-logo-original.png",
+    "naturalWidth": 1024,
+    "naturalHeight": 682,
+    "displayWidth": 120,
+    "displayHeight": 80,
+    "complete": true
+  },
+  "aspectRatio": {
+    "source": 1.5015,
+    "expected": 1.5015,
+    "display": 1.5,
+    "preserved": true
+  },
+  "legacyJpegInActiveEmailCode": false,
+  "assets": {
+    "docsPng": "apps/web/public/docs/meridyen-logo-original.png",
+    "backendPng": "apps/backend/assets/meridyen-logo-original.png",
+    "backendJpegRemoved": true
+  },
+  "evidence": [
+    "08-email-logo-light.png",
+    "08-email-logo-dark-bg.png",
+    "08-email-logo-header-closeup.png",
+    "welcome-email-expert.html"
+  ],
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "jestEmail": 0
+  },
+  "note": "Detay: email-logo-pass/"
+}

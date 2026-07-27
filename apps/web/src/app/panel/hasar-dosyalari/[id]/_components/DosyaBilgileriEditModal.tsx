@@ -252,7 +252,7 @@ export function DosyaBilgileriEditModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Poliçe No <span className="text-red-500">*</span>
+                  Poliçe No <span className="text-status-danger">*</span>
                 </label>
                 <input
                   className={fieldCls}
@@ -274,7 +274,7 @@ export function DosyaBilgileriEditModal({
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  İhbar Konusu <span className="text-red-500">*</span>
+                  İhbar Konusu <span className="text-status-danger">*</span>
                 </label>
                 <input
                   className={fieldCls}
@@ -367,7 +367,7 @@ export function DosyaBilgileriEditModal({
                   <button
                     type="button"
                     onClick={() => setCustomerPickerOpen(true)}
-                    className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                    className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-brand-600 hover:bg-blue-50"
                   >
                     Seç
                   </button>
@@ -404,7 +404,7 @@ export function DosyaBilgileriEditModal({
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Kaydediliyor…' : 'Kaydet'}
             </button>

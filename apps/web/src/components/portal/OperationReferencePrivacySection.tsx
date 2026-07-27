@@ -31,7 +31,7 @@ export default function OperationReferencePrivacySection() {
             key={item.label}
             className="flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm">
               <item.icon className="h-4 w-4" aria-hidden="true" />
             </div>
             <p className="text-[11px] font-medium leading-snug text-slate-700">{item.label}</p>

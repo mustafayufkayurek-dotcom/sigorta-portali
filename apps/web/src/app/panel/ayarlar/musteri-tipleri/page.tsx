@@ -172,7 +172,7 @@ export default function MusteriTipleriPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700"
         >
           Tip Ekle
         </button>

@@ -133,7 +133,7 @@ export function RecommendedVendorsTabs({
     >
       <div className="flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-600" strokeWidth={1.75} aria-hidden />
+          <Building2 className="w-3.5 h-3.5 shrink-0 text-brand-600" strokeWidth={1.75} aria-hidden />
           <h3 className="text-sm font-semibold text-slate-800 truncate">{title}</h3>
         </div>
         {assignedBadge && (
@@ -331,7 +331,7 @@ function RegisteredVendorPoolPicker({
                     type="button"
                     onClick={() => void onAssign(v.id)}
                     disabled={assignLoading || Boolean(assignedVendorId)}
-                    className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="shrink-0 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="tedarikci-ata"
                   >
                     Dosyaya Ata

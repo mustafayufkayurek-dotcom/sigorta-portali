@@ -38,7 +38,7 @@ export function RecentResponses({
         <button
           type="button"
           onClick={onSeeAll}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700"
+          className="text-xs font-medium text-brand-600 hover:text-blue-700"
         >
           Tümünü Gör
         </button>

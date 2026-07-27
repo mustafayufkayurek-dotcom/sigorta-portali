@@ -137,8 +137,8 @@ function ActionBtn({
   const styles = {
     indigo: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border-indigo-100',
     gray: 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-gray-200',
-    blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-100',
-    red: 'bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 border-red-100',
+    blue: 'bg-blue-50 text-brand-600 hover:bg-blue-100 hover:text-blue-700 border-blue-100',
+    red: 'bg-red-50 text-status-danger hover:bg-red-100 hover:text-red-700 border-red-100',
   }[variant];
 
   return (
@@ -330,7 +330,7 @@ export function EntityDocumentsTab({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               <UploadIcon />
               {uploading ? 'Yükleniyor...' : 'Dosya Seç'}
@@ -499,7 +499,7 @@ export function EntityDocumentsTab({
                   type="button"
                   title="İndir"
                   onClick={() => handleDownload(previewDoc.id, previewDoc.fileName)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   <DownloadIcon />
                   <span>İndir</span>
@@ -547,7 +547,7 @@ export function EntityDocumentsTab({
                     <button
                       type="button"
                       onClick={() => handleDownload(previewDoc.id, previewDoc.fileName)}
-                      className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-2 bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
                     >
                       <DownloadIcon />
                       Dosyayı İndir

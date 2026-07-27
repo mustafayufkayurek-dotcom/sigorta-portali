@@ -368,7 +368,7 @@ export default function SozlesmeSablonlariPage() {
                   onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
                   className="flex items-center gap-2"
                 >
-                  <span className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                  <span className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-brand-600' : 'bg-slate-300'}`}>
                     <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </span>
                   <span className="text-sm text-slate-700">{form.isActive ? 'Aktif' : 'Pasif'}</span>

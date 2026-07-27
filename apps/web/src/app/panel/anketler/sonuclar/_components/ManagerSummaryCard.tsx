@@ -3,7 +3,7 @@
 import type { ManagerSummaryColumn } from '../_lib/survey-results-types';
 
 const TONE_DOT: Record<ManagerSummaryColumn['tone'], string> = {
-  positive: 'bg-emerald-500',
+  positive: 'bg-status-success',
   warning: 'bg-orange-500',
   alert: 'bg-rose-500',
   neutral: 'bg-amber-400',
@@ -29,7 +29,7 @@ export function ManagerSummaryCard({
         <button
           type="button"
           onClick={onOpenDetail}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700"
+          className="text-xs font-medium text-brand-600 hover:text-blue-700"
         >
           Detayı Gör
         </button>

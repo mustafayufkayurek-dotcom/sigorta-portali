@@ -203,7 +203,7 @@ export function InboxAssignUserModal({
             type="button"
             onClick={() => void handleAssign()}
             disabled={loading || !selectedId}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
           >
             {loading ? 'Atanıyor…' : 'Ata'}
           </button>

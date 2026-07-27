@@ -324,7 +324,7 @@ export default function FaturalarPage() {
                     </PanelTableTd>
                     <PanelTableTd colId="fileNo" className="px-4 py-3">
                       {inv.claimFileId
-                        ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
+                        ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
                         : <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>}
                     </PanelTableTd>
                     <PanelTableTd colId="invoiceType" className="px-4 py-3">
@@ -391,9 +391,9 @@ export default function FaturalarPage() {
 
 function QuickActionBtn({ onClick, color, children }: { onClick: () => void; color: 'blue' | 'green' | 'red'; children: React.ReactNode }) {
   const cls = {
-    blue:  'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-700',
+    blue:  'text-brand-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-700',
     green: 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 border-green-200 dark:border-green-700',
-    red:   'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 dark:border-red-700',
+    red:   'text-status-danger dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 dark:border-red-700',
   }[color];
   return (
     <button

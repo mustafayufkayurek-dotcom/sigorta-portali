@@ -94,13 +94,13 @@ export default function FiyatListesiYuklePage() {
                   <td className="px-3 py-1.5 text-blue-700">Birim (adet, m², metre, saat, kg, ton)</td>
                   <td className="px-3 py-1.5 text-blue-700">Birim Fiyat (TL)</td>
                 </tr>
-                <tr className="bg-white/40 text-blue-600/80 italic">
+                <tr className="bg-white/40 text-brand-600/80 italic">
                   <td className="px-3 py-1.5">Tesisat</td>
                   <td className="px-3 py-1.5">Musluk Değişimi</td>
                   <td className="px-3 py-1.5">adet</td>
                   <td className="px-3 py-1.5">350</td>
                 </tr>
-                <tr className="bg-white/40 text-blue-600/80 italic">
+                <tr className="bg-white/40 text-brand-600/80 italic">
                   <td className="px-3 py-1.5">Boya</td>
                   <td className="px-3 py-1.5">İç Duvar Boyası</td>
                   <td className="px-3 py-1.5">m²</td>
@@ -109,7 +109,7 @@ export default function FiyatListesiYuklePage() {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-blue-600 mt-2">
+          <p className="text-xs text-brand-600 mt-2">
             * Zorunlu alan. Mevcut alt gruplar güncellenir, yeniler eklenir.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function FiyatListesiYuklePage() {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setFile(null); if (inputRef.current) inputRef.current.value = ''; }}
-                className="text-xs text-red-500 hover:text-red-700 mt-1"
+                className="text-xs text-status-danger hover:text-red-700 mt-1"
               >
                 Dosyayı Kaldır
               </button>
@@ -174,7 +174,7 @@ export default function FiyatListesiYuklePage() {
         <button
           onClick={handleUpload}
           disabled={!file || uploading}
-          className="w-full py-3 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-blue-200"
+          className="w-full py-3 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-blue-200"
         >
           {uploading ? (
             <span className="flex items-center justify-center gap-2">
@@ -196,7 +196,7 @@ export default function FiyatListesiYuklePage() {
                 <p className="text-xs text-slate-500 mt-0.5">Eklendi</p>
               </div>
               <div className="bg-white/60 rounded-xl p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{result.updated}</p>
+                <p className="text-2xl font-bold text-brand-600">{result.updated}</p>
                 <p className="text-xs text-slate-500 mt-0.5">Güncellendi</p>
               </div>
               <div className="bg-white/60 rounded-xl p-3 text-center">
@@ -223,7 +223,7 @@ export default function FiyatListesiYuklePage() {
               <p className="text-xs text-green-700">Tüm satırlar başarıyla işlendi.</p>
             )}
 
-            <Link href="/panel/ayarlar/fiyat-listesi" className="inline-block mt-3 text-xs text-blue-600 hover:underline font-medium">
+            <Link href="/panel/ayarlar/fiyat-listesi" className="inline-block mt-3 text-xs text-brand-600 hover:underline font-medium">
               Fiyat listesini görüntüle →
             </Link>
           </div>

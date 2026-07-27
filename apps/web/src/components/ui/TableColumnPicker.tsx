@@ -21,6 +21,8 @@ export interface TableColumnDef {
   resizable?: boolean;
   /** Kalan tablo genişliğini doldurur (colgroup width atanmaz) */
   flex?: boolean;
+  /** Sağda sabit kalır (ör. İşlemler) — sürüklenmez, sıranın sonuna kilitlenir */
+  pin?: 'end';
 }
 
 export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[]) {
@@ -47,10 +49,14 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
       if (rawOrder) {
         const parsedOrder = JSON.parse(rawOrder) as string[];
         const known = new Set(columns.map((c) => c.id));
+        const pinnedEnd = new Set(columns.filter((c) => c.pin === 'end').map((c) => c.id));
         const validOrder = parsedOrder.filter((id) => known.has(id));
         const missing = columns.map((c) => c.id).filter((id) => !validOrder.includes(id));
         if (validOrder.length > 0) {
-          setColumnOrder([...validOrder, ...missing]);
+          const merged = [...validOrder, ...missing];
+          const unlocked = merged.filter((id) => !pinnedEnd.has(id));
+          const pinned = columns.map((c) => c.id).filter((id) => pinnedEnd.has(id) && merged.includes(id));
+          setColumnOrder([...unlocked, ...pinned]);
         }
       }
     } catch {
@@ -73,20 +79,38 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
     [storageKey],
   );
 
+  const pinnedEndIds = useMemo(
+    () => new Set(columns.filter((c) => c.pin === 'end').map((c) => c.id)),
+    [columns],
+  );
+
+  const normalizeOrder = useCallback(
+    (order: string[]) => {
+      const unlocked = order.filter((id) => !pinnedEndIds.has(id));
+      const pinned = columns.map((c) => c.id).filter((id) => pinnedEndIds.has(id) && order.includes(id));
+      const missingPinned = columns.map((c) => c.id).filter((id) => pinnedEndIds.has(id) && !order.includes(id));
+      return [...unlocked, ...pinned, ...missingPinned];
+    },
+    [columns, pinnedEndIds],
+  );
+
   const moveColumn = useCallback(
     (id: string, direction: -1 | 1) => {
+      if (pinnedEndIds.has(id)) return;
       setColumnOrder((prev) => {
-        const idx = prev.indexOf(id);
+        const working = prev.filter((x) => !pinnedEndIds.has(x));
+        const idx = working.indexOf(id);
         if (idx < 0) return prev;
         const swapIdx = idx + direction;
-        if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-        const next = [...prev];
-        [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+        if (swapIdx < 0 || swapIdx >= working.length) return prev;
+        const nextWorking = [...working];
+        [nextWorking[idx], nextWorking[swapIdx]] = [nextWorking[swapIdx], nextWorking[idx]];
+        const next = normalizeOrder(nextWorking);
         localStorage.setItem(`${storageKey}:order`, JSON.stringify(next));
         return next;
       });
     },
-    [storageKey],
+    [normalizeOrder, pinnedEndIds, storageKey],
   );
 
   const reset = useCallback(() => {
@@ -98,30 +122,32 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
 
   const isVisible = useCallback((id: string) => visibleIds.includes(id), [visibleIds]);
 
-  const orderedVisibleColumns = useMemo(
-    () =>
-      columnOrder
-        .filter((id) => visibleIds.includes(id))
-        .map((id) => columns.find((c) => c.id === id))
-        .filter((c): c is TableColumnDef => Boolean(c)),
-    [columnOrder, columns, visibleIds],
-  );
+  const orderedVisibleColumns = useMemo(() => {
+    const normalized = normalizeOrder(columnOrder);
+    return normalized
+      .filter((id) => visibleIds.includes(id))
+      .map((id) => columns.find((c) => c.id === id))
+      .filter((c): c is TableColumnDef => Boolean(c));
+  }, [columnOrder, columns, normalizeOrder, visibleIds]);
 
   const reorderColumn = useCallback(
     (fromId: string, toId: string) => {
       if (fromId === toId) return;
+      if (pinnedEndIds.has(fromId) || pinnedEndIds.has(toId)) return;
       setColumnOrder((prev) => {
-        const fromIdx = prev.indexOf(fromId);
-        const toIdx = prev.indexOf(toId);
+        const working = prev.filter((x) => !pinnedEndIds.has(x));
+        const fromIdx = working.indexOf(fromId);
+        const toIdx = working.indexOf(toId);
         if (fromIdx < 0 || toIdx < 0) return prev;
-        const next = [...prev];
-        next.splice(fromIdx, 1);
-        next.splice(toIdx, 0, fromId);
+        const nextWorking = [...working];
+        nextWorking.splice(fromIdx, 1);
+        nextWorking.splice(toIdx, 0, fromId);
+        const next = normalizeOrder(nextWorking);
         localStorage.setItem(`${storageKey}:order`, JSON.stringify(next));
         return next;
       });
     },
-    [storageKey],
+    [normalizeOrder, pinnedEndIds, storageKey],
   );
 
   return { visibleIds, columnOrder, orderedVisibleColumns, isVisible, toggle, moveColumn, reorderColumn, reset, ready };
@@ -195,9 +221,9 @@ interface ResizableThProps {
   resizable?: boolean;
   dragProps?: {
     draggable: boolean;
-    onDragStart: () => void;
+    onDragStart: (e: DragEvent) => void;
     onDragOver: (e: DragEvent) => void;
-    onDrop: () => void;
+    onDrop: (e: DragEvent) => void;
     onDragEnd: () => void;
     className?: string;
   };
@@ -398,25 +424,45 @@ export function TableColumnPicker({
             }}
           >
             <p className="px-2 py-1 text-[11px] font-semibold text-slate-400">Görünür sütunlar</p>
+            <p className="px-2 pb-1 text-[10px] leading-4 text-slate-400">
+              Sıralamak için satırı sürükleyin veya ↑ ↓ kullanın. İşlemler sağda sabit kalır.
+            </p>
             {columnOrder.map((id) => {
               const col = columns.find((c) => c.id === id);
               if (!col) return null;
               const visible = visibleIds.includes(id);
-              const orderIndex = columnOrder.indexOf(id);
+              const pinned = col.pin === 'end';
+              const movableOrder = columnOrder.filter((cid) => columns.find((c) => c.id === cid)?.pin !== 'end');
+              const orderIndex = movableOrder.indexOf(id);
               return (
               <div
                 key={col.id}
-                draggable={Boolean(onReorderColumn)}
-                onDragStart={() => setDragId(col.id)}
-                onDragOver={(e) => { if (onReorderColumn) e.preventDefault(); }}
-                onDrop={() => {
-                  if (dragId && onReorderColumn && dragId !== col.id) {
-                    onReorderColumn(dragId, col.id);
+                draggable={Boolean(onReorderColumn) && !pinned}
+                onDragStart={(e) => {
+                  if (pinned) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.setData('text/plain', col.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDragId(col.id);
+                }}
+                onDragOver={(e) => {
+                  if (!onReorderColumn || pinned) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (pinned) return;
+                  const fromId = dragId || e.dataTransfer.getData('text/plain');
+                  if (fromId && onReorderColumn && fromId !== col.id) {
+                    onReorderColumn(fromId, col.id);
                   }
                   setDragId(null);
                 }}
                 onDragEnd={() => setDragId(null)}
-                className={`flex items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${dragId === col.id ? 'opacity-50' : ''}`}
+                className={`flex items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${dragId === col.id ? 'opacity-50' : ''} ${pinned ? '' : 'cursor-grab active:cursor-grabbing'}`}
               >
                 <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1 py-1 text-sm">
                   <input
@@ -424,24 +470,30 @@ export function TableColumnPicker({
                     checked={visible}
                     onChange={() => onToggle(col.id)}
                     className="rounded border-slate-300"
+                    disabled={pinned}
                   />
-                  <span className="truncate text-slate-700 dark:text-slate-200">{col.label}</span>
+                  <span className="truncate text-slate-700 dark:text-slate-200">
+                    {col.label}
+                    {pinned ? <span className="ml-1 text-[10px] text-slate-400">(Sabit)</span> : null}
+                  </span>
                 </label>
                 <button
                   type="button"
-                  disabled={orderIndex <= 0}
+                  disabled={pinned || orderIndex <= 0}
                   onClick={() => onMoveColumn(col.id, -1)}
                   className="rounded px-1 text-xs text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"
                   title="Sola taşı"
+                  aria-label={`${col.label} sola taşı`}
                 >
                   ↑
                 </button>
                 <button
                   type="button"
-                  disabled={orderIndex >= columnOrder.length - 1}
+                  disabled={pinned || orderIndex < 0 || orderIndex >= movableOrder.length - 1}
                   onClick={() => onMoveColumn(col.id, 1)}
                   className="rounded px-1 text-xs text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200"
                   title="Sağa taşı"
+                  aria-label={`${col.label} sağa taşı`}
                 >
                   ↓
                 </button>
@@ -449,7 +501,7 @@ export function TableColumnPicker({
             );
             })}
             <p className="mt-2 border-t border-slate-100 px-2 pt-2 text-[10px] leading-4 text-slate-400 dark:border-slate-700">
-              Sütun sırası: tablo başlığından veya buradan sürükle-bırak. Genişlik: başlık kenarından sürükleyin; çift tık satır içeriğine göre ayarlar.
+              Sütun sırası: tablo başlığını sürükleyerek veya buradan değiştirin. Genişlik: başlık kenarından sürükleyin.
             </p>
             <button
               type="button"
@@ -462,7 +514,7 @@ export function TableColumnPicker({
             <button
               type="button"
               onClick={resetAll}
-              className="mt-0.5 w-full rounded-lg px-2 py-1.5 text-left text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              className="mt-0.5 w-full rounded-lg px-2 py-1.5 text-left text-xs text-brand-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
             >
               Varsayılana Dön (Görünüm + Genişlik)
             </button>
@@ -487,9 +539,9 @@ export interface PanelTableColumnsValue {
   resetAll: () => void;
   headerDragProps: (colId: string) => {
     draggable: true;
-    onDragStart: () => void;
+    onDragStart: (e: DragEvent) => void;
     onDragOver: (e: DragEvent) => void;
-    onDrop: () => void;
+    onDrop: (e: DragEvent) => void;
     onDragEnd: () => void;
     className?: string;
   };
@@ -510,15 +562,19 @@ export function usePanelTableColumns(storageKey: string, columns: TableColumnDef
   const headerDragProps = useCallback(
     (colId: string) => ({
       draggable: true as const,
-      onDragStart: () => {
+      onDragStart: (e: DragEvent) => {
+        e.dataTransfer.setData('text/plain', colId);
+        e.dataTransfer.effectAllowed = 'move';
         headerDragIdRef.current = colId;
         setHeaderDragId(colId);
       },
       onDragOver: (e: DragEvent) => {
         e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
       },
-      onDrop: () => {
-        const fromId = headerDragIdRef.current;
+      onDrop: (e: DragEvent) => {
+        e.preventDefault();
+        const fromId = headerDragIdRef.current || e.dataTransfer.getData('text/plain');
         if (fromId && fromId !== colId) {
           prefs.reorderColumn(fromId, colId);
         }
@@ -591,7 +647,8 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
     return <th className={`text-center ${className}`}>{children}</th>;
   }
   const meta = colMeta(ctx, colId);
-  const dragProps = draggable ? ctx.headerDragProps(colId) : undefined;
+  const canDrag = draggable && meta?.pin !== 'end';
+  const dragProps = canDrag ? ctx.headerDragProps(colId) : undefined;
   return (
     <ResizableTh
       colId={colId}
@@ -719,7 +776,7 @@ export function SortablePanelTableTh({
       {children}
       <span
         className={`text-[10px] font-semibold transition-opacity ${
-          active ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-40 group-hover:opacity-70'
+          active ? 'opacity-100 text-brand-600 dark:text-blue-400' : 'opacity-40 group-hover:opacity-70'
         }`}
         aria-hidden
       >

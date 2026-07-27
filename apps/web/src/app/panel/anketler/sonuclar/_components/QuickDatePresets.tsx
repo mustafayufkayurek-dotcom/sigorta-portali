@@ -27,7 +27,7 @@ export function QuickDatePresets({
             onClick={() => onSelect(p.id)}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
               selected
-                ? 'bg-blue-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >

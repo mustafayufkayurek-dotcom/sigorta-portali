@@ -260,7 +260,7 @@ export function ExpenseFilePickerModal({
                   <button
                     type="button"
                     onClick={() => handleSelectClaim(row)}
-                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                   >
                     Seç
                   </button>

@@ -87,7 +87,7 @@ export function InboxMatchCandidates({
                     ? `/panel/hasar-dosyalari/${c.id}`
                     : `/panel/acil-yardim/${c.id}`
                 }
-                className="text-[11px] font-medium text-slate-500 hover:text-blue-600"
+                className="text-[11px] font-medium text-slate-500 hover:text-brand-600"
                 target="_blank"
               >
                 Görüntüle

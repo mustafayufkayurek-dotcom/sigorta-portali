@@ -76,7 +76,7 @@ export default function FaturalarPage() {
             type="button"
             onClick={() => setFilterStatus(s)}
             className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${
-              filterStatus === s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              filterStatus === s ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
             }`}
           >
             {s === '' ? 'Tümü' : STATUS_LABEL[s] ?? s}
@@ -121,7 +121,7 @@ export default function FaturalarPage() {
                   <button
                     type="button"
                     onClick={() => setExpanded((e) => (e === draft.id ? null : draft.id))}
-                    className="text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                    className="text-xs font-medium text-slate-500 hover:text-brand-600 transition-colors"
                   >
                     {expanded === draft.id ? 'Kalemleri Gizle' : 'Kalemleri Göster'}
                   </button>

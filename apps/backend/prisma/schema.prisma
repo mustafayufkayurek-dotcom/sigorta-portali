@@ -2763,6 +2763,7 @@ model EmergencyCase {
   assignedVendorId String?          @map("assigned_vendor_id")
   assignedUserId   String?          @map("assigned_user_id")
   notes            String?
+  findingsText     String?          @map("findings_text")
   fileDate         DateTime         @default(now()) @map("file_date")
   resolvedAt       DateTime?        @map("resolved_at")
   invoicedAt       DateTime?        @map("invoiced_at")

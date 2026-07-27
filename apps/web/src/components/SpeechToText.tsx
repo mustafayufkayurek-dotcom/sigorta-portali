@@ -305,7 +305,7 @@ export default function SpeechToText({
           isRecording
             ? 'bg-red-600 text-white focus:ring-red-400'
             : isStarting
-              ? 'bg-blue-100 text-blue-600 focus:ring-blue-300'
+              ? 'bg-blue-100 text-brand-600 focus:ring-blue-300'
               : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 focus:ring-slate-400',
           (disabled || isSupported === null || isStarting) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
           className,
@@ -316,8 +316,8 @@ export default function SpeechToText({
         {/* Kayıt sırasında pulse halkası */}
         {isRecording && (
           <>
-            <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-40" />
-            <span className="absolute inset-0 rounded-full bg-red-500 animate-pulse opacity-20" />
+            <span className="absolute inset-0 rounded-full bg-status-danger animate-ping opacity-40" />
+            <span className="absolute inset-0 rounded-full bg-status-danger animate-pulse opacity-20" />
           </>
         )}
         {isRecording ? (

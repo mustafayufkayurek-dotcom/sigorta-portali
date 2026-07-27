@@ -1,0 +1,26 @@
+{
+  "task": "D3XX",
+  "route": "/panel/eksper-portal/dosyalar",
+  "date": "2026-07-26",
+  "checks": {
+    "drawer": "PASS",
+    "editModal": "PASS",
+    "columns": [
+      "Dosya No",
+      "Sigorta Şirketi",
+      "Konu",
+      "Durum",
+      "SLA",
+      "Oluşturulma Tarihi",
+      "İşlemler"
+    ],
+    "actions": [
+      "Görüntüle",
+      "Düzenle",
+      "Üç Nokta"
+    ],
+    "typecheckEksperFiles": "PASS",
+    "kpiCardsAdded": false,
+    "layoutUnchanged": true
+  }
+}

@@ -447,7 +447,7 @@ export function MessageTemplatesPage({ localPreview = false }: MessageTemplatesP
                     />
                   ) : (
                     <MessageSquareText
-                      className={`h-3.5 w-3.5 shrink-0 ${selected ? 'text-blue-600' : 'text-slate-400'}`}
+                      className={`h-3.5 w-3.5 shrink-0 ${selected ? 'text-brand-600' : 'text-slate-400'}`}
                     />
                   )}
                   <span>{tab.label}</span>
@@ -480,7 +480,7 @@ export function MessageTemplatesPage({ localPreview = false }: MessageTemplatesP
                     {tab.key === 'ozel_musteri' ? '—' : count}
                   </span>
                   {selected ? (
-                    <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-blue-600" />
+                    <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-600" />
                   ) : null}
                 </button>
               );
@@ -618,7 +618,7 @@ export function MessageTemplatesPage({ localPreview = false }: MessageTemplatesP
                     type="button"
                     onClick={sendTestSms}
                     disabled={testing}
-                    className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {testing ? 'Gönderiliyor...' : 'Test SMS Gönder'}
                   </button>
@@ -740,7 +740,7 @@ export function MessageTemplatesPage({ localPreview = false }: MessageTemplatesP
             type="checkbox"
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
           />
           <span className="text-sm font-medium text-slate-700">Şablon Aktif</span>
         </label>

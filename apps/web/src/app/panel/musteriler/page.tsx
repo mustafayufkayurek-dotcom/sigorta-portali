@@ -128,8 +128,8 @@ const emptyForm = () => ({
   privateServiceType: '' as string,
 });
 
-const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors';
-const inpError = 'w-full border border-red-400 ring-2 ring-red-500/20 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-colors bg-red-50';
+const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors';
+const inpError = 'w-full border border-red-400 ring-2 ring-status-danger/20 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-status-danger/30 focus:border-red-400 transition-colors bg-red-50';
 
 function CustomerSubTypeHintBanner({ subType }: { subType: string }) {
   const hint = customerSubTypeHint(subType);
@@ -175,7 +175,7 @@ function CustomerSubTypePicker({
               selectedSubType === t.value
                 ? subTypeActiveClass(t.color)
                 : hasError
-                  ? 'bg-white text-slate-600 border-red-400 ring-2 ring-red-500/20'
+                  ? 'bg-white text-slate-600 border-red-400 ring-2 ring-status-danger/20'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -183,7 +183,7 @@ function CustomerSubTypePicker({
           </button>
         ))}
       </div>
-      {hasError && <p className="text-xs text-red-500 mt-1.5">Müşteri tipi seçimi zorunludur</p>}
+      {hasError && <p className="text-xs text-status-danger mt-1.5">Müşteri tipi seçimi zorunludur</p>}
       {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} />}
     </div>
   );
@@ -196,7 +196,7 @@ function FormField({ label, required, error, children }: { label: string; requir
         {label}{required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+      {error && <p className="text-xs text-status-danger mt-1.5">{error}</p>}
     </div>
   );
 }
@@ -518,7 +518,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {typeBadge}
                   <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border ${statusCls}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${customer.status === 'active' ? 'bg-green-500' : customer.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${customer.status === 'active' ? 'bg-green-500' : customer.status === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
                     {statusLabel}
                   </span>
                 </div>
@@ -2051,7 +2051,7 @@ export default function MusterilerPage() {
               <FilterChip key={tag} label={`Etiket: ${tag}`} onRemove={() => toggleTag(tag)} />
             ))}
             <button type="button" onClick={clearAllFilters}
-              className="text-[11px] text-red-500 hover:text-red-700 font-medium ml-1 hover:underline transition-colors">
+              className="text-[11px] text-status-danger hover:text-red-700 font-medium ml-1 hover:underline transition-colors">
               Temizle
             </button>
           </div>
@@ -2077,7 +2077,7 @@ export default function MusterilerPage() {
                 {(['active', 'passive', 'blacklisted'] as const).map((val) => (
                   <button key={val} type="button" onClick={() => handleBulkStatus(val)}
                     className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${val === 'active' ? 'bg-green-500' : val === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${val === 'active' ? 'bg-green-500' : val === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
                     {val === 'active' ? 'Aktif' : val === 'passive' ? 'Arşiv' : 'Kara Liste'}
                   </button>
                 ))}
@@ -2109,7 +2109,7 @@ export default function MusterilerPage() {
                 ))}
               </div>
               <div className="flex gap-2 mb-3">
-                <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
+                <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors"
                   placeholder="Etiket Adı Girin..." value={bulkTagInput} onChange={(e) => setBulkTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); } }} />
                 <button type="button" onClick={() => { const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); }}
@@ -2119,7 +2119,7 @@ export default function MusterilerPage() {
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {bulkTags.map((t) => (
                     <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
-                      {t}<button type="button" onClick={() => setBulkTags((p) => p.filter((x) => x !== t))} className="text-amber-400 hover:text-red-500">×</button>
+                      {t}<button type="button" onClick={() => setBulkTags((p) => p.filter((x) => x !== t))} className="text-amber-400 hover:text-status-danger">×</button>
                     </span>
                   ))}
                 </div>
@@ -2364,7 +2364,7 @@ export default function MusterilerPage() {
                       <PanelTableTd colId="activity" className="table-td">
                         {isOverdue ? (
                           <div>
-                            <span className="text-[11px] font-semibold text-red-500">{overdueDays}g gecikme</span>
+                            <span className="text-[11px] font-semibold text-status-danger">{overdueDays}g gecikme</span>
                             <p className="text-[10px] text-red-400 leading-tight">{new Date(c.followUpDate).toLocaleDateString('tr-TR')}</p>
                           </div>
                         ) : (
@@ -2376,7 +2376,7 @@ export default function MusterilerPage() {
                       {/* Durum */}
                       <PanelTableTd colId="status" className="table-td text-center">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-red-500' : 'bg-slate-400'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
                           {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
                         </span>
                       </PanelTableTd>
@@ -2492,11 +2492,11 @@ export default function MusterilerPage() {
               const typeLabel = form.customerType === 'individual' ? 'Bireysel' : 'Kurumsal';
               return displayName ? (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 border-b border-emerald-100">
-                  <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-status-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   <span className="text-sm font-semibold text-emerald-800">{displayName}</span>
-                  <span className="text-xs text-emerald-500 font-medium">— {typeLabel}</span>
+                  <span className="text-xs text-status-success font-medium">— {typeLabel}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-slate-100">
@@ -2591,7 +2591,7 @@ export default function MusterilerPage() {
                           <FormField label="TC Kimlik No" error={identityNoError ?? fieldErrors.identityNo ?? undefined}>
                             <div className="relative">
                               <input
-                                className={`w-full border rounded-lg px-3 py-2 h-[38px] pr-8 text-sm focus:outline-none focus:ring-2 transition-colors ${identityNoError || fieldErrors.identityNo ? 'border-red-400 ring-2 ring-red-500/20 bg-red-50 focus:ring-red-500/30' : tcResult === true ? 'border-green-400 ring-2 ring-green-500/20 focus:ring-green-500/30' : 'border-slate-200 focus:ring-purple-500/30'}`}
+                                className={`w-full border rounded-lg px-3 py-2 h-[38px] pr-8 text-sm focus:outline-none focus:ring-2 transition-colors ${identityNoError || fieldErrors.identityNo ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50 focus:ring-status-danger/30' : tcResult === true ? 'border-green-400 ring-2 ring-green-500/20 focus:ring-green-500/30' : 'border-slate-200 focus:ring-purple-500/30'}`}
                                 placeholder="11 Haneli TC" maxLength={11} inputMode="numeric" value={form.identityNo}
                                 onChange={(e) => {
                                   const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 11);
@@ -2647,7 +2647,7 @@ export default function MusterilerPage() {
                           <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
                             onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailError(null); setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); }}
                             onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(form.email); }} />
-                          {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
+                          {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
                           {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
                         </FormField>
                       </div>
@@ -2663,7 +2663,7 @@ export default function MusterilerPage() {
                         </div>
                         <FormField label="Vergi No">
                           <div className="flex gap-2">
-                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors"
+                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors"
                               placeholder="10 Haneli VKN" maxLength={10} inputMode="numeric"
                               value={form.taxNumber}
                               onChange={(e) => {
@@ -2680,7 +2680,7 @@ export default function MusterilerPage() {
                               Ünvan Sorgula
                             </button>
                           </div>
-                          {taxNoError && <p className="text-xs text-red-500 mt-1.5">{taxNoError}</p>}
+                          {taxNoError && <p className="text-xs text-status-danger mt-1.5">{taxNoError}</p>}
                           {!taxNoError && taxNoWarn && (
                             <div className="mt-1.5 space-y-1">
                               <p className="text-xs text-amber-600 flex items-center gap-1">⚠ {taxNoWarn}</p>
@@ -2734,7 +2734,7 @@ export default function MusterilerPage() {
                           <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
                             onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailError(null); setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); }}
                             onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(form.email); }} />
-                          {emailError && <p className="text-xs text-red-500 mt-1.5">{emailError}</p>}
+                          {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
                           {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
                         </FormField>
                       </div>
@@ -2778,7 +2778,7 @@ export default function MusterilerPage() {
                                 <div className="flex items-center justify-between mb-3">
                                   <span className="text-xs font-semibold text-slate-500">İlgili Kişi #{idx + 1}</span>
                                   {contacts.length > 1 && (
-                                    <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                                    <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-status-danger transition-colors">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                   )}
@@ -2882,7 +2882,7 @@ export default function MusterilerPage() {
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs font-semibold text-slate-500">Yetkili #{idx + 1}</span>
                               {contacts.length > 1 && (
-                                <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 transition-colors">
+                                <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-status-danger transition-colors">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                               )}
@@ -2974,7 +2974,7 @@ export default function MusterilerPage() {
                           <option value="personal">Kişisel</option>
                         </select>
                         {contactInfos.length > 1 && (
-                          <button type="button" onClick={() => setContactInfos((p) => p.filter((_, i) => i !== idx))} className="flex-shrink-0 self-center text-slate-300 hover:text-red-500 transition-colors">
+                          <button type="button" onClick={() => setContactInfos((p) => p.filter((_, i) => i !== idx))} className="flex-shrink-0 self-center text-slate-300 hover:text-status-danger transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         )}
@@ -3168,7 +3168,7 @@ export default function MusterilerPage() {
                   <div className="mt-4">
                     <FormField label="Etiketler / Segment">
                       <div className="flex gap-1.5">
-                        <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-colors" placeholder="VIP, Standart, Riskli..." value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
+                        <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors" placeholder="VIP, Standart, Riskli..." value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
                         <button type="button" onClick={addTag} className="bg-slate-100 text-slate-600 text-sm px-3 py-2 rounded-lg hover:bg-slate-200">+</button>
                       </div>
                     </FormField>
@@ -3177,7 +3177,7 @@ export default function MusterilerPage() {
                         {form.tags.map((t) => (
                           <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
                             {t}
-                            <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-red-500 ml-0.5">×</button>
+                            <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger ml-0.5">×</button>
                           </span>
                         ))}
                       </div>
@@ -3287,7 +3287,7 @@ export default function MusterilerPage() {
             {sectionErrors && (
               <div className="px-6 py-2 border-t border-red-100 bg-red-50">
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                  <svg className="w-4 h-4 text-status-danger shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                   <p className="text-xs text-red-700 font-medium">{sectionErrors}</p>
                 </div>
               </div>
@@ -3312,7 +3312,7 @@ export default function MusterilerPage() {
                       type="button"
                       onClick={() => handleSave()}
                       disabled={saving}
-                      className="flex items-center gap-2 px-5 py-2 text-sm bg-emerald-600 text-white rounded-l-xl hover:bg-emerald-700 disabled:opacity-50 font-medium border-r border-emerald-500 transition-colors"
+                      className="flex items-center gap-2 px-5 py-2 text-sm bg-emerald-600 text-white rounded-l-xl hover:bg-emerald-700 disabled:opacity-50 font-medium border-r border-status-success transition-colors"
                     >
                       {saving && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
                       {saving ? 'Kaydediliyor...' : saveMode === 'close' ? 'Kaydet ve Kapat' : saveMode === 'new' ? 'Kaydet ve Yeni Ekle' : 'Kaydet ve Detaya Git'}
@@ -3407,7 +3407,7 @@ export default function MusterilerPage() {
                 </button>
               ) : (
                 <button type="button" onClick={() => doSave()}
-                  className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
+                  className="px-4 py-2 text-sm bg-status-warning text-white rounded-lg hover:bg-amber-600 font-medium">
                   Yine de Kaydet
                 </button>
               )}

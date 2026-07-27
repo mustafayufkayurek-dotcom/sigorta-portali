@@ -197,7 +197,7 @@ export default function OwnershipPage() {
               {[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded" />)}
             </div>
           ) : pending.length === 0 ? (
-            <div className="p-10 text-center text-emerald-500 text-sm font-medium">Tüm aksiyonlar tamamlandı ✓</div>
+            <div className="p-10 text-center text-status-success text-sm font-medium">Tüm aksiyonlar tamamlandı ✓</div>
           ) : (
             <table className="w-full text-sm" style={panelTableLayoutStyle(pendingTableColumns)}>
               <thead className="bg-slate-50 border-b border-slate-100">

@@ -81,7 +81,7 @@ function ToggleSwitch({
       disabled={disabled}
       onClick={onToggle}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-        active ? 'bg-blue-600' : 'bg-slate-300'
+        active ? 'bg-brand-600' : 'bg-slate-300'
       } disabled:opacity-50`}
     >
       <span
@@ -327,7 +327,7 @@ export function OperationalAccessGrantPanel({
             <button
               type="submit"
               disabled={saving || !principalUserId}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Kaydediliyor…' : 'İzin Vekaleti Ver'}
             </button>

@@ -169,7 +169,7 @@ export default function ErisimLoglariPage() {
             <p className="mt-1 text-3xl font-semibold text-slate-900">{stats.todayTotal}</p>
           </div>
           <div className="rounded-lg bg-white p-4 shadow-sm border border-red-200">
-            <p className="text-xs font-medium text-red-500 tracking-wide">Bugünkü Alarm</p>
+            <p className="text-xs font-medium text-status-danger tracking-wide">Bugünkü Alarm</p>
             <p className="mt-1 text-3xl font-semibold text-red-600">{stats.todayAnomalies}</p>
           </div>
           <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
@@ -227,7 +227,7 @@ export default function ErisimLoglariPage() {
           <div className="flex gap-2">
             <button type="button"
               onClick={handleSearch}
-              className="flex-1 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="flex-1 rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Filtrele
             </button>
@@ -303,7 +303,7 @@ export default function ErisimLoglariPage() {
                     <PanelTableTd colId="status" className="px-4 py-3">
                       {log.isAnomaly ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-status-danger" />
                           Anomali
                         </span>
                       ) : (

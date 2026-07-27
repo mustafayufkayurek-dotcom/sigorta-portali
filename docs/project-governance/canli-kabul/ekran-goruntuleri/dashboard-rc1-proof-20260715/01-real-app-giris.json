@@ -1,0 +1,42 @@
+{
+  "url": "http://localhost:3001/giris",
+  "route": "/giris",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "zoom": "100%",
+  "at": "2026-07-15T07:33:36.864Z",
+  "source": "real-nextjs+playwright-chromium",
+  "checklist": [
+    1,
+    7
+  ],
+  "networkLogo": [
+    "http://localhost:3001/meridyen-logo-original.png",
+    "RESP 200 http://localhost:3001/meridyen-logo-original.png"
+  ],
+  "loginMeta": {
+    "title": "Meridyen Assistance",
+    "href": "http://localhost:3001/giris",
+    "imgs": [
+      {
+        "src": "http://localhost:3001/meridyen-logo-original.png",
+        "w": 1024,
+        "h": 682,
+        "box": {
+          "w": 87,
+          "h": 58
+        }
+      }
+    ],
+    "nextMarkers": {
+      "nextData": false,
+      "nextRoot": false,
+      "nextDataScript": false,
+      "RSC": true
+    }
+  },
+  "server": "next start :3001"
+}

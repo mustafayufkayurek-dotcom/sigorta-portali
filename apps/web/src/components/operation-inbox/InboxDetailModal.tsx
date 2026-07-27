@@ -340,7 +340,7 @@ export function InboxDetailModal({
                     {detail.claimFile && (
                       <Link
                         href={`/panel/hasar-dosyalari/${detail.claimFile.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        className="text-sm font-medium text-brand-600 hover:text-blue-800"
                         target="_blank"
                       >
                         Hasar Dosyası: {detail.claimFile.fileNo}
@@ -349,7 +349,7 @@ export function InboxDetailModal({
                     {detail.emergencyCase && (
                       <Link
                         href={`/panel/acil-yardim/${detail.emergencyCase.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        className="text-sm font-medium text-brand-600 hover:text-blue-800"
                         target="_blank"
                       >
                         Acil Dosya: {detail.emergencyCase.caseNo}
@@ -424,7 +424,7 @@ export function InboxDetailModal({
                           <button
                             type="button"
                             onClick={() => void openAttachment(att.storageKey!)}
-                            className="shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800"
+                            className="shrink-0 text-xs font-medium text-brand-600 hover:text-blue-800"
                           >
                             Aç
                           </button>

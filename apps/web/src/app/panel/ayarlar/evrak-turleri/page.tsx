@@ -121,7 +121,7 @@ function ScopeTabBar({
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: tab.color }} />
             {tab.label}
             {count !== undefined && (
-              <span className={`text-xs ${active ? 'text-blue-600' : 'text-slate-400'}`}>({count})</span>
+              <span className={`text-xs ${active ? 'text-brand-600' : 'text-slate-400'}`}>({count})</span>
             )}
           </button>
         );
@@ -399,7 +399,7 @@ export default function EvrakTurleriPage() {
           <button
                 type="button"
                 onClick={openCreate}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -581,7 +581,7 @@ export default function EvrakTurleriPage() {
                     >
                       <input
                         type="checkbox"
-                        className="rounded accent-blue-600"
+                        className="rounded accent-brand-600"
                         checked={form.serviceBranchTypes.includes(tab.id)}
                         onChange={() => toggleBranch(tab.id)}
                       />
@@ -608,7 +608,7 @@ export default function EvrakTurleriPage() {
                     >
                       <input
                         type="checkbox"
-                        className="rounded accent-blue-600"
+                        className="rounded accent-brand-600"
                         checked={form.customerSubTypes.includes(t.value)}
                         onChange={() => toggleCustomerSub(t.value)}
                       />
@@ -653,7 +653,7 @@ export default function EvrakTurleriPage() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded accent-blue-600"
+                  className="rounded accent-brand-600"
                   checked={form.isRequired}
                   onChange={(e) => setForm((p) => ({ ...p, isRequired: e.target.checked }))}
                 />

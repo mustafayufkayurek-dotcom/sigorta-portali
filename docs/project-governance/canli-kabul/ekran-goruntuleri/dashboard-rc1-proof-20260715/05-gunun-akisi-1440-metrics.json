@@ -1,0 +1,23 @@
+{
+  "url": "http://localhost:3001/panel",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "found": true,
+  "cardCount": 5,
+  "heights": [
+    175,
+    175,
+    175,
+    175,
+    175
+  ],
+  "heightsEqual": true,
+  "gridTemplateColumns": "100.188px 100.188px 100.188px 100.188px 125.25px",
+  "colCount": 5,
+  "hasHorizontalScroll": false,
+  "viewportWidth": 1440,
+  "sectionScrollWidth": 582,
+  "sectionClientWidth": 582
+}

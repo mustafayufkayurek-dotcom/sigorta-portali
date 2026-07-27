@@ -350,7 +350,7 @@ export default function PersonelOzlukPage() {
   return (
     <div className="space-y-5">
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Personel Özlük</span>
       </nav>
@@ -384,7 +384,7 @@ export default function PersonelOzlukPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200'
               }`}
             >
@@ -687,7 +687,7 @@ export default function PersonelOzlukPage() {
                     type="button"
                     onClick={handleCreateLeave}
                     disabled={createLeave.isPending}
-                    className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full bg-brand-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                   >
                     {createLeave.isPending ? 'Gönderiliyor...' : 'Onaya Gönder'}
                   </button>

@@ -1,0 +1,33 @@
+{
+  "task": "D3XX-REVIZYON-2",
+  "date": "2026-07-26",
+  "route": "/panel/eksper-portal/dosyalar",
+  "strategy": "Eksper Portalı eksper operasyon özeti; Dosya Sorumlusu sadeleştirilmiş kopyası değil",
+  "checks": {
+    "damageIcons": "PASS — Cam=AppWindow, Su=Droplets; ClipboardList/Hammer placeholder yok",
+    "drawerTitle": "Eksper Operasyon Özeti",
+    "removed": [
+      "Eksper Süreci",
+      "Eksper Atama Tarihi",
+      "Sigorta Onay Tarihi",
+      "Dosya Tamamlanma Durumu",
+      "Eksper Raporu",
+      "Diğer Belgeler",
+      "Dosya Görselleri"
+    ],
+    "operasyonDurumuDynamic": "PASS — Onay Bekleniyor / Onarım Başlamadı vb.",
+    "onayAnalizi": "PASS",
+    "belgelerOperasyon": "PASS",
+    "operasyonGecmisi": "PASS",
+    "notlarAktif": "PASS",
+    "financeHidden": "PASS",
+    "typecheck": "PASS"
+  },
+  "screenshots": [
+    "01-liste-ikonlar-1440.png",
+    "02-operasyon-ozeti-1440.png",
+    "03-belgeler-1440.png",
+    "04-gecmis-1440.png",
+    "05-notlar-1440.png"
+  ]
+}

@@ -93,7 +93,7 @@ export function PhoneContactActions({
       ? 'text-indigo-600 hover:text-indigo-700'
       : accent === 'emerald'
         ? 'text-emerald-600 hover:text-emerald-700'
-        : 'text-blue-600 hover:text-blue-700';
+        : 'text-brand-600 hover:text-blue-700';
 
     return (
       <div className={`flex items-center gap-2 ${className}`}>
@@ -117,7 +117,7 @@ export function PhoneContactActions({
     <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
       <a
         href={`tel:${trimmed}`}
-        className={`${textSize} text-blue-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors min-w-0`}
+        className={`${textSize} text-brand-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors min-w-0`}
       >
         <PhoneIcon className="w-3 h-3 flex-shrink-0" />
         <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>

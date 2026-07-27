@@ -1,0 +1,40 @@
+---
+description: Yeni/güncellenen ekranlarda renk ve buton token disiplini — enterprise tutarlılığı kalıcı kılar
+alwaysApply: true
+---
+
+# Tasarım Token Disiplini (kalıcı kural)
+
+**Kaynak:** `apps/web/src/components/ui/DESIGN_SYSTEM.md`
+
+**Temel cümle:** Yeni yazılan veya "enterprise seviyeye getirilen" hiçbir ekran, rastgele renk icat etmez. Var olan kurumsal token'ları kullanır.
+
+## Zorunlu
+
+- Birincil aksiyon (buton, aktif sekme, link, checkbox/radio accent, focus ring): **`brand-600`** (ve `brand-700` hover, `brand-800` koyu hover). `blue-600`, `indigo-600`, rastgele hex (`#1a4080` vb.) **kullanma**.
+- Durum renkleri (başarı/uyarı/hata): `status-success` / `status-warning` / `status-danger`. `emerald-500`, `amber-500`, `red-500` **kullanma**.
+- Yüzey/metin: `surface`, `border`, `content-primary/secondary/tertiary`.
+- Buton standardı: `rounded-xl px-4 py-2.5 text-sm font-semibold` (bkz. `LoadingButton.tsx`).
+- 3 nokta (işlemler) menüsü: `relative z-30 min-w-[180px]`.
+
+## Yasak değil, ama dikkat — kasıtlı kurumsal renkler
+
+Bazı modüllerde renk **iş kuralı anlamı taşır** (örn. Müşteriler modülü yeşili, Yönetim Dashboard paleti, kurumsal/bireysel rozet ayrımı). Bunlar hata değildir, **dokunulmaz**. Yeni bir ekranda bu tür anlamlı renk kullanmak istersen önce Mustafa'ya sor.
+
+## Mevcut sayfayı "enterprise seviyeye" getirirken
+
+1. Önce sayfadaki renkleri iki gruba ayır: **(A) gerçek tutarsızlık** (rastgele/kazara farklı renk) vs **(B) kasıtlı kurumsal anlam**.
+2. Yalnızca (A) grubunu token'a bağla. (B) grubuna dokunma.
+3. Karışık (hem A hem B) dosyalarda satır satır ilerle, toptan değiştirme yapma.
+4. Bir dosya kodda var ama **hiçbir menüden ulaşılamıyorsa** (ölü sayfa), önce bunu Mustafa'ya bildir — "düzeltmek" yerine "kaldırmak" doğru olabilir.
+5. Değişiklik sonrası `tsc --noEmit` çalıştır.
+
+## Örnek
+
+```tsx
+// ❌ BAD — yeni ekranda rastgele mavi
+<button className="bg-indigo-600 hover:bg-indigo-700 text-white ...">Kaydet</button>
+
+// ✅ GOOD — kurumsal token
+<button className="bg-brand-600 hover:bg-brand-700 text-white ...">Kaydet</button>
+```

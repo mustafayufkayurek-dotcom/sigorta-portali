@@ -1,0 +1,25 @@
+{
+  "task": "D3XX-REVIZYON",
+  "date": "2026-07-26",
+  "route": "/panel/eksper-portal/dosyalar",
+  "reference": "docs/project-governance/ui-reference/ENTERPRISE_UI_FACELIFT_DOSYALARIM_TALIMAT.png",
+  "checks": {
+    "actionIcons": "PASS — 28px kare, slate border, lucide thin outline",
+    "tableDensity": "PASS — px-3 py-2.5, hover #F5F7FB",
+    "drawerExpertFocused": "PASS — Dosya Özeti / Eksper Süreci / Evrak / Saha / Son İşlem",
+    "financeHidden": "PASS",
+    "evrakDurumu": "PASS",
+    "dijitalOnay": "PASS",
+    "muvafakatname": "PASS",
+    "hasarFotograflari": "PASS",
+    "sonIslem": "PASS",
+    "belgelerCategories": "PASS",
+    "typecheck": "PASS",
+    "consoleError": "PASS (page load)"
+  },
+  "screenshots": [
+    "01-liste-1440.png",
+    "02-drawer-ozet-1440.png",
+    "03-drawer-belgeler-1440.png"
+  ]
+}

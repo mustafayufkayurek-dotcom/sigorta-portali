@@ -62,14 +62,14 @@ export default function InboxInsuredModalPreviewPage() {
           <button
             type="button"
             onClick={() => { setKind('claim'); setOpen(true); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${kind === 'claim' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${kind === 'claim' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}
           >
             Hasar Aç
           </button>
           <button
             type="button"
             onClick={() => { setKind('emergency'); setOpen(true); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${kind === 'emergency' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${kind === 'emergency' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}
           >
             Acil Aç
           </button>
@@ -77,7 +77,7 @@ export default function InboxInsuredModalPreviewPage() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-sm text-blue-600 bg-blue-50"
+              className="px-3 py-1.5 rounded-lg text-sm text-brand-600 bg-blue-50"
             >
               Modalı Aç
             </button>

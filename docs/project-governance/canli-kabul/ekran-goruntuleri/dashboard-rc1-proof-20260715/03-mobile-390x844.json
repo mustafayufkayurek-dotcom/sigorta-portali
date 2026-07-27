@@ -1,0 +1,34 @@
+{
+  "url": "http://localhost:3001/panel",
+  "route": "/panel",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "deviceScaleFactor": 1,
+  "zoom": "100%",
+  "at": "2026-07-15T07:33:45.362Z",
+  "source": "real-nextjs+playwright-chromium",
+  "checklist": [
+    3,
+    5
+  ],
+  "gununAkisi": {
+    "found": true,
+    "cardCount": 5,
+    "heights": [
+      90,
+      90,
+      90,
+      90,
+      90
+    ],
+    "heightsEqual": true,
+    "gridTemplateColumns": "344px",
+    "colCount": 1,
+    "hasHorizontalScroll": false,
+    "viewportWidth": 390,
+    "sectionScrollWidth": 364,
+    "sectionClientWidth": 364
+  }
+}

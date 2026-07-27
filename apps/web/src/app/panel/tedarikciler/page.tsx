@@ -425,13 +425,13 @@ function FormField({ label, required, error, children }: { label: string; requir
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+      {error && <p className="text-xs text-status-danger mt-1.5">{error}</p>}
     </div>
   );
 }
 
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors';
-const inpError = 'w-full border border-red-400 ring-2 ring-red-500/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-colors bg-red-50';
+const inpError = 'w-full border border-red-400 ring-2 ring-status-danger/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-danger/30 focus:border-red-400 transition-colors bg-red-50';
 
 // ── Filter Chip ─────────────────────────────────────────────────────────────
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -607,7 +607,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
           {serviceAreas.length > 0 && (
             <div className="px-5 pt-4 pb-4 border-b border-slate-50">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">{Icon.mapPin}</span>
+                <span className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-brand-600 flex-shrink-0">{Icon.mapPin}</span>
                 <p className="text-xs font-semibold text-slate-700 tracking-wide">Hizmet Bölgeleri</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -1768,7 +1768,15 @@ export default function VendorsPage() {
   };
 
   const handleToggleStatus = async (v: any) => {
-    try { await axios.patch(`${API}/vendors/${v.id}`, { status: v.status === 'active' ? 'passive' : 'active' }, { headers: authHeader() }); load(); loadSummary(); } catch (e) { console.error(e); }
+    const nextStatus = v.status === 'active' ? 'passive' : 'active';
+    try {
+      await axios.patch(`${API}/vendors/${v.id}`, { status: nextStatus }, { headers: authHeader() });
+      load();
+      loadSummary();
+      showToast('success', nextStatus === 'active' ? 'Tedarikçi Aktif Edildi' : 'Tedarikçi Pasife Alındı');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Durum güncellenemedi');
+    }
   };
 
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
@@ -1891,7 +1899,7 @@ export default function VendorsPage() {
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Panel</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Panel</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Tedarikçiler</span>
       </nav>
@@ -1924,7 +1932,7 @@ export default function VendorsPage() {
         <div className="space-y-2">
           {contractAlert.expiredCount > 0 && (
             <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-status-danger flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="flex-1 min-w-0">
@@ -1936,7 +1944,7 @@ export default function VendorsPage() {
                     </span>
                   ))}
                   {contractAlert.expiredCount > 5 && (
-                    <span className="text-xs text-red-500">+{contractAlert.expiredCount - 5} daha...</span>
+                    <span className="text-xs text-status-danger">+{contractAlert.expiredCount - 5} daha...</span>
                   )}
                 </div>
               </div>
@@ -1972,7 +1980,7 @@ export default function VendorsPage() {
       <div className="rounded-2xl border border-slate-200/70 bg-white px-3 py-3 shadow-card sm:px-4 sm:py-2.5">
         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-1">
           <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-brand-600">
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
               </svg>
@@ -2074,7 +2082,7 @@ export default function VendorsPage() {
                     <button key={wg.id} type="button" onClick={() => toggleWgFilter(wg.id)}
                       className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2 hover:bg-slate-50 transition-colors ${selectedWorkGroupIds_filter.includes(wg.id) ? 'text-blue-700 font-medium' : 'text-slate-700'}`}
                     >
-                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${selectedWorkGroupIds_filter.includes(wg.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${selectedWorkGroupIds_filter.includes(wg.id) ? 'bg-brand-600 border-brand-600' : 'border-slate-300'}`}>
                         {selectedWorkGroupIds_filter.includes(wg.id) && (
                           <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -2114,7 +2122,7 @@ export default function VendorsPage() {
               <FilterChip key={wg.id} label={`Faaliyet: ${wg.name}`} onRemove={() => toggleWgFilter(wg.id)} />
             ))}
             <button type="button" onClick={clearAllFilters}
-              className="text-xs text-red-500 hover:text-red-700 font-medium ml-1 hover:underline transition-colors">
+              className="text-xs text-status-danger hover:text-red-700 font-medium ml-1 hover:underline transition-colors">
               Tüm Filtreleri Temizle
             </button>
           </div>
@@ -2362,7 +2370,7 @@ export default function VendorsPage() {
                       checked={isAllSelected}
                       ref={(el) => { if (el) el.indeterminate = isIndeterminate; }}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 accent-brand-600 cursor-pointer"
                     />
                   </th>
                   <PanelTableTh colId="name" className="table-th">Tedarikçi</PanelTableTh>
@@ -2400,7 +2408,7 @@ export default function VendorsPage() {
                         {v.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <Link href={`/panel/tedarikciler/${v.id}`} className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">{v.name}</Link>
+                        <Link href={`/panel/tedarikciler/${v.id}`} className="font-semibold text-slate-800 hover:text-brand-600 transition-colors">{v.name}</Link>
                         {v.type && <p className="text-xs text-slate-400 mt-0.5">{formatVendorTypeLabel(v.type)}</p>}
                       </div>
                     </div>
@@ -2861,7 +2869,7 @@ export default function VendorsPage() {
                               Ünvan Sorgula
                             </button>
                           </div>
-                          {numericErrors.taxNumber && <p className="text-xs text-red-500 mt-1.5">⚠ {numericErrors.taxNumber}</p>}
+                          {numericErrors.taxNumber && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.taxNumber}</p>}
                           {!numericErrors.taxNumber && gibError && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {gibError}</p>}
                         </FormField>
                         </div>
@@ -2890,7 +2898,7 @@ export default function VendorsPage() {
                           <input className={`${inp} ${numericErrors.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
                             placeholder="11 Haneli TC" maxLength={11} value={form.identityNo}
                             onChange={(e) => handleNumericChange('identityNo', e.target.value)} />
-                          {numericErrors.identityNo && <p className="text-xs text-red-500 mt-1.5">⚠ {numericErrors.identityNo}</p>}
+                          {numericErrors.identityNo && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.identityNo}</p>}
                         </FormField>
                         <FormField label="Ad (NVI doğrulama için)">
                           <input className={inp} placeholder="Resmi Ad" value={form.firstName}
@@ -2921,7 +2929,7 @@ export default function VendorsPage() {
                             </button>
                           </div>
                           {nviResult === true && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">✓ TC Kimlik doğrulandı</p>}
-                          {nviResult === false && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">⚠ TC Kimlik doğrulanamadı</p>}
+                          {nviResult === false && <p className="text-xs text-status-danger mt-1.5 flex items-center gap-1">⚠ TC Kimlik doğrulanamadı</p>}
                         </FormField>
                       </div>
                     </>
@@ -3002,7 +3010,7 @@ export default function VendorsPage() {
                                   <span className="text-xs font-semibold text-slate-500">{contactDisplayLabel(c, idx, 'individual')}</span>
                                   {contacts.length > 1 && (
                                     <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))}
-                                      className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
+                                      className="text-slate-300 hover:text-status-danger transition-colors">{Icon.x}</button>
                                   )}
                                 </div>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -3044,7 +3052,7 @@ export default function VendorsPage() {
                                         />
                                         <button type="button" disabled={savingRelType || !newRelTypeValue.trim()}
                                           onClick={() => handleAddNewRelType((label) => upC(idx, 'title', label))}
-                                          className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                                          className="px-2.5 py-1.5 bg-brand-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
                                           {savingRelType ? '...' : 'Ekle'}
                                         </button>
                                         <button type="button" onClick={() => { setAddingNewRelType(false); setNewRelTypeValue(''); }}
@@ -3114,7 +3122,7 @@ export default function VendorsPage() {
                               <span className="text-xs font-semibold text-slate-500">{contactDisplayLabel(c, idx, 'corporate')}</span>
                               {contacts.length > 1 && (
                                 <button type="button" onClick={() => setContacts((p) => p.filter((_, i) => i !== idx))}
-                                  className="text-slate-300 hover:text-red-500 transition-colors">{Icon.x}</button>
+                                  className="text-slate-300 hover:text-status-danger transition-colors">{Icon.x}</button>
                               )}
                             </div>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -3156,7 +3164,7 @@ export default function VendorsPage() {
                                     />
                                     <button type="button" disabled={savingRelType || !newRelTypeValue.trim()}
                                       onClick={() => handleAddNewRelType((label) => upC(idx, 'title', label))}
-                                      className="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
+                                      className="px-2.5 py-1.5 bg-brand-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 flex-shrink-0">
                                       {savingRelType ? '...' : 'Ekle'}
                                     </button>
                                     <button type="button" onClick={() => { setAddingNewRelType(false); setNewRelTypeValue(''); }}
@@ -3412,7 +3420,7 @@ export default function VendorsPage() {
                               <button type="button" onClick={() => {
                                 const key = sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`;
                                 setServiceAreas((p) => p.filter((x) => (x.districtId ? `${x.provinceId}:${x.districtId}` : `${x.provinceId}:`) !== key));
-                              }} className="text-blue-400 hover:text-red-500">{Icon.x}</button>
+                              }} className="text-blue-400 hover:text-status-danger">{Icon.x}</button>
                             </span>
                           );
                         })}
@@ -3451,7 +3459,7 @@ export default function VendorsPage() {
                       {form.tags.map((t) => (
                         <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
                           {t}
-                          <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-red-500">{Icon.x}</button>
+                          <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger">{Icon.x}</button>
                         </span>
                       ))}
                     </div>
@@ -3585,7 +3593,7 @@ export default function VendorsPage() {
                       {form.contractEndDate && (() => {
                         const days = contractDaysLeft(form.contractEndDate);
                         if (days !== null && days < 0) {
-                          return <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">&#x26A0; Sözleşme {Math.abs(days)} gün önce sona erdi</p>;
+                          return <p className="text-xs text-status-danger mt-1.5 flex items-center gap-1">&#x26A0; Sözleşme {Math.abs(days)} gün önce sona erdi</p>;
                         }
                         if (days !== null && days <= 30) {
                           return <p className="text-xs text-orange-500 mt-1.5 flex items-center gap-1">&#x26A0; Sözleşme {days} gün içinde bitiyor</p>;
@@ -3853,7 +3861,7 @@ export default function VendorsPage() {
                 İptal
               </button>
               <button type="button" onClick={() => doSave(saveMode)}
-                className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
+                className="px-4 py-2 text-sm bg-status-warning text-white rounded-lg hover:bg-amber-600 font-medium">
                 Yine de Kaydet
               </button>
             </div>

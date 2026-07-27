@@ -146,9 +146,9 @@ export default function FinansalRaporPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Finansal</span>
       </nav>
@@ -185,7 +185,7 @@ export default function FinansalRaporPage() {
           <TrDateInput value={dateTo} onChange={setDateTo} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex items-end">
-          <button type="button" onClick={load} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
+          <button type="button" onClick={load} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function FinansalRaporPage() {
             onClick={() => setTab(key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === key
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                ? 'border-brand-600 text-brand-600 dark:text-blue-400 dark:border-blue-400'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -323,8 +323,8 @@ export default function FinansalRaporPage() {
                   <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
                     <div className="w-full flex items-end justify-center gap-0.5" style={{ height: '120px' }}>
                       <div className="flex-1 rounded-t-sm bg-blue-400 dark:bg-blue-500 transition-all" style={{ height: `${Math.round((d.revenue / maxChartVal) * 100)}%` }} title={`Gelir: ${fmtCurrency(d.revenue)}`} />
-                      <div className="flex-1 rounded-t-sm bg-red-400 dark:bg-red-500 transition-all" style={{ height: `${Math.round((d.cost / maxChartVal) * 100)}%` }} title={`Gider: ${fmtCurrency(d.cost)}`} />
-                      <div className={`flex-1 rounded-t-sm transition-all ${profitVal >= 0 ? 'bg-emerald-400 dark:bg-emerald-500' : 'bg-orange-400 dark:bg-orange-500'}`} style={{ height: `${Math.round((Math.abs(profitVal) / maxChartVal) * 100)}%` }} title={`Kâr: ${fmtCurrency(profitVal)}`} />
+                      <div className="flex-1 rounded-t-sm bg-red-400 dark:bg-status-danger transition-all" style={{ height: `${Math.round((d.cost / maxChartVal) * 100)}%` }} title={`Gider: ${fmtCurrency(d.cost)}`} />
+                      <div className={`flex-1 rounded-t-sm transition-all ${profitVal >= 0 ? 'bg-emerald-400 dark:bg-status-success' : 'bg-orange-400 dark:bg-orange-500'}`} style={{ height: `${Math.round((Math.abs(profitVal) / maxChartVal) * 100)}%` }} title={`Kâr: ${fmtCurrency(profitVal)}`} />
                     </div>
                     <span className="text-[11px] text-slate-500 dark:text-slate-400">{d.month}</span>
                   </div>
@@ -332,7 +332,7 @@ export default function FinansalRaporPage() {
               })}
             </div>
             <div className="flex items-center gap-4 mt-3">
-              {[{ color: 'bg-blue-400 dark:bg-blue-500', label: 'Gelir' }, { color: 'bg-red-400 dark:bg-red-500', label: 'Gider' }, { color: 'bg-emerald-400 dark:bg-emerald-500', label: 'Kâr' }].map((l) => (
+              {[{ color: 'bg-blue-400 dark:bg-blue-500', label: 'Gelir' }, { color: 'bg-red-400 dark:bg-status-danger', label: 'Gider' }, { color: 'bg-emerald-400 dark:bg-status-success', label: 'Kâr' }].map((l) => (
                 <div key={l.label} className="flex items-center gap-1.5">
                   <div className={`w-3 h-3 rounded-sm ${l.color}`} />
                   <span className="text-xs text-slate-500 dark:text-slate-400">{l.label}</span>
@@ -436,7 +436,7 @@ export default function FinansalRaporPage() {
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {(data.topProfitableFiles ?? []).map((f: any) => (
                   <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-blue-600 dark:text-blue-400">
+                    <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-brand-600 dark:text-blue-400">
                       <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>
                     </PanelTableTd>
                     <PanelTableTd colId="actualRevenue" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualRevenue)}</PanelTableTd>

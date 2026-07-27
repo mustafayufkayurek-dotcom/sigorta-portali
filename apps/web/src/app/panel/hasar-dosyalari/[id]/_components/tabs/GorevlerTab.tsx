@@ -498,7 +498,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
         <button
           type="button"
           onClick={() => (showForm ? setShowForm(false) : openCreateForm())}
-          className="shrink-0 rounded-lg bg-blue-600 px-3.5 py-2 text-sm text-white hover:bg-blue-700"
+          className="shrink-0 rounded-lg bg-brand-600 px-3.5 py-2 text-sm text-white hover:bg-blue-700"
         >
           {showForm ? 'Formu Kapat' : '+ Hatırlatma Ekle'}
         </button>
@@ -631,7 +631,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
             <button
               type="button"
               onClick={openCreateForm}
-              className="mt-4 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="mt-4 px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700"
             >
               + Hatırlatma Ekle
             </button>

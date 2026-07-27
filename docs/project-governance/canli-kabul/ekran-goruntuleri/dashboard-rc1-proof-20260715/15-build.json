@@ -1,0 +1,6 @@
+{
+  "exit": 0,
+  "pass": true,
+  "cmd": "pnpm run build (apps/web)",
+  "note": "Docker/image build NOT run"
+}

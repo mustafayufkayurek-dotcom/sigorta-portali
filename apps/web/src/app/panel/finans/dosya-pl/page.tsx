@@ -69,7 +69,7 @@ export default function DosyaPLPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="text-sm bg-brand-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? 'Yükleniyor...' : 'Güncelle'}
           </button>
@@ -102,7 +102,7 @@ export default function DosyaPLPage() {
           <div className={`rounded-xl border p-4 ${isProfit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
             <p className="text-xs text-slate-500 mb-1">Net Kâr / Zarar</p>
             <p className={`text-xl font-bold ${isProfit ? 'text-green-800' : 'text-red-700'}`}>{fmtCurrency(portfolioPL.netProfit)}</p>
-            <p className={`text-sm mt-1 ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
+            <p className={`text-sm mt-1 ${isProfit ? 'text-green-600' : 'text-status-danger'}`}>
               %{(portfolioPL.netMarginPct ?? 0).toFixed(1)} kâr marjı
             </p>
           </div>
@@ -156,7 +156,7 @@ export default function DosyaPLPage() {
                   </div>
                   <div className="flex gap-6 text-sm">
                     <span className="text-slate-500">{fmtCurrency(item.totalRevenue)}</span>
-                    <span className="text-red-500">{fmtCurrency(item.totalCost)}</span>
+                    <span className="text-status-danger">{fmtCurrency(item.totalCost)}</span>
                     <span className={`font-bold ${isPos ? 'text-green-700' : 'text-red-600'}`}>
                       {fmtCurrency(item.netProfit)}
                       <span className="text-xs font-normal ml-1">

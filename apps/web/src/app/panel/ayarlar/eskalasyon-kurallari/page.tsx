@@ -218,7 +218,7 @@ export default function EskalasyonKurallarPage() {
                   <p className="text-[10px] text-slate-400 mt-0.5">Uyarı</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center z-10 shadow-sm">
+                  <div className="w-7 h-7 rounded-full bg-status-danger flex items-center justify-center z-10 shadow-sm">
                     <span className="text-white text-xs font-bold">{draft.criticalDays}</span>
                   </div>
                   <p className="text-xs font-semibold text-red-700 mt-2">Gün {draft.criticalDays}</p>
@@ -259,7 +259,7 @@ export default function EskalasyonKurallarPage() {
               type="button"
               onClick={handleSave}
               disabled={saving || !dirty || draft.warningDays >= draft.criticalDays || draft.criticalDays >= draft.escalationDays}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-sm shadow-blue-200 transition-all"
+              className="flex items-center gap-2 bg-brand-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-sm shadow-blue-200 transition-all"
             >
               {saving ? (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

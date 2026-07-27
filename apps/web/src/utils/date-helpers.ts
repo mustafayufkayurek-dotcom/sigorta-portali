@@ -59,7 +59,7 @@ export function relativeTime(dateStr: string | null | undefined): string {
 export function activityColor(dateStr: string | null | undefined): string {
   if (!dateStr) return 'text-gray-400';
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (days > 90) return 'text-red-500';
+  if (days > 90) return 'text-status-danger';
   if (days > 30) return 'text-orange-500';
   return 'text-gray-600';
 }

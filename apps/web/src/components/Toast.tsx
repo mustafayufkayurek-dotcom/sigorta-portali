@@ -25,7 +25,7 @@ const TOAST_CONFIG: Record<ToastType, { bg: string; border: string; icon: string
   },
   error: {
     bg: 'bg-white',
-    border: 'border-l-4 border-l-red-500',
+    border: 'border-l-4 border-l-status-danger',
     icon: '✕',
     textColor: 'text-red-600',
   },
@@ -39,7 +39,7 @@ const TOAST_CONFIG: Record<ToastType, { bg: string; border: string; icon: string
     bg: 'bg-white',
     border: 'border-l-4 border-l-blue-500',
     icon: 'ℹ',
-    textColor: 'text-blue-600',
+    textColor: 'text-brand-600',
   },
 };
 

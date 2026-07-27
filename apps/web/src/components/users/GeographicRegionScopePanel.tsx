@@ -136,7 +136,7 @@ export function GeographicRegionScopePanel({
             type="checkbox"
             checked={countrywide}
             onChange={(e) => onCountrywideChange(e.target.checked)}
-            className="rounded border-slate-300 text-blue-600"
+            className="rounded border-slate-300 text-brand-600"
           />
           Tüm Türkiye
         </label>
@@ -176,7 +176,7 @@ export function GeographicRegionScopePanel({
                         type="checkbox"
                         checked={checked}
                         onChange={(e) => onToggleRegion(region.id, e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 flex-shrink-0"
+                        className="rounded border-slate-300 text-brand-600 flex-shrink-0"
                       />
                       <span className="font-medium truncate">{label}</span>
                       <span className="text-xs text-slate-400 flex-shrink-0">
@@ -239,7 +239,7 @@ export function GeographicRegionScopePanel({
                                   <span className="truncate">{province.name}</span>
                                 </span>
                                 {hasDistrictRefinement ? (
-                                  <span className="text-[11px] text-blue-600 flex-shrink-0">İlçe İnce Ayarı</span>
+                                  <span className="text-[11px] text-brand-600 flex-shrink-0">İlçe İnce Ayarı</span>
                                 ) : allDistrictsActive ? (
                                   <span className="text-[11px] text-emerald-600 flex-shrink-0">Tüm İlçeler</span>
                                 ) : null}
@@ -271,7 +271,7 @@ export function GeographicRegionScopePanel({
                                         districts={districts}
                                         maxHeightClass="max-h-36"
                                         gridClassName="grid gap-2 sm:grid-cols-3"
-                                        accentClass="accent-blue-600"
+                                        accentClass="accent-brand-600"
                                         isChecked={(districtId) =>
                                           isDistrictAreaChecked(serviceAreas, province.id, districtId)
                                         }

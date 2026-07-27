@@ -38,8 +38,8 @@ function RateChip({ rate, prevRate }: { rate: ExchangeRate | null; prevRate: num
     <span className="flex items-center gap-1 text-sm">
       <span className="font-semibold text-gray-500 text-xs">{rate.code}</span>
       <span className="font-bold text-gray-800 tabular-nums">₺{avg > 0 ? avg.toFixed(2) : '—'}</span>
-      {isUp && <span className="text-red-500 text-xs font-bold leading-none">↑</span>}
-      {isDown && <span className="text-emerald-500 text-xs font-bold leading-none">↓</span>}
+      {isUp && <span className="text-status-danger text-xs font-bold leading-none">↑</span>}
+      {isDown && <span className="text-status-success text-xs font-bold leading-none">↓</span>}
       {!isUp && !isDown && <span className="text-gray-400 text-xs leading-none">→</span>}
     </span>
   );

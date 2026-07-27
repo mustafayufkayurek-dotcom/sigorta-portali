@@ -54,7 +54,7 @@ const DURUM_DOT: Record<InvoiceRequestStatus, string> = {
   pending: 'bg-yellow-400',
   approved: 'bg-blue-500',
   invoiced: 'bg-green-500',
-  cancelled: 'bg-red-500',
+  cancelled: 'bg-status-danger',
 };
 
 type FilterKey = 'tumu' | InvoiceRequestStatus;
@@ -175,7 +175,7 @@ export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionP
             onClick={() => setFilter(k)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
               filter === k
-                ? 'bg-blue-600 border-blue-600 text-white'
+                ? 'bg-brand-600 border-brand-600 text-white'
                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
@@ -219,7 +219,7 @@ export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionP
                     <tr key={t.id} className={`hover:bg-slate-50/70 dark:hover:bg-slate-700/40 transition-colors ${idx % 2 !== 0 ? 'bg-slate-50/30' : ''}`}>
                       <PanelTableTd colId="tarih" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{fmtDate(t.createdAt)}</PanelTableTd>
                       <PanelTableTd colId="dosyaNo" className="px-4 py-3">
-                        <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{t.fileNo}</span>
+                        <span className="text-xs font-mono text-brand-600 dark:text-blue-400">{t.fileNo}</span>
                       </PanelTableTd>
                       <PanelTableTd colId="tedarikci" className="px-4 py-3 text-slate-700 dark:text-slate-200 font-medium">{sigortaKaynak(t)}</PanelTableTd>
                       <PanelTableTd colId="aciklama" className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">

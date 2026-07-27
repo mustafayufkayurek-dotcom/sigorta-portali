@@ -1,0 +1,29 @@
+{
+  "at": "2026-07-26T10:38:01.675Z",
+  "real": {
+    "title": "Dosyalarım",
+    "cols": [
+      "Dosya No",
+      "Sigorta Şirketi",
+      "Konu",
+      "Durum",
+      "Tarih",
+      "Akış"
+    ],
+    "hasKpi": false,
+    "hasFilter": false
+  },
+  "preview": {
+    "cols": [
+      "Dosya No",
+      "Sigorta Şirketi",
+      "Konu",
+      "Durum",
+      "Tarih",
+      "Akış"
+    ],
+    "hasKpi": false,
+    "hasFilter": false
+  },
+  "compatible": true
+}

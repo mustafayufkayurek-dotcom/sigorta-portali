@@ -209,7 +209,7 @@ export default function TestNotlariGorevTakipPage() {
       <div className="flex flex-col gap-4">
         <div className="min-w-0">
           <a href="/panel/ayarlar" className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700">← Ayarlar</a>
-          <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">Admin-only / Geçici Modül</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-brand-600">Admin-only / Geçici Modül</p>
           <h1 className="mt-1 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">Test Notları ve Geçici İş/Görev Takip</h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">Kalıcı görev-haberleşme modülü devreye girene kadar kullanılacak geçici yönetim ekranı.</p>
         </div>
@@ -237,7 +237,7 @@ export default function TestNotlariGorevTakipPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-xl px-3 py-2.5 text-xs font-semibold sm:px-4 sm:py-2 sm:text-sm ${
-              activeTab === tab.id ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-600'
+              activeTab === tab.id ? 'bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-600'
             }`}
           >
             {tab.label}
@@ -250,7 +250,7 @@ export default function TestNotlariGorevTakipPage() {
           <button
             type="button"
             onClick={() => { setEditingNote(null); setShowNoteForm((value) => !value); }}
-            className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white sm:ml-auto sm:block sm:w-auto"
+            className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white sm:ml-auto sm:block sm:w-auto"
           >
             {showNoteForm ? 'Formu Kapat' : 'Yeni Test Notu'}
           </button>

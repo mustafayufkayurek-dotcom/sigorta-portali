@@ -88,7 +88,7 @@ function workloadColor(count: number): { border: string; bg: string; badge: stri
     bg: 'bg-red-50',
     badge: 'bg-red-100 text-red-800',
     label: 'Aşırı Yük',
-    dot: 'bg-red-500',
+    dot: 'bg-status-danger',
   };
 }
 
@@ -242,7 +242,7 @@ function AddRuleModal({
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-brand-600 to-blue-700">
             <div>
               <h3 className="text-base font-semibold text-white">Yeni Kural Ekle</h3>
               <p className="text-blue-200 text-xs mt-0.5">Otomatik Atama Kuralı Tanımlayın</p>
@@ -283,7 +283,7 @@ function AddRuleModal({
           <div className="flex gap-2 px-6 py-4 border-t border-slate-100 justify-end">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">İptal</button>
             <button type="button" onClick={handleSubmit} disabled={saving || !form.jobGroupId || !form.userId}
-              className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2">
+              className="px-5 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2">
               {saving && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
               Kuralı Kaydet
             </button>
@@ -316,9 +316,9 @@ const LEVEL_CONFIG: Record<EscalationLevel, { label: string; rowCls: string; bad
   },
   critical: {
     label: 'Kritik',
-    rowCls: 'bg-red-50 border-l-4 border-red-500',
+    rowCls: 'bg-red-50 border-l-4 border-status-danger',
     badgeCls: 'bg-red-100 text-red-800 border border-red-300',
-    dotCls: 'bg-red-500',
+    dotCls: 'bg-status-danger',
   },
   escalation: {
     label: 'Eskalasyon',
@@ -695,7 +695,7 @@ export default function PersonelYonetimiPage() {
       {/* Page header */}
             {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Personel Yönetimi</span>
       </nav>
@@ -729,7 +729,7 @@ export default function PersonelYonetimiPage() {
         <div className="stat-card card-accent-blue">
           <div className="flex items-start justify-between mb-2">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
@@ -804,7 +804,7 @@ export default function PersonelYonetimiPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200'
               }`}
             >
@@ -832,7 +832,7 @@ export default function PersonelYonetimiPage() {
                 <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> Normal (4–6)
               </span>
               <span className="flex items-center gap-1.5 text-xs text-slate-600">
-                <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Aşırı Yük (7+)
+                <span className="w-3 h-3 rounded-full bg-status-danger inline-block" /> Aşırı Yük (7+)
               </span>
               <div className="ml-auto flex items-center gap-4 text-xs text-slate-500">
                 <span className="font-medium text-green-700">{available} müsait</span>
@@ -1054,7 +1054,7 @@ export default function PersonelYonetimiPage() {
                 <button
                 type="button"
                 onClick={() => setShowAddRule(true)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
+                className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1234,7 +1234,7 @@ export default function PersonelYonetimiPage() {
                 type="button"
                 onClick={handleAssign}
                 disabled={assigning || !selectedFileId || !assignUserId}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-sm shadow-blue-200 transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-sm shadow-blue-200 transition-all"
               >
                 {assigning ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
@@ -1287,7 +1287,7 @@ export default function PersonelYonetimiPage() {
                 </span>
                 <div className="flex items-center gap-3">
                   {filterLevel !== 'all' && (
-                    <button type="button" onClick={() => setFilterLevel('all')} className="text-xs text-blue-600 hover:text-blue-700">
+                    <button type="button" onClick={() => setFilterLevel('all')} className="text-xs text-brand-600 hover:text-blue-700">
                       Filtreyi Temizle
                     </button>
                   )}

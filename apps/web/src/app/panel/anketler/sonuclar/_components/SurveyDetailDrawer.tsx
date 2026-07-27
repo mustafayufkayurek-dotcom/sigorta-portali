@@ -62,7 +62,7 @@ export function SurveyDetailDrawer({
               onClick={() => setTab(t.id)}
               className={`whitespace-nowrap border-b-2 px-3 py-2 text-xs font-medium ${
                 tab === t.id
-                  ? 'border-blue-600 text-blue-700'
+                  ? 'border-brand-600 text-blue-700'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >

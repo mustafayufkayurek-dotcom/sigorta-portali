@@ -338,7 +338,7 @@ export function FieldSurveyBriefModal({
                     href={photoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline self-center"
+                    className="text-xs text-brand-600 hover:underline self-center"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Fotoğrafı Gör
@@ -395,7 +395,7 @@ export function FieldSurveyBriefModal({
                 <span className="text-xs font-medium text-slate-600">Tahmini Ölçü Alanları</span>
                 <button
                   type="button"
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-brand-600 hover:underline"
                   onClick={() => setDimensions((d) => [...d, emptyDimension(d.length + 1)])}
                 >
                   Alan Ekle
@@ -458,7 +458,7 @@ export function FieldSurveyBriefModal({
                 <span className="text-xs font-medium text-slate-600">Malzeme Listesi</span>
                 <button
                   type="button"
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-brand-600 hover:underline"
                   onClick={() => setMaterials((m) => [...m, { name: '', quantity: '', note: '' }])}
                 >
                   Malzeme Ekle

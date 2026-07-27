@@ -52,7 +52,7 @@ interface Props {
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs text-red-500">{message}</p>;
+  return <p className="mt-1 text-xs text-status-danger">{message}</p>;
 }
 
 export function UserScopeSections({
@@ -90,7 +90,7 @@ export function UserScopeSections({
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Departman Yetkisi
-                {isRequired(rules.departmentScope) && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.departmentScope) && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 p-3">
                 {departments.map((department) => {
@@ -108,7 +108,7 @@ export function UserScopeSections({
                         type="checkbox"
                         checked={checked}
                         onChange={() => onToggleDepartment(department.id)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-slate-300 text-brand-600"
                       />
                       {department.name}
                     </label>
@@ -123,7 +123,7 @@ export function UserScopeSections({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Varsayılan Departman
-                {isRequired(rules.primaryDepartment) && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.primaryDepartment) && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <select
                 value={formScope.primaryDepartmentId}
@@ -147,7 +147,7 @@ export function UserScopeSections({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Çalışma Kapsamı
-                {isRequired(rules.operationScope) && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.operationScope) && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <select
                 value={formScope.operationScope}
@@ -170,7 +170,7 @@ export function UserScopeSections({
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 İş Akışı Kapsamı
-                {isRequired(rules.workflowScope) && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.workflowScope) && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {workflows.map((workflow) => {
@@ -181,7 +181,7 @@ export function UserScopeSections({
                         type="checkbox"
                         checked={formScope.workflowScopeCodes.includes(key)}
                         onChange={() => onToggleWorkflow(key)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-slate-300 text-brand-600"
                       />
                       {workflow.name}
                     </label>
@@ -202,13 +202,13 @@ export function UserScopeSections({
               <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-700">
                 <span>
                   Dosya Atanabilir mi?
-                  {isRequired(rules.assignmentEnabled) && <span className="text-red-500 ml-0.5">*</span>}
+                  {isRequired(rules.assignmentEnabled) && <span className="text-status-danger ml-0.5">*</span>}
                 </span>
                 <input
                   type="checkbox"
                   checked={formScope.assignmentEnabled}
                   onChange={(e) => onScopeChange('assignmentEnabled', e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600"
                 />
               </label>
               <p className="text-xs text-gray-400 mt-0.5">Bu kullanıcıya dosya atanıp atanamayacağını belirler.</p>
@@ -219,7 +219,7 @@ export function UserScopeSections({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Dosya Atama Rolü
-                {isRequired(rules.assignmentRole) && formScope.assignmentEnabled && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.assignmentRole) && formScope.assignmentEnabled && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <select
                 value={formScope.assignmentRoleCode}
@@ -243,13 +243,13 @@ export function UserScopeSections({
               <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-700">
                 <span>
                   Tüm Türkiye kapsamı
-                  {isRequired(rules.countrywide) && <span className="text-red-500 ml-0.5">*</span>}
+                  {isRequired(rules.countrywide) && <span className="text-status-danger ml-0.5">*</span>}
                 </span>
                 <input
                   type="checkbox"
                   checked={formScope.countrywide}
                   onChange={(e) => onScopeChange('countrywide', e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600"
                 />
               </label>
             </div>
@@ -259,7 +259,7 @@ export function UserScopeSections({
             <div className="md:col-span-2 rounded-xl border border-slate-200 p-4">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Bölge kapsamı
-                {isRequired(rules.regionScope) && <span className="text-red-500 ml-0.5">*</span>}
+                {isRequired(rules.regionScope) && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <div className="flex gap-2 mb-3">
                 <SearchableSelect
@@ -287,7 +287,7 @@ export function UserScopeSections({
                   districts={districts}
                   maxHeightClass="max-h-48"
                   gridClassName="grid gap-2 sm:grid-cols-3"
-                  accentClass="accent-blue-600"
+                  accentClass="accent-brand-600"
                   isChecked={(districtId) => isDistrictAreaChecked(formScope.serviceAreas, selectedProvinceId, districtId)}
                   onToggle={(districtId) => onToggleServiceArea(selectedProvinceId, districtId)}
                 />
@@ -310,7 +310,7 @@ export function UserScopeSections({
                         <button
                           type="button"
                           onClick={() => onToggleServiceArea(item.provinceId, item.districtId)}
-                          className="text-blue-400 hover:text-red-500"
+                          className="text-blue-400 hover:text-status-danger"
                         >
                           ×
                         </button>

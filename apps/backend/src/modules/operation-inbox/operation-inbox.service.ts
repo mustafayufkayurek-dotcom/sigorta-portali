@@ -854,6 +854,10 @@ export class OperationInboxService {
     ]
       .filter(Boolean)
       .join('\n');
+    const findingsText =
+      [message.aiSummary?.trim(), instructionBlock ? `Talimat: ${instructionBlock}` : '']
+        .filter(Boolean)
+        .join('\n\n') || `Gelen kutusu ihbarı: ${message.subject}`;
 
     const routing = this.parseRouting(message.aiExtractedJson);
     const assigneeId =
@@ -876,6 +880,7 @@ export class OperationInboxService {
         assignedUserId: assigneeId,
         assignedVendorId: dto.assignedVendorId,
         notes,
+        findingsText,
       },
       userId,
     );

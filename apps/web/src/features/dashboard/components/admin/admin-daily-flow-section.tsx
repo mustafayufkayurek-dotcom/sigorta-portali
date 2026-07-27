@@ -128,7 +128,7 @@ export function AdminDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: Ad
           <div className="flex min-w-0 items-start gap-2 p-2.5">
             <span
               className={`shrink-0 rounded-lg p-1.5 ${
-                allocationDone ? 'bg-emerald-500/40' : 'bg-amber-200/80'
+                allocationDone ? 'bg-status-success/40' : 'bg-amber-200/80'
               }`}
             >
               <PieChart className="h-3.5 w-3.5" />
@@ -154,7 +154,7 @@ export function AdminDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: Ad
           <span
             className={`truncate px-2.5 py-1.5 text-[11px] font-semibold ${
               allocationDone
-                ? 'bg-emerald-500/50 text-white'
+                ? 'bg-status-success/50 text-white'
                 : 'bg-amber-200/60 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
             }`}
           >

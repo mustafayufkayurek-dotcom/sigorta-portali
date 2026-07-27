@@ -36,7 +36,7 @@ export function TopProgressBar() {
     <div
       role="progressbar"
       aria-hidden="true"
-      className="fixed top-0 left-0 z-[9999] h-[2px] bg-blue-600 transition-all duration-300 ease-out dark:bg-blue-500"
+      className="fixed top-0 left-0 z-[9999] h-[2px] bg-brand-600 transition-all duration-300 ease-out dark:bg-blue-500"
       style={{ width: `${progress}%` }}
     />
   );

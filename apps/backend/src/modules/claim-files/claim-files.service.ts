@@ -7,6 +7,7 @@ import {
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
 import { SmsService } from '@/modules/notifications/sms/sms.service';
 import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/sms/message-template.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
@@ -156,6 +157,7 @@ export class ClaimFilesService {
     private cache: CacheService,
     private readonly auditLogsService: AuditLogsService,
     @Optional() private readonly claimEventEmail?: ClaimEventEmailService,
+    @Optional() private readonly emailService?: EmailService,
     @Optional() private readonly smsService?: SmsService,
     @Optional() private readonly templateService?: MessageTemplateService,
     @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
@@ -822,6 +824,60 @@ export class ClaimFilesService {
       canManageFinancialVisibility: requestingUser
         ? canManageFinancialVisibility(requestingUser.roleCode)
         : false,
+    };
+  }
+
+  async sendResponsibleEmail(
+    id: string,
+    message: string,
+    requestingUser: { id: string; roleCode: string },
+  ) {
+    const content = message?.trim();
+    if (!content) throw new BadRequestException('E-posta içeriği zorunludur.');
+
+    await this.findOne(id, requestingUser);
+
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id },
+      select: {
+        fileNo: true,
+        assignedOfficeUser: {
+          select: { firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+    if (!claimFile) throw new NotFoundException('Dosya bulunamadı.');
+
+    const responsible = claimFile.assignedOfficeUser;
+    if (!responsible?.email) {
+      throw new BadRequestException('Meridyen dosya sorumlusunun kayıtlı e-posta adresi bulunamadı.');
+    }
+    if (!this.emailService) {
+      throw new BadRequestException('E-posta servisi kullanılamıyor.');
+    }
+
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      })[char] ?? char);
+    const safeMessage = escapeHtml(content).replace(/\n/g, '<br />');
+    const result = await this.emailService.sendEmail(
+      responsible.email,
+      `${claimFile.fileNo} Dosya Notu`,
+      `<p>${safeMessage}</p><p><strong>Dosya:</strong> ${escapeHtml(claimFile.fileNo)}</p>`,
+      { text: `${content}\n\nDosya: ${claimFile.fileNo}` },
+    );
+    if (!result.sent) {
+      throw new BadRequestException(result.errorMsg || 'E-posta gönderilemedi.');
+    }
+
+    return {
+      sent: true,
+      recipientName: `${responsible.firstName ?? ''} ${responsible.lastName ?? ''}`.trim(),
     };
   }
 

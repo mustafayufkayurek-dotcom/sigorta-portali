@@ -142,7 +142,7 @@ function PlanlayiciInner({
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
           >
             Operasyon Planlayıcısı
           </button>
@@ -351,7 +351,7 @@ function PlanlayiciInner({
                     <button
                       type="button"
                       disabled={saving || !canEdit}
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                      className="flex-1 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                       onClick={onSave}
                     >
                       {saving ? 'Kaydediliyor...' : 'Kaydet'}

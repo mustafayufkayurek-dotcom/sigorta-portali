@@ -55,7 +55,7 @@ export default function InsurancePortalSummaryPanel({
     <div className="flex flex-col gap-3 h-full">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <div className="h-4 w-1 rounded-full bg-blue-600" />
+          <div className="h-4 w-1 rounded-full bg-brand-600" />
           <h3 className="text-sm font-semibold text-slate-800">
             {isNetwork ? 'Ağ Özeti' : 'Dosya Özeti'}
           </h3>
@@ -138,7 +138,7 @@ export default function InsurancePortalSummaryPanel({
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 p-4 shadow-md">
+      <div className="rounded-xl overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-700 p-4 shadow-md">
         <p className="text-[10px] font-bold tracking-[0.15em] text-blue-200">Meridyen Assistance</p>
         <p className="text-white text-sm font-semibold mt-1">Türkiye Geneli Hasar Ağı</p>
         <p className="text-blue-100 text-xs mt-2 leading-relaxed">

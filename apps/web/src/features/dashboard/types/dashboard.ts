@@ -55,6 +55,7 @@ export type PendingActionItem = {
   action: string;
   pendingSince: string;
   priority?: 'low' | 'medium' | 'high' | 'critical' | string;
+  module?: 'hasar' | 'acil';
 };
 export type PendingActionsResponse = { items: PendingActionItem[] };
 
@@ -145,7 +146,8 @@ export type DailyFlowResponse = {
   teamDensity: Array<{ dayIndex: number; label: string; count: number }>;
   lastWeek: {
     closedClaims: number;
-    collectionAmount: number;
+    // Ofis/saha rolleri için gizlenir (finans/yönetici dışı rollere null döner).
+    collectionAmount: number | null;
     avgCloseDays: number | null;
     slaCompliancePct: number | null;
     rangeStart: string;

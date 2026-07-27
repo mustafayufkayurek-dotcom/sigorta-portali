@@ -103,7 +103,7 @@ export function AdminFinanceSummarySection({
                 icon={Clock}
                 label="Operasyon Gideri"
                 value={formatCurrency(pl?.totalCost ?? 0)}
-                color="bg-blue-600"
+                color="bg-brand-600"
                 href="/panel/finans/masraflar"
               />
               <KpiCard

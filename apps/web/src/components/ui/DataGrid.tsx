@@ -87,7 +87,7 @@ export function DataGrid<T extends Record<string, any>>({
         {emptyAction && (
           <button
             onClick={emptyAction.onClick}
-            className="mt-3 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            className="mt-3 rounded-md bg-brand-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
           >
             {emptyAction.label}
           </button>
@@ -111,7 +111,7 @@ export function DataGrid<T extends Record<string, any>>({
                   <div className="flex items-center gap-1">
                     {col.label}
                     {col.sortable && sortKey === col.key && (
-                      <span className="text-blue-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      <span className="text-brand-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
                 </th>

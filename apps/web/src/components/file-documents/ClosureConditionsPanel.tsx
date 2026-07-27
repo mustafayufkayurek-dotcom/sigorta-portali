@@ -351,7 +351,7 @@ export default function ClosureConditionsPanel(props: Props) {
         <button
           onClick={handleCreateRequest}
           disabled={creating}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-brand-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           {creating ? (
             <>
@@ -404,14 +404,14 @@ export default function ClosureConditionsPanel(props: Props) {
                 {[survey.response.q1Rating, survey.response.q2Rating, survey.response.q3Rating, survey.response.q4Rating, survey.response.q5Rating].map((r, i) => (
                   <div key={i} className="text-center bg-slate-50 rounded-lg py-2">
                     <p className="text-xs text-slate-500 mb-0.5">S{i + 1}</p>
-                    <p className="text-sm font-bold text-amber-500">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
+                    <p className="text-sm font-bold text-status-warning">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
                   </div>
                 ))}
               </div>
             )}
             {survey?.status === 'completed' && survey.response?.q6Recommend !== undefined && (
               <p className="text-xs text-slate-600">
-                Tavsiye: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-red-500'}>{survey.response.q6Recommend ? 'Evet' : 'Hayır'}</strong>
+                Tavsiye: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-status-danger'}>{survey.response.q6Recommend ? 'Evet' : 'Hayır'}</strong>
               </p>
             )}
             {survey?.status === 'completed' && survey.response?.q7Comment && (

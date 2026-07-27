@@ -120,7 +120,7 @@ export function InsuredNameInlineEdit({
           type="button"
           disabled={saving}
           onClick={() => void save()}
-          className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+          className="shrink-0 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
         >
           {saving ? '…' : 'Kaydet'}
         </button>

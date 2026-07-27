@@ -107,7 +107,7 @@ export default function SigortaDosyalarPage() {
           <>
             <Link
               href="/panel/sigorta-portal/dosya-akisi"
-              className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
+              className="text-sm font-medium text-brand-600 transition-colors hover:text-blue-800"
             >
               Dosya Akışı
             </Link>
@@ -202,7 +202,7 @@ export default function SigortaDosyalarPage() {
                         <Link
                           href={`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                          className="text-sm font-medium text-brand-600 hover:text-blue-800"
                         >
                           Akış
                         </Link>

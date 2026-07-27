@@ -14,7 +14,7 @@ const TONE: Record<ActionRequiredItem['tone'], { bar: string; badge: string; lab
     label: 'Uyarı',
   },
   positive: {
-    bar: 'border-l-emerald-500',
+    bar: 'border-l-status-success',
     badge: 'bg-emerald-50 text-emerald-700',
     label: 'Olumlu',
   },

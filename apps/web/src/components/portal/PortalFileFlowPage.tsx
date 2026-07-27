@@ -141,7 +141,7 @@ export default function PortalFileFlowPage({
         actions={
           <Link
             href={filesLinkHref}
-            className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800"
+            className="text-sm font-medium text-brand-600 transition-colors hover:text-blue-800"
           >
             {filesLinkLabel}
           </Link>
@@ -180,7 +180,7 @@ export default function PortalFileFlowPage({
           <p className="mt-1 text-sm text-slate-400">{emptyHint}</p>
           <Link
             href={filesLinkHref}
-            className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-800"
+            className="mt-4 inline-block text-sm font-medium text-brand-600 hover:text-blue-800"
           >
             {filesLinkLabel}
           </Link>
@@ -242,7 +242,7 @@ export default function PortalFileFlowPage({
                       type="button"
                       onClick={() => selectFile(f.id)}
                       className={`w-full px-4 py-3 text-left transition-colors ${
-                        active ? 'border-l-2 border-l-blue-600 bg-blue-50' : 'hover:bg-slate-50'
+                        active ? 'border-l-2 border-l-brand-600 bg-blue-50' : 'hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">

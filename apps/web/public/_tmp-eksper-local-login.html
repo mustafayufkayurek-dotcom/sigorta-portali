@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>Yerel Eksper Giriş</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 440px; margin: 48px auto; padding: 0 16px; color: #0f172a; }
+    button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px; background: #1d4ed8; color: #fff; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    button.secondary { margin-top: 8px; background: #e2e8f0; color: #0f172a; }
+    p { color: #475569; line-height: 1.5; }
+    code { font-size: 13px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }
+    #status { margin-top: 16px; font-size: 14px; white-space: pre-wrap; }
+    .err { color: #b91c1c; }
+    .ok { color: #047857; }
+  </style>
+</head>
+<body>
+  <h1>Yerel Eksper Giriş</h1>
+  <p>Bu sayfa yalnızca lokal geliştirme içindir. Giriş yapıp <strong>Dosyalarım</strong> ekranına yönlendirir.</p>
+  <p>Hesap: <code>eksper@meridyenasistans.com</code></p>
+  <button id="go" type="button">Eksper Olarak Gir Ve Aç</button>
+  <button id="giris" type="button" class="secondary">Normal Giriş Sayfasına Git</button>
+  <div id="status"></div>
+  <script>
+    const API = 'http://localhost:3000/api/v1';
+    const EMAIL = 'eksper@meridyenasistans.com';
+    const PASSWORD = 'Eksper123!';
+    const DEST = '/panel/eksper-portal/dosyalar';
+    const statusEl = document.getElementById('status');
+    const btn = document.getElementById('go');
+
+    function setStatus(msg, ok) {
+      statusEl.className = ok ? 'ok' : 'err';
+      statusEl.textContent = msg;
+    }
+
+    function storeAuth(tokens, user) {
+      const now = Date.now();
+      // storeAuthAfterLogin (remember=true) ile aynı anahtarlar
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('tokenExpiry');
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('authSession');
+
+      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('rememberedEmail', EMAIL);
+      localStorage.setItem('meridyenRememberMe', '1');
+      localStorage.setItem('authPersistence', 'remember');
+      localStorage.setItem('tokenExpiry', String(now + 7 * 24 * 60 * 60 * 1000));
+      localStorage.setItem('meridyenLastAuthActivity', String(now));
+      sessionStorage.setItem('meridyenAuthTab', '1');
+      sessionStorage.setItem('meridyenBrowserSession', '1');
+      // yedek: bazı akışlar sessionStorage bekler
+      sessionStorage.setItem('accessToken', tokens.accessToken);
+      sessionStorage.setItem('refreshToken', tokens.refreshToken);
+      sessionStorage.setItem('authSession', 'active');
+    }
+
+    async function login() {
+      btn.disabled = true;
+      setStatus('API kontrol ediliyor…', true);
+
+      try {
+        const healthCtrl = new AbortController();
+        const healthTimer = setTimeout(() => healthCtrl.abort(), 4000);
+        try {
+          await fetch(API.replace(/\/api\/v1$/, '') + '/api/v1', { signal: healthCtrl.signal }).catch(() => null);
+        } finally {
+          clearTimeout(healthTimer);
+        }
+
+        setStatus('Giriş yapılıyor…', true);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 12000);
+        let res;
+        try {
+          res = await fetch(API + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+            signal: ctrl.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error((json && (json.message || json.error)) || ('HTTP ' + res.status));
+        }
+        const data = json.data || json;
+        const tokens = data.tokens || {};
+        const user = data.user;
+        if (!tokens.accessToken || !tokens.refreshToken || !user) {
+          throw new Error('Giriş yanıtı eksik. Backend ayakta mı?');
+        }
+        storeAuth(tokens, user);
+        setStatus('Giriş oldu. Dosyalarım açılıyor…', true);
+        location.href = DEST;
+      } catch (e) {
+        const msg = e && e.name === 'AbortError'
+          ? 'Zaman aşımı: API (http://localhost:3000) yanıt vermedi. Backend çalışıyor mu?'
+          : (e && e.message ? e.message : String(e));
+        setStatus('Giriş başarısız: ' + msg + '\n\nKontrol:\n1) Backend: http://localhost:3000\n2) Web: http://localhost:3001\n3) Normal giriş: /giris', false);
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('go').addEventListener('click', login);
+    document.getElementById('giris').addEventListener('click', () => {
+      location.href = '/giris';
+    });
+    // Otomatik dene (manuel tekrar için buton açık kalır)
+    login();
+  </script>
+</body>
+</html>

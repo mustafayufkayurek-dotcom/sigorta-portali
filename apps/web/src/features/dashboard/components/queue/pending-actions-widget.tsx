@@ -21,7 +21,7 @@ export function PendingActionsWidget({ staggerIndex = 0 }: PendingActionsWidgetP
   return (
     <WidgetShell
       title="Bekleyen Aksiyonlar"
-      icon={<BellRing className="h-5 w-5 text-amber-500" />}
+      icon={<BellRing className="h-5 w-5 text-status-warning" />}
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       error={isError}

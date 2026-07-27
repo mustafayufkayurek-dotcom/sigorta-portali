@@ -110,9 +110,9 @@ function MiniBar({ dist }: { dist: Record<string, number> }) {
     <div className="flex items-end gap-0.5 h-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Branş Analizi</span>
       </nav>
@@ -136,7 +136,7 @@ function MiniBar({ dist }: { dist: Record<string, number> }) {
 // ── Trend Badge ───────────────────────────────────────────────────────────────
 function TrendBadge({ trend }: { trend: 'up' | 'down' | 'stable' }) {
   if (trend === 'up') return <span className="text-green-600 font-bold text-sm">↑</span>;
-  if (trend === 'down') return <span className="text-red-500 font-bold text-sm">↓</span>;
+  if (trend === 'down') return <span className="text-status-danger font-bold text-sm">↓</span>;
   return <span className="text-slate-400 text-sm">→</span>;
 }
 
@@ -272,7 +272,7 @@ export default function BransAnaliziPage() {
           <button
             type="button"
             onClick={load}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             Filtrele
           </button>
@@ -298,7 +298,7 @@ export default function BransAnaliziPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  ? 'border-brand-600 text-brand-600 bg-blue-50/30'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >
@@ -331,7 +331,7 @@ export default function BransAnaliziPage() {
               {/* KPI Özet */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Toplam Dosya', value: distData.summary.totalFiles, icon: '📂', color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { label: 'Toplam Dosya', value: distData.summary.totalFiles, icon: '📂', color: 'text-brand-600', bg: 'bg-blue-50' },
                   { label: 'Branş Sayısı', value: distData.summary.branchCount, icon: '🏷', color: 'text-purple-600', bg: 'bg-purple-50' },
                   { label: 'En Aktif Branş', value: distData.summary.mostActiveBranch ?? '—', icon: '🏆', color: 'text-amber-600', bg: 'bg-amber-50' },
                   { label: 'Ort. Kapanma', value: distData.summary.avgCloseDays != null ? `${distData.summary.avgCloseDays} gün` : '—', icon: '⏱', color: 'text-green-600', bg: 'bg-green-50' },
@@ -449,7 +449,7 @@ export default function BransAnaliziPage() {
                               <span className="font-medium text-slate-800">{row.branch}</span>
                             </div>
                           </PanelTableTd>
-                          <PanelTableTd colId="total" className="py-3 text-right font-semibold text-blue-600">{row.total}</PanelTableTd>
+                          <PanelTableTd colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>
                           <PanelTableTd colId="open" className="py-3 text-right text-amber-600 font-medium">{row.open}</PanelTableTd>
                           <PanelTableTd colId="closed" className="py-3 text-right text-green-600 font-medium">{row.closed}</PanelTableTd>
                           <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
@@ -482,7 +482,7 @@ export default function BransAnaliziPage() {
                       onClick={() => setSortBy(s.val as typeof sortBy)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                         sortBy === s.val
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-brand-600 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -519,7 +519,7 @@ export default function BransAnaliziPage() {
                         <tr key={c.customerId} className="hover:bg-slate-50/50 transition-colors">
                           <PanelTableTd colId="customer" className="px-5 py-3">
                             <div className="flex items-center gap-2">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.entityType === 'corporate' ? 'bg-blue-600' : 'bg-purple-600'}`}>
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.entityType === 'corporate' ? 'bg-brand-600' : 'bg-purple-600'}`}>
                                 {c.customerName.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -563,7 +563,7 @@ export default function BransAnaliziPage() {
                             <button
                               type="button"
                               onClick={() => router.push(`/panel/musteriler/${c.customerId}?tab=analiz`)}
-                              className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                              className="text-xs text-brand-600 hover:text-blue-700 font-medium hover:underline"
                             >
                               Detay
                             </button>
@@ -640,7 +640,7 @@ export default function BransAnaliziPage() {
                                 <span className="font-medium text-slate-800">{row.branch}</span>
                               </div>
                             </PanelTableTd>
-                            <PanelTableTd colId="total" className="py-3 text-right font-semibold text-blue-600">{row.total}</PanelTableTd>
+                            <PanelTableTd colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>
                             <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
                             <PanelTableTd colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>
                           </tr>
@@ -661,13 +661,13 @@ export default function BransAnaliziPage() {
               <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-red-50 bg-red-50/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-status-danger flex-shrink-0" />
                     <h4 className="text-sm font-semibold text-red-800">Dosya Göndermeyi Bırakan Müşteriler</h4>
                     <span className="ml-auto bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                       {alertData.stoppedCustomers.length} müşteri
                     </span>
                   </div>
-                  <p className="text-xs text-red-500 mt-0.5 ml-4">Son {alertData.period.months} ayda dosya gönderilmedi — müşteri kaybı riski</p>
+                  <p className="text-xs text-status-danger mt-0.5 ml-4">Son {alertData.period.months} ayda dosya gönderilmedi — müşteri kaybı riski</p>
                 </div>
                 <div className="p-5">
                   {alertData.stoppedCustomers.length === 0 ? (

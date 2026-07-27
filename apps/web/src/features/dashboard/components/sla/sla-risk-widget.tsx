@@ -68,7 +68,7 @@ export function SlaRiskWidget({ staggerIndex = 0 }: SlaRiskWidgetProps) {
             {hasRisk ? (
               <Link
                 href="/panel/hasar-dosyalari?status=sla_exceeded"
-                className="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                className="text-xs font-medium text-brand-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Riskli dosyaları görüntüle
               </Link>

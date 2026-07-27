@@ -44,7 +44,7 @@ export function EditButton({ onClick, title = 'Düzenle' }: EditButtonProps) {
       type="button"
       onClick={onClick}
       title={title}
-      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-brand-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors"
     >
       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -69,7 +69,7 @@ export function DeleteButton({ onClick, title = 'Sil' }: DeleteButtonProps) {
       type="button"
       onClick={onClick}
       title={title}
-      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-status-danger dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
     >
       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

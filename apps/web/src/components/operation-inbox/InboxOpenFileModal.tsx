@@ -89,7 +89,7 @@ function FieldInput({
     <div>
       <label className="block text-xs font-medium text-slate-600 mb-1.5">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="text-status-danger ml-0.5">*</span>}
       </label>
       {multiline ? (
         <textarea
@@ -150,7 +150,7 @@ function NewCustomerTypeFields({
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1.5">
           Müşteri Tipi
-          <span className="text-red-500 ml-0.5">*</span>
+          <span className="text-status-danger ml-0.5">*</span>
         </label>
         <select
           value={entityType}
@@ -174,7 +174,7 @@ function NewCustomerTypeFields({
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1.5">
           Alt Tip
-          <span className="text-red-500 ml-0.5">*</span>
+          <span className="text-status-danger ml-0.5">*</span>
         </label>
         <select
           value={subType}
@@ -505,7 +505,7 @@ export function InboxOpenFileModal({
                     type="button"
                     onClick={onRequestAutoAssign}
                     disabled={loading || usersLoading || autoAssignLoading}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                    className="text-xs font-medium text-brand-600 hover:text-blue-700 disabled:opacity-50"
                   >
                     {autoAssignLoading ? 'Hesaplanıyor…' : 'Otomatik Ata'}
                   </button>
@@ -566,7 +566,7 @@ export function InboxOpenFileModal({
                         type="button"
                         onClick={onAcceptAutoAssign}
                         disabled={loading || !autoAssignPreview.suggestion.suggestedAssigneeId}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-brand-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
                       >
                         Onayla
                       </button>
@@ -616,7 +616,7 @@ export function InboxOpenFileModal({
                   <div>
                     <label className="block text-xs font-medium text-slate-700">
                       Asistan Firma Sorumluluğu
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-status-danger ml-0.5">*</span>
                     </label>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       Dosyanın hangi asistan firmasına bağlanacağını seçin. Mailden gelen firma ön seçilir.
@@ -790,7 +790,7 @@ export function InboxOpenFileModal({
             <>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Sigorta Şirketi (Sistem)
-                {insuranceRequired && <span className="text-red-500 ml-0.5">*</span>}
+                {insuranceRequired && <span className="text-status-danger ml-0.5">*</span>}
               </label>
               <select
                 value={insuranceCompanyId ?? ''}
@@ -841,7 +841,7 @@ export function InboxOpenFileModal({
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-blue-700 rounded-xl disabled:opacity-50"
           >
             {loading ? 'İşleniyor…' : confirmLabel}
           </button>

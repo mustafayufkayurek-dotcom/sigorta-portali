@@ -8,7 +8,6 @@ import {
 } from '../hooks/use-dashboard-data';
 import {
   buildPendingOperationsView,
-  localPreviewPendingOperations,
   type RawPendingSource,
 } from '../utils/build-pending-operations';
 import { repairReportStatusLabel } from '@/utils/repair-report-status';
@@ -18,16 +17,9 @@ import {
   approvalDelayWorkflowStep,
 } from '../utils/approval-delay-workflow';
 
-function allowLocalPreview(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  if (host !== 'localhost' && host !== '127.0.0.1') return false;
-  return new URLSearchParams(window.location.search).get('demo') === 'bekleyen-operasyonlar';
-}
-
 /**
  * Ortak Bekleyen Operasyonlar görünümü — mevcut API kaynaklarını tek mantıkta birleştirir.
- * Yeni ekran / yeni endpoint zorunlu değil.
+ * Sahte / demo veri yok.
  */
 export function usePendingOperations(): {
   view: PendingOperationsView;
@@ -45,12 +37,14 @@ export function usePendingOperations(): {
     const raw: RawPendingSource[] = [];
 
     for (const item of pendingQuery.data?.items ?? []) {
+      const module = item.module ?? 'hasar';
       raw.push({
         id: item.id,
         fileNo: item.fileNo,
         action: item.action,
         pendingSince: item.pendingSince,
-        module: 'hasar',
+        module,
+        category: module === 'acil' ? 'assistance' : undefined,
         workflowStep: item.action,
         expectedAction: item.action,
       });
@@ -92,24 +86,22 @@ export function usePendingOperations(): {
       });
     }
 
-    const live = buildPendingOperationsView(raw, 'live');
-    /** demo=bekleyen-operasyonlar → çeşitlendirilmiş öncelik önizlemesi (yalnız localhost) */
-    if (allowLocalPreview()) {
-      return localPreviewPendingOperations();
-    }
-    return live;
+    return buildPendingOperationsView(raw, 'live');
   }, [pendingQuery.data, approvalQuery.data, financeQuery.data]);
 
   return {
     view,
-    isLoading: pendingQuery.isLoading || approvalQuery.isLoading || financeQuery.isLoading,
-    isError: pendingQuery.isError || approvalQuery.isError || financeQuery.isError,
-    error: pendingQuery.error ?? approvalQuery.error ?? financeQuery.error,
+    // Finans darboğazı kaynağı yalnız yönetici/finans rollerine açık (dashboard.service.ts,
+    // assertDashboardFinanceAccess). Dosya sorumlusu bu kaynağa erişemez — bu beklenen bir
+    // 403'tür, panelin tamamını hataya düşürmemeli; sadece finans kalemi eksik kalır.
+    isLoading: pendingQuery.isLoading || approvalQuery.isLoading,
+    isError: pendingQuery.isError || approvalQuery.isError,
+    error: pendingQuery.error ?? approvalQuery.error,
     refetch: () => {
       void pendingQuery.refetch();
       void approvalQuery.refetch();
       void financeQuery.refetch();
     },
-    isFetching: pendingQuery.isFetching || approvalQuery.isFetching || financeQuery.isFetching,
+    isFetching: pendingQuery.isFetching || approvalQuery.isFetching,
   };
 }

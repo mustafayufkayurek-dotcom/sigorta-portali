@@ -176,7 +176,6 @@ function canSeeNavItemDynamic(navPath: string, allowedScreens: string[], roleCod
 const CONTEXT_BACK_LINKS: Record<string, { href: string; label: string }> = {
   '/panel/admin/audit-logs': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
   '/panel/guvenlik/erisim-loglari': { href: '/panel/guvenlik', label: 'Güvenlik sayfasına dön' },
-  '/panel/itirazlar': { href: '/panel/operasyon', label: 'Operasyon sayfasına dön' },
   '/panel/masraflar': { href: '/panel/finans', label: 'Finans sayfasına dön' },
   '/panel/ozel-dosyalar': { href: '/panel', label: 'Dashboard sayfasına dön' },
   '/panel/sigorta-sirketleri': { href: '/panel', label: 'Dashboard sayfasına dön' },
@@ -249,7 +248,16 @@ function getPanelMainLinks({
       : isOfficeStaff
         ? [
             { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
-            { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
+            {
+              title: 'Operasyon',
+              href: '/panel/operasyon',
+              alertCount: opsBadge,
+              icon: ClipboardList,
+              children: [
+                { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+                { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
+              ],
+            },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'CRM', href: '/panel/crm', icon: GitBranch },
@@ -275,7 +283,16 @@ function getPanelMainLinks({
             { title: 'Finans Merkezi', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
             { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
             { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
-            { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList },
+            {
+              title: 'Operasyon',
+              href: '/panel/operasyon',
+              alertCount: opsBadge,
+              icon: ClipboardList,
+              children: [
+                { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+                { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
+              ],
+            },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
@@ -291,7 +308,17 @@ function getPanelMainLinks({
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
-          { title: 'Operasyon', href: '/panel/operasyon', alertCount: opsBadge, icon: ClipboardList, groupStart: true },
+          {
+            title: 'Operasyon',
+            href: '/panel/operasyon',
+            alertCount: opsBadge,
+            icon: ClipboardList,
+            groupStart: true,
+            children: [
+              { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+              { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
+            ],
+          },
           { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog, groupStart: true },
           { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
@@ -493,7 +520,7 @@ function Navbar({
                   aria-expanded={quickActionOpen}
                   aria-haspopup="menu"
                 >
-                  <Zap className="h-3.5 w-3.5 text-amber-500" />
+                  <Zap className="h-3.5 w-3.5 text-status-warning" />
                   <span>Hızlı İşlem</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition ${quickActionOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -509,7 +536,7 @@ function Navbar({
                         className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                         onClick={() => setQuickActionOpen(false)}
                       >
-                        <HASAR_OPERATION_ICON className="h-4 w-4 text-blue-600" />
+                        <HASAR_OPERATION_ICON className="h-4 w-4 text-brand-600" />
                         Yeni Hasar
                       </Link>
                     ) : null}
@@ -531,7 +558,7 @@ function Navbar({
                         className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                         onClick={() => setQuickActionOpen(false)}
                       >
-                        <CalendarDays className="h-4 w-4 text-blue-600" />
+                        <CalendarDays className="h-4 w-4 text-brand-600" />
                         Pazartesi Toplantısı
                       </Link>
                     ) : null}
@@ -551,7 +578,7 @@ function Navbar({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                  <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-status-danger text-white text-[9px] font-bold">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -564,13 +591,13 @@ function Navbar({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-800">Bildirimler</span>
                         {unreadCount > 0 && (
-                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-status-danger text-white text-[10px] font-bold">
                             {unreadCount > 99 ? '99+' : unreadCount}
                           </span>
                         )}
                       </div>
                       {unreadCount > 0 && (
-                        <button type="button" onClick={onMarkAllRead} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                        <button type="button" onClick={onMarkAllRead} className="text-xs text-brand-600 hover:text-blue-700 font-medium">
                           Tümünü Okundu İşaretle
                         </button>
                       )}
@@ -607,7 +634,7 @@ function Navbar({
                       )}
                     </div>
                     <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between">
-                      <Link href="/panel/bildirimler" className="text-xs text-blue-600 hover:text-blue-700 font-medium" onClick={() => onNotifOpen()}>
+                      <Link href="/panel/bildirimler" className="text-xs text-brand-600 hover:text-blue-700 font-medium" onClick={() => onNotifOpen()}>
                         Tüm Bildirimleri Gör
                       </Link>
                       <span className="text-[10px] text-slate-400">{notifications.length} bildirim</span>
@@ -638,7 +665,7 @@ function Navbar({
                 onClick={() => setProfileDropOpen((v) => !v)}
                 className="flex items-center gap-2 py-1.5 pl-2 pr-1 sm:pr-1.5 rounded-xl hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
               >
-                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
+                <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
                 <span className="hidden sm:block text-sm font-medium text-slate-700 max-w-[120px] truncate dark:text-slate-200">
@@ -710,7 +737,7 @@ function Navbar({
                       <span className="truncate">{link.title}</span>
                     </span>
                     {link.alertCount && link.alertCount > 0 ? (
-                      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
                         {link.alertCount > 99 ? '99+' : link.alertCount}
                       </span>
                     ) : null}
@@ -730,7 +757,7 @@ function Navbar({
                         helpDrawer?.setOpen(true);
                       }}
                     >
-                      <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
+                      <BookOpen className="h-4 w-4 shrink-0 text-brand-600" />
                       {userGuide.title}
                     </button>
                   ) : null}
@@ -746,7 +773,7 @@ function Navbar({
                     helpDrawer?.setOpen(true);
                   }}
                 >
-                  <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
+                  <BookOpen className="h-4 w-4 shrink-0 text-brand-600" />
                   {userGuide.title}
                 </button>
               ) : null}
@@ -798,6 +825,8 @@ function PanelSidebar({
   onToggleCollapsed,
   hidden = false,
 }: PanelSidebarProps) {
+  const [expandedGroupOverrides, setExpandedGroupOverrides] = useState<Record<string, boolean>>({});
+
   if (hidden) return null;
 
   const isOfficeStaff = isOfficeStaffRole(roleCode);
@@ -851,11 +880,24 @@ function PanelSidebar({
 
   const renderNavLink = (link: NavigationLink, compact = false, isFirst = false) => {
     const tooltipLabel = getNavTooltipLabel(link);
+    const hasChildren = !!link.children?.length;
+    const childIsActive = hasChildren
+      ? link.children!.some((child) => isActive(child.href, child.exactMatch))
+      : false;
+    const isExpanded = hasChildren
+      ? expandedGroupOverrides[link.href] ?? childIsActive
+      : false;
+
     const linkNode = (
       <Link
         href={link.href}
-        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : ''}`}
+        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`}
         aria-label={collapsed ? tooltipLabel : undefined}
+        onClick={
+          hasChildren && !collapsed
+            ? () => setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }))
+            : undefined
+        }
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2.5'}`}>
           {link.icon ? <link.icon className="panel-sidebar-nav-icon" strokeWidth={1.75} /> : null}
@@ -880,12 +922,27 @@ function PanelSidebar({
         key={link.href}
         className={`panel-sidebar-nav-group space-y-0.5${link.groupStart ? ' panel-sidebar-nav-group--start' : ''}`}
       >
-        <SidebarNavTooltip label={tooltipLabel} collapsed={collapsed}>
-          {linkNode}
-        </SidebarNavTooltip>
-        {link.children?.length ? (
+        <div className={`flex items-stretch gap-1${collapsed ? ' justify-center' : ''}`}>
+          <SidebarNavTooltip label={tooltipLabel} collapsed={collapsed}>
+            {linkNode}
+          </SidebarNavTooltip>
+          {hasChildren && !collapsed ? (
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }))
+              }
+              className="flex shrink-0 items-center justify-center rounded-lg px-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              aria-label={isExpanded ? `${link.title} alt menüsünü kapat` : `${link.title} alt menüsünü aç`}
+              aria-expanded={isExpanded}
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} strokeWidth={1.75} />
+            </button>
+          ) : null}
+        </div>
+        {hasChildren && (isExpanded || collapsed) ? (
           <div className={collapsed ? 'space-y-0.5' : 'panel-sidebar-nav-children'}>
-            {link.children.map((child) => renderNavLink(child, true))}
+            {link.children!.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}
       </div>
@@ -1302,7 +1359,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     if (type === 'file_assignment') return 'border-l-4 border-blue-400';
     if (type === 'file_closed') return 'border-l-4 border-slate-400';
     if (type === 'pending_approval') return 'border-l-4 border-yellow-400';
-    if (type === 'overdue' || type === 'sla_violation') return 'border-l-4 border-red-500';
+    if (type === 'overdue' || type === 'sla_violation') return 'border-l-4 border-status-danger';
     if (type === 'birthday') return 'border-l-4 border-pink-400';
     return 'border-l-4 border-slate-300';
   };
@@ -1443,7 +1500,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 flex flex-col items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-11a2 2 0 00-2 2v6a2 2 0 004 0V8a2 2 0 00-2-2zm-7 9a9 9 0 1118 0 9 9 0 01-18 0z" />
               </svg>
             </div>
@@ -1454,7 +1511,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <div className="flex gap-3 justify-center flex-wrap">
               <Link
                 href={safeHomePath}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200/60"
+                className="px-5 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200/60"
               >
                 {safeHomeLabel}
               </Link>

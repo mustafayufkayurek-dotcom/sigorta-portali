@@ -46,7 +46,7 @@ export default function AyarlarPage() {
           <SettingsBreadcrumbs items={[{ label: 'Ayarlar' }]} />
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">Yönetim Merkezi</p>
+              <p className="text-xs font-semibold tracking-[0.2em] text-brand-600">Yönetim Merkezi</p>
               <h1 className="mt-2 text-3xl font-bold">Ayarlar</h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
                 Aşağıdaki kartlardan ilgili ayar bölümüne gidin. Arama satırı ile hızlı geçiş yapabilirsiniz.
@@ -82,7 +82,7 @@ export default function AyarlarPage() {
                         className="group min-h-[132px] rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500/40"
                       >
                         <div className="flex items-start gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white dark:bg-blue-500/10">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white dark:bg-blue-500/10">
                             <Icon className="h-5 w-5" />
                           </span>
                           <div className="min-w-0">

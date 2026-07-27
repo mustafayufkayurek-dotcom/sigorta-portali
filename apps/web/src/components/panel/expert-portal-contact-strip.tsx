@@ -41,7 +41,7 @@ export function ExpertPortalContactStrip({ compact = false }: { compact?: boolea
         className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 transition hover:text-blue-700"
       >
         <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600 sm:h-8 sm:w-8"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-brand-600 sm:h-8 sm:w-8"
           aria-hidden
         >
           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -217,14 +217,14 @@ export default function CarilerimPage() {
                           <PanelTableTd colId="status" className="px-4 py-3">
                             <div className="flex items-center gap-2 min-w-[88px]">
                               <div className="flex-1 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex">
-                                <div className="bg-emerald-500" style={{ width: `${openPct}%` }} />
+                                <div className="bg-status-success" style={{ width: `${openPct}%` }} />
                                 <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
                               </div>
                               <span className="text-[10px] text-slate-400 tabular-nums">{Math.round(openPct)}%</span>
                             </div>
                           </PanelTableTd>
                           <td className="px-4 py-3">
-                            <Link href={`/panel/musteriler?highlight=${customer.customerId}`} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                            <Link href={`/panel/musteriler?highlight=${customer.customerId}`} className="text-xs text-brand-600 dark:text-blue-400 hover:underline">
                               Detay
                             </Link>
                           </td>
@@ -235,7 +235,7 @@ export default function CarilerimPage() {
                             <td colSpan={8} className="px-4 py-2">
                               <Link
                                 href={`/panel/hasar-dosyalari/${file.id}`}
-                                className="flex items-center justify-between gap-3 text-xs hover:text-blue-600 dark:hover:text-blue-400"
+                                className="flex items-center justify-between gap-3 text-xs hover:text-brand-600 dark:hover:text-blue-400"
                               >
                                 <span className="font-mono">{file.fileNo}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
@@ -275,14 +275,14 @@ function ConnectionStatus({
   if (loadState === 'error') {
     return (
       <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-xs text-red-700 dark:text-red-400">
-        <span className="w-2 h-2 rounded-full bg-red-500" /> Bağlantı hatası · Tekrar dene
+        <span className="w-2 h-2 rounded-full bg-status-danger" /> Bağlantı hatası · Tekrar dene
       </button>
     );
   }
   return (
     <div className="inline-flex flex-col items-end gap-0.5">
       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-700 dark:text-emerald-400">
-        <span className="w-2 h-2 rounded-full bg-emerald-500" /> Canlı · {count} cari yüklendi
+        <span className="w-2 h-2 rounded-full bg-status-success" /> Canlı · {count} cari yüklendi
       </div>
       {lastLoadedAt && (
         <span className="text-[10px] text-slate-400 tabular-nums">
@@ -304,7 +304,7 @@ function CariSummaryStrip({
       <div className="flex flex-col sm:flex-row sm:items-stretch divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
         <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-blue-500">
           <div className="flex items-center gap-1 mb-1.5">
-            <Users className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <Users className="w-3 h-3 text-brand-600 dark:text-blue-400" />
             <span className="text-[10px] font-semibold tracking-wide text-blue-700 dark:text-blue-400">Cari portföy</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -312,7 +312,7 @@ function CariSummaryStrip({
             <MiniMetric label="Aktif cari" value={String(activeCustomers)} accent="emerald" sub="Açık dosyası olan" />
           </div>
         </section>
-        <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-emerald-500">
+        <section className="flex-1 px-3 py-2.5 border-l-[3px] border-l-status-success">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <span className="text-[10px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">Dosya durumu</span>
             {totalFiles > 0 && <span className="text-[10px] text-slate-400 tabular-nums">%{Math.round(openPct)} açık</span>}
@@ -324,7 +324,7 @@ function CariSummaryStrip({
           </div>
           {totalFiles > 0 && (
             <div className="mt-2 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 flex">
-              <div className="bg-emerald-500" style={{ width: `${openPct}%` }} />
+              <div className="bg-status-success" style={{ width: `${openPct}%` }} />
               <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
             </div>
           )}
@@ -377,7 +377,7 @@ function EmptyPanel({ hasSearch, totalCustomers }: { hasSearch: boolean; totalCu
       </p>
       {totalCustomers === 0 && (
         <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-700 dark:text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" /> Sayfa çalışıyor · veri yok
+          <span className="w-2 h-2 rounded-full bg-status-success" /> Sayfa çalışıyor · veri yok
         </div>
       )}
     </div>

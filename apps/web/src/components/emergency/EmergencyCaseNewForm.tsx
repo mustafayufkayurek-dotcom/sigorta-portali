@@ -24,6 +24,7 @@ import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
+import SpeechToText from '@/components/SpeechToText';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
   { value: 'DUSUK', label: 'Düşük', color: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -81,7 +82,7 @@ function TRPhoneInput({
   useEffect(() => { setDisplay(storageToMask(value)); }, [value]);
 
   const borderCls = hasError
-    ? 'border-red-400 ring-2 ring-red-500/20 bg-red-50'
+    ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50'
     : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400';
 
   return (
@@ -162,6 +163,8 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
   const [notes, setNotes] = useState('');
+  const [findingsText, setFindingsText] = useState('');
+  const findingsTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [assignedVendorId, setAssignedVendorId] = useState('');
   const [assignedUserId, setAssignedUserId] = useState('');
@@ -370,9 +373,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
     if (!issueType) errs.issueType = 'İhbar konusu seçiniz.';
     if (!insuredName.trim()) errs.insuredName = 'Sigortalı adı soyadı zorunludur.';
     if (!address.trim()) errs.address = 'Adres zorunludur.';
+    if (!findingsText.trim()) errs.findingsText = 'Tespit Bulguları zorunludur.';
     setErrors(errs);
     if (errs.assistant) setOpenSections((p) => ({ ...p, asistans: true }));
-    if (errs.fileNo || errs.issueType || errs.insuredName || errs.address) {
+    if (errs.fileNo || errs.issueType || errs.insuredName || errs.address || errs.findingsText) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     return Object.keys(errs).length === 0;
@@ -417,6 +421,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
         assignedVendorId: assignedVendorId || undefined,
         assignedUserId: assignedUserId || undefined,
         notes: notes.trim() || undefined,
+        findingsText: findingsText.trim(),
       });
       onSuccess(res.data.id);
     } catch (err: unknown) {
@@ -431,7 +436,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
 
   const asistansSection = (
     <>
-      {errors.assistant && <p className="text-xs text-red-500 mb-2">{errors.assistant}</p>}
+      {errors.assistant && <p className="text-xs text-status-danger mb-2">{errors.assistant}</p>}
 
       {selectedCustomer && !showNewCustomerForm ? (
         <div className="flex items-center justify-between gap-3 text-sm rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
@@ -445,7 +450,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           <button
             type="button"
             onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setCustomerFileOrdinal(null); }}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 shrink-0"
+            className="text-xs font-medium text-brand-600 hover:text-blue-800 shrink-0"
           >
             Değiştir
           </button>
@@ -516,7 +521,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2">
-              <label className={label}>Şirket Adı <span className="text-red-500">*</span></label>
+              <label className={label}>Şirket Adı <span className="text-status-danger">*</span></label>
               <input
                 className={field}
                 value={newCustomerCompanyName}
@@ -536,7 +541,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
                 onBlur={checkPhoneDuplicate}
                 hasError={!!phoneDupError}
               />
-              {phoneDupError && <p className="text-xs text-red-500 mt-0.5">{phoneDupError}</p>}
+              {phoneDupError && <p className="text-xs text-status-danger mt-0.5">{phoneDupError}</p>}
             </div>
           </div>
         </div>
@@ -562,17 +567,17 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
 
       <div className={`grid ${isPanel ? 'grid-cols-2 gap-2' : 'grid-cols-1 sm:grid-cols-2 gap-3'}`}>
         <div className="min-w-0">
-          <label className={label}>Sigortalı Adı Soyadı <span className="text-red-500">*</span></label>
+          <label className={label}>Sigortalı Adı Soyadı <span className="text-status-danger">*</span></label>
           <input
             className={`${field} ${errors.insuredName ? 'border-red-400' : ''}`}
             value={insuredName}
             onChange={(e) => setInsuredName(e.target.value)}
             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setInsuredName(v); }}
           />
-          {errors.insuredName && <p className="text-xs text-red-500 mt-0.5">{errors.insuredName}</p>}
+          {errors.insuredName && <p className="text-xs text-status-danger mt-0.5">{errors.insuredName}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>İhbar Konusu <span className="text-red-500">*</span></label>
+          <label className={label}>İhbar Konusu <span className="text-status-danger">*</span></label>
           <select className={`${field} ${errors.issueType ? 'border-red-400' : ''}`} value={issueType} onChange={(e) => setIssueType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {issueTypes.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -580,10 +585,10 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           {subjectsLoadFailed && (
             <p className="text-xs text-amber-600 mt-0.5">Konular yüklenemedi; varsayılan liste gösteriliyor. Gerekirse sayfayı yenileyin.</p>
           )}
-          {errors.issueType && <p className="text-xs text-red-500 mt-0.5">{errors.issueType}</p>}
+          {errors.issueType && <p className="text-xs text-status-danger mt-0.5">{errors.issueType}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>Dosya No <span className="text-red-500">*</span></label>
+          <label className={label}>Dosya No <span className="text-status-danger">*</span></label>
           <input
             className={`${field} ${errors.fileNo ? 'border-red-400' : ''}`}
             value={fileNo}
@@ -594,17 +599,17 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           {!fileNoChecking && !errors.fileNo && (
             <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
           )}
-          {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
+          {errors.fileNo && <p className="text-xs text-status-danger mt-0.5">{errors.fileNo}</p>}
         </div>
         {!isPanel ? (
           <div className="min-w-0">
-            <label className={label}>Dosya Tarihi <span className="text-red-500">*</span></label>
+            <label className={label}>Dosya Tarihi <span className="text-status-danger">*</span></label>
             <TrDateInput
               className={`${field} ${errors.fileDate ? 'border-red-400' : ''}`}
               value={fileDate}
               onChange={setFileDate}
             />
-            {errors.fileDate && <p className="text-xs text-red-500 mt-0.5">{errors.fileDate}</p>}
+            {errors.fileDate && <p className="text-xs text-status-danger mt-0.5">{errors.fileDate}</p>}
           </div>
         ) : (
           <div className="min-w-0">
@@ -664,7 +669,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
               </select>
             </div>
             <div className="col-span-2">
-              <label className={label}>{ADDRESS_FIELD.openAddress} <span className="text-red-500">*</span></label>
+              <label className={label}>{ADDRESS_FIELD.openAddress} <span className="text-status-danger">*</span></label>
               <textarea
                 rows={isPanel ? 2 : 2}
                 className={`${field} resize-y min-h-[56px] ${errors.address ? 'border-red-400' : ''}`}
@@ -673,13 +678,77 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
                 onChange={(e) => setAddress(e.target.value)}
                 onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setAddress(v); }}
               />
-              {errors.address && <p className="text-xs text-red-500 mt-0.5">{errors.address}</p>}
+              {errors.address && <p className="text-xs text-status-danger mt-0.5">{errors.address}</p>}
             </div>
           </div>
         </div>
+        <div className="col-span-2" id="tespit-bulgulari">
+          <label className={label}>
+            Tespit Bulguları <span className="text-status-danger">*</span>
+          </label>
+          <div
+            className={`border rounded-lg overflow-hidden ${
+              errors.findingsText ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'
+            }`}
+          >
+            <div className="px-3 pt-2.5 pb-0.5 bg-slate-50 border-b border-slate-100">
+              <span className="text-sm font-bold italic text-slate-800 select-none">
+                Riziko adreste yapılan incelemeler sonucunda;
+              </span>
+            </div>
+            <div className="relative">
+              <textarea
+                ref={findingsTextareaRef}
+                rows={isPanel ? 3 : 4}
+                className="w-full px-3 py-2 pr-12 text-sm text-slate-800 focus:outline-none resize-y min-h-[72px] bg-white"
+                placeholder="bulgular buraya yazılır..."
+                value={findingsText}
+                onChange={(e) => {
+                  setFindingsText(e.target.value);
+                  if (errors.findingsText) setErrors((prev) => ({ ...prev, findingsText: '' }));
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v) setFindingsText(v);
+                }}
+                data-testid="tespit-bulgulari-input"
+                aria-required
+                aria-invalid={Boolean(errors.findingsText)}
+              />
+              <div className="absolute bottom-2 right-2">
+                <SpeechToText
+                  size="sm"
+                  onTranscript={(text) => {
+                    const el = findingsTextareaRef.current;
+                    const next = findingsText.trim()
+                      ? `${findingsText.trim()} ${text}`
+                      : text;
+                    if (el) el.value = next;
+                    setFindingsText(next);
+                    if (next.trim()) setErrors((prev) => ({ ...prev, findingsText: '' }));
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          {errors.findingsText ? (
+            <p className="text-xs text-status-danger mt-0.5" data-testid="tespit-bulgulari-error">
+              {errors.findingsText}
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-400 mt-0.5">Dosya kaydı için zorunludur.</p>
+          )}
+        </div>
         <div className="col-span-2">
           <label className={label}>Notlar</label>
-          <textarea rows={isPanel ? 1 : 2} className={`${field} resize-none`} placeholder="Opsiyonel" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <textarea
+            rows={isPanel ? 1 : 2}
+            className={`${field} resize-none`}
+            placeholder="Opsiyonel"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            data-testid="acil-dosya-notlari-input"
+          />
         </div>
       </div>
     </>
@@ -758,7 +827,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-white rounded-xl">
           İptal
         </button>
-        <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
           {saving ? 'Kaydediliyor...' : 'Dosyayı Oluştur'}
         </button>
       </div>

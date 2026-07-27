@@ -40,7 +40,7 @@ function Stars({ value }: { value: number | null }) {
   const filled = starCount(value);
   const color =
     value >= 4.5
-      ? 'fill-emerald-500 text-emerald-500'
+      ? 'fill-status-success text-status-success'
       : value >= 3.5
         ? 'fill-amber-400 text-amber-400'
         : value >= 2.5

@@ -75,7 +75,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
         <button
           type="button"
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
           Sözleşme Oluştur
@@ -87,7 +87,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
             Sözleşme Oluştur
@@ -100,7 +100,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
       ) : contracts.length === 0 ? (
         <div className="py-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
           <p className="text-sm text-slate-400">Henüz tedarikçi sözleşmesi oluşturulmamış.</p>
-          <button type="button" onClick={() => setShowCreate(true)} className="mt-2 text-xs text-indigo-600 hover:underline font-medium">İlk Sözleşmeyi Oluştur</button>
+          <button type="button" onClick={() => setShowCreate(true)} className="mt-2 text-xs text-brand-600 hover:underline font-medium">İlk Sözleşmeyi Oluştur</button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -119,7 +119,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
                   <p className="text-xs text-slate-500 mt-0.5 truncate">
                     {c.vendor?.name} · {new Date(c.contractDate).toLocaleDateString('tr-TR')}
                     {c.signDeadlineAt && c.status !== 'vendor_signed' && c.status !== 'cancelled' && (
-                      <span className="ml-2 text-red-500">Son İmza: {new Date(c.signDeadlineAt).toLocaleDateString('tr-TR')}</span>
+                      <span className="ml-2 text-status-danger">Son İmza: {new Date(c.signDeadlineAt).toLocaleDateString('tr-TR')}</span>
                     )}
                     {c.signedAt && (
                       <span className="ml-2 text-green-600">İmzalandı: {new Date(c.signedAt).toLocaleDateString('tr-TR')}</span>
@@ -151,7 +151,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
                       onClick={() => handleCancel(c.id)}
                       disabled={cancelling === c.id}
                       title="İptal Et"
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-status-danger hover:bg-red-100 transition-colors disabled:opacity-50"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -279,7 +279,7 @@ function CreateContractModal({ claimId, onClose, onCreated }: {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Tedarikçi <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Tedarikçi <span className="text-status-danger">*</span></label>
               <select
                 value={form.vendorId}
                 onChange={(e) => setForm({ ...form, vendorId: e.target.value })}
@@ -342,7 +342,7 @@ function CreateContractModal({ claimId, onClose, onCreated }: {
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 text-sm bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-colors font-medium"
               >
                 {submitting ? 'Oluşturuluyor…' : 'Sözleşme Oluştur'}
               </button>

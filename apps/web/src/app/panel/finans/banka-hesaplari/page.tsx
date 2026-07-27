@@ -73,7 +73,7 @@ export default function BankaHesaplariPage() {
       <FinansSubpageBreadcrumb current="Banka Hesapları" />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">Banka Hesapları</h2>
-        <button type="button" onClick={() => { setShowForm(true); setEditId(null); setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true }); }} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Hesap</button>
+        <button type="button" onClick={() => { setShowForm(true); setEditId(null); setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true }); }} className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-blue-700">+ Yeni Hesap</button>
       </div>
 
       {showForm && (
@@ -107,7 +107,7 @@ export default function BankaHesaplariPage() {
           </div>
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
           </div>
         </div>
       )}
@@ -146,7 +146,7 @@ export default function BankaHesaplariPage() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{acc.isActive ? 'Aktif' : 'Pasif'}</span>
                   </PanelTableTd>
                   <td className="px-4 py-3">
-                    <button type="button" onClick={() => handleEdit(acc)} className="text-xs text-blue-600 hover:underline">Düzenle</button>
+                    <button type="button" onClick={() => handleEdit(acc)} className="text-xs text-brand-600 hover:underline">Düzenle</button>
                   </td>
                 </tr>
               ))}

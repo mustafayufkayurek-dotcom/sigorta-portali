@@ -9,7 +9,7 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 type Accent = 'emerald' | 'indigo';
 
 const accentRing: Record<Accent, string> = {
-  emerald: 'focus:ring-emerald-500/30 focus:border-emerald-400',
+  emerald: 'focus:ring-status-success/30 focus:border-emerald-400',
   indigo: 'focus:ring-indigo-500/30 focus:border-indigo-400',
 };
 
@@ -54,7 +54,7 @@ export function CardNotesEditor({
               <button
                 type="button"
                 onClick={() => removeEntry(index)}
-                className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                className="text-xs text-slate-400 hover:text-status-danger transition-colors"
               >
                 Kaldır
               </button>

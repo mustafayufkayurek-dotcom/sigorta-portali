@@ -83,7 +83,7 @@ function WhatsAppModal({
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
           autoFocus
         />
-        {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+        {error && <p className="text-status-danger text-xs mb-2">{error}</p>}
         {waUrl ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
             <p className="text-green-700 text-sm font-medium mb-2">Link oluşturuldu!</p>
@@ -193,7 +193,7 @@ export default function FileDocumentPanel({
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-brand-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             {creating ? 'Oluşturuluyor…' : `${kindLabel} Oluştur`}
           </button>

@@ -15,8 +15,8 @@ import {
 } from '@/features/dashboard/components/finance';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import {
-  AdminOperationsKpiBand,
-  OfficeDailyFlowSection,
+  OfficeKpiBand,
+  OfficeChartsRow,
   OfficeBottomRow,
   FieldOperationsKpiBand,
   FieldDailyFlowSection,
@@ -33,6 +33,7 @@ function operationAreaDashboardLabel(area: string): string | null {
   return null;
 }
 
+/** Yerel smoke: office layout önizleme (sahte veri yok; canlı API). */
 function useLocalOfficeDemo(): boolean {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
@@ -97,13 +98,13 @@ export default function PanelPage() {
         : 'Size atanan hasar dosyalarını, bekleyen aksiyonları ve SLA risklerini tek ekranda izleyin.'
       : showOfficeLayout
         ? scopeLabel
-          ? `${scopeLabel} kapsamındaki günlük operasyon yönetimi ve bekleyen operasyonlar.`
+          ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
           : 'Hasar ve Acil Yardım dosyalarında bekleyen operasyonları tek yerden yönetin.'
         : layout.layoutId === 'management'
           ? 'Kurumsal finans, operasyon ve personel performansını tek ekranda izleyin.'
           : 'Dosya akışı, gelir-gider takibi ve bekleyen aksiyonlar';
 
-  const hideAcil = localOfficeDemo ? false : !layout.showAcilInFlow;
+  const hideAcil = !layout.showAcilInFlow;
 
   /** Yönetim Dashboard — bu epic/UX dokunmaz */
   if (layout.layoutId === 'management' && !localOfficeDemo) {
@@ -111,8 +112,9 @@ export default function PanelPage() {
   }
 
   /**
-   * Dosya Sorumlusu Merkezi (yalnız office_staff).
-   * PendingOperationsPanel burada; Admin/Yönetim/default layout’a taşınmaz.
+   * Dosya Sorumlusu Merkezi FINAL (yalnız office_staff).
+   * Kabuk + KPI + grafikler + Bekleyen Operasyonlar + alt listeler.
+   * Admin/Yönetim/default layout’a sızmaz.
    */
   if (showOfficeLayout) {
     return (
@@ -124,13 +126,13 @@ export default function PanelPage() {
           isOfficeStaff
         />
 
-        <AdminOperationsKpiBand staggerIndex={0} hideAcil={hideAcil} />
+        <OfficeKpiBand staggerIndex={0} />
 
-        <PendingOperationsPanel staggerIndex={1} />
+        <OfficeChartsRow staggerIndex={1} />
 
-        <OfficeBottomRow staggerIndex={2} />
+        <PendingOperationsPanel staggerIndex={2} />
 
-        <OfficeDailyFlowSection staggerIndex={3} hideAcil={hideAcil} />
+        <OfficeBottomRow staggerIndex={3} />
       </DashboardShell>
     );
   }

@@ -1,0 +1,25 @@
+{
+  "url": "http://localhost:3001/panel",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "gununAkisi": {
+    "found": true,
+    "cardCount": 5,
+    "heights": [
+      118,
+      118,
+      118,
+      118,
+      118
+    ],
+    "heightsEqual": true,
+    "gridTemplateColumns": "112px 112px 112px",
+    "colCount": 3,
+    "hasHorizontalScroll": false,
+    "viewportWidth": 1024,
+    "sectionScrollWidth": 376,
+    "sectionClientWidth": 376
+  }
+}

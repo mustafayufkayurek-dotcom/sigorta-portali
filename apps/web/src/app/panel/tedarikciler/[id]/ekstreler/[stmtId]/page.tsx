@@ -71,7 +71,7 @@ export default function VendorStatementDetailPage() {
     return (
       <div className="text-center py-16">
         <p className="text-slate-500 mb-4">Ekstre bulunamadı.</p>
-        <Link href={`/panel/tedarikciler/${vendorId}`} className="text-sm text-indigo-600 hover:underline">
+        <Link href={`/panel/tedarikciler/${vendorId}`} className="text-sm text-brand-600 hover:underline">
           Tedarikçiye dön
         </Link>
       </div>
@@ -112,7 +112,7 @@ export default function VendorStatementDetailPage() {
                 type="button"
                 onClick={handleSend}
                 disabled={sending}
-                className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50"
+                className="text-xs px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium disabled:opacity-50"
               >
                 {sending ? 'Gönderiliyor...' : 'Tedarikçiye Gönder'}
               </button>
@@ -154,7 +154,7 @@ export default function VendorStatementDetailPage() {
                       </td>
                       <td className="px-5 py-3">
                         {item.claimFile?.id ? (
-                          <Link href={`/panel/hasar-dosyalari/${item.claimFile.id}`} className="text-xs text-indigo-600 hover:underline">
+                          <Link href={`/panel/hasar-dosyalari/${item.claimFile.id}`} className="text-xs text-brand-600 hover:underline">
                             {item.claimFile.fileNo ?? 'Dosya'}
                           </Link>
                         ) : (

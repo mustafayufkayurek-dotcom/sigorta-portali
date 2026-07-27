@@ -104,7 +104,7 @@ function NoteFeedItem({ note }: { note: NoteRecord }) {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${
-              isGeneral ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600'
+              isGeneral ? 'bg-blue-50 text-brand-600' : 'bg-slate-100 text-slate-600'
             }`}
           >
             {label}
@@ -241,7 +241,7 @@ export function IletisimGunluguPanel({ claimId }: { claimId: string }) {
               type="button"
               onClick={handleSave}
               disabled={saving || !content.trim()}
-              className="inline-flex items-center rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center rounded-lg border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Kaydediliyor…' : 'Kaydet'}
             </button>

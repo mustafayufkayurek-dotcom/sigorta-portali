@@ -73,7 +73,7 @@ export default function VendorQuotePopover({
         type="button"
         title="Tedarikçi Karşılaştır"
         onClick={() => setOpen((v) => !v)}
-        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
+        className="text-[10px] text-brand-600 hover:text-brand-800 font-medium whitespace-nowrap"
       >
         Karşılaştır
       </button>
@@ -119,7 +119,7 @@ export default function VendorQuotePopover({
               </button>
             </div>
           ))}
-          <button type="button" onClick={addAlt} className="text-[10px] text-blue-600 hover:text-blue-800">
+          <button type="button" onClick={addAlt} className="text-[10px] text-brand-600 hover:text-blue-800">
             + Alternatif Ekle
           </button>
         </div>

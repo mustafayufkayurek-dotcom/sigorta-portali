@@ -153,11 +153,11 @@ export default function RollerPage() {
         title={editing ? 'Rol Düzenle' : 'Yeni Rol'}
         onSave={handleSave} saving={saving} error={error}>
         <div>
-          <label className={labelCls}>Rol Adı <span className="text-red-500">*</span></label>
+          <label className={labelCls}>Rol Adı <span className="text-status-danger">*</span></label>
           <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm((p) => ({ ...p, name: v })); }} placeholder="Örn: Muhasebe Yöneticisi" />
         </div>
         <div>
-          <label className={labelCls}>Kod <span className="text-red-500">*</span></label>
+          <label className={labelCls}>Kod <span className="text-status-danger">*</span></label>
           <input className={`${inputCls} font-mono ${editing ? 'bg-slate-50 text-slate-400' : ''}`}
             value={form.code}
             onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z_]/g, '') })}

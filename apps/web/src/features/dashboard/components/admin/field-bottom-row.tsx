@@ -42,7 +42,7 @@ export function FieldBottomRow({ staggerIndex = 0 }: FieldBottomRowProps) {
       <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-status-danger" />
             <h3 className="text-sm font-semibold text-slate-950 dark:text-white">SLA Riskleri</h3>
             {slaTotal > 0 ? (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
@@ -52,7 +52,7 @@ export function FieldBottomRow({ staggerIndex = 0 }: FieldBottomRowProps) {
           </div>
           <Link
             href={CLAIM_LIST_SLA_HREF}
-            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Tümünü Gör
           </Link>
@@ -110,7 +110,7 @@ export function FieldBottomRow({ staggerIndex = 0 }: FieldBottomRowProps) {
           </div>
           <Link
             href={CLAIM_LIST_OPEN_HREF}
-            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Tümünü Gör
           </Link>
@@ -166,7 +166,7 @@ export function FieldBottomRow({ staggerIndex = 0 }: FieldBottomRowProps) {
           </div>
           <Link
             href={CLAIM_LIST_OPEN_HREF}
-            className="inline-flex min-h-[28px] items-center text-xs font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex min-h-[28px] items-center text-xs font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Dosyalara Git
           </Link>

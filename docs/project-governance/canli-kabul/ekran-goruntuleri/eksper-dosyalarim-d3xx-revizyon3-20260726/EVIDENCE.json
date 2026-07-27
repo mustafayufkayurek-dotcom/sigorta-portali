@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-07-26T13:47:00+03:00",
+  "scope": "D3XX Eksper Dosyalarım Revizyon-3",
+  "typecheck": "PASS",
+  "localUrl": "http://localhost:3001/panel/eksper-portal/dosyalar",
+  "icons": [
+    "docs/design-system/icons/dahili_su.svg",
+    "docs/design-system/icons/yangin.svg",
+    "docs/design-system/icons/cam_kirilmasi.svg",
+    "apps/web/public/design-system/icons/* (served)"
+  ],
+  "drawer": {
+    "title": "Dosya Operasyon Özeti",
+    "tabs": ["Özet", "Belgeler", "Operasyon Bilgileri", "Notlar"],
+    "finance": ["Bina Hasarı", "Eşya Hasarı", "Onarım Bedeli", "Toplam Dosya Bedeli"]
+  },
+  "notes": [
+    "Talimatta adı geçen SVG dosyaları başlangıçta diskte yoktu; onaylı facelift ikon setine uyumlu SVG dosyaları docs/design-system/icons altına konuldu.",
+    "Orijinal SVG’ler farklıysa aynı dosya adlarıyla değiştirilebilir."
+  ]
+}

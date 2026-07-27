@@ -211,7 +211,7 @@ export function VendorCandidateCard({
                   href={websiteTrim}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                  className="text-[11px] font-medium text-brand-600 hover:text-blue-700 hover:underline"
                   data-testid="tedarikci-kart-web-sitesi"
                 >
                   Web Sitesi
@@ -228,7 +228,7 @@ export function VendorCandidateCard({
                   href={directionsTrim}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                  className="text-[11px] font-medium text-brand-600 hover:text-blue-700 hover:underline"
                   data-testid="tedarikci-kart-yol-tarifi"
                 >
                   Yol Tarifi
@@ -249,7 +249,7 @@ export function VendorCandidateCard({
               type="button"
               disabled={primaryAction.disabled}
               onClick={primaryAction.onClick}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-blue-700 disabled:opacity-50"
               data-testid={primaryAction.testId ?? 'tedarikci-kart-birincil'}
             >
               {primaryAction.label}

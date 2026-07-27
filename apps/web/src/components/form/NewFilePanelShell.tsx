@@ -30,7 +30,7 @@ export function NewFilePanelShell({ children, errorGeneral, onCancel, saving }: 
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor...' : 'Dosyayı Oluştur'}
         </button>

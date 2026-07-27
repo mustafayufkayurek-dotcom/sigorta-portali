@@ -479,7 +479,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={() => setSmsConfig((prev) => ({ ...prev, active: !prev.active }))}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    smsConfig.active ? 'bg-blue-600' : 'bg-slate-200'
+                    smsConfig.active ? 'bg-brand-600' : 'bg-slate-200'
                   }`}
                   role="switch"
                   aria-checked={smsConfig.active}
@@ -555,7 +555,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleSaveSms}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'SMS Entegrasyonunu Kaydet'}
                 </button>
@@ -606,7 +606,7 @@ export default function EntegrasyonlarPage() {
                     type="button"
                     onClick={handleTestSms}
                     disabled={testing}
-                    className="w-full rounded-lg border border-blue-600 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                    className="w-full rounded-lg border border-brand-600 px-4 py-2 text-sm font-medium text-brand-600 hover:bg-blue-50 disabled:opacity-50"
                   >
                     {testing ? 'Gönderiliyor...' : 'Test SMS Gönder'}
                   </button>
@@ -632,7 +632,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={() => setTurmobConfig((prev) => ({ ...prev, active: !prev.active }))}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    turmobConfig.active ? 'bg-blue-600' : 'bg-slate-200'
+                    turmobConfig.active ? 'bg-brand-600' : 'bg-slate-200'
                   }`}
                   role="switch"
                   aria-checked={turmobConfig.active}
@@ -694,7 +694,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleSaveTurmob}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'TÜRMOB Ayarlarını Kaydet'}
                 </button>
@@ -727,7 +727,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={() => setM365Config((prev) => ({ ...prev, active: !prev.active }))}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    m365Config.active ? 'bg-blue-600' : 'bg-slate-200'
+                    m365Config.active ? 'bg-brand-600' : 'bg-slate-200'
                   }`}
                   role="switch"
                   aria-checked={m365Config.active}
@@ -818,7 +818,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleSaveM365}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Microsoft 365 Ayarlarını Kaydet'}
                 </button>
@@ -826,7 +826,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleTestM365}
                   disabled={testing}
-                  className="rounded-lg border border-blue-600 px-5 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                  className="rounded-lg border border-brand-600 px-5 py-2.5 text-sm font-medium text-brand-600 hover:bg-blue-50 disabled:opacity-50"
                 >
                   {testing ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
                 </button>
@@ -901,7 +901,7 @@ export default function EntegrasyonlarPage() {
               </p>
               <Link
                 href="/panel/operasyon/gelen-kutusu"
-                className="mt-3 inline-block text-xs font-medium text-blue-600 hover:underline"
+                className="mt-3 inline-block text-xs font-medium text-brand-600 hover:underline"
               >
                 Operasyon Gelen Kutusuna Git →
               </Link>
@@ -923,7 +923,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={() => setLogoWingsConfig((prev) => ({ ...prev, active: !prev.active }))}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    logoWingsConfig.active ? 'bg-blue-600' : 'bg-slate-200'
+                    logoWingsConfig.active ? 'bg-brand-600' : 'bg-slate-200'
                   }`}
                   role="switch"
                   aria-checked={logoWingsConfig.active}
@@ -983,7 +983,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleSaveLogoWings}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Logo Wings Ayarlarını Kaydet'}
                 </button>
@@ -1017,7 +1017,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={() => setGooglePlacesConfig((prev) => ({ ...prev, active: !prev.active }))}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                    googlePlacesConfig.active ? 'bg-blue-600' : 'bg-slate-200'
+                    googlePlacesConfig.active ? 'bg-brand-600' : 'bg-slate-200'
                   }`}
                   role="switch"
                   aria-checked={googlePlacesConfig.active}
@@ -1052,7 +1052,7 @@ export default function EntegrasyonlarPage() {
                   type="button"
                   onClick={handleSaveGooglePlaces}
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Google Places Ayarlarını Kaydet'}
                 </button>

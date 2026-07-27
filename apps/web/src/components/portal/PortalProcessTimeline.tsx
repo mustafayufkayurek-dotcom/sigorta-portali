@@ -254,7 +254,7 @@ export default function PortalProcessTimeline({
           </div>
           {nextHint && (
             <div className="bg-blue-50 rounded-lg p-3 md:col-span-1 col-span-2">
-              <p className="text-xs text-blue-600 font-medium">Sıradaki Adım</p>
+              <p className="text-xs text-brand-600 font-medium">Sıradaki Adım</p>
               <p className="text-sm text-blue-900 mt-0.5">{nextHint}</p>
             </div>
           )}
@@ -301,7 +301,7 @@ export default function PortalProcessTimeline({
                 <div className="flex flex-col items-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0 ${
                     entry.kind === 'opened' ? 'bg-slate-500' :
-                    entry.kind === 'transition' ? 'bg-blue-500' : 'bg-emerald-500'
+                    entry.kind === 'transition' ? 'bg-blue-500' : 'bg-status-success'
                   }`}
                   >
                     {entry.kind === 'opened' ? '★' : entry.kind === 'transition' ? '→' : '✓'}

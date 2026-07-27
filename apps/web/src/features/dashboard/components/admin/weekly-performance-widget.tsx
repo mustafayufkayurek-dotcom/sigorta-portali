@@ -16,7 +16,7 @@ type WeeklyPerformanceWidgetProps = {
   staggerIndex?: number;
 };
 
-const PRIORITY_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-amber-400', 'bg-blue-500'];
+const PRIORITY_COLORS = ['bg-status-danger', 'bg-orange-500', 'bg-amber-400', 'bg-blue-500'];
 
 function formatRangeLabel(startIso?: string, endIso?: string): string {
   if (!startIso || !endIso) return '';
@@ -93,7 +93,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
   return (
     <WidgetShell
       title="Haftalık Performans — Pazartesi Toplantısı"
-      icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
+      icon={<CalendarDays className="h-4 w-4 text-brand-600" />}
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}
       compact
@@ -125,7 +125,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
               <div className="flex justify-between gap-1">
                 <dt className="text-slate-500">Tahsilat</dt>
                 <dd className="font-semibold text-slate-900 dark:text-white">
-                  {lastWeek ? formatCurrency(lastWeek.collectionAmount) : '—'}
+                  {lastWeek?.collectionAmount != null ? formatCurrency(lastWeek.collectionAmount) : '—'}
                 </dd>
               </div>
               <div className="flex justify-between gap-1">
@@ -189,7 +189,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
                         <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                           <div
                             className={`h-full rounded-full ${
-                              item.criticalFiles > 0 ? 'bg-red-500' : 'bg-indigo-500'
+                              item.criticalFiles > 0 ? 'bg-status-danger' : 'bg-indigo-500'
                             }`}
                             style={{ width: `${Math.max(8, widthPct)}%` }}
                           />

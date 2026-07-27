@@ -405,7 +405,7 @@ export default function ProfilPage() {
         <form onSubmit={handleChangePassword} className="space-y-4">
           {pwdError && (
             <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-              <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-status-danger mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-red-700">{pwdError}</p>
@@ -424,7 +424,7 @@ export default function ProfilPage() {
           {/* Mevcut Şifre */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Mevcut Şifre <span className="text-red-500">*</span>
+              Mevcut Şifre <span className="text-status-danger">*</span>
             </label>
             <div className="relative">
               <input
@@ -458,7 +458,7 @@ export default function ProfilPage() {
           {/* Yeni Şifre */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Yeni Şifre <span className="text-red-500">*</span>
+              Yeni Şifre <span className="text-status-danger">*</span>
             </label>
             <div className="relative">
               <input
@@ -531,7 +531,7 @@ export default function ProfilPage() {
           {/* Tekrar Yeni Şifre */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Yeni Şifre (Tekrar) <span className="text-red-500">*</span>
+              Yeni Şifre (Tekrar) <span className="text-status-danger">*</span>
             </label>
             <div className="relative">
               <input
@@ -567,7 +567,7 @@ export default function ProfilPage() {
               </button>
             </div>
             {newPasswordRepeat && newPassword !== newPasswordRepeat && (
-              <p className="mt-1.5 text-xs text-red-500">Şifreler eşleşmiyor.</p>
+              <p className="mt-1.5 text-xs text-status-danger">Şifreler eşleşmiyor.</p>
             )}
           </div>
 

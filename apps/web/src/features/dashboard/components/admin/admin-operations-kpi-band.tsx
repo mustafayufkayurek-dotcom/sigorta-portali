@@ -59,7 +59,7 @@ export function AdminOperationsKpiBand({ staggerIndex = 0, hideAcil = false }: A
               icon={FileText}
               label="Toplam Operasyon"
               value={opsFailed ? '—' : total || '—'}
-              color="bg-blue-600"
+              color="bg-brand-600"
               href="/panel/hasar-dosyalari"
             />
             <StripKpi

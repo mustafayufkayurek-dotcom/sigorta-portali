@@ -82,7 +82,7 @@ export default function EvrakOnayPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-gray-600 text-sm">Evrak yükleniyor…</p>
         </div>
       </div>
@@ -166,7 +166,7 @@ export default function EvrakOnayPage() {
           {stage === 'view' && (
             <button
               onClick={() => setStage('approve')}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              className="bg-brand-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               Onayla
             </button>
@@ -208,7 +208,7 @@ export default function EvrakOnayPage() {
               autoFocus
             />
             {error && (
-              <p className="text-red-500 text-xs mb-2">{error}</p>
+              <p className="text-status-danger text-xs mb-2">{error}</p>
             )}
             <p className="text-xs text-gray-400 mb-4">
               Adınızı yazarak yukarıdaki belgeyi elektronik ortamda onaylamış
@@ -224,7 +224,7 @@ export default function EvrakOnayPage() {
               <button
                 onClick={handleApprove}
                 disabled={!fullName.trim() || approving}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                className="flex-1 bg-brand-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
               >
                 {approving ? 'Onaylanıyor…' : 'Onayla'}
               </button>

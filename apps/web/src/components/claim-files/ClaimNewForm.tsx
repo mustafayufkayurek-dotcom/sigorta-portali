@@ -63,7 +63,7 @@ function TRPhoneInput({
   useEffect(() => { setDisplay(storageToMask(value)); }, [value]);
 
   const borderCls = hasError
-    ? 'border-red-400 ring-2 ring-red-500/20 bg-red-50'
+    ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50'
     : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400';
 
   return (
@@ -483,7 +483,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const eksperSection = (
     <>
-      {errors.customer && <p className="text-xs text-red-500 mb-2">{errors.customer}</p>}
+      {errors.customer && <p className="text-xs text-status-danger mb-2">{errors.customer}</p>}
 
       {selectedCustomer && !showNewCustomerForm ? (
         <div className="flex items-center justify-between gap-3 text-sm rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
@@ -497,7 +497,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           <button
             type="button"
             onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setCustomerFileOrdinal(null); }}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 shrink-0"
+            className="text-xs font-medium text-brand-600 hover:text-blue-800 shrink-0"
           >
             Değiştir
           </button>
@@ -579,7 +579,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           </div>
           <div className={`${formGrid} ${isPanel ? '' : 'sm:gap-3'}`}>
             <div className={spanFull}>
-              <label className={label}>Şirket Adı <span className="text-red-500">*</span></label>
+              <label className={label}>Şirket Adı <span className="text-status-danger">*</span></label>
               <input
                 className={field}
                 value={newCustomerCompanyName}
@@ -600,7 +600,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
                 hasError={!!phoneDupError}
                 className={isPanel ? 'rounded-lg px-2.5 py-1.5' : ''}
               />
-              {phoneDupError && <p className="text-xs text-red-500 mt-0.5">{phoneDupError}</p>}
+              {phoneDupError && <p className="text-xs text-status-danger mt-0.5">{phoneDupError}</p>}
             </div>
           </div>
         </div>
@@ -625,17 +625,17 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       )}
       <div className={formGrid}>
         <div className="min-w-0">
-          <label className={label}>Sigortalı Adı Soyadı <span className="text-red-500">*</span></label>
+          <label className={label}>Sigortalı Adı Soyadı <span className="text-status-danger">*</span></label>
           <input
             className={`${field} ${errors.insuredName ? 'border-red-400' : ''}`}
             value={insuredName}
             onChange={(e) => setInsuredName(e.target.value)}
             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setInsuredName(v); }}
           />
-          {errors.insuredName && <p className="text-xs text-red-500 mt-0.5">{errors.insuredName}</p>}
+          {errors.insuredName && <p className="text-xs text-status-danger mt-0.5">{errors.insuredName}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>Hasar Konusu <span className="text-red-500">*</span></label>
+          <label className={label}>Hasar Konusu <span className="text-status-danger">*</span></label>
           <select className={`${field} ${errors.lossType ? 'border-red-400' : ''}`} value={lossType} onChange={(e) => setLossType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
@@ -644,18 +644,18 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           {subjectsLoadFailed && (
             <p className="text-xs text-amber-600 mt-0.5">Hasar konuları yüklenemedi. «Diğer» seçilebilir veya sayfayı yenileyin.</p>
           )}
-          {errors.lossType && <p className="text-xs text-red-500 mt-0.5">{errors.lossType}</p>}
+          {errors.lossType && <p className="text-xs text-status-danger mt-0.5">{errors.lossType}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>Sigorta Şirketi <span className="text-red-500">*</span></label>
+          <label className={label}>Sigorta Şirketi <span className="text-status-danger">*</span></label>
           <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
             <option value="">Seçiniz...</option>
             {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          {errors.insuranceCompanyId && <p className="text-xs text-red-500 mt-0.5">{errors.insuranceCompanyId}</p>}
+          {errors.insuranceCompanyId && <p className="text-xs text-status-danger mt-0.5">{errors.insuranceCompanyId}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>Dosya No <span className="text-red-500">*</span></label>
+          <label className={label}>Dosya No <span className="text-status-danger">*</span></label>
           <input
             className={`${field} ${errors.fileNo ? 'border-red-400' : ''}`}
             value={fileNo}
@@ -666,7 +666,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           {!fileNoChecking && !errors.fileNo && (
             <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
           )}
-          {errors.fileNo && <p className="text-xs text-red-500 mt-0.5">{errors.fileNo}</p>}
+          {errors.fileNo && <p className="text-xs text-status-danger mt-0.5">{errors.fileNo}</p>}
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
           {!isPanel && <p className="text-[11px] font-medium text-slate-500 mb-2">Dosya Adresi</p>}
@@ -762,7 +762,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-white rounded-xl">
           İptal
         </button>
-        <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
           {saving ? 'Kaydediliyor...' : 'Dosyayı Oluştur'}
         </button>
       </div>

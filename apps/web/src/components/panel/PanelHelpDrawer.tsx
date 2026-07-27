@@ -110,7 +110,7 @@ export function PanelHelpDrawer(props: PanelHelpDrawerProps) {
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 shrink-0 text-blue-600" />
+              <HelpCircle className="h-4 w-4 shrink-0 text-brand-600" />
               <h2 className="truncate text-sm font-semibold text-slate-950 dark:text-white">
                 {guide.title}
               </h2>

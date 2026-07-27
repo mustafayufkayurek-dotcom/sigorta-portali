@@ -171,7 +171,7 @@ function Btn({
 }) {
   const styles =
     tone === 'primary'
-      ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300'
+      ? 'bg-brand-600 text-white hover:bg-blue-700 disabled:bg-slate-300'
       : tone === 'danger'
         ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
         : tone === 'ghost'
@@ -478,7 +478,7 @@ export function StepInspector() {
             href={claim.locationUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="break-all font-medium text-blue-600 hover:underline"
+            className="break-all font-medium text-brand-600 hover:underline"
           >
             {claim.locationUrl}
           </a>
@@ -564,7 +564,7 @@ export function StepInspector() {
                         tone={ins.available ? 'green' : 'orange'}
                       />
                       <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-600">
-                        <Star className="h-3 w-3 text-amber-500" /> {ins.score}
+                        <Star className="h-3 w-3 text-status-warning" /> {ins.score}
                       </span>
                       <span className="text-[10px] text-slate-500">{ins.completedJobs} İş</span>
                     </div>
@@ -649,7 +649,7 @@ export function StepSupplier() {
             type="button"
             onClick={() => setTab(id)}
             className={`px-2.5 py-1.5 text-[11px] font-semibold ${
-              tab === id ? 'border-b-2 border-blue-600 text-blue-700' : 'text-slate-500'
+              tab === id ? 'border-b-2 border-brand-600 text-blue-700' : 'text-slate-500'
             }`}
           >
             {label}

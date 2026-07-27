@@ -1,0 +1,123 @@
+{
+  "items": {
+    "1": {
+      "result": "PASS",
+      "evidence": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01-real-app-giris.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01-real-app-giris.json"
+      },
+      "tech": "giris+panel OK; panel=http://localhost:3001/panel",
+      "evidencePanel": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01b-real-app-panel-1440.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01b-real-app-panel-1440.json"
+      }
+    },
+    "2": {
+      "result": "PASS",
+      "evidence": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/02-tablet-1024x768.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/02-tablet-1024x768.json"
+      },
+      "tech": "viewport=1024x768 route=http://localhost:3001/panel"
+    },
+    "3": {
+      "result": "PASS",
+      "evidence": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/03-mobile-390x844.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/03-mobile-390x844.json"
+      },
+      "tech": "viewport=390x844 route=http://localhost:3001/panel"
+    },
+    "4": {
+      "result": "PASS",
+      "evidence": "04-sidebar-tooltip-hover.png / .json",
+      "tech": "{\"tipCount\":1,\"visibleCount\":1,\"texts\":[\"Dashboard\"],\"titleAttr\":\"Dashboard\"}"
+    },
+    "5": {
+      "result": "PASS",
+      "evidence": {
+        "390": "05-gunun-akisi-390.png / 03-mobile-390x844-metrics.json",
+        "1024": "05-gunun-akisi-1024.png / 02-tablet-1024x768-metrics.json",
+        "1440": "05-gunun-akisi-1440.png / 05-gunun-akisi-1440-metrics.json"
+      },
+      "tech": "1440 cols=5 eq=true; 1024 cols=3 eq=true; 390 cols=1 eq=true; scroll=[false,false,false]"
+    },
+    "6": {
+      "result": "PASS",
+      "evidence": {
+        "expanded": "06-sidebar-expanded.json",
+        "collapsed": "06-sidebar-collapsed.json",
+        "png": [
+          "06-sidebar-expanded.png",
+          "06-sidebar-collapsed.png"
+        ]
+      },
+      "tech": "expanded=220px collapsed=72px"
+    },
+    "7": {
+      "result": "PASS",
+      "evidence": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01-real-app-giris.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/01-real-app-giris.json"
+      },
+      "tech": "network=[\"http://localhost:3001/meridyen-logo-original.png\",\"RESP 200 http://localhost:3001/meridyen-logo-original.png\"] imgs=[\"http://localhost:3001/meridyen-logo-original.png\"]"
+    },
+    "8": {
+      "result": "PARTIAL",
+      "evidence": "08-email-logo.json",
+      "tech": "util official=true; backend sha=23463fa6d1ab; docs sha=23463fa6d1ab"
+    },
+    "9": {
+      "result": "PASS",
+      "evidence": {
+        "png": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/09-kilavuz-logo.png",
+        "json": "docs/project-governance/canli-kabul/ekran-goruntuleri/dashboard-rc1-proof-20260715/09-kilavuz-logo.json"
+      },
+      "tech": "guides official=true; network=[\"http://localhost:3001/docs/meridyen-logo-original.png\"]"
+    },
+    "10": {
+      "result": "PASS",
+      "evidence": "10-no-public-deprecated.json",
+      "tech": "exists=false fileCount=0"
+    },
+    "11": {
+      "result": "PASS",
+      "evidence": "11-git-production-files.json",
+      "tech": "untrackedRequired=[]"
+    },
+    "12": {
+      "result": "PASS",
+      "evidence": "12-tests.json / 12-tests.log",
+      "tech": "{\"brand\":0,\"rc1\":0,\"activity\":0,\"email\":0,\"welcome\":0,\"pass\":true}"
+    },
+    "13": {
+      "result": "PASS",
+      "evidence": "13-metadata-versions.json",
+      "tech": "web=sigorta-web:dalga2-agreement-hr-01-v350-amd64; PANEL_WEB_VERSION line present; v355=false"
+    },
+    "14": {
+      "result": "PASS",
+      "evidence": "14-typecheck.json / 14-typecheck.log",
+      "tech": "exit=0"
+    },
+    "15": {
+      "result": "PASS",
+      "evidence": "15-build.json / 15-build.log",
+      "tech": "exit=0; Next build only (no Docker image)"
+    },
+    "16": {
+      "result": "PASS",
+      "evidence": "16-no-commit-push.json",
+      "tech": "## safety/pre-v318-kilit-20260712...origin/safety/pre-v318-kilit-20260712 [ahead 16]"
+    }
+  },
+  "notes": [
+    "auth: UI login OK → /panel"
+  ],
+  "app": {
+    "base": "http://localhost:3001",
+    "api": "http://localhost:3000",
+    "girisHttp": 200,
+    "apiHealth": 200
+  }
+}

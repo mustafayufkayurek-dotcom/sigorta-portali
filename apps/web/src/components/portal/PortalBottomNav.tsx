@@ -37,7 +37,7 @@ export default function PortalBottomNav({ variant }: PortalBottomNavProps) {
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-slate-400'}`} strokeWidth={active ? 2.25 : 2} />
+              <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-brand-600' : 'text-slate-400'}`} strokeWidth={active ? 2.25 : 2} />
               <span className={`max-w-full truncate text-[10px] font-semibold leading-tight ${active ? 'text-blue-700' : ''}`}>
                 {shortLabel}
               </span>

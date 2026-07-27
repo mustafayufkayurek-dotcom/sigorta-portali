@@ -118,7 +118,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
           <h3 className="text-sm font-semibold tracking-tight text-slate-950 dark:text-white">Operasyon</h3>
           <Link
             href={OPERATIONS_CENTER_HREF}
-            className="inline-flex min-h-[28px] items-center gap-0.5 text-[11px] font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex min-h-[28px] items-center gap-0.5 text-[11px] font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Operasyon Merkezi
             <ChevronRight className="h-3 w-3" />
@@ -230,7 +230,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
                 </div>
                 <Link
                   href={STAFF_MGMT_HREF}
-                  className="inline-flex min-h-[28px] items-center text-[10px] font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="inline-flex min-h-[28px] items-center text-[10px] font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   Tümü
                 </Link>
@@ -261,7 +261,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
             {/* Kritik Operasyonlar */}
             <div className="flex min-h-0 flex-col sm:col-span-1">
               <div className="mb-1 flex h-5 items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" aria-hidden="true" />
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-status-danger" aria-hidden="true" />
                 Kritik Operasyonlar
               </div>
               {criticalOps.length === 0 ? (
@@ -306,7 +306,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
                 </div>
                 <Link
                   href={CLAIM_LIST_HREF}
-                  className="inline-flex min-h-[28px] items-center text-[10px] font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="inline-flex min-h-[28px] items-center text-[10px] font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   Dosyalara Git
                 </Link>
@@ -359,7 +359,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
       <div className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-3.5">
         <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
+            <AlertTriangle className="h-4 w-4 shrink-0 text-status-danger" aria-hidden="true" />
             <h3 className="text-sm font-semibold tracking-tight text-slate-950 dark:text-white">Kritik Uyarılar</h3>
             {criticalItems.length > 0 ? (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
@@ -369,7 +369,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
           </div>
           <Link
             href={CLAIM_LIST_SLA_HREF}
-            className="inline-flex min-h-[28px] items-center text-[11px] font-medium text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex min-h-[28px] items-center text-[11px] font-medium text-brand-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Tümünü Gör
           </Link>

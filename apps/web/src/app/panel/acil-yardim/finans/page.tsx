@@ -167,7 +167,7 @@ function FinansPageInner() {
             <p className="text-xl font-bold text-red-700">{fmt(monthly.totalGider)} ₺</p>
           </div>
           <div className={`rounded-2xl border shadow-sm p-4 ${monthly.netKar >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
-            <p className={`text-xs mb-1 ${monthly.netKar >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>Net Kâr</p>
+            <p className={`text-xs mb-1 ${monthly.netKar >= 0 ? 'text-brand-600' : 'text-orange-600'}`}>Net Kâr</p>
             <p className={`text-xl font-bold ${monthly.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(monthly.netKar)} ₺</p>
           </div>
         </div>
@@ -220,7 +220,7 @@ function FinansPageInner() {
           <button
             type="button"
             onClick={() => { setBulkCustomerName(''); setBulkError(null); setShowBulkModal(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -281,7 +281,7 @@ function FinansPageInner() {
                   </td>
                   <PanelTableTd colId="date" className="px-4 py-3 text-slate-500">{fmtDate(row.fileDate ?? row.createdAt)}</PanelTableTd>
                   <PanelTableTd colId="customer" className="px-4 py-3">
-                    <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-blue-600">
+                    <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-brand-600">
                       {row.customerName}
                     </Link>
                     <p className="text-xs text-slate-400">{row.caseNo}</p>
@@ -339,7 +339,7 @@ function FinansPageInner() {
             <p className="text-sm text-slate-500">{selected.size} dosya tek faturada birleştirilecek.</p>
             {bulkError && <p className="text-xs text-red-600">{bulkError}</p>}
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Müşteri Adı <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Müşteri Adı <span className="text-status-danger">*</span></label>
               <input
                 autoFocus
                 type="text"
@@ -354,7 +354,7 @@ function FinansPageInner() {
                 type="button"
                 onClick={handleBulkInvoice}
                 disabled={bulkLoading}
-                className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
               >
                 {bulkLoading ? 'Oluşturuluyor...' : 'Taslak Oluştur'}
               </button>

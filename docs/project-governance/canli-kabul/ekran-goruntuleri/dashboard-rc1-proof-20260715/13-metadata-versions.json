@@ -1,0 +1,12 @@
+{
+  "knownGoodSnippet": {
+    "backend": "app-backend:dalga2-agreement-hr-01-v349-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v350-amd64"
+  },
+  "panelBuildInfo": [
+    "/** Canlı panel sürüm etiketi — deploy sonrası manifest ile eşleştir */",
+    "export const PANEL_WEB_VERSION = 'v350';",
+    "export const PANEL_BACKEND_VERSION = 'v349-guvenlik-finans-api-guard';"
+  ],
+  "incorrectlyV355": false
+}

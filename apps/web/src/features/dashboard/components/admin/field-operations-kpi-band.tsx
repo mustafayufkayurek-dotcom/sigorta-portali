@@ -55,7 +55,7 @@ export function FieldOperationsKpiBand({ staggerIndex = 0 }: FieldOperationsKpiB
               label="Atanan Dosya"
               value={perfFailed ? '—' : total || '—'}
               subtext="Tüm Zamanlar"
-              color="bg-blue-600"
+              color="bg-brand-600"
               href="/panel/hasar-dosyalari"
             />
             <StripKpi

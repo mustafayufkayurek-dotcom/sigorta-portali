@@ -56,10 +56,10 @@ function roleLabel(role: string | null): string {
 }
 
 const SLA_CONFIG = {
-  ok: { label: 'Normal', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-  warning: { label: 'Uyarı', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  ok: { label: 'Normal', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-status-success' },
+  warning: { label: 'Uyarı', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-status-warning' },
   critical: { label: 'Kritik', color: 'bg-orange-100 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
-  escalation: { label: 'Aşım', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
+  escalation: { label: 'Aşım', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-status-danger' },
 };
 
 // ─── Current Stage Card ───────────────────────────────────────────────────────
@@ -115,9 +115,9 @@ export function CurrentStageCard({ data }: { data: CurrentStageData }) {
           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                data.slaStatus === 'ok' ? 'bg-emerald-500' :
-                data.slaStatus === 'warning' ? 'bg-amber-500' :
-                data.slaStatus === 'critical' ? 'bg-orange-500' : 'bg-red-500'
+                data.slaStatus === 'ok' ? 'bg-status-success' :
+                data.slaStatus === 'warning' ? 'bg-status-warning' :
+                data.slaStatus === 'critical' ? 'bg-orange-500' : 'bg-status-danger'
               }`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -136,11 +136,11 @@ export function CurrentStageCard({ data }: { data: CurrentStageData }) {
           <p className="text-xs font-medium text-slate-500">Aktif Beklemeler</p>
           {data.activeWaitings.map((w) => (
             <div key={w.id} className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-status-warning mt-1.5 flex-shrink-0 animate-pulse" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-amber-800">{w.reason?.replace(/_/g, ' ')}</p>
                 {w.description && <p className="text-xs text-amber-600 mt-0.5">{w.description}</p>}
-                <p className="text-xs text-amber-500 mt-1">
+                <p className="text-xs text-status-warning mt-1">
                   {fmtDuration(Math.floor((Date.now() - new Date(w.startedAt).getTime()) / 60000))} süredir bekleniyor
                 </p>
               </div>
@@ -156,7 +156,7 @@ export function CurrentStageCard({ data }: { data: CurrentStageData }) {
 function TimelineEvent({ entry, isLast }: { entry: TimelineEntry; isLast: boolean }) {
   const iconConfig = {
     transition: { bg: 'bg-blue-500', icon: '→' },
-    waiting: { bg: 'bg-amber-500', icon: '⏳' },
+    waiting: { bg: 'bg-status-warning', icon: '⏳' },
     note: { bg: 'bg-slate-400', icon: '📝' },
   };
   const config = iconConfig[entry.type];
@@ -288,7 +288,7 @@ function AddNoteForm({ claimFileId, onNoteAdded }: { claimFileId: string; onNote
         <button
           onClick={handleSubmit}
           disabled={saving || !content.trim()}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {saving ? 'Kaydediliyor...' : 'Not Ekle'}
         </button>

@@ -8,6 +8,8 @@ export { AdminOperationsCriticalRow } from './admin-operations-critical-row';
 export { TeamWorkloadChart } from './team-workload-chart';
 export { OfficeDailyFlowSection } from './office-daily-flow-section';
 export { OfficeBottomRow } from './office-bottom-row';
+export { OfficeKpiBand } from './office-kpi-band';
+export { OfficeChartsRow } from './office-charts-row';
 export { FieldOperationsKpiBand } from './field-operations-kpi-band';
 export { FieldDailyFlowSection } from './field-daily-flow-section';
 export { FieldBottomRow } from './field-bottom-row';

@@ -81,7 +81,7 @@ export default function VendorStatementPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-indigo-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">Ekstre yükleniyor...</p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function VendorStatementPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
                 <span className="text-white text-xs font-bold">M</span>
               </div>
               <span className="text-sm font-semibold text-gray-800">Meridyen Assistance</span>

@@ -33,7 +33,7 @@ export function NotlarTab({ claimId }: { claimId: string }) {
       {notes.map((n) => (
         <div key={n.id} className="bg-white rounded-xl border border-slate-100 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{n.noteType}</span>
+            <span className="text-xs font-medium text-brand-600 bg-blue-50 px-2 py-0.5 rounded">{n.noteType}</span>
             <span className="text-xs text-slate-400">{new Date(n.createdAt).toLocaleString('tr-TR')}</span>
           </div>
           <p className="text-sm text-slate-700">{n.content}</p>

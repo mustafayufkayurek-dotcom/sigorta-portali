@@ -1990,7 +1990,7 @@ export default function KullanicilarPage() {
         <button
           type="button"
           onClick={openAdd}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 sm:w-auto"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Kullanıcı Davet Et
@@ -2145,7 +2145,7 @@ export default function KullanicilarPage() {
                       onClick={selectAll}
                       className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
                         selected.size === filtered.length && filtered.length > 0
-                          ? 'border-blue-600 bg-blue-600'
+                          ? 'border-brand-600 bg-brand-600'
                           : 'border-slate-300 bg-white hover:border-blue-400'
                       }`}
                       aria-label="Tüm kullanıcıları seç"
@@ -2198,7 +2198,7 @@ export default function KullanicilarPage() {
                           type="button"
                           onClick={() => toggleSelect(u.id)}
                           className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
-                            selected.has(u.id) ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white hover:border-blue-400'
+                            selected.has(u.id) ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white hover:border-blue-400'
                           }`}
                           aria-label={`${u.firstName} ${u.lastName} seç`}
                         >
@@ -2280,7 +2280,7 @@ export default function KullanicilarPage() {
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadgeCls(rowStatus)}`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${rowStatus === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                          className={`h-1.5 w-1.5 rounded-full ${rowStatus === 'active' ? 'bg-status-success' : 'bg-slate-400'}`}
                         />
                         {statusLabel(rowStatus)}
                       </span>
@@ -2529,7 +2529,7 @@ export default function KullanicilarPage() {
                           name="insurance-company-user-company"
                           checked={form.insuranceCompanyIds[0] === company.id}
                           onChange={() => selectSingleInsuranceCompany(company.id)}
-                          className="border-slate-300 text-blue-600"
+                          className="border-slate-300 text-brand-600"
                         />
                         {company.name}
                       </label>
@@ -2566,7 +2566,7 @@ export default function KullanicilarPage() {
                               setForm((prev) => ({ ...prev, expertCustomerId: company.id }));
                               setFormErrors((prev) => ({ ...prev, expertCustomerId: undefined, general: undefined }));
                             }}
-                            className="border-slate-300 text-blue-600"
+                            className="border-slate-300 text-brand-600"
                           />
                           {company.name}
                         </label>
@@ -2603,7 +2603,7 @@ export default function KullanicilarPage() {
                               setForm((prev) => ({ ...prev, brokerCustomerId: company.id }));
                               setFormErrors((prev) => ({ ...prev, brokerCustomerId: undefined, general: undefined }));
                             }}
-                            className="border-slate-300 text-blue-600"
+                            className="border-slate-300 text-brand-600"
                           />
                           {company.name}
                         </label>
@@ -2631,7 +2631,7 @@ export default function KullanicilarPage() {
                       type="checkbox"
                       checked={form.countrywide}
                       onChange={(e) => setForm({ ...form, countrywide: e.target.checked, serviceAreas: e.target.checked ? [] : form.serviceAreas })}
-                      className="rounded border-slate-300 text-blue-600"
+                      className="rounded border-slate-300 text-brand-600"
                     />
                     Tüm Türkiye
                   </label>
@@ -2677,7 +2677,7 @@ export default function KullanicilarPage() {
                         districts={districts}
                         maxHeightClass="max-h-36"
                         gridClassName="grid gap-2 sm:grid-cols-3"
-                        accentClass="accent-blue-600"
+                        accentClass="accent-brand-600"
                         isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
                         onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
                       />
@@ -2687,7 +2687,7 @@ export default function KullanicilarPage() {
                         {form.serviceAreas.map((area) => (
                           <span key={`${area.provinceId}:${area.districtId ?? ''}`} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                             {area.districtId ? `${area.provinceName ?? area.provinceId} / ${area.districtName ?? area.districtId}` : `${area.provinceName ?? area.provinceId} (Tümü)`}
-                            <button type="button" onClick={() => toggleServiceArea(area.provinceId, area.districtId)} className="text-blue-400 hover:text-red-500">×</button>
+                            <button type="button" onClick={() => toggleServiceArea(area.provinceId, area.districtId)} className="text-blue-400 hover:text-status-danger">×</button>
                           </span>
                         ))}
                       </div>
@@ -2734,7 +2734,7 @@ export default function KullanicilarPage() {
 	                            type="checkbox"
 	                            checked={allInsuranceCompaniesSelected}
 	                            onChange={(e) => toggleAllInsuranceCompanies(e.target.checked)}
-	                            className="rounded border-slate-300 text-blue-600"
+	                            className="rounded border-slate-300 text-brand-600"
 	                          />
 	                          Tüm Sigorta Şirketleri
 	                        </label>
@@ -2755,7 +2755,7 @@ export default function KullanicilarPage() {
 	                              type="checkbox"
 	                              checked={form.insuranceCompanyIds.includes(company.id)}
 	                              onChange={() => toggleInsuranceCompany(company.id)}
-	                              className="rounded border-slate-300 text-blue-600"
+	                              className="rounded border-slate-300 text-brand-600"
 	                            />
 	                            {company.name}
 	                          </label>
@@ -2779,7 +2779,7 @@ export default function KullanicilarPage() {
 	                            type="checkbox"
 	                            checked={allAcilYardimCustomersSelected}
 	                            onChange={(e) => toggleAllAcilYardimCustomers(e.target.checked)}
-	                            className="rounded border-slate-300 text-blue-600"
+	                            className="rounded border-slate-300 text-brand-600"
 	                          />
 	                          Hepsini Seç
 	                        </label>
@@ -2804,7 +2804,7 @@ export default function KullanicilarPage() {
 	                              type="checkbox"
 	                              checked={form.acilYardimCustomerIds.includes(customer.id)}
 	                              onChange={() => toggleAcilYardimCustomer(customer.id)}
-	                              className="rounded border-slate-300 text-blue-600"
+	                              className="rounded border-slate-300 text-brand-600"
 	                            />
 	                            {customer.name}
 	                          </label>
@@ -2913,7 +2913,7 @@ export default function KullanicilarPage() {
                               type="checkbox"
                               checked={form.selectedSubjects.includes(branch.name)}
                               onChange={() => toggleSelectedSubject(branch.name)}
-                              className="mt-0.5 rounded border-slate-300 text-blue-600"
+                              className="mt-0.5 rounded border-slate-300 text-brand-600"
                             />
                             <span>{branch.name}</span>
                           </label>
@@ -2939,7 +2939,7 @@ export default function KullanicilarPage() {
                         type="checkbox"
                         checked={form.countrywide}
                         onChange={(e) => setForm({ ...form, countrywide: e.target.checked, serviceAreas: e.target.checked ? [] : form.serviceAreas })}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-slate-300 text-brand-600"
                       />
                       Tüm Türkiye
                     </label>
@@ -2985,7 +2985,7 @@ export default function KullanicilarPage() {
                           districts={districts}
                           maxHeightClass="max-h-36"
                           gridClassName="grid gap-2 sm:grid-cols-3"
-                          accentClass="accent-blue-600"
+                          accentClass="accent-brand-600"
                           isChecked={(districtId) => isDistrictAreaChecked(form.serviceAreas, selectedProvinceId, districtId)}
                           onToggle={(districtId) => toggleServiceArea(selectedProvinceId, districtId)}
                         />
@@ -2995,7 +2995,7 @@ export default function KullanicilarPage() {
                           {form.serviceAreas.map((area) => (
                             <span key={`${area.provinceId}:${area.districtId ?? ''}`} className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                               {area.districtId ? `${area.provinceName ?? area.provinceId} / ${area.districtName ?? area.districtId}` : `${area.provinceName ?? area.provinceId} (Tümü)`}
-                              <button type="button" onClick={() => toggleServiceArea(area.provinceId, area.districtId)} className="text-blue-400 hover:text-red-500">×</button>
+                              <button type="button" onClick={() => toggleServiceArea(area.provinceId, area.districtId)} className="text-blue-400 hover:text-status-danger">×</button>
                             </span>
                           ))}
                         </div>
@@ -3088,7 +3088,7 @@ export default function KullanicilarPage() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="h-10 flex-1 rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="h-10 flex-1 rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? 'Kaydediliyor...' : modal === 'add' ? 'Davet Gönder' : 'Değişiklikleri Kaydet'}
               </button>
@@ -3143,7 +3143,7 @@ export default function KullanicilarPage() {
                 type="button"
                 onClick={handleResetPassword}
                 disabled={saving}
-                className="h-10 flex-1 rounded-lg bg-amber-500 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                className="h-10 flex-1 rounded-lg bg-status-warning text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
               >
                 {saving ? 'Kaydediliyor...' : 'Geçici Şifre Üret'}
               </button>
@@ -3172,7 +3172,7 @@ export default function KullanicilarPage() {
                 className={`h-10 rounded-lg px-4 text-sm font-semibold text-white transition-colors disabled:opacity-50 ${
                   confirmAction.variant === 'danger'
                     ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-brand-600 hover:bg-blue-700'
                 }`}
               >
                 {bulkDeleting ? 'İşleniyor...' : confirmAction.confirmLabel}

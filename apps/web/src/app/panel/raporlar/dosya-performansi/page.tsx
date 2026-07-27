@@ -131,9 +131,9 @@ export default function DosyaPerformansPage() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-blue-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <a href="/panel/raporlar" className="hover:text-blue-600 transition-colors">Raporlar</a>
+        <a href="/panel/raporlar" className="hover:text-brand-600 transition-colors">Raporlar</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Dosya Performansı</span>
       </nav>
@@ -178,7 +178,7 @@ export default function DosyaPerformansPage() {
           <input type="text" placeholder="Tüm Branşlar" value={productBranch} onChange={(e) => setProductBranch(e.target.value)} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 text-sm" />
         </div>
         <div className="flex items-end">
-          <button type="button" onClick={load} className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
+          <button type="button" onClick={load} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">Filtrele</button>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export default function DosyaPerformansPage() {
                   title={`Açılan: ${d.opened}`}
                 />
                 <div
-                  className="flex-1 rounded-t-sm bg-emerald-400 dark:bg-emerald-500 hover:bg-emerald-500 dark:hover:bg-emerald-400 transition-all"
+                  className="flex-1 rounded-t-sm bg-emerald-400 dark:bg-status-success hover:bg-status-success dark:hover:bg-emerald-400 transition-all"
                   style={{ height: `${Math.round((d.closed / maxVal) * 100)}%` }}
                   title={`Kapanan: ${d.closed}`}
                 />
@@ -220,7 +220,7 @@ export default function DosyaPerformansPage() {
             <span className="text-xs text-slate-500 dark:text-slate-400">Açılan</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-500" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-status-success" />
             <span className="text-xs text-slate-500 dark:text-slate-400">Kapanan</span>
           </div>
         </div>
@@ -250,13 +250,13 @@ export default function DosyaPerformansPage() {
               {deptRows.map((row) => {
                 const sla = row.slaCompliance;
                 const slaColor = sla >= 90 ? 'text-green-700 dark:text-green-400' : sla >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
-                const barColor = sla >= 90 ? 'bg-green-500' : sla >= 75 ? 'bg-amber-500' : 'bg-red-500';
+                const barColor = sla >= 90 ? 'bg-green-500' : sla >= 75 ? 'bg-status-warning' : 'bg-status-danger';
                 const closedPct = row.total > 0 ? Math.round((row.closed / row.total) * 100) : 0;
                 return (
                   <tr key={row.dept} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
                     <PanelTableTd colId="dept" className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-100">{row.dept}</PanelTableTd>
                     <PanelTableTd colId="total" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.total}</PanelTableTd>
-                    <PanelTableTd colId="open" className="px-5 py-3.5 text-right text-blue-600 dark:text-blue-400 font-medium">{row.open}</PanelTableTd>
+                    <PanelTableTd colId="open" className="px-5 py-3.5 text-right text-brand-600 dark:text-blue-400 font-medium">{row.open}</PanelTableTd>
                     <PanelTableTd colId="closed" className="px-5 py-3.5 text-right text-green-600 dark:text-green-400 font-medium">{row.closed}</PanelTableTd>
                     <PanelTableTd colId="avgCloseDays" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.avgCloseDays} gün</PanelTableTd>
                     <PanelTableTd colId="slaCompliance" className={`px-5 py-3.5 text-right font-bold ${slaColor}`}>%{sla}</PanelTableTd>
@@ -300,7 +300,7 @@ export default function DosyaPerformansPage() {
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="name" className="px-5 py-3 text-slate-700 dark:text-slate-200">{ins.name}</PanelTableTd>
                     <PanelTableTd colId="total" className="px-5 py-3 text-right font-medium text-slate-800 dark:text-slate-100">{ins.total}</PanelTableTd>
-                    <PanelTableTd colId="open" className="px-5 py-3 text-right text-blue-600 dark:text-blue-400">{ins.open}</PanelTableTd>
+                    <PanelTableTd colId="open" className="px-5 py-3 text-right text-brand-600 dark:text-blue-400">{ins.open}</PanelTableTd>
                     <PanelTableTd colId="closed" className="px-5 py-3 text-right text-green-600 dark:text-green-400">{ins.closed}</PanelTableTd>
                   </tr>
                 ))}

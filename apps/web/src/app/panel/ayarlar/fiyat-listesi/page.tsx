@@ -256,7 +256,7 @@ export default function FiyatListesiPage() {
           )}
           <button
             onClick={openAddWG}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -295,7 +295,7 @@ export default function FiyatListesiPage() {
           </div>
           <p className="text-sm font-medium text-slate-700 mb-1">Henüz iş grubu yok</p>
           <p className="text-xs text-slate-400 mb-4">İş grubu ekleyerek başlayın veya örnek veri yükleyin.</p>
-          <button onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button onClick={handleSeed} disabled={seeding} className="px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
             {seeding ? 'Yükleniyor...' : 'Örnek Veri Yükle'}
           </button>
         </div>
@@ -313,7 +313,7 @@ export default function FiyatListesiPage() {
                     onClick={() => toggleExpand(wg.id)}
                     className="flex-1 flex items-center gap-3 text-left"
                   >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-transform ${isOpen ? 'bg-blue-600' : 'bg-slate-100'}`}>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-transform ${isOpen ? 'bg-brand-600' : 'bg-slate-100'}`}>
                       <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90 text-white' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
@@ -322,7 +322,7 @@ export default function FiyatListesiPage() {
                       <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-900">{wg.name}</span>
                         <span className="text-xs text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded">{wg.code}</span>
-                        {wg.isSystem && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Sistem</span>}
+                        {wg.isSystem && <span className="text-xs bg-blue-50 text-brand-600 px-1.5 py-0.5 rounded font-medium">Sistem</span>}
                       </div>
                       {wg.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{wg.description}</p>}
                     </div>
@@ -331,7 +331,7 @@ export default function FiyatListesiPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openAddSG(wg.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-brand-600 hover:bg-blue-100 transition-colors"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -349,7 +349,7 @@ export default function FiyatListesiPage() {
                     {!wg.workSubGroups || wg.workSubGroups.length === 0 ? (
                       <div className="px-6 py-6 text-center">
                         <p className="text-xs text-slate-400">Bu grupta henüz alt grup yok.</p>
-                        <button onClick={() => openAddSG(wg.id)} className="mt-2 text-xs text-blue-600 hover:underline">Alt grup ekle</button>
+                        <button onClick={() => openAddSG(wg.id)} className="mt-2 text-xs text-brand-600 hover:underline">Alt grup ekle</button>
                       </div>
                     ) : (
                       <SettingsTable>

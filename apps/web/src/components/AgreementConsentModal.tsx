@@ -202,7 +202,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
               <p className="text-xs text-gray-500">
                 {typeLabel[current.type] ?? current.type} — v{current.version}
                 {pendingAgreements.length > 1 && (
-                  <span className="ml-2 text-blue-600">({currentIndex + 1}/{pendingAgreements.length})</span>
+                  <span className="ml-2 text-brand-600">({currentIndex + 1}/{pendingAgreements.length})</span>
                 )}
               </p>
             </div>
@@ -241,7 +241,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
           {/* Dijital imza */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Ad Soyad (Dijital İmza) <span className="text-red-500">*</span>
+              Ad Soyad (Dijital İmza) <span className="text-status-danger">*</span>
             </label>
             {expectedFullName && (
               <p className="mb-2 text-xs text-slate-500">
@@ -288,7 +288,7 @@ export default function AgreementConsentModal({ pendingAgreements, onAllAccepted
               disabled={!scrolledToBottom}
               className={`mt-0.5 w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
                 checked
-                  ? 'bg-blue-600 border-blue-600'
+                  ? 'bg-brand-600 border-brand-600'
                   : scrolledToBottom
                   ? 'bg-white border-gray-300 hover:border-blue-400'
                   : 'bg-gray-100 border-gray-200 cursor-not-allowed'

@@ -319,6 +319,9 @@ importers:
       axios:
         specifier: ^1.6.5
         version: 1.15.2
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       fabric:
         specifier: ^7.3.1
         version: 7.3.1
@@ -349,6 +352,9 @@ importers:
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@18.2.79)(react-dom@18.3.1)(react-is@18.3.1)(react@18.2.0)(redux@5.0.1)
+      tailwind-merge:
+        specifier: ^3.6.0
+        version: 3.6.0
       three:
         specifier: ^0.184.0
         version: 0.184.0
@@ -16865,6 +16871,10 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
+
+  /tailwind-merge@3.6.0:
+    resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
+    dev: false
 
   /tailwindcss@3.4.19:
     resolution: {integrity: sha512-3ofp+LL8E+pK/JuPLPggVAIaEuhvIz4qNcf3nA1Xn2o/7fb7s/TYpHhwGDv1ZU3PkBluUVaF8PyCHcm48cKLWQ==}

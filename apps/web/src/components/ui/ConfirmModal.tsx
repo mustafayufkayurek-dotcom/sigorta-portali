@@ -17,7 +17,7 @@ interface ConfirmModalProps {
 export function ConfirmModal({ open, title, message, confirmText = 'Onayla', cancelText = 'İptal', variant = 'danger', onConfirm, onCancel, loading }: ConfirmModalProps) {
   if (!open) return null;
 
-  const btnClass = variant === 'danger' ? 'bg-red-600 hover:bg-red-700 text-white' : variant === 'warning' ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white';
+  const btnClass = variant === 'danger' ? 'bg-red-600 hover:bg-red-700 text-white' : variant === 'warning' ? 'bg-status-warning hover:bg-amber-600 text-white' : 'bg-brand-600 hover:bg-blue-700 text-white';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

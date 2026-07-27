@@ -342,8 +342,8 @@ export function AlternativeVendorServicePanel({
           }}
           className={
             compact
-              ? 'w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors'
-              : 'w-full flex items-center justify-center gap-2 rounded-xl py-3 px-3 bg-blue-600 text-white border-2 border-blue-700 text-sm sm:text-[15px] font-bold shadow-md shadow-blue-200/60 ring-2 ring-blue-100 hover:bg-blue-700 transition-colors'
+              ? 'w-full flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 bg-brand-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors'
+              : 'w-full flex items-center justify-center gap-2 rounded-xl py-3 px-3 bg-brand-600 text-white border-2 border-blue-700 text-sm sm:text-[15px] font-bold shadow-md shadow-blue-200/60 ring-2 ring-blue-100 hover:bg-blue-700 transition-colors'
           }
           data-testid="alternatif-tedarikci-cta"
         >
@@ -386,7 +386,7 @@ export function AlternativeVendorServicePanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void confirmAction()}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
               >
                 {busy
                   ? 'Kaydediliyor...'

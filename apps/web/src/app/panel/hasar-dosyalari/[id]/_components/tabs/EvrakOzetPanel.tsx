@@ -32,17 +32,17 @@ const TONE_STYLES: Record<StatusTone, { badge: string; stripe: string; icon: str
   warning: {
     badge: 'bg-amber-50 text-amber-800 ring-amber-100',
     stripe: 'bg-amber-400',
-    icon: 'text-amber-500',
+    icon: 'text-status-warning',
   },
   success: {
     badge: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
-    stripe: 'bg-emerald-500',
-    icon: 'text-emerald-500',
+    stripe: 'bg-status-success',
+    icon: 'text-status-success',
   },
   danger: {
     badge: 'bg-red-50 text-red-700 ring-red-100',
     stripe: 'bg-red-400',
-    icon: 'text-red-500',
+    icon: 'text-status-danger',
   },
 };
 

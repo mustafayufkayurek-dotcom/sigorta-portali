@@ -1,0 +1,28 @@
+{
+  "url": "http://localhost:3001/docs/01-personel-kullanim-kilavuzu.html",
+  "network": [
+    "http://localhost:3001/docs/meridyen-logo-original.png"
+  ],
+  "guides": [
+    {
+      "file": "apps/web/public/docs/01-personel-kullanim-kilavuzu.html",
+      "hasOfficial": true,
+      "hasLegacyJpeg": false
+    },
+    {
+      "file": "apps/web/public/docs/02-sigorta-portal-kilavuzu.html",
+      "hasOfficial": true,
+      "hasLegacyJpeg": false
+    },
+    {
+      "file": "apps/web/public/docs/03-eksper-portal-tanitim.html",
+      "hasOfficial": true,
+      "hasLegacyJpeg": false
+    },
+    {
+      "file": "apps/web/public/docs/04-broker-portal-kilavuzu.html",
+      "hasOfficial": true,
+      "hasLegacyJpeg": false
+    }
+  ]
+}

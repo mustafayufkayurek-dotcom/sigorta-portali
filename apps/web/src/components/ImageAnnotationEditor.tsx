@@ -785,7 +785,7 @@ export default function ImageAnnotationEditor({
             İptal
           </button>
           <button type="button" onClick={handleSave} disabled={saving}
-            className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+            className="px-5 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
             {saving ? (
               <>
                 <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
@@ -827,7 +827,7 @@ export default function ImageAnnotationEditor({
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     tool === t.id
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'text-gray-400 hover:text-white hover:bg-gray-700'
                   }`}
                   title={t.label}
@@ -886,7 +886,7 @@ export default function ImageAnnotationEditor({
                 onClick={() => setStrokeWidth(sw)}
                 title={STROKE_LABELS[sw]}
                 className={`flex-1 flex items-center justify-center py-2 rounded-lg transition-colors ${
-                  strokeWidth === sw ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                  strokeWidth === sw ? 'bg-brand-600' : 'bg-gray-700 hover:bg-gray-600'
                 }`}
               >
                 <div style={{ width: 20, height: sw, background: 'white', borderRadius: 2 }} />

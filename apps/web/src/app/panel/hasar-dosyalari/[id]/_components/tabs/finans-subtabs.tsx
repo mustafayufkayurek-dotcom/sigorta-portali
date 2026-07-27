@@ -109,14 +109,26 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
     try {
       await axios.post(`${API}/budget-versions/${id}/submit`, {}, { headers: authHeader() });
       load();
-    } catch (e) { console.error(e); }
+      showToast('success', 'Bütçe Onaya Gönderildi');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Bütçe onaya gönderilemedi');
+    }
+  };
+
+  const REVIEW_STATUS_LABEL: Record<string, string> = {
+    approved: 'Bütçe Onaylandı',
+    rejected: 'Bütçe Reddedildi',
+    revision: 'Revizyon İstendi',
   };
 
   const handleReviewVersion = async (id: string, status: string) => {
     try {
       await axios.post(`${API}/budget-versions/${id}/review`, { status }, { headers: authHeader() });
       load();
-    } catch (e) { console.error(e); }
+      showToast('success', REVIEW_STATUS_LABEL[status] ?? 'Bütçe Durumu Güncellendi');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Bütçe durumu güncellenemedi');
+    }
   };
 
   const handleAddItem = async () => {
@@ -162,17 +174,25 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
   };
 
   const handleRemoveItem = async (itemId: string) => {
+    if (!window.confirm('Bu bütçe kalemini silmek istediğinize emin misiniz?')) return;
     try {
       await axios.delete(`${API}/budget-items/${itemId}`, { headers: authHeader() });
       load();
-    } catch (e) { console.error(e); }
+      showToast('success', 'Bütçe Kalemi Silindi');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Kalem silinemedi');
+    }
   };
 
   const handleRemoveCost = async (id: string) => {
+    if (!window.confirm('Bu maliyet kaydını silmek istediğinize emin misiniz?')) return;
     try {
       await axios.delete(`${API}/cost-entries/${id}`, { headers: authHeader() });
       load();
-    } catch (e) { console.error(e); }
+      showToast('success', 'Maliyet Kaydı Silindi');
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Maliyet kaydı silinemedi');
+    }
   };
 
   if (loading) return <div className="text-slate-400 py-8 text-center text-sm">Yükleniyor…</div>;
@@ -284,7 +304,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
                       <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">{fmtCurrency(item.totalAmount)}</td>
                       <td className="px-3 py-2.5">
                         {['draft', 'revision'].includes(activeVersion.status) && (
-                          <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-xs text-red-500 hover:text-red-700">Sil</button>
+                          <button type="button" onClick={() => handleRemoveItem(item.id)} className="text-xs text-status-danger hover:text-red-700">Sil</button>
                         )}
                       </td>
                     </tr>
@@ -472,7 +492,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-slate-500">Tedarikçi (Manuel)</label>
-                    <button type="button" onClick={() => setItemManualVendor(false)} className="text-xs text-indigo-600 hover:underline">Önerilerden Seç</button>
+                    <button type="button" onClick={() => setItemManualVendor(false)} className="text-xs text-brand-600 hover:underline">Önerilerden Seç</button>
                   </div>
                   <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={itemForm.vendorId} onChange={(e) => setItemForm((p) => ({ ...p, vendorId: e.target.value }))}>
                     <option value="">Tedarikçi Seçin (Opsiyonel)</option>
@@ -496,7 +516,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
               )}
             </div>
             <div className="flex gap-2 mt-4">
-              <button type="button" onClick={handleAddItem} disabled={saving || !itemForm.description || !itemForm.unitPrice} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+              <button type="button" onClick={handleAddItem} disabled={saving || !itemForm.description || !itemForm.unitPrice} className="flex-1 bg-brand-600 text-white py-2 rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50">
                 {saving ? 'Kaydediliyor...' : 'Ekle'}
               </button>
               <button type="button" onClick={() => setShowItemModal(false)} className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600">İptal</button>
@@ -575,7 +595,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-slate-500">Tedarikçi (Manuel)</label>
-                    <button type="button" onClick={() => setCostManualVendor(false)} className="text-xs text-indigo-600 hover:underline">Önerilerden Seç</button>
+                    <button type="button" onClick={() => setCostManualVendor(false)} className="text-xs text-brand-600 hover:underline">Önerilerden Seç</button>
                   </div>
                   <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={costForm.vendorId} onChange={(e) => setCostForm((p) => ({ ...p, vendorId: e.target.value }))}>
                     <option value="">Tedarikçi Seçin (Opsiyonel)</option>
@@ -727,10 +747,18 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
     finally { setSaving(false); }
   };
 
+  const INVOICE_STATUS_CHANGE_LABEL: Record<string, string> = {
+    sent: 'Fatura Gönderildi',
+    paid: 'Fatura Ödendi Olarak İşaretlendi',
+    cancelled: 'Fatura İptal Edildi',
+  };
+
   const handleStatusChange = async (id: string, status: string) => {
+    if (status === 'cancelled' && !window.confirm('Bu faturayı iptal etmek istediğinize emin misiniz?')) return;
     try {
       await axios.patch(`${API}/invoices/${id}/status`, { status }, { headers: authHeader() });
       load();
+      showToast('success', INVOICE_STATUS_CHANGE_LABEL[status] ?? 'Fatura Durumu Güncellendi');
     } catch (e: any) { showToast('error', e?.response?.data?.message ?? 'Hata'); }
   };
 
@@ -935,7 +963,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
                   </td>
                   <td className="px-3 py-2.5">
                     {inv.status === 'draft' && (
-                      <button type="button" onClick={() => handleStatusChange(inv.id, 'sent')} className="text-xs text-blue-600 hover:underline mr-2">
+                      <button type="button" onClick={() => handleStatusChange(inv.id, 'sent')} className="text-xs text-brand-600 hover:underline mr-2">
                         Gönder
                       </button>
                     )}
@@ -945,7 +973,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
                       </button>
                     )}
                     {!['cancelled', 'paid'].includes(inv.status) && (
-                      <button type="button" onClick={() => handleStatusChange(inv.id, 'cancelled')} className="text-xs text-red-500 hover:underline">
+                      <button type="button" onClick={() => handleStatusChange(inv.id, 'cancelled')} className="text-xs text-status-danger hover:underline">
                         İptal
                       </button>
                     )}
@@ -1276,11 +1304,11 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
                   <td className="px-3 py-2.5 text-xs">
                     {p.paymentType === 'outgoing' && p.payerType === 'vendor' ? (
                       p.receiptStorageKey ? (
-                        <button type="button" onClick={() => openReceipt(p.id)} className="text-indigo-600 hover:underline">
+                        <button type="button" onClick={() => openReceipt(p.id)} className="text-brand-600 hover:underline">
                           {p.receiptFileName ?? 'Dekont'}
                         </button>
                       ) : (
-                        <label className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 cursor-pointer">
+                        <label className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 cursor-pointer">
                           <input
                             type="file"
                             accept="image/*,.pdf"

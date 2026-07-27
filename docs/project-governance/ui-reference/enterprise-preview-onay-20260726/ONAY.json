@@ -1,0 +1,16 @@
+{
+  "at": "2026-07-26T10:34:39.375Z",
+  "subject": "Eksper Dosyalarım enterprise sonuç önerisi",
+  "shell": "Meridyen üst bar + Eksper sol menü korunur",
+  "columns": [
+    "Dosya No",
+    "Sigorta Şirketi",
+    "Konu",
+    "Durum",
+    "Tarih",
+    "Akış"
+  ],
+  "preview": "http://localhost:3001/enterprise-preview/eksper-dosyalarim-enterprise-final.html",
+  "jpeg": "05-dosyalarim-enterprise-final.jpeg",
+  "appliedToProduction": false
+}

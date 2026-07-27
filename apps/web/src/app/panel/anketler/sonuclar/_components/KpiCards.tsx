@@ -14,7 +14,7 @@ import {
 import type { KpiCardModel } from '../_lib/survey-results-types';
 
 const TONE: Record<KpiCardModel['iconTone'], string> = {
-  blue: 'bg-blue-50 text-blue-600',
+  blue: 'bg-blue-50 text-brand-600',
   green: 'bg-emerald-50 text-emerald-600',
   orange: 'bg-orange-50 text-orange-600',
   purple: 'bg-violet-50 text-violet-600',
