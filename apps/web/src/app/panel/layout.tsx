@@ -451,39 +451,58 @@ function Navbar({
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-      <div className="w-full px-2 sm:px-3 lg:px-5">
-        <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center gap-2 sm:gap-3`}>
-          {/* Zone A — ☰ + resmi logo */}
-          <div className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4">
-            {onToggleSidebar ? (
-              <button
-                type="button"
-                onClick={onToggleSidebar}
-                className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
-                title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-                aria-label={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            ) : null}
+      <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full items-center`}>
+        {/* Marka rayı — sidebar genişliği ile aynı; arama içerik sol kenarına hizalanır */}
+        <div
+          className={`hidden h-full shrink-0 items-center border-r border-transparent md:flex ${
+            sidebarCollapsed
+              ? 'w-[72px] min-w-[72px] max-w-[72px] justify-center px-1'
+              : 'w-[260px] min-w-[260px] max-w-[260px] gap-3 px-4'
+          }`}
+        >
+          {onToggleSidebar ? (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
+              title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+              aria-label={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          ) : null}
+          {!sidebarCollapsed ? (
             <Link
               href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : '/panel'}
-              className="hidden items-center sm:inline-flex"
+              className="inline-flex min-w-0 items-center"
               title="Panel Ana Sayfa"
               aria-label="Meridyen Panel"
             >
               <BrandLogo alt="Meridyen Assistance" variant="topbar" />
             </Link>
-          </div>
+          ) : null}
+        </div>
 
-          {/* Zone B — Arama sola yaslı (profil alanına yer bırakır) */}
-          <div className="hidden min-w-0 flex-1 md:block md:max-w-sm lg:max-w-md xl:max-w-lg">
+        {/* İçerik rayı — main ile aynı yatay padding (px-3 sm:px-4) */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 sm:px-4">
+          {/* Mobil logo */}
+          <Link
+            href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : '/panel'}
+            className="inline-flex shrink-0 items-center md:hidden"
+            title="Panel Ana Sayfa"
+            aria-label="Meridyen Panel"
+          >
+            <BrandLogo alt="Meridyen Assistance" variant="topbar" />
+          </Link>
+
+          {/* Arama — Dosyalarım çerçevesi sol kenarı ile hizalı */}
+          <div className="hidden min-w-0 max-w-md flex-1 md:block lg:max-w-lg">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="flex w-full min-w-0 items-center gap-2 rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-slate-400 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-900"
+              className="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-[#E5E7EB] bg-slate-50/80 px-3 text-sm text-slate-400 transition-all hover:border-slate-300 hover:bg-white hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
               title={`Global Arama (${searchShortcut})`}
               aria-keyshortcuts="Control+K Meta+K"
             >
@@ -493,13 +512,13 @@ function Navbar({
               <span className="min-w-0 flex-1 truncate text-left text-xs text-slate-400">
                 Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…
               </span>
-              <kbd className="hidden shrink-0 items-center gap-0.5 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 lg:inline-flex dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <kbd className="hidden shrink-0 items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-medium text-slate-500 lg:inline-flex dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 {searchShortcut}
               </kbd>
             </button>
           </div>
 
-          {/* Zone C — sağ aksiyonlar + profil (shrink-0, uzun isim truncate) */}
+          {/* Sağ aksiyonlar + profil */}
           <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
 
             {/* Mobil arama ikonu */}

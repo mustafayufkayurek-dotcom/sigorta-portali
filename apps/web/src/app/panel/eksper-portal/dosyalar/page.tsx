@@ -298,24 +298,26 @@ export default function EksperDosyalarPage() {
             key={card.href}
             type="button"
             onClick={() => router.push(card.href)}
-            className={`rounded-xl border px-3 py-3 text-center transition ${
+            className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition ${
               card.active
                 ? 'border-brand-200 bg-brand-50 ring-1 ring-brand-100'
                 : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
             }`}
           >
             <span
-              className={`mx-auto inline-flex h-9 w-9 items-center justify-center rounded-xl ${card.iconClass}`}
+              className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${card.iconClass}`}
               aria-hidden
             >
-              <card.Icon className="h-4 w-4" strokeWidth={1.75} />
+              <card.Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
             </span>
-            <p className={`mt-2 text-[11px] font-medium ${card.active ? 'text-brand-700' : 'text-slate-500'}`}>
-              {card.label}
-            </p>
-            <p className={`mt-0.5 text-lg font-bold tabular-nums ${card.active ? 'text-brand-800' : 'text-slate-900'}`}>
-              {card.count}
-            </p>
+            <span className="min-w-0 flex-1">
+              <p className={`truncate text-[11px] font-medium leading-tight ${card.active ? 'text-brand-700' : 'text-slate-500'}`}>
+                {card.label}
+              </p>
+              <p className={`text-base font-bold tabular-nums leading-tight ${card.active ? 'text-brand-800' : 'text-slate-900'}`}>
+                {card.count}
+              </p>
+            </span>
           </button>
         ))}
       </div>

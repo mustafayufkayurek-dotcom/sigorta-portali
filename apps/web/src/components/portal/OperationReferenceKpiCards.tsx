@@ -48,24 +48,26 @@ type OperationReferenceKpiCardsProps = {
 
 export default function OperationReferenceKpiCards({ stats }: OperationReferenceKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       {REFERENCE_KPI_CARDS.map((card) => {
         const palette = KPI_ICON_COLORS[card.icon] ?? KPI_ICON_COLORS.residential;
         const value = stats[card.key];
         return (
           <div
             key={card.key}
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-3.5 text-center shadow-sm"
+            className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
           >
             <div
-              className={`mx-auto flex h-9 w-9 items-center justify-center rounded-xl ${palette.bg} ${palette.text}`}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${palette.bg} ${palette.text}`}
             >
               <KpiIcon icon={card.icon} />
             </div>
-            <p className="mt-2 text-[11px] font-medium leading-tight text-slate-500">{card.label}</p>
-            <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-slate-900">
-              {formatReferenceKpiValue(value)}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] font-medium leading-tight text-slate-500">{card.label}</p>
+              <p className="text-base font-bold tabular-nums tracking-tight text-slate-900">
+                {formatReferenceKpiValue(value)}
+              </p>
+            </div>
           </div>
         );
       })}

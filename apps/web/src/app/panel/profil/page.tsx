@@ -71,11 +71,11 @@ const inputCls =
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-50">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-2.5">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
       </div>
-      <div className="px-6 py-5">{children}</div>
+      <div className="px-4 py-3.5">{children}</div>
     </div>
   );
 }
@@ -237,43 +237,43 @@ export default function ProfilPage() {
   const mustChangePassword = profile.mustChangePassword === true;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl space-y-4">
       {mustChangePassword && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-          <p className="text-sm font-semibold text-amber-900">İlk giriş — şifrenizi güncellemeniz gerekiyor</p>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">İlk Giriş — Şifrenizi Güncellemeniz Gerekiyor</p>
           <p className="mt-1 text-sm text-amber-800">
             Size iletilen geçici şifreyle giriş yaptınız. Devam etmeden önce aşağıdan kalıcı bir şifre belirleyin.
           </p>
         </div>
       )}
       {/* Profil başlık kartı */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <div className="flex items-center gap-5">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
           {/* Avatar */}
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-md">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-base font-bold text-white shadow-sm">
             {initials}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-slate-900">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold text-slate-900">
               {profile.firstName} {profile.lastName}
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">{profile.email}</p>
-            <div className="flex items-center gap-3 mt-2">
+            <p className="mt-0.5 text-sm text-slate-500">{profile.email}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {profile.role && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
                   {profile.role.name}
                 </span>
               )}
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
                   profile.status === 'active'
-                    ? 'bg-green-50 text-green-700 border border-green-100'
-                    : 'bg-slate-50 text-slate-500 border border-slate-100'
+                    ? 'border-green-100 bg-green-50 text-green-700'
+                    : 'border-slate-100 bg-slate-50 text-slate-500'
                 }`}
               >
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${profile.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`}
+                  className={`h-1.5 w-1.5 rounded-full ${profile.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`}
                 />
                 {profile.status === 'active' ? 'Aktif' : 'Pasif'}
               </span>
