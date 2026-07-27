@@ -106,7 +106,7 @@ export function DashboardHeader({
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/panel/hasar-dosyalari?yeni=1"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
                   >
                     <span className="text-sm font-semibold leading-none">+</span>
                     Yeni Hasar
@@ -122,9 +122,9 @@ export function DashboardHeader({
                   ) : null}
                   <Link
                     href="/panel/pazartesi-toplantisi"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#2563EB] bg-white px-3 py-2 text-xs font-medium text-[#1E40AF] transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-600 bg-white px-3 py-2 text-xs font-medium text-brand-800 transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
                   >
-                    <CalendarDays className="h-4 w-4 text-[#2563EB]" />
+                    <CalendarDays className="h-4 w-4 text-brand-600" />
                     Pazartesi Toplantısı
                   </Link>
                 </div>
@@ -132,7 +132,7 @@ export function DashboardHeader({
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/panel/hasar-dosyalari?yeni=1"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
                   >
                     <span className="text-sm font-semibold leading-none">+</span>
                     Yeni Hasar
@@ -151,14 +151,14 @@ export function DashboardHeader({
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/panel/hasar-dosyalari?status=open"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-[#1E40AF] sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
                   >
                     <HASAR_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Dosyalarıma Git
                   </Link>
                   <Link
                     href="/panel/carilerim"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#2563EB] bg-white px-3 py-2 text-xs font-medium text-[#1E40AF] transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-600 bg-white px-3 py-2 text-xs font-medium text-brand-800 transition-colors hover:bg-blue-50 dark:border-blue-500 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:text-sm"
                   >
                     Carilerim
                   </Link>

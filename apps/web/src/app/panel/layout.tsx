@@ -904,13 +904,13 @@ function PanelSidebar({
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
         {!collapsed && link.alertCount && link.alertCount > 0 ? (
-          <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-[#EF4444] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-status-danger px-1.5 py-0.5 text-[10px] font-semibold text-white">
             {link.alertCount > 99 ? '99+' : link.alertCount}
           </span>
         ) : null}
         {collapsed && link.alertCount && link.alertCount > 0 ? (
           <span
-            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#EF4444]"
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-status-danger"
             aria-hidden="true"
           />
         ) : null}

@@ -49,7 +49,7 @@ export function TeamWorkloadChart({
               <div className={`flex w-full items-end justify-center ${compact ? 'h-8' : 'h-14'}`}>
                 <div
                   className={`w-full max-w-[28px] rounded-t-md transition-all ${
-                    isToday ? 'bg-[#2563EB]' : 'bg-[#1e3a5f] dark:bg-blue-800'
+                    isToday ? 'bg-brand-600' : 'bg-[#1e3a5f] dark:bg-brand-800'
                   }`}
                   style={{ height: `${heightPct}%` }}
                   title={`${item.label}: ${item.count} hareket`}
