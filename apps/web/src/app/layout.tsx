@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import AuthStorageInit from '@/components/AuthStorageInit';
+import PanelThemeInit from '@/components/panel/PanelThemeInit';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,11 +25,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var r=localStorage.getItem('app-theme');if(!r)return;var s=JSON.parse(r);var m=s&&s.mode?String(s.mode):'light';var dark=m==='dark'||m==='corporate-dark';var attr=m==='corporate-blue'?'corporate-blue':m==='corporate-dark'?'corporate-dark':m==='high-contrast'?'high-contrast':m==='dark'?'dark':'light';var h=document.documentElement;h.setAttribute('data-panel-theme',attr);h.classList.toggle('dark',dark);h.classList.toggle('high-contrast',attr==='high-contrast');h.style.colorScheme=dark?'dark':'light';}catch(e){}})();`,
+          }}
+        />
       </head>
       <body>
         <AuthStorageInit />
+        <PanelThemeInit />
         {children}
       </body>
     </html>

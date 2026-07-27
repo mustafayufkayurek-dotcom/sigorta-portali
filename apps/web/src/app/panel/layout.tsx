@@ -452,8 +452,8 @@ function Navbar({
   return (
     <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className="w-full px-2 sm:px-3 lg:px-5">
-        <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center justify-between gap-3`}>
-          {/* Zone A — ☰ + resmi logo (RC1: panel + portal aynı topbar chrome) */}
+        <div className={`flex ${PANEL_NAVBAR_HEIGHT} items-center gap-2 sm:gap-3`}>
+          {/* Zone A — ☰ + resmi logo */}
           <div className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4">
             {onToggleSidebar ? (
               <button
@@ -478,33 +478,35 @@ function Navbar({
             </Link>
           </div>
 
-          {/* Center + right */}
-          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
-
-            {/* Global Arama — Ctrl+K / ⌘+K */}
+          {/* Zone B — Arama sola yaslı (profil alanına yer bırakır) */}
+          <div className="hidden min-w-0 flex-1 md:block md:max-w-sm lg:max-w-md xl:max-w-lg">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex min-w-0 flex-1 items-center gap-2 max-w-xl px-3 py-2 rounded-lg border border-[#E5E7EB] text-slate-400 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-900"
+              className="flex w-full min-w-0 items-center gap-2 rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-slate-400 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-900"
               title={`Global Arama (${searchShortcut})`}
               aria-keyshortcuts="Control+K Meta+K"
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="flex-1 truncate text-left text-xs text-slate-400">
+              <span className="min-w-0 flex-1 truncate text-left text-xs text-slate-400">
                 Dosya, Müşteri, Personel, Telefon, Plaka, Tedarikçi…
               </span>
-              <kbd className="hidden lg:inline-flex shrink-0 items-center gap-0.5 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              <kbd className="hidden shrink-0 items-center gap-0.5 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 lg:inline-flex dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
                 {searchShortcut}
               </kbd>
             </button>
+          </div>
+
+          {/* Zone C — sağ aksiyonlar + profil (shrink-0, uzun isim truncate) */}
+          <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
 
             {/* Mobil arama ikonu */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors dark:hover:bg-slate-800"
               title="Ara"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,28 +666,29 @@ function Navbar({
             <PanelThemeToggle />
 
             {/* Profil Dropdown */}
-            <div className="relative" ref={profileDropRef}>
+            <div className="relative min-w-0 max-w-[9.5rem] sm:max-w-[11rem] lg:max-w-[13rem]" ref={profileDropRef}>
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
-                className="flex items-center gap-2 py-1.5 pl-2 pr-1 sm:pr-1.5 rounded-xl hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
+                className="flex max-w-full items-center gap-2 rounded-xl py-1.5 pl-2 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
+                title={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Profil'}
               >
-                <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-200">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
-                <span className="hidden sm:block text-sm font-medium text-slate-700 max-w-[120px] truncate dark:text-slate-200">
+                <span className="hidden min-w-0 truncate text-sm font-medium text-slate-700 sm:block dark:text-slate-200">
                   {user?.firstName} {user?.lastName}
                 </span>
-                <svg className="hidden sm:block w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="hidden h-3 w-3 shrink-0 text-slate-400 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               {profileDropOpen && (
                 <>
-                  <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100/80 py-1.5 z-50">
-                    <div className="px-4 py-2.5 border-b border-slate-100">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{user?.firstName} {user?.lastName}</p>
-                      <p className="text-xs text-slate-400 truncate">{user?.role?.name ?? roleCode}</p>
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                    <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-700">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName}</p>
+                      <p className="truncate text-xs text-slate-400">{user?.role?.name ?? roleCode}</p>
                     </div>
                     <Link href="/panel/profil" className="flex items-center gap-2 mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors">
                       <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1023,7 +1026,7 @@ function PanelSidebar({
 
   return (
     <aside
-      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out md:flex ${
+      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
         collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
       style={

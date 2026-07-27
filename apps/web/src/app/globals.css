@@ -226,10 +226,20 @@
 .dark .table-container,
 .dark .filter-bar,
 .dark .stat-card,
-.dark [class*="shadow-card"] {
+.dark [class*="shadow-card"],
+.dark [class*="rounded-card"] {
   background-color: #0f172a !important;
   border-color: #253247 !important;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .text-slate-900 {
+  color: #e5edf7 !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-800 {
+  color: #cbd5e1 !important;
 }
 
 .dark .bg-slate-50,
