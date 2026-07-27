@@ -353,7 +353,7 @@ export function LocationPreview({ lat, lng, onEdit, onClear, accentColor = 'blue
   };
 
   const accent = accentColor === 'indigo'
-    ? { btn: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200', pin: 'text-indigo-600', cta: 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700' }
+    ? { btn: 'bg-brand-50 text-brand-700 hover:bg-brand-100 border-brand-200', pin: 'text-brand-600', cta: 'bg-brand-600 text-white border-brand-600 hover:bg-brand-700' }
     : accentColor === 'emerald'
       ? { btn: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200', pin: 'text-emerald-600', cta: 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' }
       : { btn: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200', pin: 'text-brand-600', cta: 'bg-brand-600 text-white border-brand-600 hover:bg-blue-700' };

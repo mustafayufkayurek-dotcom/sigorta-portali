@@ -50,8 +50,8 @@ function contextAction(statusName?: string | null): {
   Icon: typeof FileSearch;
 } {
   const queue = classifyExpertQueue(statusName);
-  if (queue === 'inceleme') {
-    return { label: 'İncelemeye Git', Icon: FileSearch };
+  if (queue === 'onay') {
+    return { label: 'Onaya Git', Icon: FileSearch };
   }
   if (queue === 'rapor') {
     return { label: 'Rapora Git', Icon: PenLine };
@@ -151,11 +151,11 @@ export function ExpertPortalRowActions({
             Dosyalarım
           </Link>
           <Link
-            href="/panel/eksper-portal/dosyalar?queue=inceleme"
+            href="/panel/eksper-portal/dosyalar?queue=onay"
             className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
             onClick={() => setOpen(false)}
           >
-            İnceleme Bekleyenler
+            Onay Bekliyor
           </Link>
           <Link
             href="/panel/eksper-portal/dosyalar?queue=rapor"
@@ -165,11 +165,11 @@ export function ExpertPortalRowActions({
             Rapor Bekleyenler
           </Link>
           <Link
-            href="/panel/eksper-portal/onaylar"
+            href="/panel/eksper-portal/dosyalar?queue=onaylanan"
             className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
             onClick={() => setOpen(false)}
           >
-            Onaylarım
+            Onaylanan Dosyalar
           </Link>
         </div>
       )}

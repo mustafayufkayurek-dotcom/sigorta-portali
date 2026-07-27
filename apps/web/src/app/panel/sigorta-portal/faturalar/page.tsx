@@ -181,11 +181,11 @@ export default function SigortaFaturalarPage() {
                     <tbody className="divide-y divide-slate-100">
                       {invoices.map((inv) => (
                         <tr key={inv.id} className="transition-colors hover:bg-slate-50">
-                          <PanelTableTd colId="invoiceNo" className="px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNo ?? '—'}</PanelTableTd>
-                          <PanelTableTd colId="invoiceDate" className="px-4 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</PanelTableTd>
-                          <PanelTableTd colId="dueDate" className="px-4 py-3 text-sm text-slate-600">{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</PanelTableTd>
-                          <PanelTableTd colId="totalAmount" className="px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
-                          <PanelTableTd colId="status" className="px-4 py-3">
+                          <PanelTableTd colId="invoiceNo" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNo ?? '—'}</PanelTableTd>
+                          <PanelTableTd colId="invoiceDate" className="table-td-center px-4 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</PanelTableTd>
+                          <PanelTableTd colId="dueDate" className="table-td-center px-4 py-3 text-sm text-slate-600">{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</PanelTableTd>
+                          <PanelTableTd colId="totalAmount" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
+                          <PanelTableTd colId="status" className="table-td-center px-4 py-3">
                             <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
                               {statusLabel(inv.status)}
                             </span>

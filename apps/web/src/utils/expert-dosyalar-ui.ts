@@ -7,6 +7,25 @@ export type ExpertSlaBadge = {
   tone: ExpertSlaTone;
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** SLA bitişine göre gecikmiş gün sayısı (gecikme yoksa 0; tarih yoksa null). */
+export function expertDelayDays(input: {
+  slaDueAt?: string | null;
+  delayRisk?: boolean;
+}): number | null {
+  if (!input.slaDueAt) {
+    return input.delayRisk ? null : 0;
+  }
+  const due = new Date(input.slaDueAt).getTime();
+  if (Number.isNaN(due)) return null;
+  const overdue = Math.ceil((Date.now() - due) / DAY_MS);
+  if (overdue > 0 || input.delayRisk) {
+    return Math.max(overdue, input.delayRisk ? 1 : overdue);
+  }
+  return 0;
+}
+
 export function expertSlaBadge(input: {
   slaDueAt?: string | null;
   delayRisk?: boolean;
@@ -21,7 +40,7 @@ export function expertSlaBadge(input: {
   }
   const due = new Date(input.slaDueAt).getTime();
   if (Number.isNaN(due)) return { text: '—', tone: 'muted' };
-  const days = Math.ceil((due - Date.now()) / (24 * 60 * 60 * 1000));
+  const days = Math.ceil((due - Date.now()) / DAY_MS);
   if (days < 0 || input.delayRisk) {
     return { text: 'Süre Aşımı', tone: 'red' };
   }

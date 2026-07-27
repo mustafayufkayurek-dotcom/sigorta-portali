@@ -138,7 +138,7 @@ export function ExpertOperationHistory({ claimFileId, fileCreatedAt }: ExpertOpe
 
   return (
     <div className="space-y-0" data-testid="eksper-operation-history">
-      <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-400">
+      <h4 className="mb-3 text-[11px] font-semibold tracking-wide text-slate-400">
         Operasyon Geçmişi
       </h4>
       {ordered.map((entry, idx) => (

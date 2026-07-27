@@ -881,6 +881,95 @@ export class ClaimFilesService {
     };
   }
 
+  /**
+   * Eksper bağımsız silme yapamaz — yöneticiye in-app bildirim + not + aktivite.
+   * outcome=requested → talep iletildi
+   * outcome=cancelled → vazgeçildi (yine admin bilgilendirilir)
+   */
+  async notifyAdminDeleteIntent(
+    id: string,
+    requestingUser: { id: string; roleCode?: string },
+    outcome: 'requested' | 'cancelled',
+  ) {
+    if (!requestingUser?.id) {
+      throw new BadRequestException('Kullanıcı bilgisi bulunamadı.');
+    }
+
+    await this.findOne(id, {
+      id: requestingUser.id,
+      roleCode: requestingUser.roleCode ?? 'expert',
+    });
+
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id },
+      select: { fileNo: true },
+    });
+    if (!claimFile) throw new NotFoundException('Dosya bulunamadı.');
+
+    const actor = await this.prisma.user.findUnique({
+      where: { id: requestingUser.id },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const actorName =
+      `${actor?.firstName ?? ''} ${actor?.lastName ?? ''}`.trim() ||
+      actor?.email ||
+      'Eksper';
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'ADMIN', 'ops_manager', 'manager'] } },
+      },
+      select: { id: true },
+    });
+
+    const isRequest = outcome === 'requested';
+    const title = isRequest ? 'Dosya Silme Talebi' : 'Dosya Silme Talebi İptal';
+    const body = isRequest
+      ? `${actorName}, ${claimFile.fileNo} dosyası için silme talebi gönderdi.`
+      : `${actorName}, ${claimFile.fileNo} dosyası için silme talebinden vazgeçti.`;
+
+    if (admins.length > 0) {
+      await this.prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          type: isRequest ? 'expert_delete_request' : 'expert_delete_request_cancelled',
+          title,
+          body,
+          channel: 'in_app',
+          status: 'pending',
+          relatedEntityType: 'claim_file',
+          relatedEntityId: id,
+        })),
+      });
+    }
+
+    await this.prisma.note.create({
+      data: {
+        claimFileId: id,
+        noteType: isRequest ? 'delete_request' : 'delete_request_cancelled',
+        content: body,
+        isPrivate: false,
+        authorUserId: requestingUser.id,
+      },
+    });
+
+    await this.logActivity({
+      claimFileId: id,
+      action: 'NOTE_ADDED',
+      actorId: requestingUser.id,
+      actorRole: requestingUser.roleCode ?? 'expert',
+      description: body,
+      metadata: { kind: 'expert_delete_intent', outcome },
+    });
+
+    return {
+      outcome,
+      notifiedCount: admins.length,
+      fileNo: claimFile.fileNo,
+    };
+  }
+
   private async resolveInsuredNameForCreate(
     explicit: string | null,
     customerId: string | null,

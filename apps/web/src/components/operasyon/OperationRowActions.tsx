@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
@@ -24,6 +25,8 @@ export type OperationRowActionsProps = {
   approval72hExceeded?: boolean;
   onDeleteRequest?: () => void;
   onEmailRequest?: () => void;
+  /** Ortak Not Yaz (tercihe bağlı e-posta) — verilirse dosya detayına gitmez */
+  onAddNote?: () => void;
 };
 
 const iconBtnClass =
@@ -38,20 +41,61 @@ export function OperationRowActions({
   approval72hExceeded,
   onDeleteRequest,
   onEmailRequest,
+  onAddNote,
 }: OperationRowActionsProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updateMenuPos = () => {
+    const btn = moreBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 180;
+    const left = Math.min(
+      Math.max(8, rect.right - menuWidth),
+      window.innerWidth - menuWidth - 8,
+    );
+    setMenuPos({ top: rect.bottom + 4, left });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    const onScrollOrResize = () => updateMenuPos();
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   const detailHref =
@@ -170,13 +214,55 @@ export function OperationRowActions({
       type="button"
       disabled={opts?.disabled}
       className={`w-full text-left px-3 py-2 hover:bg-slate-50 disabled:opacity-40 ${
-        opts?.danger ? 'text-red-700 hover:bg-red-50' : 'text-slate-700'
+        opts?.danger ? 'text-status-danger hover:bg-red-50' : 'text-slate-700'
       }`}
       onClick={onClick}
     >
       {label}
     </button>
   );
+
+  const menu =
+    open && menuPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[120] min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 text-xs shadow-lg"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            data-testid="ops-actions-menu"
+            role="menu"
+          >
+            {/* Hasar: Düzenle = ?edit=1 (Görüntüle’den ayrı). Acil: tek Görüntüle — menüde Düzenle yok. */}
+            {kind === 'hasar' &&
+              menuItem('Düzenle', () => {
+                setOpen(false);
+                router.push(editHref);
+              })}
+            {menuItem('Not Yaz', () => {
+              setOpen(false);
+              if (onAddNote) {
+                onAddNote();
+                return;
+              }
+              router.push(noteHref);
+            })}
+            {menuItem('Geçmiş', () => {
+              setOpen(false);
+              router.push(historyHref);
+            })}
+            <div className="my-1 border-t border-slate-100" />
+            {menuItem(
+              'Arşive Taşı',
+              () => {
+                setOpen(false);
+                onDeleteRequest?.();
+              },
+              { danger: true },
+            )}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div ref={ref} className="relative flex items-center gap-0.5" onClick={stop} data-testid="ops-row-actions">
@@ -221,6 +307,7 @@ export function OperationRowActions({
       </a>
 
       <button
+        ref={moreBtnRef}
         type="button"
         title="İşlem Menüsü"
         aria-label="İşlem Menüsü"
@@ -231,36 +318,7 @@ export function OperationRowActions({
       >
         <MoreVertical className="h-3.5 w-3.5" aria-hidden />
       </button>
-      {open && (
-        <div
-          className="absolute right-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg py-1 text-xs"
-          data-testid="ops-actions-menu"
-        >
-          {/* Hasar: Düzenle = ?edit=1 (Görüntüle’den ayrı). Acil: tek Görüntüle — menüde Düzenle yok. */}
-          {kind === 'hasar' &&
-            menuItem('Düzenle', () => {
-              setOpen(false);
-              router.push(editHref);
-            })}
-          {menuItem('Not Ekle', () => {
-            setOpen(false);
-            router.push(noteHref);
-          })}
-          {menuItem('Geçmiş', () => {
-            setOpen(false);
-            router.push(historyHref);
-          })}
-          <div className="my-1 border-t border-slate-100" />
-          {menuItem(
-            'Arşive Taşı',
-            () => {
-              setOpen(false);
-              onDeleteRequest?.();
-            },
-            { danger: true },
-          )}
-        </div>
-      )}
+      {menu}
     </div>
   );
 }

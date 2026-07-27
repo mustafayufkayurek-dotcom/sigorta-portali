@@ -5,7 +5,7 @@ export const PORTAL_ACTIVITY_LABELS: Record<string, string> = {
   APPOINTMENT_SCHEDULED: 'Site Randevusu Alındı',
   APPOINTMENT_UPDATED: 'Site Randevusu Güncellendi',
   INSPECTION_DONE: 'Tespit Yapıldı',
-  COST_REPORT_SUBMITTED: 'Maliyet Raporu Sunuldu',
+  COST_REPORT_SUBMITTED: 'Rapor Gönderildi',
   ATTACHMENT_ADDED: 'Dosyaya Görsel Eklendi',
   STATUS_CHANGED: 'Durum Güncellendi',
   NOTE_ADDED: 'Not Eklendi',
@@ -18,9 +18,9 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   site_visit_planned: 'Onarım Aşamasında',
   site_visit_done: 'Onarım Aşamasında',
   budget_preparing: 'Rapor Yazılıyor',
-  budget_submitted: 'Onay Bekliyor',
-  budget_revision_requested: 'Rapor Yazılıyor',
-  budget_approved: 'Onarım Aşamasında',
+  budget_submitted: 'Onay Bekleniyor',
+  budget_revision_requested: 'Revizyon Bekleniyor',
+  budget_approved: 'Onaylandı',
   repair_planning: 'Onarım Aşamasında',
   repair_in_progress: 'Onarım Aşamasında',
   repair_completed: 'Finansa Aktarıldı',
@@ -34,7 +34,7 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   SUPPLIER_ASSIGNED: 'Onarım Tespitçisi Atandı',
   APPOINTMENT_SCHEDULED: 'Site Randevusu Alındı',
   INSPECTION_DONE: 'Tespit Yapıldı',
-  COST_REPORT_SUBMITTED: 'Maliyet Raporu Sunuldu',
+  COST_REPORT_SUBMITTED: 'Rapor Gönderildi',
 };
 
 export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
@@ -59,12 +59,18 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
   SUPPLIER_ASSIGNED: 'Site randevusu planlanması bekleniyor.',
   APPOINTMENT_SCHEDULED: 'Saha ziyareti ve tespit bekleniyor.',
   INSPECTION_DONE: 'Rapor yazım aşamasına geçiliyor.',
-  COST_REPORT_SUBMITTED: 'Bütçe değerlendirmesi bekleniyor.',
+  COST_REPORT_SUBMITTED: 'Onay sonucu bekleniyor.',
 };
 
 export function portalStatusLabel(code: string | undefined, fallbackName?: string): string {
-  if (!code) return fallbackName ?? '—';
-  return PORTAL_STATUS_LABELS[code] ?? fallbackName ?? code;
+  if (code && PORTAL_STATUS_LABELS[code]) return PORTAL_STATUS_LABELS[code];
+  const name = (fallbackName ?? '').toLocaleLowerCase('tr-TR');
+  if (/bütçe sun|butce sun|budget.?submit|onay bek/.test(name)) return 'Onay Bekleniyor';
+  if (/revizyon/.test(name)) return 'Revizyon Bekleniyor';
+  if (/rapor yaz|budget.?prepar/.test(name)) return 'Rapor Yazılıyor';
+  if (/kapat|tamam|closed|completed/.test(name)) return 'Dosya Kapatıldı';
+  if (/iptal|cancel/.test(name)) return 'İptal Edildi';
+  return fallbackName ?? code ?? '—';
 }
 
 export function portalNextStepHint(code: string | undefined): string | null {

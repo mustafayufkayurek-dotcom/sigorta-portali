@@ -10,7 +10,7 @@ import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
-import { formatDisplayLabel } from '@/utils/text-helpers';
+import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
@@ -228,7 +228,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
             <div className="mt-4 pt-4 border-t border-slate-50">
               <p className="text-xs font-medium text-slate-400 tracking-wide mb-2">Etiketler</p>
               <div className="flex flex-wrap gap-1.5">
-                {customer.tags.map((t: string) => <Badge key={t} variant="amber">{t}</Badge>)}
+                {customer.tags.map((t: string) => <Badge key={t} variant="amber">{toTitleCaseTR(t)}</Badge>)}
               </div>
             </div>
           )}
@@ -835,7 +835,7 @@ export default function CustomerDetailPage() {
         {Array.isArray(customer.tags) && customer.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-slate-50">
             {customer.tags.map((t: string) => (
-              <Badge key={t} variant="amber">{t}</Badge>
+              <Badge key={t} variant="amber">{toTitleCaseTR(t)}</Badge>
             ))}
           </div>
         )}

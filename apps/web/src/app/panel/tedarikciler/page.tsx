@@ -565,17 +565,39 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
               </div>
             </div>
             <div className="space-y-2.5">
+              {(vendor.city || vendor.district) && (
+                <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <span className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 text-slate-500">
+                    {Icon.mapPin}
+                  </span>
+                  <span className="truncate">
+                    {[vendor.city, vendor.district].filter(Boolean).join(' / ')}
+                  </span>
+                </div>
+              )}
               {vendor.phone && (
                 <PhoneContactActions phone={vendor.phone} variant="panel" accent="indigo" />
               )}
-              {vendor.email && (
-                <div className="flex items-center gap-2.5 text-sm text-slate-600">
+              {vendor.email ? (
+                <a
+                  href={`mailto:${vendor.email}`}
+                  className="flex items-center gap-2.5 text-sm text-brand-600 hover:text-brand-700 hover:underline"
+                >
+                  <span className="w-7 h-7 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </span>
+                  <span className="truncate">{vendor.email}</span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2.5 text-sm text-slate-400">
                   <span className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </span>
-                  <span className="truncate">{vendor.email}</span>
+                  <span>E-posta kayıtlı değil</span>
                 </div>
               )}
             </div>
@@ -656,7 +678,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                 <span className="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 flex-shrink-0">{Icon.users}</span>
                 <p className="text-xs font-semibold text-slate-700 tracking-wide">Referans</p>
               </div>
-              <p className="text-sm text-slate-700">{vendor.referral}</p>
+              <p className="text-sm text-slate-700">{toTitleCaseTR(vendor.referral)}</p>
             </div>
           )}
 
@@ -669,7 +691,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {vendor.tags.map((t: string) => (
-                  <span key={t} className="inline-flex items-center text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">{t}</span>
+                  <span key={t} className="inline-flex items-center text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">{toTitleCaseTR(t)}</span>
                 ))}
               </div>
             </div>
@@ -682,7 +704,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
         <button
           type="button"
           onClick={() => { onClose(); router.push(`/panel/tedarikciler/${vendorId}`); }}
-          className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+          className="flex-1 bg-brand-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-brand-700 transition-colors"
         >
           Detaya Git
         </button>
@@ -1647,7 +1669,9 @@ export default function VendorsPage() {
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         iban: form.iban || null, accountHolderName: form.accountHolderName || null,
-        referral: form.referral || null, tags: form.tags, notes: serializeCardNotes(form.cardNotes),
+        referral: form.referral ? toTitleCaseTR(form.referral.trim()) : null,
+        tags: form.tags.map((t) => toTitleCaseTR(t.trim())).filter(Boolean),
+        notes: serializeCardNotes(form.cardNotes),
         contractStartDate: form.contractStartDate ? new Date(form.contractStartDate).toISOString() : null,
         contractEndDate: form.contractEndDate ? new Date(form.contractEndDate).toISOString() : null,
         contractNotes: form.contractNotes || null,
@@ -1781,7 +1805,11 @@ export default function VendorsPage() {
 
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
   const upContact = (i: number, patch: Partial<ContactPerson>) => setContacts((p) => p.map((c, j) => j === i ? { ...c, ...patch } : c));
-  const addTag = () => { const t = tagInput.trim(); if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] })); setTagInput(''); };
+  const addTag = () => {
+    const t = toTitleCaseTR(tagInput.trim());
+    if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] }));
+    setTagInput('');
+  };
 
   const handleIbanChange = (raw: string) => {
     setForm((p) => ({ ...p, iban: raw, bankName: raw.trim() ? p.bankName : '' }));
@@ -2874,7 +2902,12 @@ export default function VendorsPage() {
                         </FormField>
                         </div>
                         <FormField label="Vergi Dairesi">
-                          <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} />
+                          <input className={inp} placeholder="Opsiyonel" value={form.taxOffice}
+                            onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))}
+                            onBlur={(e) => {
+                              const v = toTitleCaseTR(e.target.value.trim());
+                              if (v) setForm((p) => ({ ...p, taxOffice: v }));
+                            }} />
                         </FormField>
                         <FormField label="Ticaret Sicil No">
                           <input className={inp} placeholder="Opsiyonel" value={form.tradeRegistryNo} onChange={(e) => setForm((p) => ({ ...p, tradeRegistryNo: e.target.value }))} />
@@ -3289,7 +3322,11 @@ export default function VendorsPage() {
                       <FormField label={ADDRESS_FIELD.openAddress}>
                         <textarea rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                           placeholder={ADDRESS_FIELD.openAddressPlaceholder} value={form.address}
-                          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
+                          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                          onBlur={(e) => {
+                            const v = toTitleCaseTR(e.target.value.trim());
+                            if (v) setForm((p) => ({ ...p, address: v }));
+                          }} />
                       </FormField>
                     </div>
                     {/* Konum araçları */}
@@ -3441,7 +3478,11 @@ export default function VendorsPage() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-2">
                     <FormField label="Referans">
                       <input className={inp} placeholder="Bu Tedarikçiyi Kim Önerdi?" value={form.referral}
-                        onChange={(e) => setForm((p) => ({ ...p, referral: e.target.value }))} />
+                        onChange={(e) => setForm((p) => ({ ...p, referral: e.target.value }))}
+                        onBlur={(e) => {
+                          const v = toTitleCaseTR(e.target.value.trim());
+                          if (v) setForm((p) => ({ ...p, referral: v }));
+                        }} />
                     </FormField>
                     <FormField label="Etiketler">
                       <div className="flex gap-1.5">
@@ -3458,7 +3499,7 @@ export default function VendorsPage() {
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {form.tags.map((t) => (
                         <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
-                          {t}
+                          {toTitleCaseTR(t)}
                           <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger">{Icon.x}</button>
                         </span>
                       ))}
@@ -3506,7 +3547,7 @@ export default function VendorsPage() {
                         value={form.accountHolderName}
                         onChange={(e) => setForm((p) => ({ ...p, accountHolderName: e.target.value }))}
                         onBlur={(e) => {
-                          const value = e.target.value.replace(/\s+/g, ' ').trim();
+                          const value = toTitleCaseTR(e.target.value.replace(/\s+/g, ' ').trim());
                           setForm((p) => ({ ...p, accountHolderName: value }));
                         }}
                       />

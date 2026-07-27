@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
+import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
+import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -19,7 +22,7 @@ import { fmtDate } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 import { fetchPortalClaimFiles, hasPortalSessionToken } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
-
+import { buildPortalWeeklyActivity } from '@/utils/portal-weekly-activity';
 const SIGORTA_PORTAL_HOME = '/panel/sigorta-portal';
 const SIGORTA_PORTAL_LABEL = 'Sigorta Portal';
 
@@ -30,6 +33,7 @@ const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'assignedUser', label: 'Atanan Personel', defaultWidth: 140, minWidth: 100 },
   { id: 'createdAt', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
   { id: 'flow', label: 'Akış', defaultWidth: 72, minWidth: 64 },
+  { id: 'actions', label: 'İşlem', defaultWidth: 72, minWidth: 64, resizable: false },
 ];
 
 interface ClaimFile {
@@ -38,6 +42,8 @@ interface ClaimFile {
   fileNo?: string;
   lossType?: string;
   createdAt: string;
+  updatedAt?: string;
+  lastActivityAt?: string | null;
   subject?: string;
   currentStatus?: { name: string; colorCode?: string };
   insuranceCompany?: { name: string };
@@ -55,7 +61,9 @@ export default function SigortaDosyalarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingScope, setMissingScope] = useState(false);
+  const [noteFileId, setNoteFileId] = useState<string | null>(null);
   const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-dosyalar', SIGORTA_FILE_TABLE_COLUMNS);
+  const weeklyActivity = useMemo(() => buildPortalWeeklyActivity(files), [files]);
 
   useEffect(() => {
     const { user, hasScope } = readInsurancePortalUser();
@@ -142,6 +150,10 @@ export default function SigortaDosyalarPage() {
         </div>
       ) : (
         <>
+          <PortalWeeklyTrendCard
+            title="Haftalık Dosya Hareketi"
+            data={weeklyActivity}
+          />
           <PortalMobileFileList
             showInsurance={false}
             showAssigned
@@ -173,6 +185,7 @@ export default function SigortaDosyalarPage() {
                     <PanelTableTh colId="assignedUser" className="table-th-center">Atanan Personel</PanelTableTh>
                     <PanelTableTh colId="createdAt" className="table-th-center">Tarih</PanelTableTh>
                     <PanelTableTh colId="flow" className="table-th-center">Akış</PanelTableTh>
+                    <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -182,11 +195,13 @@ export default function SigortaDosyalarPage() {
                       className="cursor-pointer transition-colors hover:bg-slate-50"
                       onClick={() => router.push(`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`)}
                     >
-                      <PanelTableTd colId="fileNumber" className="px-4 py-3 text-sm font-medium text-slate-900">{fileNoOf(f)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="px-4 py-3 text-sm text-slate-600">
+                      <PanelTableTd colId="fileNumber" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">
+                        {fileNoOf(f)}
+                      </PanelTableTd>
+                      <PanelTableTd colId="subject" className="table-td-center px-4 py-3 text-sm text-slate-600">
                         {formatClaimSubjectLabel(f.lossType, undefined, f.subject)}
                       </PanelTableTd>
-                      <PanelTableTd colId="status" className="px-4 py-3">
+                      <PanelTableTd colId="status" className="table-td-center px-4 py-3">
                         <span
                           className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
                           style={{ background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6', color: f.currentStatus?.colorCode ?? '#374151' }}
@@ -194,11 +209,11 @@ export default function SigortaDosyalarPage() {
                           {f.currentStatus?.name ?? '—'}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="assignedUser" className="px-4 py-3 text-sm text-slate-600">
+                      <PanelTableTd colId="assignedUser" className="table-td-center px-4 py-3 text-sm text-slate-600">
                         {f.assignedFieldUser ? `${f.assignedFieldUser.firstName} ${f.assignedFieldUser.lastName}` : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="createdAt" className="px-4 py-3 text-sm text-slate-500">{fmtDate(f.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="flow" className="px-4 py-3">
+                      <PanelTableTd colId="createdAt" className="table-td-center px-4 py-3 text-sm text-slate-500">{fmtDate(f.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="flow" className="table-td-center px-4 py-3">
                         <Link
                           href={`/panel/sigorta-portal/dosya-akisi?fileId=${f.id}`}
                           onClick={(e) => e.stopPropagation()}
@@ -206,6 +221,20 @@ export default function SigortaDosyalarPage() {
                         >
                           Akış
                         </Link>
+                      </PanelTableTd>
+                      <PanelTableTd colId="actions" className="table-td-center px-4 py-3">
+                        <button
+                          type="button"
+                          title="Not Yaz"
+                          aria-label="Not Yaz"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNoteFileId(f.id);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                        >
+                          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                        </button>
                       </PanelTableTd>
                     </tr>
                   ))}
@@ -215,6 +244,13 @@ export default function SigortaDosyalarPage() {
           </TableColumnsProvider>
         </>
       )}
+
+      <ExpertFileNoteModal
+        open={Boolean(noteFileId)}
+        claimFileId={noteFileId}
+        onClose={() => setNoteFileId(null)}
+        onSaved={() => setNoteFileId(null)}
+      />
     </div>
   );
 }

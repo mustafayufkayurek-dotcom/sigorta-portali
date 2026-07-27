@@ -85,12 +85,12 @@ export function PhoneContactActions({
 
   if (variant === 'panel') {
     const iconBg = accent === 'indigo'
-      ? 'bg-indigo-50 group-hover:bg-indigo-100'
+      ? 'bg-brand-50 group-hover:bg-brand-100'
       : accent === 'emerald'
         ? 'bg-emerald-50 group-hover:bg-emerald-100'
         : 'bg-blue-50 group-hover:bg-blue-100';
     const linkCls = accent === 'indigo'
-      ? 'text-indigo-600 hover:text-indigo-700'
+      ? 'text-brand-600 hover:text-brand-700'
       : accent === 'emerald'
         ? 'text-emerald-600 hover:text-emerald-700'
         : 'text-brand-600 hover:text-blue-700';

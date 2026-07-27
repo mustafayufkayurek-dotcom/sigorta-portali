@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { Eye, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 
 export type ExpertDosyalarActionsProps = {
   fileId: string;
-  onView: () => void;
-  onEdit: () => void;
+  onViewReport: () => void;
   onDetail: () => void;
   onDocuments: () => void;
   onAddNote: () => void;
   onHistory: () => void;
-  onDelete: () => void;
+  onDeleteRequest: () => void;
 };
 
 /** Referans PNG: 28×28 kare, sürekli gri çerçeve, ince outline ikon */
@@ -26,14 +26,17 @@ function IconBtn({
   onClick,
   children,
   testId,
+  buttonRef,
 }: {
   label: string;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   testId?: string;
+  buttonRef?: RefObject<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       title={label}
       aria-label={label}
@@ -50,32 +53,69 @@ function IconBtn({
 }
 
 /**
- * D3XX İşlemler — Görüntüle · Düzenle · Üç Nokta (referans ikon ailesi)
+ * Dosyalarım işlemleri — Rapor Önizleme · Not Yaz · Üç Nokta
+ * Menü portal ile açılır (tablo overflow menüyü kesmesin).
  */
 export function ExpertDosyalarActions({
   fileId,
-  onView,
-  onEdit,
+  onViewReport,
   onDetail,
   onDocuments,
   onAddNote,
   onHistory,
-  onDelete,
+  onDeleteRequest,
 }: ExpertDosyalarActionsProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updateMenuPos = () => {
+    const btn = moreBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 180;
+    const left = Math.min(
+      Math.max(8, rect.right - menuWidth),
+      window.innerWidth - menuWidth - 8,
+    );
+    setMenuPos({ top: rect.bottom + 4, left });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    const onScrollOrResize = () => updateMenuPos();
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    document.addEventListener('mousedown', onDoc);
+    // Açılış tıklamasının aynı mousedown ile menüyü kapatmasını engelle
+    const timer = window.setTimeout(() => {
+      document.addEventListener('mousedown', onDoc);
+    }, 0);
     document.addEventListener('keydown', onKey);
     return () => {
+      window.clearTimeout(timer);
       document.removeEventListener('mousedown', onDoc);
       document.removeEventListener('keydown', onKey);
     };
@@ -102,59 +142,71 @@ export function ExpertDosyalarActions({
 
   const run = (fn: () => void) => {
     setOpen(false);
-    fn();
+    window.setTimeout(fn, 0);
   };
+
+  const menuItem = (label: string, fn: () => void, opts?: { danger?: boolean }) => (
+    <button
+      type="button"
+      role="menuitem"
+      className={`flex w-full items-center gap-2 px-3 py-2 text-left ${
+        opts?.danger ? 'text-status-danger hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'
+      }`}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        run(fn);
+      }}
+    >
+      {opts?.danger ? <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> : null}
+      {label}
+    </button>
+  );
+
+  const menu =
+    open && menuPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[220] min-w-[180px] rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            role="menu"
+            data-testid="eksper-dosyalar-menu"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {menuItem('Dosya Detayı', onDetail)}
+            {menuItem('Evraklar', onDocuments)}
+            {menuItem('Not Yaz', onAddNote)}
+            {menuItem('Geçmiş', onHistory)}
+            <div className="my-1 border-t border-slate-100" />
+            {menuItem('Silme Talebi', onDeleteRequest, { danger: true })}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div
-      ref={ref}
+      ref={rootRef}
       className="relative flex items-center justify-end gap-1"
       onClick={(e) => e.stopPropagation()}
       data-testid="eksper-dosyalar-actions"
     >
-      <IconBtn label="Görüntüle" onClick={onView}>
+      <IconBtn label="Rapor Önizleme" onClick={onViewReport}>
         <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </IconBtn>
-      <IconBtn label="Düzenle" onClick={onEdit}>
+      <IconBtn label="Not Yaz" onClick={onAddNote}>
         <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </IconBtn>
-      <IconBtn label="İşlem Menüsü" onClick={toggleMenu} testId="eksper-dosyalar-more">
+      <IconBtn
+        label="İşlem Menüsü"
+        onClick={toggleMenu}
+        testId="eksper-dosyalar-more"
+        buttonRef={moreBtnRef}
+      >
         <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </IconBtn>
-
-      {open && (
-        <div
-          className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg"
-          role="menu"
-          data-testid="eksper-dosyalar-menu"
-        >
-          <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50" onClick={() => run(onDetail)}>
-            Dosya Detayı
-          </button>
-          <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50" onClick={() => run(onEdit)}>
-            Düzenle
-          </button>
-          <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50" onClick={() => run(onDocuments)}>
-            Evraklar
-          </button>
-          <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50" onClick={() => run(onAddNote)}>
-            Not Ekle
-          </button>
-          <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50" onClick={() => run(onHistory)}>
-            Geçmiş
-          </button>
-          <div className="my-1 border-t border-slate-100" />
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50"
-            onClick={() => run(onDelete)}
-          >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-            Sil
-          </button>
-        </div>
-      )}
+      {menu}
     </div>
   );
 }

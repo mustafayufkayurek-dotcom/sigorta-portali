@@ -658,7 +658,7 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
                   <p className="text-xs text-slate-400 mb-1.5">Etiketler</p>
                   <div className="flex flex-wrap gap-1.5">
                     {customer.tags.map((t: string) => (
-                      <span key={t} className="inline-flex items-center text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">{t}</span>
+                      <span key={t} className="inline-flex items-center text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">{toTitleCaseTR(t)}</span>
                     ))}
                   </div>
                 </div>
@@ -1520,7 +1520,11 @@ export default function MusterilerPage() {
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
   const upContact = (i: number, patch: Partial<ContactPerson>) => setContacts((p) => p.map((c, j) => j === i ? { ...c, ...patch } : c));
   const upCI = (i: number, f: keyof ContactInfoItem, v: string) => setContactInfos((p) => p.map((ci, j) => j === i ? { ...ci, [f]: v } : ci));
-  const addTag = () => { const t = tagInput.trim(); if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] })); setTagInput(''); };
+  const addTag = () => {
+    const t = toTitleCaseTR(tagInput.trim());
+    if (t && !form.tags.includes(t)) setForm((p) => ({ ...p, tags: [...p.tags, t] }));
+    setTagInput('');
+  };
 
   // ── Sayfa bazlı validasyon ────────────────────────────────────────────────
   const [sectionErrors, setSectionErrors] = useState<string | null>(null);
@@ -2111,8 +2115,8 @@ export default function MusterilerPage() {
               <div className="flex gap-2 mb-3">
                 <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors"
                   placeholder="Etiket Adı Girin..." value={bulkTagInput} onChange={(e) => setBulkTagInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); } }} />
-                <button type="button" onClick={() => { const t = bulkTagInput.trim(); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = toTitleCaseTR(bulkTagInput.trim()); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); } }} />
+                <button type="button" onClick={() => { const t = toTitleCaseTR(bulkTagInput.trim()); if (t && !bulkTags.includes(t)) setBulkTags((p) => [...p, t]); setBulkTagInput(''); }}
                   className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 text-sm">+</button>
               </div>
               {bulkTags.length > 0 && (
@@ -3176,7 +3180,7 @@ export default function MusterilerPage() {
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {form.tags.map((t) => (
                           <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
-                            {t}
+                            {toTitleCaseTR(t)}
                             <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger ml-0.5">×</button>
                           </span>
                         ))}

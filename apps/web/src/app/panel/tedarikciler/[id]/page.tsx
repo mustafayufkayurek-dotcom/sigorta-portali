@@ -31,6 +31,7 @@ import {
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { BANK_CONFIRMATION_STATUS_LABELS } from '@/utils/vendor-bank-confirmation';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 
 function fmtCurrency(n: number | null | undefined) {
@@ -68,14 +69,14 @@ function SectionCard({ title, subtitle, action, children }: {
 }) {
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-50">
         <div>
           <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
-          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-[11px] text-slate-400 leading-snug">{subtitle}</p>}
         </div>
         {action && <div>{action}</div>}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-3">{children}</div>
     </div>
   );
 }
@@ -93,7 +94,7 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'indigo' | '
   const cls = {
     green: 'bg-green-50 text-green-700 border-green-100',
     gray: 'bg-slate-100 text-slate-500 border-slate-200',
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    indigo: 'bg-brand-50 text-brand-700 border-brand-100',
     purple: 'bg-purple-50 text-purple-700 border-purple-100',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
     blue: 'bg-blue-50 text-blue-700 border-blue-100',
@@ -154,35 +155,35 @@ function VendorBankConfirmationCard({
 
   return (
     <SectionCard title="Banka Bilgileri" subtitle="Ödeme öncesi tedarikçi teyidi">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <InfoRow
           label="IBAN"
           value={vendor.iban ? <span className="font-mono">{vendor.iban}</span> : null}
         />
         <InfoRow
           label="Banka Adı"
-          value={vendor.bankName ?? (vendor.iban ? 'Banka adı otomatik belirlenemedi' : null)}
+          value={vendor.bankName ? toTitleCaseTR(vendor.bankName) : (vendor.iban ? 'Banka adı otomatik belirlenemedi' : null)}
         />
-        <InfoRow label="Hesap Sahibi Adı Soyadı / Unvanı" value={vendor.accountHolderName} />
+        <InfoRow label="Hesap Sahibi Adı Soyadı / Unvanı" value={vendor.accountHolderName ? toTitleCaseTR(vendor.accountHolderName) : null} />
         <InfoRow
           label="Teyit Durumu"
           value={BANK_CONFIRMATION_STATUS_LABELS[status] ?? 'Henüz Teyit Edilmedi'}
         />
       </div>
       {vendor.ibanAccountHolderMatchStatus === 'mismatch' && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
           Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.
         </div>
       )}
       {vendor.iban && vendor.accountHolderName && (
         <>
-          <p className="mt-3 text-xs text-slate-500">Bu Kontrol Banka Doğrulaması Değildir.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <p className="mt-2 text-[11px] text-slate-500">Bu Kontrol Banka Doğrulaması Değildir.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={openWhatsapp}
               disabled={working || !vendor.phone}
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
             >
               {working ? 'İşleniyor...' : 'WhatsApp İle Teyit İste'}
             </button>
@@ -190,7 +191,7 @@ function VendorBankConfirmationCard({
               type="button"
               onClick={() => setStatus('confirmed')}
               disabled={working}
-              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
             >
               Teyit Alındı
             </button>
@@ -198,7 +199,7 @@ function VendorBankConfirmationCard({
               type="button"
               onClick={() => setStatus('declined')}
               disabled={working}
-              className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+              className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             >
               Düzeltme İstendi
             </button>
@@ -270,7 +271,7 @@ function ProfilTab({ vendor }: { vendor: any }) {
               <div className="col-span-2">
                 <p className="text-xs font-medium text-slate-400 tracking-wide mb-2">Etiketler</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {vendor.tags.map((t: string) => <Badge key={t} variant="amber">{t}</Badge>)}
+                  {vendor.tags.map((t: string) => <Badge key={t} variant="amber">{toTitleCaseTR(t)}</Badge>)}
                 </div>
               </div>
             )}
@@ -299,7 +300,7 @@ function YetkiliIletisimTab({ vendor }: { vendor: any }) {
             <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" />
           ) : null} />
           <InfoRow label="E-posta" value={vendor.email ? (
-            <a href={`mailto:${vendor.email}`} className="text-indigo-600 hover:underline">{vendor.email}</a>
+            <a href={`mailto:${vendor.email}`} className="text-brand-600 hover:underline">{vendor.email}</a>
           ) : null} />
         </div>
       </SectionCard>
@@ -320,7 +321,7 @@ function YetkiliIletisimTab({ vendor }: { vendor: any }) {
               return (
                 <div key={c.id ?? i} className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${isBirthday ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}>
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-indigo-600' : 'bg-slate-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${c.isPrimary ? 'bg-brand-600' : 'bg-slate-400'}`}>
                       {(c.fullName || '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -332,7 +333,7 @@ function YetkiliIletisimTab({ vendor }: { vendor: any }) {
                       {c.title && <p className="text-xs text-slate-500 mt-0.5">{c.title}</p>}
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                         {c.phone && <PhoneContactActions phone={c.phone} variant="inline" accent="indigo" size="sm" />}
-                        {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-indigo-600 flex items-center gap-1">✉ {c.email}</a>}
+                        {c.email && <a href={`mailto:${c.email}`} className="text-xs text-slate-600 hover:text-brand-600 flex items-center gap-1">✉ {c.email}</a>}
                         {c.birthDate && <p className="text-xs text-slate-400">🎂 {fmtDate(c.birthDate)}</p>}
                       </div>
                     </div>
@@ -357,7 +358,7 @@ function YetkiliIletisimTab({ vendor }: { vendor: any }) {
                     {(ci.type === 'phone' || ci.type === 'whatsapp') ? (
                       <PhoneContactActions phone={ci.value} variant="inline" accent="indigo" size="sm" />
                     ) : ci.type === 'email' ? (
-                      <a href={`mailto:${ci.value}`} className="text-sm font-medium text-indigo-600 hover:underline">{ci.value}</a>
+                      <a href={`mailto:${ci.value}`} className="text-sm font-medium text-brand-600 hover:underline">{ci.value}</a>
                     ) : (
                       <p className="text-sm font-medium text-slate-800">{ci.value}</p>
                     )}
@@ -547,13 +548,13 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
               onChange={onProvinceChange}
               placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
               emptyText={ADDRESS_FIELD.provinceSearchEmpty}
-              inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             />
             {selectedProvince && (
               <button
                 type="button"
                 onClick={addAllDistrictsForProvince}
-                className="w-full text-xs font-medium text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors"
+                className="w-full text-xs font-medium text-brand-700 bg-white border border-brand-200 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors"
               >
                 Tüm ilçeleri ekle
               </button>
@@ -587,7 +588,7 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors"
+          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors"
         >
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
@@ -640,14 +641,14 @@ function IsGruplariTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void
       <SectionCard title="İş Gruplarını Güncelle">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-5 max-h-48 overflow-y-auto">
           {workGroups.map((wg) => (
-            <label key={wg.id} className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all text-sm ${selectedIds.includes(wg.id) ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-slate-200'}`}>
-              <input type="checkbox" checked={selectedIds.includes(wg.id)} onChange={() => toggle(wg.id)} className="rounded accent-indigo-600" />
+            <label key={wg.id} className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all text-sm ${selectedIds.includes(wg.id) ? 'bg-brand-50 border-brand-200 text-brand-700' : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-slate-200'}`}>
+              <input type="checkbox" checked={selectedIds.includes(wg.id)} onChange={() => toggle(wg.id)} className="rounded accent-brand-600" />
               {wg.name}
             </label>
           ))}
         </div>
         <button type="button" onClick={handleSave} disabled={saving}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors">
+          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors">
           {saving ? 'Kaydediliyor...' : 'Kaydet'}
         </button>
       </SectionCard>
@@ -667,7 +668,7 @@ function VendorPerformanceStats({ vendorId }: { vendorId: string }) {
 
   const metrics = [
     { label: 'Tamamlanan İş', value: stats?.completedJobs ?? 0, color: 'text-slate-900' },
-    { label: 'Aktif İş', value: stats?.activeJobs ?? 0, color: 'text-indigo-600' },
+    { label: 'Aktif İş', value: stats?.activeJobs ?? 0, color: 'text-brand-600' },
     { label: 'Memnuniyet', value: '—', color: 'text-slate-400' },
   ];
 
@@ -781,10 +782,10 @@ function OverviewMetricCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-slate-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
+    <div className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2">
+      <p className="text-[11px] font-medium text-slate-500 leading-tight">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold text-slate-900 tabular-nums">{value}</p>
+      {hint ? <p className="mt-0.5 text-[11px] text-slate-400 leading-tight">{hint}</p> : null}
     </div>
   );
 }
@@ -797,9 +798,9 @@ function QualityMetric({
   value: number | null | undefined;
 }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-4">
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className={`mt-2 text-base font-semibold ${scoreTone(value)}`}>{fmtScore(value)}</p>
+    <div className="rounded-lg border border-slate-100 bg-white px-2.5 py-2">
+      <p className="text-[11px] font-medium text-slate-500 leading-tight">{label}</p>
+      <p className={`mt-0.5 text-sm font-semibold ${scoreTone(value)}`}>{fmtScore(value)}</p>
     </div>
   );
 }
@@ -920,8 +921,7 @@ function GenelBakisTab({
   const highlightedCost = (overview?.costSummary || []).slice(0, 6);
   const operation = overview?.operationSummary;
   const quality = overview?.qualitySummary;
-  const latestFileHistory = (overview?.fileHistory || []).slice(0, 8);
-  const whatsappHistory = (overview?.whatsappHistory || []).slice(0, 8);
+  const whatsappHistory = (overview?.whatsappHistory || []).slice(0, 5);
   const coverageAreas = vendor.serviceAreas || [];
   const decisionSummary = [
     operation?.successRate != null ? `Başarılı tamamlama oranı ${fmtPercent(operation.successRate)}` : null,
@@ -935,7 +935,7 @@ function GenelBakisTab({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-2">
       {selectedArchive ? (
         <ChatArchivePreviewModal
           archive={selectedArchive}
@@ -945,33 +945,39 @@ function GenelBakisTab({
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="Genel Bilgiler" subtitle="Karar için gereken temel tedarikçi bilgileri">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <InfoRow label="Firma Adı" value={vendor.name} />
-            <InfoRow label="Yetkili" value={vendor.authorizedPerson} />
+      <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1fr_1fr]">
+        <SectionCard title="Genel Bilgiler">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <InfoRow label="Firma Adı" value={vendor.name ? toTitleCaseTR(vendor.name) : null} />
+            <InfoRow label="Yetkili" value={vendor.authorizedPerson ? toTitleCaseTR(vendor.authorizedPerson) : null} />
             <InfoRow label="Telefon" value={vendor.phone ? <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" /> : null} />
             <InfoRow label="WhatsApp" value={whatsappValue ? <PhoneContactActions phone={whatsappValue} variant="inline" accent="emerald" /> : null} />
-            <InfoRow label="E-posta" value={vendor.email ? <a href={`mailto:${vendor.email}`} className="text-indigo-600 hover:underline">{vendor.email}</a> : null} />
-            <InfoRow label="Yetkili E-posta" value={vendor.authorizedEmail ? <a href={`mailto:${vendor.authorizedEmail}`} className="text-indigo-600 hover:underline">{vendor.authorizedEmail}</a> : null} />
-            <InfoRow label="Vergi Bilgileri" value={[vendor.taxOffice, vendor.taxNumber].filter(Boolean).join(' · ')} />
-            <InfoRow label="Hizmet Bölgeleri" value={coverageAreas.length ? `${coverageAreas.length} bölge tanımlı` : 'Henüz tanımlı değil'} />
-            <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.join(', ') : 'Henüz tanımlı değil'} />
+            <InfoRow label="E-posta" value={vendor.email ? <a href={`mailto:${vendor.email}`} className="text-brand-600 hover:underline">{vendor.email}</a> : null} />
+            <InfoRow label="Yetkili E-posta" value={vendor.authorizedEmail ? <a href={`mailto:${vendor.authorizedEmail}`} className="text-brand-600 hover:underline">{vendor.authorizedEmail}</a> : null} />
+            <InfoRow label="Vergi Bilgileri" value={[vendor.taxOffice ? toTitleCaseTR(vendor.taxOffice) : null, vendor.taxNumber].filter(Boolean).join(' · ') || null} />
+            <InfoRow label="Referans" value={vendor.referral ? toTitleCaseTR(vendor.referral) : null} />
+            <InfoRow label="Hizmet Bölgeleri" value={coverageAreas.length ? `${coverageAreas.length} Bölge Tanımlı` : 'Henüz Tanımlı Değil'} />
+            <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.map((s) => toTitleCaseTR(s)).join(', ') : 'Henüz Tanımlı Değil'} />
           </div>
         </SectionCard>
 
-        <SectionCard title="Karar Özeti" subtitle="İlk bakışta operasyon resmi">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
-              <p className="text-sm font-semibold text-indigo-900">
+        <SectionCard title="Karar Özeti">
+          <div className="space-y-2">
+            <div className="rounded-lg border border-brand-100 bg-brand-50/70 px-2.5 py-2">
+              <p className="text-sm font-semibold text-brand-900 leading-snug">
                 {decisionSummary || 'Yeterli operasyon verisi oluştukça bu özet otomatik zenginleşir.'}
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
               <OverviewMetricCard label="Toplam Operasyon" value={operation?.totalOperations ?? '—'} />
               <OverviewMetricCard label="Başarılı Oran" value={fmtPercent(operation?.successRate)} />
+              <OverviewMetricCard label="Şikayet" value={operation?.complaintCount ?? '—'} />
+              <OverviewMetricCard label="Ort. Müdahale" value={fmtHours(operation?.avgResponseTimeHours)} />
+              <OverviewMetricCard label="Ort. Tamamlama" value={fmtHours(operation?.avgCompletionTimeHours)} />
+              <OverviewMetricCard label="Tekrar Çalışma" value={fmtPercent(operation?.repeatWorkRate)} />
+              <OverviewMetricCard label="Tamamlanan" value={operation?.completedOperations ?? '—'} />
+              <OverviewMetricCard label="Aktif" value={operation?.activeOperations ?? '—'} />
               <OverviewMetricCard label="Son Operasyon" value={operation?.lastOperation?.referenceNo ?? '—'} hint={operation?.lastOperation?.completedAt ? fmtDate(operation.lastOperation.completedAt) : undefined} />
-              <OverviewMetricCard label="Şikayet Sayısı" value={operation?.complaintCount ?? '—'} />
             </div>
           </div>
         </SectionCard>
@@ -979,45 +985,32 @@ function GenelBakisTab({
 
       <VendorBankConfirmationCard vendor={vendor} onUpdate={onVendorUpdate} />
 
-      <SectionCard title="Operasyon Özeti" subtitle="Hız, tamamlama ve tekrar çalışma görünümü">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <OverviewMetricCard label="Toplam Operasyon" value={operation?.totalOperations ?? '—'} />
-          <OverviewMetricCard label="Ortalama Müdahale Süresi" value={fmtHours(operation?.avgResponseTimeHours)} />
-          <OverviewMetricCard label="Ortalama Tamamlama Süresi" value={fmtHours(operation?.avgCompletionTimeHours)} />
-          <OverviewMetricCard label="Tekrar Çalışma Oranı" value={fmtPercent(operation?.repeatWorkRate)} hint="Aynı kurumdan tekrar gelen işler" />
-          <OverviewMetricCard label="Şikayet Sayısı" value={operation?.complaintCount ?? '—'} />
-          <OverviewMetricCard label="Başarılı Operasyon Oranı" value={fmtPercent(operation?.successRate)} />
-          <OverviewMetricCard label="Tamamlanan Operasyon" value={operation?.completedOperations ?? '—'} />
-          <OverviewMetricCard label="Aktif Operasyon" value={operation?.activeOperations ?? '—'} />
-        </div>
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="Maliyet Özeti" subtitle="Son 12 aydaki hizmet bazlı maliyet görünümü">
+      <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.9fr]">
+        <SectionCard title="Maliyet Özeti">
           {highlightedCost.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-400">Henüz maliyet geçmişi oluşmadı.</p>
+            <p className="py-4 text-center text-sm text-slate-400">Henüz maliyet geçmişi oluşmadı.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
-                    <th className="pb-3 pr-4 font-medium">Hizmet</th>
-                    <th className="pb-3 pr-4 font-medium">Min</th>
-                    <th className="pb-3 pr-4 font-medium">Ort.</th>
-                    <th className="pb-3 pr-4 font-medium">Maks</th>
-                    <th className="pb-3 pr-4 font-medium">Son</th>
-                    <th className="pb-3 font-medium">Adet</th>
+                    <th className="pb-2 pr-3 font-medium">Hizmet</th>
+                    <th className="pb-2 pr-3 font-medium">Min</th>
+                    <th className="pb-2 pr-3 font-medium">Ort.</th>
+                    <th className="pb-2 pr-3 font-medium">Maks</th>
+                    <th className="pb-2 pr-3 font-medium">Son</th>
+                    <th className="pb-2 font-medium">Adet</th>
                   </tr>
                 </thead>
                 <tbody>
                   {highlightedCost.map((row: any) => (
                     <tr key={row.serviceType} className="border-b border-slate-50 last:border-0">
-                      <td className="py-3 pr-4 font-medium text-slate-800">{row.serviceType}</td>
-                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.minCost)}</td>
-                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.avgCost)}</td>
-                      <td className="py-3 pr-4 text-slate-600">{fmtCurrency(row.maxCost)}</td>
-                      <td className="py-3 pr-4 text-slate-900">{fmtCurrency(row.lastCost)}</td>
-                      <td className="py-3 text-slate-500">{row.count}</td>
+                      <td className="py-1.5 pr-3 font-medium text-slate-800">{toTitleCaseTR(String(row.serviceType ?? ''))}</td>
+                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.minCost)}</td>
+                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.avgCost)}</td>
+                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.maxCost)}</td>
+                      <td className="py-1.5 pr-3 text-slate-900">{fmtCurrency(row.lastCost)}</td>
+                      <td className="py-1.5 text-slate-500">{row.count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1026,114 +1019,103 @@ function GenelBakisTab({
           )}
         </SectionCard>
 
-        <SectionCard title="Hizmet Kalitesi" subtitle="Anket ve kapanan iş verilerinden oluşur">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <SectionCard title="Hizmet Kalitesi">
+          <div className="grid grid-cols-2 gap-1.5">
             <QualityMetric label="Genel Memnuniyet" value={quality?.overallSatisfaction} />
             <QualityMetric label="Zamanında Müdahale" value={quality?.onTimeIntervention} />
             <QualityMetric label="İletişim Kalitesi" value={quality?.communicationQuality} />
             <QualityMetric label="Fotoğraf Kalitesi" value={quality?.photoQuality} />
             <QualityMetric label="Evrak Kalitesi" value={quality?.documentQuality} />
-            <div className="rounded-xl border border-slate-100 bg-white p-4">
-              <p className="text-xs font-medium text-slate-500">Tekrar Tercih Oranı</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">{fmtPercent(quality?.recommendRate)}</p>
-              <p className="mt-1 text-xs text-slate-400">{quality?.responseCount ? `${quality.responseCount} yanıt üzerinden` : 'Henüz anket yanıtı yok'}</p>
+            <div className="rounded-lg border border-slate-100 bg-white px-2.5 py-2">
+              <p className="text-[11px] font-medium text-slate-500 leading-tight">Tekrar Tercih Oranı</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-900">{fmtPercent(quality?.recommendRate)}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{quality?.responseCount ? `${quality.responseCount} yanıt üzerinden` : 'Henüz anket yanıtı yok'}</p>
             </div>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Hizmet Kapsamı" subtitle="İl, ilçe ve hizmet yoğunluğu görünümü">
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-            <p className="mb-3 text-xs font-medium text-slate-500">Bölge Görünümü</p>
+      <SectionCard title="Hizmet Kapsamı">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
             {coverageAreas.length === 0 ? (
               <p className="text-sm text-slate-400">Henüz hizmet bölgesi tanımlı değil.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {coverageAreas.map((area: any, index: number) => (
-                  <div key={`${area.provinceId}-${area.districtId ?? 'all'}-${index}`} className="rounded-xl border border-white bg-white p-3 shadow-sm">
+                  <div key={`${area.provinceId}-${area.districtId ?? 'all'}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5">
                     <p className="text-sm font-semibold text-slate-800">{area.province?.name ?? 'İl'}</p>
-                    <p className="mt-1 text-xs text-slate-500">{area.district?.name ?? 'Tüm İlçeler'}</p>
+                    <p className="text-[11px] text-slate-500">{area.district?.name ?? 'Tüm İlçeler'}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <p className="mb-3 text-xs font-medium text-slate-500">Hizmet Türleri</p>
-              <div className="flex flex-wrap gap-2">
-                {serviceTypes.length ? serviceTypes.map((item) => (
-                  <Badge key={item} variant="indigo">{item}</Badge>
-                )) : <span className="text-sm text-slate-400">Henüz tanımlı değil.</span>}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <p className="mb-3 text-xs font-medium text-slate-500">Kısa Not</p>
-              <p className="text-sm text-slate-600">
-                {coverageAreas.length
-                  ? `${coverageAreas.length} farklı bölgede hizmet veriyor. Karar verirken iş türü ile bölgeyi birlikte değerlendirin.`
-                  : 'Bölge tanımı eklenirse atama kararları daha hızlı netleşir.'}
-              </p>
-            </div>
+          <div className="flex flex-wrap content-start gap-1.5">
+            {serviceTypes.length ? serviceTypes.map((item) => (
+              <Badge key={item} variant="indigo">{toTitleCaseTR(item)}</Badge>
+            )) : <span className="text-sm text-slate-400">Henüz tanımlı değil.</span>}
           </div>
         </div>
       </SectionCard>
 
-      <SectionCard title="Dosya Geçmişi" subtitle="Bu tedarikçinin tamamladığı ve üstlendiği dosyalar">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <SectionCard title="Dosya Geçmişi">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <input
             value={historyQuery}
             onChange={(e) => setHistoryQuery(e.target.value)}
             placeholder="Dosya no, hizmet, müşteri veya il ara..."
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:max-w-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 sm:max-w-sm"
           />
           <p className="text-xs text-slate-400">{filteredHistory.length} kayıt</p>
         </div>
         {filteredHistory.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-400">Filtreye uygun dosya bulunamadı.</p>
+          <p className="py-4 text-center text-sm text-slate-400">Filtreye uygun dosya bulunamadı.</p>
         ) : (
-          <div className="space-y-2">
-            {filteredHistory.map((row: any) => (
-              <div key={row.id} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1.5">
+            {filteredHistory.slice(0, 5).map((row: any) => (
+              <div key={row.id} className="flex flex-col gap-1.5 rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">{row.fileNo}</p>
                     <Badge variant={row.status?.isClosedState ? 'green' : 'blue'}>{row.status?.name ?? 'Durum Yok'}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-600">{row.serviceType || 'Hizmet tipi yok'}</p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-600">{row.serviceType || 'Hizmet tipi yok'}</p>
+                  <p className="text-[11px] text-slate-400">
                     {[row.insuranceCompanyName, row.insuredName, row.city, row.district].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span>{row.closedAt ? `Kapanış: ${fmtDate(row.closedAt)}` : `Güncelleme: ${fmtDate(row.updatedAt)}`}</span>
-                  <Link href={`/panel/hasar-dosyalari/${row.id}`} className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-600 hover:bg-white">
+                  <Link href={`/panel/hasar-dosyalari/${row.id}`} className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 hover:bg-white">
                     Dosyaya Git
                   </Link>
                 </div>
               </div>
             ))}
+            {filteredHistory.length > 5 ? (
+              <p className="pt-1 text-center text-[11px] text-slate-400">İlk 5 kayıt gösteriliyor · Toplam {filteredHistory.length}</p>
+            ) : null}
           </div>
         )}
       </SectionCard>
 
-      <SectionCard title="WhatsApp Geçmişi" subtitle="Yazışmalar ve belge gönderimleri dosya bazında görünür">
+      <SectionCard title="WhatsApp Geçmişi">
         {archiveError ? (
-          <p className="mb-3 text-sm font-medium text-red-600">{archiveError}</p>
+          <p className="mb-2 text-sm font-medium text-red-600">{archiveError}</p>
         ) : null}
         {whatsappHistory.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-400">Henüz WhatsApp geçmişi oluşmadı.</p>
+          <p className="py-4 text-center text-sm text-slate-400">Henüz WhatsApp geçmişi oluşmadı.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {whatsappHistory.map((item: any) => (
-              <div key={`${item.type}-${item.id}`} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div key={`${item.type}-${item.id}`} className="flex flex-col gap-1.5 rounded-lg border border-slate-100 bg-white px-2.5 py-2 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{item.fileNo ? `Dosya ${item.fileNo}` : 'Dosya bağlantısı'}</p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-0.5 text-xs text-slate-600">
                     {item.type === 'chat_archive' ? item.label : `${item.label} gönderimi`}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     {[item.sentAt ? new Date(item.sentAt).toLocaleString('tr-TR') : null, item.contact, item.messageCount ? `${item.messageCount} mesaj` : null].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -1142,13 +1124,13 @@ function GenelBakisTab({
                     <button
                       type="button"
                       onClick={() => openArchive(item.id)}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
                     >
                       Yazışmayı Aç
                     </button>
                   ) : null}
                   {item.claimFileId ? (
-                    <Link href={`/panel/hasar-dosyalari/${item.claimFileId}`} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">
+                    <Link href={`/panel/hasar-dosyalari/${item.claimFileId}`} className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700">
                       Dosyaya Git
                     </Link>
                   ) : null}
@@ -1157,22 +1139,10 @@ function GenelBakisTab({
             ))}
           </div>
         )}
-
-        {latestFileHistory.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-            <p className="mb-3 text-xs font-medium text-slate-500">Yakın Dosyalar</p>
-            <div className="flex flex-wrap gap-2">
-              {latestFileHistory.map((row: any) => (
-                <Link key={row.id} href={`/panel/hasar-dosyalari/${row.id}`} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-200 hover:text-indigo-700">
-                  {row.fileNo}
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </SectionCard>
     </div>
   );
+
 }
 
 // ── Evrak Önizleme Modalı ─────────────────────────────────────────────────────
@@ -1195,7 +1165,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
           </div>
           <div className="flex items-center gap-2 ml-3 flex-shrink-0">
             <a href={downloadUrl} target="_blank" rel="noreferrer"
-              className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition-colors font-medium">
+              className="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 px-3 py-1.5 rounded-lg transition-colors font-medium">
               İndir
             </a>
             <button type="button" onClick={onClose}
@@ -1228,7 +1198,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
               <p className="text-sm font-medium text-slate-700 mb-1">{doc.fileName}</p>
               <p className="text-xs text-slate-400 mb-4">Bu dosya türü tarayıcıda önizlenemiyor.</p>
               <a href={downloadUrl} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors font-medium">
+                className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 transition-colors font-medium">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -1331,7 +1301,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-48">
               <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
-              <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                 value={selectedTypeId}
                 onChange={(e) => { setSelectedTypeId(e.target.value); setCustomType(''); }}>
                 <option value="">Seçin...</option>
@@ -1344,7 +1314,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
               </select>
               {otherSelected && (
                 <input
-                  className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                   placeholder="Evrak türünü yazın..."
                   value={customType}
                   onChange={(e) => setCustomType(e.target.value)}
@@ -1356,7 +1326,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                 onChange={handleUpload} disabled={!canUpload || uploading} />
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canUpload || uploading}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap font-medium">
+                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap font-medium">
                 {uploading ? 'Yükleniyor...' : 'Dosya Seç ve Yükle'}
               </button>
             </div>
@@ -1381,20 +1351,20 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
               const ext = getExt(doc);
               const showThumb = isImage(doc);
               return (
-                <div key={doc.id} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/20 transition-all">
+                <div key={doc.id} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/20 transition-all">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Thumbnail or icon */}
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {showThumb ? (
                         <img src={downloadUrl} alt={doc.fileName} className="w-10 h-10 object-cover rounded-xl" />
                       ) : (
-                        <span className="text-indigo-600 text-xs font-bold">{ext.toUpperCase() || 'DOC'}</span>
+                        <span className="text-brand-600 text-xs font-bold">{ext.toUpperCase() || 'DOC'}</span>
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{doc.fileName}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs mr-1">
+                        <span className="bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded text-xs mr-1">
                           {doc.customLabel ?? doc.documentType?.name ?? doc.documentTypeName ?? '—'}
                         </span>
                         {fmtSize(doc.fileSize)} · {new Date(doc.createdAt).toLocaleDateString('tr-TR')}
@@ -1414,7 +1384,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
                         }
                       }}
                       title="Ön İzleme"
-                      className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-brand-50 text-slate-500 hover:text-brand-600 rounded-lg transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1458,7 +1428,7 @@ export default function VendorDetailPage() {
   if (loading) return (
     <div className="flex items-center justify-center min-h-64">
       <div className="flex flex-col items-center gap-3 text-slate-400">
-        <svg className="w-8 h-8 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+        <svg className="w-8 h-8 animate-spin text-brand-400" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
@@ -1481,7 +1451,7 @@ export default function VendorDetailPage() {
     <div>
       {/* ── Back ── */}
       <button type="button" onClick={() => router.push('/panel/tedarikciler')}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-5 transition-colors">
+        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-3 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -1489,9 +1459,9 @@ export default function VendorDetailPage() {
       </button>
 
       {/* ── Header Card ── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-5">
-        <div className="flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm ${isCorporate ? 'bg-indigo-600' : 'bg-purple-600'}`}>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
+        <div className="flex items-start gap-3">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-sm ${isCorporate ? 'bg-indigo-600' : 'bg-purple-600'}`}>
             {vendor.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -1513,64 +1483,31 @@ export default function VendorDetailPage() {
               </div>
             </div>
             {/* Quick info */}
-            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
               {vendor.phone && (
                 <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" size="sm" />
               )}
-              {vendor.email && <a href={`mailto:${vendor.email}`} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1">✉ {vendor.email}</a>}
+              {vendor.email && <a href={`mailto:${vendor.email}`} className="text-xs text-slate-500 hover:text-brand-600 flex items-center gap-1">✉ {vendor.email}</a>}
               {vendor.taxNumber && <span className="text-xs text-slate-400">VKN: {vendor.taxNumber}</span>}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Tedarikçi Bilgileri Bandı — tüm sekmelerde sabit ── */}
-      <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`w-7 h-7 rounded-lg text-white text-xs font-bold flex items-center justify-center flex-shrink-0 ${isCorporate ? 'bg-indigo-600' : 'bg-purple-600'}`}>
-            {vendor.name.charAt(0).toUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs text-blue-400 font-medium tracking-wide leading-none mb-0.5">
-              {isCorporate ? 'Kurumsal Tedarikçi' : 'Bireysel Tedarikçi'}
-            </p>
-            <p className="text-sm font-semibold text-blue-800 truncate">{vendor.name}</p>
-          </div>
-        </div>
-        {vendor.phone && (
-          <div className="min-w-0">
-            <p className="text-xs text-blue-400 leading-none mb-0.5">Telefon</p>
-            <PhoneContactActions phone={vendor.phone} variant="inline" accent="indigo" size="sm" />
-          </div>
-        )}
-        {vendor.email && (
-          <div className="min-w-0">
-            <p className="text-xs text-blue-400 leading-none mb-0.5">E-posta</p>
-            <a href={`mailto:${vendor.email}`} className="text-sm font-medium text-blue-700 hover:underline truncate">{vendor.email}</a>
-          </div>
-        )}
-        {vendor.city && (
-          <div className="min-w-0">
-            <p className="text-xs text-blue-400 leading-none mb-0.5">Şehir</p>
-            <p className="text-sm font-medium text-blue-700">{vendor.city}</p>
-          </div>
-        )}
-      </div>
-
       {/* ── Tabs ── */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-5 overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-3 overflow-x-auto">
         <div className="flex min-w-max">
           {TABS.map((tab) => (
             <button type="button" key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/30'
+                  ? 'border-brand-600 text-brand-600 bg-brand-50/30'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}>
               <span>{tab.icon}</span>
               {tab.label}
               {tab.id === 'yetkili-iletisim' && contactCount > 0 && (
-                <span className="ml-1 bg-indigo-100 text-indigo-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">{contactCount}</span>
+                <span className="ml-1 bg-brand-100 text-brand-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">{contactCount}</span>
               )}
             </button>
           ))}
@@ -1665,9 +1602,9 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Toplam Ekstre', value: summary.totalStatements, color: 'text-slate-700' },
-            { label: 'Dosya Ödemesi', value: summary.filePaymentCount ?? 0, color: 'text-indigo-600' },
+            { label: 'Dosya Ödemesi', value: summary.filePaymentCount ?? 0, color: 'text-brand-600' },
             { label: 'Dekontlu Ödeme', value: summary.filePaymentsWithReceipt ?? 0, color: 'text-green-600' },
-            { label: 'Onaylı Tutar', value: fmtCurrency(summary.totalApprovedAmount), color: 'text-indigo-700' },
+            { label: 'Onaylı Tutar', value: fmtCurrency(summary.totalApprovedAmount), color: 'text-brand-700' },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 text-center">
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -1732,7 +1669,7 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
         action={
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs rounded-lg font-medium transition-colors"
           >
             + Yeni Ekstre
           </button>
@@ -1748,8 +1685,8 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
               return (
                 <div key={stmt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-indigo-700">EK</span>
+                    <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-brand-700">EK</span>
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{stmt.statementNo}</p>
@@ -1911,7 +1848,7 @@ function CreateStatementModal({
                   <TrDateInput
                     value={periodStart}
                     onChange={setPeriodStart}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
                 <div>
@@ -1919,7 +1856,7 @@ function CreateStatementModal({
                   <TrDateInput
                     value={periodEnd}
                     onChange={setPeriodEnd}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
               </div>
@@ -1928,7 +1865,7 @@ function CreateStatementModal({
                 <textarea
                   value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
                   placeholder="Tedarikçiye iletmek istediğiniz notlar..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                 />
               </div>
             </div>
@@ -1942,7 +1879,7 @@ function CreateStatementModal({
                 </p>
                 <div className="flex gap-2">
                   <button onClick={() => setSelectedItems(new Set(suggestedItems.map((i, idx) => i.paymentId ?? String(idx))))}
-                    className="text-xs text-indigo-600 hover:underline">Tümünü Seç</button>
+                    className="text-xs text-brand-600 hover:underline">Tümünü Seç</button>
                   <span className="text-slate-300">|</span>
                   <button onClick={() => setSelectedItems(new Set())}
                     className="text-xs text-slate-500 hover:underline">Temizle</button>
@@ -1960,11 +1897,11 @@ function CreateStatementModal({
                   return (
                     <label key={key}
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        checked ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        checked ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}
                     >
                       <input type="checkbox" checked={checked} onChange={() => toggleItem(key)}
-                        className="mt-0.5 accent-indigo-600" />
+                        className="mt-0.5 accent-brand-600" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-800">{item.lineDescription}</p>
                         <p className="text-xs text-slate-400">
@@ -1996,7 +1933,7 @@ function CreateStatementModal({
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-200">
                   <span className="text-slate-700 font-semibold">Toplam Tutar</span>
-                  <span className="font-bold text-indigo-700">{fmtCurrency(selectedTotal)}</span>
+                  <span className="font-bold text-brand-700">{fmtCurrency(selectedTotal)}</span>
                 </div>
               </div>
               {notes && (
@@ -2027,7 +1964,7 @@ function CreateStatementModal({
             <button
               onClick={loadSuggestions}
               disabled={loadingSuggest || !periodStart || !periodEnd}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-sm rounded-lg font-medium transition-colors"
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 text-white text-sm rounded-lg font-medium transition-colors"
             >
               {loadingSuggest ? 'Yükleniyor...' : 'Devam'}
             </button>
@@ -2035,7 +1972,7 @@ function CreateStatementModal({
           {step === 'items' && (
             <button
               onClick={() => setStep('review')}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg font-medium transition-colors"
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg font-medium transition-colors"
             >
               Gözden Geçir
             </button>

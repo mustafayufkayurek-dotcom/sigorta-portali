@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-25",
-  "label": "v396-sigorta-operasyon-referans-agi",
-  "description": "Web-only: Sigorta Portalı Türkiye Operasyon Referans Ağı. KPI, filtre, harita, öne çıkan liste, gizlilik paneli. Commit cf296ba. Migration yok. Backend v390. Health PASS, nginx→web PASS, route-gate PASS (login credential PARTIAL). Acil Yardım Tespit Bulguları ve Dosya Sorumlusu WIP hariç. Rollback web v395 / backend v390.",
+  "updatedAt": "2026-07-27",
+  "label": "v401-title-case-genel-bakis",
+  "description": "Web-only: Title Case (referans/etiket/vergi dairesi/adres/hesap sahibi; uppercase CSS kaldırıldı), Tedarikçi Genel Bakış agresif sıkılaştırma (Operasyon Özeti birleşti, Kısa Not/Yakın Dosyalar kaldırıldı). Backend değişmedi (v397). Rollback web v400 / backend v397.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v390-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v396-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v397-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v401-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v395-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v390-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v400-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v397-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

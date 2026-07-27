@@ -55,21 +55,17 @@ export default function OperationReferenceKpiCards({ stats }: OperationReference
         return (
           <div
             key={card.key}
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm"
+            className="rounded-xl border border-slate-200 bg-white px-3.5 py-3.5 text-center shadow-sm"
           >
-            <div className="flex items-start gap-2.5">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${palette.bg} ${palette.text}`}
-              >
-                <KpiIcon icon={card.icon} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium leading-tight text-slate-500">{card.label}</p>
-                <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-slate-900">
-                  {formatReferenceKpiValue(value)}
-                </p>
-              </div>
+            <div
+              className={`mx-auto flex h-9 w-9 items-center justify-center rounded-xl ${palette.bg} ${palette.text}`}
+            >
+              <KpiIcon icon={card.icon} />
             </div>
+            <p className="mt-2 text-[11px] font-medium leading-tight text-slate-500">{card.label}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-slate-900">
+              {formatReferenceKpiValue(value)}
+            </p>
           </div>
         );
       })}

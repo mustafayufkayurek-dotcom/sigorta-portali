@@ -1,5 +1,7 @@
 /** Dosya Operasyon Özeti — eksper görev alanları; kâr/maliyet/marj UI’a girmez */
 
+import { normalizeReportImageCategory, type ReportImageCategoryKey } from '@/utils/quick-repair-damage-types';
+
 export type ExpertDocCategory = 'hasarFotograflari' | 'muvafakatname' | 'dijitalOnay';
 
 export const EXPERT_DOC_CATEGORY_LABEL: Record<ExpertDocCategory, string> = {
@@ -118,6 +120,7 @@ export type ExpertSafeDetail = {
   } | null;
   assignedAdjuster?: { firstName?: string | null; lastName?: string | null } | null;
   assignedOfficeUser?: { firstName?: string | null; lastName?: string | null } | null;
+  assignedFieldUser?: { firstName?: string | null; lastName?: string | null } | null;
   currentResponsibleUser?: { firstName?: string | null; lastName?: string | null } | null;
   latestRepairReport?: {
     id?: string;
@@ -182,6 +185,7 @@ export function pickExpertSafeDetail(raw: Record<string, unknown> | null | undef
   const customer = raw.customer as ExpertSafeDetail['customer'];
   const adjuster = raw.assignedAdjuster as ExpertSafeDetail['assignedAdjuster'];
   const officeUser = raw.assignedOfficeUser as ExpertSafeDetail['assignedOfficeUser'];
+  const fieldUser = raw.assignedFieldUser as ExpertSafeDetail['assignedFieldUser'];
   const responsible = raw.currentResponsibleUser as ExpertSafeDetail['currentResponsibleUser'];
   const report = raw.latestRepairReport as Record<string, unknown> | null | undefined;
 
@@ -247,6 +251,9 @@ export function pickExpertSafeDetail(raw: Record<string, unknown> | null | undef
     assignedOfficeUser: officeUser
       ? { firstName: officeUser.firstName ?? null, lastName: officeUser.lastName ?? null }
       : null,
+    assignedFieldUser: fieldUser
+      ? { firstName: fieldUser.firstName ?? null, lastName: fieldUser.lastName ?? null }
+      : null,
     currentResponsibleUser: responsible
       ? { firstName: responsible.firstName ?? null, lastName: responsible.lastName ?? null }
       : null,
@@ -259,6 +266,21 @@ export function personName(p?: { firstName?: string | null; lastName?: string | 
   if (!p) return '—';
   const n = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
   return n || '—';
+}
+
+/** Gizlilik amaçlı maskeli isim — "Mxxxxxxx Yxxxxxx" formatı */
+function maskNamePart(part: string): string {
+  const trimmed = part.trim();
+  if (!trimmed) return '';
+  const first = trimmed.charAt(0).toLocaleUpperCase('tr-TR');
+  const maskLength = Math.max(trimmed.length - 1, 3);
+  return `${first}${'x'.repeat(maskLength)}`;
+}
+
+export function maskPersonName(p?: { firstName?: string | null; lastName?: string | null } | null): string {
+  if (!p) return '—';
+  const parts = [maskNamePart(p.firstName ?? ''), maskNamePart(p.lastName ?? '')].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : '—';
 }
 
 export type ExpertApprovalStatus =
@@ -386,6 +408,41 @@ export function deriveExpertRepairStatus(detail: ExpertSafeDetail): ExpertRepair
   return 'Onarım Başlamadı';
 }
 
+/**
+ * İç ofis durum akışını (18 aşamalı) eksper için sade, operasyonel aşama adına çevirir.
+ * "Dosya Durumu" rozeti burada üretilen metni gösterir; renklendirme (expertStatusBadgeClass)
+ * bu sade kelimeleri (tespit/rapor/onay/tamam) zaten tanıyacak şekilde yazılmıştır.
+ */
+export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
+  const code = statusCodeKey(detail);
+  const name = statusNameKey(detail);
+  const rawName = detail.currentStatus?.name ?? '—';
+
+  if (code === 'test_status') return rawName;
+  if (code === 'closed' || /kapat/.test(name)) return 'Tamamlandı';
+  if (code === 'cancelled' || /iptal/.test(name)) return 'İptal Edildi';
+  if (['new', 'pre_review', 'adjuster_assigned', 'site_visit_planned'].includes(code)) {
+    return 'Tespit Aşamasında';
+  }
+  if (code === 'site_visit_done' || code === 'budget_preparing') {
+    return 'Rapor Yazım Aşamasında';
+  }
+  if (code === 'budget_submitted') return 'Onay Bekleniyor';
+  if (code === 'budget_revision_requested') return 'Revizyon Bekleniyor';
+  if (['budget_approved', 'repair_planning', 'repair_in_progress'].includes(code)) {
+    return 'Onarım Sürecinde';
+  }
+  if (
+    ['repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'].includes(
+      code,
+    )
+  ) {
+    return 'Dosya Kapanış Sürecinde';
+  }
+  // Bilinmeyen/yeni bir durum kodu gelirse sessizce boş kalmasın — ham adı göster.
+  return rawName;
+}
+
 export function deriveExpertOperationSummary(
   detail: ExpertSafeDetail,
   lastActivityTitle?: string | null,
@@ -464,4 +521,34 @@ export function expertOperationEventTitle(input: {
   if (input.fallback?.trim()) return input.fallback.trim();
   if (input.statusName?.trim()) return input.statusName.trim();
   return 'Operasyon Güncellendi';
+}
+
+/** Onarım raporu fotoğrafları — Dosya Ekleri sekmesinde eksper-güvenli minimal gösterim */
+export type ExpertReportImage = {
+  id: string;
+  storageKey: string;
+  category?: string | null;
+};
+
+export const EXPERT_REPORT_IMAGE_LABEL: Record<ReportImageCategoryKey, string> = {
+  before: 'Hasar Tespit Resimleri',
+  damage: 'Onarım Resimleri',
+  after: 'Onarım Bitiş Resimleri',
+};
+
+export const EXPERT_REPORT_IMAGE_ORDER: ReportImageCategoryKey[] = ['before', 'damage', 'after'];
+
+export function groupExpertReportImages(
+  images: ExpertReportImage[],
+): Record<ReportImageCategoryKey, ExpertReportImage[]> {
+  const groups: Record<ReportImageCategoryKey, ExpertReportImage[]> = {
+    before: [],
+    damage: [],
+    after: [],
+  };
+  for (const img of images) {
+    const key = normalizeReportImageCategory(img.category);
+    groups[key].push(img);
+  }
+  return groups;
 }

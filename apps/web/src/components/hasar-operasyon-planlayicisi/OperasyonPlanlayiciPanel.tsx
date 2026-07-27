@@ -317,7 +317,7 @@ function PlanlayiciInner({
               {/* Sağ içerik */}
               <div className="flex min-w-0 flex-1 flex-col bg-white">
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  <p className="text-[10px] font-semibold tracking-wide text-slate-400">
                     {activeMeta.n}. Adım
                   </p>
                   <h3 className="text-sm font-bold text-slate-950">{activeMeta.label}</h3>

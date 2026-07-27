@@ -39,6 +39,7 @@ import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlin
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
+import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
@@ -329,6 +330,7 @@ function OperasyonPageContent() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [noteFileId, setNoteFileId] = useState<string | null>(null);
 
   const [showNewAcilPanel, setShowNewAcilPanel] = useState(false);
   const [acilFormSession, setAcilFormSession] = useState(0);
@@ -1081,6 +1083,9 @@ function OperasyonPageContent() {
                                 reportId={row.reportId}
                                 defaultEmailTo={row.defaultEmailTo}
                                 approval72hExceeded={row.approval72hExceeded}
+                                onAddNote={
+                                  row.kind === 'hasar' ? () => setNoteFileId(row.id) : undefined
+                                }
                                 onEmailRequest={() =>
                                   setEmailTarget({
                                     claimId: row.id,
@@ -1144,6 +1149,12 @@ function OperasyonPageContent() {
       <OperationSendEmailModal
         target={emailTarget}
         onClose={() => setEmailTarget(null)}
+      />
+      <ExpertFileNoteModal
+        open={Boolean(noteFileId)}
+        claimFileId={noteFileId}
+        onClose={() => setNoteFileId(null)}
+        onSaved={() => setNoteFileId(null)}
       />
       <SlidePanel
         open={showNewAcilPanel}

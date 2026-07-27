@@ -2,7 +2,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
   ClipboardList,
-  FileSearch,
   FileText,
   FolderOpen,
   GitBranch,
@@ -18,15 +17,33 @@ export type PortalNavItem = {
   alertCount?: number;
 };
 
-/** FINAL MASTER — Eksper sidebar / dil: Dosyalarım; Atanmış yok. */
-export function getExpertPortalNav(): PortalNavItem[] {
+export type ExpertPortalNavCounts = {
+  dosyalar?: number;
+  onay?: number;
+  rapor?: number;
+  /** Onaylanan Dosyalar */
+  onaylanan?: number;
+  /** @deprecated — onaylanan kullanın */
+  raporOnay?: number;
+};
+
+/**
+ * FINAL MASTER — Eksper sidebar.
+ * Özet rozet yalnız «Onay Bekliyor» — diğer kuyruk sayıları sorumluluk sinyalini zayıflatır.
+ */
+export function getExpertPortalNav(counts?: ExpertPortalNavCounts): PortalNavItem[] {
   return [
     { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: LayoutDashboard, exactMatch: true },
-    { title: 'Dosyalarım', href: '/panel/eksper-portal/dosyalar', icon: FolderOpen },
     {
-      title: 'İnceleme Bekleyenler',
-      href: '/panel/eksper-portal/dosyalar?queue=inceleme',
-      icon: FileSearch,
+      title: 'Dosyalarım',
+      href: '/panel/eksper-portal/dosyalar',
+      icon: FolderOpen,
+    },
+    {
+      title: 'Onay Bekliyor',
+      href: '/panel/eksper-portal/dosyalar?queue=onay',
+      icon: ShieldCheck,
+      alertCount: counts?.onay,
     },
     {
       title: 'Rapor Bekleyenler',
@@ -34,9 +51,9 @@ export function getExpertPortalNav(): PortalNavItem[] {
       icon: FileText,
     },
     {
-      title: 'Onay Bekleyenler',
-      href: '/panel/eksper-portal/onaylar',
-      icon: ShieldCheck,
+      title: 'Onaylanan Dosyalar',
+      href: '/panel/eksper-portal/dosyalar?queue=onaylanan',
+      icon: ClipboardList,
     },
   ];
 }
@@ -55,9 +72,12 @@ export function getInsurancePortalNav(): PortalNavItem[] {
 export const PORTAL_BOTTOM_SHORT_LABELS: Record<string, string> = {
   'Eksper Paneli': 'Panel',
   Dosyalarım: 'Dosyalarım',
-  'İnceleme Bekleyenler': 'İnceleme',
+  'Onay Bekliyor': 'Onay',
+  'İnceleme Bekleyenler': 'Onay',
   'Rapor Bekleyenler': 'Rapor',
-  'Onay Bekleyenler': 'Onay',
+  'Onaylanan Dosyalar': 'Onaylanan',
+  'Rapor Onaylarım': 'Onaylanan',
+  'Onay Bekleyenler': 'Onaylanan',
   'Yeni İhbar': 'İhbar',
   'Dosya Akışı': 'Akış',
   'Bekleyen Onaylar': 'Onaylar',

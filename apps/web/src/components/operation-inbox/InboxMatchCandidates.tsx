@@ -60,13 +60,13 @@ export function InboxMatchCandidates({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2.5">
-      <p className="text-xs font-medium text-indigo-800 mb-2">Önerilen Dosyalar</p>
+    <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
+      <p className="text-xs font-medium text-brand-800 mb-2">Önerilen Dosyalar</p>
       <ul className="space-y-1.5">
         {candidates.map((c) => (
           <li
             key={`${c.type}:${c.id}`}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/80 px-2.5 py-2 border border-indigo-100/80"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/80 px-2.5 py-2 border border-brand-100/80"
           >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +99,7 @@ export function InboxMatchCandidates({
                   if (c.type === 'claim') onLinkClaim(c.id, c.fileNo);
                   else onLinkEmergency(c.id, c.fileNo);
                 }}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
               >
                 Bağla
               </button>

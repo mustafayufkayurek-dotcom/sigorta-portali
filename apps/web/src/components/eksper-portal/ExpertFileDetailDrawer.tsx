@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, Loader2, Mail } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import { SlidePanel } from '@/components/SlidePanel';
 import { fmtDate, fmtDateTime } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel, toTitleCaseTR } from '@/utils/text-helpers';
@@ -13,7 +13,7 @@ import {
   type FileDocument,
 } from '@/utils/fileDocumentApi';
 import {
-  expertSlaBadge,
+  expertDelayDays,
   expertSlaBadgeClass,
   expertSlaDotClass,
   expertStatusBadgeClass,
@@ -21,21 +21,28 @@ import {
 import {
   EXPERT_DOC_CATEGORY_LABEL,
   EXPERT_DOC_CATEGORY_ORDER,
+  EXPERT_REPORT_IMAGE_LABEL,
+  EXPERT_REPORT_IMAGE_ORDER,
+  deriveExpertFileStageLabel,
   deriveExpertOperationSummary,
   formatExpertMoney,
   groupExpertDocuments,
+  groupExpertReportImages,
   isExpertVisibleNote,
   isKonutBranch,
+  maskPersonName,
   personName,
   pickExpertSafeDetail,
   pickExpertSafeFinance,
   presenceClass,
   presenceLabel,
   type ExpertDocCategory,
+  type ExpertReportImage,
   type ExpertSafeDetail,
   type ExpertSafeDoc,
   type PresenceTone,
 } from '@/utils/expert-drawer-summary';
+import { getReportImageUrl } from '@/utils/upload-url';
 
 export type ExpertDrawerFile = {
   id: string;
@@ -97,7 +104,7 @@ type ActivityRow = {
 const TABS: { id: TabId; label: string }[] = [
   { id: 'ozet', label: 'Özet' },
   { id: 'operasyon', label: 'Operasyon Bilgileri' },
-  { id: 'belgeler', label: 'Evraklar' },
+  { id: 'belgeler', label: 'Dosya Ekleri' },
   { id: 'notlar', label: 'Notlar' },
 ];
 
@@ -159,6 +166,8 @@ export function ExpertFileDetailDrawer({
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [docs, setDocs] = useState<ExpertSafeDoc[]>([]);
   const [fileDocs, setFileDocs] = useState<FileDocument[]>([]);
+  const [reportImages, setReportImages] = useState<ExpertReportImage[]>([]);
+  const [expandedPhotoGroups, setExpandedPhotoGroups] = useState<Record<string, boolean>>({});
   const [closure, setClosure] = useState<ClaimClosureConditions | null>(null);
   const [lastActivity, setLastActivity] = useState<ActivityRow | null>(null);
   const [appointmentAt, setAppointmentAt] = useState<string | null>(null);
@@ -166,9 +175,9 @@ export function ExpertFileDetailDrawer({
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const [sendEmailWithNote, setSendEmailWithNote] = useState(false);
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
-  const [mailSending, setMailSending] = useState(false);
   const [mailResult, setMailResult] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [previewBusyId, setPreviewBusyId] = useState<string | null>(null);
   const [docPreviewError, setDocPreviewError] = useState<string | null>(null);
@@ -202,11 +211,14 @@ export function ExpertFileDetailDrawer({
       setDocs([]);
       setNotes([]);
       setFileDocs([]);
+      setReportImages([]);
+      setExpandedPhotoGroups({});
       setClosure(null);
       setLastActivity(null);
       setAppointmentAt(null);
       setSiteVisitAt(null);
       setNoteDraft('');
+      setSendEmailWithNote(false);
       setNoteError(null);
       setMailResult(null);
       return;
@@ -232,6 +244,28 @@ export function ExpertFileDetailDrawer({
 
         const reportId = safe?.latestRepairReport?.id;
         if (reportId) {
+          try {
+            const imagesRes = await fetch(`${API}/repair-reports/${reportId}/images`, { headers });
+            if (imagesRes.ok) {
+              const imagesBody = await imagesRes.json();
+              const imagesRaw = (imagesBody?.data ?? imagesBody ?? []) as Array<{
+                id: string;
+                storageKey: string;
+                category?: string | null;
+              }>;
+              if (Array.isArray(imagesRaw)) {
+                setReportImages(
+                  imagesRaw.map((img) => ({
+                    id: String(img.id),
+                    storageKey: img.storageKey,
+                    category: img.category ?? null,
+                  })),
+                );
+              }
+            }
+          } catch {
+            /* fotoğraf listesi olmadan devam et */
+          }
           try {
             const rrRes = await fetch(`${API}/repair-reports/${reportId}`, { headers });
             if (rrRes.ok) {
@@ -322,11 +356,12 @@ export function ExpertFileDetailDrawer({
 
   const view = detail ?? seedFromListFile(file);
   const subject = formatClaimSubjectLabel(view?.lossType, undefined, view?.subject ?? undefined);
-  const sla = expertSlaBadge({
+  const delayDays = expertDelayDays({
     slaDueAt: view?.slaDueAt,
     delayRisk: view?.delayRisk,
-    statusName: view?.currentStatus?.name,
   });
+  const delayTone =
+    delayDays == null ? 'muted' : delayDays > 0 ? 'red' : 'green';
 
   const lastActivityTitle =
     lastActivity?.title ||
@@ -335,7 +370,9 @@ export function ExpertFileDetailDrawer({
     null;
 
   const op = view ? deriveExpertOperationSummary(view, lastActivityTitle) : null;
+  const fileStage = view ? deriveExpertFileStageLabel(view) : '—';
   const docGroups = useMemo(() => groupExpertDocuments(docs), [docs]);
+  const photoGroups = useMemo(() => groupExpertReportImages(reportImages), [reportImages]);
   const showKonutDamage = isKonutBranch(view);
   const finance = view?.expertFinance ?? null;
 
@@ -379,10 +416,8 @@ export function ExpertFileDetailDrawer({
     personName(lastActivity?.actor) ||
     personName(lastActivity?.user) ||
     personName(view?.currentResponsibleUser);
-  const operationOwner = personName(view?.currentResponsibleUser) !== '—'
-    ? personName(view?.currentResponsibleUser)
-    : personName(view?.assignedAdjuster);
   const meridyenFileOwner = personName(view?.assignedOfficeUser);
+  const fieldInspectorName = maskPersonName(view?.assignedFieldUser);
 
   const openDoc = async (doc: ExpertSafeDoc) => {
     setPreviewBusyId(doc.id);
@@ -427,6 +462,7 @@ export function ExpertFileDetailDrawer({
     }
     setNoteSaving(true);
     setNoteError(null);
+    setMailResult(null);
     try {
       const res = await fetch(`${API}/claim-files/${file.id}/notes`, {
         method: 'POST',
@@ -441,44 +477,29 @@ export function ExpertFileDetailDrawer({
         });
         if (!fallback.ok) throw new Error('Not kaydedilemedi.');
       }
+
+      if (sendEmailWithNote) {
+        const mailRes = await fetch(`${API}/claim-files/${file.id}/responsible-email`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ message: text }),
+        });
+        const body = await mailRes.json().catch(() => ({}));
+        if (!mailRes.ok || body?.success === false) {
+          throw new Error(
+            body?.message || body?.data?.errorMsg || 'Not kaydedildi; e-posta gönderilemedi.',
+          );
+        }
+        setMailResult({ tone: 'success', message: 'Not kaydedildi ve e-posta gönderildi.' });
+      }
+
       setNoteDraft('');
+      setSendEmailWithNote(false);
       await loadNotes(file.id);
     } catch (e) {
       setNoteError(e instanceof Error ? e.message : 'Not kaydedilemedi.');
     } finally {
       setNoteSaving(false);
-    }
-  };
-
-  const sendNoteToResponsible = async () => {
-    if (!file?.id) return;
-    const text = toTitleCaseTR(noteDraft.trim());
-    if (!text) {
-      setNoteError('E-posta göndermek için not metni zorunludur.');
-      return;
-    }
-
-    setMailSending(true);
-    setNoteError(null);
-    setMailResult(null);
-    try {
-      const res = await fetch(`${API}/claim-files/${file.id}/responsible-email`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ message: text }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body?.success === false) {
-        throw new Error(body?.message || body?.data?.errorMsg || 'E-posta gönderilemedi.');
-      }
-      setMailResult({ tone: 'success', message: 'E-posta dosya sorumlusuna gönderildi.' });
-    } catch (error) {
-      setMailResult({
-        tone: 'error',
-        message: error instanceof Error ? error.message : 'E-posta gönderilemedi.',
-      });
-    } finally {
-      setMailSending(false);
     }
   };
 
@@ -499,8 +520,8 @@ export function ExpertFileDetailDrawer({
             <h3 className="mt-0.5 truncate text-[15px] font-semibold text-slate-900">{view?.fileNo ?? '—'}</h3>
           </div>
           <div className="flex items-center gap-2">
-            {view?.currentStatus?.name ? (
-              <span className={expertStatusBadgeClass(view.currentStatus.name)}>{view.currentStatus.name}</span>
+            {view && fileStage !== '—' ? (
+              <span className={expertStatusBadgeClass(fileStage)}>{fileStage}</span>
             ) : null}
             <button
               type="button"
@@ -546,18 +567,14 @@ export function ExpertFileDetailDrawer({
                   <Field label="Dosya Konusu" value={subject || '—'} />
                   <Field
                     label="Dosya Durumu"
-                    value={
-                      <span className={expertStatusBadgeClass(view.currentStatus?.name)}>
-                        {view.currentStatus?.name ?? '—'}
-                      </span>
-                    }
+                    value={<span className={expertStatusBadgeClass(fileStage)}>{fileStage}</span>}
                   />
                   <Field
-                    label="SLA"
+                    label="Gecikme Gün"
                     value={
-                      <span className={expertSlaBadgeClass(sla.tone)}>
-                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${expertSlaDotClass(sla.tone)}`} />
-                        {sla.text}
+                      <span className={expertSlaBadgeClass(delayTone)}>
+                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${expertSlaDotClass(delayTone)}`} />
+                        {delayDays == null ? '—' : delayDays}
                       </span>
                     }
                   />
@@ -614,10 +631,12 @@ export function ExpertFileDetailDrawer({
                         <Field
                           label="Bina Hasarı"
                           value={formatExpertMoney(finance?.buildingDamageTotal)}
+                          className="text-center"
                         />
                         <Field
                           label="Eşya Hasarı"
                           value={formatExpertMoney(finance?.goodsDamageTotal)}
+                          className="text-center"
                         />
                       </>
                     ) : null}
@@ -679,8 +698,25 @@ export function ExpertFileDetailDrawer({
                 </ul>
               </Section>
 
+              {EXPERT_REPORT_IMAGE_ORDER.some((cat) => photoGroups[cat].length > 0) ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-slate-800">Onarım Raporu Fotoğrafları</p>
+                  {EXPERT_REPORT_IMAGE_ORDER.map((cat) => (
+                    <ReportPhotoGroup
+                      key={cat}
+                      label={EXPERT_REPORT_IMAGE_LABEL[cat]}
+                      images={photoGroups[cat]}
+                      expanded={Boolean(expandedPhotoGroups[cat])}
+                      onToggleExpand={() =>
+                        setExpandedPhotoGroups((prev) => ({ ...prev, [cat]: !prev[cat] }))
+                      }
+                    />
+                  ))}
+                </div>
+              ) : null}
+
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-800">Evrak İçeriği</p>
+                <p className="text-sm font-semibold text-slate-800">Yüklenen Evraklar</p>
                 <button
                   type="button"
                   className="text-xs font-semibold text-brand-600 hover:text-blue-800"
@@ -784,7 +820,7 @@ export function ExpertFileDetailDrawer({
                       </span>
                     }
                   />
-                  <Field label="Operasyon Sorumlusu" value={operationOwner} />
+                  <Field label="Dosya Sorumlusu" value={meridyenFileOwner} />
                   <Field
                     label="Son Güncelleme"
                     value={view.updatedAt ? fmtDateTime(view.updatedAt) : lastOpAt ? fmtDateTime(lastOpAt) : '—'}
@@ -797,6 +833,7 @@ export function ExpertFileDetailDrawer({
                   <Field label="Hasar Adresi" value={addressLine} className="col-span-2" />
                   <Field label="İl" value={city} />
                   <Field label="İlçe" value={district} />
+                  <Field label="Hasar Tespiti Yapan" value={fieldInspectorName} className="col-span-2" />
                 </div>
               </Section>
             </div>
@@ -813,13 +850,30 @@ export function ExpertFileDetailDrawer({
                     setNoteDraft(e.target.value);
                     setMailResult(null);
                   }}
+                  onBlur={(e) => {
+                    const v = toTitleCaseTR(e.target.value.trim());
+                    if (v) setNoteDraft(v);
+                  }}
                   rows={3}
-                  placeholder="Eksper notu yazın…"
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Notunuzu Yazın…"
+                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
-                {noteError ? <p className="mt-1 text-xs text-red-600">{noteError}</p> : null}
+                <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-slate-200 bg-slate-50/80 px-2.5 py-2">
+                  <input
+                    type="checkbox"
+                    checked={sendEmailWithNote}
+                    onChange={(e) => setSendEmailWithNote(e.target.checked)}
+                    disabled={meridyenFileOwner === '—'}
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="min-w-0 text-xs text-slate-700">
+                    <span className="font-medium">Dosya Sorumlusuna E-posta Gönder</span>
+                    <span className="mt-0.5 block text-slate-500">İsteğe bağlıdır.</span>
+                  </span>
+                </label>
+                {noteError ? <p className="mt-1 text-xs text-status-danger">{noteError}</p> : null}
                 {mailResult ? (
-                  <p className={`mt-1 text-xs ${mailResult.tone === 'success' ? 'text-emerald-700' : 'text-red-600'}`}>
+                  <p className={`mt-1 text-xs ${mailResult.tone === 'success' ? 'text-status-success' : 'text-status-danger'}`}>
                     {mailResult.message}
                   </p>
                 ) : null}
@@ -833,20 +887,12 @@ export function ExpertFileDetailDrawer({
                   </button>
                   <button
                     type="button"
-                    disabled={mailSending || meridyenFileOwner === '—'}
-                    onClick={() => void sendNoteToResponsible()}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {mailSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                    {mailSending ? 'Gönderiliyor…' : 'Dosya Sorumlusuna E-posta Gönder'}
-                  </button>
-                  <button
-                    type="button"
                     disabled={noteSaving}
                     onClick={() => void saveNote()}
-                    className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
                   >
-                    {noteSaving ? 'Kaydediliyor…' : 'Not Ekle'}
+                    {noteSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    {noteSaving ? 'Kaydediliyor…' : sendEmailWithNote ? 'Kaydet Ve Gönder' : 'Not Yaz'}
                   </button>
                 </div>
               </div>
@@ -928,6 +974,61 @@ function DocCategoryBlock({
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+const PHOTO_PREVIEW_LIMIT = 3;
+
+function ReportPhotoGroup({
+  label,
+  images,
+  expanded,
+  onToggleExpand,
+}: {
+  label: string;
+  images: ExpertReportImage[];
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  if (images.length === 0) return null;
+  const shown = expanded ? images : images.slice(0, PHOTO_PREVIEW_LIMIT);
+  const remaining = images.length - shown.length;
+
+  return (
+    <section>
+      <div className="mb-1.5 flex items-center justify-between">
+        <h4 className="text-[11px] font-semibold tracking-wide text-slate-400">{label}</h4>
+        <span className="text-[11px] text-slate-400">{images.length}</span>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {shown.map((img) => (
+          <button
+            key={img.id}
+            type="button"
+            onClick={() => window.open(getReportImageUrl(img.storageKey), '_blank', 'noopener,noreferrer')}
+            className="aspect-square overflow-hidden rounded-md border border-slate-200 bg-slate-100"
+            title="Büyük Görüntüle"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getReportImageUrl(img.storageKey)}
+              alt={label}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </button>
+        ))}
+        {!expanded && remaining > 0 ? (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className="flex aspect-square items-center justify-center rounded-md border border-dashed border-slate-300 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            +{remaining}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

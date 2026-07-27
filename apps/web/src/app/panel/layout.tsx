@@ -40,6 +40,7 @@ import {
 } from '@/contexts/PanelHelpDrawerContext';
 import { applyPanelThemeToDocument, type StoredThemeConfig } from '@/utils/panel-time-theme';
 import PortalBottomNav from '@/components/portal/PortalBottomNav';
+import { PortalWhatsAppLiveSupport } from '@/components/panel/portal-whatsapp-live-support';
 import {
   PANEL_MAIN_TOP,
   PANEL_NAVBAR_HEIGHT,
@@ -50,7 +51,9 @@ import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
   getExpertPortalNav,
   getInsurancePortalNav,
+  type ExpertPortalNavCounts,
 } from '@/config/portal-nav';
+import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -232,6 +235,7 @@ function getPanelMainLinks({
   isFinance,
   isFieldStaff,
   pendingRevisionCount,
+  expertNavCounts,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -239,10 +243,11 @@ function getPanelMainLinks({
   isFinance: boolean;
   isFieldStaff: boolean;
   pendingRevisionCount: number;
+  expertNavCounts?: ExpertPortalNavCounts;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   return isExpert
-    ? getExpertPortalNav()
+    ? getExpertPortalNav(expertNavCounts)
     : isInsuranceCompanyUser
       ? getInsurancePortalNav()
       : isOfficeStaff
@@ -826,6 +831,54 @@ function PanelSidebar({
   hidden = false,
 }: PanelSidebarProps) {
   const [expandedGroupOverrides, setExpandedGroupOverrides] = useState<Record<string, boolean>>({});
+  // Eksper Portalı'nda Dosyalarım / Onay Bekliyor / Rapor Bekleyenler / Onaylanan Dosyalar
+  // aynı sayfayı farklı ?queue= filtresiyle açar. pathname tek başına bunları ayıramadığı için
+  // (useSearchParams paylaşılan layout'ta build hatasına yol açtığından) query'yi burada
+  // window.location üzerinden takip ediyoruz.
+  const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
+  const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const readQueue = () => setActiveQueueParam(new URLSearchParams(window.location.search).get('queue'));
+    readQueue();
+    window.addEventListener('popstate', readQueue);
+    return () => window.removeEventListener('popstate', readQueue);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isExpert) {
+      setExpertNavCounts({});
+      return;
+    }
+    let cancelled = false;
+    const token = getAccessToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    (async () => {
+      try {
+        const filesRes = await fetch(`${API_BASE}/claim-files?limit=100`, { headers });
+        const filesJson = filesRes.ok ? await filesRes.json() : null;
+        const files = filesJson?.data ?? [];
+        const queues = countExpertQueues(files);
+
+        if (!cancelled) {
+          setExpertNavCounts({
+            onay: queues.onay,
+          });
+        }
+      } catch {
+        if (!cancelled) setExpertNavCounts({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isExpert, pathname]);
 
   if (hidden) return null;
 
@@ -837,11 +890,21 @@ function PanelSidebar({
       : canSeeNavItem(path, roleCode);
 
   const isActive = (href: string, exactMatch?: boolean) => {
-    const normalizedHref = href.split('?')[0];
-    if (exactMatch) return pathname === normalizedHref;
-    return normalizedHref === '/panel'
-      ? pathname === '/panel'
-      : pathname === normalizedHref || pathname.startsWith(normalizedHref + '/');
+    const [normalizedHref, hrefQueryString = ''] = href.split('?');
+    const pathMatches = exactMatch
+      ? pathname === normalizedHref
+      : normalizedHref === '/panel'
+        ? pathname === '/panel'
+        : pathname === normalizedHref || pathname.startsWith(normalizedHref + '/');
+    if (!pathMatches) return false;
+    // Aynı gerekçeyle: yalnızca gerçekten seçili olan queue filtresi vurgulansın,
+    // aynı sayfadaki tüm alt filtreler birden aktif görünmesin.
+    if (normalizedHref === '/panel/eksper-portal/dosyalar') {
+      const hrefQueue = normalizeExpertQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
+      const activeQueue = normalizeExpertQueueParam(activeQueueParam);
+      return hrefQueue === activeQueue;
+    }
+    return true;
   };
 
   const mainLinks = getPanelMainLinks({
@@ -851,6 +914,7 @@ function PanelSidebar({
     isFinance,
     isFieldStaff,
     pendingRevisionCount,
+    expertNavCounts,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -893,22 +957,30 @@ function PanelSidebar({
         href={link.href}
         className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`}
         aria-label={collapsed ? tooltipLabel : undefined}
-        onClick={
-          hasChildren && !collapsed
-            ? () => setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }))
-            : undefined
-        }
+        onClick={() => {
+          if (hasChildren && !collapsed) {
+            setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }));
+          }
+          const hrefQueryString = link.href.split('?')[1] ?? '';
+          setActiveQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
+        }}
       >
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2.5'}`}>
           {link.icon ? <link.icon className="panel-sidebar-nav-icon" strokeWidth={1.75} /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
         </span>
-        {!collapsed && link.alertCount && link.alertCount > 0 ? (
-          <span className="inline-flex min-w-[18px] items-center justify-center rounded-md bg-status-danger px-1.5 py-0.5 text-[10px] font-semibold text-white">
+        {!collapsed && link.alertCount != null && link.alertCount > 0 ? (
+          <span
+            className={`ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
+              isExpert
+                ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200/80'
+                : 'bg-status-danger text-white'
+            }`}
+          >
             {link.alertCount > 99 ? '99+' : link.alertCount}
           </span>
         ) : null}
-        {collapsed && link.alertCount && link.alertCount > 0 ? (
+        {collapsed && link.alertCount != null && link.alertCount > 0 ? (
           <span
             className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-status-danger"
             aria-hidden="true"
@@ -1634,7 +1706,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         </main>
         {isPortalUser && !mustChangePassword ? (
-          <PortalBottomNav variant={isExpert ? 'expert' : 'insurance'} />
+          <>
+            <PortalWhatsAppLiveSupport />
+            <PortalBottomNav variant={isExpert ? 'expert' : 'insurance'} />
+          </>
         ) : null}
           </div>
         </div>

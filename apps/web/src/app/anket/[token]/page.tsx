@@ -155,7 +155,7 @@ export default function AnketPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-slate-500">Anket yükleniyor…</p>
         </div>
       </div>
@@ -219,26 +219,26 @@ export default function AnketPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-400">Yaklaşık 1 Dakika</p>
-            <p className="text-xs text-indigo-600 font-medium">6 Soru</p>
+            <p className="text-xs text-brand-600 font-medium">6 Soru</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
         {/* Karşılama */}
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4 space-y-2">
+        <div className="bg-brand-50 border border-brand-100 rounded-xl px-5 py-4 space-y-2">
           {meta.insuredName ? (
-            <p className="text-sm text-indigo-900">
+            <p className="text-sm text-brand-900">
               Değerli Sigortalımız <strong>{meta.insuredName}</strong>,
             </p>
           ) : (
-            <p className="text-sm text-indigo-900">Değerli Sigortalımız,</p>
+            <p className="text-sm text-brand-900">Değerli Sigortalımız,</p>
           )}
-          <p className="text-sm text-indigo-800 leading-relaxed">
+          <p className="text-sm text-brand-800 leading-relaxed">
             Hasar dosyanız kapsamında konut / işyerinizdeki onarım ve restorasyon çalışmaları tamamlanmıştır.
             Bu form; mahalin eksiksiz teslim alındığını ve memnuniyetinizi değerlendirmek amacıyla hazırlanmıştır.
           </p>
-          <p className="text-xs text-indigo-700">
+          <p className="text-xs text-brand-700">
             Görüş ve önerilerinize önem veriyoruz. Teşekkür ederiz.
           </p>
         </div>
@@ -248,7 +248,7 @@ export default function AnketPage() {
           {QUESTIONS.map((q, idx) => (
             <div key={q.key} className="px-5 py-5">
               <p className="text-sm font-medium text-slate-700 mb-3">
-                <span className="text-indigo-500 font-semibold">{idx + 1}.</span>{' '}
+                <span className="text-brand-500 font-semibold">{idx + 1}.</span>{' '}
                 {q.label}
               </p>
               <StarRating
@@ -263,7 +263,7 @@ export default function AnketPage() {
         {/* Soru 6: Genel memnuniyet */}
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
-            <span className="text-indigo-500 font-semibold">6.</span>{' '}
+            <span className="text-brand-500 font-semibold">6.</span>{' '}
             Genel Olarak Memnuniyet Derecesi
           </p>
           <div className="flex gap-3">
@@ -306,7 +306,7 @@ export default function AnketPage() {
             disabled={submitting}
             placeholder="Görüş veya önerinizi buraya yazabilirsiniz…"
             rows={3}
-            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder:text-slate-300"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-slate-300"
           />
         </div>
 

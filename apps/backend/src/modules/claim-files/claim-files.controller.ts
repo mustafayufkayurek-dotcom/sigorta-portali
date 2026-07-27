@@ -131,6 +131,26 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Post(':id/delete-request')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: 'Eksper silme talebi / vazgeçme — yöneticiye bildirim' })
+  async deleteRequest(
+    @Param('id') id: string,
+    @Body() body: { outcome?: 'requested' | 'cancelled' },
+    @CurrentUser() user: any,
+  ) {
+    const outcome = body?.outcome === 'cancelled' ? 'cancelled' : 'requested';
+    const data = await this.claimFilesService.notifyAdminDeleteIntent(
+      id,
+      {
+        id: user?.id ?? user?.userId,
+        roleCode: user?.roleCode ?? user?.role?.code,
+      },
+      outcome,
+    );
+    return { success: true, data };
+  }
+
   @Post('scan-intake-document')
   @RequirePermissions('claim_file.create')
   @UseInterceptors(FileInterceptor('file'))

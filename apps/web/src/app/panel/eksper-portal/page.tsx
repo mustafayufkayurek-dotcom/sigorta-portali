@@ -11,8 +11,10 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
 import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
 import { ExpertPortalContactStrip } from '@/components/panel/expert-portal-contact-strip';
+import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
 import { classifyExpertQueue, countExpertQueues } from '@/utils/expert-portal-queues';
-
+import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
+import { buildPortalWeeklyActivity, type PortalWeeklyPoint } from '@/utils/portal-weekly-activity';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -1089,10 +1091,13 @@ function fileNumberOf(file?: Pick<ExpertClaimFile, 'fileNo' | 'fileNumber'> | nu
   return file?.fileNo ?? file?.fileNumber ?? 'Dosya no yok';
 }
 
-function activityBadgeFromFile(statusName?: string | null): { label: string; className: string } {
-  const kind = classifyExpertQueue(statusName);
-  if (kind === 'inceleme') return { label: 'İnceleme', className: 'bg-sky-50 text-sky-700' };
-  if (kind === 'rapor') return { label: 'Rapor', className: 'bg-violet-50 text-violet-700' };
+function activityBadgeFromFile(
+  statusName?: string | null,
+  statusCode?: string | null,
+): { label: string; className: string } {
+  const kind = classifyExpertQueue(statusName, statusCode);
+  if (kind === 'onay') return { label: 'Onay', className: 'bg-violet-50 text-violet-700' };
+  if (kind === 'rapor') return { label: 'Rapor', className: 'bg-orange-50 text-orange-700' };
   const s = (statusName ?? '').toLocaleLowerCase('tr-TR');
   if (/evrak|belge/.test(s)) return { label: 'Evrak', className: 'bg-amber-50 text-amber-800' };
   if (/ihbar/.test(s)) return { label: 'İhbar', className: 'bg-blue-50 text-blue-700' };
@@ -1115,6 +1120,7 @@ type WorkloadMetrics = {
   avgApprovalWaitDays: number | null;
   closedThisWeek: number;
   closedByDay: number[]; // son 7 gün, eski → yeni
+  weeklyActivity: PortalWeeklyPoint[];
 };
 
 function daysSince(iso?: string | null): number | null {
@@ -1149,7 +1155,7 @@ function computeWorkloadMetrics(
     .filter((d): d is number => d != null);
 
   const reportWaits = files
-    .filter((f) => classifyExpertQueue(f.currentStatus?.name) === 'rapor')
+    .filter((f) => classifyExpertQueue(f.currentStatus?.name, f.currentStatus?.code) === 'rapor')
     .map((f) => daysSince(f.lastActivityAt || f.updatedAt || f.createdAt))
     .filter((d): d is number => d != null);
 
@@ -1181,6 +1187,7 @@ function computeWorkloadMetrics(
     avgApprovalWaitDays: avg(approvalWaits),
     closedThisWeek,
     closedByDay,
+    weeklyActivity: buildPortalWeeklyActivity(files),
   };
 }
 
@@ -1190,11 +1197,10 @@ export default function EksperPortalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
-  const [pendingCount, setPendingCount] = useState<number>(0);
-  const [expiredCount, setExpiredCount] = useState<number>(0);
   const [assignedCount, setAssignedCount] = useState<number>(0);
   const [reviewCount, setReviewCount] = useState<number>(0);
   const [reportCount, setReportCount] = useState<number>(0);
+  const [onaylananCount, setOnaylananCount] = useState<number>(0);
   const [assignedFiles, setAssignedFiles] = useState<ExpertClaimFile[]>([]);
   const [recentApprovals, setRecentApprovals] = useState<ApprovalItem[]>([]);
   const [workload, setWorkload] = useState<WorkloadMetrics | null>(null);
@@ -1213,8 +1219,9 @@ export default function EksperPortalPage() {
     const queues = countExpertQueues(list);
     setAssignedCount(files?.meta?.total ?? list.length);
     setAssignedFiles(list.slice(0, 5));
-    setReviewCount(queues.inceleme);
+    setReviewCount(queues.onay);
     setReportCount(queues.rapor);
+    setOnaylananCount(queues.onaylanan);
     setWorkload(computeWorkloadMetrics(list, approvalsForWorkload ?? []));
   }, []);
 
@@ -1232,10 +1239,6 @@ export default function EksperPortalPage() {
     ])
       .then(([approvals, files]) => {
         const list: ApprovalItem[] = approvals?.data ?? [];
-        const pending = list.filter((item) => item.status === 'pending');
-        const expired = list.filter((item) => item.status === 'expired');
-        setPendingCount(pending.length);
-        setExpiredCount(expired.length);
         setRecentApprovals(list.slice(0, 5));
         applyFilesPayload(files, list);
       })
@@ -1282,14 +1285,8 @@ export default function EksperPortalPage() {
         let approvalList: ApprovalItem[] = [];
         if (approvalsResult.status === 'fulfilled') {
           approvalList = approvalsResult.value?.data ?? [];
-          const pending = approvalList.filter((item) => item.status === 'pending');
-          const expired = approvalList.filter((item) => item.status === 'expired');
-          setPendingCount(pending.length);
-          setExpiredCount(expired.length);
           setRecentApprovals(approvalList.slice(0, 5));
         } else {
-          setPendingCount(0);
-          setExpiredCount(0);
           setRecentApprovals([]);
           setApprovalLoadWarning(approvalsResult.reason?.message ?? 'Onay listesi yüklenemedi');
         }
@@ -1301,6 +1298,7 @@ export default function EksperPortalPage() {
           setAssignedFiles([]);
           setReviewCount(0);
           setReportCount(0);
+          setOnaylananCount(0);
           setWorkload(computeWorkloadMetrics([], approvalList));
           setLoadError(filesResult.reason?.message ?? 'Dosya listesi yüklenemedi');
         }
@@ -1336,9 +1334,8 @@ export default function EksperPortalPage() {
 
   const userName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : 'Eksper';
 
-  const approvalPendingCount = pendingCount;
-  const approvalExpiredCount = expiredCount;
-  const gaugeMax = Math.max(10, assignedCount, reviewCount, reportCount, approvalPendingCount);
+  // Düşük hacimde ibre «yarı dolu» görünmesin — taban ölçek 50
+  const gaugeMax = Math.max(50, assignedCount, reviewCount, reportCount, onaylananCount);
 
   const queueChip = (count: number, tone: 'amber' | 'orange' | 'rose') => {
     const map = {
@@ -1370,10 +1367,10 @@ export default function EksperPortalPage() {
         Dosyalarım
       </Link>
       <Link
-        href="/panel/eksper-portal/dosyalar?queue=inceleme"
+        href="/panel/eksper-portal/dosyalar?queue=onay"
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        İnceleme Bekleyenler
+        Onay Bekliyor
         {queueChip(reviewCount, 'rose')}
       </Link>
       <Link
@@ -1384,11 +1381,11 @@ export default function EksperPortalPage() {
         {queueChip(reportCount, 'orange')}
       </Link>
       <Link
-        href="/panel/eksper-portal/onaylar"
+        href="/panel/eksper-portal/dosyalar?queue=onaylanan"
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
       >
-        Onay Bekleyenler
-        {queueChip(approvalPendingCount, 'amber')}
+        Onaylanan Dosyalar
+        {queueChip(onaylananCount, 'amber')}
       </Link>
     </>
   );
@@ -1431,13 +1428,13 @@ export default function EksperPortalPage() {
               subtitle="Aktif dosya"
             />
           </div>
-          <Link href="/panel/eksper-portal/dosyalar?queue=inceleme" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+          <Link href="/panel/eksper-portal/dosyalar?queue=onay" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <GaugeChart
               value={Math.min(reviewCount, gaugeMax)}
               displayValue={reviewCount}
               max={gaugeMax}
-              label="İnceleme Bekleyenler"
-              subtitle="İnceleme bekleyen"
+              label="Onay Bekliyor"
+              subtitle="Onay bekleyen"
             />
           </Link>
           <Link href="/panel/eksper-portal/dosyalar?queue=rapor" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
@@ -1449,13 +1446,13 @@ export default function EksperPortalPage() {
               subtitle="Rapor bekleyen"
             />
           </Link>
-          <Link href="/panel/eksper-portal/onaylar" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+          <Link href="/panel/eksper-portal/dosyalar?queue=onaylanan" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <GaugeChart
-              value={Math.min(approvalPendingCount, gaugeMax)}
-              displayValue={approvalPendingCount}
+              value={Math.min(onaylananCount, gaugeMax)}
+              displayValue={onaylananCount}
               max={gaugeMax}
-              label="Onay Bekleyenler"
-              subtitle={approvalExpiredCount > 0 ? `${approvalExpiredCount} Süresi Geçmiş` : 'Onay bekleyen'}
+              label="Onaylanan Dosyalar"
+              subtitle="Onayı tamamlanan"
             />
           </Link>
         </div>
@@ -1478,7 +1475,7 @@ export default function EksperPortalPage() {
                 {recentApprovals.map((a) => (
                   <li key={a.id}>
                     <Link
-                      href="/panel/eksper-portal/onaylar"
+                      href="/panel/eksper-portal/dosyalar?queue=onaylanan"
                       className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-50"
                     >
                       <ActivityDocIcon />
@@ -1500,7 +1497,8 @@ export default function EksperPortalPage() {
                   </li>
                 ))}
                 {assignedFiles.slice(0, Math.max(0, 5 - recentApprovals.length)).map((file) => {
-                  const badge = activityBadgeFromFile(file.currentStatus?.name);
+                  const statusLabel = portalStatusLabel(file.currentStatus?.code, file.currentStatus?.name);
+                  const badge = activityBadgeFromFile(file.currentStatus?.name, file.currentStatus?.code);
                   return (
                     <li key={file.id}>
                       <Link
@@ -1516,7 +1514,7 @@ export default function EksperPortalPage() {
                             </span>
                           </span>
                           <span className="mt-0.5 block text-xs text-slate-500">
-                            {file.currentStatus?.name ?? 'Durum Yok'}
+                            {statusLabel}
                             {file.lastActivityAt || file.updatedAt
                               ? ` · ${formatRelativeTr(file.lastActivityAt || file.updatedAt)}`
                               : ''}
@@ -1570,30 +1568,10 @@ export default function EksperPortalPage() {
             </ul>
           </article>
 
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Hızlı Özet</h3>
-            <ul className="space-y-2">
-              {[
-                { label: 'İnceleme Bekleyenler', value: reviewCount, href: '/panel/eksper-portal/dosyalar?queue=inceleme', tone: 'bg-rose-500' },
-                { label: 'Rapor Bekleyenler', value: reportCount, href: '/panel/eksper-portal/dosyalar?queue=rapor', tone: 'bg-orange-500' },
-                { label: 'Onay Bekleyenler', value: approvalPendingCount, href: '/panel/eksper-portal/onaylar', tone: 'bg-status-warning' },
-                { label: 'Aktif Dosyalarım', value: assignedCount, href: '/panel/eksper-portal/dosyalar', tone: 'bg-brand-600' },
-              ].map((row) => (
-                <li key={row.label}>
-                  <Link
-                    href={row.href}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-2 transition hover:bg-slate-50"
-                  >
-                    <span className="flex items-center gap-2 text-sm text-slate-700">
-                      <span className={`h-2 w-2 rounded-full ${row.tone}`} aria-hidden />
-                      {row.label}
-                    </span>
-                    <span className="text-sm font-bold tabular-nums text-slate-900">{row.value}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </article>
+          <PortalWeeklyTrendCard
+            title="Haftalık Dosya Hareketi"
+            data={workload?.weeklyActivity ?? []}
+          />
         </div>
 
       {showIhbarModal && (

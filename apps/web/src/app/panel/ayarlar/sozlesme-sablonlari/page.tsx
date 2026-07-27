@@ -326,7 +326,7 @@ export default function SozlesmeSablonlariPage() {
           <button
                     type="button"
                     onClick={() => setShowPlaceholders((v) => !v)}
-                    className="text-xs text-indigo-600 hover:underline"
+                    className="text-xs text-brand-600 hover:underline"
                   >
                     {showPlaceholders ? 'Değişkenleri Gizle' : 'Değişkenleri Göster'}
                   </button>

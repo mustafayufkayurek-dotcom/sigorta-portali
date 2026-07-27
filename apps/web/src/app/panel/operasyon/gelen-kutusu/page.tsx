@@ -194,6 +194,8 @@ const CLASSIFICATION_BADGE: Record<InboundClassification, string> = {
   UNKNOWN: 'badge badge-gray',
 };
 
+const INBOX_PAGE_SIZE = 20;
+
 function fmtDateTime(d: string) {
   return new Date(d).toLocaleString('tr-TR', {
     day: '2-digit',
@@ -588,6 +590,8 @@ export default function GelenKutusuPage() {
   const [actionQueueFilter, setActionQueueFilter] = useState(true);
   const [unownedOnly, setUnownedOnly] = useState(false);
   const [todayOnly, setTodayOnly] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(1);
   const [detailModalId, setDetailModalId] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
 
@@ -933,15 +937,45 @@ export default function GelenKutusuPage() {
   }, [load]);
 
   const visibleItems = useMemo(() => {
+    const q = searchInput.trim().toLocaleLowerCase('tr-TR');
     return items.filter((row) => {
       if (unownedOnly && !row.isUnowned) return false;
       if (todayOnly) {
         const isToday = new Date(row.receivedAt).toDateString() === new Date().toDateString();
         if (!isToday) return false;
       }
-      return true;
+      if (!q) return true;
+      const haystack = [
+        row.subject,
+        row.fromName,
+        row.fromAddress,
+        row.classification ? CLASSIFICATION_LABELS[row.classification] : '',
+        row.assignedUser ? `${row.assignedUser.firstName} ${row.assignedUser.lastName}` : '',
+        row.claimFile?.fileNo,
+        row.emergencyCase?.fileNo ?? row.emergencyCase?.caseNo,
+        row.aiSummary,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR');
+      return haystack.includes(q);
     });
-  }, [items, unownedOnly, todayOnly]);
+  }, [items, unownedOnly, todayOnly, searchInput]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / INBOX_PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * INBOX_PAGE_SIZE;
+    return visibleItems.slice(start, start + INBOX_PAGE_SIZE);
+  }, [visibleItems, page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [mailboxFilter, actionQueueFilter, unownedOnly, todayOnly, searchInput]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   useEffect(() => {
     const messageId = searchParams.get('messageId')?.trim();
@@ -1539,7 +1573,7 @@ export default function GelenKutusuPage() {
           <div>
             <h1 className="page-title">Gelen Kutusu</h1>
             <p className="page-subtitle">
-              ihbar@ ve hasar@ paylaşımlı kutularından gelen mailler — AI destekli sınıflandırma
+              ihbar@ ve hasar@ paylaşımlı kutularından gelen mailler — sınıflandırma ve yönlendirme
             </p>
           </div>
         </div>
@@ -1611,40 +1645,70 @@ export default function GelenKutusuPage() {
         />
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-slate-400 mr-1">Görünüm:</span>
-        {([
-          { key: true, label: 'Aksiyon Gereken' },
-          { key: false, label: 'Tümü' },
-        ] as const).map(({ key, label }) => (
-          <button
-            key={String(key)}
-            type="button"
-            onClick={() => setActionQueueFilter(key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              actionQueueFilter === key
-                ? 'bg-brand-600 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        <span className="text-slate-200 mx-1">|</span>
-        {(['all', 'IHBAR', 'HASAR'] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setMailboxFilter(key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              mailboxFilter === key
-                ? 'bg-slate-800 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {key === 'all' ? 'Hepsi' : MAILBOX_LABELS[key]}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2 gap-y-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className="text-xs text-slate-400 mr-1">Görünüm:</span>
+          {([
+            { key: true, label: 'Aksiyon Gereken' },
+            { key: false, label: 'Tümü' },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={String(key)}
+              type="button"
+              onClick={() => setActionQueueFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                actionQueueFilter === key
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="text-slate-200 mx-1">|</span>
+          {(['all', 'IHBAR', 'HASAR'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMailboxFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                mailboxFilter === key
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {key === 'all' ? 'Hepsi' : MAILBOX_LABELS[key]}
+            </button>
+          ))}
+        </div>
+
+        <div className="ml-auto w-full sm:w-auto sm:min-w-[22rem] sm:max-w-lg sm:flex-1">
+          <div className="relative w-full">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="Konu, Gönderen, Dosya No…"
+              className="panel-search-input w-full"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                onClick={() => setSearchInput('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                aria-label="Aramayı Temizle"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -1671,6 +1735,7 @@ export default function GelenKutusuPage() {
             onClick={() => {
               setUnownedOnly(false);
               setTodayOnly(false);
+              setSearchInput('');
             }}
             className="text-xs font-semibold text-brand-600 hover:underline mt-2"
           >
@@ -1678,8 +1743,9 @@ export default function GelenKutusuPage() {
           </button>
         </div>
       ) : (
+        <>
         <div className="grid gap-3">
-          {visibleItems.map((row) => (
+          {pagedItems.map((row) => (
             <article
               key={row.id}
               role="button"
@@ -1751,7 +1817,7 @@ export default function GelenKutusuPage() {
                   <span>{STATUS_LABELS[row.status]}</span>
                 )}
                 {!row.aiSummary && row.status === 'NEW' && (
-                  <span>AI sınıflandırması bekleniyor</span>
+                  <span>Sınıflandırma Bekleniyor</span>
                 )}
                 {row.status === 'CLASSIFYING' && (
                   <span className="text-blue-500">Sınıflandırılıyor…</span>
@@ -1861,6 +1927,32 @@ export default function GelenKutusuPage() {
             </article>
           ))}
         </div>
+        <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {visibleItems.length} mail
+            {searchInput.trim() ? ` · Arama: “${searchInput.trim()}”` : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white disabled:opacity-40"
+            >
+              Önceki
+            </button>
+            <span className="tabular-nums">Sayfa {Math.min(page, totalPages)} / {totalPages}</span>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white disabled:opacity-40"
+            >
+              Sonraki
+            </button>
+          </div>
+        </div>
+        </>
       )}
     </div>
   );
