@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-27",
-  "label": "v402-eksper-sigorta-portal-ux",
-  "description": "Full deploy: Eksper/Sigorta müşteri UX (kuyruk sinyalizasyonu, ibre ölçeği 50, menü rozeti yalnız Onay Bekliyor, WhatsApp canlı destek, özet kart ikonları, haftalık dosya hareketi grafiği, tablo ortala) + backend silme talebi API (delete-request). Migration yok. Health PASS, nginx→web PASS, route-gate PASS (login credential PARTIAL). Rollback web v401 / backend v397.",
+  "label": "v403-topbar-tema-fix",
+  "description": "Web-only: topbar arama sola kaydırıldı + uzun isim truncate; tema kök layout’ta tüm sayfalara yayıldı (FOUC script + PanelThemeInit). Backend değişmedi (v402). Health PASS, nginx→web PASS, route-gate PASS (login credential PARTIAL). Rollback web v402 / backend v402.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v402-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v402-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v403-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v401-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v397-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v402-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v402-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
