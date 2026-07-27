@@ -1460,8 +1460,8 @@ export default function EksperPortalPage() {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="flex-1 text-center text-sm font-semibold text-slate-900">Güncel Dosya Hareketleri</h3>
-              <Link href="/panel/eksper-portal/dosyalar" className="shrink-0 text-xs font-semibold text-brand-600 hover:underline">
+              <h3 className="text-sm font-semibold text-slate-900">Güncel Dosya Hareketleri</h3>
+              <Link href="/panel/eksper-portal/dosyalar" className="text-xs font-semibold text-brand-600 hover:underline">
                 Tümünü Gör →
               </Link>
             </div>
@@ -1536,30 +1536,30 @@ export default function EksperPortalPage() {
           </article>
 
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-center text-sm font-semibold text-slate-900">Süre Analizi</h3>
-            <p className="mt-1 text-center text-xs leading-snug text-slate-500">
+            <h3 className="text-sm font-semibold text-slate-900">Süre Analizi</h3>
+            <p className="mt-1 text-xs leading-snug text-slate-500">
               Dosya süreçlerinin genel görünümü. Performans puanı değildir.
             </p>
             <ul className="mt-3 divide-y divide-slate-100">
-              <li className="flex flex-col items-center gap-0.5 py-2.5 text-center">
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
                 <span className="text-xs font-medium text-slate-600">Ortalama Dosya Bekleme Süresi</span>
                 <span className="text-sm font-semibold tabular-nums text-slate-900">
                   {formatWaitDays(workload?.avgFileWaitDays ?? null)}
                 </span>
               </li>
-              <li className="flex flex-col items-center gap-0.5 py-2.5 text-center">
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
                 <span className="text-xs font-medium text-slate-600">Ortalama Rapor Hazırlama Süresi</span>
                 <span className="text-sm font-semibold tabular-nums text-slate-900">
                   {formatWaitDays(workload?.avgReportWaitDays ?? null)}
                 </span>
               </li>
-              <li className="flex flex-col items-center gap-0.5 py-2.5 text-center">
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
                 <span className="text-xs font-medium text-slate-600">Ortalama Onay Bekleme Süresi</span>
                 <span className="text-sm font-semibold tabular-nums text-slate-900">
                   {formatWaitDays(workload?.avgApprovalWaitDays ?? null)}
                 </span>
               </li>
-              <li className="flex flex-col items-center gap-0.5 py-2.5 text-center">
+              <li className="flex items-baseline justify-between gap-3 py-2.5">
                 <span className="text-xs font-medium text-slate-600">Bu Hafta Tamamlanan Dosya</span>
                 <span className="text-sm font-semibold tabular-nums text-slate-900">
                   {workload ? workload.closedThisWeek : '—'}
@@ -1571,7 +1571,6 @@ export default function EksperPortalPage() {
           <PortalWeeklyTrendCard
             title="Haftalık Dosya Hareketi"
             data={workload?.weeklyActivity ?? []}
-            titleClassName="text-center"
           />
         </div>
 
