@@ -14,6 +14,7 @@ type PortalWeeklyTrendCardProps = {
   title?: string;
   data: PortalWeeklyPoint[];
   emptyText?: string;
+  titleClassName?: string;
 };
 
 /** Dosya Sorumlusu «Haftalık Operasyon Trendi» ile aynı dil — müşteri panelleri. */
@@ -21,15 +22,18 @@ export function PortalWeeklyTrendCard({
   title = 'Haftalık Dosya Hareketi',
   data,
   emptyText = 'Bu hafta dosya hareketi görünmüyor.',
+  titleClassName,
 }: PortalWeeklyTrendCardProps) {
   const isEmpty = data.length === 0 || data.every((t) => t.count === 0);
 
   return (
     <article className="flex min-h-[240px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <h3 className={`text-sm font-semibold text-slate-900 ${titleClassName ?? ''}`.trim()}>{title}</h3>
       <div className="mt-3 min-h-[180px] flex-1">
         {isEmpty ? (
-          <p className="text-sm text-slate-500">{emptyText}</p>
+          <p className={`text-sm text-slate-500 ${titleClassName?.includes('text-center') ? 'text-center' : ''}`.trim()}>
+            {emptyText}
+          </p>
         ) : (
           <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
