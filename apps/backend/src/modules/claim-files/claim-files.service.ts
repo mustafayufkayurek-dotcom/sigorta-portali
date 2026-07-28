@@ -502,6 +502,7 @@ export class ClaimFilesService {
           incidentDate: true,
           createdAt: true,
           updatedAt: true,
+          lastActivityAt: true,
           slaDueAt: true,
           invoicedAmount: true,
           insuranceCompany: { select: { id: true, name: true, contactEmail: true } },

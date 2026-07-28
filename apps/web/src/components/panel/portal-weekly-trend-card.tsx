@@ -17,6 +17,8 @@ type PortalWeeklyTrendCardProps = {
   titleClassName?: string;
   /** Daha az dikey yer — sigorta Dosya Takip gibi yoğun sayfalar */
   compact?: boolean;
+  /** Boş haftada da çizgiyi göster (sıfırlar) */
+  showEmptyChart?: boolean;
 };
 
 /** Dosya Sorumlusu «Haftalık Operasyon Trendi» ile aynı dil — müşteri panelleri. */
@@ -26,9 +28,11 @@ export function PortalWeeklyTrendCard({
   emptyText = 'Bu hafta dosya hareketi görünmüyor.',
   titleClassName,
   compact = false,
+  showEmptyChart = false,
 }: PortalWeeklyTrendCardProps) {
   const isEmpty = data.length === 0 || data.every((t) => t.count === 0);
   const chartH = compact ? 128 : 180;
+  const showChart = !isEmpty || showEmptyChart;
 
   return (
     <article
@@ -38,7 +42,7 @@ export function PortalWeeklyTrendCard({
     >
       <h3 className={`text-sm font-semibold text-slate-900 ${titleClassName ?? ''}`.trim()}>{title}</h3>
       <div className={`flex-1 ${compact ? 'mt-2' : 'mt-3 min-h-[180px]'}`}>
-        {isEmpty ? (
+        {!showChart ? (
           <p className={`text-sm text-slate-500 ${titleClassName?.includes('text-center') ? 'text-center' : ''}`.trim()}>
             {emptyText}
           </p>
@@ -58,6 +62,7 @@ export function PortalWeeklyTrendCard({
                   axisLine={false}
                   tickLine={false}
                   width={36}
+                  domain={[0, (max: number) => Math.max(1, max)]}
                 />
                 <Tooltip
                   formatter={(value) => [String(value ?? ''), 'Hareket']}

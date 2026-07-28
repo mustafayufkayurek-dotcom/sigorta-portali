@@ -360,7 +360,7 @@ export default function SigortaPortalPage() {
             <div className="rounded-xl border border-slate-300 bg-slate-100/90 p-2 shadow-sm ring-1 ring-slate-200/80">
               <div className="mb-1.5 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-slate-700" aria-hidden />
-                <p className="text-[11px] font-semibold text-slate-800">Eksper İhbarlı Dosya Takibi</p>
+                <p className="text-[11px] font-semibold text-slate-800">Eksper İhbarlı Takip</p>
               </div>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                 <SummaryCard
@@ -396,7 +396,7 @@ export default function SigortaPortalPage() {
             <div className="rounded-xl border border-brand-300 bg-brand-50/80 p-2 shadow-sm ring-1 ring-brand-200/70">
               <div className="mb-1.5 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-brand-600" aria-hidden />
-                <p className="text-[11px] font-semibold text-brand-800">Departman İhbarlı Dosya Takibi</p>
+                <p className="text-[11px] font-semibold text-brand-800">Departman İhbarlı Takip</p>
               </div>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                 <SummaryCard
@@ -434,7 +434,7 @@ export default function SigortaPortalPage() {
           <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
             <section className="rounded-xl border border-slate-300 border-l-4 border-l-slate-700 bg-slate-50/60 p-3 shadow-sm">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Eksper İhbarlı Dosya Takibi</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Eksper İhbarlı Takip</h2>
                 <Link
                   href="/panel/sigorta-portal/dosyalar?track=expert"
                   className="text-xs font-semibold text-brand-600 hover:underline"
@@ -485,7 +485,7 @@ export default function SigortaPortalPage() {
 
             <section className="rounded-xl border border-brand-300 border-l-4 border-l-brand-600 bg-brand-50/40 p-3 shadow-sm">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Departman İhbarlı Dosya Takibi</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Departman İhbarlı Takip</h2>
                 <button
                   type="button"
                   onClick={() => setShowIhbar(true)}
@@ -645,6 +645,7 @@ export default function SigortaPortalPage() {
               data={weeklyTrend}
               emptyText={`${preferenceLabel} için bu hafta dosya hareketi görünmüyor.`}
               compact
+              showEmptyChart
             />
           </section>
 
