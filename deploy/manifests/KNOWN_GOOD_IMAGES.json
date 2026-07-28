@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-07-27",
-  "label": "v406-eksper-alt-panel-hizalama",
-  "description": "Web-only: Eksper Paneli alt üç kutu (Güncel Dosya Hareketleri, Süre Analizi, Haftalık Dosya Hareketi) ortalaması geri alındı — önceki sola/satır hizası. Üst ibre/özet ortalaması korunur. Backend v402. Health PASS, nginx→web PASS. Rollback web v405 / backend v402.",
+  "updatedAt": "2026-07-28",
+  "label": "v407-sigorta-dosya-takip",
+  "description": "Full: Sigorta Dosya Takip — zorunlu dosya no, ihbar eden (ad/soyad/görev), ihbar tarih+saat, detaylı istatistik, KPI ayrımı (Eksper/Departman İhbarlı). Health PASS, nginx→web PASS. Rollback web v406 / backend v402.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v402-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v406-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v407-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v407-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v405-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v406-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v402-amd64"
   },
   "mustPassSmokeRoutes": [
