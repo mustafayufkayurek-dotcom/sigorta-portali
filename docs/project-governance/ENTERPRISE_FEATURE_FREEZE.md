@@ -36,6 +36,8 @@
 | DASH-F | Saha Operasyon Merkezi | ONAYLI_UI F |
 | LOGIN | `/giris` logo / marka | ONAYLI_UI L |
 | PORTAL-SHELL | Eksper + Sigorta portal `PortalPageHeader` | ONAYLI_UI P |
+| EKSPER-PORTAL | Eksper Paneli + Dosyalarım kuyrukları (sinyal, özet kart, ibre ölçeği, menü rozeti yalnız Onay Bekliyor, WhatsApp canlı destek, topbar arama hizası) — canlı **v406** / backend **v402** | Bu oturum kabul · `KNOWN_GOOD` v406 |
+| SIGORTA-PORTAL | **Dosya İzleme** · Yeni İhbar · Tespit izleme · Bekleyen Onaylar (Onayla/Reddet) · Dosyalar↔Akış · Faturalar · Operasyon Ağı · WhatsApp FAB | Bu oturum · ihbar+onay+izleme |
 | SETTINGS-NAV | `settings-nav.ts` tek kaynak | deploy-guvenlik |
 
 ## Modül freeze adayları (canlıda kabul / smoke rota)
@@ -48,14 +50,17 @@
 | OPERASYON | `/panel/operasyon` | Liste |
 | HASAR | `/panel/hasar-dosyalari` | Detay hassas |
 | AYARLAR | `/panel/ayarlar/*` | Hub + tanımlar |
+| EKSPER | `/panel/eksper-portal` · `/dosyalar` · kuyruk `?queue=` | **Kilitli (v406)** — EKSPER-PORTAL |
+| SIGORTA | `/panel/sigorta-portal` · `/onaylar` · `/dosyalar` · `/faturalar` · `/operasyon-agi` · `/dosya-akisi` | **Kilitli** — SIGORTA-PORTAL |
 
 ## WIP — freeze dışı / canlıya alınmamış
 
 | Madde | Durum |
 |-------|--------|
-| Sigorta portalı Operasyon Referans Ağı | Canlı v396 — Türkiye Operasyon Referans Ağı |
+| Sigorta portalı Operasyon Referans Ağı derinleştirme | İkinci yüzey (`/operasyon-agi`); yeni ürün kararı olmadan büyütülmez |
 | Geliştirilebilir Müşteri Faz 2 | Strateji notu — kapsam dışı |
 | AK-001 ürün teyidi (kimler görsün listesi) | Kart notları kodda var; ürün teyidi açık |
+| Asistans firma müşteri portalı | Henüz yok — açılınca EKSPER/SIGORTA kuralları uygulanır |
 
 ## İzinli stabilizasyon sınıfları (onaysız küçük yama)
 
@@ -65,7 +70,7 @@
 4. Case normalize (hasar/HASAR)  
 5. addWholeProvinceEntry tarzı no-op kilidi  
 
-**Not:** Yukarıdakiler bile D1-* akışını bozuyorsa önce `smoke:route-gate` PASS + Mustafa onayı.
+**Not:** Yukarıdakiler bile D1-* / **EKSPER-PORTAL** / **SIGORTA-PORTAL** yüzeyini bozuyorsa önce `smoke:route-gate` PASS + Mustafa onayı.
 
 ## Yasak (Mustafa onayı şart)
 
@@ -73,7 +78,9 @@
 - Migration / schema / auth / Docker  
 - Yeni ekran / yeni menü  
 - Freeze’li kabuk logo / spacing / KPI boyutu  
+- **Eksper Portalı** kuyruk sinyalizasyonu, özet kart düzeni, ibre ölçeği, sol menü rozet kuralı (yalnız Onay Bekliyor), WhatsApp canlı destek konum/numara  
+- **Sigorta Portalı / Dosya İzleme** ihbar + tespit izleme + onay + dosya/fatura köprüleri; Operasyon Ağı ikinci yüzey  
 - Dalga 1 Route Gate / kaydet güvenliği / il-ilçe ortak util’lerini zayıflatmak  
 - `panel-route-access.rules.json` veya smoke matrisini sessizce gevşetmek  
 
-*Son güncelleme: 2026-07-23 — Dalga 1 Feature Freeze AKTİF*
+*Son güncelleme: 2026-07-28 — SIGORTA-PORTAL Dosya İzleme (ihbar + tespit + onay)*

@@ -90,7 +90,7 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
-        claimFile: { select: { id: true, fileNo: true } },
+        claimFile: { select: { id: true, fileNo: true, insuranceCompanyId: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         payments: true,
       },

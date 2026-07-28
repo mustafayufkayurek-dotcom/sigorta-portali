@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
@@ -28,11 +29,15 @@ export class InvoicesController {
     private readonly claimFilesService: ClaimFilesService,
   ) {}
 
+  private resolveRoleCode(user: any): string | undefined {
+    return user?.roleCode ?? user?.role?.code;
+  }
+
   @Get('invoices')
   @RequirePermissions('invoice.view')
   @ApiOperation({ summary: 'Fatura listesi' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
-    if (user?.role?.code === 'insurance_company_user') {
+    if (this.resolveRoleCode(user) === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
       if (companyIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
@@ -46,8 +51,15 @@ export class InvoicesController {
   @Get('invoices/:id')
   @RequirePermissions('invoice.view')
   @ApiOperation({ summary: 'Fatura detayı' })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.service.findOne(id);
+    if (this.resolveRoleCode(user) === 'insurance_company_user') {
+      const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
+      const claimCompanyId = (data as { claimFile?: { insuranceCompanyId?: string } })?.claimFile?.insuranceCompanyId;
+      if (!companyIds.length || !claimCompanyId || !companyIds.includes(claimCompanyId)) {
+        throw new ForbiddenException('Bu faturaya erişim izniniz bulunmamaktadır');
+      }
+    }
     return { success: true, data };
   }
 

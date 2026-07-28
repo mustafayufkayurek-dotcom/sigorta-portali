@@ -496,6 +496,8 @@ export class ClaimFilesService {
           insuredName: true,
           priority: true,
           lossType: true,
+          productBranch: true,
+          sourceChannel: true,
           notificationDate: true,
           incidentDate: true,
           createdAt: true,
@@ -504,6 +506,7 @@ export class ClaimFilesService {
           invoicedAmount: true,
           insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
           currentStatus: { select: { id: true, code: true, name: true, color: true } },
+          propertyAddress: { select: { city: true, district: true } },
           customer: {
             select: {
               id: true,
@@ -526,6 +529,21 @@ export class ClaimFilesService {
             select: {
               id: true, firstName: true, lastName: true,
               adjuster: { select: { id: true, name: true, company: true } },
+            },
+          },
+          statusHistory: {
+            take: 1,
+            orderBy: { changedAt: 'asc' },
+            select: {
+              changedAt: true,
+              changedByUser: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  role: { select: { code: true, name: true } },
+                },
+              },
             },
           },
           invoices: {
@@ -1024,7 +1042,11 @@ export class ClaimFilesService {
     }
 
     const insuranceCompanyId = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
-    const sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
+    let sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
+    const earlyRoleCode = String(requestingUser?.roleCode ?? requestingUser?.role?.code ?? '').trim();
+    if (earlyRoleCode === 'insurance_company_user' && !sourceChannel) {
+      sourceChannel = 'insurance_portal';
+    }
     let policyNo = typeof rest.policyNo === 'string' ? rest.policyNo.trim() : '';
     const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
@@ -1038,7 +1060,7 @@ export class ClaimFilesService {
 
     if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
     if (!policyNo) {
-      if (sourceChannel === 'expert_portal') {
+      if (sourceChannel === 'expert_portal' || sourceChannel === 'insurance_portal') {
         policyNo = 'Belirtilmedi';
       } else {
         throw new BadRequestException('Poliçe numarası zorunludur');
@@ -1056,7 +1078,7 @@ export class ClaimFilesService {
       typeof rest.insuredName === 'string' ? rest.insuredName : null,
       rest.customerId ?? null,
     );
-    if (sourceChannel !== 'expert_portal' && !insuredName) {
+    if (sourceChannel !== 'expert_portal' && sourceChannel !== 'insurance_portal' && !insuredName) {
       throw new BadRequestException('Sigortalı adı soyadı zorunludur');
     }
 
@@ -1078,6 +1100,18 @@ export class ClaimFilesService {
     try {
       const expertUserId = requestingUser?.id ?? requestingUser?.userId;
       const roleCode = requestingUser?.roleCode ?? requestingUser?.role?.code;
+
+      if (roleCode === 'insurance_company_user') {
+        const scopes = await this.getInsuranceScopes(String(expertUserId ?? ''));
+        if (!scopes.length || !scopes.includes(insuranceCompanyId)) {
+          throw new ForbiddenException('Bu sigorta şirketi için dosya oluşturma yetkiniz yok');
+        }
+        if (sourceChannel && sourceChannel !== 'insurance_portal') {
+          throw new BadRequestException('Sigorta portalı ihbarı için geçersiz kaynak kanalı');
+        }
+        sourceChannel = 'insurance_portal';
+      }
+
       const assignedAdjusterId =
         sourceChannel === 'expert_portal' && roleCode === 'expert' && expertUserId
           ? expertUserId
@@ -1085,7 +1119,7 @@ export class ClaimFilesService {
 
       let assignedOfficeUserId = rest.assignedOfficeUserId ?? null;
       let resolvedDepartmentId = departmentId ?? null;
-      if (!resolvedDepartmentId && sourceChannel !== 'expert_portal') {
+      if (!resolvedDepartmentId && sourceChannel !== 'expert_portal' && sourceChannel !== 'insurance_portal') {
         resolvedDepartmentId = await this.resolveHasarDepartmentId();
       }
 
@@ -1100,7 +1134,7 @@ export class ClaimFilesService {
       }
 
       if (
-        sourceChannel === 'expert_portal'
+        (sourceChannel === 'expert_portal' || sourceChannel === 'insurance_portal')
         && !assignedOfficeUserId
         && !rest.assignedFieldUserId
       ) {
@@ -1177,16 +1211,21 @@ export class ClaimFilesService {
             note:
               sourceChannel === 'expert_portal'
                 ? 'Eksper portal ihbarı ile açıldı'
-                : 'Dosya oluşturuldu',
+                : sourceChannel === 'insurance_portal'
+                  ? 'Sigorta portalı ihbarı ile açıldı'
+                  : 'Dosya oluşturuldu',
           },
         });
-        if (sourceChannel === 'expert_portal' && expertUserId) {
+        if ((sourceChannel === 'expert_portal' || sourceChannel === 'insurance_portal') && expertUserId) {
           await this.logActivity({
             claimFileId: created.id,
             action: 'STATUS_CHANGED',
             actorId: expertUserId,
             actorRole: roleCode ?? 'expert',
-            description: 'Eksper portalından yeni ihbar kaydı açıldı.',
+            description:
+              sourceChannel === 'insurance_portal'
+                ? 'Sigorta portalından yeni ihbar kaydı açıldı.'
+                : 'Eksper portalından yeni ihbar kaydı açıldı.',
           });
         }
       }
@@ -1198,11 +1237,17 @@ export class ClaimFilesService {
         'Bilinmiyor';
       const addressText = (created as any)?.propertyAddress?.addressLine ?? '';
       const notifTitle =
-        sourceChannel === 'expert_portal' ? 'Eksper Portal İhbarı' : 'Yeni Dosya Atandı';
+        sourceChannel === 'expert_portal'
+          ? 'Eksper Portal İhbarı'
+          : sourceChannel === 'insurance_portal'
+            ? 'Sigorta Portal İhbarı'
+            : 'Yeni Dosya Atandı';
       const notifBody =
         sourceChannel === 'expert_portal'
           ? `Eksper portalından yeni ihbar: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`
-          : `Yeni dosya atandı: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`;
+          : sourceChannel === 'insurance_portal'
+            ? `Sigorta portalından yeni ihbar: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`
+            : `Yeni dosya atandı: ${created.fileNo} - ${customerName}${addressText ? ' - ' + addressText : ''}`;
 
       const notifTargets: Array<{ id: string }> = [];
       if (created.assignedFieldUserId) notifTargets.push({ id: created.assignedFieldUserId });

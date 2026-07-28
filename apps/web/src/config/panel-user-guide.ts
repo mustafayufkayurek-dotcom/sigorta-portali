@@ -33,8 +33,8 @@ const GUIDE_BY_ROLE: Record<string, PanelGuideEntry> = {
   },
   insurance_company_user: {
     href: '/docs/02-sigorta-portal-kilavuzu.html',
-    title: 'Sigorta Portal Kılavuzu',
-    subtitle: 'Dosya akışı, onaylar ve faturalar',
+    title: 'Dosya Takip Kılavuzu',
+    subtitle: 'Dosya durumu, akış ve faturalar — salt izleme',
   },
   broker_user: {
     href: '/docs/04-broker-portal-kilavuzu.html',
@@ -109,7 +109,7 @@ export function resolvePanelContextLabel(opts: {
   isOfficeStaff: boolean;
 }): string {
   if (opts.isExpert) return 'Eksper Portalı';
-  if (opts.isInsuranceCompanyUser) return 'Sigorta Portalı';
+  if (opts.isInsuranceCompanyUser) return 'Dosya Takip';
   if (opts.isFieldStaff) return 'Saha Merkezi';
   if (opts.isFinance) return 'Finans Merkezi';
   if (opts.isOfficeStaff) return 'Dosya Merkezi';

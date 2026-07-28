@@ -52,6 +52,7 @@ import {
   getExpertPortalNav,
   getInsurancePortalNav,
   type ExpertPortalNavCounts,
+  type InsurancePortalNavCounts,
 } from '@/config/portal-nav';
 import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
@@ -236,6 +237,7 @@ function getPanelMainLinks({
   isFieldStaff,
   pendingRevisionCount,
   expertNavCounts,
+  insuranceNavCounts,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -244,12 +246,13 @@ function getPanelMainLinks({
   isFieldStaff: boolean;
   pendingRevisionCount: number;
   expertNavCounts?: ExpertPortalNavCounts;
+  insuranceNavCounts?: InsurancePortalNavCounts;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   return isExpert
     ? getExpertPortalNav(expertNavCounts)
     : isInsuranceCompanyUser
-      ? getInsurancePortalNav()
+      ? getInsurancePortalNav(insuranceNavCounts)
       : isOfficeStaff
         ? [
             { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
@@ -389,6 +392,20 @@ function Navbar({
     allowedScreens !== null
       ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
       : canSeeNavItem(path, roleCode);
+
+  /** Üst bant satır 1: sigorta şirketi / kurum (bandı büyütmeden) */
+  const profileContextLabel = (() => {
+    if (isInsuranceCompanyUser) {
+      const scopes = user?.insuranceCompanyScopes as Array<string | { name?: string }> | undefined;
+      const fromScope = scopes
+        ?.map((s) => (typeof s === 'string' ? undefined : s?.name?.trim()))
+        .find((n): n is string => Boolean(n));
+      if (fromScope) return fromScope;
+    }
+    if (isExpert) return 'Eksper';
+    const org = typeof _companyName === 'string' ? _companyName.trim() : '';
+    return org || '';
+  })();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
@@ -684,19 +701,26 @@ function Navbar({
 
             <PanelThemeToggle />
 
-            {/* Profil Dropdown */}
-            <div className="relative min-w-0 max-w-[9.5rem] sm:max-w-[11rem] lg:max-w-[13rem]" ref={profileDropRef}>
+            {/* Profil Dropdown — satır 1: kurum/bağlam · satır 2: ad soyad (band büyümesin) */}
+            <div className="relative min-w-0 max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]" ref={profileDropRef}>
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
-                className="flex max-w-full items-center gap-2 rounded-xl py-1.5 pl-2 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
-                title={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Profil'}
+                className="flex max-w-full items-center gap-2 rounded-xl py-1 pl-1.5 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
+                title={[profileContextLabel, `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()].filter(Boolean).join(' · ') || 'Profil'}
               >
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
-                <span className="hidden min-w-0 truncate text-sm font-medium text-slate-700 sm:block dark:text-slate-200">
-                  {user?.firstName} {user?.lastName}
+                <span className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
+                  {profileContextLabel ? (
+                    <span className="max-w-full truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                      {profileContextLabel}
+                    </span>
+                  ) : null}
+                  <span className="max-w-full truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    {user?.firstName} {user?.lastName}
+                  </span>
                 </span>
                 <svg className="hidden h-3 w-3 shrink-0 text-slate-400 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -706,6 +730,9 @@ function Navbar({
                 <>
                   <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
                     <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-700">
+                      {profileContextLabel ? (
+                        <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">{profileContextLabel}</p>
+                      ) : null}
                       <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName}</p>
                       <p className="truncate text-xs text-slate-400">{user?.role?.name ?? roleCode}</p>
                     </div>
@@ -859,6 +886,7 @@ function PanelSidebar({
   // window.location üzerinden takip ediyoruz.
   const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
   const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
+  const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -902,6 +930,30 @@ function PanelSidebar({
     };
   }, [isExpert, pathname]);
 
+  useEffect(() => {
+    if (!isInsuranceCompanyUser) {
+      setInsuranceNavCounts({});
+      return;
+    }
+    let cancelled = false;
+    const token = getAccessToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/external-approvals/pending`, { headers });
+        const json = res.ok ? await res.json() : null;
+        const list = json?.data ?? [];
+        if (!cancelled) setInsuranceNavCounts({ onay: Array.isArray(list) ? list.length : 0 });
+      } catch {
+        if (!cancelled) setInsuranceNavCounts({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isInsuranceCompanyUser, pathname]);
+
   if (hidden) return null;
 
   const isOfficeStaff = isOfficeStaffRole(roleCode);
@@ -937,6 +989,7 @@ function PanelSidebar({
     isFieldStaff,
     pendingRevisionCount,
     expertNavCounts,
+    insuranceNavCounts,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -1509,7 +1562,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     safeHomePath === '/panel/eksper-portal'
       ? 'Eksper Paneline Dön'
       : safeHomePath === '/panel/sigorta-portal'
-        ? 'Sigorta Paneline Dön'
+        ? 'Dosya Takibe Dön'
         : safeHomePath === '/panel/finans'
           ? 'Finans Merkezine Dön'
           : 'Panele Dön';

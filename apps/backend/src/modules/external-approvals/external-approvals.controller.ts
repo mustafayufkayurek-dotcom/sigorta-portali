@@ -66,8 +66,15 @@ export class ExternalApprovalsController {
   }
 
   @Get('external-approvals/:id')
-  async getDetail(@Param('id') id: string) {
-    return this.service.getDetail(id);
+  async getDetail(
+    @Param('id') id: string,
+    @CurrentUser() user?: {
+      id?: string;
+      roleCode?: string;
+      insuranceCompanyScopes?: string[];
+    },
+  ) {
+    return this.service.getDetail(id, user);
   }
 
   // ── Authenticated onay yanıtlama (portal kullanıcıları için) ─────────────
@@ -76,9 +83,13 @@ export class ExternalApprovalsController {
   async respondAuth(
     @Param('id') id: string,
     @Body() dto: RespondExternalApprovalDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: {
+      id: string;
+      roleCode?: string;
+      insuranceCompanyScopes?: string[];
+    },
   ) {
-    return this.service.respondAuth(id, dto, user.id);
+    return this.service.respondAuth(id, dto, user);
   }
 
   // ── Public endpointler (token bazlı, login gerektirmez) ──────────────────

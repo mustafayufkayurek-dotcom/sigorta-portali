@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -199,9 +200,24 @@ export class ExternalApprovalsService {
 
   // ── Authenticated: ID ile yanıt ver (portal kullanıcıları) ────────────────
 
-  async respondAuth(id: string, dto: RespondExternalApprovalDto, _userId: string) {
-    const approval = await this.prisma.externalApproval.findUnique({ where: { id } });
+  async respondAuth(
+    id: string,
+    dto: RespondExternalApprovalDto,
+    user: { id: string; roleCode?: string; insuranceCompanyScopes?: string[] },
+  ) {
+    const approval = await this.prisma.externalApproval.findUnique({
+      where: { id },
+      include: {
+        report: {
+          select: {
+            claimFile: { select: { insuranceCompanyId: true } },
+          },
+        },
+      },
+    });
     if (!approval) throw new NotFoundException('Onay kaydı bulunamadı');
+
+    this.assertInsuranceApprovalAccess(approval, user);
 
     if (approval.status === 'expired' || approval.expiresAt < new Date()) {
       throw new BadRequestException('Bu onay isteğinin süresi dolmuş');
@@ -331,7 +347,14 @@ export class ExternalApprovalsService {
             status: true,
             versionNo: true,
             totalSalesAmount: true,
-            claimFile: { select: { fileNo: true, lossType: true, insuranceCompany: { select: { name: true } } } },
+            claimFile: {
+              select: {
+                id: true,
+                fileNo: true,
+                lossType: true,
+                insuranceCompany: { select: { name: true } },
+              },
+            },
           },
         },
         sentBy: { select: { id: true, firstName: true, lastName: true } },
@@ -379,7 +402,10 @@ export class ExternalApprovalsService {
     return { data };
   }
 
-  async getDetail(id: string) {
+  async getDetail(
+    id: string,
+    user?: { id?: string; roleCode?: string; insuranceCompanyScopes?: string[] },
+  ) {
     const approval = await this.prisma.externalApproval.findUnique({
       where: { id },
       include: {
@@ -394,6 +420,13 @@ export class ExternalApprovalsService {
       },
     });
     if (!approval) throw new NotFoundException('Onay talebi bulunamadı');
+    if (user) {
+      this.assertInsuranceApprovalAccess(approval, {
+        id: user.id ?? '',
+        roleCode: user.roleCode,
+        insuranceCompanyScopes: user.insuranceCompanyScopes,
+      });
+    }
     return { data: approval };
   }
 
@@ -410,6 +443,20 @@ export class ExternalApprovalsService {
   }
 
   // ── Yardımcılar ───────────────────────────────────────────────────────────
+
+  private assertInsuranceApprovalAccess(
+    approval: {
+      report?: { claimFile?: { insuranceCompanyId?: string | null } | null } | null;
+    },
+    user: { id: string; roleCode?: string; insuranceCompanyScopes?: string[] },
+  ) {
+    if (user.roleCode !== 'insurance_company_user') return;
+    const scopes = user.insuranceCompanyScopes ?? [];
+    const companyId = approval.report?.claimFile?.insuranceCompanyId ?? '';
+    if (!scopes.length || !companyId || !scopes.includes(companyId)) {
+      throw new ForbiddenException('Bu onay kaydına erişim izniniz bulunmamaktadır');
+    }
+  }
 
   private buildPublicUrl(token: string): string {
     return buildAppPath(this.config, `/onay/${token}`);

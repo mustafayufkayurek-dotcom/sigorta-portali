@@ -378,14 +378,14 @@ async function main() {
   });
   console.log('✅ Created/updated expert user (eksper@example.com / admin123)');
 
-  // Demo: Sigorta şirketi portal kullanıcısı
+  // Demo: Sigorta şirketi portal kullanıcısı (example.com login engelli — gerçek domain)
   await prisma.user.upsert({
-    where: { email: 'sigorta@example.com' },
-    update: { roleId: insuranceCompanyUserRole.id, status: 'active' },
+    where: { email: 'sigorta@meridyenasistans.com' },
+    update: { roleId: insuranceCompanyUserRole.id, status: 'active', passwordHash: hashedPassword },
     create: {
       firstName: 'Mehmet',
       lastName: 'Sigorta',
-      email: 'sigorta@example.com',
+      email: 'sigorta@meridyenasistans.com',
       passwordHash: hashedPassword,
       roleId: insuranceCompanyUserRole.id,
       employeeCode: 'INS001',
@@ -394,7 +394,7 @@ async function main() {
       isMobileUser: false,
     },
   });
-  console.log('✅ Created/updated insurance company user (sigorta@example.com / admin123)');
+  console.log('✅ Created/updated insurance company user (sigorta@meridyenasistans.com / admin123)');
 
   // Yerel geliştirme: acil yardım asistan firmaları (davet + gelen kutusu kapsamı)
   const assistantFirmSeeds = [
@@ -425,7 +425,7 @@ async function main() {
   await seedPilotOperationData(prisma);
 
   // Demo sigorta portal kullanıcısına pilot şirket kapsamı (ALLIANZ_DEMO dosyaları)
-  const sigortaPortalUser = await prisma.user.findUnique({ where: { email: 'sigorta@example.com' } });
+  const sigortaPortalUser = await prisma.user.findUnique({ where: { email: 'sigorta@meridyenasistans.com' } });
   const demoInsuranceCompany = await prisma.insuranceCompany.findFirst({ where: { code: 'ALLIANZ_DEMO' } });
   if (sigortaPortalUser && demoInsuranceCompany) {
     await prisma.userInsuranceCompanyScope.upsert({

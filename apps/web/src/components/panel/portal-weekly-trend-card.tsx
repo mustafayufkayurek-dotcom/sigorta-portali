@@ -15,6 +15,8 @@ type PortalWeeklyTrendCardProps = {
   data: PortalWeeklyPoint[];
   emptyText?: string;
   titleClassName?: string;
+  /** Daha az dikey yer — sigorta Dosya Takip gibi yoğun sayfalar */
+  compact?: boolean;
 };
 
 /** Dosya Sorumlusu «Haftalık Operasyon Trendi» ile aynı dil — müşteri panelleri. */
@@ -23,19 +25,25 @@ export function PortalWeeklyTrendCard({
   data,
   emptyText = 'Bu hafta dosya hareketi görünmüyor.',
   titleClassName,
+  compact = false,
 }: PortalWeeklyTrendCardProps) {
   const isEmpty = data.length === 0 || data.every((t) => t.count === 0);
+  const chartH = compact ? 128 : 180;
 
   return (
-    <article className="flex min-h-[240px] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article
+      className={`flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm ${
+        compact ? 'min-h-0 p-3' : 'min-h-[240px] p-4'
+      }`}
+    >
       <h3 className={`text-sm font-semibold text-slate-900 ${titleClassName ?? ''}`.trim()}>{title}</h3>
-      <div className="mt-3 min-h-[180px] flex-1">
+      <div className={`flex-1 ${compact ? 'mt-2' : 'mt-3 min-h-[180px]'}`}>
         {isEmpty ? (
           <p className={`text-sm text-slate-500 ${titleClassName?.includes('text-center') ? 'text-center' : ''}`.trim()}>
             {emptyText}
           </p>
         ) : (
-          <div className="h-[180px] w-full">
+          <div className="w-full" style={{ height: chartH }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
                 <XAxis

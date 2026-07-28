@@ -81,8 +81,8 @@ export function assertClaimFileAccess(
 ): void {
   if (!user) return;
 
-  if (isInsuranceCompanyUser(user.roleCode) && insuranceCompanyIds?.length) {
-    if (!insuranceCompanyIds.includes(claimFile.insuranceCompanyId ?? '')) {
+  if (isInsuranceCompanyUser(user.roleCode)) {
+    if (!insuranceCompanyIds?.length || !insuranceCompanyIds.includes(claimFile.insuranceCompanyId ?? '')) {
       throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
     }
   }

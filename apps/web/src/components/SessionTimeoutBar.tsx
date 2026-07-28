@@ -8,14 +8,23 @@ import { API } from '@/utils/api';
 
 /** Beni Hatırla kapalı oturumlarda hareketsizlik süresi */
 const SESSION_DURATION_MS = 30 * 60 * 1000;
+const LOCAL_SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // lokal geliştirme: 12 saat
 const WARN_BEFORE_MS = 5 * 60 * 1000;
 const ACTIVITY_REFRESH_DEBOUNCE_MS = 2 * 60 * 1000;
+
+function isLocalDevHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+}
 
 export default function SessionTimeoutBar() {
   const router = useRouter();
   const navigationGuard = useNavigationGuardOptional();
   const rememberMe = isRememberMeSession();
-  const [remainingMs, setRemainingMs] = useState(SESSION_DURATION_MS);
+  const localDev = isLocalDevHost();
+  const sessionDurationMs = localDev ? LOCAL_SESSION_DURATION_MS : SESSION_DURATION_MS;
+  const [remainingMs, setRemainingMs] = useState(sessionDurationMs);
   const [visible, setVisible] = useState(false);
   const [extending, setExtending] = useState(false);
   const lastActivityRef = useRef(Date.now());
@@ -79,9 +88,11 @@ export default function SessionTimeoutBar() {
 
   useEffect(() => {
     if (rememberMe) return;
+    // Lokal geliştirmede idle çıkışı yok; yalnızca token yenileme aktivitesi yeterlidir.
+    if (localDev) return;
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - lastActivityRef.current;
-      const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
+      const remaining = Math.max(0, sessionDurationMs - elapsed);
       setRemainingMs(remaining);
       setVisible(remaining <= WARN_BEFORE_MS && remaining > 0);
 
@@ -94,9 +105,9 @@ export default function SessionTimeoutBar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [doLogout, rememberMe]);
+  }, [doLogout, rememberMe, localDev, sessionDurationMs]);
 
-  if (rememberMe || !visible) return null;
+  if (rememberMe || localDev || !visible) return null;
 
   const pct = (remainingMs / WARN_BEFORE_MS) * 100;
   const minutes = Math.floor(remainingMs / 60000);

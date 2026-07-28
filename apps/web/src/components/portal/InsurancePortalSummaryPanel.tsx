@@ -65,13 +65,7 @@ export default function InsurancePortalSummaryPanel({
         ) : null}
 
         <div className="space-y-2">
-          <StatRow
-            label="Bekleyen Onaylar"
-            value={realStats.pendingApprovals}
-            accent={realStats.pendingApprovals > 0 ? 'text-amber-700' : 'text-slate-800'}
-            pulse={realStats.pendingApprovals > 0}
-          />
-          <StatRow label="Toplam Dosya" value={realStats.totalFiles} accent="text-blue-700" />
+          <StatRow label="Açık / Toplam Dosya" value={realStats.totalFiles} accent="text-brand-700" />
           <StatRow label="Haritadaki Nokta" value={realStats.mapPinCount} />
         </div>
       </div>
@@ -109,17 +103,11 @@ export default function InsurancePortalSummaryPanel({
         <h3 className="text-sm font-semibold text-slate-800 mb-3">Hızlı Erişim</h3>
         <div className="space-y-2">
           <Link
-            href="/panel/sigorta-portal/onaylar"
-            className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+            href="/panel/sigorta-portal"
+            className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:border-brand-300 hover:bg-brand-50 transition-colors"
           >
-            <span>Onaylar</span>
-            {realStats.pendingApprovals > 0 ? (
-              <span className="rounded-full bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5">
-                {realStats.pendingApprovals}
-              </span>
-            ) : (
-              <span className="text-slate-400 text-xs">→</span>
-            )}
+            <span>Dosya İzleme</span>
+            <span className="text-slate-400 text-xs">→</span>
           </Link>
           <Link
             href="/panel/sigorta-portal/dosyalar"

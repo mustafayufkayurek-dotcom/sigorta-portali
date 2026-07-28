@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import {
+  ExpertFileDetailDrawer,
+  type ExpertDrawerFile,
+} from '@/components/eksper-portal/ExpertFileDetailDrawer';
+import { ExpertFileDocumentsModal, ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
+import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
@@ -19,6 +24,7 @@ import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/
 
 const SIGORTA_INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
   { id: 'invoiceDate', label: 'Düzenleme', defaultWidth: 104, minWidth: 88 },
   { id: 'dueDate', label: 'Vade', defaultWidth: 104, minWidth: 88 },
   { id: 'totalAmount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
@@ -42,7 +48,16 @@ export default function SigortaFaturalarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingScope, setMissingScope] = useState(false);
+  const [drawerFile, setDrawerFile] = useState<ExpertDrawerFile | null>(null);
+  const [noteFileId, setNoteFileId] = useState<string | null>(null);
+  const [docsFileId, setDocsFileId] = useState<string | null>(null);
+  const [notesRefreshToken, setNotesRefreshToken] = useState(0);
   const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-faturalar', SIGORTA_INVOICE_TABLE_COLUMNS);
+
+  const openFileDrawer = (claim?: Invoice['claimFile']) => {
+    if (!claim?.id) return;
+    setDrawerFile({ id: claim.id, fileNo: claim.fileNo ?? '—' });
+  };
 
   useEffect(() => {
     const { user, hasScope } = readInsurancePortalUser();
@@ -92,7 +107,7 @@ export default function SigortaFaturalarPage() {
     return map[s] ?? 'bg-slate-100 text-slate-600';
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
+  if (loading) return <div className="flex h-64 items-center justify-center text-slate-500">Yükleniyor...</div>;
 
   const totalPaid = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.totalAmount, 0);
   const totalPending = invoices.filter((i) => i.status === 'sent' || i.status === 'overdue').reduce((s, i) => s + i.totalAmount, 0);
@@ -101,7 +116,7 @@ export default function SigortaFaturalarPage() {
     <div className="min-w-0 max-w-full space-y-4">
       <PortalPageHeader
         portalHomeHref="/panel/sigorta-portal"
-        portalHomeLabel="Sigorta Portal"
+        portalHomeLabel="Dosya Takip"
         currentLabel="Faturalar"
         title="Faturalar"
         actions={
@@ -112,34 +127,34 @@ export default function SigortaFaturalarPage() {
       />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="text-red-700 hover:text-red-900 ml-4 font-bold">&times;</button>
+          <button type="button" onClick={() => setError(null)} className="ml-4 font-bold text-red-700 hover:text-red-900">&times;</button>
         </div>
       )}
 
       {missingScope ? (
-        <div className="bg-white rounded-xl border border-amber-200 py-16 text-center px-6">
-          <p className="text-slate-700 font-medium">Sigorta şirketi kapsamı tanımlı değil.</p>
-          <p className="text-slate-500 text-sm mt-2">Fatura listesi için hesabınıza sigorta şirketi atanmalıdır.</p>
+        <div className="rounded-xl border border-amber-200 bg-white px-6 py-16 text-center">
+          <p className="font-medium text-slate-700">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="mt-2 text-sm text-slate-500">Fatura listesi için hesabınıza sigorta şirketi atanmalıdır.</p>
         </div>
       ) : (
         <>
           {invoices.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <p className="text-xs text-slate-500 mb-1">Ödenen Toplam</p>
-                <p className="text-lg font-bold text-green-600">{fmtMoney(totalPaid)}</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="mb-1 text-xs text-slate-500">Ödenen Toplam</p>
+                <p className="text-lg font-bold text-status-success">{fmtMoney(totalPaid)}</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <p className="text-xs text-slate-500 mb-1">Bekleyen Toplam</p>
-                <p className="text-lg font-bold text-orange-600">{fmtMoney(totalPending)}</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="mb-1 text-xs text-slate-500">Bekleyen Toplam</p>
+                <p className="text-lg font-bold text-status-warning">{fmtMoney(totalPending)}</p>
               </div>
             </div>
           )}
 
           {!error && invoices.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+            <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
               <p className="text-slate-500">Fatura bulunamadı.</p>
             </div>
           ) : (
@@ -150,6 +165,17 @@ export default function SigortaFaturalarPage() {
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900">{inv.invoiceNo ?? '—'}</p>
+                        {inv.claimFile?.id ? (
+                          <button
+                            type="button"
+                            onClick={() => openFileDrawer(inv.claimFile)}
+                            className="mt-1 block text-xs font-semibold text-brand-600 hover:underline"
+                          >
+                            Dosya: {inv.claimFile.fileNo ?? '—'}
+                          </button>
+                        ) : inv.claimFile?.fileNo ? (
+                          <p className="mt-1 text-xs text-slate-500">Dosya: {inv.claimFile.fileNo}</p>
+                        ) : null}
                         <p className="mt-1 text-xs text-slate-500">Düzenleme: {fmtDate(inv.invoiceDate)}</p>
                         {inv.dueDate ? (
                           <p className="text-xs text-slate-500">Vade: {fmtDate(inv.dueDate)}</p>
@@ -172,6 +198,7 @@ export default function SigortaFaturalarPage() {
                     <thead className="bg-slate-50">
                       <tr>
                         <PanelTableTh colId="invoiceNo" className="table-th-center">Fatura No</PanelTableTh>
+                        <PanelTableTh colId="fileNo" className="table-th-center">Dosya No</PanelTableTh>
                         <PanelTableTh colId="invoiceDate" className="table-th-center">Düzenleme</PanelTableTh>
                         <PanelTableTh colId="dueDate" className="table-th-center">Vade</PanelTableTh>
                         <PanelTableTh colId="totalAmount" className="table-th-center">Tutar</PanelTableTh>
@@ -182,6 +209,19 @@ export default function SigortaFaturalarPage() {
                       {invoices.map((inv) => (
                         <tr key={inv.id} className="transition-colors hover:bg-slate-50">
                           <PanelTableTd colId="invoiceNo" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">{inv.invoiceNo ?? '—'}</PanelTableTd>
+                          <PanelTableTd colId="fileNo" className="table-td-center px-4 py-3 text-sm">
+                            {inv.claimFile?.id ? (
+                              <button
+                                type="button"
+                                onClick={() => openFileDrawer(inv.claimFile)}
+                                className="font-semibold text-brand-600 hover:underline"
+                              >
+                                {inv.claimFile.fileNo ?? '—'}
+                              </button>
+                            ) : (
+                              <span className="text-slate-600">{inv.claimFile?.fileNo ?? '—'}</span>
+                            )}
+                          </PanelTableTd>
                           <PanelTableTd colId="invoiceDate" className="table-td-center px-4 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</PanelTableTd>
                           <PanelTableTd colId="dueDate" className="table-td-center px-4 py-3 text-sm text-slate-600">{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</PanelTableTd>
                           <PanelTableTd colId="totalAmount" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">{fmtMoney(inv.totalAmount)}</PanelTableTd>
@@ -200,6 +240,30 @@ export default function SigortaFaturalarPage() {
           )}
         </>
       )}
+
+      <ExpertFileDetailDrawer
+        open={Boolean(drawerFile)}
+        onClose={() => setDrawerFile(null)}
+        file={drawerFile}
+        initialTab="ozet"
+        onOpenDocuments={() => drawerFile && setDocsFileId(drawerFile.id)}
+        onOpenNote={() => drawerFile && setNoteFileId(drawerFile.id)}
+        notesRefreshToken={notesRefreshToken}
+      />
+      <ExpertFileDocumentsModal
+        open={Boolean(docsFileId)}
+        claimFileId={docsFileId}
+        onClose={() => setDocsFileId(null)}
+      />
+      <ExpertFileNoteModal
+        open={Boolean(noteFileId)}
+        claimFileId={noteFileId}
+        onClose={() => setNoteFileId(null)}
+        onSaved={() => {
+          setNotesRefreshToken((n) => n + 1);
+          setNoteFileId(null);
+        }}
+      />
     </div>
   );
 }

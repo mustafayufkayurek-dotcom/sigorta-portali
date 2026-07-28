@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
+import {
+  ExpertFileDetailDrawer,
+  type ExpertDrawerFile,
+} from '@/components/eksper-portal/ExpertFileDetailDrawer';
+import { ExpertFileDocumentsModal, ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { fetchPendingExternalApprovals, getPortalAuthHeaders, hasPortalSessionToken, PORTAL_API } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 
@@ -16,7 +21,9 @@ interface Approval {
   report?: {
     reportNumber?: string;
     totalAmount?: number;
-    claimFile?: { fileNumber?: string; fileNo?: string };
+    claimFile?: { id?: string; fileNumber?: string; fileNo?: string };
+    reportNo?: string;
+    totalSalesAmount?: number;
   };
 }
 
@@ -31,6 +38,10 @@ export default function SigortaOnaylarPage() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [drawerFile, setDrawerFile] = useState<ExpertDrawerFile | null>(null);
+  const [noteFileId, setNoteFileId] = useState<string | null>(null);
+  const [docsFileId, setDocsFileId] = useState<string | null>(null);
+  const [notesRefreshToken, setNotesRefreshToken] = useState(0);
 
   const loadApprovals = () => {
     if (!hasPortalSessionToken()) {
@@ -82,6 +93,11 @@ export default function SigortaOnaylarPage() {
   const fmt = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const fmtMoney = (v?: number) => v != null ? v.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) : '—';
   const fileNoOf = (a: Approval) => a.report?.claimFile?.fileNo ?? a.report?.claimFile?.fileNumber ?? '—';
+  const openFileDrawer = (a: Approval) => {
+    const id = a.report?.claimFile?.id;
+    if (!id) return;
+    setDrawerFile({ id, fileNo: fileNoOf(a) });
+  };
 
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-500">Yükleniyor...</div>;
 
@@ -89,7 +105,7 @@ export default function SigortaOnaylarPage() {
     <div className="min-w-0 max-w-full space-y-4">
       <PortalPageHeader
         portalHomeHref="/panel/sigorta-portal"
-        portalHomeLabel="Sigorta Portal"
+        portalHomeLabel="Dosya Takip"
         currentLabel="Onaylar"
         title="Bekleyen Onaylar"
         actions={
@@ -124,12 +140,24 @@ export default function SigortaOnaylarPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {approvals.map((a) => (
+          {approvals.map((a) => {
+            const canOpen = Boolean(a.report?.claimFile?.id);
+            return (
             <div key={a.id} className="bg-white rounded-xl border border-slate-200 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-900">{fileNoOf(a)}</span>
+                    {canOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => openFileDrawer(a)}
+                        className="font-semibold text-brand-600 hover:underline"
+                      >
+                        {fileNoOf(a)}
+                      </button>
+                    ) : (
+                      <span className="font-semibold text-slate-900">{fileNoOf(a)}</span>
+                    )}
                     <span className="text-slate-400">·</span>
                     <span className="text-sm text-slate-600">{a.report?.reportNumber ?? a.reportId.slice(0, 8)}</span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(a.status)}`}>{statusLabel(a.status)}</span>
@@ -148,7 +176,8 @@ export default function SigortaOnaylarPage() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -185,6 +214,30 @@ export default function SigortaOnaylarPage() {
           </div>
         </div>
       )}
+
+      <ExpertFileDetailDrawer
+        open={Boolean(drawerFile)}
+        onClose={() => setDrawerFile(null)}
+        file={drawerFile}
+        initialTab="ozet"
+        onOpenDocuments={() => drawerFile && setDocsFileId(drawerFile.id)}
+        onOpenNote={() => drawerFile && setNoteFileId(drawerFile.id)}
+        notesRefreshToken={notesRefreshToken}
+      />
+      <ExpertFileDocumentsModal
+        open={Boolean(docsFileId)}
+        claimFileId={docsFileId}
+        onClose={() => setDocsFileId(null)}
+      />
+      <ExpertFileNoteModal
+        open={Boolean(noteFileId)}
+        claimFileId={noteFileId}
+        onClose={() => setNoteFileId(null)}
+        onSaved={() => {
+          setNotesRefreshToken((n) => n + 1);
+          setNoteFileId(null);
+        }}
+      />
     </div>
   );
 }

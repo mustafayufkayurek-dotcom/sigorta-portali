@@ -21,15 +21,19 @@ export type ExpertPortalNavCounts = {
   dosyalar?: number;
   onay?: number;
   rapor?: number;
-  /** Onaylanan Dosyalar */
   onaylanan?: number;
   /** @deprecated — onaylanan kullanın */
   raporOnay?: number;
 };
 
+export type InsurancePortalNavCounts = {
+  /** Yalnız Bekleyen Onaylar rozeti */
+  onay?: number;
+};
+
 /**
  * FINAL MASTER — Eksper sidebar.
- * Özet rozet yalnız «Onay Bekliyor» — diğer kuyruk sayıları sorumluluk sinyalini zayıflatır.
+ * Özet rozet yalnız «Onay Bekliyor».
  */
 export function getExpertPortalNav(counts?: ExpertPortalNavCounts): PortalNavItem[] {
   return [
@@ -58,13 +62,23 @@ export function getExpertPortalNav(counts?: ExpertPortalNavCounts): PortalNavIte
   ];
 }
 
-export function getInsurancePortalNav(): PortalNavItem[] {
+/**
+ * Sigorta — Dosya Takip.
+ * İhbar tanımlama + tespit izleme + onay (onay yetkisi sigorta kullanıcısında da vardır).
+ * Dosya Akışı menüde yok; Dosyalar satırından açılır.
+ */
+export function getInsurancePortalNav(counts?: InsurancePortalNavCounts): PortalNavItem[] {
   return [
-    { title: 'Sigorta Paneli', href: '/panel/sigorta-portal', icon: Building2, exactMatch: true },
-    { title: 'Bekleyen Onaylar', href: '/panel/sigorta-portal/onaylar', icon: ShieldCheck },
-    { title: 'Atanmış Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
-    { title: 'Dosya Akışı', href: '/panel/sigorta-portal/dosya-akisi', icon: GitBranch },
+    { title: 'Dosya Takip', href: '/panel/sigorta-portal', icon: Building2, exactMatch: true },
+    {
+      title: 'Bekleyen Onaylar',
+      href: '/panel/sigorta-portal/onaylar',
+      icon: ShieldCheck,
+      alertCount: counts?.onay,
+    },
+    { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
     { title: 'Faturalar', href: '/panel/sigorta-portal/faturalar', icon: FileText },
+    { title: 'Operasyon Ağı', href: '/panel/sigorta-portal/operasyon-agi', icon: GitBranch },
   ];
 }
 
@@ -81,9 +95,13 @@ export const PORTAL_BOTTOM_SHORT_LABELS: Record<string, string> = {
   'Yeni İhbar': 'İhbar',
   'Dosya Akışı': 'Akış',
   'Bekleyen Onaylar': 'Onaylar',
-  'Sigorta Paneli': 'Panel',
+  'Sigorta Paneli': 'Takip',
+  'Dosya İzleme': 'Takip',
+  'Dosya Takip': 'Takip',
   'Atanmış Dosyalar': 'Dosyalar',
+  Dosyalar: 'Dosyalar',
   Faturalar: 'Faturalar',
+  'Operasyon Ağı': 'Ağ',
 };
 
 export function isPortalNavActive(pathname: string, href: string, exactMatch?: boolean): boolean {

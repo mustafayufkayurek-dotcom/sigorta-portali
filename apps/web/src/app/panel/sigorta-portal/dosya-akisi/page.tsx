@@ -7,8 +7,8 @@ export default function SigortaDosyaAkisiPage() {
   return (
     <PortalFileFlowPage
       portalHomeHref="/panel/sigorta-portal"
-      portalHomeLabel="Sigorta Portal"
-      listTitle="Sigorta Dosyalarınız"
+      portalHomeLabel="Dosya Takip"
+      listTitle="Dosyalarınız"
       emptyHint="Sigorta şirketinize bağlı dosyalar burada listelenir."
       filesLinkHref="/panel/sigorta-portal/dosyalar"
       filesLinkLabel="Dosyalar"

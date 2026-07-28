@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { fmtDate } from '@/utils/date-helpers';
+import { fmtDateTime } from '@/utils/date-helpers';
 import { enterpriseStatusBadgeClass } from '@/utils/enterprise-list-facelift';
 
 export type PortalFileListItem = {
@@ -16,13 +16,17 @@ export type PortalFileListItem = {
   statusColor?: string | null;
   createdAt: string;
   assignedUser?: string | null;
-  flowHref: string;
+  reporterLabel?: string | null;
+  /** Tam sayfa köprü; `onFlowClick` varsa kullanılmaz */
+  flowHref?: string;
   flowLabel?: string;
 };
 
 type PortalMobileFileListProps = {
   items: PortalFileListItem[];
   onItemClick?: (id: string) => void;
+  /** Yan panel / drawer açmak için (eksper tarzı) */
+  onFlowClick?: (id: string) => void;
   showInsurance?: boolean;
   showAssigned?: boolean;
 };
@@ -30,6 +34,7 @@ type PortalMobileFileListProps = {
 export default function PortalMobileFileList({
   items,
   onItemClick,
+  onFlowClick,
   showInsurance = true,
   showAssigned = false,
 }: PortalMobileFileListProps) {
@@ -61,10 +66,13 @@ export default function PortalMobileFileList({
                   <span className="line-clamp-2">{item.subject}</span>
                 </p>
               ) : null}
+              {item.reporterLabel ? (
+                <p className="mt-0.5 truncate text-xs text-slate-500">İhbar Eden: {item.reporterLabel}</p>
+              ) : null}
               {showAssigned && item.assignedUser ? (
                 <p className="mt-0.5 truncate text-xs text-slate-500">Atanan: {item.assignedUser}</p>
               ) : null}
-              <p className="mt-1 text-[11.5px] text-[#9AA3AF]">{fmtDate(item.createdAt)}</p>
+              <p className="mt-1 text-[11.5px] text-[#9AA3AF]">{fmtDateTime(item.createdAt)}</p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-2">
               {item.statusName ? (
@@ -72,13 +80,34 @@ export default function PortalMobileFileList({
                   {item.statusName}
                 </span>
               ) : null}
-              <Link
-                href={item.flowHref}
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs font-medium text-brand-600 hover:text-blue-800"
-              >
-                {item.flowLabel ?? 'Akış'}
-              </Link>
+              {onFlowClick ? (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFlowClick(item.id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onFlowClick(item.id);
+                    }
+                  }}
+                  className="text-xs font-medium text-brand-600 hover:text-blue-800"
+                >
+                  {item.flowLabel ?? 'İzle'}
+                </span>
+              ) : item.flowHref ? (
+                <Link
+                  href={item.flowHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs font-medium text-brand-600 hover:text-blue-800"
+                >
+                  {item.flowLabel ?? 'Akış'}
+                </Link>
+              ) : null}
             </div>
           </div>
         </button>
