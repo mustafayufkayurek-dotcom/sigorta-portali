@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-28",
-  "label": "v407-sigorta-dosya-takip",
-  "description": "Full: Sigorta Dosya Takip — zorunlu dosya no, ihbar eden (ad/soyad/görev), ihbar tarih+saat, detaylı istatistik, KPI ayrımı (Eksper/Departman İhbarlı). Health PASS, nginx→web PASS. Rollback web v406 / backend v402.",
+  "label": "v408-sigorta-grafik-baslik",
+  "description": "Full: Sigorta Dosya Takip — haftalık grafik (lastActivityAt+notificationDate), boş haftada çizgi, başlıklar Eksper/Departman İhbarlı Takip. Health PASS, nginx→web PASS. Rollback web v407 / backend v407.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v407-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v407-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v408-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v408-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v406-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v402-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v407-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v407-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
