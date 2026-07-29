@@ -67,6 +67,7 @@ type WelcomeOrgParams = {
   adjusterName?: string | null;
   insuranceCompanyName?: string | null;
   brokerOrganizationName?: string | null;
+  assistantOrganizationName?: string | null;
 };
 
 type InvitePortalContext = {
@@ -118,6 +119,13 @@ export class UsersService {
             include: {
               insuranceCompany: {
                 select: { id: true, name: true },
+              },
+            },
+          },
+          userAssistantCustomerScopes: {
+            include: {
+              customer: {
+                select: { id: true, companyName: true, fullName: true },
               },
             },
           },
@@ -207,6 +215,13 @@ export class UsersService {
         userInsuranceCompanyScopes: {
           include: {
             insuranceCompany: true,
+          },
+        },
+        userAssistantCustomerScopes: {
+          include: {
+            customer: {
+              select: { id: true, companyName: true, fullName: true },
+            },
           },
         },
       },
@@ -396,6 +411,7 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      assistantCustomerIds,
       expertCustomerId,
       brokerCustomerId,
       ...rest
@@ -410,7 +426,12 @@ export class UsersService {
       throw new BadRequestException('Bu e-posta adresi başka bir aktif kullanıcıda kayıtlı');
     }
 
-    await this.validatePortalInviteContext(rest.roleId, { expertCustomerId, brokerCustomerId, insuranceCompanyIds });
+    await this.validatePortalInviteContext(rest.roleId, {
+      expertCustomerId,
+      brokerCustomerId,
+      insuranceCompanyIds,
+      assistantCustomerIds,
+    });
 
     const reactivated = await this.update(existingUser.id, {
       ...rest,
@@ -423,6 +444,7 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      assistantCustomerIds,
       expertCustomerId,
       brokerCustomerId,
     });
@@ -447,6 +469,7 @@ export class UsersService {
     const organizationName = await this.resolveWelcomeOrganizationNameForUser(reactivatedUser, {
       brokerCustomerId,
       insuranceCompanyIds,
+      assistantCustomerIds,
     });
 
     const welcomeEmail = await this.sendWelcomeInviteEmail({
@@ -470,6 +493,7 @@ export class UsersService {
     if (roleCode === 'expert') return 'EXPERT';
     if (roleCode === 'insurance_company_user') return 'INSURANCE_COMPANY';
     if (roleCode === 'broker_user') return 'BROKER';
+    if (roleCode === 'assistance_company_user') return 'MERIDYEN_STAFF';
     return 'MERIDYEN_STAFF';
   }
 
@@ -502,6 +526,9 @@ export class UsersService {
     if (role === 'BROKER') {
       return params.brokerOrganizationName?.trim() || params.branchName?.trim() || undefined;
     }
+    if (params.roleCode === 'assistance_company_user') {
+      return params.assistantOrganizationName?.trim() || params.branchName?.trim() || undefined;
+    }
     return params.branchName?.trim() || undefined;
   }
 
@@ -530,7 +557,18 @@ export class UsersService {
       adjusterName: user.adjuster?.name,
       insuranceCompanyName: insuranceCompanyName ?? undefined,
       brokerOrganizationName: await this.resolveBrokerOrganizationName(context.brokerCustomerId),
+      assistantOrganizationName: await this.resolveAssistantOrganizationName(context.assistantCustomerIds?.[0]),
     });
+  }
+
+  private async resolveAssistantOrganizationName(assistantCustomerId?: string | null): Promise<string | undefined> {
+    if (!assistantCustomerId) return undefined;
+    const customer = await this.prisma.customer.findUnique({ where: { id: assistantCustomerId } });
+    if (!customer || customer.status !== 'active') return undefined;
+    if (customer.entityType !== 'corporate' || customer.subType !== ASSISTANT_CUSTOMER_SUB_TYPE) {
+      return undefined;
+    }
+    return (customer.companyName ?? customer.fullName ?? '').trim() || undefined;
   }
 
   private async resolveBrokerOrganizationName(brokerCustomerId?: string | null): Promise<string | undefined> {
@@ -775,6 +813,7 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      assistantCustomerIds,
       expertCustomerId,
       brokerCustomerId,
       ...rest
@@ -824,7 +863,8 @@ export class UsersService {
       Array.isArray(departmentMemberships) ||
       Array.isArray(responsibilityAssignments) ||
       Array.isArray(serviceAreas) ||
-      Array.isArray(insuranceCompanyIds);
+      Array.isArray(insuranceCompanyIds) ||
+      Array.isArray(assistantCustomerIds);
 
     const include = {
       role: true,
@@ -846,6 +886,13 @@ export class UsersService {
           },
         },
       },
+      userAssistantCustomerScopes: {
+        include: {
+          customer: {
+            select: { id: true, companyName: true, fullName: true },
+          },
+        },
+      },
       serviceAreas: {
         include: {
           province: { select: { id: true, name: true, plateCode: true } },
@@ -864,6 +911,7 @@ export class UsersService {
       expertCustomerId,
       brokerCustomerId,
       insuranceCompanyIds,
+      assistantCustomerIds,
     }, 'update', { existingAdjusterId: user.adjusterId });
 
     const updated = roleChanged || hasNestedUpdates
@@ -895,6 +943,9 @@ export class UsersService {
           }
           if (roleChanged || Array.isArray(insuranceCompanyIds)) {
             await tx.userInsuranceCompanyScope.deleteMany({ where: { userId: id } });
+          }
+          if (roleChanged || Array.isArray(assistantCustomerIds)) {
+            await tx.userAssistantCustomerScope.deleteMany({ where: { userId: id } });
           }
 
           if (roleChanged) {
@@ -964,6 +1015,16 @@ export class UsersService {
               data: insuranceCompanyIds.map((insuranceCompanyId: string) => ({
                 userId: id,
                 insuranceCompanyId,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          if (Array.isArray(assistantCustomerIds) && assistantCustomerIds.length > 0) {
+            await tx.userAssistantCustomerScope.createMany({
+              data: assistantCustomerIds.map((customerId: string) => ({
+                userId: id,
+                customerId,
               })),
               skipDuplicates: true,
             });

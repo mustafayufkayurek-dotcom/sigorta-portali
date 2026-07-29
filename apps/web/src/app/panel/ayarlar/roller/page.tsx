@@ -21,11 +21,20 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 
 
 type Role = { id: string; code: string; name: string; description?: string | null; _count?: { users: number } };
 
 const emptyForm = { name: '', code: '', description: '' };
+
+/** Rol DTO yalnızca A-Z ve alt çizgi kabul eder (rakam yok) */
+function roleAutoCode(name: string): string {
+  return suggestAutoCode('ROL', name)
+    .replace(/[0-9]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '') || 'ROL_YENI';
+}
 
 export default function RollerPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -64,17 +73,18 @@ export default function RollerPage() {
     const name = normalizeFormFreeText(form.name);
     const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
     if (!name) { setError('Rol Adı zorunludur'); return; }
-    if (!form.code.trim()) { setError('Kod zorunludur'); return; }
-    if (!/^[A-Z_]+$/.test(form.code)) { setError('Kod yalnızca büyük harf ve alt çizgi (_) içerebilir'); return; }
+    const code = editing ? form.code.trim() : (form.code.trim() || roleAutoCode(name));
+    if (!code) { setError('Kod üretilemedi. Rol adını kontrol edin.'); return; }
+    if (!/^[A-Z_]+$/.test(code)) { setError('Kod yalnızca büyük harf ve alt çizgi (_) içerebilir'); return; }
     const dupName = roles.find((r) =>
       r.name.trim().toLowerCase() === name.toLowerCase() && (!editing || r.id !== editing.id)
     );
     if (dupName) { setError('Bu isimde bir rol zaten mevcut!'); return; }
     const dupCode = roles.find((r) =>
-      r.code.trim().toUpperCase() === form.code.trim().toUpperCase() && (!editing || r.id !== editing.id)
+      r.code.trim().toUpperCase() === code.toUpperCase() && (!editing || r.id !== editing.id)
     );
     if (dupCode) { setError('Bu kodda bir rol zaten mevcut!'); return; }
-    const payload = { name, code: form.code, description: description || undefined };
+    const payload = { name, code, description: description || undefined };
     setSaving(true); setError('');
     try {
       if (editing) {
@@ -154,17 +164,33 @@ export default function RollerPage() {
         onSave={handleSave} saving={saving} error={error}>
         <div>
           <label className={labelCls}>Rol Adı <span className="text-status-danger">*</span></label>
-          <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v !== e.target.value.trim()) setForm((p) => ({ ...p, name: v })); }} placeholder="Örn: Muhasebe Yöneticisi" />
+          <input
+            className={inputCls}
+            value={form.name}
+            onChange={(e) => setForm((p) => {
+              const next = applyNameWithAutoCode(p, e.target.value, !!editing, 'ROL');
+              return editing ? next : { ...next, code: roleAutoCode(e.target.value) };
+            })}
+            onBlur={() => setForm((p) => {
+              const next = blurNameWithAutoCode(p, !!editing, 'ROL');
+              return editing ? next : { ...next, code: roleAutoCode(next.name) };
+            })}
+            placeholder="Örn: Muhasebe Yöneticisi"
+          />
         </div>
         <div>
-          <label className={labelCls}>Kod <span className="text-status-danger">*</span></label>
-          <input className={`${inputCls} font-mono ${editing ? 'bg-slate-50 text-slate-400' : ''}`}
+          <label className={labelCls}>Kod</label>
+          <input
+            className={`${inputCls} font-mono disabled:bg-slate-50`}
             value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z_]/g, '') })}
-            placeholder="ORNEK_KOD"
-            disabled={!!editing}
+            disabled
+            placeholder={editing ? 'ROL_KODU' : 'Ad yazınca otomatik üretilir'}
           />
-          {!editing && <p className="text-xs text-slate-400 mt-1">Yalnızca büyük harf ve alt çizgi kullanın. Oluşturulduktan sonra değiştirilemez.</p>}
+          {!editing && (
+            <p className="text-xs text-slate-400 mt-1">
+              Kod rol adından otomatik üretilir. Oluşturulduktan sonra değiştirilemez.
+            </p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Açıklama</label>

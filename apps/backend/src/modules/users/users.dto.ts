@@ -69,6 +69,13 @@ export class CreateUserDto {
   @IsOptional()
   @IsUUID()
   brokerCustomerId?: string;
+
+  /** Asistans firma portal daveti — müşteri kaydı (asistan_firmasi) */
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  assistantCustomerIds?: string[];
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {

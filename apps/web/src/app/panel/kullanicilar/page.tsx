@@ -289,6 +289,7 @@ interface User {
   operationalAccessGrants?: OperationalAccessGrantListItem[];
   serviceAreas?: ServiceAreaSelection[];
   userInsuranceCompanyScopes?: Array<{ insuranceCompanyId: string; insuranceCompany?: InsuranceCompany | null }>;
+  userAssistantCustomerScopes?: Array<{ customerId: string; customer?: { id: string; companyName?: string | null; fullName?: string | null } | null }>;
   lastLoginAt?: string | null;
   createdAt: string;
 }
@@ -305,7 +306,7 @@ function isProtectedSystemAdmin(user: Pick<User, 'email' | 'archivedEmail'>) {
 }
 
 type OperationArea = '' | 'hasar' | 'acil' | 'both';
-type UserTaskCode = '' | 'management' | 'operations' | 'field_operations' | 'expert' | 'insurance_company_user' | 'broker' | 'finance';
+type UserTaskCode = '' | 'management' | 'operations' | 'field_operations' | 'expert' | 'insurance_company_user' | 'broker' | 'assistance_company_user' | 'finance';
 type ManagementLevel = '' | 'admin' | 'manager';
 type FormErrors = Partial<Record<keyof UserFormState, string>> & { general?: string };
 type ConfirmAction = {
@@ -327,6 +328,7 @@ interface UserFormState {
   insuranceCompanyIds: string[];
   expertCustomerId: string;
   brokerCustomerId: string;
+  assistantCustomerId: string;
   acilYardimCustomerIds: string[];
   countrywide: boolean;
   serviceAreas: ServiceAreaSelection[];
@@ -346,6 +348,7 @@ const DEFAULT_FORM: UserFormState = {
   insuranceCompanyIds: [],
   expertCustomerId: '',
   brokerCustomerId: '',
+  assistantCustomerId: '',
   acilYardimCustomerIds: [],
   countrywide: true,
   serviceAreas: [],
@@ -361,6 +364,7 @@ const USER_TASK_OPTIONS: Array<{ value: UserTaskCode; label: string; description
   { value: 'expert', label: 'Eksper', description: 'Eksper portalı ve eksper iş akışları için kullanıcı.' },
   { value: 'insurance_company_user', label: 'Sigorta Şirketi Kullanıcısı', description: 'Sigorta şirketi kapsamındaki portal kullanıcısı.' },
   { value: 'broker', label: 'Broker Kullanıcısı', description: 'Broker firması kapsamındaki portal kullanıcısı.' },
+  { value: 'assistance_company_user', label: 'Asistans Firma Kullanıcısı', description: 'Asistans firması kapsamındaki portal kullanıcısı.' },
   { value: 'finance', label: 'Finans', description: 'Finans ve mali operasyon ekranlarını kullanan ekip üyesi.' },
 ];
 
@@ -422,6 +426,7 @@ function displayRoleName(role?: Role | null) {
   if (code === 'expert' || code === 'adjuster') return 'Eksper';
   if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
   if (code === 'broker_user') return 'Broker Kullanıcısı';
+  if (code === 'assistance_company_user') return 'Asistans Firma Kullanıcısı';
   if (code === 'finance') return 'Finans';
   return role.name;
 }
@@ -1047,6 +1052,7 @@ export default function KullanicilarPage() {
     if (form.userTask === 'expert') return roleByCode('expert', 'adjuster');
     if (form.userTask === 'insurance_company_user') return roleByCode('insurance_company_user');
     if (form.userTask === 'broker') return roleByCode('broker_user');
+    if (form.userTask === 'assistance_company_user') return roleByCode('assistance_company_user');
     if (form.userTask === 'finance') return roleByCode('finance');
     return undefined;
   })();
@@ -1068,6 +1074,9 @@ export default function KullanicilarPage() {
     }
     if (roleCodesMatch(role?.code, 'broker_user')) {
       return { userTask: 'broker', managementLevel: '' };
+    }
+    if (roleCodesMatch(role?.code, 'assistance_company_user')) {
+      return { userTask: 'assistance_company_user', managementLevel: '' };
     }
     if (roleCodesMatch(role?.code, 'finance')) return { userTask: 'finance', managementLevel: '' };
     return { userTask: '', managementLevel: '' };
@@ -1312,6 +1321,7 @@ export default function KullanicilarPage() {
       acilYardimCustomerIds: value === 'operations' ? prev.acilYardimCustomerIds : [],
       expertCustomerId: value === 'expert' ? prev.expertCustomerId : '',
       brokerCustomerId: value === 'broker' ? prev.brokerCustomerId : '',
+      assistantCustomerId: value === 'assistance_company_user' ? prev.assistantCustomerId : '',
       countrywide:
         value === 'operations'
           ? false
@@ -1329,6 +1339,7 @@ export default function KullanicilarPage() {
       insuranceCompanyIds: undefined,
       expertCustomerId: undefined,
       brokerCustomerId: undefined,
+      assistantCustomerId: undefined,
       acilYardimCustomerIds: undefined,
       operationArea: undefined,
       selectedSubjects: undefined,
@@ -1564,6 +1575,9 @@ export default function KullanicilarPage() {
         : (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean),
       expertCustomerId: '',
       brokerCustomerId: '',
+      assistantCustomerId: task.userTask === 'assistance_company_user'
+        ? ((u.userAssistantCustomerScopes ?? []).map((scope) => scope.customerId).filter(Boolean)[0] ?? '')
+        : '',
       acilYardimCustomerIds: [],
       countrywide: (u.serviceAreas ?? []).length === 0,
       serviceAreas: (u.serviceAreas ?? []).map((area: any) => ({
@@ -1643,6 +1657,9 @@ export default function KullanicilarPage() {
     if (form.userTask === 'broker' && !form.brokerCustomerId) {
       nextErrors.brokerCustomerId = 'Broker firması seçilmelidir.';
     }
+    if (form.userTask === 'assistance_company_user' && !form.assistantCustomerId) {
+      nextErrors.assistantCustomerId = 'Asistans firması seçilmelidir.';
+    }
     if (form.userTask === 'operations' && showsInsuranceCompanyScope(form.operationArea) && form.insuranceCompanyIds.length === 0) {
       nextErrors.insuranceCompanyIds = 'Sigorta şirketi seçilmelidir.';
     }
@@ -1708,6 +1725,10 @@ export default function KullanicilarPage() {
 
       if (form.userTask === 'broker' && form.brokerCustomerId) {
         payload.brokerCustomerId = form.brokerCustomerId;
+      }
+
+      if (form.userTask === 'assistance_company_user' && form.assistantCustomerId) {
+        payload.assistantCustomerIds = [form.assistantCustomerId];
       }
 
       if (form.userTask === 'operations' || selectedRoleIsFieldStaff || form.userTask === 'expert') {
@@ -2639,6 +2660,43 @@ export default function KullanicilarPage() {
                   )}
                   <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
                     Broker portal kullanıcısı seçilen broker firması ile eşleştirilir; hoş geldin mailinde firma adı bu kayıttan gelir.
+                  </p>
+                </FormField>
+              </div>
+            )}
+
+            {form.userTask === 'assistance_company_user' && (
+              <div className="order-2 col-span-2">
+                <FormField label="Asistans Firması" required error={formErrors.assistantCustomerId}>
+                  {acilYardimCustomers.length === 0 ? (
+                    <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      Aktif asistans firması bulunamadı. Önce{' '}
+                      <Link href="/panel/musteriler?openAdd=1&subType=asistan_firmasi&entityType=corporate" className="font-semibold underline">
+                        Müşteriler
+                      </Link>
+                      {' '}üzerinden asistans firması kaydı oluşturun.
+                    </p>
+                  ) : (
+                    <div className="grid max-h-48 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                      {acilYardimCustomers.map((company) => (
+                        <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="radio"
+                            name="assistant-firm"
+                            checked={form.assistantCustomerId === company.id}
+                            onChange={() => {
+                              setForm((prev) => ({ ...prev, assistantCustomerId: company.id }));
+                              setFormErrors((prev) => ({ ...prev, assistantCustomerId: undefined, general: undefined }));
+                            }}
+                            className="border-slate-300 text-brand-600"
+                          />
+                          {company.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
+                    Asistans portal kullanıcısı seçilen asistans firmasına bağlanır; yalnızca o firmanın acil yardım dosyalarını görür.
                   </p>
                 </FormField>
               </div>
