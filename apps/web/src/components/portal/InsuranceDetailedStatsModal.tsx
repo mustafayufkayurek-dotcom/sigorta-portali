@@ -4,7 +4,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Printer, X } from 'lucide-react';
 import { PortalBreakdownBarCard } from '@/components/panel/portal-breakdown-bar-card';
 import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
-import { buildPortalWeeklyActivity } from '@/utils/portal-weekly-activity';
+import {
+  buildPastMonthOptions,
+  buildPastYearOptions,
+  buildPortalActivitySeries,
+  portalActivityRangeLabel,
+  type PortalActivityRange,
+} from '@/utils/portal-weekly-activity';
 import {
   buildInsuranceBranchStats,
   filterInsuranceFilesByDimensions,
@@ -165,6 +171,10 @@ export function InsuranceDetailedStatsModal({
   const [tracks, setTracks] = useState<TrackOpt[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [experts, setExperts] = useState<string[]>([]);
+  const [activityRange, setActivityRange] = useState<PortalActivityRange>({
+    kind: 'last_days',
+    days: 7,
+  });
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -172,6 +182,7 @@ export function InsuranceDetailedStatsModal({
     setTracks([]);
     setCities([]);
     setExperts([]);
+    setActivityRange({ kind: 'last_days', days: 7 });
   }, [open]);
 
   useEffect(() => {
@@ -216,7 +227,13 @@ export function InsuranceDetailedStatsModal({
       })),
     [branchRows],
   );
-  const weeklyTrend = useMemo(() => buildPortalWeeklyActivity(filtered), [filtered]);
+  const pastMonthOptions = useMemo(() => buildPastMonthOptions(), []);
+  const pastYearOptions = useMemo(() => buildPastYearOptions(), []);
+  const activityRangeLabel = portalActivityRangeLabel(activityRange);
+  const weeklyTrend = useMemo(
+    () => buildPortalActivitySeries(filtered, activityRange),
+    [filtered, activityRange],
+  );
 
   const selectionSummary = useMemo(() => {
     const parts: string[] = [];
@@ -227,8 +244,9 @@ export function InsuranceDetailedStatsModal({
     }
     if (cities.length > 0) parts.push(`İl: ${cities.map((c) => toTitleCaseTR(c)).join(', ')}`);
     if (experts.length > 0) parts.push(`Eksper: ${experts.map((e) => toTitleCaseTR(e)).join(', ')}`);
+    parts.push(activityRangeLabel);
     return parts.join(' · ');
-  }, [tracks, cities, experts]);
+  }, [tracks, cities, experts, activityRangeLabel]);
 
   const handlePrint = () => {
     const node = printRef.current;
@@ -294,7 +312,7 @@ export function InsuranceDetailedStatsModal({
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-900">Detaylı İstatistik</h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              İl ve eksper seçerek branş kırılımı ve haftalık hareketi görün.
+              İl, eksper ve dönem seçerek branş kırılımı ile dosya hareketini görün.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -388,10 +406,83 @@ export function InsuranceDetailedStatsModal({
               emptyText="Seçime uyan branş dağılımı yok."
             />
             <PortalWeeklyTrendCard
-              title="Haftalık Dosya Hareketi"
+              title={`Dosya Hareketi · ${activityRangeLabel}`}
               data={weeklyTrend}
-              emptyText="Seçime uyan haftalık hareket görünmüyor."
+              emptyText="Seçime uyan dönemde dosya hareketi görünmüyor."
               showEmptyChart
+              headerAside={
+                <>
+                  {(
+                    [
+                      { days: 7 as const, label: 'Son 7 Gün' },
+                      { days: 15 as const, label: 'Son 15 Gün' },
+                      { days: 30 as const, label: 'Son 1 Ay' },
+                    ] as const
+                  ).map((opt) => {
+                    const active =
+                      activityRange.kind === 'last_days' && activityRange.days === opt.days;
+                    return (
+                      <button
+                        key={opt.days}
+                        type="button"
+                        onClick={() => setActivityRange({ kind: 'last_days', days: opt.days })}
+                        className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition ${
+                          active
+                            ? 'bg-brand-600 text-white shadow-sm'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  <label className="sr-only" htmlFor="stats-activity-month">
+                    Ay Seç
+                  </label>
+                  <select
+                    id="stats-activity-month"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700"
+                    value={
+                      activityRange.kind === 'month'
+                        ? `${activityRange.year}-${activityRange.month}`
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      const [y, m] = v.split('-').map(Number);
+                      setActivityRange({ kind: 'month', year: y, month: m });
+                    }}
+                  >
+                    <option value="">Ay Seç</option>
+                    {pastMonthOptions.map((opt) => (
+                      <option key={`${opt.year}-${opt.month}`} value={`${opt.year}-${opt.month}`}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="sr-only" htmlFor="stats-activity-year">
+                    Yıl Seç
+                  </label>
+                  <select
+                    id="stats-activity-year"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700"
+                    value={activityRange.kind === 'year' ? String(activityRange.year) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      setActivityRange({ kind: 'year', year: Number(v) });
+                    }}
+                  >
+                    <option value="">Yıl Seç</option>
+                    {pastYearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              }
             />
           </div>
 
