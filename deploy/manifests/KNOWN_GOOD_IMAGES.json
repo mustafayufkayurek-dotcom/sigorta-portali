@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-29",
-  "label": "v414-detayli-istatistik-donem",
-  "description": "Web-only: Detaylı İstatistik dönem seçenekleri (7/15 gün, 1 ay, ay/yıl). Health PASS, nginx→web PASS, Route Gate PASS. Backend v410. Rollback web v413.",
+  "label": "v415-asistans-portal",
+  "description": "Full: Asistans Firma Portalı (Acil Yardım) + UserAssistantCustomerScope migration + Yeni İhbar. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v414 / backend v410.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v410-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v414-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v415-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v415-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v413-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v409-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v414-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v410-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -33,6 +33,8 @@
     "/panel/sigorta-portal/canli-izle",
     "/panel/sigorta-portal/dosyalar",
     "/panel/sigorta-portal/onaylar",
-    "/panel/sigorta-portal/faturalar"
+    "/panel/sigorta-portal/faturalar",
+    "/panel/asistans-portal",
+    "/panel/asistans-portal/dosyalar"
   ]
 }
