@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,11 +9,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
+  SortablePanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const DEPT_PERF_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'dept', label: 'Departman / Branş', defaultWidth: 180, minWidth: 120 },
@@ -77,6 +82,39 @@ export default function DosyaPerformansPage() {
 
   const deptTableColumns = usePanelTableColumns('table-cols:rapor-dosya-perf-1', DEPT_PERF_TABLE_COLUMNS);
   const insTableColumns = usePanelTableColumns('table-cols:rapor-dosya-perf-2', INS_STATS_TABLE_COLUMNS);
+  const [clientSortDept, setClientSortDept] = useState<ClientSortState>(null);
+  const [clientSortIns, setClientSortIns] = useState<ClientSortState>(null);
+
+  const sortedDeptRows = useMemo(
+    () =>
+      sortRowsByClientSort(deptRows, clientSortDept, (row, key) => {
+        switch (key) {
+          case 'dept': return row.dept;
+          case 'total': return row.total;
+          case 'open': return row.open;
+          case 'closed': return row.closed;
+          case 'avgCloseDays': return row.avgCloseDays;
+          case 'slaCompliance': return row.slaCompliance;
+          case 'performance': return row.total > 0 ? Math.round((row.closed / row.total) * 100) : 0;
+          default: return null;
+        }
+      }),
+    [deptRows, clientSortDept],
+  );
+
+  const sortedInsStats = useMemo(
+    () =>
+      sortRowsByClientSort(insStats, clientSortIns, (row, key) => {
+        switch (key) {
+          case 'name': return row.name;
+          case 'total': return row.total;
+          case 'open': return row.open;
+          case 'closed': return row.closed;
+          default: return null;
+        }
+      }),
+    [insStats, clientSortIns],
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -237,17 +275,17 @@ export default function DosyaPerformansPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
             <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
               <tr>
-                <PanelTableTh colId="dept" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman / Branş</PanelTableTh>
-                <PanelTableTh colId="total" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
-                <PanelTableTh colId="open" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Açık</PanelTableTh>
-                <PanelTableTh colId="closed" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Kapanan</PanelTableTh>
-                <PanelTableTh colId="avgCloseDays" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Kapanış (gün)</PanelTableTh>
-                <PanelTableTh colId="slaCompliance" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">SLA Uyum %</PanelTableTh>
-                <PanelTableTh colId="performance" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Performans</PanelTableTh>
+                <SortablePanelTableTh colId="dept" sortKey="dept" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman / Branş</SortablePanelTableTh>
+                <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</SortablePanelTableTh>
+                <SortablePanelTableTh colId="open" sortKey="open" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Açık</SortablePanelTableTh>
+                <SortablePanelTableTh colId="closed" sortKey="closed" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Kapanan</SortablePanelTableTh>
+                <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Kapanış (gün)</SortablePanelTableTh>
+                <SortablePanelTableTh colId="slaCompliance" sortKey="slaCompliance" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">SLA Uyum %</SortablePanelTableTh>
+                <SortablePanelTableTh colId="performance" sortKey="performance" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Performans</SortablePanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-              {deptRows.map((row) => {
+              {sortedDeptRows.map((row) => {
                 const sla = row.slaCompliance;
                 const slaColor = sla >= 90 ? 'text-green-700 dark:text-green-400' : sla >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
                 const barColor = sla >= 90 ? 'bg-green-500' : sla >= 75 ? 'bg-status-warning' : 'bg-status-danger';
@@ -289,14 +327,14 @@ export default function DosyaPerformansPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(insTableColumns)}>
               <thead className="bg-slate-50/70 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="name" className="px-5 py-3 text-center">Şirket</PanelTableTh>
-                  <PanelTableTh colId="total" className="px-5 py-3 text-center">Toplam</PanelTableTh>
-                  <PanelTableTh colId="open" className="px-5 py-3 text-center">Açık</PanelTableTh>
-                  <PanelTableTh colId="closed" className="px-5 py-3 text-center">Kapanan</PanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSortIns?.key ?? null} sortDir={clientSortIns?.dir ?? 'asc'} onSort={(k) => setClientSortIns((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center">Şirket</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortIns?.key ?? null} sortDir={clientSortIns?.dir ?? 'asc'} onSort={(k) => setClientSortIns((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center">Toplam</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="open" sortKey="open" activeSortKey={clientSortIns?.key ?? null} sortDir={clientSortIns?.dir ?? 'asc'} onSort={(k) => setClientSortIns((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center">Açık</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="closed" sortKey="closed" activeSortKey={clientSortIns?.key ?? null} sortDir={clientSortIns?.dir ?? 'asc'} onSort={(k) => setClientSortIns((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center">Kapanan</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {insStats.slice(0, 10).map((ins) => (
+                {sortedInsStats.slice(0, 10).map((ins) => (
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="name" className="px-5 py-3 text-slate-700 dark:text-slate-200">{ins.name}</PanelTableTd>
                     <PanelTableTd colId="total" className="px-5 py-3 text-right font-medium text-slate-800 dark:text-slate-100">{ins.total}</PanelTableTd>

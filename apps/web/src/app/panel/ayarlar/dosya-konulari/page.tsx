@@ -32,6 +32,8 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { persistAlphabeticSortOrders, sortByNameTR } from '@/utils/definition-sort-order';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 type Department = DepartmentTab & { code: string; reportFormat: string; isSystem: boolean };
 type FileSubject = { id: string; code: string; name: string; sortOrder: number; isSystem: boolean; status: string };
@@ -57,6 +59,7 @@ function resolveDepartment(depts: Department[], tab: (typeof KONU_TABS)[number])
 }
 
 export default function DosyaKonulariPage() {
+  const { showToast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subjectsByDept, setSubjectsByDept] = useState<Record<string, FileSubject[]>>({});
   const [activeTab, setActiveTab] = useState<KonuTabId>('hasar-onarim');
@@ -219,7 +222,7 @@ export default function DosyaKonulariPage() {
       await reloadActiveTab();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Durum değiştirilemedi');
+      showToast('error', getApiErrorMessage(err, 'Durum değiştirilemedi'));
     }
   };
 
@@ -232,7 +235,7 @@ export default function DosyaKonulariPage() {
       await reloadActiveTab();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }

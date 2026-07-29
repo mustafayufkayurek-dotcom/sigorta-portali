@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 
 function fmtCurrency(n: number | null | undefined) {
@@ -31,6 +33,7 @@ const ITEM_STATUS: Record<string, { label: string; color: string }> = {
 export default function VendorStatementDetailPage() {
   const { id: vendorId, stmtId } = useParams<{ id: string; stmtId: string }>();
   const router = useRouter();
+  const { showToast } = useToast();
   const [statement, setStatement] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -56,8 +59,8 @@ export default function VendorStatementDetailPage() {
     try {
       await axios.post(`${API}/vendor-statements/${stmtId}/send`, {}, { headers: authHeader() });
       load();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Gönderim hatası');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Gönderim hatası'));
     } finally {
       setSending(false);
     }

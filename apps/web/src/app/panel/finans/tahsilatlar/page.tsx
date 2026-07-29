@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import axios from 'axios';
@@ -11,12 +11,18 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 112, minWidth: 96 },
@@ -33,8 +39,7 @@ function fmtDate(d: string | null | undefined) {
   return d ? new Date(d).toLocaleDateString('tr-TR') : '—';
 }
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 const METHOD_LABEL: Record<string, string> = {
@@ -91,7 +96,35 @@ export default function TahsilatlarPage() {
     totalIncoming: 0, totalOutgoing: 0, pendingIncoming: 0, pendingIncomingCount: 0,
     pendingOutgoing: 0, dueOutgoing: 0, pendingOutgoingCount: 0, dueOutgoingCount: 0, pendingOnlineLinks: 0,
   });
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-tahsilatlar', PAYMENT_TABLE_COLUMNS);
+
+  const sortedPayments = useMemo(
+    () =>
+      sortRowsByClientSort(payments, clientSort, (p, key) => {
+        switch (key) {
+          case 'paymentDate':
+            return p.paymentDate ?? p.dueDate ?? '';
+          case 'fileCase':
+            return p.claimFile?.fileNo ?? p.emergencyCase?.caseNo ?? '';
+          case 'paymentType':
+            return p.paymentType ?? '';
+          case 'counterparty':
+            return p.counterpartyName ?? p.channel ?? '';
+          case 'method':
+            return METHOD_LABEL[p.method] ?? p.method ?? '';
+          case 'amount':
+            return p.amount ?? 0;
+          case 'status':
+            return p.status ?? '';
+          case 'note':
+            return p.note ?? '';
+          default:
+            return '';
+        }
+      }),
+    [payments, clientSort],
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -261,19 +294,19 @@ export default function TahsilatlarPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
-                    <PanelTableTh colId="paymentDate" className="px-4 py-3 text-center">Tarih / Vade</PanelTableTh>
-                    <PanelTableTh colId="fileCase" className="px-4 py-3 text-center">Dosya</PanelTableTh>
-                    <PanelTableTh colId="paymentType" className="px-4 py-3 text-center">Yön</PanelTableTh>
-                    <PanelTableTh colId="counterparty" className="px-4 py-3 text-center">Taraf / Kanal</PanelTableTh>
-                    <PanelTableTh colId="method" className="px-4 py-3 text-center">Yöntem</PanelTableTh>
-                    <PanelTableTh colId="amount" className="px-4 py-3 text-center">Tutar</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
-                    <PanelTableTh colId="note" className="px-4 py-3 text-center">Not</PanelTableTh>
+                    <SortablePanelTableTh colId="paymentDate" sortKey="paymentDate" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tarih / Vade</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="fileCase" sortKey="fileCase" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="paymentType" sortKey="paymentType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Yön</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="counterparty" sortKey="counterparty" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Taraf / Kanal</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="method" sortKey="method" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Yöntem</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tutar</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="note" sortKey="note" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Not</SortablePanelTableTh>
                     <th className="px-4 py-3 text-center">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                  {payments.map((p, idx) => {
+                  {sortedPayments.map((p, idx) => {
                     const isOverdue = p.status === 'pending' && p.paymentType === 'outgoing' && p.dueDate && new Date(p.dueDate) <= new Date();
                     return (
                       <tr key={p.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>

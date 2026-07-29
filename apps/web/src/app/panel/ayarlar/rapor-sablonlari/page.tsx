@@ -23,6 +23,8 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 
 const TEMPLATE_TYPES = [
@@ -81,6 +83,7 @@ function typeBadge(type: string) {
 }
 
 export default function RaporSablonlariPage() {
+  const { showToast } = useToast();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -165,7 +168,7 @@ export default function RaporSablonlariPage() {
       await axios.put(`${API}/system-settings/document-report-templates/${t.id}`, { isActive: !t.isActive }, { headers: authHeader() });
       loadTemplates();
     } catch {
-      alert('Durum güncellenemedi.');
+      showToast('error', 'Durum Güncellenemedi.');
     }
   };
 
@@ -177,7 +180,7 @@ export default function RaporSablonlariPage() {
       setDeleteTarget(null);
       loadTemplates();
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'Silinemedi.');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi.'));
     } finally {
       setDeleting(false);
     }

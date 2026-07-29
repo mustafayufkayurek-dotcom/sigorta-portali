@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Eye, FileSearch, FolderOpen, GitBranch, MoreVertical, PenLine } from 'lucide-react';
+import { ActionIconButton, actionIconBtnClass } from '@/components/ui/ActionIconButton';
 import { classifyExpertQueue } from '@/utils/expert-portal-queues';
 
 export type ExpertPortalRowActionsProps = {
@@ -12,38 +13,6 @@ export type ExpertPortalRowActionsProps = {
   /** Sağ panelde Dosya Akışı aç — Meridyen liste tarzı */
   onOpenFlow: () => void;
 };
-
-const iconBtnClass =
-  'group relative inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-transparent hover:border-slate-200';
-
-const tipClass =
-  'pointer-events-none absolute bottom-full left-1/2 z-40 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-md transition-opacity duration-100 group-hover:opacity-100 group-focus-visible:opacity-100';
-
-function ActionButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      className={iconBtnClass}
-      onClick={onClick}
-      data-testid={`eksper-action-${label}`}
-    >
-      {children}
-      <span className={tipClass} role="tooltip">
-        {label}
-      </span>
-    </button>
-  );
-}
 
 function contextAction(statusName?: string | null): {
   label: string;
@@ -88,6 +57,8 @@ export function ExpertPortalRowActions({
     onOpenFlow();
   };
 
+  const softBtn = `${actionIconBtnClass} border-transparent hover:border-slate-200`;
+
   return (
     <div
       ref={ref}
@@ -96,30 +67,26 @@ export function ExpertPortalRowActions({
       data-testid="eksper-row-actions"
       aria-label={`${fileNo} işlemleri`}
     >
-      <ActionButton label="Görüntüle" onClick={openFlow}>
+      <ActionIconButton label="Görüntüle" onClick={openFlow} className={softBtn}>
         <Eye className="h-3.5 w-3.5" aria-hidden />
-      </ActionButton>
-      <ActionButton label="Dosya Akışı" onClick={openFlow}>
+      </ActionIconButton>
+      <ActionIconButton label="Dosya Akışı" onClick={openFlow} className={softBtn}>
         <GitBranch className="h-3.5 w-3.5" aria-hidden />
-      </ActionButton>
-      <ActionButton label={context.label} onClick={openFlow}>
+      </ActionIconButton>
+      <ActionIconButton label={context.label} onClick={openFlow} className={softBtn}>
         <ContextIcon className="h-3.5 w-3.5" aria-hidden />
-      </ActionButton>
+      </ActionIconButton>
 
-      <button
-        type="button"
-        title="İşlem Menüsü"
-        aria-label="İşlem Menüsü"
-        aria-expanded={open}
-        className={iconBtnClass}
+      <ActionIconButton
+        label="Diğer"
         onClick={() => setOpen((v) => !v)}
-        data-testid="eksper-actions-menu-btn"
+        testId="eksper-actions-menu-btn"
+        className={softBtn}
+        aria-expanded={open}
+        showTooltip={false}
       >
         <MoreVertical className="h-3.5 w-3.5" aria-hidden />
-        <span className={tipClass} role="tooltip">
-          İşlem Menüsü
-        </span>
-      </button>
+      </ActionIconButton>
 
       {open && (
         <div

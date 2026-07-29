@@ -6,6 +6,8 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authAxios } from '../claim-detail-utils';
 import { FinansFormPanel } from '@/components/finance/FinansPanelUI';
 import { Badge, CollapsibleSectionCard } from '../claim-detail-ui';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 // ─── Tab: Dosya Görevleri & Hatırlatmalar ─────────────────────────────────────
 
@@ -293,6 +295,7 @@ function TaskSection({ title, subtitle, tasks, accent, actionLoading, onComplete
 }
 
 export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any }) {
+  const { showToast } = useToast();
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -393,7 +396,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
 
   const handleSave = async () => {
     if (!form.title.trim()) {
-      alert('Lütfen görev başlığını giriniz.');
+      showToast('warning', 'Lütfen Görev Başlığını Giriniz.');
       return;
     }
     setSaving(true);
@@ -414,8 +417,8 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
       setShowForm(false);
       resetForm();
       loadTasks();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Kayıt başarısız');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Kayıt başarısız'));
     } finally {
       setSaving(false);
     }
@@ -426,8 +429,8 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     try {
       await authAxios({ method: 'POST', url: `${API}/tasks/${taskId}/complete` });
       loadTasks();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Tamamlanamadı');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Tamamlanamadı'));
     } finally {
       setActionLoading(null);
     }
@@ -438,8 +441,8 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     try {
       await authAxios({ method: 'PATCH', url: `${API}/tasks/${taskId}`, data: { status: 'in_progress' } });
       loadTasks();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Durum güncellenemedi');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Durum güncellenemedi'));
     } finally {
       setActionLoading(null);
     }
@@ -451,8 +454,8 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
     try {
       await authAxios({ method: 'DELETE', url: `${API}/tasks/${taskId}` });
       loadTasks();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'İptal edilemedi');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'İptal edilemedi'));
     } finally {
       setActionLoading(null);
     }

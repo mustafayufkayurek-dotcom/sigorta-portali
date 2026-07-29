@@ -21,6 +21,7 @@ import {
   PanelTableTd,
   PanelTableFrame,
   PanelTableColGroup,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -34,6 +35,11 @@ import {
   expertStatusBadgeClass,
 } from '@/utils/expert-dosyalar-ui';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import { ClipboardList, FileText, FolderOpen, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -126,6 +132,7 @@ export default function EksperDosyalarPage() {
   const [noteFileId, setNoteFileId] = useState<string | null>(null);
   const [historyFileId, setHistoryFileId] = useState<string | null>(null);
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
   const tableColumns = usePanelTableColumns('table-cols:eksper-portal-dosyalar-v6', EKSPER_FILE_TABLE_COLUMNS);
 
@@ -179,11 +186,35 @@ export default function EksperDosyalarPage() {
 
   const visibleFiles = useMemo(() => {
     const normalized = normalizeExpertQueueParam(queue);
-    if (!normalized) return files;
-    return files.filter(
-      (f) => classifyExpertQueue(f.currentStatus?.name, f.currentStatus?.code) === normalized,
-    );
-  }, [files, queue]);
+    const queued = !normalized
+      ? files
+      : files.filter(
+          (f) => classifyExpertQueue(f.currentStatus?.name, f.currentStatus?.code) === normalized,
+        );
+    return sortRowsByClientSort(queued, clientSort, (f, key) => {
+      switch (key) {
+        case 'fileNumber':
+          return fileNoOf(f);
+        case 'insuranceCompany':
+          return f.insuranceCompany?.name ?? '';
+        case 'subject':
+          return formatClaimSubjectLabel(f.lossType, undefined, f.subject);
+        case 'status':
+          return portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name);
+        case 'delayDays':
+          return (
+            expertDelayDays({
+              slaDueAt: f.slaDueAt,
+              delayRisk: f.delayRisk,
+            }) ?? -1
+          );
+        case 'createdAt':
+          return f.createdAt ?? '';
+        default:
+          return '';
+      }
+    });
+  }, [files, queue, clientSort]);
 
   const queueCounts = useMemo(() => countExpertQueues(files), [files]);
 
@@ -298,32 +329,34 @@ export default function EksperDosyalarPage() {
             key={card.href}
             type="button"
             onClick={() => router.push(card.href)}
-            className={`relative rounded-xl border px-3 py-2 text-center transition ${
+            className={`group relative flex min-h-[4.75rem] flex-col overflow-hidden rounded-xl border px-3 pb-2.5 pt-2 transition ${
               card.active
                 ? 'border-brand-200 bg-brand-50 ring-1 ring-brand-100'
                 : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
             }`}
           >
             <span
-              className={`absolute left-2.5 top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-lg ${card.iconClass}`}
+              className={`absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg ${card.iconClass}`}
               aria-hidden
             >
               <card.Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
             </span>
-            <p
-              className={`px-7 text-[11px] font-medium leading-tight ${
-                card.active ? 'text-brand-700' : 'text-slate-500'
-              }`}
-            >
-              {card.label}
-            </p>
-            <p
-              className={`mt-0.5 text-base font-bold tabular-nums leading-tight ${
-                card.active ? 'text-brand-800' : 'text-slate-900'
-              }`}
-            >
-              {card.count}
-            </p>
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
+              <p
+                className={`w-full text-[11px] font-medium leading-tight ${
+                  card.active ? 'text-brand-700' : 'text-slate-500'
+                }`}
+              >
+                {card.label}
+              </p>
+              <p
+                className={`w-full text-lg font-bold tabular-nums leading-none tracking-tight ${
+                  card.active ? 'text-brand-800' : 'text-slate-900'
+                }`}
+              >
+                {card.count}
+              </p>
+            </div>
           </button>
         ))}
       </div>
@@ -382,20 +415,37 @@ export default function EksperDosyalarPage() {
               <PanelTableColGroup />
               <thead className="bg-[#F5F6F8]">
                 <tr>
-                  {displayTableColumns.prefs.orderedVisibleColumns.map((col) => (
-                    <PanelTableTh
-                      key={col.id}
-                      colId={col.id}
-                      resizable={col.resizable !== false}
-                      className={
-                        CENTERED_TABLE_COLS.has(col.id)
-                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                          : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                      }
-                    >
-                      {col.label}
-                    </PanelTableTh>
-                  ))}
+                  {displayTableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    const thClass = CENTERED_TABLE_COLS.has(col.id)
+                      ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                      : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                    if (col.id === 'actions') {
+                      return (
+                        <PanelTableTh
+                          key={col.id}
+                          colId={col.id}
+                          resizable={col.resizable !== false}
+                          className={thClass}
+                        >
+                          {col.label}
+                        </PanelTableTh>
+                      );
+                    }
+                    return (
+                      <SortablePanelTableTh
+                        key={col.id}
+                        colId={col.id}
+                        sortKey={col.id}
+                        activeSortKey={clientSort?.key ?? null}
+                        sortDir={clientSort?.dir ?? 'asc'}
+                        onSort={(key) => setClientSort((prev) => cycleClientSort(prev, key))}
+                        resizable={col.resizable !== false}
+                        className={thClass}
+                      >
+                        {col.label}
+                      </SortablePanelTableTh>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E7E9EE] bg-white">
@@ -554,6 +604,8 @@ export default function EksperDosyalarPage() {
             : null
         }
         initialTab={drawerTab}
+        audience="expert"
+        canUploadDocuments
         onOpenDocuments={() => drawerFileId && setDocsFileId(drawerFileId)}
         onOpenNote={() => drawerFileId && setNoteFileId(drawerFileId)}
         notesRefreshToken={notesRefreshToken}
@@ -569,6 +621,8 @@ export default function EksperDosyalarPage() {
       <ExpertFileDocumentsModal
         open={Boolean(docsFileId)}
         claimFileId={docsFileId}
+        allowUpload
+        onUploaded={() => setNotesRefreshToken((n) => n + 1)}
         onClose={() => setDocsFileId(null)}
       />
 
@@ -583,6 +637,11 @@ export default function EksperDosyalarPage() {
       <ExpertFileNoteModal
         open={Boolean(noteFileId)}
         claimFileId={noteFileId}
+        fileNo={(() => {
+          const f = files.find((x) => x.id === noteFileId);
+          return f ? fileNoOf(f) : undefined;
+        })()}
+        insuredName={files.find((x) => x.id === noteFileId)?.insuredName}
         onClose={() => setNoteFileId(null)}
         onSaved={() => {
           setToast('Not kaydedildi.');

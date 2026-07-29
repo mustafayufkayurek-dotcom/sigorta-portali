@@ -8,11 +8,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const AUDIT_LOG_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'createdAt', label: 'Tarih', defaultWidth: 160, minWidth: 120 },
@@ -45,6 +50,7 @@ export default function AuditLogsPage() {
   const [userId, setUserId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:admin-audit-logs', AUDIT_LOG_TABLE_COLUMNS);
 
   const query = useMemo(
@@ -73,6 +79,27 @@ export default function AuditLogsPage() {
       .finally(() => setLoading(false));
   }, [query]);
 
+  const sortedRows = useMemo(
+    () =>
+      sortRowsByClientSort(rows, clientSort, (r, key) => {
+        switch (key) {
+          case 'createdAt':
+            return r.createdAt ?? '';
+          case 'user':
+            return r.userEmail ?? r.user?.email ?? r.userId ?? '';
+          case 'entity':
+            return `${r.entityType ?? ''} ${r.entityId ?? ''}`;
+          case 'action':
+            return r.action ?? '';
+          case 'changes':
+            return JSON.stringify({ oldValue: r.oldValue, newValue: r.newValue });
+          default:
+            return '';
+        }
+      }),
+    [rows, clientSort],
+  );
+
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden">
       <div className="page-header">
@@ -96,19 +123,19 @@ export default function AuditLogsPage() {
         <table className="min-w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <thead>
             <tr className="bg-slate-50">
-              <PanelTableTh colId="createdAt" className="text-center p-2">Tarih</PanelTableTh>
-              <PanelTableTh colId="user" className="text-center p-2">Kullanici</PanelTableTh>
-              <PanelTableTh colId="entity" className="text-center p-2">Entity</PanelTableTh>
-              <PanelTableTh colId="action" className="text-center p-2">Action</PanelTableTh>
-              <PanelTableTh colId="changes" className="text-center p-2">Degisiklikler</PanelTableTh>
+              <SortablePanelTableTh colId="createdAt" sortKey="createdAt" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center p-2">Tarih</SortablePanelTableTh>
+              <SortablePanelTableTh colId="user" sortKey="user" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center p-2">Kullanici</SortablePanelTableTh>
+              <SortablePanelTableTh colId="entity" sortKey="entity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center p-2">Entity</SortablePanelTableTh>
+              <SortablePanelTableTh colId="action" sortKey="action" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center p-2">Action</SortablePanelTableTh>
+              <SortablePanelTableTh colId="changes" sortKey="changes" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center p-2">Degisiklikler</SortablePanelTableTh>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr><td className="p-3" colSpan={5}>Yukleniyor...</td></tr>
-            ) : rows.length === 0 ? (
+            ) : sortedRows.length === 0 ? (
               <tr><td className="p-3" colSpan={5}>Kayit yok</td></tr>
-            ) : rows.map((r) => (
+            ) : sortedRows.map((r) => (
               <tr key={r.id} className="border-t">
                 <PanelTableTd colId="createdAt" className="p-2">{new Date(r.createdAt).toLocaleString('tr-TR')}</PanelTableTd>
                 <PanelTableTd colId="user" className="p-2">{r.userEmail ?? r.user?.email ?? r.userId}</PanelTableTd>

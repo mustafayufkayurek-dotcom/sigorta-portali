@@ -309,8 +309,7 @@ export function OperationRowActions({
       <button
         ref={moreBtnRef}
         type="button"
-        title="İşlem Menüsü"
-        aria-label="İşlem Menüsü"
+        aria-label="Diğer"
         aria-expanded={open}
         className={iconBtnClass}
         onClick={() => setOpen((v) => !v)}

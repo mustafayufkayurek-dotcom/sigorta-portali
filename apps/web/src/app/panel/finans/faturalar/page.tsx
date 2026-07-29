@@ -22,6 +22,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
@@ -36,8 +37,7 @@ const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
 
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 const STATUS_LABEL: Record<string, string> = {

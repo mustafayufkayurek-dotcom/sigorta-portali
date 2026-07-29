@@ -1,18 +1,25 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'bankName', label: 'Banka', defaultWidth: 140, minWidth: 100 },
@@ -25,6 +32,7 @@ const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
 
 
 export default function BankaHesaplariPage() {
+  const { showToast } = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,7 +40,29 @@ export default function BankaHesaplariPage() {
   const [form, setForm] = useState<any>({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-banka-hesaplari', BANK_ACCOUNT_TABLE_COLUMNS);
+
+  const sortedAccounts = useMemo(
+    () =>
+      sortRowsByClientSort(accounts, clientSort, (acc, key) => {
+        switch (key) {
+          case 'bankName':
+            return acc.bankName ?? '';
+          case 'branchName':
+            return acc.branchName ?? '';
+          case 'iban':
+            return acc.iban ?? '';
+          case 'currency':
+            return acc.currency ?? '';
+          case 'status':
+            return acc.isActive ? 'Aktif' : 'Pasif';
+          default:
+            return '';
+        }
+      }),
+    [accounts, clientSort],
+  );
 
   const load = () => {
     setLoading(true);
@@ -46,7 +76,7 @@ export default function BankaHesaplariPage() {
   useEffect(() => { load(); }, []);
 
   const handleSave = async () => {
-    if (!form.bankName || !form.iban) { alert('Banka Adı ve IBAN Zorunludur'); return; }
+    if (!form.bankName || !form.iban) { showToast('warning', 'Banka Adı ve IBAN Zorunludur'); return; }
     setSaving(true);
     try {
       if (editId) {
@@ -58,7 +88,7 @@ export default function BankaHesaplariPage() {
       setEditId(null);
       setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true });
       load();
-    } catch (e: any) { alert(e?.response?.data?.message ?? 'Hata oluştu'); }
+    } catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Hata oluştu')); }
     finally { setSaving(false); }
   };
 
@@ -127,16 +157,16 @@ export default function BankaHesaplariPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
-                <PanelTableTh colId="bankName" className="text-center px-4 py-3">Banka</PanelTableTh>
-                <PanelTableTh colId="branchName" className="text-center px-4 py-3">Şube</PanelTableTh>
-                <PanelTableTh colId="iban" className="text-center px-4 py-3">IBAN</PanelTableTh>
-                <PanelTableTh colId="currency" className="text-center px-4 py-3">Para Birimi</PanelTableTh>
-                <PanelTableTh colId="status" className="text-center px-4 py-3">Durum</PanelTableTh>
+                <SortablePanelTableTh colId="bankName" sortKey="bankName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Banka</SortablePanelTableTh>
+                <SortablePanelTableTh colId="branchName" sortKey="branchName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Şube</SortablePanelTableTh>
+                <SortablePanelTableTh colId="iban" sortKey="iban" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">IBAN</SortablePanelTableTh>
+                <SortablePanelTableTh colId="currency" sortKey="currency" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Para Birimi</SortablePanelTableTh>
+                <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Durum</SortablePanelTableTh>
                 <th className="text-center px-4 py-3">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {accounts.map((acc) => (
+              {sortedAccounts.map((acc) => (
                 <tr key={acc.id} className="hover:bg-slate-50">
                   <PanelTableTd colId="bankName" className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</PanelTableTd>
                   <PanelTableTd colId="branchName" className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</PanelTableTd>

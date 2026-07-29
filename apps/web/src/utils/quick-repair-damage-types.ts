@@ -130,20 +130,21 @@ export function quickDamageTypeDisplayLabel(
   return labels[value] ?? formatDisplayLabel(value);
 }
 
-export const REPORT_IMAGE_CATEGORY_LABELS: Record<string, string> = {
-  before: 'Tespit',
-  damage: 'Onarım',
-  after: 'Onarım Sonrası',
+export const REPORT_IMAGE_CATEGORY_KEYS = ['before', 'damage', 'after'] as const;
+export type ReportImageCategoryKey = (typeof REPORT_IMAGE_CATEGORY_KEYS)[number];
+
+/** Rapor görselleri — operasyon dili (Tespit / Onarım / Onarım Sonrası) */
+export const REPORT_IMAGE_CATEGORY_LABELS: Record<ReportImageCategoryKey, string> = {
+  before: 'Tespit Resimleri',
+  damage: 'Onarım Resimleri',
+  after: 'Onarım Sonrası Resimleri',
 };
 
-export const REPORT_IMAGE_CATEGORY_COLORS: Record<string, string> = {
+export const REPORT_IMAGE_CATEGORY_COLORS: Record<ReportImageCategoryKey, string> = {
   before: 'bg-indigo-600 text-white',
   damage: 'bg-amber-600 text-white',
   after: 'bg-emerald-600 text-white',
 };
-
-export const REPORT_IMAGE_CATEGORY_KEYS = ['before', 'damage', 'after'] as const;
-export type ReportImageCategoryKey = (typeof REPORT_IMAGE_CATEGORY_KEYS)[number];
 
 export function normalizeReportImageCategory(raw?: string | null): ReportImageCategoryKey {
   const v = (raw ?? '').trim().toLowerCase();

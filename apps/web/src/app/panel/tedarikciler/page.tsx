@@ -69,12 +69,17 @@ import {
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 import { getAccessToken } from '@/utils/auth-session';
 
@@ -829,6 +834,7 @@ export default function VendorsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [vendors, setVendors] = useState<any[]>([]);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total: 0, activeCount: 0, corporateCount: 0 });
@@ -975,6 +981,25 @@ export default function VendorsPage() {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  const sortedVendors = useMemo(
+    () =>
+      sortRowsByClientSort(vendors, clientSort, (v, key) => {
+        switch (key) {
+          case 'name': return v.name ?? '';
+          case 'type': return v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal';
+          case 'contact': return v.email ?? v.phone ?? '';
+          case 'location': return [v.city, v.district].filter(Boolean).join(' / ');
+          case 'jobCount': return v._count?.costEntries ?? 0;
+          case 'lastJob': return v.lastJobDate ? new Date(v.lastJobDate).getTime() : null;
+          case 'contractEnd': return v.contractEndDate ? new Date(v.contractEndDate).getTime() : null;
+          case 'status': return v.status ?? '';
+          case 'recordOwner': return formatVendorRecordOwner(v);
+          default: return null;
+        }
+      }),
+    [vendors, clientSort],
+  );
 
   const isAllSelected = vendors.length > 0 && vendors.every((v) => selectedIds.has(v.id));
   const isIndeterminate = vendors.some((v) => selectedIds.has(v.id)) && !isAllSelected;
@@ -2401,20 +2426,20 @@ export default function VendorsPage() {
                       className="w-4 h-4 rounded border-slate-300 accent-brand-600 cursor-pointer"
                     />
                   </th>
-                  <PanelTableTh colId="name" className="table-th">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="type" className="table-th-center">Tür / Tip</PanelTableTh>
-                  <PanelTableTh colId="contact" className="table-th">İletişim</PanelTableTh>
-                  <PanelTableTh colId="location" className="table-th">Konum</PanelTableTh>
-                  <PanelTableTh colId="jobCount" className="table-th-center">İş Sayısı</PanelTableTh>
-                  <PanelTableTh colId="lastJob" className="table-th-center">Son İş</PanelTableTh>
-                  <PanelTableTh colId="contractEnd" className="table-th-center">Sözleşme Bitiş</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                  <PanelTableTh colId="recordOwner" className="table-th">Kayıt Sahibi</PanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Tedarikçi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tür / Tip</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="contact" sortKey="contact" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">İletişim</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="location" sortKey="location" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Konum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="jobCount" sortKey="jobCount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">İş Sayısı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="lastJob" sortKey="lastJob" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Son İş</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="contractEnd" sortKey="contractEnd" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sözleşme Bitiş</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="recordOwner" sortKey="recordOwner" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Kayıt Sahibi</SortablePanelTableTh>
                   <th className="table-th w-32" />
                 </tr>
               </thead>
               <tbody className="table-body">
-                {vendors.map((v) => (
+                {sortedVendors.map((v) => (
                   <tr key={v.id} className={`table-row cursor-pointer ${selectedIds.has(v.id) ? 'bg-blue-50/60' : ''}`}
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest('a, button, input')) return;

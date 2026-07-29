@@ -5,10 +5,10 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 export default function DosyaPLPage() {

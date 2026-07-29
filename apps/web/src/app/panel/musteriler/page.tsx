@@ -55,13 +55,18 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { getAccessToken } from '@/utils/auth-session';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import { API, authHeader, ensureSessionBeforeMutation, getToken } from '@/utils/api';
 import { CardNotesEditor } from '@/components/card-notes/CardNotesEditor';
 import {
@@ -1781,7 +1786,33 @@ export default function MusterilerPage() {
 
   // Finans istatistikleri henüz API'den gelmiyor; widget kaldırıldı
 
-  const displayedCustomers = customers;
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const displayedCustomers = useMemo(
+    () =>
+      sortRowsByClientSort(customers, clientSort, (c, key) => {
+        switch (key) {
+          case 'name':
+            return c.customerType === 'individual'
+              ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim()
+              : (c.companyName ?? '');
+          case 'phone':
+            return c.phone ?? c.mobilePhone ?? '';
+          case 'type':
+            return c.customerType ?? '';
+          case 'service':
+            return c.subType ?? '';
+          case 'files':
+            return c._count?.claimFiles ?? c.fileCount ?? 0;
+          case 'activity':
+            return c.lastActivityAt ?? c.updatedAt ?? '';
+          case 'status':
+            return c.status ?? '';
+          default:
+            return '';
+        }
+      }),
+    [customers, clientSort],
+  );
 
   const clearAllFilters = () => {
     setSearchInput(''); setSearch('');
@@ -2266,13 +2297,13 @@ export default function MusterilerPage() {
                       className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                     />
                   </th>
-                  <PanelTableTh colId="name" className="table-th">Ad Soyad</PanelTableTh>
-                  <PanelTableTh colId="phone" className="table-th">Telefon</PanelTableTh>
-                  <PanelTableTh colId="type" className="table-th text-center">Tip</PanelTableTh>
-                  <PanelTableTh colId="service" className="table-th">Hizmet</PanelTableTh>
-                  <PanelTableTh colId="files" className="table-th text-center">Dosya</PanelTableTh>
-                  <PanelTableTh colId="activity" className="table-th">Aktivite</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th text-center">Durum</PanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Ad Soyad</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="phone" sortKey="phone" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Telefon</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Tip</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Hizmet</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="files" sortKey="files" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Dosya</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="activity" sortKey="activity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Aktivite</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Durum</SortablePanelTableTh>
                   <th className="table-th text-right">İşlem</th>
                 </tr>
               </thead>

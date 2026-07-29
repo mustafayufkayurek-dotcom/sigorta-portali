@@ -32,7 +32,7 @@ import {
   PanelTableColumnPicker,
   PanelTableColGroup,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -40,6 +40,11 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import { normalizeEmailAddress } from '@/utils/normalize-email';
 import { API, authHeader } from '@/utils/api';
 import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
@@ -672,6 +677,7 @@ function RowIconButton({
 
 export default function KullanicilarPage() {
   const tableColumns = usePanelTableColumns('table-cols:kullanicilar', TABLE_COLUMNS);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -1004,6 +1010,27 @@ export default function KullanicilarPage() {
     const matchRole = !filterRoleId || u.role?.id === filterRoleId;
     return matchSearch && matchStatus && matchRole;
   });
+
+  const sorted = useMemo(
+    () =>
+      sortRowsByClientSort(filtered, clientSort, (u, key) => {
+        switch (key) {
+          case 'name':
+            return `${u.firstName} ${u.lastName}`.trim();
+          case 'email':
+            return u.email ?? '';
+          case 'role':
+            return u.role?.name ?? '';
+          case 'status':
+            return normalizeUserStatus(u.status);
+          case 'lastLogin':
+            return u.lastLoginAt ?? '';
+          default:
+            return null;
+        }
+      }),
+    [filtered, clientSort],
+  );
 
   const roleByCode = (code: string, ...aliases: string[]) => findRoleByCode(roles, code, ...aliases);
   const managementRoles = roles.filter(
@@ -2155,21 +2182,21 @@ export default function KullanicilarPage() {
                       )}
                     </button>
                   </th>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Ad Soyad
-                  </PanelTableTh>
-                  <PanelTableTh colId="email" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
+                  </SortablePanelTableTh>
+                  <SortablePanelTableTh colId="email" sortKey="email" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     E-posta
-                  </PanelTableTh>
-                  <PanelTableTh colId="role" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
+                  </SortablePanelTableTh>
+                  <SortablePanelTableTh colId="role" sortKey="role" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Görev
-                  </PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
+                  </SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Durum
-                  </PanelTableTh>
-                  <PanelTableTh colId="lastLogin" className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
+                  </SortablePanelTableTh>
+                  <SortablePanelTableTh colId="lastLogin" sortKey="lastLogin" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
                     Son Giriş
-                  </PanelTableTh>
+                  </SortablePanelTableTh>
                   <th
                     className="box-border px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500"
                     style={{ width: TABLE_ACTIONS_COL_WIDTH, minWidth: TABLE_ACTIONS_COL_WIDTH }}
@@ -2179,7 +2206,7 @@ export default function KullanicilarPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((u) => {
+                {sorted.map((u) => {
                   const rowStatus = normalizeUserStatus(u.status);
                   return (
                   <tr

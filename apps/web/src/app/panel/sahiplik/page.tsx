@@ -1,10 +1,11 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useApiQuery } from '@/hooks/useApi';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -13,6 +14,11 @@ import {
 import { StaffProductivityDetailSection } from '@/features/dashboard/components/management-dashboard/MgmtStaffTable';
 import { useManagementDashboardData } from '@/features/dashboard/components/management-dashboard/use-management-dashboard-data';
 import { rangeForPreset } from '@/features/dashboard/components/management-dashboard/period';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 type OwnershipItem = {
   userId: string;
@@ -55,6 +61,8 @@ const PENDING_TABLE_COLUMNS: TableColumnDef[] = [
 export default function OwnershipPage() {
   const loadTableColumns = usePanelTableColumns('table-cols:sahiplik-load', LOAD_TABLE_COLUMNS);
   const pendingTableColumns = usePanelTableColumns('table-cols:sahiplik-pending', PENDING_TABLE_COLUMNS);
+  const [clientSortLoad, setClientSortLoad] = useState<ClientSortState>(null);
+  const [clientSortPending, setClientSortPending] = useState<ClientSortState>(null);
   const staffRange = rangeForPreset('bu_ay');
   const { staffRows } = useManagementDashboardData(staffRange, 'bu_ay');
 
@@ -83,6 +91,50 @@ export default function OwnershipPage() {
         : [];
 
   const getActiveCount = (item: OwnershipItem) => item.activeCount ?? item.activeFiles ?? 0;
+
+  const sortedLoad = useMemo(
+    () =>
+      sortRowsByClientSort(load, clientSortLoad, (item, key) => {
+        switch (key) {
+          case 'staff':
+            return `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim();
+          case 'role':
+            return item.roleName ?? '';
+          case 'active':
+            return getActiveCount(item);
+          case 'overdue':
+            return item.overdueCount ?? 0;
+          case 'avgDays':
+            return item.avgDaysHeld ?? 0;
+          case 'load':
+            return getActiveCount(item);
+          default:
+            return '';
+        }
+      }),
+    [load, clientSortLoad],
+  );
+
+  const sortedPending = useMemo(
+    () =>
+      sortRowsByClientSort(pending, clientSortPending, (p, key) => {
+        switch (key) {
+          case 'fileNo':
+            return p.fileNo ?? '';
+          case 'status':
+            return p.statusLabel ?? p.currentStatus ?? '';
+          case 'assigned':
+            return p.assignedTo ?? '';
+          case 'action':
+            return p.action ?? '';
+          case 'days':
+            return p.daysSinceChange ?? 0;
+          default:
+            return '';
+        }
+      }),
+    [pending, clientSortPending],
+  );
 
   const totalActive = load.reduce((s, i) => s + getActiveCount(i), 0);
   const totalOverdue = load.reduce((s, i) => s + (i.overdueCount ?? 0), 0);
@@ -133,16 +185,16 @@ export default function OwnershipPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(loadTableColumns)}>
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <PanelTableTh colId="staff" className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Personel</PanelTableTh>
-                  <PanelTableTh colId="role" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Rol</PanelTableTh>
-                  <PanelTableTh colId="active" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Aktif</PanelTableTh>
-                  <PanelTableTh colId="overdue" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">SLA Aşımı</PanelTableTh>
-                  <PanelTableTh colId="avgDays" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Ort. Gün</PanelTableTh>
-                  <PanelTableTh colId="load" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Yük</PanelTableTh>
+                  <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Personel</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="role" sortKey="role" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Rol</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="active" sortKey="active" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Aktif</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="overdue" sortKey="overdue" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">SLA Aşımı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="avgDays" sortKey="avgDays" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Ort. Gün</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="load" sortKey="load" activeSortKey={clientSortLoad?.key ?? null} sortDir={clientSortLoad?.dir ?? 'asc'} onSort={(k) => setClientSortLoad((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Yük</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {load.map((item) => {
+                {sortedLoad.map((item) => {
                   const activeCount = getActiveCount(item);
                   const loadPct = Math.min(100, (activeCount / Math.max(1, totalActive / load.length)) * 50);
                   const isHigh = activeCount > (totalActive / load.length) * 1.5;
@@ -202,15 +254,15 @@ export default function OwnershipPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(pendingTableColumns)}>
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="status" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Durum</PanelTableTh>
-                  <PanelTableTh colId="assigned" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Atanan</PanelTableTh>
-                  <PanelTableTh colId="action" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Beklenen Aksiyon</PanelTableTh>
-                  <PanelTableTh colId="days" className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Gün</PanelTableTh>
+                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortPending?.key ?? null} sortDir={clientSortPending?.dir ?? 'asc'} onSort={(k) => setClientSortPending((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500">Dosya No</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortPending?.key ?? null} sortDir={clientSortPending?.dir ?? 'asc'} onSort={(k) => setClientSortPending((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Durum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="assigned" sortKey="assigned" activeSortKey={clientSortPending?.key ?? null} sortDir={clientSortPending?.dir ?? 'asc'} onSort={(k) => setClientSortPending((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Atanan</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="action" sortKey="action" activeSortKey={clientSortPending?.key ?? null} sortDir={clientSortPending?.dir ?? 'asc'} onSort={(k) => setClientSortPending((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Beklenen Aksiyon</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="days" sortKey="days" activeSortKey={clientSortPending?.key ?? null} sortDir={clientSortPending?.dir ?? 'asc'} onSort={(k) => setClientSortPending((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Gün</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {pending.map((p) => (
+                {sortedPending.map((p) => (
                   <tr key={p.id} className={p.daysSinceChange > 3 ? 'bg-red-50/30' : ''}>
                     <PanelTableTd colId="fileNo" className="px-5 py-3.5 font-medium text-slate-800">{p.fileNo}</PanelTableTd>
                     <PanelTableTd colId="status" className="px-4 py-3.5">

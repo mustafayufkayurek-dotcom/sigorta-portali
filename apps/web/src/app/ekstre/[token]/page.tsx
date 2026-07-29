@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import axios from 'axios';
+import { ToastProvider, useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -30,9 +32,10 @@ const DISPUTE_REASONS: { value: string; label: string }[] = [
   { value: 'OTHER',           label: 'Diğer (açıklama zorunlu)' },
 ];
 
-export default function VendorStatementPage() {
+function VendorStatementPageInner() {
   const params = useParams();
   const token = params?.token as string;
+  const { showToast } = useToast();
 
   const [statement, setStatement] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -60,8 +63,8 @@ export default function VendorStatementPage() {
     try {
       await axios.post(`${API}/public/vendor-statements/token/${token}/approve-all`);
       load();
-    } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Onaylama hatası');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Onaylama Hatası'));
     }
     setApproving(null);
   };
@@ -71,8 +74,8 @@ export default function VendorStatementPage() {
     try {
       await axios.post(`${API}/public/vendor-statements/token/${token}/items/${itemId}/approve`);
       load();
-    } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Onaylama hatası');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Onaylama Hatası'));
     }
     setApproving(null);
   };
@@ -429,5 +432,13 @@ function DisputeModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VendorStatementPage() {
+  return (
+    <ToastProvider>
+      <VendorStatementPageInner />
+    </ToastProvider>
   );
 }

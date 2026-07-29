@@ -25,6 +25,7 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
+import { useToast } from '@/contexts/ToastContext';
 
 
 type ExpenseItem = {
@@ -52,6 +53,7 @@ const emptyGroupForm = { code: '', name: '' };
 const emptyItemForm = { code: '', name: '', parentId: '' };
 
 export default function MasrafKategorileriPage() {
+  const { showToast } = useToast();
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -190,7 +192,7 @@ export default function MasrafKategorileriPage() {
       setDeleteGroup(null);
       await load();
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Silinemedi'));
+      showToast('error', formatSettingsApiError(e, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }
@@ -201,7 +203,7 @@ export default function MasrafKategorileriPage() {
       await axios.patch(`${API}/expense-categories/${g.id}`, { isActive: !g.isActive }, { headers: authHeader() });
       await load();
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Durum değiştirilemedi'));
+      showToast('error', formatSettingsApiError(e, 'Durum değiştirilemedi'));
     }
   };
 
@@ -279,7 +281,7 @@ export default function MasrafKategorileriPage() {
       setDeleteItem(null);
       await load();
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Silinemedi'));
+      showToast('error', formatSettingsApiError(e, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }
@@ -290,7 +292,7 @@ export default function MasrafKategorileriPage() {
       await axios.patch(`${API}/expense-categories/${item.id}`, { isActive: !item.isActive }, { headers: authHeader() });
       await load();
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Durum değiştirilemedi'));
+      showToast('error', formatSettingsApiError(e, 'Durum değiştirilemedi'));
     }
   };
 

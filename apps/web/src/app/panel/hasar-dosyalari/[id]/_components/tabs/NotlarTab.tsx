@@ -2,17 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { mergeClaimFileNotes, type ClaimFileNoteRow } from '@/utils/merge-claim-file-notes';
 import { API, authHeader } from '../claim-detail-utils';
 
 export function NotlarTab({ claimId }: { claimId: string }) {
-  const [notes, setNotes] = useState<any[]>([]);
+  const [notes, setNotes] = useState<ClaimFileNoteRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API}/notes?claimFileId=${claimId}`, { headers: authHeader() })
-      .then((r) => setNotes(r.data.data || []))
+    let cancelled = false;
+    Promise.all([
+      axios
+        .get(`${API}/notes?claimFileId=${claimId}`, { headers: authHeader() })
+        .then((r) => (r.data.data || []) as ClaimFileNoteRow[])
+        .catch(() => [] as ClaimFileNoteRow[]),
+      axios
+        .get(`${API}/claim-files/${claimId}/notes`, { headers: authHeader() })
+        .then((r) => {
+          const body = r.data?.data ?? r.data ?? [];
+          return (Array.isArray(body) ? body : []) as ClaimFileNoteRow[];
+        })
+        .catch(() => [] as ClaimFileNoteRow[]),
+    ])
+      .then(([fromNotes, fromTimeline]) => {
+        if (!cancelled) setNotes(mergeClaimFileNotes(fromNotes, fromTimeline));
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [claimId]);
 
   if (loading) return <div className="text-slate-400 py-8 text-center">Yükleniyor...</div>;

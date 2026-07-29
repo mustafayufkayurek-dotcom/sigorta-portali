@@ -1,17 +1,22 @@
 'use client';
 
 import { API, getToken } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const ACCESS_LOG_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'user', label: 'Kullanıcı', defaultWidth: 140, minWidth: 100 },
@@ -75,7 +80,33 @@ export default function ErisimLoglariPage() {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const [page, setPage] = useState(1);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:guvenlik-erisim-loglari', ACCESS_LOG_TABLE_COLUMNS);
+
+  const sortedLogs = useMemo(
+    () =>
+      sortRowsByClientSort(logs, clientSort, (log, key) => {
+        switch (key) {
+          case 'user':
+            return log.user ? `${log.user.firstName} ${log.user.lastName}` : '';
+          case 'customer':
+            return log.customer?.fullName ?? log.customer?.companyName ?? '';
+          case 'file':
+            return log.claimFile?.fileNo ?? '';
+          case 'accessType':
+            return log.accessType ?? '';
+          case 'createdAt':
+            return log.createdAt ?? '';
+          case 'ipAddress':
+            return log.ipAddress ?? '';
+          case 'status':
+            return log.isAnomaly ? '1' : '0';
+          default:
+            return '';
+        }
+      }),
+    [logs, clientSort],
+  );
 
   const fetchStats = useCallback(async () => {
     try {
@@ -260,17 +291,17 @@ export default function ErisimLoglariPage() {
             <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="bg-slate-50">
                 <tr>
-                  <PanelTableTh colId="user" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Kullanıcı</PanelTableTh>
-                  <PanelTableTh colId="customer" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="file" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Dosya</PanelTableTh>
-                  <PanelTableTh colId="accessType" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Erişim Tipi</PanelTableTh>
-                  <PanelTableTh colId="createdAt" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Tarih</PanelTableTh>
-                  <PanelTableTh colId="ipAddress" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">IP</PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Durum</PanelTableTh>
+                  <SortablePanelTableTh colId="user" sortKey="user" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Kullanıcı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Müşteri</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="file" sortKey="file" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Dosya</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="accessType" sortKey="accessType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Erişim Tipi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="createdAt" sortKey="createdAt" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Tarih</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="ipAddress" sortKey="ipAddress" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">IP</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-medium tracking-wide text-slate-500">Durum</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {logs.map((log) => (
+                {sortedLogs.map((log) => (
                   <tr key={log.id} className={log.isAnomaly ? 'bg-red-50' : ''}>
                     <PanelTableTd colId="user" className="px-4 py-3 text-sm text-slate-900">
                       {log.user

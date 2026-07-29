@@ -17,6 +17,7 @@ import {
 import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { useToast } from '@/contexts/ToastContext';
 import {
   buildDepartmentCodeMap,
   filterDocumentTypesForCategory,
@@ -110,6 +111,7 @@ function VendorBankConfirmationCard({
   vendor: any;
   onUpdate: () => Promise<void> | void;
 }) {
+  const { showToast } = useToast();
   const [working, setWorking] = useState(false);
   const status = vendor.ibanWhatsappConfirmStatus;
 
@@ -130,7 +132,7 @@ function VendorBankConfirmationCard({
       await onUpdate();
     } catch (error) {
       console.error(error);
-      window.alert('WhatsApp teyit mesajı hazırlanamadı.');
+      showToast('error', 'WhatsApp Teyit Mesajı Hazırlanamadı.');
     } finally {
       setWorking(false);
     }
@@ -147,7 +149,7 @@ function VendorBankConfirmationCard({
       await onUpdate();
     } catch (error) {
       console.error(error);
-      window.alert('Teyit durumu kaydedilemedi.');
+      showToast('error', 'Teyit Durumu Kaydedilemedi.');
     } finally {
       setWorking(false);
     }
@@ -1214,6 +1216,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
 
 // ── Evraklar Tab ──────────────────────────────────────────────────────────────
 function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCategory: VendorCategory }) {
+  const { showToast } = useToast();
   const [documents, setDocuments] = useState<any[]>([]);
   const [documentTypes, setDocumentTypes] = useState<VendorDocumentTypeRow[]>([]);
   const [deptCodeById, setDeptCodeById] = useState<Map<string, string>>(() => new Map());
@@ -1270,14 +1273,14 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
       loadDocuments();
       setSelectedTypeId('');
       setCustomType('');
-    } catch (e: any) { alert(e.response?.data?.message ?? 'Yükleme başarısız'); }
+    } catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Yükleme başarısız')); }
     finally { setUploading(false); if (e.target) e.target.value = ''; }
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
     if (!confirm(`"${fileName}" evrakını silmek istediğinizden emin misiniz?`)) return;
     try { await axios.delete(`${API}/vendor-documents/${docId}`, { headers: authHeader() }); loadDocuments(); }
-    catch (e: any) { alert(e.response?.data?.message ?? 'Silinemedi'); }
+    catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Silinemedi')); }
   };
 
   const fmtSize = (bytes: number) => {
@@ -1541,6 +1544,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function OdemelerTab({ vendorId }: { vendorId: string }) {
+  const { showToast } = useToast();
   const [statements, setStatements] = useState<any[]>([]);
   const [filePayments, setFilePayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -1572,7 +1576,7 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
       const url = res.data?.data?.url;
       if (url) window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
-      alert('Dekont açılamadı');
+      showToast('error', 'Dekont Açılamadı');
     }
   };
 
@@ -1583,8 +1587,8 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
     try {
       await axios.post(`${API}/vendor-statements/${id}/send`, {}, { headers: authHeader() });
       load();
-    } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Gönderim hatası');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Gönderim hatası'));
     }
   };
 

@@ -1,12 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Phone, ShieldCheck, X } from 'lucide-react';
 import {
   REFERENCE_CATEGORY_META,
   type ReferenceMapPin,
   type ReferenceOperationCategory,
 } from '@/components/portal/operation-reference.types';
 import { referenceCategoryColor } from '@/utils/operation-reference-utils';
+
+const DETAIL_CONTACT_PHONE_DISPLAY = '0 532 133 4144';
+const DETAIL_CONTACT_PHONE_TEL = '+905321334144';
 
 const CATEGORY_ICONS: Record<ReferenceOperationCategory, string> = {
   residential: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>`,
@@ -73,7 +78,7 @@ function buildPopupHtml(pin: ReferenceMapPin): string {
         </div>
       </div>
       <div style="padding:0 16px 14px;">
-        <button type="button" style="width:100%;background:#2563EB;color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;">
+        <button type="button" data-action="reference-detail" style="width:100%;background:#2563EB;color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;">
           Detayları Gör →
         </button>
       </div>
@@ -104,6 +109,7 @@ export default function OperationReferenceMap({
   const focusMoveHandlerRef = useRef<(() => void) | null>(null);
   const mapReadyRef = useRef(false);
   const [mapFocused, setMapFocused] = useState(false);
+  const [detailNoticeOpen, setDetailNoticeOpen] = useState(false);
 
   const closeMapPopup = useCallback(() => {
     mapRef.current?.closePopup();
@@ -351,6 +357,51 @@ export default function OperationReferenceMap({
     focusPinById(focusPinId);
   }, [focusPinId, focusToken, focusPinById, closeMapPopup, detachFocusMoveHandler]);
 
+  // Popup «Detayları Gör» — KVKK bilgilendirme (Text node tıklaması dahil)
+  useEffect(() => {
+    const resolveEl = (target: EventTarget | null): Element | null => {
+      if (!target) return null;
+      if (target instanceof Element) return target;
+      if (target instanceof Node) return target.parentElement;
+      return null;
+    };
+
+    const openDetailNotice = (event: Event) => {
+      const el = resolveEl(event.target);
+      if (!el?.closest?.('[data-action="reference-detail"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDetailNoticeOpen(true);
+      closeMapPopup();
+    };
+
+    document.addEventListener('click', openDetailNotice, true);
+    return () => {
+      document.removeEventListener('click', openDetailNotice, true);
+    };
+  }, [closeMapPopup]);
+
+  // Leaflet popup açılınca butona doğrudan bağla (garanti)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onPopupOpen = (e: { popup?: { getElement?: () => HTMLElement | null } }) => {
+      const root = e.popup?.getElement?.();
+      const btn = root?.querySelector?.('[data-action="reference-detail"]') as HTMLButtonElement | null;
+      if (!btn) return;
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setDetailNoticeOpen(true);
+        closeMapPopup();
+      };
+    };
+    map.on('popupopen', onPopupOpen);
+    return () => {
+      map.off('popupopen', onPopupOpen);
+    };
+  }, [closeMapPopup, pins]);
+
   const legendCategories: ReferenceOperationCategory[] = [
     'residential',
     'industrial',
@@ -398,6 +449,73 @@ export default function OperationReferenceMap({
           </div>
         </div>
       )}
+      {detailNoticeOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="operation-reference-detail-title"
+              onClick={() => setDetailNoticeOpen(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                      <ShieldCheck className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <div>
+                      <h2
+                        id="operation-reference-detail-title"
+                        className="text-base font-semibold text-slate-900"
+                      >
+                        KVKK Ve Veri Güvenliği
+                      </h2>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                        KVKK ve Veri Güvenliği Taahhütümüz nedeniyle detaylı bilgi için{' '}
+                        <a
+                          href={`tel:${DETAIL_CONTACT_PHONE_TEL}`}
+                          className="font-semibold text-brand-600 hover:text-brand-800 hover:underline"
+                        >
+                          {DETAIL_CONTACT_PHONE_DISPLAY}
+                        </a>{' '}
+                        nolu numara ile irtibata geçiniz.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDetailNoticeOpen(false)}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Kapat"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  </button>
+                </div>
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDetailNoticeOpen(false)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Kapat
+                  </button>
+                  <a
+                    href={`tel:${DETAIL_CONTACT_PHONE_TEL}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                  >
+                    <Phone className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    {DETAIL_CONTACT_PHONE_DISPLAY}
+                  </a>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

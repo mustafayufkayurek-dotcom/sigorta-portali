@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { API, authHeader } from '../claim-detail-utils';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 // ─── Tab: Dokümanlar ──────────────────────────────────────────────────────────
 // Helpers for DokumanlarTab
@@ -40,6 +42,7 @@ const DwgDxfViewerModal = dynamic(
 );
 
 export function DokumanlarTab({ claimId }: { claimId: string }) {
+  const { showToast } = useToast();
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -100,8 +103,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
 
       loadDocs();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      alert(msg ?? 'Yükleme başarısız');
+      showToast('error', getApiErrorMessage(err, 'Yükleme başarısız'));
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -126,7 +128,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch { alert('İndirilemiyor'); }
+    } catch { showToast('error', 'İndirilemiyor'); }
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
@@ -134,7 +136,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     try {
       await axios.delete(`${API}/documents/${docId}`, { headers: authHeader() });
       loadDocs();
-    } catch { alert('Silinemedi'); }
+    } catch { showToast('error', 'Silinemedi'); }
   };
 
   const handlePreview = async (doc: any) => {
@@ -143,7 +145,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     try {
       const url = await getDocUrl(storageKey);
       setPreviewDoc({ ...doc, _url: url });
-    } catch { alert('Önizleme açılamadı'); }
+    } catch { showToast('error', 'Önizleme Açılamadı'); }
   };
 
   const handleCADView = async (doc: any) => {
@@ -153,7 +155,7 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
       const url = await getDocUrl(storageKey);
       setCadUrl(url);
       setCadDoc(doc);
-    } catch { alert('Görüntüleyici açılamadı'); }
+    } catch { showToast('error', 'Görüntüleyici Açılamadı'); }
   };
 
   return (

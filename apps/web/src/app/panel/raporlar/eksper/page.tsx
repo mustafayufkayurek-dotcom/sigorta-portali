@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
   BarChart, Bar,
@@ -11,11 +11,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
+  SortablePanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const ADJUSTER_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'rank', label: '#', defaultWidth: 48, minWidth: 40 },
@@ -38,6 +43,7 @@ export default function EksperPerformansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
   const adjusterTableColumns = usePanelTableColumns('table-cols:rapor-eksper-1', ADJUSTER_TABLE_COLUMNS);
 
@@ -61,6 +67,27 @@ export default function EksperPerformansPage() {
 
   const adjusters = (data?.adjusters ?? []).filter((a: any) =>
     !search || a.name.toLowerCase().includes(search.toLowerCase()) || (a.city ?? '').toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const sortedAdjusters = useMemo(
+    () =>
+      sortRowsByClientSort(adjusters, clientSort, (a: any, key) => {
+        switch (key) {
+          case 'rank': return a.rank ?? 0;
+          case 'name': return a.name ?? '';
+          case 'company': return a.company ?? '';
+          case 'city': return a.city ?? '';
+          case 'total': return a.total ?? 0;
+          case 'completed': return a.completed ?? 0;
+          case 'pending': return (a.pending ?? 0) + (a.accepted ?? 0);
+          case 'avgReportDays': return a.avgReportDays ?? 0;
+          case 'revisionRate': return a.revisionRate ?? 0;
+          case 'completionRate': return a.completionRate ?? 0;
+          case 'performanceScore': return a.performanceScore ?? 0;
+          default: return null;
+        }
+      }),
+    [adjusters, clientSort],
   );
 
   const barData = adjusters.slice(0, 10).map((a: any) => ({
@@ -163,21 +190,21 @@ export default function EksperPerformansPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(adjusterTableColumns)}>
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
-                    <PanelTableTh colId="rank" className="px-4 py-3 text-center">#</PanelTableTh>
-                    <PanelTableTh colId="name" className="px-4 py-3 text-center">Eksper</PanelTableTh>
-                    <PanelTableTh colId="company" className="px-4 py-3 text-center">Şirket</PanelTableTh>
-                    <PanelTableTh colId="city" className="px-4 py-3 text-center">Şehir</PanelTableTh>
-                    <PanelTableTh colId="total" className="px-4 py-3 text-center">Toplam</PanelTableTh>
-                    <PanelTableTh colId="completed" className="px-4 py-3 text-center">Tamamlanan</PanelTableTh>
-                    <PanelTableTh colId="pending" className="px-4 py-3 text-center">Bekleyen</PanelTableTh>
-                    <PanelTableTh colId="avgReportDays" className="px-4 py-3 text-center">Ort. Süre (gün)</PanelTableTh>
-                    <PanelTableTh colId="revisionRate" className="px-4 py-3 text-center">Revizyon %</PanelTableTh>
-                    <PanelTableTh colId="completionRate" className="px-4 py-3 text-center">Tamamlama %</PanelTableTh>
-                    <PanelTableTh colId="performanceScore" className="px-4 py-3 text-center">Puan</PanelTableTh>
+                    <SortablePanelTableTh colId="rank" sortKey="rank" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">#</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Eksper</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="company" sortKey="company" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Şirket</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="city" sortKey="city" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Şehir</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Toplam</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="completed" sortKey="completed" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlanan</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="pending" sortKey="pending" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Bekleyen</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="avgReportDays" sortKey="avgReportDays" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Ort. Süre (gün)</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="revisionRate" sortKey="revisionRate" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Revizyon %</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="completionRate" sortKey="completionRate" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlama %</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="performanceScore" sortKey="performanceScore" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Puan</SortablePanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {adjusters.map((a: any) => (
+                  {sortedAdjusters.map((a: any) => (
                     <tr key={a.id} className="hover:bg-slate-50">
                       <PanelTableTd colId="rank" className="px-4 py-3 text-center text-slate-400 text-xs">{a.rank}</PanelTableTd>
                       <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800">

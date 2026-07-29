@@ -1,3 +1,5 @@
+import { formatTryAmount } from '@/utils/format-try-amount';
+
 export const getDaysAgo = (dateStr: string): number => {
   const diff = Date.now() - new Date(dateStr).getTime();
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
@@ -12,10 +14,7 @@ export const getRelativeTime = (dateStr: string): string => {
   return `${Math.floor(hr / 24)} gün önce`;
 };
 
-export const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(
-    amount || 0,
-  );
+export const formatCurrency = (amount: number): string => formatTryAmount(amount || 0, { fractionDigits: 0 });
 
 export const formatNumber = (num: number): string =>
   new Intl.NumberFormat('tr-TR').format(num);

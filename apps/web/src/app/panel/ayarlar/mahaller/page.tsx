@@ -26,6 +26,8 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 
 type ClaimLocation = {
@@ -112,6 +114,7 @@ function LocationFormFields({
 }
 
 export default function MahallerPage() {
+  const { showToast } = useToast();
   const [locations, setLocations] = useState<ClaimLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -272,7 +275,7 @@ export default function MahallerPage() {
       fetchLocations();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Güncellenemedi');
+      showToast('error', getApiErrorMessage(err, 'Güncellenemedi'));
     }
   };
 
@@ -285,7 +288,7 @@ export default function MahallerPage() {
       fetchLocations();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }
@@ -364,7 +367,7 @@ export default function MahallerPage() {
       if (sub.parentId) fetchSubLocations(sub.parentId);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Güncellenemedi');
+      showToast('error', getApiErrorMessage(err, 'Güncellenemedi'));
     }
   };
 
@@ -378,7 +381,7 @@ export default function MahallerPage() {
       fetchLocations();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import { useToast } from '@/contexts/ToastContext';
 import {
   FinansActionButton,
@@ -15,7 +16,7 @@ import {
 } from '@/components/finance/FinansPanelUI';
 
 function fmtCurrency(n: number) {
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('tr-TR');

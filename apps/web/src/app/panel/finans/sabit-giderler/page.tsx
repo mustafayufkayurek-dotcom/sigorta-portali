@@ -8,10 +8,12 @@ import { AlertTriangle } from 'lucide-react';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { API, authHeader } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
+import { formatTryAmount } from '@/utils/format-try-amount';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 const ALLOCATION_METHODS = [
@@ -46,6 +48,7 @@ interface AllocationReminder {
 
 export default function SabitGiderlerPage() {
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -118,11 +121,10 @@ export default function SabitGiderlerPage() {
         { year, month },
         { headers: authHeader() },
       );
-      alert(`Havuzdan ${r.data.synced} kategori aktarıldı. Toplam (KDV hariç): ${fmtCurrency(r.data.totalNet)}`);
+      showToast('success', `Havuzdan ${r.data.synced} kategori aktarıldı. Toplam (KDV hariç): ${fmtCurrency(r.data.totalNet)}`);
       load();
     } catch (e: unknown) {
-      const msg = axios.isAxiosError(e) ? (e.response?.data?.message ?? 'Senkron başarısız') : 'Senkron başarısız';
-      alert(String(msg));
+      showToast('error', getApiErrorMessage(e, 'Senkron başarısız'));
     } finally {
       setSyncing(false);
     }
@@ -142,11 +144,10 @@ export default function SabitGiderlerPage() {
         { year, month, allocationMethod: allocMethod },
         { headers: authHeader() },
       );
-      alert(`${r.data.allocated} dosyaya dağıtıldı. Toplam: ${fmtCurrency(r.data.totalOverhead)} (KDV hariç)`);
+      showToast('success', `${r.data.allocated} dosyaya dağıtıldı. Toplam: ${fmtCurrency(r.data.totalOverhead)} (KDV hariç)`);
       load();
     } catch (e: unknown) {
-      const msg = axios.isAxiosError(e) ? (e.response?.data?.message ?? 'Dağıtım başarısız') : 'Dağıtım başarısız';
-      alert(String(msg));
+      showToast('error', getApiErrorMessage(e, 'Dağıtım başarısız'));
     } finally {
       setAllocating(false);
     }

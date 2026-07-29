@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,11 +11,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const EMERGENCY_FINANCE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
@@ -64,7 +69,33 @@ function FinansPageInner() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkCustomerName, setBulkCustomerName] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:acil-yardim-finans', EMERGENCY_FINANCE_TABLE_COLUMNS);
+
+  const sortedRows = useMemo(
+    () =>
+      sortRowsByClientSort(rows, clientSort, (row, key) => {
+        switch (key) {
+          case 'date':
+            return row.fileDate ?? row.createdAt ?? '';
+          case 'customer':
+            return row.customerName ?? '';
+          case 'issueType':
+            return row.issueType ?? '';
+          case 'gelir':
+            return row.totalGelir ?? 0;
+          case 'gider':
+            return row.totalGider ?? 0;
+          case 'kar':
+            return row.netKar ?? 0;
+          case 'invoice':
+            return row.isFaturalandildi ? 1 : 0;
+          default:
+            return '';
+        }
+      }),
+    [rows, clientSort],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -254,17 +285,17 @@ function FinansPageInner() {
                     className="rounded"
                   />
                 </th>
-                <PanelTableTh colId="date" className="px-4 py-3 text-center font-semibold">Tarih</PanelTableTh>
-                <PanelTableTh colId="customer" className="px-4 py-3 text-center font-semibold">Müşteri</PanelTableTh>
-                <PanelTableTh colId="issueType" className="px-4 py-3 text-center font-semibold">Konu</PanelTableTh>
-                <PanelTableTh colId="gelir" className="px-4 py-3 text-center font-semibold">Gelir</PanelTableTh>
-                <PanelTableTh colId="gider" className="px-4 py-3 text-center font-semibold">Gider</PanelTableTh>
-                <PanelTableTh colId="kar" className="px-4 py-3 text-center font-semibold">Kâr</PanelTableTh>
-                <PanelTableTh colId="invoice" className="px-4 py-3 text-center font-semibold">Fatura</PanelTableTh>
+                <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Tarih</SortablePanelTableTh>
+                <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Müşteri</SortablePanelTableTh>
+                <SortablePanelTableTh colId="issueType" sortKey="issueType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Konu</SortablePanelTableTh>
+                <SortablePanelTableTh colId="gelir" sortKey="gelir" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gelir</SortablePanelTableTh>
+                <SortablePanelTableTh colId="gider" sortKey="gider" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gider</SortablePanelTableTh>
+                <SortablePanelTableTh colId="kar" sortKey="kar" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Kâr</SortablePanelTableTh>
+                <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Fatura</SortablePanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {rows.map((row) => (
+              {sortedRows.map((row) => (
                 <tr key={row.id} className={`hover:bg-slate-50 transition-colors ${
                   row.overdueLevel === 'critical' ? 'bg-red-50/30' :
                   row.overdueLevel === 'warning' ? 'bg-yellow-50/30' : ''

@@ -8,6 +8,8 @@ import {
   filterDocumentTypesForCustomerSubType,
   filterDocumentTypesForVendorCategory,
 } from '@/utils/document-type-scope';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 const DwgDxfViewerModal = dynamic(
   () => import('./DwgDxfViewerModal').then((m) => m.DwgDxfViewerModal),
@@ -162,6 +164,7 @@ export function EntityDocumentsTab({
   vendorCategory,
   title = 'Evraklar',
 }: Props) {
+  const { showToast } = useToast();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,8 +245,7 @@ export function EntityDocumentsTab({
       setSelectedTypeId('');
       loadDocuments();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      alert(msg ?? 'Yükleme Başarısız');
+      showToast('error', getApiErrorMessage(err, 'Yükleme Başarısız'));
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -256,8 +258,7 @@ export function EntityDocumentsTab({
       await axios.delete(deleteUrl(docId), { headers: authHeader() });
       loadDocuments();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      alert(msg ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     }
   };
 

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Eye, Mail, MoreVertical, Trash2 } from 'lucide-react';
+import { ActionIconButton } from '@/components/ui/ActionIconButton';
 
 export type ExpertDosyalarActionsProps = {
   fileId: string;
@@ -14,47 +15,9 @@ export type ExpertDosyalarActionsProps = {
   onDeleteRequest: () => void;
 };
 
-/** Referans PNG: 28×28 kare, sürekli gri çerçeve, ince outline ikon */
-const iconBtnClass =
-  'group relative inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800';
-
-const tipClass =
-  'pointer-events-none absolute bottom-full left-1/2 z-40 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-md transition-opacity duration-100 group-hover:opacity-100 group-focus-visible:opacity-100';
-
-function IconBtn({
-  label,
-  onClick,
-  children,
-  testId,
-  buttonRef,
-}: {
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-  testId?: string;
-  buttonRef?: RefObject<HTMLButtonElement>;
-}) {
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      title={label}
-      aria-label={label}
-      className={iconBtnClass}
-      onClick={onClick}
-      data-testid={testId}
-    >
-      {children}
-      <span className={tipClass} role="tooltip">
-        {label}
-      </span>
-    </button>
-  );
-}
-
 /**
  * Dosyalarım işlemleri — Rapor Önizleme · Not Yaz · Üç Nokta
- * Menü portal ile açılır (tablo overflow menüyü kesmesin).
+ * Menü ve hover önizleme portal ile açılır (tablo overflow kesmesin).
  */
 export function ExpertDosyalarActions({
   fileId,
@@ -109,7 +72,6 @@ export function ExpertDosyalarActions({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    // Açılış tıklamasının aynı mousedown ile menüyü kapatmasını engelle
     const timer = window.setTimeout(() => {
       document.addEventListener('mousedown', onDoc);
     }, 0);
@@ -192,20 +154,21 @@ export function ExpertDosyalarActions({
       onClick={(e) => e.stopPropagation()}
       data-testid="eksper-dosyalar-actions"
     >
-      <IconBtn label="Rapor Önizleme" onClick={onViewReport}>
+      <ActionIconButton label="Rapor Önizleme" onClick={onViewReport}>
         <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </IconBtn>
-      <IconBtn label="Not Yaz" onClick={onAddNote}>
-        <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </IconBtn>
-      <IconBtn
-        label="İşlem Menüsü"
+      </ActionIconButton>
+      <ActionIconButton label="Not Yaz" onClick={onAddNote}>
+        <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </ActionIconButton>
+      <ActionIconButton
+        label="Diğer"
         onClick={toggleMenu}
         testId="eksper-dosyalar-more"
         buttonRef={moreBtnRef}
+        showTooltip={false}
       >
         <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </IconBtn>
+      </ActionIconButton>
       {menu}
     </div>
   );

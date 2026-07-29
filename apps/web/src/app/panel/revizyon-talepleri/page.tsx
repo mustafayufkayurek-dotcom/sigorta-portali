@@ -7,12 +7,17 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR');
 
@@ -116,6 +121,7 @@ export default function RevisionRequestsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
   // Query params
   const queryParams = useMemo(() => {
@@ -145,20 +151,43 @@ export default function RevisionRequestsPage() {
       ? ((overdueRaw as { data: RevisionRequest[] }).data)
       : [];
 
-  // Client-side search filter
+  // Client-side search + sort
   const filteredRevisions = useMemo(() => {
     const list = revisions;
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter((r) =>
-      r.report?.reportNo?.toLowerCase().includes(q) ||
-      r.reasonNote?.toLowerCase().includes(q) ||
-      r.requestedBy?.firstName?.toLowerCase().includes(q) ||
-      r.requestedBy?.lastName?.toLowerCase().includes(q) ||
-      r.assignedTo?.firstName?.toLowerCase().includes(q) ||
-      r.assignedTo?.lastName?.toLowerCase().includes(q)
-    );
-  }, [revisions, search]);
+    const q = search.trim().toLowerCase();
+    const filtered = !q
+      ? list
+      : list.filter((r) =>
+          r.report?.reportNo?.toLowerCase().includes(q) ||
+          r.reasonNote?.toLowerCase().includes(q) ||
+          r.requestedBy?.firstName?.toLowerCase().includes(q) ||
+          r.requestedBy?.lastName?.toLowerCase().includes(q) ||
+          r.assignedTo?.firstName?.toLowerCase().includes(q) ||
+          r.assignedTo?.lastName?.toLowerCase().includes(q)
+        );
+    return sortRowsByClientSort(filtered, clientSort, (r, key) => {
+      switch (key) {
+        case 'reportNo':
+          return r.report?.reportNo ?? '';
+        case 'requester':
+          return `${r.requestedBy?.firstName ?? ''} ${r.requestedBy?.lastName ?? ''}`.trim();
+        case 'date':
+          return r.createdAt ?? '';
+        case 'reason':
+          return REASON_LABELS[r.reason] ?? r.reason ?? '';
+        case 'priority':
+          return r.priority ?? '';
+        case 'status':
+          return r.status ?? '';
+        case 'duration':
+          return r.deadlineAt ?? '';
+        case 'assignee':
+          return `${r.assignedTo?.firstName ?? ''} ${r.assignedTo?.lastName ?? ''}`.trim();
+        default:
+          return '';
+      }
+    });
+  }, [revisions, search, clientSort]);
 
   // Status summary computed from all loaded data
   const statusSummary = useMemo(() => {
@@ -305,14 +334,14 @@ export default function RevisionRequestsPage() {
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <PanelTableTh colId="reportNo" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Rapor No</PanelTableTh>
-                <PanelTableTh colId="requester" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Talep Eden</PanelTableTh>
-                <PanelTableTh colId="date" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Tarih</PanelTableTh>
-                <PanelTableTh colId="reason" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Sebep</PanelTableTh>
-                <PanelTableTh colId="priority" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
-                <PanelTableTh colId="status" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
-                <PanelTableTh colId="duration" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Süre</PanelTableTh>
-                <PanelTableTh colId="assignee" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Atanan</PanelTableTh>
+                <SortablePanelTableTh colId="reportNo" sortKey="reportNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Rapor No</SortablePanelTableTh>
+                <SortablePanelTableTh colId="requester" sortKey="requester" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Talep Eden</SortablePanelTableTh>
+                <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Tarih</SortablePanelTableTh>
+                <SortablePanelTableTh colId="reason" sortKey="reason" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Sebep</SortablePanelTableTh>
+                <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</SortablePanelTableTh>
+                <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Durum</SortablePanelTableTh>
+                <SortablePanelTableTh colId="duration" sortKey="duration" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Süre</SortablePanelTableTh>
+                <SortablePanelTableTh colId="assignee" sortKey="assignee" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Atanan</SortablePanelTableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

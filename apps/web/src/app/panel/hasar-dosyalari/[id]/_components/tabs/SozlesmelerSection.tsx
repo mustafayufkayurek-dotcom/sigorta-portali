@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { API, authHeader } from '../claim-detail-utils';
+import { useToast } from '@/contexts/ToastContext';
 
 const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Taslak', color: 'bg-slate-100 text-slate-700' },
@@ -14,6 +15,7 @@ const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> =
 };
 
 export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: string; hideHeader?: boolean }) {
+  const { showToast } = useToast();
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -43,7 +45,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
       );
       setWaLink(r.data.data.waUrl);
       load();
-    } catch { alert('Hata oluştu'); }
+    } catch { showToast('error', 'Hata Oluştu'); }
     finally { setWaSending(false); }
   };
 
@@ -53,7 +55,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
     try {
       await axios.delete(`${API}/vendor-contracts/${id}`, { headers: authHeader() });
       load();
-    } catch { alert('İptal sırasında hata oluştu'); }
+    } catch { showToast('error', 'İptal Sırasında Hata Oluştu'); }
     finally { setCancelling(null); }
   };
 

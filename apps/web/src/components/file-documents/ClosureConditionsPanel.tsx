@@ -19,6 +19,7 @@ import {
   sendSurveyLink,
   createAndSendSurvey,
 } from '@/utils/surveyApi';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -313,7 +314,7 @@ export default function ClosureConditionsPanel(props: Props) {
           </p>
           {activeRequest.totalAmount > 0 && (
             <p className="text-xs text-blue-700 mt-0.5">
-              Tutar: {activeRequest.totalAmount.toLocaleString('tr-TR')} ₺
+              Tutar: {formatTryAmount(activeRequest.totalAmount, { fractionDigits: 0 })}
             </p>
           )}
         </div>

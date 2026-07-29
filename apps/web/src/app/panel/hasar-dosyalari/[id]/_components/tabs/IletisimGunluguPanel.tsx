@@ -12,6 +12,7 @@ import {
 } from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { mergeClaimFileNotes, type ClaimFileNoteRow } from '@/utils/merge-claim-file-notes';
 import { API, authAxios } from '../claim-detail-utils';
 
 type NoteType =
@@ -24,13 +25,7 @@ type NoteType =
 
 type FilterKey = 'all' | 'manager_instruction' | 'general';
 
-type NoteRecord = {
-  id: string;
-  content: string;
-  noteType: NoteType;
-  createdAt: string;
-  author?: { firstName?: string; lastName?: string };
-};
+type NoteRecord = ClaimFileNoteRow & { noteType: NoteType };
 
 const NOTE_TYPE_LABELS: Record<string, string> = {
   manager_instruction: 'Talimat',
@@ -130,15 +125,24 @@ export function IletisimGunluguPanel({ claimId }: { claimId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await authAxios<{ data: NoteRecord[] }>({
-        method: 'GET',
-        url: `${API}/notes?claimFileId=${claimId}&limit=100`,
-      });
-      const items = r.data.data || [];
-      items.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-      setNotes(items);
+      const [notesRes, timelineRes] = await Promise.all([
+        authAxios<{ data: NoteRecord[] }>({
+          method: 'GET',
+          url: `${API}/notes?claimFileId=${claimId}&limit=100`,
+        }).catch(() => null),
+        authAxios<NoteRecord[] | { data?: NoteRecord[] }>({
+          method: 'GET',
+          url: `${API}/claim-files/${claimId}/notes`,
+        }).catch(() => null),
+      ]);
+      const fromNotes = notesRes?.data?.data ?? [];
+      const rawTimeline = timelineRes?.data;
+      const fromTimeline = Array.isArray(rawTimeline)
+        ? rawTimeline
+        : Array.isArray(rawTimeline?.data)
+          ? rawTimeline.data
+          : [];
+      setNotes(mergeClaimFileNotes(fromNotes, fromTimeline) as NoteRecord[]);
     } catch (e) {
       console.error(e);
     } finally {

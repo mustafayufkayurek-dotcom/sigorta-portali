@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,11 +9,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
+  SortablePanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const OVERDUE_INVOICES_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
@@ -94,6 +99,71 @@ export default function FinansalRaporPage() {
   const trendTableColumns = usePanelTableColumns('table-cols:rapor-finansal-2', MONTHLY_TREND_TABLE_COLUMNS);
   const collectionsTableColumns = usePanelTableColumns('table-cols:rapor-finansal-3', INSURANCE_COLLECTIONS_TABLE_COLUMNS);
   const profitabilityTableColumns = usePanelTableColumns('table-cols:rapor-finansal-4', PROFITABILITY_TABLE_COLUMNS);
+  const [clientSortOverdue, setClientSortOverdue] = useState<ClientSortState>(null);
+  const [clientSortTrend, setClientSortTrend] = useState<ClientSortState>(null);
+  const [clientSortCollections, setClientSortCollections] = useState<ClientSortState>(null);
+  const [clientSortProfit, setClientSortProfit] = useState<ClientSortState>(null);
+
+  const sortedOverdueInvoices = useMemo(
+    () =>
+      sortRowsByClientSort(data?.overdueInvoices ?? [] as any[], clientSortOverdue, (inv: any, key) => {
+        switch (key) {
+          case 'invoiceNo': return inv.invoiceNo ?? '';
+          case 'fileNo': return inv.fileNo ?? '';
+          case 'amount': return inv.totalAmount ?? 0;
+          case 'daysOverdue': return inv.daysOverdue ?? 0;
+          default: return null;
+        }
+      }),
+    [data?.overdueInvoices, clientSortOverdue],
+  );
+
+  const sortedMonthlyTrend = useMemo(
+    () =>
+      sortRowsByClientSort(monthlyTrend, clientSortTrend, (d, key) => {
+        const profitVal = d.profit ?? d.revenue - d.cost;
+        const marj = d.revenue > 0 ? (profitVal / d.revenue) * 100 : 0;
+        switch (key) {
+          case 'month': return d.month;
+          case 'revenue': return d.revenue;
+          case 'cost': return d.cost;
+          case 'profit': return profitVal;
+          case 'margin': return marj;
+          default: return null;
+        }
+      }),
+    [monthlyTrend, clientSortTrend],
+  );
+
+  const sortedInsuranceCollections = useMemo(
+    () =>
+      sortRowsByClientSort(data?.insuranceCollections ?? [] as any[], clientSortCollections, (ins: any, key) => {
+        switch (key) {
+          case 'name': return ins.name ?? '';
+          case 'count': return ins.count ?? 0;
+          case 'revenue': return ins.revenue ?? 0;
+          case 'collected': return ins.collected ?? 0;
+          case 'collectionRate': return ins.collectionRate ?? 0;
+          default: return null;
+        }
+      }),
+    [data?.insuranceCollections, clientSortCollections],
+  );
+
+  const sortedProfitableFiles = useMemo(
+    () =>
+      sortRowsByClientSort(data?.topProfitableFiles ?? [] as any[], clientSortProfit, (f: any, key) => {
+        switch (key) {
+          case 'fileNo': return f.fileNo ?? '';
+          case 'actualRevenue': return f.actualRevenue ?? 0;
+          case 'actualCost': return f.actualCost ?? 0;
+          case 'grossProfit': return f.grossProfit ?? 0;
+          case 'grossMarginPct': return f.grossMarginPct ?? 0;
+          default: return null;
+        }
+      }),
+    [data?.topProfitableFiles, clientSortProfit],
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -252,14 +322,14 @@ export default function FinansalRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="invoiceNo" className="px-4 py-2 text-center">Fatura No</PanelTableTh>
-                    <PanelTableTh colId="fileNo" className="px-4 py-2 text-center">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="amount" className="px-4 py-2 text-center">Tutar</PanelTableTh>
-                    <PanelTableTh colId="daysOverdue" className="px-4 py-2 text-center">Gecikme (gün)</PanelTableTh>
+                    <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Fatura No</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Dosya No</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Tutar</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="daysOverdue" sortKey="daysOverdue" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Gecikme (gün)</SortablePanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {(data.overdueInvoices ?? []).map((inv: any) => (
+                  {sortedOverdueInvoices.map((inv: any) => (
                     <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                       <PanelTableTd colId="invoiceNo" className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</PanelTableTd>
                       <PanelTableTd colId="fileNo" className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</PanelTableTd>
@@ -288,15 +358,15 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(trendTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="month" className="px-3 py-2 text-center">Ay</PanelTableTh>
-                  <PanelTableTh colId="revenue" className="px-3 py-2 text-center">Gelir</PanelTableTh>
-                  <PanelTableTh colId="cost" className="px-3 py-2 text-center">Gider</PanelTableTh>
-                  <PanelTableTh colId="profit" className="px-3 py-2 text-center">Kâr / Zarar</PanelTableTh>
-                  <PanelTableTh colId="margin" className="px-3 py-2 text-center">Marj</PanelTableTh>
+                  <SortablePanelTableTh colId="month" sortKey="month" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Ay</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="cost" sortKey="cost" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Gider</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="profit" sortKey="profit" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Kâr / Zarar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="margin" sortKey="margin" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Marj</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {monthlyTrend.map((d) => {
+                {sortedMonthlyTrend.map((d) => {
                   const profitVal = d.profit ?? d.revenue - d.cost;
                   const marj = d.revenue > 0 ? ((profitVal / d.revenue) * 100).toFixed(1) : '0.0';
                   return (
@@ -317,7 +387,7 @@ export default function FinansalRaporPage() {
           </TableColumnsProvider>
           {/* CSS bar trend chart */}
           <div className="flex items-end gap-2 h-44">
-              {monthlyTrend.map((d) => {
+                {sortedMonthlyTrend.map((d) => {
                 const profitVal = d.profit ?? d.revenue - d.cost;
                 return (
                   <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
@@ -382,15 +452,15 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(collectionsTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-center">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="count" className="px-4 py-3 text-center">Dosya Sayısı</PanelTableTh>
-                  <PanelTableTh colId="revenue" className="px-4 py-3 text-center">Toplam Gelir</PanelTableTh>
-                  <PanelTableTh colId="collected" className="px-4 py-3 text-center">Tahsilat</PanelTableTh>
-                  <PanelTableTh colId="collectionRate" className="px-4 py-3 text-center">Tahsilat Oranı</PanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Sigorta Şirketi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="count" sortKey="count" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya Sayısı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Toplam Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="collected" sortKey="collected" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tahsilat</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="collectionRate" sortKey="collectionRate" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tahsilat Oranı</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {(data.insuranceCollections ?? []).map((ins: any) => (
+                {sortedInsuranceCollections.map((ins: any) => (
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</PanelTableTd>
                     <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</PanelTableTd>
@@ -426,15 +496,15 @@ export default function FinansalRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(profitabilityTableColumns)}>
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="actualRevenue" className="px-4 py-3 text-center">Fiili Gelir</PanelTableTh>
-                  <PanelTableTh colId="actualCost" className="px-4 py-3 text-center">Fiili Gider</PanelTableTh>
-                  <PanelTableTh colId="grossProfit" className="px-4 py-3 text-center">Brüt Kâr</PanelTableTh>
-                  <PanelTableTh colId="grossMarginPct" className="px-4 py-3 text-center">Marj</PanelTableTh>
+                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya No</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="actualRevenue" sortKey="actualRevenue" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Fiili Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="actualCost" sortKey="actualCost" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Fiili Gider</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="grossProfit" sortKey="grossProfit" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Brüt Kâr</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="grossMarginPct" sortKey="grossMarginPct" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Marj</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {(data.topProfitableFiles ?? []).map((f: any) => (
+                {sortedProfitableFiles.map((f: any) => (
                   <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-brand-600 dark:text-blue-400">
                       <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>

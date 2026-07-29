@@ -40,6 +40,7 @@ import { OperationRowActions } from '@/components/operasyon/OperationRowActions'
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
@@ -463,7 +464,7 @@ function OperasyonPageContent() {
         ? 'badge badge-red'
         : (BADGE_TONE_CLASS[stage.tone as OperationStageMeta['tone']] ?? 'badge badge-blue'),
       invoiceStatus: invStatus,
-      amount: claim.invoicedAmount != null ? `${Number(claim.invoicedAmount).toLocaleString('tr-TR')} ₺` : null,
+      amount: claim.invoicedAmount != null ? formatTryAmount(Number(claim.invoicedAmount), { fractionDigits: 0 }) : null,
       delayHours: typeof claim.approvalWaitingHours === 'number' ? claim.approvalWaitingHours : null,
       assigneeName: claim.assigneeName ?? '—',
       approval72hExceeded: Boolean(claim.approval72hExceeded),
@@ -1153,6 +1154,7 @@ function OperasyonPageContent() {
       <ExpertFileNoteModal
         open={Boolean(noteFileId)}
         claimFileId={noteFileId}
+        fileNo={filteredRows.find((r) => r.id === noteFileId)?.fileNo}
         onClose={() => setNoteFileId(null)}
         onSaved={() => setNoteFileId(null)}
       />

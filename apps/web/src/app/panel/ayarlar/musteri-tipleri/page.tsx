@@ -27,6 +27,7 @@ import {
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
 import { normalizeFormFreeText, sanitizeCode } from '@/utils/text-helpers';
+import { useToast } from '@/contexts/ToastContext';
 
 const FOR_TYPE_OPTIONS: { value: CustomerSubTypeDef['forType']; label: string }[] = [
   { value: 'corporate', label: 'Kurumsal' },
@@ -58,6 +59,7 @@ const emptyForm = (): Omit<CustomerSubTypeDef, 'value'> & { value: string } => (
 });
 
 export default function MusteriTipleriPage() {
+  const { showToast } = useToast();
   const [rows, setRows] = useState<CustomerSubTypeDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -156,7 +158,7 @@ export default function MusteriTipleriPage() {
       await persist(next);
       setDeleteIdx(null);
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Silinemedi'));
+      showToast('error', formatSettingsApiError(e, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }

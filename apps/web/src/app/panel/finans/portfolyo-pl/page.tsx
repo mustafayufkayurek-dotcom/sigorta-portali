@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
@@ -9,12 +9,18 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 const PORTFOLIO_PL_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'sigortaSirketi', label: 'Sigorta Şirketi', defaultWidth: 160, minWidth: 120 },
@@ -39,8 +45,8 @@ interface PortfolioRow {
   marjPct: number;
 }
 
-function fmtCurrency(n: number) {
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+function fmtCurrency(n: number | null | undefined) {
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 const PERIOD_OPTIONS: Period[] = ['Aylık', 'Çeyreklik', 'Yıllık'];
@@ -51,7 +57,33 @@ export default function PortfolyoPLPage() {
   const [rows, setRows] = useState<PortfolioRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-portfolyo-pl', PORTFOLIO_PL_TABLE_COLUMNS);
+
+  const sortedRows = useMemo(
+    () =>
+      sortRowsByClientSort(rows, clientSort, (row, key) => {
+        switch (key) {
+          case 'sigortaSirketi':
+            return row.sigortaSirketi ?? '';
+          case 'donem':
+            return row.donem ?? '';
+          case 'dosyaSayisi':
+            return row.dosyaSayisi ?? 0;
+          case 'gelir':
+            return row.gelir ?? 0;
+          case 'gider':
+            return row.gider ?? 0;
+          case 'netKZ':
+            return row.netKZ ?? 0;
+          case 'marjPct':
+            return row.marjPct ?? 0;
+          default:
+            return '';
+        }
+      }),
+    [rows, clientSort],
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -224,17 +256,17 @@ export default function PortfolyoPLPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/50">
-                  <PanelTableTh colId="sigortaSirketi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="donem" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dönem</PanelTableTh>
-                  <PanelTableTh colId="dosyaSayisi" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dosya Sayısı</PanelTableTh>
-                  <PanelTableTh colId="gelir" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gelir</PanelTableTh>
-                  <PanelTableTh colId="gider" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gider</PanelTableTh>
-                  <PanelTableTh colId="netKZ" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Net KZ</PanelTableTh>
-                  <PanelTableTh colId="marjPct" className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Marj %</PanelTableTh>
+                  <SortablePanelTableTh colId="sigortaSirketi" sortKey="sigortaSirketi" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Sigorta Şirketi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="donem" sortKey="donem" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dönem</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="dosyaSayisi" sortKey="dosyaSayisi" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dosya Sayısı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="gelir" sortKey="gelir" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gelir</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="gider" sortKey="gider" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gider</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="netKZ" sortKey="netKZ" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Net KZ</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="marjPct" sortKey="marjPct" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Marj %</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
-                {rows.map((row) => (
+                {sortedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
                     <PanelTableTd colId="sigortaSirketi" className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">

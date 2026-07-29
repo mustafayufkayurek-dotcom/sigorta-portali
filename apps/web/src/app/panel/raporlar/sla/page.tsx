@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,11 +9,16 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
+  SortablePanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 
 const DEPT_SLA_TABLE_COLUMNS: TableColumnDef[] = [
@@ -118,6 +123,59 @@ export default function SlaRaporPage() {
   const deptTableColumns = usePanelTableColumns('table-cols:rapor-sla-1', DEPT_SLA_TABLE_COLUMNS);
   const violatedTableColumns = usePanelTableColumns('table-cols:rapor-sla-2', VIOLATED_FILES_TABLE_COLUMNS);
   const rulesTableColumns = usePanelTableColumns('table-cols:rapor-sla-3', RULES_TABLE_COLUMNS);
+  const [clientSortDept, setClientSortDept] = useState<ClientSortState>(null);
+  const [clientSortViolated, setClientSortViolated] = useState<ClientSortState>(null);
+  const [clientSortRules, setClientSortRules] = useState<ClientSortState>(null);
+
+  const sortedDeptSla = useMemo(
+    () =>
+      sortRowsByClientSort(deptSla, clientSortDept, (row, key) => {
+        switch (key) {
+          case 'dept': return row.dept;
+          case 'total': return row.total;
+          case 'onTime': return row.onTime;
+          case 'violated': return row.violated;
+          case 'avgResponse': return row.avgResponseHrs;
+          case 'compliance': return row.compliancePct;
+          case 'status': return row.compliancePct;
+          default: return null;
+        }
+      }),
+    [deptSla, clientSortDept],
+  );
+
+  const sortedViolatedFiles = useMemo(
+    () =>
+      sortRowsByClientSort(violatedFiles, clientSortViolated, (row, key) => {
+        switch (key) {
+          case 'fileNo': return row.fileNo;
+          case 'claimNo': return row.claimNo;
+          case 'branch': return row.productBranch ?? '';
+          case 'status': return row.status;
+          case 'officeUser': return row.officeUser ?? '';
+          case 'insuranceCompany': return row.insuranceCompany ?? '';
+          case 'daysOverdue': return row.daysOverdue;
+          default: return null;
+        }
+      }),
+    [violatedFiles, clientSortViolated],
+  );
+
+  const sortedRules = useMemo(
+    () =>
+      sortRowsByClientSort(rules, clientSortRules, (row, key) => {
+        switch (key) {
+          case 'name': return row.name;
+          case 'claimType': return row.claimType ?? '';
+          case 'productBranch': return row.productBranch ?? '';
+          case 'targetDays': return row.targetDays;
+          case 'warningDays': return row.warningDays;
+          case 'status': return row.isActive ? 1 : 0;
+          default: return null;
+        }
+      }),
+    [rules, clientSortRules],
+  );
 
   const loadReport = useCallback(() => {
     setLoading(true);
@@ -389,17 +447,17 @@ export default function SlaRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(deptTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <PanelTableTh colId="dept" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman</PanelTableTh>
-                    <PanelTableTh colId="total" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</PanelTableTh>
-                    <PanelTableTh colId="onTime" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Zamanında</PanelTableTh>
-                    <PanelTableTh colId="violated" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">İhlal</PanelTableTh>
-                    <PanelTableTh colId="avgResponse" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Yanıt</PanelTableTh>
-                    <PanelTableTh colId="compliance" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Uyum %</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Durum</PanelTableTh>
+                    <SortablePanelTableTh colId="dept" sortKey="dept" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Departman</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Toplam</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="onTime" sortKey="onTime" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Zamanında</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="violated" sortKey="violated" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">İhlal</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="avgResponse" sortKey="avgResponse" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Ort. Yanıt</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="compliance" sortKey="compliance" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Uyum %</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortDept?.key ?? null} sortDir={clientSortDept?.dir ?? 'asc'} onSort={(k) => setClientSortDept((p) => cycleClientSort(p, k))} className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Durum</SortablePanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {deptSla.map((row) => {
+                  {sortedDeptSla.map((row) => {
                     const pct = row.compliancePct;
                     const slaColor = pct >= 90 ? 'text-green-700 dark:text-green-400' : pct >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
                     const barColor = pct >= 90 ? 'bg-green-500' : pct >= 75 ? 'bg-status-warning' : 'bg-status-danger';
@@ -443,17 +501,17 @@ export default function SlaRaporPage() {
               <table className="w-full text-sm" style={panelTableLayoutStyle(violatedTableColumns)}>
                 <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                   <tr>
-                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="claimNo" className="px-4 py-3 text-center">Hasar No</PanelTableTh>
-                    <PanelTableTh colId="branch" className="px-4 py-3 text-center">Branş</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
-                    <PanelTableTh colId="officeUser" className="px-4 py-3 text-center">Sorumlu</PanelTableTh>
-                    <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-center">Sigorta Şirketi</PanelTableTh>
-                    <PanelTableTh colId="daysOverdue" className="px-4 py-3 text-center">Gecikme (gün)</PanelTableTh>
+                    <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya No</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="claimNo" sortKey="claimNo" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Hasar No</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="branch" sortKey="branch" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Branş</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="officeUser" sortKey="officeUser" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Sorumlu</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="insuranceCompany" sortKey="insuranceCompany" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Sigorta Şirketi</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="daysOverdue" sortKey="daysOverdue" activeSortKey={clientSortViolated?.key ?? null} sortDir={clientSortViolated?.dir ?? 'asc'} onSort={(k) => setClientSortViolated((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Gecikme (gün)</SortablePanelTableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {violatedFiles.slice(0, 50).map((f) => (
+                  {sortedViolatedFiles.slice(0, 50).map((f) => (
                     <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                       <PanelTableTd colId="fileNo" className="px-4 py-2.5">
                         <a href={`/panel/hasar-dosyalari/${f.id}`} className="font-mono text-xs text-brand-600 dark:text-blue-400 hover:underline">{f.fileNo}</a>
@@ -536,17 +594,17 @@ export default function SlaRaporPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
               <thead className="bg-slate-50/70 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
-                  <PanelTableTh colId="name" className="px-4 py-3 text-center">Kural Adı</PanelTableTh>
-                  <PanelTableTh colId="claimType" className="px-4 py-3 text-center">Hasar Tipi</PanelTableTh>
-                  <PanelTableTh colId="productBranch" className="px-4 py-3 text-center">Branş</PanelTableTh>
-                  <PanelTableTh colId="targetDays" className="px-4 py-3 text-center">Hedef (gün)</PanelTableTh>
-                  <PanelTableTh colId="warningDays" className="px-4 py-3 text-center">Uyarı (gün)</PanelTableTh>
-                  <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
-                  <PanelTableTh colId="action" className="px-4 py-3 text-center">İşlem</PanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Kural Adı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="claimType" sortKey="claimType" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Hasar Tipi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="productBranch" sortKey="productBranch" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Branş</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="targetDays" sortKey="targetDays" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Hedef (gün)</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="warningDays" sortKey="warningDays" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Uyarı (gün)</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
+                  <th className="px-4 py-3 text-center">İşlem</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {rules.map((rule) => (
+                {sortedRules.map((rule) => (
                   <tr key={rule.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{rule.name}</PanelTableTd>
                     <PanelTableTd colId="claimType" className="px-4 py-3 text-slate-500 dark:text-slate-400">{rule.claimType ?? 'Tümü'}</PanelTableTd>

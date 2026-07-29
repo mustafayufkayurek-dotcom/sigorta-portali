@@ -5,6 +5,8 @@ import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '../claim-detail-utils';
 import { FinansFormPanel, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 // ─── Tab: Randevular ──────────────────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ const APPOINTMENT_STATUS_LABEL: Record<string, string> = {
 };
 
 export function RandevularTab({ claimId, claim }: { claimId: string; claim: any }) {
+  const { showToast } = useToast();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +77,10 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
   }, [showForm, claim]);
 
   const handleSave = async () => {
-    if (!form.scheduledAt) return alert('Lütfen randevu tarih/saatini giriniz.');
+    if (!form.scheduledAt) {
+      showToast('warning', 'Lütfen Randevu Tarih/Saatini Giriniz.');
+      return;
+    }
     setSaving(true);
     try {
       await axios.post(`${API}/adjusters/appointments`, {
@@ -89,8 +95,8 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
       setShowForm(false);
       setForm({ type: 'customer_visit', scheduledAt: '', scheduledEnd: '', location: '', notes: '', assignedUserId: '', vendorId: '' });
       loadAppointments();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Kayıt başarısız');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Kayıt başarısız'));
     } finally {
       setSaving(false);
     }
@@ -101,8 +107,8 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
     try {
       await axios.patch(`${API}/adjusters/appointments/${apptId}/status`, { status }, { headers: authHeader() });
       loadAppointments();
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Durum güncellenemedi');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Durum güncellenemedi'));
     }
   };
 
@@ -113,10 +119,10 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
       if (channel === 'whatsapp' && r.data.data?.waUrl) {
         window.open(r.data.data.waUrl, '_blank');
       } else {
-        alert('SMS bildirimleri gönderildi.');
+        showToast('success', 'SMS Bildirimleri Gönderildi.');
       }
-    } catch (e: any) {
-      alert(e?.response?.data?.message ?? 'Bildirim gönderilemedi');
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Bildirim gönderilemedi'));
     } finally {
       setNotifLoading(null);
     }

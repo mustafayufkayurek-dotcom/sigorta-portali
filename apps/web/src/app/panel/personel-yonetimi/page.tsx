@@ -1,18 +1,23 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useToast } from '@/contexts/ToastContext';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 
 
@@ -411,6 +416,9 @@ export default function PersonelYonetimiPage() {
 
   const [writeStats, setWriteStats] = useState<ReportWriteUserStat[]>([]);
   const [writeStatsLoading, setWriteStatsLoading] = useState(false);
+  const [clientSortApprovals, setClientSortApprovals] = useState<ClientSortState>(null);
+  const [clientSortRules, setClientSortRules] = useState<ClientSortState>(null);
+  const [clientSortOverdue, setClientSortOverdue] = useState<ClientSortState>(null);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -622,6 +630,51 @@ export default function PersonelYonetimiPage() {
   };
   const overdueTotal = overdueCounts.warning + overdueCounts.critical + overdueCounts.escalation;
   const filteredOverdue = filterLevel === 'all' ? overdueList : overdueList.filter((a) => a.escalationLevel === filterLevel);
+
+  const sortedPendingApprovals = useMemo(
+    () =>
+      sortRowsByClientSort(pendingApprovals, clientSortApprovals, (a, key) => {
+        switch (key) {
+          case 'fileNo': return a.fileNumber ?? a.claimFileId ?? '';
+          case 'staff': return a.assignedUser ? `${a.assignedUser.firstName} ${a.assignedUser.lastName}` : '';
+          case 'jobType': return a.jobType ?? a.workType ?? 'Genel';
+          case 'waiting': return new Date(a.createdAt).getTime();
+          case 'timeout': return a.timeoutAt ? new Date(a.timeoutAt).getTime() : null;
+          default: return null;
+        }
+      }),
+    [pendingApprovals, clientSortApprovals],
+  );
+
+  const sortedRules = useMemo(
+    () =>
+      sortRowsByClientSort(rules, clientSortRules, (rule, key) => {
+        switch (key) {
+          case 'jobGroup': return rule.jobGroup?.name ?? '';
+          case 'region': return rule.region ?? '';
+          case 'staff': return rule.assignedUser ? `${rule.assignedUser.firstName} ${rule.assignedUser.lastName}` : '';
+          case 'priority': return rule.priority ?? 1;
+          case 'status': return rule.isActive ? 1 : 0;
+          default: return null;
+        }
+      }),
+    [rules, clientSortRules],
+  );
+
+  const sortedFilteredOverdue = useMemo(
+    () =>
+      sortRowsByClientSort(filteredOverdue, clientSortOverdue, (a, key) => {
+        switch (key) {
+          case 'fileNo': return a.claimFile?.fileNo ?? '';
+          case 'staff': return a.assignedTo ? `${a.assignedTo.firstName} ${a.assignedTo.lastName}` : '';
+          case 'status': return a.escalationLevel;
+          case 'days': return a.daysSinceUpdate;
+          case 'lastAction': return new Date(a.updatedAt).getTime();
+          default: return null;
+        }
+      }),
+    [filteredOverdue, clientSortOverdue],
+  );
 
   // ── Stats helpers ────────────────────────────────────────────────────────────
 
@@ -969,16 +1022,16 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(approvalsTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="fileNo" className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
-                      <PanelTableTh colId="jobType" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</PanelTableTh>
-                      <PanelTableTh colId="waiting" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bekleme</PanelTableTh>
-                      <PanelTableTh colId="timeout" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Timeout</PanelTableTh>
+                      <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="jobType" sortKey="jobType" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="waiting" sortKey="waiting" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bekleme</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="timeout" sortKey="timeout" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Timeout</SortablePanelTableTh>
                       <th className="px-4 py-3.5 w-32" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {pendingApprovals.map((a) => {
+                    {sortedPendingApprovals.map((a) => {
                       const isLoading = actionLoading && approvalAction?.id === a.id;
                       return (
                         <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
@@ -1080,16 +1133,16 @@ export default function PersonelYonetimiPage() {
                 <table className="w-full text-sm" style={panelTableLayoutStyle(rulesTableColumns)}>
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <PanelTableTh colId="jobGroup" className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Grubu</PanelTableTh>
-                      <PanelTableTh colId="region" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bölge</PanelTableTh>
-                      <PanelTableTh colId="staff" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</PanelTableTh>
-                      <PanelTableTh colId="priority" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</PanelTableTh>
-                      <PanelTableTh colId="status" className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Durum</PanelTableTh>
+                      <SortablePanelTableTh colId="jobGroup" sortKey="jobGroup" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Grubu</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="region" sortKey="region" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bölge</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortRules?.key ?? null} sortDir={clientSortRules?.dir ?? 'asc'} onSort={(k) => setClientSortRules((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Durum</SortablePanelTableTh>
                       <th className="px-4 py-3.5 w-24" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {rules.map((rule) => (
+                    {sortedRules.map((rule) => (
                       <tr key={rule.id} className="hover:bg-slate-50/50 transition-colors">
                         <PanelTableTd colId="jobGroup" className="px-5 py-3.5">
                           <span className="font-medium text-slate-800">{rule.jobGroup?.name ?? '—'}</span>
@@ -1317,16 +1370,16 @@ export default function PersonelYonetimiPage() {
                     <thead>
                       <tr className="text-left bg-slate-50 text-xs font-semibold text-slate-500 tracking-wide">
                         <th className="px-4 py-3 w-8">&nbsp;</th>
-                        <PanelTableTh colId="fileNo" className="px-4 py-3">Dosya No</PanelTableTh>
-                        <PanelTableTh colId="staff" className="px-4 py-3">Personel</PanelTableTh>
-                        <PanelTableTh colId="status" className="px-4 py-3">Durum</PanelTableTh>
-                        <PanelTableTh colId="days" className="px-4 py-3">Gün Sayısı</PanelTableTh>
-                        <PanelTableTh colId="lastAction" className="px-4 py-3">Son İşlem Tarihi</PanelTableTh>
+                        <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-3">Dosya No</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-3">Personel</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-3">Durum</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="days" sortKey="days" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-3">Gün Sayısı</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="lastAction" sortKey="lastAction" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-3">Son İşlem Tarihi</SortablePanelTableTh>
                         <th className="px-4 py-3 text-right">İşlem</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {filteredOverdue.map((a) => {
+                      {sortedFilteredOverdue.map((a) => {
                         const cfg = LEVEL_CONFIG[a.escalationLevel];
                         return (
                           <tr key={a.id} className={`${cfg.rowCls} ${a.escalationLevel === 'escalation' ? 'text-slate-100' : 'text-slate-800'}`}>

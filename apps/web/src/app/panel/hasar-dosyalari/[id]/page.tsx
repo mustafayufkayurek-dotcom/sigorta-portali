@@ -40,6 +40,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { resolveOperationStatusLabel } from '@sigorta/shared';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -1226,6 +1228,7 @@ function GenelTab({
   userRoleCode: string | null;
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
+  const { showToast } = useToast();
   const [finVisConfig, setFinVisConfig] = useState<FinVisConfig>(() => resolveFinVisConfig(claim));
   const [savingFinVis, setSavingFinVis] = useState(false);
   const canViewFinancials = claim.canViewFinancials !== false;
@@ -1257,9 +1260,9 @@ function GenelTab({
         financialVisibilityConfig: payload.financialVisibilityConfig,
         hideFinancialFromAssignees: false,
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setFinVisConfig(resolveFinVisConfig(claim));
-      alert(e?.response?.data?.message ?? 'Ayar kaydedilemedi');
+      showToast('error', getApiErrorMessage(e, 'Ayar kaydedilemedi'));
     } finally {
       setSavingFinVis(false);
     }

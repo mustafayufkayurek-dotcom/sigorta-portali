@@ -15,6 +15,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 const PROFIT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'label', label: 'Grup', defaultWidth: 160, minWidth: 120 },
@@ -26,8 +27,7 @@ const PROFIT_TABLE_COLUMNS: TableColumnDef[] = [
 ];
 
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  return formatTryAmount(n, { fractionDigits: 0 });
 }
 
 type GroupBy = ProfitGroupBy;

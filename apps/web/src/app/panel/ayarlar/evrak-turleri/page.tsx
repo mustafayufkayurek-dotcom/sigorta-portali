@@ -41,6 +41,7 @@ import {
   type ServiceBranchTypeKey,
 } from '@/utils/document-type-scope';
 import { normalizeSearchTR } from '@/utils/text-helpers';
+import { useToast } from '@/contexts/ToastContext';
 
 
 type DocumentType = {
@@ -135,6 +136,7 @@ function scopeBadges(dt: DocumentType, deptCodeById: Map<string, string>): strin
 }
 
 export default function EvrakTurleriPage() {
+  const { showToast } = useToast();
   const [scopeMode, setScopeMode] = useState<DocumentEntityScope>('vendor');
   const [vendorTab, setVendorTab] = useState<ServiceBranchTypeKey>('hasar');
   const [customerTab, setCustomerTab] = useState('insured');
@@ -382,7 +384,7 @@ export default function EvrakTurleriPage() {
       await fetchTypes();
       await refreshCounts();
     } catch (e: unknown) {
-      alert(formatSettingsApiError(e, 'Silinemedi'));
+      showToast('error', formatSettingsApiError(e, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }

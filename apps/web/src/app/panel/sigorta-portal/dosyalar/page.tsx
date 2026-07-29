@@ -30,6 +30,7 @@ import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { fetchPortalClaimFiles, hasPortalSessionToken } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
 import { classifyInsuranceFileTrack, type InsuranceFileTrack } from '@/utils/insurance-portal-monitoring';
+import { expertStatusBadgeClass } from '@/utils/expert-dosyalar-ui';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -528,22 +529,19 @@ export default function SigortaDosyalarPage() {
                                     {formatClaimSubjectLabel(f.lossType, undefined, f.subject ?? f.claimSubject?.name)}
                                   </PanelTableTd>
                                 );
-                              case 'status':
+                              case 'status': {
+                                const statusLabel = portalStatusLabel(
+                                  f.currentStatus?.code,
+                                  f.currentStatus?.name,
+                                );
                                 return (
                                   <PanelTableTd key={col.id} colId="status" className="table-td-center px-3 py-2.5">
-                                    <span
-                                      className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold"
-                                      style={{
-                                        background: f.currentStatus?.colorCode
-                                          ? `${f.currentStatus.colorCode}20`
-                                          : '#f3f4f6',
-                                        color: f.currentStatus?.colorCode ?? '#374151',
-                                      }}
-                                    >
-                                      {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
+                                    <span className={expertStatusBadgeClass(statusLabel)}>
+                                      {statusLabel}
                                     </span>
                                   </PanelTableTd>
                                 );
+                              }
                               case 'amount':
                                 return (
                                   <PanelTableTd

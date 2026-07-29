@@ -10,13 +10,18 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { API, authHeader } from '@/utils/api';
 import { relativeTime } from '@/utils/date-helpers';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 const CARI_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Müşteri', defaultWidth: 180, minWidth: 120 },
@@ -71,6 +76,7 @@ export default function CarilerimPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showClosed, setShowClosed] = useState(true);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
   const load = useCallback(async () => {
     setLoadState('loading');
@@ -106,6 +112,31 @@ export default function CarilerimPage() {
     const matchesClosed = showClosed || c.openFiles > 0;
     return matchesSearch && matchesClosed;
   }), [customers, search, showClosed]);
+
+  const sortedCustomers = useMemo(
+    () =>
+      sortRowsByClientSort(filtered, clientSort, (c, key) => {
+        switch (key) {
+          case 'name':
+            return c.name ?? '';
+          case 'phone':
+            return c.phone ?? '';
+          case 'totalFiles':
+            return c.totalFiles ?? 0;
+          case 'openFiles':
+            return c.openFiles ?? 0;
+          case 'closedFiles':
+            return c.closedFiles ?? 0;
+          case 'lastActivity':
+            return c.lastActivityDate ?? '';
+          case 'status':
+            return c.openFiles ?? 0;
+          default:
+            return '';
+        }
+      }),
+    [filtered, clientSort],
+  );
 
   const totalFiles = customers.reduce((sum, c) => sum + c.totalFiles, 0);
   const openFiles = customers.reduce((sum, c) => sum + c.openFiles, 0);
@@ -181,18 +212,18 @@ export default function CarilerimPage() {
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
                     <th className="w-8 px-2 py-3" aria-label="Genişlet" />
-                    <PanelTableTh colId="name" className="px-4 py-3 text-center">Müşteri</PanelTableTh>
-                    <PanelTableTh colId="phone" className="px-4 py-3 text-center">Telefon</PanelTableTh>
-                    <PanelTableTh colId="totalFiles" className="px-4 py-3 text-center">Dosya</PanelTableTh>
-                    <PanelTableTh colId="openFiles" className="px-4 py-3 text-center">Açık</PanelTableTh>
-                    <PanelTableTh colId="closedFiles" className="px-4 py-3 text-center">Kapalı</PanelTableTh>
-                    <PanelTableTh colId="lastActivity" className="px-4 py-3 text-center">Son hareket</PanelTableTh>
-                    <PanelTableTh colId="status" className="px-4 py-3 text-center">Durum</PanelTableTh>
+                    <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Müşteri</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="phone" sortKey="phone" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Telefon</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="totalFiles" sortKey="totalFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="openFiles" sortKey="openFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Açık</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="closedFiles" sortKey="closedFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Kapalı</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="lastActivity" sortKey="lastActivity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Son hareket</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
                     <th className="px-4 py-3 text-center">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                  {filtered.map((customer, idx) => {
+                  {sortedCustomers.map((customer, idx) => {
                     const expanded = expandedId === customer.customerId;
                     const openPct = pct(customer.openFiles, customer.totalFiles);
                     return (

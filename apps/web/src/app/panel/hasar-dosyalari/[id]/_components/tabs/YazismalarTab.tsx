@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '../claim-detail-utils';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 // ─── Tab: Yazışmalar ──────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -57,6 +59,7 @@ export function YazismalarTab({
   claimId: string;
   embedded?: boolean;
 }) {
+  const { showToast } = useToast();
   const [archives, setArchives] = useState<ChatArchive[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArchive, setSelectedArchive] = useState<ChatArchiveDetail | null>(null);
@@ -98,7 +101,7 @@ export function YazismalarTab({
       await axios.delete(`${API}/chat-archives/${id}`, { headers: authHeader() });
       if (selectedArchive?.id === id) setSelectedArchive(null);
       load();
-    } catch (e: any) { alert(e?.response?.data?.message ?? 'Silinemedi'); }
+    } catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Silinemedi')); }
   };
 
   const handleUpload = async () => {
@@ -116,7 +119,7 @@ export function YazismalarTab({
       setUploadLabel('');
       setUploadFile(null);
       load();
-    } catch (e: any) { alert(e?.response?.data?.message ?? 'Yükleme başarısız'); }
+    } catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Yükleme başarısız')); }
     finally { setUploading(false); }
   };
 

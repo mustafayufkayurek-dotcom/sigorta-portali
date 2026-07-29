@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,11 +9,17 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
+  SortablePanelTableTh,
   PanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -164,6 +170,31 @@ export default function BransAnaliziPage() {
   const branchDetailTableColumns = usePanelTableColumns('table-cols:rapor-brans-1', BRANCH_DETAIL_TABLE_COLUMNS);
   const customerPerfTableColumns = usePanelTableColumns('table-cols:rapor-brans-2', CUSTOMER_PERF_TABLE_COLUMNS);
   const growthTableColumns = usePanelTableColumns('table-cols:rapor-brans-3', GROWTH_TABLE_COLUMNS);
+  const [clientSortDist, setClientSortDist] = useState<ClientSortState>(null);
+  const [clientSortGrowth, setClientSortGrowth] = useState<ClientSortState>(null);
+  const [clientSortCustomer, setClientSortCustomer] = useState<ClientSortState>(null);
+
+  const branchRowValue = (row: BranchRow, key: string) => {
+    switch (key) {
+      case 'branch': return row.branch;
+      case 'total': return row.total;
+      case 'open': return row.open;
+      case 'closed': return row.closed;
+      case 'avgCloseDays': return row.avgCloseDays ?? 999;
+      case 'lastFileDate': return row.lastFileDate ?? '';
+      default: return null;
+    }
+  };
+
+  const sortedDistRows = useMemo(
+    () => sortRowsByClientSort(distData?.rows ?? [], clientSortDist, branchRowValue),
+    [distData?.rows, clientSortDist],
+  );
+
+  const sortedGrowthRows = useMemo(
+    () => sortRowsByClientSort(distData?.rows ?? [], clientSortGrowth, branchRowValue),
+    [distData?.rows, clientSortGrowth],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,11 +228,25 @@ export default function BransAnaliziPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const sortedCustomers = [...customerPerf].sort((a, b) => {
-    if (sortBy === 'total') return b.totalFiles - a.totalFiles;
-    if (sortBy === 'avgClose') return (a.avgCloseDays ?? 999) - (b.avgCloseDays ?? 999);
-    return (b.avgCloseDays ?? 0) - (a.avgCloseDays ?? 0);
-  });
+  const sortedCustomers = useMemo(() => {
+    if (clientSortCustomer) {
+      return sortRowsByClientSort(customerPerf, clientSortCustomer, (c, key) => {
+        switch (key) {
+          case 'customer': return c.customerName;
+          case 'service': return c.serviceType ?? '';
+          case 'files': return c.totalFiles;
+          case 'avgClose': return c.avgCloseDays ?? 999;
+          case 'trend': return c.trend ?? '';
+          default: return null;
+        }
+      });
+    }
+    return [...customerPerf].sort((a, b) => {
+      if (sortBy === 'total') return b.totalFiles - a.totalFiles;
+      if (sortBy === 'avgClose') return (a.avgCloseDays ?? 999) - (b.avgCloseDays ?? 999);
+      return (b.avgCloseDays ?? 0) - (a.avgCloseDays ?? 0);
+    });
+  }, [customerPerf, clientSortCustomer, sortBy]);
 
   const TABS: { id: AnalysisTab; label: string }[] = [
     { id: 'genel', label: 'Genel Bakış' },
@@ -432,16 +477,16 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(branchDetailTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <PanelTableTh colId="branch" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
-                        <PanelTableTh colId="total" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</PanelTableTh>
-                        <PanelTableTh colId="open" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</PanelTableTh>
-                        <PanelTableTh colId="closed" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</PanelTableTh>
-                        <PanelTableTh colId="avgCloseDays" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
-                        <PanelTableTh colId="lastFileDate" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
+                        <SortablePanelTableTh colId="branch" sortKey="branch" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="open" sortKey="open" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="closed" sortKey="closed" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="lastFileDate" sortKey="lastFileDate" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</SortablePanelTableTh>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {distData.rows.map((row, i) => (
+                      {sortedDistRows.map((row, i) => (
                         <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
                           <PanelTableTd colId="branch" className="py-3 pr-4">
                             <div className="flex items-center gap-2">
@@ -505,13 +550,13 @@ export default function BransAnaliziPage() {
                   <table className="w-full text-sm" style={panelTableLayoutStyle(customerPerfTableColumns)}>
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <PanelTableTh colId="customer" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</PanelTableTh>
-                        <PanelTableTh colId="service" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</PanelTableTh>
-                        <PanelTableTh colId="files" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</PanelTableTh>
+                        <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="files" sortKey="files" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</SortablePanelTableTh>
                         <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Branş Dağılımı</PanelTableTh>
-                        <PanelTableTh colId="trend" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Trend</PanelTableTh>
-                        <PanelTableTh colId="avgClose" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
-                        <PanelTableTh colId="action" className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">İşlem</PanelTableTh>
+                        <SortablePanelTableTh colId="trend" sortKey="trend" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Trend</SortablePanelTableTh>
+                        <SortablePanelTableTh colId="avgClose" sortKey="avgClose" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
+                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">İşlem</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -625,14 +670,14 @@ export default function BransAnaliziPage() {
                     <table className="w-full text-sm" style={panelTableLayoutStyle(growthTableColumns)}>
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <PanelTableTh colId="branch" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</PanelTableTh>
-                          <PanelTableTh colId="total" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</PanelTableTh>
-                          <PanelTableTh colId="avgCloseDays" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</PanelTableTh>
-                          <PanelTableTh colId="lastFileDate" className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</PanelTableTh>
+                          <SortablePanelTableTh colId="branch" sortKey="branch" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</SortablePanelTableTh>
+                          <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</SortablePanelTableTh>
+                          <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
+                          <SortablePanelTableTh colId="lastFileDate" sortKey="lastFileDate" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</SortablePanelTableTh>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {distData.rows.map((row, i) => (
+                        {sortedGrowthRows.map((row, i) => (
                           <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
                             <PanelTableTd colId="branch" className="py-3 pr-4">
                               <div className="flex items-center gap-2">

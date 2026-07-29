@@ -19,25 +19,25 @@ interface ToastProps {
 const TOAST_CONFIG: Record<ToastType, { bg: string; border: string; icon: string; textColor: string }> = {
   success: {
     bg: 'bg-white',
-    border: 'border-l-4 border-l-green-500',
+    border: 'border-l-4 border-l-status-success',
     icon: '✓',
-    textColor: 'text-green-600',
+    textColor: 'text-status-success',
   },
   error: {
     bg: 'bg-white',
     border: 'border-l-4 border-l-status-danger',
     icon: '✕',
-    textColor: 'text-red-600',
+    textColor: 'text-status-danger',
   },
   warning: {
     bg: 'bg-white',
-    border: 'border-l-4 border-l-yellow-500',
+    border: 'border-l-4 border-l-status-warning',
     icon: '⚠',
-    textColor: 'text-yellow-600',
+    textColor: 'text-status-warning',
   },
   info: {
     bg: 'bg-white',
-    border: 'border-l-4 border-l-blue-500',
+    border: 'border-l-4 border-l-brand-600',
     icon: 'ℹ',
     textColor: 'text-brand-600',
   },
@@ -60,7 +60,7 @@ function ToastMessage({ toast, onRemove }: { toast: ToastItem; onRemove: (id: st
   return (
     <div
       className={`
-        flex items-start gap-3 w-full max-w-sm rounded-lg shadow-lg
+        flex items-start gap-3 w-full max-w-sm rounded-xl border border-slate-200 shadow-lg
         ${config.bg} ${config.border}
         px-4 py-3 animate-toast-in
       `}
@@ -69,11 +69,11 @@ function ToastMessage({ toast, onRemove }: { toast: ToastItem; onRemove: (id: st
       <span className={`text-base font-bold mt-0.5 flex-shrink-0 ${config.textColor}`}>
         {config.icon}
       </span>
-      <p className="flex-1 text-sm text-gray-800 leading-snug">{toast.message}</p>
+      <p className="flex-1 text-sm font-medium text-slate-800 leading-snug">{toast.message}</p>
       <button
         type="button"
         onClick={() => onRemove(toast.id)}
-        className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors ml-1 mt-0.5"
+        className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors ml-1 mt-0.5"
         aria-label="Kapat"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

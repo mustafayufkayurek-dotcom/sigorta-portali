@@ -25,6 +25,8 @@ import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/s
 import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
+import { useToast } from '@/contexts/ToastContext';
+import { getApiErrorMessage } from '@/utils/api-error';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 
@@ -95,6 +97,7 @@ const fmt = (n?: number | null) =>
   n != null ? n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2 }) : '—';
 
 export default function IsGruplariPage() {
+  const { showToast } = useToast();
   const { isManagement } = usePanelAccess();
   const backHref = isManagement ? TANIMLAR_BACK_HREF : '/panel/tedarikciler';
   const backText = isManagement ? TANIMLAR_BACK_TEXT : '← Tedarikçiler';
@@ -178,7 +181,7 @@ export default function IsGruplariPage() {
       await load();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Varsayılan veriler yüklenemedi');
+      showToast('error', getApiErrorMessage(err, 'Varsayılan veriler yüklenemedi'));
     } finally {
       setSeeding(false);
     }
@@ -258,7 +261,7 @@ export default function IsGruplariPage() {
       await load();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Güncellenemedi');
+      showToast('error', getApiErrorMessage(err, 'Güncellenemedi'));
     }
   };
 
@@ -271,7 +274,7 @@ export default function IsGruplariPage() {
       await load();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }
@@ -358,7 +361,7 @@ export default function IsGruplariPage() {
       await load();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Güncellenemedi');
+      showToast('error', getApiErrorMessage(err, 'Güncellenemedi'));
     }
   };
 
@@ -371,7 +374,7 @@ export default function IsGruplariPage() {
       await load();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message ?? 'Silinemedi');
+      showToast('error', getApiErrorMessage(err, 'Silinemedi'));
     } finally {
       setDeleting(false);
     }

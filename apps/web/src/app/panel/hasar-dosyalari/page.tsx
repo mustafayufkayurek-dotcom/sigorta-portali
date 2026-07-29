@@ -2,8 +2,11 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Mail } from 'lucide-react';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
+import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
+import { ActionIconButton } from '@/components/ui/ActionIconButton';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -11,6 +14,7 @@ import {
   PanelTableColumnPicker,
   PanelTableTd,
   PanelTableTh,
+  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -20,15 +24,18 @@ import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { fmtDate } from '@/utils/date-helpers';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { resolveOperationStatusLabel } from '@sigorta/shared';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 
-const fmtAmount = (n: number | undefined | null) => {
-  if (!n) return '—';
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ₺';
-};
+const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
 
 type InsuranceCompany = { id: string; name: string };
 type ClaimStatus = { id: string; code: string; name: string };
@@ -136,6 +143,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
   { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
   { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
+  { id: 'actions', label: 'İşlem', defaultWidth: 72, minWidth: 64, pin: 'end', resizable: false },
 ];
 
 export default function ClaimFilesPage() {
@@ -176,8 +184,13 @@ function ClaimFilesPageContent() {
   const [repairReportStatusFilter, setRepairReportStatusFilter] = useState(urlRepairReportStatus);
   const [showNewPanel, setShowNewPanel] = useState(false);
   const [formSession, setFormSession] = useState(0);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const [noteFileId, setNoteFileId] = useState<string | null>(null);
+  const [noteFileNo, setNoteFileNo] = useState<string | undefined>(undefined);
+  const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
+  const [toast, setToast] = useState<string | null>(null);
   const limit = 20;
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v2', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -230,6 +243,12 @@ function ClaimFilesPageContent() {
     setShowNewPanel(true);
     router.replace('/panel/hasar-dosyalari', { scroll: false });
   }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   // --- TanStack Query: Claim Files (main list) ---
   const queryParams = useMemo(() => {
@@ -285,9 +304,51 @@ function ClaimFilesPageContent() {
 
   // Derived
   const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter);
-  const visibleClaims = pendingRevisionFilter
+  const filteredClaims = pendingRevisionFilter
     ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
     : claims;
+  const visibleClaims = useMemo(
+    () =>
+      sortRowsByClientSort(filteredClaims, clientSort, (claim: any, key) => {
+        switch (key) {
+          case 'fileNo':
+            return claim.fileNo ?? claim.claimNo ?? '';
+          case 'customer':
+            return claim.insuranceCompany?.name ?? '';
+          case 'insured':
+            return resolveHasarInsuredName(claim);
+          case 'date':
+            return claim.createdAt ?? '';
+          case 'subject':
+            return resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
+          case 'status':
+            return claim.currentStatus?.name ?? claim.currentStatus?.code ?? '';
+          case 'supplier': {
+            const name =
+              claim.assignedAdjuster?.adjuster?.company ??
+              (claim.assignedAdjuster
+                ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim()
+                : '');
+            return name || '';
+          }
+          case 'invoice':
+            return deriveInvoiceStatus(claim.invoices ?? []);
+          case 'amount':
+            return claim.invoicedAmount ?? claim.actualCostAmount ?? -1;
+          case 'reportStatus':
+            return claim.latestRepairReport?.status ?? '';
+          case 'reportSales':
+            return claim.latestRepairReport?.totalSalesAmount ?? -1;
+          case 'priority':
+            return claim.priority ?? '';
+          case 'revision':
+            return pendingRevisionMap[claim.id] ?? 0;
+          default:
+            return '';
+        }
+      }),
+    [filteredClaims, clientSort, dosyaKonusuCatalog, pendingRevisionMap],
+  );
 
   const clearFilters = () => {
     setSearch(''); setStatusFilter(''); setPriorityFilter('');
@@ -490,6 +551,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
                   <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
+                  <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
@@ -601,19 +663,20 @@ function ClaimFilesPageContent() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="table-th-center">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
-                  <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                  <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
-                  <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
-                  <PanelTableTh colId="reportStatus" className="table-th-center">Rapor Akıbeti</PanelTableTh>
-                  <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
-                  <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
-                  <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
+                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya No</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Müşteri</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="insured" sortKey="insured" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sigortalı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tarih</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="subject" sortKey="subject" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Konusu</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="supplier" sortKey="supplier" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Fatura</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tutar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="reportStatus" sortKey="reportStatus" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Rapor Akıbeti</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="reportSales" sortKey="reportSales" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Ciro</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Öncelik</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="revision" sortKey="revision" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Revizyon</SortablePanelTableTh>
+                  <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -699,6 +762,24 @@ function ClaimFilesPageContent() {
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </PanelTableTd>
+                      <PanelTableTd colId="actions" className="table-td-center whitespace-nowrap">
+                        <div
+                          className="inline-flex"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <ActionIconButton
+                            label="Dosya Notu Oluştur Ve Gönder"
+                            onClick={() => {
+                              setNoteFileId(claim.id);
+                              setNoteFileNo(claim.fileNo ?? claim.claimNo ?? undefined);
+                              setNoteInsuredName(resolveHasarInsuredName(claim) || undefined);
+                            }}
+                          >
+                            <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                          </ActionIconButton>
+                        </div>
+                      </PanelTableTd>
                     </tr>
                   );
                 })}
@@ -714,6 +795,28 @@ function ClaimFilesPageContent() {
               </div>
             </div>
           )}
+        </div>
+      )}
+      <ExpertFileNoteModal
+        open={Boolean(noteFileId)}
+        claimFileId={noteFileId}
+        fileNo={noteFileNo}
+        insuredName={noteInsuredName}
+        onClose={() => {
+          setNoteFileId(null);
+          setNoteFileNo(undefined);
+          setNoteInsuredName(undefined);
+        }}
+        onSaved={() => {
+          setToast('Dosya Notu Kaydedildi.');
+          setNoteFileId(null);
+          setNoteFileNo(undefined);
+          setNoteInsuredName(undefined);
+        }}
+      />
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+          {toast}
         </div>
       )}
     </div>

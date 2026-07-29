@@ -6,10 +6,10 @@ import axios from 'axios';
 import Link from 'next/link';
 import { API, authHeader } from '@/utils/api';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return '—';
-  return n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 });
+  return formatTryAmount(n, { fractionDigits: 2 });
 }
 
 function fmtDate(iso: string) {

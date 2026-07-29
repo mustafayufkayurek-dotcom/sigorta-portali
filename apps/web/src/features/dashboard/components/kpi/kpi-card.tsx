@@ -20,7 +20,7 @@ interface KpiCardProps {
 }
 
 export function KpiCard({ icon: Icon, label, value, color, subtext, emptyHint, href, onClick, compact = false, trend }: KpiCardProps) {
-  const isZeroValue = typeof value === 'number' ? value === 0 : value === '0' || value === '₺0';
+  const isZeroValue = typeof value === 'number' ? value === 0 : value === '0' || value === '₺0' || value === '0 TL' || value === '0,00 TL';
   const isInteractive = Boolean(href || onClick);
   const className = `group min-h-0 w-full rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-900/80 ${
     compact

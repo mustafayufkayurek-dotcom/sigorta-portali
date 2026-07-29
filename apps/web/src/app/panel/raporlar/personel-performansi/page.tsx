@@ -1,18 +1,23 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
+  SortablePanelTableTh,
   PanelTableTd,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -57,6 +62,8 @@ export default function PersonelPerformansPage() {
   const [tab, setTab] = useState<Tab>('staff');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [clientSortStaff, setClientSortStaff] = useState<ClientSortState>(null);
+  const [clientSortVendor, setClientSortVendor] = useState<ClientSortState>(null);
 
   const staffTableColumns = usePanelTableColumns('table-cols:rapor-personel-1', STAFF_TABLE_COLUMNS);
   const vendorTableColumns = usePanelTableColumns('table-cols:rapor-personel-2', VENDOR_TABLE_COLUMNS);
@@ -81,6 +88,37 @@ export default function PersonelPerformansPage() {
   }, [dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
+
+  const sortedStaffUsers = useMemo(
+    () =>
+      sortRowsByClientSort(staffUsers, clientSortStaff, (u, key) => {
+        switch (key) {
+          case 'userName': return u.userName;
+          case 'userType': return u.userType;
+          case 'totalFiles': return u.totalFiles;
+          case 'openFiles': return u.openFiles;
+          case 'closedFiles': return u.closedFiles;
+          case 'slaViolations': return u.slaViolations;
+          case 'avgCloseDays': return u.avgCloseDays;
+          default: return null;
+        }
+      }),
+    [staffUsers, clientSortStaff],
+  );
+
+  const sortedVendorStats = useMemo(
+    () =>
+      sortRowsByClientSort(vendorStats, clientSortVendor, (v, key) => {
+        switch (key) {
+          case 'vendorName': return v.vendorName;
+          case 'assignmentCount': return v.assignmentCount;
+          case 'completedCount': return v.completedCount;
+          case 'completionRate': return v.completionRate;
+          default: return null;
+        }
+      }),
+    [vendorStats, clientSortVendor],
+  );
 
   const handleExport = (format: 'xlsx' | 'pdf') => {
     const params = new URLSearchParams({ format });
@@ -183,17 +221,17 @@ export default function PersonelPerformansPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(staffTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <PanelTableTh colId="userName" className="px-4 py-3 text-center">Ad Soyad</PanelTableTh>
-                  <PanelTableTh colId="userType" className="px-4 py-3 text-center">Tip</PanelTableTh>
-                  <PanelTableTh colId="totalFiles" className="px-4 py-3 text-center">Toplam</PanelTableTh>
-                  <PanelTableTh colId="openFiles" className="px-4 py-3 text-center">Açık</PanelTableTh>
-                  <PanelTableTh colId="closedFiles" className="px-4 py-3 text-center">Kapanan</PanelTableTh>
-                  <PanelTableTh colId="slaViolations" className="px-4 py-3 text-center">SLA İhlali</PanelTableTh>
-                  <PanelTableTh colId="avgCloseDays" className="px-4 py-3 text-center">Ort. Kapanış (gün)</PanelTableTh>
+                  <SortablePanelTableTh colId="userName" sortKey="userName" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Ad Soyad</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="userType" sortKey="userType" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tip</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="totalFiles" sortKey="totalFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Toplam</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="openFiles" sortKey="openFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Açık</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="closedFiles" sortKey="closedFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Kapanan</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="slaViolations" sortKey="slaViolations" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">SLA İhlali</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Ort. Kapanış (gün)</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {staffUsers.map((u) => (
+                {sortedStaffUsers.map((u) => (
                   <tr key={u.userId} className="hover:bg-slate-50">
                     <PanelTableTd colId="userName" className="px-4 py-3 font-medium text-slate-800">{u.userName}</PanelTableTd>
                     <PanelTableTd colId="userType" className="px-4 py-3 text-slate-500">{u.userType}</PanelTableTd>
@@ -236,14 +274,14 @@ export default function PersonelPerformansPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(vendorTableColumns)}>
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <PanelTableTh colId="vendorName" className="px-4 py-3 text-center">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="assignmentCount" className="px-4 py-3 text-center">Atama</PanelTableTh>
-                  <PanelTableTh colId="completedCount" className="px-4 py-3 text-center">Tamamlanan</PanelTableTh>
-                  <PanelTableTh colId="completionRate" className="px-4 py-3 text-center">Tamamlama Oranı</PanelTableTh>
+                  <SortablePanelTableTh colId="vendorName" sortKey="vendorName" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tedarikçi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="assignmentCount" sortKey="assignmentCount" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Atama</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="completedCount" sortKey="completedCount" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlanan</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="completionRate" sortKey="completionRate" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlama Oranı</SortablePanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {vendorStats.map((v) => (
+                {sortedVendorStats.map((v) => (
                   <tr key={v.vendorId} className="hover:bg-slate-50">
                     <PanelTableTd colId="vendorName" className="px-4 py-3 font-medium text-slate-800">{v.vendorName}</PanelTableTd>
                     <PanelTableTd colId="assignmentCount" className="px-4 py-3 text-right">{v.assignmentCount}</PanelTableTd>

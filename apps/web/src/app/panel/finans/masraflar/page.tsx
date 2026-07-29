@@ -14,21 +14,27 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  PanelTableTh,
   PanelTableTd,
   PanelTableSummaryFoot,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import {
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = (n: number | string | null | undefined) =>
-  n == null ? '—' : Number(n).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+  n == null ? '—' : formatTryAmount(Number(n), { fractionDigits: 0 });
 
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
@@ -224,6 +230,32 @@ export default function MasraflarPage() {
   const [loading,  setLoading]  = useState(true);
 
   const tableColumns = usePanelTableColumns('table-cols:finans-masraflar', EXPENSE_TABLE_COLUMNS);
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
+
+  const sortedExpenses = useMemo(
+    () =>
+      sortRowsByClientSort(expenses, clientSort, (e, key) => {
+        switch (key) {
+          case 'fileNo':
+            return e.fileNo;
+          case 'expensePlan':
+            return PLAN_META[e.expensePlan]?.label ?? e.expensePlan;
+          case 'expenseGroupName':
+            return e.expenseGroupName;
+          case 'expenseSubgroupName':
+            return e.expenseSubgroupName;
+          case 'description':
+            return e.description;
+          case 'amount':
+            return e.amount;
+          case 'date':
+            return e.date;
+          default:
+            return null;
+        }
+      }),
+    [expenses, clientSort],
+  );
 
   // Form
   const [showForm,   setShowForm]   = useState(false);
@@ -1386,7 +1418,7 @@ export default function MasraflarPage() {
 
             {/* Tutar */}
             <div>
-              <label className={labelCls}>Tutar (₺) <span className="text-status-danger">*</span></label>
+              <label className={labelCls}>Tutar (TL) <span className="text-status-danger">*</span></label>
               <TrAmountInput
                 className={inputCls}
                 placeholder="0"
@@ -1560,20 +1592,20 @@ export default function MasraflarPage() {
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/40 text-left">
-                  <PanelTableTh colId="fileNo" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="expensePlan" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Bütçe Tipi</PanelTableTh>
-                  <PanelTableTh colId="expenseGroupName" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Masraf Grubu</PanelTableTh>
-                  <PanelTableTh colId="expenseSubgroupName" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Alt Grup</PanelTableTh>
-                  <PanelTableTh colId="description" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</PanelTableTh>
-                  <PanelTableTh colId="amount" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center">Tutar</PanelTableTh>
-                  <PanelTableTh colId="date" className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Tarih</PanelTableTh>
+                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Dosya No</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="expensePlan" sortKey="expensePlan" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Bütçe Tipi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="expenseGroupName" sortKey="expenseGroupName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Masraf Grubu</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="expenseSubgroupName" sortKey="expenseSubgroupName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Alt Grup</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="description" sortKey="description" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center">Tutar</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Tarih</SortablePanelTableTh>
                   <th className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right w-[72px]">
                     İşlem
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {expenses.map((e) => {
+                {sortedExpenses.map((e) => {
                   const meta = PLAN_META[e.expensePlan] ?? PLAN_META[PLAN_BUTCE];
                   return (
                     <tr key={e.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">

@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { API, authHeader, ensureValidSession } from '@/utils/api';
 import {
+  normalizeReportImageCategory,
+  REPORT_IMAGE_CATEGORY_KEYS,
+  REPORT_IMAGE_CATEGORY_LABELS,
   reportImageCategoryColor,
   reportImageCategoryLabel,
 } from '@/utils/quick-repair-damage-types';
@@ -214,19 +217,37 @@ export default function ReportImageGallery({
 
   return (
     <>
-      <div className="flex flex-wrap items-start gap-2">
-        {images.map((img, idx) => (
-          <ReportImageThumb
-            key={img.id}
-            image={img}
-            isEditable={isEditable}
-            onDelete={onDelete}
-            onOpen={() => setActiveIndex(idx)}
-          />
-        ))}
-        {pendingUploads.map((pending) => (
-          <PendingUploadThumb key={pending.tempId} category={pending.category} />
-        ))}
+      <div className="space-y-4">
+        {REPORT_IMAGE_CATEGORY_KEYS.map((cat) => {
+          const catImages = images
+            .map((img, idx) => ({ img, idx }))
+            .filter(({ img }) => normalizeReportImageCategory(img.category) === cat);
+          const catPending = pendingUploads.filter(
+            (p) => normalizeReportImageCategory(p.category) === cat,
+          );
+          if (!catImages.length && !catPending.length) return null;
+          return (
+            <div key={cat} className="space-y-2">
+              <p className="text-sm font-semibold text-slate-800">
+                {REPORT_IMAGE_CATEGORY_LABELS[cat]}
+              </p>
+              <div className="flex flex-wrap items-start gap-2">
+                {catImages.map(({ img, idx }) => (
+                  <ReportImageThumb
+                    key={img.id}
+                    image={img}
+                    isEditable={isEditable}
+                    onDelete={onDelete}
+                    onOpen={() => setActiveIndex(idx)}
+                  />
+                ))}
+                {catPending.map((pending) => (
+                  <PendingUploadThumb key={pending.tempId} category={pending.category} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {active && activeIndex !== null && (
