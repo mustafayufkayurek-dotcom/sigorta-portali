@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import {
   Line,
   LineChart,
@@ -19,6 +20,8 @@ type PortalWeeklyTrendCardProps = {
   compact?: boolean;
   /** Boş haftada da çizgiyi göster (sıfırlar) */
   showEmptyChart?: boolean;
+  /** Başlık sağı — dönem seçici vb. */
+  headerAside?: ReactNode;
 };
 
 /** Dosya Sorumlusu «Haftalık Operasyon Trendi» ile aynı dil — müşteri panelleri. */
@@ -29,6 +32,7 @@ export function PortalWeeklyTrendCard({
   titleClassName,
   compact = false,
   showEmptyChart = false,
+  headerAside,
 }: PortalWeeklyTrendCardProps) {
   const isEmpty = data.length === 0 || data.every((t) => t.count === 0);
   const chartH = compact ? 128 : 180;
@@ -40,7 +44,10 @@ export function PortalWeeklyTrendCard({
         compact ? 'min-h-0 p-3' : 'min-h-[240px] p-4'
       }`}
     >
-      <h3 className={`text-sm font-semibold text-slate-900 ${titleClassName ?? ''}`.trim()}>{title}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className={`text-sm font-semibold text-slate-900 ${titleClassName ?? ''}`.trim()}>{title}</h3>
+        {headerAside ? <div className="flex flex-wrap items-center gap-1.5">{headerAside}</div> : null}
+      </div>
       <div className={`flex-1 ${compact ? 'mt-2' : 'mt-3 min-h-[180px]'}`}>
         {!showChart ? (
           <p className={`text-sm text-slate-500 ${titleClassName?.includes('text-center') ? 'text-center' : ''}`.trim()}>
