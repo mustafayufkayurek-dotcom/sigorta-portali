@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-29",
-  "label": "v415-asistans-portal",
-  "description": "Full: Asistans Firma Portalı (Acil Yardım) + UserAssistantCustomerScope migration + Yeni İhbar. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v414 / backend v410.",
+  "label": "v416-asistans-davet-rol-auto-code",
+  "description": "Full: Asistans Firma Kullanıcısı daveti + firma kapsamı; Rol Yönetimi otomatik kod. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v415 / backend v415.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v415-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v415-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v416-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v416-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v414-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v410-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v415-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v415-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
