@@ -71,13 +71,13 @@ export function getExpertPortalNav(counts?: ExpertPortalNavCounts): PortalNavIte
 export function getInsurancePortalNav(counts?: InsurancePortalNavCounts): PortalNavItem[] {
   return [
     { title: 'Dosya Takip', href: '/panel/sigorta-portal', icon: Building2, exactMatch: true },
+    { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
     {
       title: 'Bekleyen Onaylar',
       href: '/panel/sigorta-portal/onaylar',
       icon: ShieldCheck,
       alertCount: counts?.onay,
     },
-    { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
     { title: 'Canlı İzle', href: '/panel/sigorta-portal/canli-izle', icon: MapPin },
     { title: 'Faturalar', href: '/panel/sigorta-portal/faturalar', icon: FileText },
     { title: 'Operasyon Ağı', href: '/panel/sigorta-portal/operasyon-agi', icon: GitBranch },
