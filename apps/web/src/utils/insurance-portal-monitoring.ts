@@ -25,6 +25,9 @@ const REPAIR_PROCESS_CODES = new Set([
   ...INVOICING_CODES,
 ]);
 
+/** 1) Eksper takibi · 2) Doğrudan ihbar / onarım süreci */
+export type InsuranceFileTrack = 'expert_monitor' | 'direct_process';
+
 export type InsuranceClaimLike = {
   id: string;
   fileNumber?: string;
@@ -33,6 +36,8 @@ export type InsuranceClaimLike = {
   lastActivityAt?: string | null;
   createdAt?: string;
   sourceChannel?: string | null;
+  /** Asistans portalı: ekspertiz / acil ayrımı (kaynak kanalını ezer) */
+  portalTrack?: InsuranceFileTrack;
   notificationDate?: string | null;
   currentStatus?: { code?: string; name?: string; colorCode?: string; color?: string } | null;
   assignedFieldUser?: { firstName?: string; lastName?: string } | null;
@@ -144,6 +149,26 @@ export function buildInsuranceBranchStats(files: InsuranceClaimLike[]): Insuranc
   return [...map.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'tr'));
 }
 
+/**
+ * Dosya Konusu bazlı dağılım — Ayarlar katalog eşlemesi ile.
+ * Asistans: issueType/lossType → kanonik Dosya Konusu (Acil Yardım diye tek kovaya düşmez).
+ */
+export function buildDosyaKonusuStats(
+  files: InsuranceClaimLike[],
+  catalogNames?: string[],
+  resolveLabel?: (file: InsuranceClaimLike, catalog?: string[]) => string,
+): InsuranceNamedCountStat[] {
+  const map = new Map<string, InsuranceNamedCountStat>();
+  for (const file of files) {
+    const raw = resolveLabel
+      ? resolveLabel(file, catalogNames)
+      : insuranceSubjectOf(file);
+    const label = raw.trim() || 'Belirtilmemiş';
+    bumpNamedCount(map, label, file);
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'tr'));
+}
+
 /** Eksper bazlı dağılım */
 export function buildInsuranceExpertStats(files: InsuranceClaimLike[]): InsuranceNamedCountStat[] {
   const map = new Map<string, InsuranceNamedCountStat>();
@@ -188,11 +213,13 @@ export function buildInsuranceRepairByExpertStats(files: InsuranceClaimLike[]): 
 }
 
 /** 1) Eksper takibi · 2) Doğrudan ihbar / onarım süreci */
-export type InsuranceFileTrack = 'expert_monitor' | 'direct_process';
 
 export function classifyInsuranceFileTrack(file: InsuranceClaimLike): InsuranceFileTrack {
+  if (file.portalTrack === 'expert_monitor' || file.portalTrack === 'direct_process') {
+    return file.portalTrack;
+  }
   const channel = (file.sourceChannel ?? '').trim().toLowerCase();
-  if (channel === 'insurance_portal') return 'direct_process';
+  if (channel === 'insurance_portal' || channel === 'emergency') return 'direct_process';
   // Eksper portalı veya atanmış eksper → eksper tarafı takibi
   if (channel === 'expert_portal' || file.assignedAdjuster?.id) return 'expert_monitor';
   // Kaynak bilinmeyen eski dosyalar: eksper atanmışsa takip, yoksa doğrudan süreç dışı portföy takibi

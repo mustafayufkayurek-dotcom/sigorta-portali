@@ -168,13 +168,19 @@ async function main() {
     create: { code: 'insurance_company_user', name: 'Sigorta Şirketi', description: 'Sigorta şirketi portal kullanıcısı' },
   });
 
+  const assistanceCompanyUserRole = await prisma.role.upsert({
+    where: { code: 'assistance_company_user' },
+    update: { name: 'Asistans Firması', description: 'Asistans firma portal kullanıcısı' },
+    create: { code: 'assistance_company_user', name: 'Asistans Firması', description: 'Asistans firma portal kullanıcısı' },
+  });
+
   const brokerUserRole = await prisma.role.upsert({
     where: { code: 'broker_user' },
     update: { name: 'Broker', description: 'Broker portal kullanıcısı' },
     create: { code: 'broker_user', name: 'Broker', description: 'Broker portal kullanıcısı' },
   });
 
-  console.log('✅ Created 9 roles');
+  console.log('✅ Created roles (incl. assistance_company_user)');
 
   // Assign all permissions to admin
   await Promise.all(
@@ -278,6 +284,9 @@ async function main() {
     'report.view',
   ];
   await assignPermissions(insuranceCompanyUserRole.id, insuranceCompanyUserPermCodes, createdPermissions);
+
+  // Assistance company user permissions (same portal surface)
+  await assignPermissions(assistanceCompanyUserRole.id, insuranceCompanyUserPermCodes, createdPermissions);
 
   console.log('✅ Assigned role permissions');
 
@@ -422,6 +431,24 @@ async function main() {
   }
   console.log(`✅ Created/updated ${assistantFirmSeeds.length} acil yardım asistan firması (yerel seed)`);
 
+  // Demo: Asistans firma portal kullanıcısı
+  await prisma.user.upsert({
+    where: { email: 'asistans@meridyenasistans.com' },
+    update: { roleId: assistanceCompanyUserRole.id, status: 'active', passwordHash: hashedPassword },
+    create: {
+      firstName: 'Ayşe',
+      lastName: 'Asistans',
+      email: 'asistans@meridyenasistans.com',
+      passwordHash: hashedPassword,
+      roleId: assistanceCompanyUserRole.id,
+      employeeCode: 'AST001',
+      status: 'active',
+      isWebUser: true,
+      isMobileUser: false,
+    },
+  });
+  console.log('✅ Created/updated assistance company user (asistans@meridyenasistans.com / admin123)');
+
   await seedPilotOperationData(prisma);
 
   // Demo sigorta portal kullanıcısına pilot şirket kapsamı (ALLIANZ_DEMO dosyaları)
@@ -442,6 +469,88 @@ async function main() {
       },
     });
     console.log('✅ Sigorta portal demo kullanıcısına ALLIANZ_DEMO kapsamı atandı');
+  }
+
+  const asistansPortalUser = await prisma.user.findUnique({ where: { email: 'asistans@meridyenasistans.com' } });
+  const demoAssistantFirm = await prisma.customer.findFirst({
+    where: { taxNumber: '7340735275', subType: 'asistan_firmasi' },
+  });
+  if (asistansPortalUser && demoAssistantFirm) {
+    await prisma.userAssistantCustomerScope.upsert({
+      where: {
+        userId_customerId: {
+          userId: asistansPortalUser.id,
+          customerId: demoAssistantFirm.id,
+        },
+      },
+      update: {},
+      create: {
+        userId: asistansPortalUser.id,
+        customerId: demoAssistantFirm.id,
+      },
+    });
+    console.log('✅ Asistans portal demo kullanıcısına asistan firma kapsamı atandı');
+
+    // Yerel demo: asistans portalında görünsün diye Remed kapsamlı acil yardım dosyaları
+    const demoCases = [
+      { caseNo: 'AY-DEMO-GELEN-01', fileNo: 'AY-DEMO-001', status: 'GELEN' as const, city: 'İstanbul', district: 'Kadıköy', issueType: 'Kapı/Kilit Arızası', address: 'Kadıköy, İstanbul', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-01', fileNo: 'AY-DEMO-002', status: 'ATANDI' as const, city: 'Ankara', district: 'Çankaya', issueType: 'Elektrik Arızası', address: 'Çankaya, Ankara', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-02', fileNo: 'AY-DEMO-003', status: 'SAHADA' as const, city: 'İzmir', district: 'Bornova', issueType: 'Su Baskını', address: 'Bornova, İzmir', gelir: 0 },
+      { caseNo: 'AY-DEMO-ONAY-01', fileNo: 'AY-DEMO-004', status: 'SAHADA' as const, city: 'Bursa', district: 'Nilüfer', issueType: 'Cam Kırılması', address: 'Nilüfer, Bursa', gelir: 1850 },
+      { caseNo: 'AY-DEMO-OK-01', fileNo: 'AY-DEMO-005', status: 'COZULDU' as const, city: 'Antalya', district: 'Muratpaşa', issueType: 'Asansör Arızası', address: 'Muratpaşa, Antalya', gelir: 3200 },
+    ];
+    for (const d of demoCases) {
+      const existing = await prisma.emergencyCase.findFirst({ where: { caseNo: d.caseNo } });
+      const caseRow = existing
+        ? await prisma.emergencyCase.update({
+            where: { id: existing.id },
+            data: {
+              customerId: demoAssistantFirm.id,
+              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              status: d.status,
+              city: d.city,
+              district: d.district,
+              issueType: d.issueType,
+              address: d.address,
+              fileNo: d.fileNo,
+              resolvedAt: d.status === 'COZULDU' ? new Date() : null,
+            },
+          })
+        : await prisma.emergencyCase.create({
+            data: {
+              caseNo: d.caseNo,
+              fileNo: d.fileNo,
+              customerId: demoAssistantFirm.id,
+              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              address: d.address,
+              city: d.city,
+              district: d.district,
+              issueType: d.issueType,
+              urgency: 'NORMAL',
+              status: d.status,
+              createdByUserId: asistansPortalUser.id,
+              resolvedAt: d.status === 'COZULDU' ? new Date() : null,
+            },
+          });
+      if (d.gelir > 0) {
+        const hasGelir = await prisma.emergencyCostEntry.findFirst({
+          where: { caseId: caseRow.id, entryType: 'gelir' },
+        });
+        if (!hasGelir) {
+          await prisma.emergencyCostEntry.create({
+            data: {
+              caseId: caseRow.id,
+              entryType: 'gelir',
+              description: 'Hizmet Bedeli',
+              amount: d.gelir,
+              entryDate: new Date(),
+              createdByUserId: asistansPortalUser.id,
+            },
+          });
+        }
+      }
+    }
+    console.log('✅ Asistans portal demo acil yardım dosyaları hazır');
   }
 
   // Demo: Adjuster kaydı oluştur ve expert kullanıcıya bağla

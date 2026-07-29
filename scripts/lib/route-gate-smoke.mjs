@@ -29,7 +29,7 @@ function roleAllowed(roleCode, allowedRoles) {
 
 function isPortalRole(roleCode) {
   const r = normalize(roleCode);
-  return r === 'expert' || r === 'insurance_company_user';
+  return r === 'expert' || r === 'insurance_company_user' || r === 'assistance_company_user';
 }
 
 function portalAllows(roleCode, pathname) {
@@ -41,6 +41,9 @@ function portalAllows(roleCode, pathname) {
   }
   if (r === 'insurance_company_user') {
     return pathname === '/panel/sigorta-portal' || pathname.startsWith('/panel/sigorta-portal/');
+  }
+  if (r === 'assistance_company_user') {
+    return pathname === '/panel/asistans-portal' || pathname.startsWith('/panel/asistans-portal/');
   }
   return false;
 }
@@ -104,6 +107,9 @@ const CASES = [
   ['RG-22', 'Portal home', 'expert', '/panel', true],
   ['RG-23', 'Portal profil', 'expert', '/panel/profil', true],
   ['RG-24', 'Portal profil', 'insurance_company_user', '/panel/profil', true],
+  ['RG-25', 'Portal → Personel', 'assistance_company_user', '/panel/ayarlar', false],
+  ['RG-26', 'Doğrudan URL / Deep Link', 'assistance_company_user', '/panel/asistans-portal/dosyalar', true],
+  ['RG-27', 'Portal profil', 'assistance_company_user', '/panel/profil', true],
 ];
 
 const NAV_SEQ = [
@@ -120,6 +126,7 @@ assert(RULES.length >= 30, `rule count ${RULES.length}`);
 assert(RULES.some((r) => r.path === '/panel' && r.roles.length === 0), '/panel exact empty roles');
 assert(RULES.some((r) => r.path === '/panel/eksper-portal'), 'eksper-portal rule');
 assert(RULES.some((r) => r.path === '/panel/sigorta-portal'), 'sigorta-portal rule');
+assert(RULES.some((r) => r.path === '/panel/asistans-portal'), 'asistans-portal rule');
 assert(portalAllows('expert', '/panel/finans') === false, 'portal allowlist');
 
 for (const [id, scenario, role, path, expect] of CASES) {

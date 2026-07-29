@@ -353,6 +353,18 @@ export class AuthService {
             insuranceCompany: true,
           },
         },
+        userAssistantCustomerScopes: {
+          include: {
+            customer: {
+              select: {
+                id: true,
+                companyName: true,
+                fullName: true,
+                subType: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -381,6 +393,11 @@ export class AuthService {
         id: s.insuranceCompany.id,
         code: s.insuranceCompany.code,
         name: s.insuranceCompany.name,
+      })),
+      assistantCustomerScopes: user.userAssistantCustomerScopes.map((s) => ({
+        id: s.customer.id,
+        name: (s.customer.companyName ?? s.customer.fullName ?? '').trim() || 'Asistans Firması',
+        subType: s.customer.subType,
       })),
       departmentMemberships: user.departmentMemberships.map((m) => ({
         departmentId: m.departmentId,

@@ -30,5 +30,6 @@
   { "path": "/panel/pazartesi-toplantisi", "roles": ["admin", "ADMIN", "MANAGER"] },
   { "path": "/panel/ozel-dosyalar", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "field_staff", "FIELD_STAFF", "FINANS", "finance", "accountant", "ACCOUNTANT", "MANAGER"] },
   { "path": "/panel/eksper-portal", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF"] },
-  { "path": "/panel/sigorta-portal", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF"] }
+  { "path": "/panel/sigorta-portal", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF"] },
+  { "path": "/panel/asistans-portal", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF"] }
 ]

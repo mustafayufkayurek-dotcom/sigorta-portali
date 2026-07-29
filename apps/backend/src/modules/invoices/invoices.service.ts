@@ -42,6 +42,7 @@ export class InvoicesService {
     counterpartyId?: string;
     insuranceCompanyId?: string;
     insuranceCompanyIds?: string[];
+    assistantCustomerIds?: string[];
     dateFrom?: string;
     dateTo?: string;
     page?: number;
@@ -61,6 +62,9 @@ export class InvoicesService {
     }
     if (params.insuranceCompanyIds?.length) {
       where.claimFile = { insuranceCompanyId: { in: params.insuranceCompanyIds } };
+    }
+    if (params.assistantCustomerIds?.length) {
+      where.claimFile = { customerId: { in: params.assistantCustomerIds } };
     }
     if (params.dateFrom || params.dateTo) {
       where.invoiceDate = {};
@@ -90,7 +94,7 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
-        claimFile: { select: { id: true, fileNo: true, insuranceCompanyId: true } },
+        claimFile: { select: { id: true, fileNo: true, insuranceCompanyId: true, customerId: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         payments: true,
       },

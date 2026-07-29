@@ -42,12 +42,20 @@ export class ClaimFilesController {
   @ApiOperation({ summary: 'Hasar dosyalarını listele' })
   async findAll(@Query() query: any, @CurrentUser() user: any) {
     const userId = user?.id ?? user?.userId;
-    if (user?.roleCode === 'insurance_company_user' || user?.role?.code === 'insurance_company_user') {
+    const roleCode = user?.roleCode ?? user?.role?.code;
+    if (roleCode === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(userId);
       if (companyIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
       }
       query.insuranceCompanyIds = companyIds;
+    }
+    if (roleCode === 'assistance_company_user') {
+      const customerIds = await this.claimFilesService.getAssistantCustomerScopes(userId);
+      if (customerIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
+      query.assistantCustomerIds = customerIds;
     }
     const result = await this.claimFilesService.findAll(query, {
       id: user?.id ?? user?.userId,
@@ -111,12 +119,20 @@ export class ClaimFilesController {
     const userId = user?.id ?? user?.userId;
     const roleCode = user?.roleCode ?? user?.role?.code;
     let insuranceCompanyIds = query?.insuranceCompanyIds as string[] | undefined;
+    let assistantCustomerIds = query?.assistantCustomerIds as string[] | undefined;
     if (roleCode === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(userId);
       if (companyIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, delayed: 0, inRepair: 0 } };
       }
       insuranceCompanyIds = companyIds;
+    }
+    if (roleCode === 'assistance_company_user') {
+      const customerIds = await this.claimFilesService.getAssistantCustomerScopes(userId);
+      if (customerIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, delayed: 0, inRepair: 0 } };
+      }
+      assistantCustomerIds = customerIds;
     }
     const result = await this.claimFilesService.getLiveMap(
       {
@@ -125,6 +141,7 @@ export class ClaimFilesController {
         statusGroup: query?.statusGroup,
         assignedOfficeUserId: query?.assignedOfficeUserId,
         insuranceCompanyIds,
+        assistantCustomerIds,
         limit: query?.limit,
       },
       { id: userId, roleCode },

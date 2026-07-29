@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { EmergencyCasesService } from './emergency-cases.service';
 import { CreateEmergencyCaseDto } from './dto/create-emergency-case.dto';
@@ -22,6 +23,7 @@ import { EmergencyStatus } from '@prisma/client';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import {
+  isAssistanceCompanyUser,
   isInsuranceCompanyUser,
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
@@ -39,15 +41,32 @@ export class EmergencyCasesController {
   private async resolveScope(user: any) {
     const requestingUser = normalizeRequestUser(user);
     let insuranceCompanyIds: string[] | undefined;
+    let assistantCustomerIds: string[] | undefined;
     if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode)) {
       insuranceCompanyIds = await this.claimFilesService.getInsuranceScopes(requestingUser.id);
     }
-    return { requestingUser, insuranceCompanyIds };
+    if (requestingUser && isAssistanceCompanyUser(requestingUser.roleCode)) {
+      assistantCustomerIds = await this.claimFilesService.getAssistantCustomerScopes(requestingUser.id);
+    }
+    return { requestingUser, insuranceCompanyIds, assistantCustomerIds };
   }
 
   @Post()
   @RequirePermissions('claim_file.create')
-  create(@Body() dto: CreateEmergencyCaseDto, @Request() req: any) {
+  async create(
+    @Body() dto: CreateEmergencyCaseDto,
+    @Request() req: any,
+    @CurrentUser() user?: any,
+  ) {
+    const { requestingUser, assistantCustomerIds } = await this.resolveScope(user);
+    if (requestingUser && isAssistanceCompanyUser(requestingUser.roleCode)) {
+      if (!assistantCustomerIds?.length) {
+        throw new ForbiddenException('Asistans firma kapsamı tanımlı değil');
+      }
+      if (!dto.customerId || !assistantCustomerIds.includes(dto.customerId)) {
+        throw new ForbiddenException('Bu asistans firması için dosya oluşturamazsınız');
+      }
+    }
     return this.service.create(dto, req.user?.id ?? 'system');
   }
 
@@ -62,8 +81,11 @@ export class EmergencyCasesController {
     @Query('overdueOnly') overdueOnly?: string,
     @CurrentUser() user?: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
     if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode) && !insuranceCompanyIds?.length) {
+      return { data: [] };
+    }
+    if (requestingUser && isAssistanceCompanyUser(requestingUser.roleCode) && !assistantCustomerIds?.length) {
       return { data: [] };
     }
     return this.service.findAll(
@@ -77,6 +99,7 @@ export class EmergencyCasesController {
       },
       requestingUser,
       insuranceCompanyIds,
+      assistantCustomerIds,
     );
   }
 
@@ -107,8 +130,8 @@ export class EmergencyCasesController {
   @Get(':id')
   @RequirePermissions('claim_file.view')
   async findOne(@Param('id') id: string, @CurrentUser() user?: any) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    return this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    return this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
   }
 
   @Patch(':id')
@@ -118,8 +141,8 @@ export class EmergencyCasesController {
     @Body() dto: UpdateEmergencyCaseDto,
     @CurrentUser() user?: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.update(id, dto);
   }
 
@@ -130,8 +153,8 @@ export class EmergencyCasesController {
     @Body() dto: UpdateEmergencyStatusDto,
     @CurrentUser() user?: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.updateStatus(id, dto, user?.id ?? 'system');
   }
 
@@ -139,8 +162,8 @@ export class EmergencyCasesController {
   @Get(':id/closure-email')
   @RequirePermissions('claim_file.view')
   async previewClosureEmail(@Param('id') id: string, @CurrentUser() user?: any) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.previewClosureEmail(id);
   }
 
@@ -148,8 +171,8 @@ export class EmergencyCasesController {
   @Post(':id/closure-email')
   @RequirePermissions('claim_file.status_change')
   async sendClosureEmail(@Param('id') id: string, @CurrentUser() user?: any) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.sendClosureEmail(id);
   }
 
@@ -157,8 +180,8 @@ export class EmergencyCasesController {
   @RequirePermissions('claim_file.delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string, @CurrentUser() user?: any) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.remove(id);
   }
 
@@ -171,16 +194,16 @@ export class EmergencyCasesController {
     @Body() dto: CreateCostEntryDto,
     @Request() req: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(req.user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(req.user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.addCostEntry(id, dto, req.user?.id ?? 'system');
   }
 
   @Get(':id/costs')
   @RequirePermissions('claim_file.view', 'budget.view')
   async findCosts(@Param('id') id: string, @CurrentUser() user?: any) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.findCostEntries(id);
   }
 
@@ -192,8 +215,8 @@ export class EmergencyCasesController {
     @Param('costId') costId: string,
     @CurrentUser() user?: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.removeCostEntry(id, costId);
   }
 
@@ -205,8 +228,8 @@ export class EmergencyCasesController {
     @Body() dto: UpdateCostEntryDto,
     @CurrentUser() user?: any,
   ) {
-    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.updateCostEntry(id, costId, dto);
   }
 }

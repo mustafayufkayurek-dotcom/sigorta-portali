@@ -46,6 +46,8 @@ import {
 import { mergeClaimFileNotes } from '@/utils/merge-claim-file-notes';
 import { formatActivityAction } from '@/features/dashboard/utils/format-activity-action';
 import { getReportImageUrl } from '@/utils/upload-url';
+import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
+import { emergencyStatusLabel } from '@/utils/assistance-portal-stages';
 
 export type ExpertDrawerFile = {
   id: string;
@@ -78,8 +80,8 @@ type ExpertFileDetailDrawerProps = {
   onOpenNote: () => void;
   /** Değiştiğinde (örn. "Geniş Form" modalından not kaydedilince) Notlar listesi yeniden yüklenir. */
   notesRefreshToken?: number;
-  /** Sigorta portalında onay etiketleri müşteri diline çevrilir */
-  audience?: 'expert' | 'insurance';
+  /** Sigorta: müşteri dili · Asistans: ekspersiz acil yardım dili · Eksper: operasyon dili */
+  audience?: 'expert' | 'insurance' | 'assistance';
   /** false ise «Evrak Yükle» gizlenir (yalnız görüntüleme yetkisi) */
   canUploadDocuments?: boolean;
 };
@@ -159,6 +161,79 @@ function normalizeDocs(raw: unknown): ExpertSafeDoc[] {
   }));
 }
 
+function photoDocLabel(audience: 'expert' | 'insurance' | 'assistance') {
+  return audience === 'assistance' ? 'Dosya Fotoğrafları' : 'Hasar Fotoğrafları';
+}
+
+function pickAssistanceSafeDetail(raw: Record<string, unknown> | null, seed: ExpertDrawerFile | null): ExpertSafeDetail | null {
+  if (!raw && !seed) return null;
+  const statusCode = String(raw?.status ?? seed?.currentStatus?.code ?? 'GELEN');
+  const issueType = String(raw?.issueType ?? raw?.serviceType ?? seed?.lossType ?? seed?.subject ?? '');
+  const address = String(raw?.address ?? '');
+  const city = String(raw?.city ?? '');
+  const district = String(raw?.district ?? '');
+  const assigned = (raw?.assignedUser as { id?: string; firstName?: string; lastName?: string; phone?: string } | null) ?? null;
+  return {
+    id: String(raw?.id ?? seed?.id ?? ''),
+    fileNo: String(raw?.fileNo ?? raw?.caseNo ?? seed?.fileNo ?? '—'),
+    lossType: issueType || null,
+    subject: issueType || seed?.subject || null,
+    description: (raw?.description as string | null | undefined) ?? seed?.description ?? null,
+    createdAt: ((raw?.createdAt as string | null | undefined) ?? seed?.createdAt) || undefined,
+    updatedAt: ((raw?.updatedAt as string | null | undefined) ?? seed?.updatedAt) || null,
+    notificationDate:
+      ((raw?.fileDate as string | null | undefined) ?? seed?.notificationDate ?? seed?.createdAt) || null,
+    currentStatus: {
+      code: statusCode,
+      name: emergencyStatusLabel(statusCode),
+    },
+    propertyAddress: {
+      addressLine: address || null,
+      city: city || null,
+      district: district || null,
+    },
+    assignedOfficeUser: assigned
+      ? {
+          firstName: assigned.firstName,
+          lastName: assigned.lastName,
+        }
+      : null,
+    assignedFieldUser: assigned
+      ? {
+          firstName: assigned.firstName,
+          lastName: assigned.lastName,
+        }
+      : null,
+    insuranceCompany: seed?.insuranceCompany ? { name: seed.insuranceCompany.name } : null,
+  };
+}
+
+function assistanceOperationPatch(
+  view: ExpertSafeDetail,
+  base: ReturnType<typeof deriveExpertOperationSummary>,
+): ReturnType<typeof deriveExpertOperationSummary> {
+  const code = String(view.currentStatus?.code ?? '').toUpperCase();
+  const inspectionDone = ['ATANDI', 'SAHADA', 'COZULDU', 'FATURALANDILDI'].includes(code) || base.inspectionDone;
+  let pendingActionLabel = base.pendingActionLabel;
+  if (/hasar tespitini tamamlayın/i.test(pendingActionLabel)) {
+    pendingActionLabel = 'Fiziki tespiti tamamlayın';
+  } else if (code === 'GELEN') {
+    pendingActionLabel = 'Dosyayı sahaya yönlendirin';
+  } else if (code === 'ATANDI') {
+    pendingActionLabel = 'Saha operasyonunu tamamlayın';
+  } else if (code === 'SAHADA') {
+    pendingActionLabel = 'Saha / onay sürecini tamamlayın';
+  } else if (['COZULDU', 'FATURALANDILDI'].includes(code)) {
+    pendingActionLabel = 'Bekleyen aksiyon yok';
+  }
+  pendingActionLabel = pendingActionLabel.replace(/\bHasar\b/gi, 'Dosya');
+  return {
+    ...base,
+    inspectionDone,
+    pendingActionLabel,
+  };
+}
+
 export function ExpertFileDetailDrawer({
   open,
   onClose,
@@ -170,6 +245,7 @@ export function ExpertFileDetailDrawer({
   audience = 'expert',
   canUploadDocuments = false,
 }: ExpertFileDetailDrawerProps) {
+  const isAssistance = audience === 'assistance';
   const [tab, setTab] = useState<TabId>(normalizeTab(initialTab));
   const [detail, setDetail] = useState<ExpertSafeDetail | null>(null);
   const [notes, setNotes] = useState<NoteRow[]>([]);
@@ -181,6 +257,7 @@ export function ExpertFileDetailDrawer({
   const [lastActivity, setLastActivity] = useState<ActivityRow | null>(null);
   const [appointmentAt, setAppointmentAt] = useState<string | null>(null);
   const [siteVisitAt, setSiteVisitAt] = useState<string | null>(null);
+  const [assistancePhotoCount, setAssistancePhotoCount] = useState(0);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
@@ -200,6 +277,38 @@ export function ExpertFileDetailDrawer({
     setLoadingNotes(true);
     setNotesLoadError(false);
     try {
+      if (isAssistance) {
+        const res = await fetch(`${API}/emergency/cases/${fileId}`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('notes_load_failed');
+        const body = await res.json().catch(() => null);
+        const raw = (body?.data ?? body) as Record<string, unknown> | null;
+        const rows: NoteRow[] = [];
+        const findings = typeof raw?.findingsText === 'string' ? raw.findingsText.trim() : '';
+        const caseNotes = typeof raw?.notes === 'string' ? raw.notes.trim() : '';
+        const createdAt =
+          (typeof raw?.updatedAt === 'string' && raw.updatedAt) ||
+          (typeof raw?.createdAt === 'string' && raw.createdAt) ||
+          '';
+        if (findings) {
+          rows.push({
+            id: `${fileId}-findings`,
+            content: findings,
+            noteType: 'general',
+            createdAt,
+          });
+        }
+        if (caseNotes) {
+          rows.push({
+            id: `${fileId}-notes`,
+            content: caseNotes,
+            noteType: 'general',
+            createdAt,
+          });
+        }
+        setNotes(rows);
+        return;
+      }
+
       const [timelineRes, notesRes] = await Promise.all([
         fetch(`${API}/claim-files/${fileId}/notes`, { headers: authHeaders() }),
         fetch(`${API}/notes?claimFileId=${fileId}&limit=100`, { headers: authHeaders() }),
@@ -233,7 +342,7 @@ export function ExpertFileDetailDrawer({
     } finally {
       setLoadingNotes(false);
     }
-  }, []);
+  }, [isAssistance]);
 
   useEffect(() => {
     if (!open || !file?.id) {
@@ -247,6 +356,7 @@ export function ExpertFileDetailDrawer({
       setLastActivity(null);
       setAppointmentAt(null);
       setSiteVisitAt(null);
+      setAssistancePhotoCount(0);
       setNoteDraft('');
       setSendEmailWithNote(false);
       setNoteError(null);
@@ -257,6 +367,36 @@ export function ExpertFileDetailDrawer({
     setDetail(seedFromListFile(file));
     setLoadingDetail(true);
     const headers = authHeaders();
+
+    if (isAssistance) {
+      Promise.all([
+        fetch(`${API}/emergency/cases/${file.id}`, { headers }).then((r) => (r.ok ? r.json() : null)),
+        getFileDocuments('emergency_case', file.id).catch(() => [] as FileDocument[]),
+      ])
+        .then(([detailBody, entityDocs]) => {
+          const raw = (detailBody?.data ?? detailBody) as Record<string, unknown> | null;
+          const safe = pickAssistanceSafeDetail(raw, file);
+          if (safe) setDetail(safe);
+          const entityRaw = entityDocs as FileDocument[] | { data?: FileDocument[] };
+          const entityList = Array.isArray(entityRaw)
+            ? entityRaw
+            : Array.isArray(entityRaw?.data)
+              ? entityRaw.data
+              : [];
+          setFileDocs(entityList);
+          setDocs([]);
+          setReportImages([]);
+          setClosure(null);
+          setLastActivity(null);
+          setAppointmentAt(null);
+          setSiteVisitAt(null);
+        })
+        .catch(() => {
+          /* seed kalsın */
+        })
+        .finally(() => setLoadingDetail(false));
+      return;
+    }
 
     Promise.all([
       fetch(`${API}/claim-files/${file.id}`, { headers }).then((r) => (r.ok ? r.json() : null)),
@@ -376,7 +516,7 @@ export function ExpertFileDetailDrawer({
         /* seed kalsın */
       })
       .finally(() => setLoadingDetail(false));
-  }, [open, file, notesRefreshToken]);
+  }, [open, file, notesRefreshToken, isAssistance]);
 
   useEffect(() => {
     if (!open || !file?.id || tab !== 'notlar') return;
@@ -407,35 +547,44 @@ export function ExpertFileDetailDrawer({
     });
   })();
 
-  const op = view ? deriveExpertOperationSummary(view, lastActivityTitle) : null;
-  const fileStage = view ? deriveExpertFileStageLabel(view) : '—';
+  const opBase = view ? deriveExpertOperationSummary(view, lastActivityTitle) : null;
+  const op = opBase && view && isAssistance ? assistanceOperationPatch(view, opBase) : opBase;
+  const fileStage = view
+    ? isAssistance
+      ? emergencyStatusLabel(view.currentStatus?.code ?? view.currentStatus?.name)
+      : deriveExpertFileStageLabel(view)
+    : '—';
   const docGroups = useMemo(() => groupExpertDocuments(docs), [docs]);
   const photoGroups = useMemo(() => groupExpertReportImages(reportImages), [reportImages]);
-  const showKonutDamage = isKonutBranch(view);
-  const finance = view?.expertFinance ?? null;
+  const showKonutDamage = !isAssistance && isKonutBranch(view);
+  const finance = isAssistance ? null : view?.expertFinance ?? null;
 
-  const photoTone: PresenceTone = docGroups.hasarFotograflari.length > 0 ? 'ok' : 'missing';
-  const muvafakatTone: PresenceTone =
-    closure?.muvafakatnameDigitallyApproved ||
-    closure?.muvafakatnamePhysicallyUploaded ||
-    closure?.muvafakatnameStatus === 'digitally_approved' ||
-    closure?.muvafakatnameStatus === 'physically_uploaded' ||
-    fileDocs.some(
-      (d) =>
-        d.documentKind === 'muvafakatname' &&
-        (d.status === 'digitally_approved' || d.status === 'physically_uploaded'),
-    ) ||
-    docGroups.muvafakatname.length > 0
+  const photoTone: PresenceTone =
+    (isAssistance ? assistancePhotoCount > 0 : docGroups.hasarFotograflari.length > 0) ? 'ok' : 'missing';
+  const muvafakatTone: PresenceTone = isAssistance
+    ? 'pending'
+    : closure?.muvafakatnameDigitallyApproved ||
+        closure?.muvafakatnamePhysicallyUploaded ||
+        closure?.muvafakatnameStatus === 'digitally_approved' ||
+        closure?.muvafakatnameStatus === 'physically_uploaded' ||
+        fileDocs.some(
+          (d) =>
+            d.documentKind === 'muvafakatname' &&
+            (d.status === 'digitally_approved' || d.status === 'physically_uploaded'),
+        ) ||
+        docGroups.muvafakatname.length > 0
       ? 'ok'
       : 'pending';
-  const digitalTone: PresenceTone =
-    closure?.muvafakatnameDigitallyApproved ||
-    fileDocs.some((d) => d.status === 'digitally_approved')
+  const digitalTone: PresenceTone = isAssistance
+    ? 'pending'
+    : closure?.muvafakatnameDigitallyApproved ||
+        fileDocs.some((d) => d.status === 'digitally_approved')
       ? 'ok'
       : 'pending';
 
-  const totalOpDocs =
-    docGroups.hasarFotograflari.length + docGroups.muvafakatname.length + docGroups.dijitalOnay.length;
+  const totalOpDocs = isAssistance
+    ? assistancePhotoCount
+    : docGroups.hasarFotograflari.length + docGroups.muvafakatname.length + docGroups.dijitalOnay.length;
 
   const addressLine = view?.propertyAddress?.addressLine || view?.customer?.address || '—';
   const city = view?.propertyAddress?.city || view?.customer?.city || '—';
@@ -502,6 +651,24 @@ export function ExpertFileDetailDrawer({
     setNoteError(null);
     setMailResult(null);
     try {
+      if (isAssistance) {
+        const detailRes = await fetch(`${API}/emergency/cases/${file.id}`, { headers: authHeaders() });
+        if (!detailRes.ok) throw new Error('Not kaydedilemedi.');
+        const detailBody = await detailRes.json().catch(() => null);
+        const raw = (detailBody?.data ?? detailBody) as Record<string, unknown> | null;
+        const existing = typeof raw?.notes === 'string' ? raw.notes.trim() : '';
+        const nextNotes = existing ? `${existing}\n\n${text}` : text;
+        const patchRes = await fetch(`${API}/emergency/cases/${file.id}`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify({ notes: nextNotes }),
+        });
+        if (!patchRes.ok) throw new Error('Not kaydedilemedi.');
+        setNoteDraft('');
+        await loadNotes(file.id);
+        return;
+      }
+
       const res = await fetch(`${API}/claim-files/${file.id}/notes`, {
         method: 'POST',
         headers: authHeaders(),
@@ -602,17 +769,27 @@ export function ExpertFileDetailDrawer({
 
               <Section title="Dosya Genel Durumu">
                 <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
-                  <Field label="Hasar Dosya No" value={view.fileNo} />
-                  <Field label="Sigorta Şirketi" value={view.insuranceCompany?.name || '—'} />
-                  <Field label="Dosya Konusu" value={subject || '—'} className="col-span-2" />
-                  <Field
-                    label="Dosya Durumu"
-                    value={
+                  <Field label={isAssistance ? 'Dosya No' : 'Hasar Dosya No'} value={view.fileNo} />
+                  {!isAssistance ? (
+                    <Field label="Sigorta Şirketi" value={view.insuranceCompany?.name || '—'} />
+                  ) : (
+                    <Field label="Dosya Durumu" value={
                       <span className={`inline-flex items-center justify-start self-start ${expertStatusBadgeClass(fileStage)}`}>
                         {fileStage}
                       </span>
-                    }
-                  />
+                    } />
+                  )}
+                  <Field label="Dosya Konusu" value={subject || '—'} className="col-span-2" />
+                  {!isAssistance ? (
+                    <Field
+                      label="Dosya Durumu"
+                      value={
+                        <span className={`inline-flex items-center justify-start self-start ${expertStatusBadgeClass(fileStage)}`}>
+                          {fileStage}
+                        </span>
+                      }
+                    />
+                  ) : null}
                   <Field
                     label="Gecikme Gün"
                     value={
@@ -649,7 +826,7 @@ export function ExpertFileDetailDrawer({
                     }
                   />
                   <Field
-                    label={audience === 'insurance' ? 'Onay Durumu' : 'Eksper Onay Durumu'}
+                    label={audience === 'insurance' ? 'Onay Durumu' : isAssistance ? 'Onay Durumu' : 'Eksper Onay Durumu'}
                     value={
                       <span className={`inline-flex self-start font-semibold ${approvalToneClass(op?.expertApprovalStatus)}`}>
                         {op?.expertApprovalStatus ?? '—'}
@@ -659,7 +836,7 @@ export function ExpertFileDetailDrawer({
                   />
                   {op?.expertApprovalStatus === 'Onaylandı' ? (
                     <Field
-                      label={audience === 'insurance' ? 'Onay Tarihi' : 'Eksper Onay Tarihi'}
+                      label={audience === 'insurance' || isAssistance ? 'Onay Tarihi' : 'Eksper Onay Tarihi'}
                       value={op.expertApprovalDate ? fmtDate(op.expertApprovalDate) : '—'}
                     />
                   ) : null}
@@ -704,52 +881,72 @@ export function ExpertFileDetailDrawer({
               <Section title="Evrak Durumu">
                 <ul className="space-y-1.5 text-[12.5px]">
                   <EvrakRow
-                    label="Hasar Fotoğrafları"
+                    label={photoDocLabel(audience)}
                     text={presenceLabel(photoTone, 'Tamamlandı', 'Eksik')}
                     tone={photoTone}
                   />
-                  <EvrakRow
-                    label="Muvafakatname"
-                    text={presenceLabel(muvafakatTone, 'Tamamlandı', 'Bekleniyor')}
-                    tone={muvafakatTone}
-                  />
-                  <EvrakRow
-                    label="Dijital Onay"
-                    text={presenceLabel(digitalTone, 'Tamamlandı', 'Bekleniyor')}
-                    tone={digitalTone}
-                  />
+                  {!isAssistance ? (
+                    <>
+                      <EvrakRow
+                        label="Muvafakatname"
+                        text={presenceLabel(muvafakatTone, 'Tamamlandı', 'Bekleniyor')}
+                        tone={muvafakatTone}
+                      />
+                      <EvrakRow
+                        label="Dijital Onay"
+                        text={presenceLabel(digitalTone, 'Tamamlandı', 'Bekleniyor')}
+                        tone={digitalTone}
+                      />
+                    </>
+                  ) : null}
                 </ul>
               </Section>
 
-              <Section title="Eksper Notu">
-                <p className="text-[12.5px] font-medium text-slate-800">
-                  {expertNote && expertNote !== '—' ? expertNote : 'Henüz eksper notu yok.'}
-                </p>
-              </Section>
+              {!isAssistance ? (
+                <Section title="Eksper Notu">
+                  <p className="text-[12.5px] font-medium text-slate-800">
+                    {expertNote && expertNote !== '—' ? expertNote : 'Henüz eksper notu yok.'}
+                  </p>
+                </Section>
+              ) : null}
             </div>
           ) : tab === 'belgeler' ? (
             <div className="space-y-3">
               <Section title="Evrak Süreçleri">
                 <ul className="space-y-2 text-[12.5px]">
                   <EvrakRow
-                    label="Hasar Fotoğrafları"
+                    label={photoDocLabel(audience)}
                     text={photoTone === 'ok' ? 'Tamamlandı' : 'Eksik'}
                     tone={photoTone}
                   />
-                  <EvrakRow
-                    label="Muvafakatname"
-                    text={muvafakatTone === 'ok' ? 'Tamamlandı' : 'Bekleniyor'}
-                    tone={muvafakatTone}
-                  />
-                  <EvrakRow
-                    label="Dijital Onay"
-                    text={digitalTone === 'ok' ? 'Tamamlandı' : 'Bekleniyor'}
-                    tone={digitalTone}
-                  />
+                  {!isAssistance ? (
+                    <>
+                      <EvrakRow
+                        label="Muvafakatname"
+                        text={muvafakatTone === 'ok' ? 'Tamamlandı' : 'Bekleniyor'}
+                        tone={muvafakatTone}
+                      />
+                      <EvrakRow
+                        label="Dijital Onay"
+                        text={digitalTone === 'ok' ? 'Tamamlandı' : 'Bekleniyor'}
+                        tone={digitalTone}
+                      />
+                    </>
+                  ) : null}
                 </ul>
               </Section>
 
-              {EXPERT_REPORT_IMAGE_ORDER.some((cat) => photoGroups[cat].length > 0) ? (
+              {isAssistance && file?.id ? (
+                <Section title="Dosya Fotoğrafları">
+                  <ClosurePhotosPanel
+                    entityId={file.id}
+                    readonly={!canUploadDocuments}
+                    onPhotoCountChange={setAssistancePhotoCount}
+                  />
+                </Section>
+              ) : null}
+
+              {!isAssistance && EXPERT_REPORT_IMAGE_ORDER.some((cat) => photoGroups[cat].length > 0) ? (
                 <div className="space-y-3">
                   {EXPERT_REPORT_IMAGE_ORDER.map((cat) => (
                     <ReportPhotoGroup
@@ -765,6 +962,8 @@ export function ExpertFileDetailDrawer({
                 </div>
               ) : null}
 
+              {!isAssistance ? (
+                <>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-800">Yüklenen Evraklar</p>
                 {canUploadDocuments ? (
@@ -827,6 +1026,8 @@ export function ExpertFileDetailDrawer({
                   </ul>
                 </div>
               ) : null}
+                </>
+              ) : null}
             </div>
           ) : tab === 'operasyon' ? (
             <div className="space-y-3.5">
@@ -841,7 +1042,7 @@ export function ExpertFileDetailDrawer({
                     value={siteVisitAt ? fmtDateTime(siteVisitAt) : '—'}
                   />
                   <Field
-                    label="Hasar Tespiti Yapıldı mı"
+                    label={isAssistance ? 'Fiziki Tespit Yapıldı mı' : 'Hasar Tespiti Yapıldı mı'}
                     value={
                       <span className={presenceClass(op?.inspectionDone ? 'ok' : 'pending')}>
                         {op?.inspectionDone ? '✓ Yapıldı' : '✕ Bekleniyor'}
@@ -849,13 +1050,14 @@ export function ExpertFileDetailDrawer({
                     }
                   />
                   <Field
-                    label="Hasar Tespit Tarihi"
+                    label={isAssistance ? 'Fiziki Tespit Tarihi' : 'Hasar Tespit Tarihi'}
                     value={op?.inspectionDate ? fmtDate(op.inspectionDate) : view.incidentDate ? fmtDate(view.incidentDate) : '—'}
                   />
                   <Field
                     label="Dosya İhbar Tarihi"
                     value={op?.notificationDate ? fmtDate(op.notificationDate) : '—'}
                   />
+                  {!isAssistance ? (
                   <Field
                     label="Onarım Durumu"
                     value={
@@ -872,6 +1074,7 @@ export function ExpertFileDetailDrawer({
                       </span>
                     }
                   />
+                  ) : null}
                   <Field label="Dosya Sorumlusu" value={meridyenFileOwner} />
                   <Field
                     label="Son Güncelleme"
@@ -882,10 +1085,10 @@ export function ExpertFileDetailDrawer({
 
               <Section title="Saha Bilgileri">
                 <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
-                  <Field label="Hasar Adresi" value={addressLine} className="col-span-2" />
+                  <Field label={isAssistance ? 'Dosya Adresi' : 'Hasar Adresi'} value={addressLine} className="col-span-2" />
                   <Field label="İl" value={city} />
                   <Field label="İlçe" value={district} />
-                  <Field label="Hasar Tespiti Yapan" value={fieldInspectorName} className="col-span-2" />
+                  <Field label={isAssistance ? 'Tespiti Yapan' : 'Hasar Tespiti Yapan'} value={fieldInspectorName} className="col-span-2" />
                 </div>
               </Section>
             </div>
@@ -910,19 +1113,21 @@ export function ExpertFileDetailDrawer({
                   placeholder="Notunuzu Yazın…"
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
-                <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-slate-200 bg-slate-50/80 px-2.5 py-2">
-                  <input
-                    type="checkbox"
-                    checked={sendEmailWithNote}
-                    onChange={(e) => setSendEmailWithNote(e.target.checked)}
-                    disabled={meridyenFileOwner === '—'}
-                    className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="min-w-0 text-xs text-slate-700">
-                    <span className="font-medium">Dosya Sorumlusuna E-posta Gönder</span>
-                    <span className="mt-0.5 block text-slate-500">İsteğe bağlıdır.</span>
-                  </span>
-                </label>
+                {!isAssistance ? (
+                  <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-slate-200 bg-slate-50/80 px-2.5 py-2">
+                    <input
+                      type="checkbox"
+                      checked={sendEmailWithNote}
+                      onChange={(e) => setSendEmailWithNote(e.target.checked)}
+                      disabled={meridyenFileOwner === '—'}
+                      className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="min-w-0 text-xs text-slate-700">
+                      <span className="font-medium">Dosya Sorumlusuna E-posta Gönder</span>
+                      <span className="mt-0.5 block text-slate-500">İsteğe bağlıdır.</span>
+                    </span>
+                  </label>
+                ) : null}
                 {noteError ? <p className="mt-1 text-xs text-status-danger">{noteError}</p> : null}
                 {mailResult ? (
                   <p className={`mt-1 text-xs ${mailResult.tone === 'success' ? 'text-status-success' : 'text-status-danger'}`}>
@@ -930,13 +1135,15 @@ export function ExpertFileDetailDrawer({
                   </p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={onOpenNote}
-                    className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    Geniş Form
-                  </button>
+                  {!isAssistance ? (
+                    <button
+                      type="button"
+                      onClick={onOpenNote}
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Geniş Form
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={noteSaving}
@@ -954,7 +1161,7 @@ export function ExpertFileDetailDrawer({
               ) : notesLoadError ? (
                 <p className="text-sm text-red-600">Notlar yüklenemedi. Lütfen tekrar deneyin.</p>
               ) : notes.length === 0 ? (
-                <p className="text-sm text-slate-400">Henüz eksper notu yok.</p>
+                <p className="text-sm text-slate-400">{isAssistance ? 'Henüz not yok.' : 'Henüz eksper notu yok.'}</p>
               ) : (
                 <ul className="space-y-2">
                   {notes.map((n) => (

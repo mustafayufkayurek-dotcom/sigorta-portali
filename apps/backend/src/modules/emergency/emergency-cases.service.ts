@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ConflictExc
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmergencyStatus } from '@prisma/client';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
-import { isInsuranceCompanyUser, mergeWhereAnd, RequestUser } from '@/common/helpers/claim-file-scope.helper';
+import { isAssistanceCompanyUser, isInsuranceCompanyUser, mergeWhereAnd, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { CreateEmergencyCaseDto } from './dto/create-emergency-case.dto';
 import { UpdateEmergencyCaseDto } from './dto/update-emergency-case.dto';
 import { UpdateEmergencyStatusDto } from './dto/update-emergency-status.dto';
@@ -394,6 +394,7 @@ export class EmergencyCasesService {
     filters: { customerId?: string },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
+    assistantCustomerIds?: string[],
   ): Promise<Record<string, unknown>> {
     const where: Record<string, unknown> = {};
     if (filters.customerId) where.customerId = filters.customerId;
@@ -426,6 +427,10 @@ export class EmergencyCasesService {
       };
     }
 
+    if (requestingUser && isAssistanceCompanyUser(requestingUser.roleCode) && assistantCustomerIds?.length) {
+      where.customerId = { in: assistantCustomerIds };
+    }
+
     return where;
   }
 
@@ -438,6 +443,7 @@ export class EmergencyCasesService {
     },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
+    assistantCustomerIds?: string[],
   ): Promise<void> {
     if (!requestingUser) return;
 
@@ -470,6 +476,18 @@ export class EmergencyCasesService {
       if (!linked) {
         throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
       }
+      return;
+    }
+
+    if (isAssistanceCompanyUser(requestingUser.roleCode)) {
+      if (
+        !assistantCustomerIds?.length
+        || !emergencyCase.customerId
+        || !assistantCustomerIds.includes(emergencyCase.customerId)
+      ) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+      return;
     }
 
     if (this.operationalAccessGrants.isDelegationScopedRole(requestingUser.roleCode)) {
@@ -501,11 +519,13 @@ export class EmergencyCasesService {
     },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
+    assistantCustomerIds?: string[],
   ) {
     const where: any = await this.buildListScope(
       { customerId: filters.customerId },
       requestingUser,
       insuranceCompanyIds,
+      assistantCustomerIds,
     );
     if (filters.status) where.status = filters.status;
     if (filters.search) {
@@ -564,6 +584,7 @@ export class EmergencyCasesService {
     id: string,
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
+    assistantCustomerIds?: string[],
   ) {
     const c = await this.prisma.emergencyCase.findUnique({
       where: { id },
@@ -588,7 +609,7 @@ export class EmergencyCasesService {
       },
     });
     if (!c) throw new NotFoundException('Acil vaka bulunamadı');
-    await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds);
+    await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds, assistantCustomerIds);
 
     const resolvedAssigneeId = await this.ensureAssignedUser(
       id,

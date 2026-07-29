@@ -51,6 +51,7 @@ import { resolvePanelUserGuide } from '@/config/panel-user-guide';
 import {
   getExpertPortalNav,
   getInsurancePortalNav,
+  getAssistancePortalNav,
   type ExpertPortalNavCounts,
   type InsurancePortalNavCounts,
 } from '@/config/portal-nav';
@@ -220,6 +221,7 @@ interface PanelSidebarProps {
   isPortalUser: boolean;
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
+  isAssistanceCompanyUser: boolean;
   isFinance: boolean;
   isFieldStaff: boolean;
   pendingRevisionCount: number;
@@ -232,27 +234,33 @@ interface PanelSidebarProps {
 function getPanelMainLinks({
   isExpert,
   isInsuranceCompanyUser,
+  isAssistanceCompanyUser,
   isOfficeStaff,
   isFinance,
   isFieldStaff,
   pendingRevisionCount,
   expertNavCounts,
   insuranceNavCounts,
+  assistanceNavCounts,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
+  isAssistanceCompanyUser: boolean;
   isOfficeStaff: boolean;
   isFinance: boolean;
   isFieldStaff: boolean;
   pendingRevisionCount: number;
   expertNavCounts?: ExpertPortalNavCounts;
   insuranceNavCounts?: InsurancePortalNavCounts;
+  assistanceNavCounts?: InsurancePortalNavCounts;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   return isExpert
     ? getExpertPortalNav(expertNavCounts)
     : isInsuranceCompanyUser
       ? getInsurancePortalNav(insuranceNavCounts)
+      : isAssistanceCompanyUser
+        ? getAssistancePortalNav(assistanceNavCounts)
       : isOfficeStaff
         ? [
             { title: 'Dosya Merkezi', href: '/panel', icon: MonitorCheck },
@@ -355,6 +363,7 @@ interface NavbarProps {
   isPortalUser: boolean;
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
+  isAssistanceCompanyUser: boolean;
   pendingRevisionCount: number;
   onLogout: () => void;
   unreadCount: number;
@@ -379,7 +388,7 @@ interface NavbarProps {
 }
 
 function Navbar({
-  user, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
+  user, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser, isAssistanceCompanyUser,
   pendingRevisionCount, onLogout,
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
@@ -396,7 +405,10 @@ function Navbar({
   /** Üst bant satır 1: sigorta şirketi / kurum (bandı büyütmeden) */
   const profileContextLabel = (() => {
     if (isInsuranceCompanyUser) {
-      const scopes = user?.insuranceCompanyScopes as Array<string | { name?: string }> | undefined;
+      const scopes = (
+        (user?.assistantCustomerScopes as Array<string | { name?: string }> | undefined)
+        ?? (user?.insuranceCompanyScopes as Array<string | { name?: string }> | undefined)
+      );
       const fromScope = scopes
         ?.map((s) => (typeof s === 'string' ? undefined : s?.name?.trim()))
         .find((n): n is string => Boolean(n));
@@ -454,6 +466,7 @@ function Navbar({
   const mainLinks = getPanelMainLinks({
     isExpert,
     isInsuranceCompanyUser,
+    isAssistanceCompanyUser,
     isOfficeStaff: isOfficeStaffRole(roleCode),
     isFinance,
     isFieldStaff,
@@ -492,7 +505,7 @@ function Navbar({
           ) : null}
           {!sidebarCollapsed ? (
             <Link
-              href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : '/panel'}
+              href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : isAssistanceCompanyUser ? '/panel/asistans-portal' : '/panel'}
               className="inline-flex min-w-0 items-center"
               title="Panel Ana Sayfa"
               aria-label="Meridyen Panel"
@@ -506,7 +519,7 @@ function Navbar({
         <div className="flex min-w-0 flex-1 items-center gap-2 px-3 sm:px-4">
           {/* Mobil logo */}
           <Link
-            href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : '/panel'}
+            href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : isAssistanceCompanyUser ? '/panel/asistans-portal' : '/panel'}
             className="inline-flex shrink-0 items-center md:hidden"
             title="Panel Ana Sayfa"
             aria-label="Meridyen Panel"
@@ -871,6 +884,7 @@ function PanelSidebar({
   isPortalUser,
   isExpert,
   isInsuranceCompanyUser,
+  isAssistanceCompanyUser,
   isFinance,
   isFieldStaff,
   pendingRevisionCount,
@@ -984,12 +998,14 @@ function PanelSidebar({
   const mainLinks = getPanelMainLinks({
     isExpert,
     isInsuranceCompanyUser,
+    isAssistanceCompanyUser,
     isOfficeStaff: isOfficeStaffRole(roleCode),
     isFinance,
     isFieldStaff,
     pendingRevisionCount,
     expertNavCounts,
     insuranceNavCounts,
+    assistanceNavCounts: insuranceNavCounts,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -1535,7 +1551,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const operationArea = userOperationArea(user);
   const isExpert = roleCode === 'expert';
   const isInsuranceCompanyUser = roleCode === 'insurance_company_user';
-  const isPortalUser = isExpert || isInsuranceCompanyUser;
+  const isAssistanceCompanyUser = roleCode === 'assistance_company_user';
+  const isPortalUser = isExpert || isInsuranceCompanyUser || isAssistanceCompanyUser;
   const isFinance = isFinanceRole(roleCode);
   const isFieldStaff = isFieldStaffRole(roleCode);
   const showAcilYardim = canAccessAcilYardim(roleCode, operationArea, user?.operationalAccessGrants);
@@ -1543,6 +1560,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!loading && isExpert && pathname === '/panel') router.replace('/panel/eksper-portal');
     if (!loading && isInsuranceCompanyUser && pathname === '/panel') router.replace('/panel/sigorta-portal');
+    if (!loading && isAssistanceCompanyUser && pathname === '/panel') router.replace('/panel/asistans-portal');
     if (!loading && isFinance && pathname === '/panel') router.replace('/panel/finans');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, roleCode]);
@@ -1563,6 +1581,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       ? 'Eksper Paneline Dön'
       : safeHomePath === '/panel/sigorta-portal'
         ? 'Dosya Takibe Dön'
+        : safeHomePath === '/panel/asistans-portal'
+          ? 'Dosya Takibe Dön'
         : safeHomePath === '/panel/finans'
           ? 'Finans Merkezine Dön'
           : 'Panele Dön';
@@ -1619,7 +1639,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const operationBadgeCount = pendingRevisionCount + inboxPendingCount;
 
   const navbarProps = {
-    user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser,
+    user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser, isAssistanceCompanyUser,
     pendingRevisionCount: operationBadgeCount, onLogout: handleLogout,
     unreadCount, notifOpen, onNotifOpen: handleNotifOpen,
     onNotifClose: () => setNotifOpen(false),
@@ -1694,6 +1714,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             isPortalUser={isPortalUser}
             isExpert={isExpert}
             isInsuranceCompanyUser={isInsuranceCompanyUser}
+            isAssistanceCompanyUser={isAssistanceCompanyUser}
             isFinance={isFinance}
             isFieldStaff={isFieldStaff}
             pendingRevisionCount={operationBadgeCount}
@@ -1783,7 +1804,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {isPortalUser && !mustChangePassword ? (
           <>
             <PortalWhatsAppLiveSupport />
-            <PortalBottomNav variant={isExpert ? 'expert' : 'insurance'} />
+            <PortalBottomNav variant={isExpert ? 'expert' : isAssistanceCompanyUser ? 'assistance' : 'insurance'} />
           </>
         ) : null}
           </div>

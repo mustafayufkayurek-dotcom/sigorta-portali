@@ -44,6 +44,13 @@ export class InvoicesController {
       }
       query.insuranceCompanyIds = companyIds;
     }
+    if (this.resolveRoleCode(user) === 'assistance_company_user') {
+      const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
+      if (customerIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+      }
+      query.assistantCustomerIds = customerIds;
+    }
     const result = await this.service.findAll(query);
     return { success: true, ...result };
   }
@@ -57,6 +64,13 @@ export class InvoicesController {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
       const claimCompanyId = (data as { claimFile?: { insuranceCompanyId?: string } })?.claimFile?.insuranceCompanyId;
       if (!companyIds.length || !claimCompanyId || !companyIds.includes(claimCompanyId)) {
+        throw new ForbiddenException('Bu faturaya erişim izniniz bulunmamaktadır');
+      }
+    }
+    if (this.resolveRoleCode(user) === 'assistance_company_user') {
+      const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
+      const claimCustomerId = (data as { claimFile?: { customerId?: string } })?.claimFile?.customerId;
+      if (!customerIds.length || !claimCustomerId || !customerIds.includes(claimCustomerId)) {
         throw new ForbiddenException('Bu faturaya erişim izniniz bulunmamaktadır');
       }
     }

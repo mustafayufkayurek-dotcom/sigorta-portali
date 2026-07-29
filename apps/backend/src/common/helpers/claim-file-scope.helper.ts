@@ -17,6 +17,10 @@ export function isInsuranceCompanyUser(roleCode: string | undefined | null): boo
   return roleCode === 'insurance_company_user';
 }
 
+export function isAssistanceCompanyUser(roleCode: string | undefined | null): boolean {
+  return roleCode === 'assistance_company_user';
+}
+
 export function mergeWhereAnd(...clauses: Array<Record<string, unknown>>): Record<string, unknown> {
   const nonEmpty = clauses.filter((c) => Object.keys(c).length > 0);
   if (nonEmpty.length === 0) return {};
@@ -31,12 +35,18 @@ export function applyClaimFileListScope(
   baseWhere: Record<string, unknown>,
   user?: RequestUser,
   insuranceCompanyIds?: string[],
+  assistantCustomerIds?: string[],
+  expertOfficeCustomerIds?: string[],
 ): Record<string, unknown> {
   const scopes: Array<Record<string, unknown>> = [];
   if (Object.keys(baseWhere).length > 0) scopes.push({ ...baseWhere });
 
   if (insuranceCompanyIds?.length) {
     scopes.push({ insuranceCompanyId: { in: insuranceCompanyIds } });
+  }
+
+  if (assistantCustomerIds?.length) {
+    scopes.push({ customerId: { in: assistantCustomerIds } });
   }
 
   if (user && isFieldStaff(user.roleCode)) {
@@ -50,16 +60,18 @@ export function applyClaimFileListScope(
   }
 
   if (user?.roleCode === 'expert') {
-    const expertScope = {
-      OR: [
-        { assignedAdjusterId: user.id },
-        {
-          sourceChannel: 'expert_portal',
-          repairReports: { some: { createdByUserId: user.id } },
-        },
-      ],
-    };
-    scopes.push(expertScope);
+    const expertOr: Array<Record<string, unknown>> = [
+      { assignedAdjusterId: user.id },
+      {
+        sourceChannel: 'expert_portal',
+        repairReports: { some: { createdByUserId: user.id } },
+      },
+    ];
+    // Gelen kutudan açılan hasar: customerId = ekspertiz firması; eksper kullanıcı firmasına yansır
+    if (expertOfficeCustomerIds?.length) {
+      expertOr.push({ customerId: { in: expertOfficeCustomerIds } });
+    }
+    scopes.push({ OR: expertOr });
   }
 
   return mergeWhereAnd(...scopes);
@@ -69,6 +81,9 @@ type ClaimFileAccessRow = {
   assignedFieldUserId?: string | null;
   closedAt?: Date | null;
   insuranceCompanyId?: string | null;
+  customerId?: string | null;
+  assignedAdjusterId?: string | null;
+  sourceChannel?: string | null;
 };
 
 /**
@@ -78,6 +93,8 @@ export function assertClaimFileAccess(
   claimFile: ClaimFileAccessRow,
   user?: RequestUser,
   insuranceCompanyIds?: string[],
+  assistantCustomerIds?: string[],
+  _expertOfficeCustomerIds?: string[],
 ): void {
   if (!user) return;
 
@@ -86,6 +103,14 @@ export function assertClaimFileAccess(
       throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
     }
   }
+
+  if (isAssistanceCompanyUser(user.roleCode)) {
+    if (!assistantCustomerIds?.length || !assistantCustomerIds.includes(claimFile.customerId ?? '')) {
+      throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+    }
+  }
+
+  // expert erişimi: liste filtresi + findOne özel dalı (ofis / atama / kendi raporu)
 
   if (isFieldStaff(user.roleCode)) {
     if (claimFile.assignedFieldUserId !== user.id) {
@@ -107,8 +132,16 @@ export function assertClaimFileAccess(
 export function buildClaimFileRelationScope(
   user?: RequestUser,
   insuranceCompanyIds?: string[],
+  assistantCustomerIds?: string[],
+  expertOfficeCustomerIds?: string[],
 ): Record<string, unknown> | undefined {
-  const scoped = applyClaimFileListScope({}, user, insuranceCompanyIds);
+  const scoped = applyClaimFileListScope(
+    {},
+    user,
+    insuranceCompanyIds,
+    assistantCustomerIds,
+    expertOfficeCustomerIds,
+  );
   if (Object.keys(scoped).length === 0) return undefined;
   return { claimFile: scoped };
 }

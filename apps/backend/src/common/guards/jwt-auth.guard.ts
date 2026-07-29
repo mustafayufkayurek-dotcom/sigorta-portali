@@ -60,6 +60,7 @@ export class JwtAuthGuard implements CanActivate {
             },
           },
           userInsuranceCompanyScopes: true,
+          userAssistantCustomerScopes: true,
         },
       });
 
@@ -78,6 +79,9 @@ export class JwtAuthGuard implements CanActivate {
         permissions: user.role.rolePermissions.map((rp) => rp.permission.code),
         insuranceCompanyScopes: user.userInsuranceCompanyScopes.map(
           (s) => s.insuranceCompanyId,
+        ),
+        assistantCustomerScopes: user.userAssistantCustomerScopes.map(
+          (s) => s.customerId,
         ),
       };
 

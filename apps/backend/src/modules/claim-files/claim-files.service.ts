@@ -395,6 +395,7 @@ export class ClaimFilesService {
     assignedOfficeUserId?: string;
     assignedAdjusterId?: string;
     insuranceCompanyIds?: string[];
+    assistantCustomerIds?: string[];
     invoiceStatus?: string;
     repairReportStatus?: string;
     dateFrom?: string;
@@ -419,6 +420,9 @@ export class ClaimFilesService {
     }
     if (params?.insuranceCompanyIds?.length) {
       baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
+    }
+    if (params?.assistantCustomerIds?.length) {
+      baseWhere.customerId = { in: params.assistantCustomerIds };
     }
     if (params?.invoiceStatus) {
       if (params.invoiceStatus === 'none') {
@@ -475,10 +479,17 @@ export class ClaimFilesService {
       Object.assign(baseWhere, delegationWhere);
     }
 
+    const expertOfficeCustomerIds =
+      normalizedUser?.roleCode === 'expert'
+        ? await this.getExpertOfficeCustomerIds(normalizedUser.id)
+        : undefined;
+
     const where = applyClaimFileListScope(
       baseWhere,
       requestingUser,
       params?.insuranceCompanyIds,
+      params?.assistantCustomerIds,
+      expertOfficeCustomerIds,
     ) as any;
 
     const orderBy = this.parseSort(params?.sort);
@@ -765,10 +776,14 @@ export class ClaimFilesService {
 
     const normalizedUser = normalizeRequestUser(requestingUser);
     let insuranceCompanyIds: string[] | undefined;
+    let assistantCustomerIds: string[] | undefined;
     if (normalizedUser && normalizedUser.roleCode === 'insurance_company_user') {
       insuranceCompanyIds = await this.getInsuranceScopes(normalizedUser.id);
     }
-    assertClaimFileAccess(claimFile, normalizedUser, insuranceCompanyIds);
+    if (normalizedUser && normalizedUser.roleCode === 'assistance_company_user') {
+      assistantCustomerIds = await this.getAssistantCustomerScopes(normalizedUser.id);
+    }
+    assertClaimFileAccess(claimFile, normalizedUser, insuranceCompanyIds, assistantCustomerIds);
 
     if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
       const assignedId = claimFile.assignedOfficeUserId;
@@ -797,10 +812,14 @@ export class ClaimFilesService {
     }
 
     if (normalizedUser?.roleCode === 'expert') {
+      const officeIds = await this.getExpertOfficeCustomerIds(normalizedUser.id);
+      const viaOffice =
+        Boolean(claimFile.customerId) && officeIds.includes(String(claimFile.customerId));
       const hasExpertAccess =
-        claimFile.assignedAdjusterId === normalizedUser.id ||
-        (claimFile.sourceChannel === 'expert_portal' &&
-          (await this.prisma.repairReport.findFirst({
+        claimFile.assignedAdjusterId === normalizedUser.id
+        || viaOffice
+        || (claimFile.sourceChannel === 'expert_portal'
+          && (await this.prisma.repairReport.findFirst({
             where: { claimFileId: id, createdByUserId: normalizedUser.id },
             select: { id: true },
           })));
@@ -1999,9 +2018,59 @@ export class ClaimFilesService {
     return scopes.map((s) => s.insuranceCompanyId);
   }
 
+  async getAssistantCustomerScopes(userId: string): Promise<string[]> {
+    const scopes = await this.prisma.userAssistantCustomerScope.findMany({
+      where: { userId },
+      select: { customerId: true },
+    });
+    return scopes.map((s) => s.customerId);
+  }
+
+  /**
+   * Eksper kullanıcının bağlı ekspertiz firması müşteri id'leri.
+   * Gelen kutudan açılan hasarlarda customerId = ekspertiz firması olur.
+   */
+  async getExpertOfficeCustomerIds(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        adjuster: { select: { company: true, email: true } },
+      },
+    });
+    if (!user) return [];
+
+    const company = user.adjuster?.company?.trim();
+    const emails = [user.email, user.adjuster?.email]
+      .map((e) => e?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e));
+
+    const or: Array<Record<string, unknown>> = [];
+    if (company) {
+      or.push({ companyName: { equals: company, mode: 'insensitive' } });
+      or.push({ fullName: { equals: company, mode: 'insensitive' } });
+    }
+    for (const email of emails) {
+      or.push({ email: { equals: email, mode: 'insensitive' } });
+    }
+    if (!or.length) return [];
+
+    const rows = await this.prisma.customer.findMany({
+      where: {
+        status: 'active',
+        entityType: 'corporate',
+        subType: { in: ['eksper_firmasi', 'eksper'] },
+        OR: or,
+      },
+      select: { id: true },
+      take: 20,
+    });
+    return rows.map((r) => r.id);
+  }
+
   /**
    * Sigorta / asistans portalı Canlı İzle — pin + dosya özeti alanları.
-   * Kapsam JWT / insuranceCompanyIds ile sınırlanır.
+   * Kapsam JWT / insuranceCompanyIds / assistantCustomerIds ile sınırlanır.
    */
   async getLiveMap(
     params: {
@@ -2010,6 +2079,7 @@ export class ClaimFilesService {
       statusGroup?: string;
       assignedOfficeUserId?: string;
       insuranceCompanyIds?: string[];
+      assistantCustomerIds?: string[];
       limit?: number;
     },
     requestingUser?: { id: string; roleCode?: string | null },
@@ -2021,6 +2091,9 @@ export class ClaimFilesService {
 
     if (params?.insuranceCompanyIds?.length) {
       baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
+    }
+    if (params?.assistantCustomerIds?.length) {
+      baseWhere.customerId = { in: params.assistantCustomerIds };
     }
     if (params?.claimSubjectId?.trim()) {
       baseWhere.claimSubjectId = params.claimSubjectId.trim();
@@ -2054,6 +2127,7 @@ export class ClaimFilesService {
       baseWhere,
       normalizeRequestUser(requestingUser),
       params?.insuranceCompanyIds,
+      params?.assistantCustomerIds,
     ) as any;
 
     const rows = await this.prisma.claimFile.findMany({

@@ -374,6 +374,51 @@ export class ExternalApprovalsService {
     return { data };
   }
 
+  async listPendingForAssistantCustomers(customerIds: string[], includeExpired = false) {
+    if (!customerIds.length) return { data: [] };
+
+    await this.prisma.externalApproval.updateMany({
+      where: { status: 'pending', expiresAt: { lt: new Date() } },
+      data: { status: 'expired' },
+    });
+
+    const data = await this.prisma.externalApproval.findMany({
+      where: {
+        status: includeExpired ? { in: ['pending', 'expired'] } : 'pending',
+        report: {
+          claimFile: {
+            customerId: { in: customerIds },
+          },
+        },
+      },
+      include: {
+        report: {
+          select: {
+            id: true,
+            reportNo: true,
+            status: true,
+            versionNo: true,
+            totalSalesAmount: true,
+            claimFile: {
+              select: {
+                id: true,
+                fileNo: true,
+                lossType: true,
+                claimSubject: { select: { name: true } },
+                insuranceCompany: { select: { name: true } },
+                customer: { select: { companyName: true, fullName: true } },
+              },
+            },
+          },
+        },
+        sentBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { sentAt: 'desc' },
+    });
+
+    return { data };
+  }
+
   async listPending(approverType?: string, approverId?: string, includeExpired = false) {
     const baseWhere: Record<string, unknown> = {};
     if (approverType) baseWhere['approverType'] = approverType;

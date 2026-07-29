@@ -12,6 +12,7 @@ import {
   type PortalActivityRange,
 } from '@/utils/portal-weekly-activity';
 import {
+  buildDosyaKonusuStats,
   buildInsuranceBranchStats,
   filterInsuranceFilesByDimensions,
   insuranceBranchOf,
@@ -20,7 +21,8 @@ import {
   type InsuranceClaimLike,
   type InsuranceNamedCountStat,
 } from '@/utils/insurance-portal-monitoring';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
+import { fetchAcilDosyaKonusuCatalog } from '@/utils/portal-api';
 
 type TrackOpt = 'expert_monitor' | 'direct_process';
 
@@ -28,9 +30,11 @@ type InsuranceDetailedStatsModalProps = {
   open: boolean;
   onClose: () => void;
   files: InsuranceClaimLike[];
+  /** Asistans portalı: yalnız Acil Yardım; kanal / eksper filtresi yok */
+  variant?: 'insurance' | 'assistance';
 };
 
-const TRACK_OPTS = [
+const TRACK_OPTS_INSURANCE = [
   { id: 'expert_monitor' as const, label: 'Eksper İhbarlı' },
   { id: 'direct_process' as const, label: 'Departman İhbarlı' },
 ] as const;
@@ -110,10 +114,13 @@ function FilterColumn({
 function BranchResultTable({
   rows,
   emptyText,
+  variant = 'insurance',
 }: {
   rows: InsuranceNamedCountStat[];
   emptyText: string;
+  variant?: 'insurance' | 'assistance';
 }) {
+  const isAssistance = variant === 'assistance';
   const maxTotal = Math.max(1, ...rows.map((r) => r.total));
   if (rows.length === 0) {
     return (
@@ -122,24 +129,24 @@ function BranchResultTable({
       </div>
     );
   }
+  const gridClass = isAssistance
+    ? 'grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_repeat(2,minmax(0,0.7fr))] gap-2'
+    : 'grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))] gap-2';
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200">
       <div className="min-w-[480px]">
-        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))] gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500">
-          <span>Branş / Konu</span>
+        <div className={`${gridClass} border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500`}>
+          <span>{isAssistance ? 'Dosya Konusu' : 'Branş / Konu'}</span>
           <span>Dağılım</span>
           <span className="text-right">Toplam</span>
           <span className="text-right">Açık</span>
-          <span className="text-right">Onarım</span>
+          {!isAssistance ? <span className="text-right">Onarım</span> : null}
         </div>
         <ul className="divide-y divide-slate-100">
           {rows.map((row) => {
             const widthPct = Math.max(6, Math.round((row.total / maxTotal) * 100));
             return (
-              <li
-                key={row.label}
-                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))] items-center gap-2 px-3 py-2.5"
-              >
+              <li key={row.label} className={`${gridClass} items-center px-3 py-2.5`}>
                 <span className="truncate text-sm font-semibold text-slate-800">
                   {toTitleCaseTR(row.label)}
                 </span>
@@ -150,7 +157,9 @@ function BranchResultTable({
                 </div>
                 <span className="text-right text-sm font-semibold tabular-nums text-slate-800">{row.total}</span>
                 <span className="text-right text-sm tabular-nums text-slate-600">{row.open}</span>
-                <span className="text-right text-sm tabular-nums text-slate-600">{row.repair}</span>
+                {!isAssistance ? (
+                  <span className="text-right text-sm tabular-nums text-slate-600">{row.repair}</span>
+                ) : null}
               </li>
             );
           })}
@@ -167,10 +176,14 @@ export function InsuranceDetailedStatsModal({
   open,
   onClose,
   files,
+  variant = 'insurance',
 }: InsuranceDetailedStatsModalProps) {
+  const isAssistance = variant === 'assistance';
+  const trackOpts = TRACK_OPTS_INSURANCE;
   const [tracks, setTracks] = useState<TrackOpt[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [experts, setExperts] = useState<string[]>([]);
+  const [acilCatalog, setAcilCatalog] = useState<string[]>([]);
   const [activityRange, setActivityRange] = useState<PortalActivityRange>({
     kind: 'last_days',
     days: 7,
@@ -184,6 +197,21 @@ export function InsuranceDetailedStatsModal({
     setExperts([]);
     setActivityRange({ kind: 'last_days', days: 7 });
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !isAssistance) return;
+    let cancelled = false;
+    fetchAcilDosyaKonusuCatalog()
+      .then((names) => {
+        if (!cancelled) setAcilCatalog(names);
+      })
+      .catch(() => {
+        if (!cancelled) setAcilCatalog([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAssistance]);
 
   useEffect(() => {
     if (!open) return;
@@ -204,8 +232,8 @@ export function InsuranceDetailedStatsModal({
     [scopedByTrack],
   );
   const expertOptions = useMemo(
-    () => uniqueSorted(scopedByTrack.map((f) => insuranceExpertOf(f))),
-    [scopedByTrack],
+    () => (isAssistance ? [] : uniqueSorted(scopedByTrack.map((f) => insuranceExpertOf(f)))),
+    [scopedByTrack, isAssistance],
   );
 
   const filtered = useMemo(
@@ -213,12 +241,25 @@ export function InsuranceDetailedStatsModal({
       filterInsuranceFilesByDimensions(files, {
         tracks,
         cities,
-        experts,
+        experts: isAssistance ? [] : experts,
       }),
-    [files, tracks, cities, experts],
+    [files, tracks, cities, experts, isAssistance],
   );
 
-  const branchRows = useMemo(() => buildInsuranceBranchStats(filtered), [filtered]);
+  const branchRows = useMemo(() => {
+    if (!isAssistance) return buildInsuranceBranchStats(filtered);
+    return buildDosyaKonusuStats(filtered, acilCatalog, (file, catalog) => {
+      const label = resolveClaimDosyaKonusu(
+        {
+          lossType: file.lossType,
+          productBranch: file.productBranch,
+          claimSubject: file.claimSubject,
+        },
+        catalog,
+      );
+      return label === '—' ? 'Belirtilmemiş' : label;
+    });
+  }, [filtered, isAssistance, acilCatalog]);
   const branchChartData = useMemo(
     () =>
       branchRows.map((r) => ({
@@ -237,16 +278,21 @@ export function InsuranceDetailedStatsModal({
 
   const selectionSummary = useMemo(() => {
     const parts: string[] = [];
-    if (tracks.length === 0) parts.push('Toplam Portföy');
-    else {
+    if (isAssistance) {
+      parts.push('Acil Yardım');
+    } else if (tracks.length === 0) {
+      parts.push('Toplam Portföy');
+    } else {
       if (tracks.includes('expert_monitor')) parts.push('Eksper İhbarlı');
       if (tracks.includes('direct_process')) parts.push('Departman İhbarlı');
     }
     if (cities.length > 0) parts.push(`İl: ${cities.map((c) => toTitleCaseTR(c)).join(', ')}`);
-    if (experts.length > 0) parts.push(`Eksper: ${experts.map((e) => toTitleCaseTR(e)).join(', ')}`);
+    if (!isAssistance && experts.length > 0) {
+      parts.push(`Eksper: ${experts.map((e) => toTitleCaseTR(e)).join(', ')}`);
+    }
     parts.push(activityRangeLabel);
     return parts.join(' · ');
-  }, [tracks, cities, experts, activityRangeLabel]);
+  }, [tracks, cities, experts, activityRangeLabel, isAssistance]);
 
   const handlePrint = () => {
     const node = printRef.current;
@@ -312,7 +358,9 @@ export function InsuranceDetailedStatsModal({
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-900">Detaylı İstatistik</h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              İl, eksper ve dönem seçerek branş kırılımı ile dosya hareketini görün.
+              {isAssistance
+                ? 'İl ve dönem seçerek dosya konusu kırılımı ile dosya hareketini görün.'
+                : 'İl, eksper ve dönem seçerek branş kırılımı ile dosya hareketini görün.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -337,18 +385,22 @@ export function InsuranceDetailedStatsModal({
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3.5">
           {/* Çoklu seçimler yan yana — grafik alanını ezmesin */}
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <FilterColumn title="Kanal (Çoklu Seçim)">
-              <Chip label="Toplam" active={tracks.length === 0} onClick={() => setTracks([])} />
-              {TRACK_OPTS.map((opt) => (
-                <Chip
-                  key={opt.id}
-                  label={opt.label}
-                  active={tracks.includes(opt.id)}
-                  onClick={() => setTracks((prev) => toggleTrack(prev, opt.id))}
-                />
-              ))}
-            </FilterColumn>
+          <div
+            className={`grid grid-cols-1 gap-2 ${isAssistance ? 'md:grid-cols-1' : 'md:grid-cols-3'}`}
+          >
+            {!isAssistance ? (
+              <FilterColumn title="Kanal (Çoklu Seçim)">
+                <Chip label="Toplam" active={tracks.length === 0} onClick={() => setTracks([])} />
+                {trackOpts.map((opt) => (
+                  <Chip
+                    key={opt.id}
+                    label={opt.label}
+                    active={tracks.includes(opt.id)}
+                    onClick={() => setTracks((prev) => toggleTrack(prev, opt.id))}
+                  />
+                ))}
+              </FilterColumn>
+            ) : null}
 
             <FilterColumn
               title="İl (Çoklu Seçim)"
@@ -368,25 +420,27 @@ export function InsuranceDetailedStatsModal({
               )}
             </FilterColumn>
 
-            <FilterColumn
-              title="Eksper (Çoklu Seçim)"
-              onClear={experts.length > 0 ? () => setExperts([]) : undefined}
-            >
-              {expertOptions.length === 0 ? (
-                <p className="text-xs text-slate-400">Eksper kaydı yok</p>
-              ) : (
-                expertOptions.map((expert) => (
-                  <Chip
-                    key={expert}
-                    label={toTitleCaseTR(expert)}
-                    active={experts.some(
-                      (e) => e.toLocaleLowerCase('tr-TR') === expert.toLocaleLowerCase('tr-TR'),
-                    )}
-                    onClick={() => setExperts((prev) => toggleLabel(prev, expert))}
-                  />
-                ))
-              )}
-            </FilterColumn>
+            {!isAssistance ? (
+              <FilterColumn
+                title="Eksper (Çoklu Seçim)"
+                onClear={experts.length > 0 ? () => setExperts([]) : undefined}
+              >
+                {expertOptions.length === 0 ? (
+                  <p className="text-xs text-slate-400">Eksper kaydı yok</p>
+                ) : (
+                  expertOptions.map((expert) => (
+                    <Chip
+                      key={expert}
+                      label={toTitleCaseTR(expert)}
+                      active={experts.some(
+                        (e) => e.toLocaleLowerCase('tr-TR') === expert.toLocaleLowerCase('tr-TR'),
+                      )}
+                      onClick={() => setExperts((prev) => toggleLabel(prev, expert))}
+                    />
+                  ))
+                )}
+              </FilterColumn>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
@@ -401,9 +455,13 @@ export function InsuranceDetailedStatsModal({
           {/* Grafikler önde — Dosya Sorumlusu dilinde */}
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             <PortalBreakdownBarCard
-              title="Branş Dağılımı"
+              title={isAssistance ? 'Dosya Konusu Dağılımı' : 'Branş Dağılımı'}
               data={branchChartData}
-              emptyText="Seçime uyan branş dağılımı yok."
+              emptyText={
+                isAssistance
+                  ? 'Seçime uyan dosya konusu dağılımı yok.'
+                  : 'Seçime uyan branş dağılımı yok.'
+              }
             />
             <PortalWeeklyTrendCard
               title={`Dosya Hareketi · ${activityRangeLabel}`}
@@ -487,13 +545,22 @@ export function InsuranceDetailedStatsModal({
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-900">Branş Kırılımı</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {isAssistance ? 'Dosya Konusu Kırılımı' : 'Branş Kırılımı'}
+            </h3>
             <p className="text-xs text-slate-500">
-              Seçilen il ve eksper kesişiminde branş / konu sayıları.
+              {isAssistance
+                ? 'Seçilen il kesişiminde dosya konusu sayıları.'
+                : 'Seçilen il ve eksper kesişiminde branş / konu sayıları.'}
             </p>
             <BranchResultTable
               rows={branchRows}
-              emptyText="Seçime uyan dosya yok. İl veya eksper seçimini değiştirin."
+              variant={isAssistance ? 'assistance' : 'insurance'}
+              emptyText={
+                isAssistance
+                  ? 'Seçime uyan dosya yok. İl seçimini değiştirin.'
+                  : 'Seçime uyan dosya yok. İl veya eksper seçimini değiştirin.'
+              }
             />
           </div>
         </div>
@@ -502,14 +569,14 @@ export function InsuranceDetailedStatsModal({
           <h1>Detaylı İstatistik</h1>
           <p>{selectionSummary}</p>
           <p>Eşleşen dosya: {filtered.length}</p>
-          <h2>Branş Kırılımı</h2>
+          <h2>{isAssistance ? 'Dosya Konusu Kırılımı' : 'Branş Kırılımı'}</h2>
           <table>
             <thead>
               <tr>
-                <th>Branş</th>
+                <th>{isAssistance ? 'Dosya Konusu' : 'Branş'}</th>
                 <th className="num">Toplam</th>
                 <th className="num">Açık</th>
-                <th className="num">Onarım</th>
+                {!isAssistance ? <th className="num">Onarım</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -518,7 +585,7 @@ export function InsuranceDetailedStatsModal({
                   <td>{toTitleCaseTR(r.label)}</td>
                   <td className="num">{r.total}</td>
                   <td className="num">{r.open}</td>
-                  <td className="num">{r.repair}</td>
+                  {!isAssistance ? <td className="num">{r.repair}</td> : null}
                 </tr>
               ))}
             </tbody>
@@ -529,8 +596,8 @@ export function InsuranceDetailedStatsModal({
               <tr>
                 <th>Dosya</th>
                 <th>İl</th>
-                <th>Eksper</th>
-                <th>Branş</th>
+                {!isAssistance ? <th>Eksper</th> : null}
+                <th>{isAssistance ? 'Dosya Konusu' : 'Branş'}</th>
               </tr>
             </thead>
             <tbody>
@@ -538,8 +605,21 @@ export function InsuranceDetailedStatsModal({
                 <tr key={f.id}>
                   <td>{f.fileNo ?? f.fileNumber ?? '—'}</td>
                   <td>{toTitleCaseTR(insuranceCityOf(f))}</td>
-                  <td>{toTitleCaseTR(insuranceExpertOf(f))}</td>
-                  <td>{toTitleCaseTR(insuranceBranchOf(f))}</td>
+                  {!isAssistance ? <td>{toTitleCaseTR(insuranceExpertOf(f))}</td> : null}
+                  <td>
+                    {toTitleCaseTR(
+                      isAssistance
+                        ? resolveClaimDosyaKonusu(
+                            {
+                              lossType: f.lossType,
+                              productBranch: f.productBranch,
+                              claimSubject: f.claimSubject,
+                            },
+                            acilCatalog,
+                          )
+                        : insuranceBranchOf(f),
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

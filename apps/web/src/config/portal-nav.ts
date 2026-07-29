@@ -84,6 +84,26 @@ export function getInsurancePortalNav(counts?: InsurancePortalNavCounts): Portal
   ];
 }
 
+export type AssistancePortalNavCounts = {
+  onay?: number;
+};
+
+/** Asistans — Operasyon Ağı yok; yalnız Acil Yardım. */
+export function getAssistancePortalNav(counts?: AssistancePortalNavCounts): PortalNavItem[] {
+  return [
+    { title: 'Dosya Takip', href: '/panel/asistans-portal', icon: Building2, exactMatch: true },
+    { title: 'Dosyalar', href: '/panel/asistans-portal/dosyalar', icon: ClipboardList },
+    {
+      title: 'Bekleyen Onaylar',
+      href: '/panel/asistans-portal/onaylar',
+      icon: ShieldCheck,
+      alertCount: counts?.onay,
+    },
+    { title: 'Canlı İzle', href: '/panel/asistans-portal/canli-izle', icon: MapPin },
+    { title: 'Faturalar', href: '/panel/asistans-portal/faturalar', icon: FileText },
+  ];
+}
+
 /** Mobil alt çubuk — kısa etiketler */
 export const PORTAL_BOTTOM_SHORT_LABELS: Record<string, string> = {
   'Eksper Paneli': 'Panel',

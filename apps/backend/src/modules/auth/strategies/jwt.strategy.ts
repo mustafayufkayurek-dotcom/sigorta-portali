@@ -33,6 +33,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         userInsuranceCompanyScopes: {
           select: { insuranceCompanyId: true },
         },
+        userAssistantCustomerScopes: {
+          select: { customerId: true },
+        },
       },
     });
     return {
@@ -43,6 +46,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       permissions: user?.role?.rolePermissions?.map((rp) => rp.permission.code) || [],
       insuranceCompanyScopes:
         user?.userInsuranceCompanyScopes?.map((s) => s.insuranceCompanyId) ?? [],
+      assistantCustomerScopes:
+        user?.userAssistantCustomerScopes?.map((s) => s.customerId) ?? [],
     };
   }
 }

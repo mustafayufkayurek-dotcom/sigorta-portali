@@ -118,6 +118,7 @@ model User {
 
   managedBranches            Branch[]                    @relation("BranchManager")
   userInsuranceCompanyScopes UserInsuranceCompanyScope[]
+  userAssistantCustomerScopes UserAssistantCustomerScope[]
   assignedFieldClaimFiles    ClaimFile[]                 @relation("AssignedFieldUser")
   assignedOfficeClaimFiles   ClaimFile[]                 @relation("AssignedOfficeUser")
   assignedAdjusterClaimFiles ClaimFile[]                 @relation("AssignedAdjuster")
@@ -233,6 +234,20 @@ model UserInsuranceCompanyScope {
 
   @@unique([userId, insuranceCompanyId])
   @@map("user_insurance_company_scopes")
+}
+
+model UserAssistantCustomerScope {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  customerId String   @map("customer_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, customerId])
+  @@index([customerId])
+  @@map("user_assistant_customer_scopes")
 }
 
 model RefreshToken {
@@ -554,6 +569,7 @@ model Customer {
   accessLogs   CustomerAccessLog[]
   expertReports RepairReport[]     @relation("ExpertOfficeReports")
   emergencyCases EmergencyCase[]   @relation("EmergencyCustomer")
+  assistantUserScopes UserAssistantCustomerScope[]
 
   @@map("customers")
 }

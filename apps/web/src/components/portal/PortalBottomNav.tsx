@@ -5,17 +5,23 @@ import { usePathname } from 'next/navigation';
 import {
   getExpertPortalNav,
   getInsurancePortalNav,
+  getAssistancePortalNav,
   isPortalNavActive,
   PORTAL_BOTTOM_SHORT_LABELS,
 } from '@/config/portal-nav';
 
 type PortalBottomNavProps = {
-  variant: 'expert' | 'insurance';
+  variant: 'expert' | 'insurance' | 'assistance';
 };
 
 export default function PortalBottomNav({ variant }: PortalBottomNavProps) {
   const pathname = usePathname();
-  const links = variant === 'expert' ? getExpertPortalNav() : getInsurancePortalNav();
+  const links =
+    variant === 'expert'
+      ? getExpertPortalNav()
+      : variant === 'assistance'
+        ? getAssistancePortalNav()
+        : getInsurancePortalNav();
 
   return (
     <nav

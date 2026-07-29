@@ -1,0 +1,41 @@
+---
+description: Müşteri portal ekranları — tek tip iskelet (sigorta referans); yeni tarz yasak
+globs: apps/web/src/app/panel/**/page.tsx
+alwaysApply: true
+---
+
+# Müşteri Portal — Tek Tip Tasarım (kilitli)
+
+**Kaynak (Mustafa):** Yazılım tarzı değişmesin. İçerikte aynı anlamı taşıyan tasarım korunsun. Yeni layout icat etme.
+
+## Referans
+
+Onaylı müşteri iskeleti: `apps/web/src/app/panel/sigorta-portal/page.tsx` ve `.../dosyalar/page.tsx`.
+
+Asistans / benzer müşteri portalları bu iskelete hizalanır. Eksper home farklı ürün kabuğudur; asistansta eksper düzeni kopyalama.
+
+## Dosya Takip (portal ana)
+
+```
+KPI bandı
+Orta bant: xl:grid-cols-2
+  Sol → Güncel Hareketler (max-h + iç scroll, satır tık → sağ drawer)
+  Sağ → Öncelik kuyrukları (sm:grid-cols-2)
+Göstergeler → orta bandın ALTINDA, tam genişlik (PortalWeeklyTrendCard compact)
+```
+
+### Yasak
+
+- Grafiği orta banda yan yana gömmek (`xl:grid-cols-12` vb.) — referanstan sapma
+- Güncel Hareketler + kuyrukları tek kutuda dikey yığıp yeni kompozisyon üretmek
+- Inline alt panel / kart özeti ile dosya detayı göstermek
+
+## Dosyalar listesi
+
+- Satır / dosya no / Eye → `openDrawer` → `ExpertFileDetailDrawer` (sağdan)
+- `audience="insurance"` (müşteri portalları), `canUploadDocuments={false}` gerektiğinde
+- Inline `<aside>Dosya Özeti` yasak
+
+## Durdurma
+
+Referanstan farklı bir “daha iyi ekran hakimiyeti” düzeni aklına gelirse uygula **değil** — önce Mustafa onayı.

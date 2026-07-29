@@ -46,6 +46,7 @@ export class ExternalApprovalsController {
       userId?: string;
       roleCode?: string;
       insuranceCompanyScopes?: string[];
+      assistantCustomerScopes?: string[];
     },
   ) {
     const role = user?.roleCode?.toLowerCase();
@@ -53,6 +54,12 @@ export class ExternalApprovalsController {
     if (role === 'insurance_company_user' && user?.insuranceCompanyScopes?.length) {
       return this.service.listPendingForInsuranceCompanies(
         user.insuranceCompanyScopes,
+        includeExpired === 'true',
+      );
+    }
+    if (role === 'assistance_company_user' && user?.assistantCustomerScopes?.length) {
+      return this.service.listPendingForAssistantCustomers(
+        user.assistantCustomerScopes,
         includeExpired === 'true',
       );
     }

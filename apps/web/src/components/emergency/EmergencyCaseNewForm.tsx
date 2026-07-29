@@ -135,12 +135,23 @@ export type EmergencyCaseNewFormProps = {
   variant?: 'panel' | 'page';
   onSuccess: (caseId: string) => void;
   onCancel: () => void;
+  /** Portal: asistan firması sabit — seçim / yeni firma UI gizlenir */
+  lockedCustomerId?: string;
+  lockedCustomerName?: string;
 };
 
-export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: EmergencyCaseNewFormProps) {
+export function EmergencyCaseNewForm({
+  variant = 'page',
+  onSuccess,
+  onCancel,
+  lockedCustomerId,
+  lockedCustomerName,
+}: EmergencyCaseNewFormProps) {
   const isPanel = variant === 'panel';
+  const isCustomerLocked = Boolean(lockedCustomerId);
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
+  const issueTypeLabel = isCustomerLocked ? 'Dosya Konusu' : 'İhbar Konusu';
 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -224,14 +235,14 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
 
   const loadLookups = useCallback(async () => {
     try {
-      const [subjectsRes, vendorsRes, usersRes] = await Promise.all([
-        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
-          reportCaughtError(err, 'Acil konular yüklenemedi. Varsayılan liste kullanılıyor.', { toastType: 'warning' });
+      const subjectsRes = await axios
+        .get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() })
+        .catch((err) => {
+          reportCaughtError(err, 'Acil konular yüklenemedi. Varsayılan liste kullanılıyor.', {
+            toastType: 'warning',
+          });
           return null;
-        }),
-        getEmergencyVendors(),
-        axios.get(`${API}/users`, { headers: authHeader(), params: { limit: 100 } }),
-      ]);
+        });
       const subjectData = subjectsRes?.data?.data;
       const acil = Array.isArray(subjectData?.acil) ? subjectData.acil : [];
       const normalized = (acil.length > 0 ? acil : FALLBACK_ISSUE_TYPES)
@@ -242,6 +253,19 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
         .filter(Boolean);
       setIssueTypes(normalized);
       setSubjectsLoadFailed(!subjectsRes);
+
+      if (isCustomerLocked) {
+        setVendors([]);
+        setUsers([]);
+        return;
+      }
+
+      const [vendorsRes, usersRes] = await Promise.all([
+        getEmergencyVendors(),
+        axios
+          .get(`${API}/users`, { headers: authHeader(), params: { limit: 100 } })
+          .catch(() => ({ data: { data: [] } })),
+      ]);
       setVendors(vendorsRes.data ?? []);
       setUsers((usersRes.data?.data ?? []) as PanelUser[]);
     } catch (e) {
@@ -249,9 +273,24 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
       setIssueTypes(FALLBACK_ISSUE_TYPES);
       setSubjectsLoadFailed(true);
     }
-  }, []);
+  }, [isCustomerLocked]);
 
   useEffect(() => { void loadLookups(); }, [loadLookups]);
+
+  useEffect(() => {
+    if (!lockedCustomerId) return;
+    setSelectedCustomer({
+      id: lockedCustomerId,
+      type: 'corporate',
+      fullName: null,
+      companyName: lockedCustomerName?.trim() || 'Asistan Firması',
+      identityNo: null,
+      taxNumber: null,
+      phone: null,
+    });
+    setShowNewCustomerForm(false);
+    setCustomerSearch('');
+  }, [lockedCustomerId, lockedCustomerName]);
 
   const loadCustomerFileOrdinal = useCallback(async (customerId: string) => {
     setCustomerFileOrdinalLoading(true);
@@ -362,15 +401,19 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!selectedCustomer && !showNewCustomerForm) errs.assistant = 'Asistan Firması Seçiniz.';
-    if (showNewCustomerForm) {
-      if (!newCustomerCompanyName.trim()) errs.assistant = 'Şirket adı zorunludur.';
-      if (phoneDupError) errs.assistant = phoneDupError;
+    if (!isCustomerLocked) {
+      if (!selectedCustomer && !showNewCustomerForm) errs.assistant = 'Asistan Firması Seçiniz.';
+      if (showNewCustomerForm) {
+        if (!newCustomerCompanyName.trim()) errs.assistant = 'Şirket adı zorunludur.';
+        if (phoneDupError) errs.assistant = phoneDupError;
+      }
+    } else if (!selectedCustomer?.id) {
+      errs.assistant = 'Asistan firma kapsamı bulunamadı.';
     }
     if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
     if (fileNoError) errs.fileNo = fileNoError;
     if (!isPanel && !fileDate) errs.fileDate = 'Dosya tarihi zorunludur.';
-    if (!issueType) errs.issueType = 'İhbar konusu seçiniz.';
+    if (!issueType) errs.issueType = `${issueTypeLabel} seçiniz.`;
     if (!insuredName.trim()) errs.insuredName = 'Sigortalı adı soyadı zorunludur.';
     if (!address.trim()) errs.address = 'Adres zorunludur.';
     if (!findingsText.trim()) errs.findingsText = 'Tespit Bulguları zorunludur.';
@@ -389,9 +432,11 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
     setSaving(true);
     setErrors((prev) => ({ ...prev, general: '' }));
     try {
-      let customerId = selectedCustomer?.id ?? '';
+      let customerId = isCustomerLocked
+        ? (lockedCustomerId as string)
+        : (selectedCustomer?.id ?? '');
 
-      if (showNewCustomerForm) {
+      if (showNewCustomerForm && !isCustomerLocked) {
         const cRes = await axios.post(`${API}/customers`, {
           type: 'corporate',
           subType: ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
@@ -438,7 +483,14 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
     <>
       {errors.assistant && <p className="text-xs text-status-danger mb-2">{errors.assistant}</p>}
 
-      {selectedCustomer && !showNewCustomerForm ? (
+      {isCustomerLocked && selectedCustomer ? (
+        <div className="flex items-center gap-3 text-sm rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="font-medium text-slate-800 truncate">{assistantDisplayName(selectedCustomer)}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Asistan Firması · Hesabınıza bağlı</p>
+          </div>
+        </div>
+      ) : selectedCustomer && !showNewCustomerForm ? (
         <div className="flex items-center justify-between gap-3 text-sm rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
           <div className="min-w-0">
             <p className="font-medium text-slate-800 truncate">{assistantDisplayName(selectedCustomer)}</p>
@@ -577,7 +629,7 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
           {errors.insuredName && <p className="text-xs text-status-danger mt-0.5">{errors.insuredName}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>İhbar Konusu <span className="text-status-danger">*</span></label>
+          <label className={label}>{issueTypeLabel} <span className="text-status-danger">*</span></label>
           <select className={`${field} ${errors.issueType ? 'border-red-400' : ''}`} value={issueType} onChange={(e) => setIssueType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {issueTypes.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -779,7 +831,9 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
     <div className="space-y-2">
       {asistansSection}
       <div className="border-t border-slate-100 pt-2">{dosyaSection}</div>
-      <div className="border-t border-slate-100 pt-2">{atamaSection}</div>
+      {!isCustomerLocked ? (
+        <div className="border-t border-slate-100 pt-2">{atamaSection}</div>
+      ) : null}
     </div>
   );
 
@@ -806,15 +860,17 @@ export function EmergencyCaseNewForm({ variant = 'page', onSuccess, onCancel }: 
         {dosyaSection}
       </CollapsibleFormPanel>
 
-      <CollapsibleFormPanel
-        title="Atama"
-        hint="Saha tedarikçisi ve dosya sorumlusu"
-        open={openSections.atama}
-        onToggle={() => toggleSection('atama')}
-        summary={atamaSummary}
-      >
-        {atamaSection}
-      </CollapsibleFormPanel>
+      {!isCustomerLocked ? (
+        <CollapsibleFormPanel
+          title="Atama"
+          hint="Saha tedarikçisi ve dosya sorumlusu"
+          open={openSections.atama}
+          onToggle={() => toggleSection('atama')}
+          summary={atamaSummary}
+        >
+          {atamaSection}
+        </CollapsibleFormPanel>
+      ) : null}
     </>
   );
 

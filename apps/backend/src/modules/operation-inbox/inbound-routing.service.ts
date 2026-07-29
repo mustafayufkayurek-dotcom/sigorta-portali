@@ -710,8 +710,12 @@ export class InboundRoutingService {
 
   private async resolveAssistantCustomer(fromAddress: string): Promise<CustomerMatchResult> {
     const addr = fromAddress?.trim().toLowerCase() ?? '';
-    if (!addr) return { status: 'not_found' };
+    if (!addr || !addr.includes('@')) return { status: 'not_found' };
 
+    const domain = addr.split('@')[1]?.trim();
+    if (!domain) return { status: 'not_found' };
+
+    // 1) Bilinen domain profilleri (hızlı yol)
     const REMED_TAX = '7340735275';
     const profiles: Array<{ match: (a: string) => boolean; taxNumber?: string; nameHint?: string }> = [
       { match: (a) => a.includes('remed.com'), taxNumber: REMED_TAX, nameHint: 'Remed' },
@@ -739,28 +743,63 @@ export class InboundRoutingService {
         select: { id: true, companyName: true, fullName: true },
         take: 5,
       });
-      if (rows.length === 1) {
-        const row = rows[0];
-        return {
-          status: 'found',
-          customer: {
-            id: row.id,
-            name: row.companyName ?? row.fullName ?? 'Asistan Firması',
-          },
-        };
-      }
-      if (rows.length > 1) {
-        return {
-          status: 'ambiguous',
-          candidates: rows.map((row) => ({
-            id: row.id,
-            name: row.companyName ?? row.fullName ?? 'Asistan Firması',
-          })),
-        };
-      }
+      const mapped = this.mapAssistantCustomerRows(rows);
+      if (mapped) return mapped;
     }
 
+    // 2) CRM e-posta / kontak e-posta (tam adres veya aynı domain)
+    const byEmail = await this.prisma.customer.findMany({
+      where: {
+        entityType: 'corporate',
+        subType: 'asistan_firmasi',
+        status: 'active',
+        OR: [
+          { email: { equals: addr, mode: 'insensitive' } },
+          { email: { endsWith: `@${domain}`, mode: 'insensitive' } },
+          {
+            contacts: {
+              some: {
+                OR: [
+                  { email: { equals: addr, mode: 'insensitive' } },
+                  { email: { endsWith: `@${domain}`, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true, companyName: true, fullName: true },
+      take: 5,
+    });
+    const mappedEmail = this.mapAssistantCustomerRows(byEmail);
+    if (mappedEmail) return mappedEmail;
+
     return { status: 'not_found' };
+  }
+
+  private mapAssistantCustomerRows(
+    rows: Array<{ id: string; companyName: string | null; fullName: string | null }>,
+  ): CustomerMatchResult | null {
+    if (rows.length === 1) {
+      const row = rows[0];
+      return {
+        status: 'found',
+        customer: {
+          id: row.id,
+          name: row.companyName ?? row.fullName ?? 'Asistan Firması',
+        },
+      };
+    }
+    if (rows.length > 1) {
+      return {
+        status: 'ambiguous',
+        candidates: rows.map((row) => ({
+          id: row.id,
+          name: row.companyName ?? row.fullName ?? 'Asistan Firması',
+        })),
+      };
+    }
+    return null;
   }
 
   private emptySuggestion(): InboundRoutingSuggestion {

@@ -58,6 +58,7 @@ const PROTECTED_SYSTEM_EMAILS = new Set([
 
 const HASAR_EXPERT_CUSTOMER_SUB_TYPES = new Set(['eksper_firmasi', 'eksper']);
 const BROKER_CUSTOMER_SUB_TYPE = 'broker_firmasi';
+const ASSISTANT_CUSTOMER_SUB_TYPE = 'asistan_firmasi';
 
 type WelcomeOrgParams = {
   roleCode?: string | null;
@@ -72,6 +73,7 @@ type InvitePortalContext = {
   expertCustomerId?: string | null;
   brokerCustomerId?: string | null;
   insuranceCompanyIds?: string[] | null;
+  assistantCustomerIds?: string[] | null;
 };
 
 @Injectable()
@@ -241,12 +243,18 @@ export class UsersService {
       responsibilityAssignments,
       serviceAreas,
       insuranceCompanyIds,
+      assistantCustomerIds,
       expertCustomerId,
       brokerCustomerId,
       ...rest
     } = data;
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
-    await this.validatePortalInviteContext(rest.roleId, { expertCustomerId, brokerCustomerId, insuranceCompanyIds });
+    await this.validatePortalInviteContext(rest.roleId, {
+      expertCustomerId,
+      brokerCustomerId,
+      insuranceCompanyIds,
+      assistantCustomerIds,
+    });
 
     const temporaryPassword = typeof password === 'string' && password.trim().length > 0
       ? password.trim()
@@ -336,6 +344,16 @@ export class UsersService {
         });
       }
 
+      if (Array.isArray(assistantCustomerIds) && assistantCustomerIds.length > 0) {
+        await tx.userAssistantCustomerScope.createMany({
+          data: assistantCustomerIds.map((customerId: string) => ({
+            userId: createdUser.id,
+            customerId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
       return createdUser;
     });
 
@@ -343,6 +361,7 @@ export class UsersService {
     const organizationName = await this.resolveWelcomeOrganizationNameForUser(result, {
       brokerCustomerId,
       insuranceCompanyIds,
+      assistantCustomerIds,
     });
     const welcomeEmail = await this.sendWelcomeInviteEmail({
       email: normalizedEmail,
@@ -544,6 +563,9 @@ export class UsersService {
       if (role.code === 'insurance_company_user' && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
         throw new BadRequestException('Sigorta şirketi seçilmelidir');
       }
+      if (role.code === 'assistance_company_user' && (!context.assistantCustomerIds || context.assistantCustomerIds.length !== 1)) {
+        throw new BadRequestException('Asistans firması seçilmelidir');
+      }
     }
 
     if (mode === 'update' && role.code === 'expert' && !context.expertCustomerId && !options?.existingAdjusterId) {
@@ -571,6 +593,21 @@ export class UsersService {
       }
       if (customer.subType !== BROKER_CUSTOMER_SUB_TYPE) {
         throw new BadRequestException('Seçilen kayıt broker firması değil');
+      }
+    }
+
+    if (context.assistantCustomerIds?.length) {
+      const customers = await this.prisma.customer.findMany({
+        where: { id: { in: context.assistantCustomerIds } },
+        select: { id: true, status: true, entityType: true, subType: true },
+      });
+      if (customers.length !== context.assistantCustomerIds.length) {
+        throw new BadRequestException('Geçerli bir asistans firması seçilmelidir');
+      }
+      for (const customer of customers) {
+        if (customer.status !== 'active' || customer.entityType !== 'corporate' || customer.subType !== ASSISTANT_CUSTOMER_SUB_TYPE) {
+          throw new BadRequestException('Seçilen kayıt asistans firması değil');
+        }
       }
     }
   }
@@ -1446,6 +1483,44 @@ export class UsersService {
     return {
       message: 'Sigorta şirketi kapsamları güncellendi',
       insuranceCompanyIds: normalizedIds,
+    };
+  }
+
+  async updateAssistantCustomerScopes(userId: string, assistantCustomerIds: string[]) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    const normalizedIds = Array.isArray(assistantCustomerIds)
+      ? [...new Set(assistantCustomerIds.filter(Boolean))]
+      : [];
+
+    await this.prisma.userAssistantCustomerScope.deleteMany({ where: { userId } });
+
+    if (normalizedIds.length > 0) {
+      const customers = await this.prisma.customer.findMany({
+        where: {
+          id: { in: normalizedIds },
+          entityType: 'corporate',
+          subType: ASSISTANT_CUSTOMER_SUB_TYPE,
+          status: 'active',
+        },
+        select: { id: true },
+      });
+      const validIds = new Set(customers.map((c) => c.id));
+      const missingIds = normalizedIds.filter((id) => !validIds.has(id));
+      if (missingIds.length > 0) {
+        throw new BadRequestException(`Geçersiz asistans firması kimlikleri: ${missingIds.join(', ')}`);
+      }
+
+      await this.prisma.userAssistantCustomerScope.createMany({
+        data: normalizedIds.map((customerId) => ({ userId, customerId })),
+        skipDuplicates: true,
+      });
+    }
+
+    return {
+      message: 'Asistans firma kapsamları güncellendi',
+      assistantCustomerIds: normalizedIds,
     };
   }
 }

@@ -26,7 +26,7 @@ function normalizeRoleCode(roleCode: string): string {
 
 export function isPortalRole(roleCode: string): boolean {
   const role = normalizeRoleCode(roleCode);
-  return role === 'expert' || role === 'insurance_company_user';
+  return role === 'expert' || role === 'insurance_company_user' || role === 'assistance_company_user';
 }
 
 /** Portal deep-link / refresh: yalnızca kendi portal ağacı + profil (+ /panel ana yönlendirme) */
@@ -42,6 +42,9 @@ export function portalAllowsPath(roleCode: string, pathname: string): boolean {
   if (role === 'insurance_company_user') {
     return pathname === '/panel/sigorta-portal' || pathname.startsWith('/panel/sigorta-portal/');
   }
+  if (role === 'assistance_company_user') {
+    return pathname === '/panel/asistans-portal' || pathname.startsWith('/panel/asistans-portal/');
+  }
   return false;
 }
 
@@ -49,6 +52,7 @@ export function getSafePanelHomePath(roleCode: string): string {
   const role = normalizeRoleCode(roleCode);
   if (role === 'expert') return '/panel/eksper-portal';
   if (role === 'insurance_company_user') return '/panel/sigorta-portal';
+  if (role === 'assistance_company_user') return '/panel/asistans-portal';
   if (isFinanceRole(role)) return '/panel/finans';
   return '/panel';
 }
