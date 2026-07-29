@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-07-29",
-  "label": "v409-canli-izle",
-  "description": "Full: Sigorta Portalı Canlı İzle (cadde haritası, live-map API, ETA estimatedRepairEndAt). Health PASS, nginx→web PASS, Route Gate PASS. Rollback web v408 / backend v408.",
+  "label": "v410-sigorta-portal-ux",
+  "description": "Full: Sigorta Portalı onaylı UX — Dosya Takip, Dosyalar (grafik kaldırma), Onaylar, Faturalar, Detaylı İstatistik branş grafiği, aksiyon menüleri; onay/not backend dayanıklılığı. Health PASS, nginx→web PASS, Route Gate PASS. Rollback web v409 / backend v409.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v409-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v409-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v410-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v410-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v408-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v408-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v409-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v409-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -30,6 +30,9 @@
     "/panel/anketler/sonuclar",
     "/panel/eksper-portal",
     "/panel/sigorta-portal",
-    "/panel/sigorta-portal/canli-izle"
+    "/panel/sigorta-portal/canli-izle",
+    "/panel/sigorta-portal/dosyalar",
+    "/panel/sigorta-portal/onaylar",
+    "/panel/sigorta-portal/faturalar"
   ]
 }
