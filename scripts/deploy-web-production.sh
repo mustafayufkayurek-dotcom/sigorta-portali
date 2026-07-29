@@ -38,7 +38,13 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
 
-  rsync -avz "$PROJECT_DIR/Dockerfile.web" "$REMOTE_HOST:$REMOTE_APP/"
+  rsync -avz \
+    "$PROJECT_DIR/Dockerfile.web" \
+    "$PROJECT_DIR/package.json" \
+    "$PROJECT_DIR/pnpm-workspace.yaml" \
+    "$PROJECT_DIR/pnpm-lock.yaml" \
+    "$PROJECT_DIR/tsconfig.base.json" \
+    "$REMOTE_HOST:$REMOTE_APP/"
 
   rsync -avz \
     "$SCRIPT_DIR/deploy-env.sh" \

@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-28",
-  "label": "v408-sigorta-grafik-baslik",
-  "description": "Full: Sigorta Dosya Takip — haftalık grafik (lastActivityAt+notificationDate), boş haftada çizgi, başlıklar Eksper/Departman İhbarlı Takip. Health PASS, nginx→web PASS. Rollback web v407 / backend v407.",
+  "updatedAt": "2026-07-29",
+  "label": "v409-canli-izle",
+  "description": "Full: Sigorta Portalı Canlı İzle (cadde haritası, live-map API, ETA estimatedRepairEndAt). Health PASS, nginx→web PASS, Route Gate PASS. Rollback web v408 / backend v408.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v408-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v408-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v409-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v409-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v407-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v407-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v408-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v408-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -29,6 +29,7 @@
     "/panel/sahiplik",
     "/panel/anketler/sonuclar",
     "/panel/eksper-portal",
-    "/panel/sigorta-portal"
+    "/panel/sigorta-portal",
+    "/panel/sigorta-portal/canli-izle"
   ]
 }

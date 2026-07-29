@@ -48,6 +48,10 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     "$PROJECT_DIR/Dockerfile.backend" \
     "$PROJECT_DIR/Dockerfile.web" \
     "$PROJECT_DIR/docker-compose.prod.yml" \
+    "$PROJECT_DIR/package.json" \
+    "$PROJECT_DIR/pnpm-workspace.yaml" \
+    "$PROJECT_DIR/pnpm-lock.yaml" \
+    "$PROJECT_DIR/tsconfig.base.json" \
     "$REMOTE_HOST:$REMOTE_APP/"
 
   rsync -avz \

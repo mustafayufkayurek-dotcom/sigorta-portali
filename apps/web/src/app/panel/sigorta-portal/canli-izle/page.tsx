@@ -547,7 +547,6 @@ export default function SigortaCanliIzlePage() {
       <ExpertFileNoteModal
         open={Boolean(noteFileId)}
         claimFileId={noteFileId}
-        fileNo={selectedPin?.fileNumber}
         onClose={() => setNoteFileId(null)}
         onSaved={() => {
           showToast('success', 'Mesaj Gönderildi');
