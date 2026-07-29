@@ -81,6 +81,13 @@ export function DosyaBilgileriEditModal({
   const [addressLine, setAddressLine] = useState(addr.addressLine ?? '');
   const [customer, setCustomer] = useState<CustomerLite | null>(claim.customer ?? null);
   const [assignedOfficeUserId, setAssignedOfficeUserId] = useState(claim.assignedOfficeUserId ?? '');
+  const [estimatedRepairEndAt, setEstimatedRepairEndAt] = useState(() => {
+    const raw = claim.estimatedRepairEndAt;
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  });
   const [officeUsers, setOfficeUsers] = useState<OfficeUser[]>([]);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -155,6 +162,9 @@ export function DosyaBilgileriEditModal({
         priority: priority || 'normal',
         customerId: customer?.id ?? null,
         assignedOfficeUserId: assignedOfficeUserId || null,
+        estimatedRepairEndAt: estimatedRepairEndAt
+          ? new Date(`${estimatedRepairEndAt}T12:00:00`).toISOString()
+          : null,
         city: cityName || 'Belirtilmemiş',
         district: districtName || null,
         propertyAddress: line || [cityName, districtName].filter(Boolean).join(' / ') || 'Belirtilmemiş',
@@ -177,6 +187,9 @@ export function DosyaBilgileriEditModal({
         customer: updated?.customer ?? customer,
         assignedOfficeUserId: updated?.assignedOfficeUserId ?? (assignedOfficeUserId || null),
         assignedOfficeUser: nextOffice,
+        estimatedRepairEndAt:
+          updated?.estimatedRepairEndAt
+          ?? (estimatedRepairEndAt ? new Date(`${estimatedRepairEndAt}T12:00:00`).toISOString() : null),
         propertyAddress: updated?.propertyAddress ?? {
           ...(claim.propertyAddress ?? {}),
           city: cityName || 'Belirtilmemiş',
@@ -385,6 +398,20 @@ export function DosyaBilgileriEditModal({
                     <option key={u.id} value={u.id}>{officeUserLabel(u)}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Tahmini Onarım Bitiş
+                </label>
+                <input
+                  type="date"
+                  className={fieldCls}
+                  value={estimatedRepairEndAt}
+                  onChange={(e) => setEstimatedRepairEndAt(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Aktif sözleşmede teslim tarihi varsa o tarih önceliklidir.
+                </p>
               </div>
             </div>
 

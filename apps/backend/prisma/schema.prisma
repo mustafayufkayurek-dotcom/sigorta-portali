@@ -298,6 +298,8 @@ model ClaimFile {
   assignedAdjusterId    String?   @map("assigned_adjuster_id")
   assignedSupplierId    String?   @map("assigned_supplier_id")
   supplierAssignedAt    DateTime? @map("supplier_assigned_at")
+  /// Dosya sorumlusunun girdiği tahmini onarım bitiş (sözleşme deliveryDate yoksa kullanılır)
+  estimatedRepairEndAt  DateTime? @map("estimated_repair_end_at")
   assignedInspectorVendorId String? @map("assigned_inspector_vendor_id")
   inspectorAssignedAt   DateTime? @map("inspector_assigned_at")
   slaDueAt              DateTime? @map("sla_due_at")

@@ -6,6 +6,7 @@ import {
   FolderOpen,
   GitBranch,
   LayoutDashboard,
+  MapPin,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -77,6 +78,7 @@ export function getInsurancePortalNav(counts?: InsurancePortalNavCounts): Portal
       alertCount: counts?.onay,
     },
     { title: 'Dosyalar', href: '/panel/sigorta-portal/dosyalar', icon: ClipboardList },
+    { title: 'Canlı İzle', href: '/panel/sigorta-portal/canli-izle', icon: MapPin },
     { title: 'Faturalar', href: '/panel/sigorta-portal/faturalar', icon: FileText },
     { title: 'Operasyon Ağı', href: '/panel/sigorta-portal/operasyon-agi', icon: GitBranch },
   ];
@@ -100,6 +102,7 @@ export const PORTAL_BOTTOM_SHORT_LABELS: Record<string, string> = {
   'Dosya Takip': 'Takip',
   'Atanmış Dosyalar': 'Dosyalar',
   Dosyalar: 'Dosyalar',
+  'Canlı İzle': 'Canlı',
   Faturalar: 'Faturalar',
   'Operasyon Ağı': 'Ağ',
 };

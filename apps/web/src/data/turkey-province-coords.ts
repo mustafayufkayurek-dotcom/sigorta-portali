@@ -33,7 +33,7 @@ export const TURKEY_PROVINCE_COORDS: Record<string, { lat: number; lng: number }
   hatay: { lat: 36.4018, lng: 36.3498 },
   isparta: { lat: 37.7648, lng: 30.5566 },
   mersin: { lat: 36.8121, lng: 34.6415 },
-  istanbul: { lat: 41.0082, lng: 28.9784 },
+  istanbul: { lat: 41.055, lng: 28.985 }, // Şişli / Mecidiyeköy — karada (Haliç merkezi değil)
   izmir: { lat: 38.4192, lng: 27.1287 },
   kars: { lat: 40.6013, lng: 43.0975 },
   kastamonu: { lat: 41.3887, lng: 33.7827 },

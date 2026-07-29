@@ -469,34 +469,21 @@
   animation: meridyen-indeterminate 1.2s ease-in-out infinite;
 }
 
-/* Yükleme splash — küre yavaş döner (resmi PNG, kırpma ile) */
-@keyframes meridyen-globe-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* Yükleme splash — resmi logo hafif nefes alır; sahte küre halkası yok */
 @keyframes meridyen-splash-float {
   0%,
   100% {
     transform: translateY(0);
+    opacity: 1;
   }
   50% {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
+    opacity: 0.96;
   }
 }
 
 .brand-splash-logo {
   animation: meridyen-splash-float 3.2s ease-in-out infinite;
-}
-
-.brand-splash-globe {
-  animation: meridyen-globe-spin 14s linear infinite;
-  transform-origin: center center;
-  will-change: transform;
 }
 
 /* ── Enterprise Dashboard v3.0 tema tokenleri ── */
@@ -568,7 +555,6 @@ html[data-panel-theme='high-contrast'] *:focus-visible {
   .meridyen-spinner,
   .meridyen-indeterminate-bar,
   .brand-splash-logo,
-  .brand-splash-globe,
   .animate-pulse {
     animation: none !important;
   }

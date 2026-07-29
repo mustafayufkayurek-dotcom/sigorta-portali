@@ -104,6 +104,34 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Get('live-map')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: 'Sigorta portalı Canlı İzle pin / özet listesi' })
+  async liveMap(@Query() query: any, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const roleCode = user?.roleCode ?? user?.role?.code;
+    let insuranceCompanyIds = query?.insuranceCompanyIds as string[] | undefined;
+    if (roleCode === 'insurance_company_user') {
+      const companyIds = await this.claimFilesService.getInsuranceScopes(userId);
+      if (companyIds.length === 0) {
+        return { success: true, data: [], meta: { total: 0, delayed: 0, inRepair: 0 } };
+      }
+      insuranceCompanyIds = companyIds;
+    }
+    const result = await this.claimFilesService.getLiveMap(
+      {
+        claimSubjectId: query?.claimSubjectId,
+        city: query?.city,
+        statusGroup: query?.statusGroup,
+        assignedOfficeUserId: query?.assignedOfficeUserId,
+        insuranceCompanyIds,
+        limit: query?.limit,
+      },
+      { id: userId, roleCode },
+    );
+    return { success: true, data: result.data, meta: result.meta };
+  }
+
   @Get(':id')
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Hasar dosyası detayı' })

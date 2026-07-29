@@ -523,9 +523,9 @@ export class ClaimFilesService {
           assignedBranch: { select: { id: true, name: true } },
           claimSubject: { select: { id: true, name: true } },
           departmentFileSubject: { select: { id: true, name: true } },
-          assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
-          assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
-          currentResponsibleUser: { select: { id: true, firstName: true, lastName: true } },
+          assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+          assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+          currentResponsibleUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
           assignedAdjuster: {
             select: {
               id: true, firstName: true, lastName: true,
@@ -1442,6 +1442,18 @@ export class ClaimFilesService {
           : null;
     }
 
+    if (rest.estimatedRepairEndAt !== undefined) {
+      if (rest.estimatedRepairEndAt === null || rest.estimatedRepairEndAt === '') {
+        rest.estimatedRepairEndAt = null;
+      } else {
+        const parsed = new Date(String(rest.estimatedRepairEndAt));
+        if (Number.isNaN(parsed.getTime())) {
+          throw new BadRequestException('Tahmini onarım bitiş tarihi geçersiz');
+        }
+        rest.estimatedRepairEndAt = parsed;
+      }
+    }
+
     // Eşzamanlı düzenleme koruması (optimistic concurrency)
     const expectedUpdatedAt = rest.expectedUpdatedAt ?? rest.expected_updated_at;
     delete rest.expectedUpdatedAt;
@@ -1985,6 +1997,174 @@ export class ClaimFilesService {
       select: { insuranceCompanyId: true },
     });
     return scopes.map((s) => s.insuranceCompanyId);
+  }
+
+  /**
+   * Sigorta / asistans portalı Canlı İzle — pin + dosya özeti alanları.
+   * Kapsam JWT / insuranceCompanyIds ile sınırlanır.
+   */
+  async getLiveMap(
+    params: {
+      claimSubjectId?: string;
+      city?: string;
+      statusGroup?: string;
+      assignedOfficeUserId?: string;
+      insuranceCompanyIds?: string[];
+      limit?: number;
+    },
+    requestingUser?: { id: string; roleCode?: string | null },
+  ) {
+    const limit = Math.min(Math.max(Number(params?.limit) || 500, 1), 1000);
+    const baseWhere: Record<string, unknown> = {
+      currentStatus: { code: { notIn: [...CLOSED_CLAIM_STATUS_CODES] } },
+    };
+
+    if (params?.insuranceCompanyIds?.length) {
+      baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
+    }
+    if (params?.claimSubjectId?.trim()) {
+      baseWhere.claimSubjectId = params.claimSubjectId.trim();
+    }
+    if (params?.assignedOfficeUserId?.trim()) {
+      baseWhere.assignedOfficeUserId = params.assignedOfficeUserId.trim();
+    }
+
+    const city = params?.city?.trim();
+    if (city && city.toLocaleLowerCase('tr-TR') !== 'all') {
+      baseWhere.OR = [
+        { propertyAddress: { city: { equals: city, mode: 'insensitive' } } },
+        { customer: { city: { equals: city, mode: 'insensitive' } } },
+      ];
+    }
+
+    const statusGroup = String(params?.statusGroup ?? 'open').trim().toLowerCase();
+    if (statusGroup === 'in_repair') {
+      baseWhere.currentStatus = {
+        code: { in: ['repair_in_progress', 'repair_planning', 'supplier_assigned'] },
+      };
+    } else if (statusGroup === 'approval_pending') {
+      baseWhere.repairReports = {
+        some: { status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] } },
+      };
+    } else if (statusGroup === 'open' || !statusGroup || statusGroup === 'all') {
+      // açık dosyalar — baseWhere zaten kapalıları dışlar
+    }
+
+    const where = applyClaimFileListScope(
+      baseWhere,
+      normalizeRequestUser(requestingUser),
+      params?.insuranceCompanyIds,
+    ) as any;
+
+    const rows = await this.prisma.claimFile.findMany({
+      where,
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        fileNo: true,
+        lossType: true,
+        productBranch: true,
+        propertyType: true,
+        slaDueAt: true,
+        supplierAssignedAt: true,
+        estimatedRepairEndAt: true,
+        claimSubjectId: true,
+        assignedOfficeUserId: true,
+        currentStatus: { select: { id: true, code: true, name: true, color: true } },
+        claimSubject: { select: { id: true, name: true } },
+        propertyAddress: {
+          select: {
+            city: true,
+            district: true,
+            latitude: true,
+            longitude: true,
+            addressLine: true,
+          },
+        },
+        customer: {
+          select: {
+            city: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
+        assignedOfficeUser: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        vendorContracts: {
+          where: { status: { notIn: ['cancelled'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { startDate: true, deliveryDate: true, status: true },
+        },
+        repairReports: {
+          orderBy: { createdAt: 'desc' },
+          take: 8,
+          select: {
+            id: true,
+            status: true,
+            externalApprovals: {
+              where: { status: 'approved' },
+              orderBy: { respondedAt: 'desc' },
+              take: 1,
+              select: { respondedAt: true },
+            },
+          },
+        },
+      },
+    });
+
+    const now = Date.now();
+    const data = rows.map((row) => {
+      const contract = row.vendorContracts[0] ?? null;
+      let approvedAt: Date | null = null;
+      for (const report of row.repairReports) {
+        const hit = report.externalApprovals[0]?.respondedAt;
+        if (hit) {
+          approvedAt = hit;
+          break;
+        }
+      }
+      const delayRisk = row.slaDueAt != null && new Date(row.slaDueAt).getTime() < now;
+      const repairStartAt = contract?.startDate ?? row.supplierAssignedAt ?? null;
+      const estimatedRepairEndAt = contract?.deliveryDate ?? row.estimatedRepairEndAt ?? null;
+      const inRepair = ['repair_in_progress', 'repair_planning', 'supplier_assigned'].includes(
+        row.currentStatus?.code ?? '',
+      );
+
+      return {
+        id: row.id,
+        fileNo: row.fileNo,
+        lossType: row.lossType,
+        productBranch: row.productBranch,
+        propertyType: row.propertyType,
+        claimSubjectId: row.claimSubjectId,
+        claimSubject: row.claimSubject,
+        currentStatus: row.currentStatus,
+        propertyAddress: row.propertyAddress,
+        customer: row.customer,
+        assignedOfficeUserId: row.assignedOfficeUserId,
+        assignedOfficeUser: row.assignedOfficeUser,
+        slaDueAt: row.slaDueAt,
+        delayRisk,
+        inRepair,
+        approvedAt,
+        repairStartAt,
+        estimatedRepairEndAt,
+        contractDeliveryDate: contract?.deliveryDate ?? null,
+        manualEstimatedRepairEndAt: row.estimatedRepairEndAt,
+      };
+    });
+
+    return {
+      data,
+      meta: {
+        total: data.length,
+        delayed: data.filter((d) => d.delayRisk).length,
+        inRepair: data.filter((d) => d.inRepair).length,
+      },
+    };
   }
 
   async checkFileNo(

@@ -2,6 +2,8 @@ export type InsurancePinCategory = 'residential' | 'industrial' | 'marine' | 'ge
 
 export type InsurancePortalViewMode = 'ours' | 'network';
 
+export type InsurancePinSlaTone = 'ok' | 'warn' | 'late';
+
 export type InsuranceMapPin = {
   id: string;
   latitude: number;
@@ -14,6 +16,14 @@ export type InsuranceMapPin = {
   fileId?: string;
   city?: string;
   statusName?: string;
+  statusCode?: string;
+  delayRisk?: boolean;
+  slaTone?: InsurancePinSlaTone;
+  claimSubjectName?: string;
+  approvedAt?: string | null;
+  repairStartAt?: string | null;
+  estimatedRepairEndAt?: string | null;
+  assignedOfficeUserName?: string | null;
 };
 
 export type InsurancePortalRealStats = {

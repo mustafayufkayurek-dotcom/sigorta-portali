@@ -97,6 +97,7 @@ const CASES = [
   ['RG-16', 'Personel → Portal', 'finance', '/panel/sigorta-portal', false],
   ['RG-17', 'Doğrudan URL / Deep Link', 'expert', '/panel/eksper-portal/dosyalar', true],
   ['RG-18', 'Doğrudan URL / Deep Link', 'insurance_company_user', '/panel/sigorta-portal/onaylar', true],
+  ['RG-18b', 'Doğrudan URL / Deep Link', 'insurance_company_user', '/panel/sigorta-portal/canli-izle', true],
   ['RG-19', 'Doğrudan URL / Deep Link', 'expert', '/panel/sigorta-portal', false],
   ['RG-20', 'Browser Refresh', 'field_staff', '/panel/hasar-dosyalari/abc', true],
   ['RG-21', 'Browser Refresh', 'field_staff', '/panel/finans/masraflar', false],

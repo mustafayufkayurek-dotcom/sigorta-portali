@@ -125,8 +125,8 @@ export function BrandLogo({
 }
 
 /**
- * Yükleme ekranı — büyük logo; küre üzerinde yavaş dönen halkalar, yazı sabit.
- * Resmi PNG bozulmaz / kırpılmaz.
+ * Yükleme / giriş bootstrap — yalnızca resmi logo.
+ * Üzerine ek halka / sahte küre çizilmez (marka küresi PNG’de zaten var).
  */
 export function BrandSplashLogo({
   alt,
@@ -135,64 +135,9 @@ export function BrandSplashLogo({
   alt: string;
   className?: string;
 }) {
-  const logoSrc = CORPORATE_LOGO_ORIGINAL_PNG;
-
   return (
-    <div
-      role="img"
-      aria-label={alt}
-      className={`brand-splash-logo relative inline-block h-32 w-auto aspect-[1024/682] sm:h-40 ${className}`.trim()}
-    >
-      <img
-        src={logoSrc}
-        alt=""
-        className="pointer-events-none h-full w-full select-none object-contain"
-        draggable={false}
-        decoding="async"
-        aria-hidden="true"
-      />
-      {/* Küre üzeri yörünge halkaları — marka renkleri */}
-      <div
-        className="pointer-events-none absolute left-[1.5%] top-1/2 aspect-square h-[82%] -translate-y-1/2"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 100 100"
-          className="brand-splash-globe h-full w-full overflow-visible"
-          fill="none"
-        >
-          <ellipse
-            cx="50"
-            cy="50"
-            rx="47"
-            ry="30"
-            stroke="#5BA3E0"
-            strokeWidth="2.2"
-            opacity="0.9"
-            transform="rotate(-28 50 50)"
-          />
-          <ellipse
-            cx="50"
-            cy="50"
-            rx="45"
-            ry="27"
-            stroke="#E53935"
-            strokeWidth="2.2"
-            opacity="0.85"
-            transform="rotate(32 50 50)"
-          />
-          <ellipse
-            cx="50"
-            cy="50"
-            rx="43"
-            ry="24"
-            stroke="#1B3A6B"
-            strokeWidth="1.8"
-            opacity="0.8"
-            transform="rotate(78 50 50)"
-          />
-        </svg>
-      </div>
+    <div className={`brand-splash-logo inline-flex items-center justify-center ${className}`.trim()}>
+      <BrandLogo alt={alt} variant="splash" />
     </div>
   );
 }

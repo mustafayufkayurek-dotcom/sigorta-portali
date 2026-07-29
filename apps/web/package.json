@@ -24,6 +24,7 @@
     "fabric": "^7.3.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.303.0",
+    "maplibre-gl": "^5.6.0",
     "next": "^14.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
