@@ -1,6 +1,11 @@
 /** Dosya Operasyon Özeti — eksper görev alanları; kâr/maliyet/marj UI’a girmez */
 
-import { normalizeReportImageCategory, type ReportImageCategoryKey } from '@/utils/quick-repair-damage-types';
+import { formatTryAmount } from '@/utils/format-try-amount';
+import {
+  normalizeReportImageCategory,
+  REPORT_IMAGE_CATEGORY_LABELS,
+  type ReportImageCategoryKey,
+} from '@/utils/quick-repair-damage-types';
 
 export type ExpertDocCategory = 'hasarFotograflari' | 'muvafakatname' | 'dijitalOnay';
 
@@ -169,12 +174,7 @@ function numOrNull(v: unknown): number | null {
 }
 
 export function formatExpertMoney(amount: number | null | undefined): string {
-  if (amount == null || !Number.isFinite(amount)) return '—';
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatTryAmount(amount, { fractionDigits: 0 });
 }
 
 export function pickExpertSafeDetail(raw: Record<string, unknown> | null | undefined): ExpertSafeDetail | null {
@@ -334,7 +334,7 @@ export function deriveExpertApprovalStatus(detail: ExpertSafeDetail): {
   if (/revision|revizyon/.test(rs) || code === 'budget_revision_requested' || /revizyon/.test(name)) {
     return {
       status: 'Revizyon Bekleniyor',
-      date: report?.revisedAt ?? report?.updatedAt ?? detail.statusChangedAt ?? null,
+      date: null,
       waitingApproval: false,
       revisionRequested: true,
     };
@@ -347,7 +347,7 @@ export function deriveExpertApprovalStatus(detail: ExpertSafeDetail): {
   ) {
     return {
       status: 'Onay Bekleniyor',
-      date: report?.reportDate ?? report?.updatedAt ?? detail.statusChangedAt ?? null,
+      date: null,
       waitingApproval: true,
       revisionRequested: false,
     };
@@ -373,7 +373,7 @@ export function deriveExpertApprovalStatus(detail: ExpertSafeDetail): {
 
   return {
     status: 'Onay Bekleniyor',
-    date: report.reportDate ?? report.updatedAt ?? null,
+    date: null,
     waitingApproval: true,
     revisionRequested: false,
   };
@@ -417,6 +417,27 @@ export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
   const code = statusCodeKey(detail);
   const name = statusNameKey(detail);
   const rawName = detail.currentStatus?.name ?? '—';
+  const reportStatus = (detail.latestRepairReport?.status ?? '').toLocaleLowerCase('tr-TR');
+
+  // Rapor / dış onay durumu, ham dosya aşamasından önceliklidir (yanlış "Tespit" göstermesin).
+  if (
+    /revision|revizyon/.test(reportStatus) ||
+    code === 'budget_revision_requested' ||
+    /revizyon/.test(name)
+  ) {
+    return 'Revizyon Bekleniyor';
+  }
+  if (
+    /pending_approval|sent_for_external|pending|submitted|gönderildi|gonderildi/.test(reportStatus) ||
+    code === 'budget_submitted' ||
+    /onay bek/.test(name)
+  ) {
+    return 'Onay Bekleniyor';
+  }
+  if (/approved|onayland/.test(reportStatus) || code === 'budget_approved' || /onayland/.test(name)) {
+    // Onaylandıktan sonra onarım aşamasına bak
+    if (['repair_planning', 'repair_in_progress'].includes(code)) return 'Onarım Sürecinde';
+  }
 
   if (code === 'test_status') return rawName;
   if (code === 'closed' || /kapat/.test(name)) return 'Tamamlandı';
@@ -481,7 +502,7 @@ export function deriveExpertOperationSummary(
     inspectionDate: detail.incidentDate ?? null,
     notificationDate: detail.notificationDate ?? detail.createdAt ?? null,
     expertApprovalStatus: approval.status,
-    expertApprovalDate: approval.date,
+    expertApprovalDate: approval.status === 'Onaylandı' ? approval.date : null,
     repairStatus,
     waitingApproval: approval.waitingApproval,
     revisionRequested: approval.revisionRequested,
@@ -530,11 +551,8 @@ export type ExpertReportImage = {
   category?: string | null;
 };
 
-export const EXPERT_REPORT_IMAGE_LABEL: Record<ReportImageCategoryKey, string> = {
-  before: 'Hasar Tespit Resimleri',
-  damage: 'Onarım Resimleri',
-  after: 'Onarım Bitiş Resimleri',
-};
+export const EXPERT_REPORT_IMAGE_LABEL: Record<ReportImageCategoryKey, string> =
+  REPORT_IMAGE_CATEGORY_LABELS;
 
 export const EXPERT_REPORT_IMAGE_ORDER: ReportImageCategoryKey[] = ['before', 'damage', 'after'];
 

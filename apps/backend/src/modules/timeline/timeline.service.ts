@@ -152,17 +152,32 @@ export class TimelineService {
 
   // Ek Talep #5: İç Not Sistemi
   async createNote(claimFileId: string, authorId: string, content: string, noteType?: string) {
+    const resolvedType = noteType || 'general';
     const note = await (this.prisma as any).timelineNote.create({
       data: {
         claimFileId,
         authorId,
         content,
-        noteType: noteType || 'general',
+        noteType: resolvedType,
       },
       include: {
         author: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // Dosya Notları paneli (`notes` tablosu) ile senkron — portal/timeline notları orada da görünsün.
+    try {
+      await this.prisma.note.create({
+        data: {
+          claimFileId,
+          authorUserId: authorId,
+          content,
+          noteType: resolvedType,
+        },
+      });
+    } catch {
+      // Timeline kaydı başarılıysa paneli engelleme; Note yazımı ayrı yetki/şema riski taşıyabilir.
+    }
 
     // Update lastActivityAt
     await (this.prisma.claimFile as any).update({

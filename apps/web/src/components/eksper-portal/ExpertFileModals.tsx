@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Eye, X } from 'lucide-react';
 import { ExpertOperationHistory } from '@/components/eksper-portal/ExpertOperationHistory';
 import { fmtDate } from '@/utils/date-helpers';
@@ -161,6 +161,9 @@ type DocsModalProps = {
   open: boolean;
   claimFileId: string | null;
   onClose: () => void;
+  /** true ise yükleme alanı gösterilir (document.upload yetkisi olan roller) */
+  allowUpload?: boolean;
+  onUploaded?: () => void;
 };
 
 type DocItem = {
@@ -183,10 +186,40 @@ function mapFileDocument(row: FileDocument): DocItem {
   };
 }
 
-export function ExpertFileDocumentsModal({ open, claimFileId, onClose }: DocsModalProps) {
+export function ExpertFileDocumentsModal({
+  open,
+  claimFileId,
+  onClose,
+  allowUpload = false,
+  onUploaded,
+}: DocsModalProps) {
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const reload = async (id: string) => {
+    const [legacyRes, fileDocs] = await Promise.all([
+      fetch(`${API}/documents?claimFileId=${encodeURIComponent(id)}&limit=50`, {
+        headers: authHeaders(),
+      }),
+      getFileDocuments('claim_file', id).catch(() => [] as FileDocument[]),
+    ]);
+
+    const legacyJson = legacyRes.ok ? await legacyRes.json().catch(() => null) : null;
+    const legacyDocs: DocItem[] = Array.isArray(legacyJson?.data) ? legacyJson.data : [];
+    const mappedFileDocs = (Array.isArray(fileDocs) ? fileDocs : []).map(mapFileDocument);
+
+    const merged = [...legacyDocs, ...mappedFileDocs];
+    const seen = new Set<string>();
+    return merged.filter((d) => {
+      const key = `${d.fileName ?? ''}|${d.storageKey ?? d.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
 
   useEffect(() => {
     if (!open || !claimFileId) return;
@@ -196,26 +229,7 @@ export function ExpertFileDocumentsModal({ open, claimFileId, onClose }: DocsMod
 
     (async () => {
       try {
-        const [legacyRes, fileDocs] = await Promise.all([
-          fetch(`${API}/documents?claimFileId=${encodeURIComponent(claimFileId)}&limit=50`, {
-            headers: authHeaders(),
-          }),
-          getFileDocuments('claim_file', claimFileId).catch(() => [] as FileDocument[]),
-        ]);
-
-        const legacyJson = legacyRes.ok ? await legacyRes.json().catch(() => null) : null;
-        const legacyDocs: DocItem[] = Array.isArray(legacyJson?.data) ? legacyJson.data : [];
-        const mappedFileDocs = (Array.isArray(fileDocs) ? fileDocs : []).map(mapFileDocument);
-
-        const merged = [...legacyDocs, ...mappedFileDocs];
-        const seen = new Set<string>();
-        const unique = merged.filter((d) => {
-          const key = `${d.fileName ?? ''}|${d.storageKey ?? d.id}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
+        const unique = await reload(claimFileId);
         if (!cancelled) setDocs(unique);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Evraklar yüklenemedi.');
@@ -230,6 +244,74 @@ export function ExpertFileDocumentsModal({ open, claimFileId, onClose }: DocsMod
   }, [open, claimFileId]);
 
   if (!open) return null;
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !claimFileId) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const ext = `.${(file.name.split('.').pop() || 'bin').toLowerCase()}`;
+      const presignRes = await fetch(`${API}/uploads/presign`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          ownerType: 'claim_file',
+          ownerId: claimFileId,
+        }),
+      });
+      if (!presignRes.ok) throw new Error('Yükleme hazırlığı başarısız.');
+      const presignBody = await presignRes.json();
+      const { presignedUrl, storageKey } = presignBody?.data ?? {};
+      if (!presignedUrl || !storageKey) throw new Error('Yükleme adresi alınamadı.');
+
+      if (String(presignedUrl).includes('localhost')) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const putRes = await fetch(`${API}/uploads/${storageKey}`, {
+          method: 'POST',
+          headers: { Authorization: authHeaders().Authorization ?? '' },
+          body: fd,
+        });
+        if (!putRes.ok) throw new Error('Dosya yüklenemedi.');
+      } else {
+        const putRes = await fetch(presignedUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        });
+        if (!putRes.ok) throw new Error('Dosya yüklenemedi.');
+      }
+
+      const createRes = await fetch(`${API}/documents`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          claimFileId,
+          fileName: file.name,
+          fileExtension: ext,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          storageKey,
+          documentType: null,
+          category: 'document',
+        }),
+      });
+      if (!createRes.ok) throw new Error('Evrak kaydı oluşturulamadı.');
+
+      const unique = await reload(claimFileId);
+      setDocs(unique);
+      onUploaded?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Yükleme başarısız.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const openAsset = async (doc: DocItem, download: boolean) => {
     const storageKey = doc.fileAsset?.storageKey ?? doc.storageKey;
@@ -264,8 +346,29 @@ export function ExpertFileDocumentsModal({ open, claimFileId, onClose }: DocsMod
 
   return (
     <ModalShell title="Evraklar" onClose={onClose} widthClass="max-w-2xl">
-      <div className="px-5 py-4">
-        {error && <p className="mb-2 text-xs text-status-danger">{error}</p>}
+      <div className="space-y-3 px-5 py-4">
+        {error && <p className="text-xs text-status-danger">{error}</p>}
+        {allowUpload ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-2.5">
+            <p className="text-xs text-slate-600">Dosyaya evrak ekleyin (PDF, görsel…).</p>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => void handleUpload(e)}
+              />
+              <button
+                type="button"
+                disabled={uploading || !claimFileId}
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                {uploading ? 'Yükleniyor…' : 'Evrak Yükle'}
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500">
@@ -288,7 +391,9 @@ export function ExpertFileDocumentsModal({ open, claimFileId, onClose }: DocsMod
                   <td colSpan={4} className="px-3 py-8 text-center">
                     <p className="text-sm font-medium text-slate-600">Henüz Evrak Yok</p>
                     <p className="mt-1 text-xs text-slate-400">
-                      Yüklenen belgeler burada listelenir. Görüntüle ve indir işlemleri hazırdır.
+                      {allowUpload
+                        ? 'Yukarıdaki düğme ile evrak ekleyebilirsiniz.'
+                        : 'Yüklenen belgeler burada listelenir. Görüntüle ve indir işlemleri hazırdır.'}
                     </p>
                   </td>
                 </tr>
@@ -540,37 +645,123 @@ export function ExpertFileDeleteRequestModal({
   );
 }
 
+type NoteKind = 'general' | 'manager_instruction';
+
 type NoteModalProps = {
   open: boolean;
   claimFileId: string | null;
+  /** Liste satırından hemen gösterim — yoksa dosyadan yüklenir */
+  fileNo?: string | null;
+  insuredName?: string | null;
   onClose: () => void;
   onSaved: () => void;
 };
+
+type NoteContext = {
+  fileNo: string | null;
+  insuredName: string | null;
+  responsibleName: string | null;
+  responsibleEmail: string | null;
+};
+
+const NOTE_TEMPLATES = ['Evrak Eksik', 'Revizyon Gerekli', 'Onay Notu', 'Bilgi Notu'] as const;
 
 /**
  * Ortak dosya notu — eksper / sigorta / asistans aynı kültür.
  * E-posta gönderimi tercihe bağlıdır (varsayılan kapalı).
  */
-export function ExpertFileNoteModal({ open, claimFileId, onClose, onSaved }: NoteModalProps) {
+export function ExpertFileNoteModal({
+  open,
+  claimFileId,
+  fileNo: fileNoProp,
+  insuredName: insuredNameProp,
+  onClose,
+  onSaved,
+}: NoteModalProps) {
   const [content, setContent] = useState('');
+  const [noteKind, setNoteKind] = useState<NoteKind>('general');
   const [sendEmail, setSendEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ctx, setCtx] = useState<NoteContext>({
+    fileNo: null,
+    insuredName: null,
+    responsibleName: null,
+    responsibleEmail: null,
+  });
+  const [ctxLoading, setCtxLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setContent('');
-      setSendEmail(false);
-      setError(null);
-    }
-  }, [open]);
+    if (!open) return;
+    setContent('');
+    setNoteKind('general');
+    setSendEmail(false);
+    setError(null);
+    setCtx({
+      fileNo: fileNoProp?.trim() || null,
+      insuredName: insuredNameProp?.trim() || null,
+      responsibleName: null,
+      responsibleEmail: null,
+    });
+  }, [open, claimFileId, fileNoProp, insuredNameProp]);
+
+  useEffect(() => {
+    if (!open || !claimFileId) return;
+    let cancelled = false;
+    setCtxLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`${API}/claim-files/${claimFileId}`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const json = await res.json().catch(() => ({}));
+        const data = (json?.data ?? json) as Record<string, unknown>;
+        const office = data.assignedOfficeUser as
+          | { firstName?: string; lastName?: string; email?: string }
+          | null
+          | undefined;
+        const name = [office?.firstName, office?.lastName].filter(Boolean).join(' ').trim();
+        const insured =
+          (typeof data.insuredName === 'string' && data.insuredName.trim()) ||
+          (typeof (data.insured as { fullName?: string } | null)?.fullName === 'string'
+            ? String((data.insured as { fullName?: string }).fullName)
+            : null);
+        if (cancelled) return;
+        setCtx((prev) => ({
+          fileNo: prev.fileNo || (typeof data.fileNo === 'string' ? data.fileNo : null),
+          insuredName: prev.insuredName || (insured ? toTitleCaseTR(insured) : null),
+          responsibleName: name || null,
+          responsibleEmail: office?.email?.trim() || null,
+        }));
+      } catch {
+        /* bağlam yoksa form yine çalışır */
+      } finally {
+        if (!cancelled) setCtxLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, claimFileId]);
 
   if (!open || !claimFileId) return null;
+
+  const applyTemplate = (label: string) => {
+    setContent((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return `${label}: `;
+      if (trimmed.toLocaleLowerCase('tr').includes(label.toLocaleLowerCase('tr'))) return prev;
+      return `${trimmed}\n${label}: `;
+    });
+  };
 
   const save = async () => {
     const text = toTitleCaseTR(content.trim());
     if (!text) {
       setError('Not metni zorunludur.');
+      return;
+    }
+    if (sendEmail && !ctx.responsibleEmail) {
+      setError('Dosya sorumlusunun kayıtlı e-posta adresi bulunamadı. Notu kaydetmek için e-posta seçeneğini kapatın.');
       return;
     }
     setSaving(true);
@@ -579,13 +770,13 @@ export function ExpertFileNoteModal({ open, claimFileId, onClose, onSaved }: Not
       const res = await fetch(`${API}/claim-files/${claimFileId}/notes`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ content: text, noteType: 'general' }),
+        body: JSON.stringify({ content: text, noteType: noteKind }),
       });
       if (!res.ok) {
         const fallback = await fetch(`${API}/notes`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ claimFileId, content: text, noteType: 'general' }),
+          body: JSON.stringify({ claimFileId, content: text, noteType: noteKind }),
         });
         if (!fallback.ok) throw new Error('Not kaydedilemedi.');
       }
@@ -613,38 +804,128 @@ export function ExpertFileNoteModal({ open, claimFileId, onClose, onSaved }: Not
     }
   };
 
+  const contextLine = [
+    ctx.fileNo ? `Dosya No: ${ctx.fileNo}` : null,
+    ctx.insuredName ? `Sigortalı: ${ctx.insuredName}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <ModalShell title="Not Yaz" onClose={onClose} widthClass="max-w-md">
-      <div className="space-y-3 px-5 py-4">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onBlur={(e) => {
-            const v = toTitleCaseTR(e.target.value.trim());
-            if (v) setContent(v);
-          }}
-          rows={5}
-          placeholder="Notunuzu Yazın…"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-        />
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-          <input
-            type="checkbox"
-            checked={sendEmail}
-            onChange={(e) => setSendEmail(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+    <ModalShell title="Dosya Notu" onClose={onClose} widthClass="max-w-lg">
+      <div className="space-y-4 px-5 py-4">
+        {(contextLine || ctxLoading) && (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+            <p className="text-[11px] font-medium text-slate-500">Dosya</p>
+            <p className="mt-0.5 text-sm font-medium text-slate-800">
+              {ctxLoading && !contextLine ? 'Dosya bilgisi yükleniyor…' : contextLine || '—'}
+            </p>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-slate-600">Kayıt Türü</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { id: 'general' as const, label: 'Dosya Notu', hint: 'Dosya kaydına yazılır' },
+                { id: 'manager_instruction' as const, label: 'Talimat', hint: 'Öncelikli yönlendirme' },
+              ] as const
+            ).map((opt) => {
+              const active = noteKind === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setNoteKind(opt.id)}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                    active
+                      ? 'border-brand-300 bg-brand-50 ring-1 ring-brand-200'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <span className={`block text-sm font-semibold ${active ? 'text-brand-800' : 'text-slate-800'}`}>
+                    {opt.label}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">{opt.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-slate-600" htmlFor="expert-file-note-content">
+            Not
+          </label>
+          <textarea
+            id="expert-file-note-content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onBlur={(e) => {
+              const v = toTitleCaseTR(e.target.value.trim());
+              if (v) setContent(v);
+            }}
+            rows={5}
+            placeholder="Notunuzu Yazın…"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-slate-800">Dosya Sorumlusuna E-posta Gönder</span>
-            <span className="mt-0.5 block text-xs text-slate-500">
-              İsteğe bağlıdır. İşaretlemezseniz not yalnızca dosyaya kaydedilir.
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {NOTE_TEMPLATES.map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => applyTemplate(label)}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+          <label className="flex cursor-pointer items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-slate-800">Dosya Sorumlusuna E-posta Gönder</span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                İsteğe bağlıdır. İşaretlemezseniz not yalnızca dosyaya kaydedilir.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+          {sendEmail && (
+            <div className="mt-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+              {ctxLoading ? (
+                <p>Alıcı bilgisi yükleniyor…</p>
+              ) : ctx.responsibleName || ctx.responsibleEmail ? (
+                <p>
+                  <span className="font-medium text-slate-700">Alıcı:</span>{' '}
+                  {[ctx.responsibleName, ctx.responsibleEmail].filter(Boolean).join(' · ')}
+                </p>
+              ) : (
+                <p className="text-status-warning">
+                  Dosya sorumlusu veya e-posta adresi bulunamadı. Notu kaydedebilirsiniz; e-posta gönderilemez.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-xs text-status-danger">{error}</p>}
       </div>
       <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
-        <button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+        >
           İptal
         </button>
         <button
@@ -720,7 +1001,7 @@ function ModalShell({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]" onClick={onClose}>
       <div
         className={`w-full ${widthClass} overflow-hidden rounded-2xl bg-white shadow-2xl`}
         onClick={(e) => e.stopPropagation()}

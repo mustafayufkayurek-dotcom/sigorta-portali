@@ -250,7 +250,7 @@ function InsuranceIhbarModal({
     }
   }, [photos.length, showToast]);
 
-  const STEP1_KEYS: (keyof IhbarFormData)[] = ['dosyaNo', 'policeTuru', 'konu', 'ticariUnvan', 'vergiDairesi', 'vergiNo'];
+  const STEP1_KEYS: (keyof IhbarFormData)[] = ['dosyaNo', 'policeTuru', 'konu', 'ticariUnvan'];
   const STEP2_KEYS: (keyof IhbarFormData)[] = ['sigortaliAdi', 'sigortaliTelefon', 'il', 'ilce', 'adresDetay'];
   const STEP3_KEYS: (keyof IhbarFormData)[] = ['hasarTarihi'];
 
@@ -263,8 +263,6 @@ function InsuranceIhbarModal({
       if (!data.konu) e.konu = 'Zorunlu alan';
       if (data.policeTuru === 'ticari') {
         if (!data.ticariUnvan.trim()) e.ticariUnvan = 'Zorunlu alan';
-        if (!data.vergiDairesi.trim()) e.vergiDairesi = 'Zorunlu alan';
-        if (!data.vergiNo.trim()) e.vergiNo = 'Zorunlu alan';
       }
     }
 
@@ -576,13 +574,13 @@ function InsuranceIhbarModal({
 
               {form.policeTuru === 'ticari' && (
                 <div className="space-y-3">
-                  {(!form.ticariUnvan.trim() || !form.vergiDairesi.trim() || !form.vergiNo.trim()) && (
+                  {!form.ticariUnvan.trim() && (
                     <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
                       <svg className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                       <p className="text-xs text-amber-700 leading-relaxed">
-                        Kurumsal bilgilerin girilmesi önerilir. Eksik bilgiler dosya sürecini uzatabilir.
+                        Ticari unvan zorunludur. Vergi bilgileri isteğe bağlıdır.
                       </p>
                     </div>
                   )}
@@ -602,28 +600,26 @@ function InsuranceIhbarModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                        Vergi Dairesi <span className="text-status-danger">*</span>
+                        Vergi Dairesi
                       </label>
                       <input
-                        className={`input-base-sm ${errors.vergiDairesi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+                        className="input-base-sm"
                         placeholder="Vergi dairesi"
                         value={form.vergiDairesi}
                         onChange={(e) => set('vergiDairesi', e.target.value)}
                         onBlur={blurTitleCase('vergiDairesi')}
                       />
-                      {errors.vergiDairesi && <p className="text-xs text-status-danger mt-1">{errors.vergiDairesi}</p>}
                     </div>
                     <div>
                       <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                        Vergi No <span className="text-status-danger">*</span>
+                        Vergi No
                       </label>
                       <input
-                        className={`input-base-sm ${errors.vergiNo ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+                        className="input-base-sm"
                         placeholder="Vergi numarası"
                         value={form.vergiNo}
                         onChange={(e) => set('vergiNo', e.target.value)}
                       />
-                      {errors.vergiNo && <p className="text-xs text-status-danger mt-1">{errors.vergiNo}</p>}
                     </div>
                   </div>
                 </div>
@@ -636,11 +632,12 @@ function InsuranceIhbarModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                    Sigortalı Adı <span className="text-status-danger">*</span>
+                    {form.policeTuru === 'ticari' ? 'İrtibat Kurulacak Kişi' : 'Sigortalı Adı Soyadı'}{' '}
+                    <span className="text-status-danger">*</span>
                   </label>
                   <input
                     className={`input-base-sm ${errors.sigortaliAdi ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
-                    placeholder="Ad Soyad"
+                    placeholder={form.policeTuru === 'ticari' ? 'İrtibat Kişisi Ad Soyad' : 'Ad Soyad'}
                     value={form.sigortaliAdi}
                     onChange={(e) => set('sigortaliAdi', e.target.value)}
                     onBlur={blurTitleCase('sigortaliAdi')}

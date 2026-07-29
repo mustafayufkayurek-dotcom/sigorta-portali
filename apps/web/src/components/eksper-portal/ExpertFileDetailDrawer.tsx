@@ -25,6 +25,7 @@ import {
   EXPERT_REPORT_IMAGE_ORDER,
   deriveExpertFileStageLabel,
   deriveExpertOperationSummary,
+  expertOperationEventTitle,
   formatExpertMoney,
   groupExpertDocuments,
   groupExpertReportImages,
@@ -42,6 +43,8 @@ import {
   type ExpertSafeDoc,
   type PresenceTone,
 } from '@/utils/expert-drawer-summary';
+import { mergeClaimFileNotes } from '@/utils/merge-claim-file-notes';
+import { formatActivityAction } from '@/features/dashboard/utils/format-activity-action';
 import { getReportImageUrl } from '@/utils/upload-url';
 
 export type ExpertDrawerFile = {
@@ -75,6 +78,10 @@ type ExpertFileDetailDrawerProps = {
   onOpenNote: () => void;
   /** Değiştiğinde (örn. "Geniş Form" modalından not kaydedilince) Notlar listesi yeniden yüklenir. */
   notesRefreshToken?: number;
+  /** Sigorta portalında onay etiketleri müşteri diline çevrilir */
+  audience?: 'expert' | 'insurance';
+  /** false ise «Evrak Yükle» gizlenir (yalnız görüntüleme yetkisi) */
+  canUploadDocuments?: boolean;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
@@ -160,6 +167,8 @@ export function ExpertFileDetailDrawer({
   onOpenDocuments,
   onOpenNote,
   notesRefreshToken,
+  audience = 'expert',
+  canUploadDocuments = false,
 }: ExpertFileDetailDrawerProps) {
   const [tab, setTab] = useState<TabId>(normalizeTab(initialTab));
   const [detail, setDetail] = useState<ExpertSafeDetail | null>(null);
@@ -191,12 +200,33 @@ export function ExpertFileDetailDrawer({
     setLoadingNotes(true);
     setNotesLoadError(false);
     try {
-      const res = await fetch(`${API}/claim-files/${fileId}/notes`, { headers: authHeaders() });
-      if (!res.ok) throw new Error(String(res.status));
-      const body = await res.json();
-      const data = body?.data ?? body ?? [];
-      const list = Array.isArray(data) ? (data as NoteRow[]) : [];
-      setNotes(list.filter(isExpertVisibleNote));
+      const [timelineRes, notesRes] = await Promise.all([
+        fetch(`${API}/claim-files/${fileId}/notes`, { headers: authHeaders() }),
+        fetch(`${API}/notes?claimFileId=${fileId}&limit=100`, { headers: authHeaders() }),
+      ]);
+      if (!timelineRes.ok && !notesRes.ok) throw new Error('notes_load_failed');
+
+      const timelineBody = timelineRes.ok ? await timelineRes.json().catch(() => null) : null;
+      const notesBody = notesRes.ok ? await notesRes.json().catch(() => null) : null;
+      const timelineRaw = timelineBody?.data ?? timelineBody ?? [];
+      const notesRaw = notesBody?.data ?? [];
+      const fromTimeline = Array.isArray(timelineRaw) ? (timelineRaw as NoteRow[]) : [];
+      const fromNotes = Array.isArray(notesRaw) ? (notesRaw as NoteRow[]) : [];
+      const merged = mergeClaimFileNotes(
+        fromNotes.map((n) => ({
+          id: n.id,
+          content: n.content,
+          noteType: n.noteType ?? 'general',
+          createdAt: n.createdAt,
+        })),
+        fromTimeline.map((n) => ({
+          id: n.id,
+          content: n.content,
+          noteType: n.noteType ?? 'general',
+          createdAt: n.createdAt,
+        })),
+      );
+      setNotes(merged.filter(isExpertVisibleNote));
     } catch {
       setNotes([]);
       setNotesLoadError(true);
@@ -346,7 +376,7 @@ export function ExpertFileDetailDrawer({
         /* seed kalsın */
       })
       .finally(() => setLoadingDetail(false));
-  }, [open, file]);
+  }, [open, file, notesRefreshToken]);
 
   useEffect(() => {
     if (!open || !file?.id || tab !== 'notlar') return;
@@ -363,11 +393,19 @@ export function ExpertFileDetailDrawer({
   const delayTone =
     delayDays == null ? 'muted' : delayDays > 0 ? 'red' : 'green';
 
-  const lastActivityTitle =
-    lastActivity?.title ||
-    lastActivity?.action ||
-    lastActivity?.description ||
-    null;
+  const lastActivityTitle = (() => {
+    const title = (lastActivity?.title ?? '').trim();
+    if (title && !/^[A-Z][A-Z0-9_]*$/.test(title)) return title;
+    const actionLabel = formatActivityAction(lastActivity?.action);
+    if (actionLabel && actionLabel !== 'İşlem güncellendi') return actionLabel;
+    const desc = (lastActivity?.description ?? '').trim();
+    if (desc && !/^[A-Z][A-Z0-9_]*$/.test(desc)) return desc;
+    return expertOperationEventTitle({
+      kind: 'activity',
+      action: lastActivity?.action,
+      fallback: title || desc || null,
+    });
+  })();
 
   const op = view ? deriveExpertOperationSummary(view, lastActivityTitle) : null;
   const fileStage = view ? deriveExpertFileStageLabel(view) : '—';
@@ -514,26 +552,28 @@ export function ExpertFileDetailDrawer({
   return (
     <SlidePanel open={open} onClose={onClose} width={480} scrollContent={false}>
       <div className="flex h-full min-h-0 flex-col" data-testid="eksper-file-detail-drawer">
-        <div className="flex shrink-0 items-start justify-between border-b border-slate-100 px-5 py-3.5">
-          <div className="min-w-0">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium tracking-wide text-slate-400">Dosya Operasyon Özeti</p>
-            <h3 className="mt-0.5 truncate text-[15px] font-semibold text-slate-900">{view?.fileNo ?? '—'}</h3>
+            <div className="mt-0.5 flex min-w-0 items-center gap-2">
+              <h3 className="min-w-0 truncate text-[15px] font-semibold text-slate-900">
+                {view?.fileNo ?? '—'}
+              </h3>
+              {view && fileStage !== '—' ? (
+                <span className={`shrink-0 ${expertStatusBadgeClass(fileStage)}`}>{fileStage}</span>
+              ) : null}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {view && fileStage !== '—' ? (
-              <span className={expertStatusBadgeClass(fileStage)}>{fileStage}</span>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              aria-label="Kapat"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Kapat"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <div className="flex shrink-0 gap-0.5 border-b border-slate-100 px-3 pt-1.5">
@@ -561,34 +601,42 @@ export function ExpertFileDetailDrawer({
               ) : null}
 
               <Section title="Dosya Genel Durumu">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
                   <Field label="Hasar Dosya No" value={view.fileNo} />
                   <Field label="Sigorta Şirketi" value={view.insuranceCompany?.name || '—'} />
-                  <Field label="Dosya Konusu" value={subject || '—'} />
+                  <Field label="Dosya Konusu" value={subject || '—'} className="col-span-2" />
                   <Field
                     label="Dosya Durumu"
-                    value={<span className={expertStatusBadgeClass(fileStage)}>{fileStage}</span>}
+                    value={
+                      <span className={`inline-flex items-center justify-start self-start ${expertStatusBadgeClass(fileStage)}`}>
+                        {fileStage}
+                      </span>
+                    }
                   />
                   <Field
                     label="Gecikme Gün"
                     value={
-                      <span className={expertSlaBadgeClass(delayTone)}>
+                      <span className={`inline-flex self-start ${expertSlaBadgeClass(delayTone)}`}>
                         <span className={`inline-block h-1.5 w-1.5 rounded-full ${expertSlaDotClass(delayTone)}`} />
                         {delayDays == null ? '—' : delayDays}
                       </span>
                     }
                   />
-                  <Field label="Meridyen Dosya Sorumlusu" value={meridyenFileOwner} />
+                  <Field label="Meridyen Dosya Sorumlusu" value={meridyenFileOwner} className="col-span-2" />
                 </div>
               </Section>
 
               <Section title="Onay Analizi">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
                   <Field
-                    label="Onay Bekliyor mu"
+                    label={audience === 'insurance' ? 'Onay Bekleniyor mu' : 'Onay Bekliyor mu'}
                     value={
                       <span className={presenceClass(op?.waitingApproval ? 'pending' : 'ok')}>
-                        {op?.waitingApproval ? '✕ Evet — Onay Bekleniyor' : '✓ Hayır'}
+                        {op?.waitingApproval
+                          ? audience === 'insurance'
+                            ? '✕ Evet — Kararınız Bekleniyor'
+                            : '✕ Evet — Onay Bekleniyor'
+                          : '✓ Hayır'}
                       </span>
                     }
                   />
@@ -601,17 +649,20 @@ export function ExpertFileDetailDrawer({
                     }
                   />
                   <Field
-                    label="Eksper Onay Durumu"
+                    label={audience === 'insurance' ? 'Onay Durumu' : 'Eksper Onay Durumu'}
                     value={
-                      <span className={`font-semibold ${approvalToneClass(op?.expertApprovalStatus)}`}>
+                      <span className={`inline-flex self-start font-semibold ${approvalToneClass(op?.expertApprovalStatus)}`}>
                         {op?.expertApprovalStatus ?? '—'}
                       </span>
                     }
+                    className={op?.expertApprovalStatus === 'Onaylandı' ? '' : 'col-span-2'}
                   />
-                  <Field
-                    label="Eksper Onay Tarihi"
-                    value={op?.expertApprovalDate ? fmtDate(op.expertApprovalDate) : '—'}
-                  />
+                  {op?.expertApprovalStatus === 'Onaylandı' ? (
+                    <Field
+                      label={audience === 'insurance' ? 'Onay Tarihi' : 'Eksper Onay Tarihi'}
+                      value={op.expertApprovalDate ? fmtDate(op.expertApprovalDate) : '—'}
+                    />
+                  ) : null}
                   <Field label="Son İşlem" value={op?.lastActionLabel ?? '—'} className="col-span-2" />
                   <Field label="Bekleyen Aksiyon" value={op?.pendingActionLabel ?? '—'} className="col-span-2" />
                   {lastOpAt ? (
@@ -625,7 +676,7 @@ export function ExpertFileDetailDrawer({
 
               {(showKonutDamage || finance) ? (
                 <Section title="Rapor Özeti">
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                  <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
                     {showKonutDamage ? (
                       <>
                         <Field
@@ -700,7 +751,6 @@ export function ExpertFileDetailDrawer({
 
               {EXPERT_REPORT_IMAGE_ORDER.some((cat) => photoGroups[cat].length > 0) ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold text-slate-800">Onarım Raporu Fotoğrafları</p>
                   {EXPERT_REPORT_IMAGE_ORDER.map((cat) => (
                     <ReportPhotoGroup
                       key={cat}
@@ -717,13 +767,15 @@ export function ExpertFileDetailDrawer({
 
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-800">Yüklenen Evraklar</p>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-brand-600 hover:text-blue-800"
-                  onClick={onOpenDocuments}
-                >
-                  Evrak Yükle
-                </button>
+                {canUploadDocuments ? (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-brand-600 hover:text-brand-800"
+                    onClick={onOpenDocuments}
+                  >
+                    Evrak Yükle
+                  </button>
+                ) : null}
               </div>
 
               {docPreviewError ? (
@@ -779,7 +831,7 @@ export function ExpertFileDetailDrawer({
           ) : tab === 'operasyon' ? (
             <div className="space-y-3.5">
               <Section title="Operasyon Bilgileri">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
                   <Field
                     label="Randevu Tarihi"
                     value={appointmentAt ? fmtDateTime(appointmentAt) : '—'}
@@ -829,7 +881,7 @@ export function ExpertFileDetailDrawer({
               </Section>
 
               <Section title="Saha Bilgileri">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">
                   <Field label="Hasar Adresi" value={addressLine} className="col-span-2" />
                   <Field label="İl" value={city} />
                   <Field label="İlçe" value={district} />
@@ -1052,9 +1104,11 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={`min-w-0 ${className}`}>
-      <p className="text-[10.5px] font-medium text-slate-400">{label}</p>
-      <div className="mt-0.5 break-words text-[12.5px] font-medium text-slate-800">{value}</div>
+    <div className={`flex min-w-0 flex-col items-stretch gap-1 text-left ${className}`}>
+      <p className="min-h-[1rem] text-left text-[10.5px] font-medium leading-4 text-slate-400">{label}</p>
+      <div className="flex min-h-[1.25rem] w-full items-start justify-start break-words text-left text-[12.5px] font-medium leading-5 text-slate-800">
+        {value}
+      </div>
     </div>
   );
 }

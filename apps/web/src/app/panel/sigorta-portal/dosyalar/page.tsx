@@ -2,16 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MessageSquare } from 'lucide-react';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
-import { PortalBreakdownBarCard } from '@/components/panel/portal-breakdown-bar-card';
-import { InsuranceProvinceResultsPanel } from '@/components/portal/InsuranceProvinceResultsPanel';
+import { InsuranceDosyalarActions } from '@/components/portal/InsuranceDosyalarActions';
 import {
   ExpertFileDetailDrawer,
   type ExpertDrawerFile,
 } from '@/components/eksper-portal/ExpertFileDetailDrawer';
 import { ExpertFileDocumentsModal, ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -19,36 +18,48 @@ import {
   PanelTableTh,
   PanelTableTd,
   PanelTableFrame,
+  PanelTableColGroup,
+  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDateTime } from '@/utils/date-helpers';
-import { formatClaimSubjectLabel, toTitleCaseTR } from '@/utils/text-helpers';
+import { formatTryAmount } from '@/utils/format-try-amount';
+import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { fetchPortalClaimFiles, hasPortalSessionToken } from '@/utils/portal-api';
 import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/portal-insurance-scope';
+import { classifyInsuranceFileTrack, type InsuranceFileTrack } from '@/utils/insurance-portal-monitoring';
 import {
-  buildInsuranceProvinceStats,
-  buildInsuranceSubjectStats,
-  classifyInsuranceFileTrack,
-  type InsuranceFileTrack,
-} from '@/utils/insurance-portal-monitoring';
+  cycleClientSort,
+  sortRowsByClientSort,
+  type ClientSortState,
+} from '@/utils/panel-table-sort';
 
 type TrackFilter = 'all' | InsuranceFileTrack;
 
 const SIGORTA_PORTAL_HOME = '/panel/sigorta-portal';
 const SIGORTA_PORTAL_LABEL = 'Dosya Takip';
+const CENTERED_COLS = new Set(['subject', 'status', 'actions']);
+const RIGHT_COLS = new Set(['amount']);
 
 const SIGORTA_FILE_TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'fileNumber', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
-  { id: 'subject', label: 'Konu', defaultWidth: 160, minWidth: 110 },
+  { id: 'fileNumber', label: 'Dosya No', defaultWidth: 130, minWidth: 110 },
+  { id: 'subject', label: 'Konu', defaultWidth: 140, minWidth: 110, flex: true },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
-  { id: 'reporter', label: 'İhbar Eden', defaultWidth: 160, minWidth: 120 },
-  { id: 'assignedUser', label: 'Meridyen Sorumlusu', defaultWidth: 140, minWidth: 100 },
+  { id: 'amount', label: 'Dosya Bedeli', defaultWidth: 120, minWidth: 100 },
+  { id: 'reporter', label: 'İhbar Eden', defaultWidth: 150, minWidth: 120 },
+  { id: 'assignedUser', label: 'Meridyen Sorumlusu', defaultWidth: 220, minWidth: 180 },
   { id: 'createdAt', label: 'İhbar Tarihi', defaultWidth: 140, minWidth: 120 },
-  { id: 'flow', label: 'İzle', defaultWidth: 72, minWidth: 64 },
-  { id: 'actions', label: 'İşlem', defaultWidth: 72, minWidth: 64, resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 128, minWidth: 112, pin: 'end', resizable: false },
 ];
+
+type PortalUserRef = {
+  id?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
+};
 
 interface ClaimFile {
   id: string;
@@ -68,12 +79,16 @@ interface ClaimFile {
   delayRisk?: boolean;
   operationStatusLabel?: string;
   nextAction?: string;
+  invoicedAmount?: number | null;
   currentStatus?: { name: string; code?: string; colorCode?: string; color?: string };
   insuranceCompany?: { id?: string; name: string };
-  assignedFieldUser?: { firstName: string; lastName: string };
+  assignedFieldUser?: PortalUserRef | null;
+  assignedOfficeUser?: PortalUserRef | null;
+  currentResponsibleUser?: PortalUserRef | null;
   assignedAdjuster?: { id?: string; firstName?: string; lastName?: string } | null;
   propertyAddress?: { city?: string | null; district?: string | null } | null;
   claimSubject?: { id?: string; name?: string | null } | null;
+  latestRepairReport?: { totalSalesAmount?: number | null; status?: string | null } | null;
   statusHistory?: Array<{
     changedAt?: string;
     changedByUser?: {
@@ -96,9 +111,32 @@ function fileNoOf(f: ClaimFile) {
   return f.fileNo ?? f.fileNumber ?? '—';
 }
 
-function meridyenOwner(f: ClaimFile) {
-  if (!f.assignedFieldUser) return '—';
-  return `${f.assignedFieldUser.firstName} ${f.assignedFieldUser.lastName}`;
+function meridyenOwnerUser(f: ClaimFile): PortalUserRef | null {
+  return f.assignedOfficeUser || f.assignedFieldUser || f.currentResponsibleUser || null;
+}
+
+function meridyenOwnerName(f: ClaimFile) {
+  const u = meridyenOwnerUser(f);
+  if (!u) return '—';
+  const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
+  return name || '—';
+}
+
+function meridyenOwnerPhone(f: ClaimFile) {
+  const phone = meridyenOwnerUser(f)?.phone?.trim();
+  return phone || null;
+}
+
+function dosyaBedeliOf(f: ClaimFile): number | null {
+  const sales = f.latestRepairReport?.totalSalesAmount;
+  if (typeof sales === 'number' && Number.isFinite(sales) && sales > 0) return sales;
+  if (typeof f.invoicedAmount === 'number' && f.invoicedAmount > 0) return f.invoicedAmount;
+  if (typeof sales === 'number' && Number.isFinite(sales)) return sales;
+  return null;
+}
+
+function fmtMoney(v: number | null) {
+  return formatTryAmount(v);
 }
 
 function reporterOf(f: ClaimFile): { name: string; role: string } {
@@ -144,6 +182,7 @@ export default function SigortaDosyalarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingScope, setMissingScope] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [trackFilter, setTrackFilter] = useState<TrackFilter>(() =>
     parseTrackParam(searchParams.get('track')),
   );
@@ -152,31 +191,64 @@ export default function SigortaDosyalarPage() {
   const [drawerFileId, setDrawerFileId] = useState<string | null>(null);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('ozet');
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
-  const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-dosyalar', SIGORTA_FILE_TABLE_COLUMNS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-dosyalar-v3', SIGORTA_FILE_TABLE_COLUMNS);
 
   useEffect(() => {
     setTrackFilter(parseTrackParam(searchParams.get('track')));
   }, [searchParams]);
 
-  const filteredFiles = useMemo(() => {
-    if (trackFilter === 'all') return files;
-    return files.filter((f) => classifyInsuranceFileTrack(f) === trackFilter);
-  }, [files, trackFilter]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 2500);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
-  const subjectStats = useMemo(
-    () => buildInsuranceSubjectStats(filteredFiles),
-    [filteredFiles],
-  );
-  const provinceStats = useMemo(
-    () => buildInsuranceProvinceStats(filteredFiles),
-    [filteredFiles],
-  );
-  const preferenceLabel =
-    trackFilter === 'expert_monitor'
-      ? 'Eksper İhbarlı'
-      : trackFilter === 'direct_process'
-        ? 'Departman İhbarlı'
-        : 'Toplam Portföy';
+  const filteredFiles = useMemo(() => {
+    const byTrack =
+      trackFilter === 'all'
+        ? files
+        : files.filter((f) => classifyInsuranceFileTrack(f) === trackFilter);
+    const q = searchQuery.trim().toLocaleLowerCase('tr');
+    const filtered = !q
+      ? byTrack
+      : byTrack.filter((f) => {
+          const reporter = reporterOf(f);
+          const hay = [
+            fileNoOf(f),
+            formatClaimSubjectLabel(f.lossType, undefined, f.subject ?? f.claimSubject?.name),
+            portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name),
+            meridyenOwnerName(f),
+            reporter.name,
+            reporter.role,
+            fmtMoney(dosyaBedeliOf(f)),
+          ]
+            .join(' ')
+            .toLocaleLowerCase('tr');
+          return hay.includes(q);
+        });
+    return sortRowsByClientSort(filtered, clientSort, (f, key) => {
+      switch (key) {
+        case 'fileNumber':
+          return fileNoOf(f);
+        case 'subject':
+          return formatClaimSubjectLabel(f.lossType, undefined, f.subject ?? f.claimSubject?.name);
+        case 'status':
+          return portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name);
+        case 'amount':
+          return dosyaBedeliOf(f) ?? -1;
+        case 'reporter':
+          return reporterOf(f).name;
+        case 'assignedUser':
+          return meridyenOwnerName(f);
+        case 'createdAt':
+          return ihbarAt(f);
+        default:
+          return '';
+      }
+    });
+  }, [files, trackFilter, searchQuery, clientSort]);
 
   const drawerFile = useMemo(
     () => filteredFiles.find((f) => f.id === drawerFileId) ?? files.find((f) => f.id === drawerFileId) ?? null,
@@ -204,6 +276,16 @@ export default function SigortaDosyalarPage() {
   const openDrawer = (id: string, tab: DrawerTab = 'ozet') => {
     setDrawerTab(tab);
     setDrawerFileId(id);
+  };
+
+  const copyFileNo = async (f: ClaimFile) => {
+    const no = fileNoOf(f);
+    try {
+      await navigator.clipboard.writeText(no);
+      setToast('Dosya No Kopyalandı.');
+    } catch {
+      setToast('Kopyalama Başarısız.');
+    }
   };
 
   useEffect(() => {
@@ -246,15 +328,15 @@ export default function SigortaDosyalarPage() {
   if (loading) return <div className="flex h-64 items-center justify-center text-slate-500">Yükleniyor...</div>;
 
   return (
-    <div className="min-w-0 max-w-full space-y-4">
+    <div className="min-w-0 max-w-full space-y-3" data-testid="sigorta-dosyalar">
       <PortalPageHeader
         portalHomeHref={SIGORTA_PORTAL_HOME}
         portalHomeLabel={SIGORTA_PORTAL_LABEL}
         currentLabel="Dosyalar"
         title="Dosyalar"
         actions={
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-            {filteredFiles.length}/{total} dosya
+          <span className="w-fit shrink-0 rounded-full bg-blue-50 px-3 py-1 text-[12.5px] font-semibold text-blue-700 ring-1 ring-blue-100">
+            {filteredFiles.length}/{total} Dosya
           </span>
         }
       />
@@ -292,6 +374,12 @@ export default function SigortaDosyalarPage() {
         })}
       </div>
 
+      {toast && (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm">
+          {toast}
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
           <span>{error}</span>
@@ -303,54 +391,23 @@ export default function SigortaDosyalarPage() {
 
       {missingScope ? (
         <div className="rounded-xl border border-amber-200 bg-white px-6 py-16 text-center">
-          <p className="font-medium text-slate-700">Sigorta şirketi kapsamı tanımlı değil.</p>
+          <p className="font-medium text-slate-700">Sigorta Şirketi Kapsamı Tanımlı Değil.</p>
           <p className="mt-2 text-sm text-slate-500">
-            Hesabınıza bağlı sigorta şirketi bulunamadı. Meridyen operasyon ekibinden kapsam ataması isteyin veya çıkış yapıp tekrar giriş yapın.
+            Hesabınıza bağlı sigorta şirketi bulunamadı. Meridyen operasyon ekibinden kapsam ataması isteyin.
           </p>
         </div>
       ) : !error && files.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-          <svg className="mx-auto mb-3 h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          <p className="font-medium text-slate-500">Henüz dosya bulunmuyor.</p>
-          <p className="mt-1 text-sm text-slate-400">Sigorta şirketinize bağlı dosyalar burada listelenir.</p>
+          <p className="font-medium text-slate-500">Henüz Dosya Bulunmuyor.</p>
         </div>
       ) : !error && filteredFiles.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-          <p className="font-medium text-slate-500">Bu amaçta dosya yok.</p>
-          <p className="mt-1 text-sm text-slate-400">
-            {trackFilter === 'direct_process'
-              ? 'Doğrudan ihbar ile açılan dosyalar burada görünür.'
-              : 'Eksper tarafında yürüyen dosyalar burada görünür.'}
+          <p className="font-medium text-slate-500">
+            {searchQuery.trim() ? 'Aramaya Uyan Dosya Yok.' : 'Bu Amaçta Dosya Yok.'}
           </p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-            <PortalBreakdownBarCard
-              title={`Dosya Konusu · ${preferenceLabel}`}
-              data={subjectStats.map((r) => ({
-                label: toTitleCaseTR(r.subject),
-                count: r.total,
-              }))}
-              emptyText={`${preferenceLabel} için konu dağılımı henüz yok.`}
-            />
-            <PortalBreakdownBarCard
-              title={`İl Bazlı · ${preferenceLabel}`}
-              data={provinceStats.map((r) => ({
-                label: toTitleCaseTR(r.city),
-                count: r.total,
-              }))}
-              emptyText={`${preferenceLabel} için il dağılımı henüz yok.`}
-              color="#0F766E"
-            />
-          </div>
-          <InsuranceProvinceResultsPanel
-            rows={provinceStats}
-            preferenceLabel={preferenceLabel}
-            emptyText={`${preferenceLabel} kapsamında il bazlı sonuç henüz oluşmadı.`}
-          />
           <PortalMobileFileList
             showInsurance={false}
             showAssigned
@@ -359,115 +416,226 @@ export default function SigortaDosyalarPage() {
               return {
                 id: f.id,
                 fileNo: fileNoOf(f),
-                subject: formatClaimSubjectLabel(f.lossType, undefined, f.subject),
+                subject: formatClaimSubjectLabel(f.lossType, undefined, f.subject ?? f.claimSubject?.name),
                 statusName: portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name),
                 statusColor: f.currentStatus?.colorCode,
                 createdAt: ihbarAt(f),
-                assignedUser: meridyenOwner(f) === '—' ? null : meridyenOwner(f),
+                assignedUser: meridyenOwnerName(f) === '—' ? null : meridyenOwnerName(f),
                 reporterLabel:
                   reporter.name === '—'
                     ? null
                     : reporter.role
                       ? `${reporter.name} · ${reporter.role}`
                       : reporter.name,
-                flowLabel: 'İzle',
               };
             })}
             onItemClick={(id) => openDrawer(id, 'ozet')}
-            onFlowClick={(id) => openDrawer(id, 'operasyon')}
           />
           <TableColumnsProvider value={tableColumns}>
             <PanelTableFrame
-              className="hidden md:block"
-              toolbar={<PanelTableColumnPicker tableColumns={tableColumns} />}
+              className="hidden overflow-hidden rounded-card border-[#E7E9EE] shadow-card md:block"
+              toolbar={
+                <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-2">
+                  <div className="section-heading mb-0 shrink-0">
+                    <span className="section-heading-bar" />
+                    <span className="section-heading-text">Tüm Dosyalar</span>
+                  </div>
+                  <div className="flex flex-nowrap items-center gap-2 shrink-0">
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Dosya, Konu, Sorumlu Ara…"
+                      data-testid="sigorta-dosyalar-search"
+                      className="w-48 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 bg-white"
+                      title="Dosya No, Konu veya Sorumluya Göre Ara"
+                    />
+                    <PanelTableColumnPicker tableColumns={tableColumns} />
+                  </div>
+                </div>
+              }
             >
-              <table className="min-w-full divide-y divide-slate-200" style={panelTableLayoutStyle(tableColumns)}>
-                <thead className="bg-slate-50">
-                  <tr>
-                    <PanelTableTh colId="fileNumber" className="table-th-center">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="subject" className="table-th-center">Konu</PanelTableTh>
-                    <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
-                    <PanelTableTh colId="reporter" className="table-th-center">İhbar Eden</PanelTableTh>
-                    <PanelTableTh colId="assignedUser" className="table-th-center">Meridyen Sorumlusu</PanelTableTh>
-                    <PanelTableTh colId="createdAt" className="table-th-center">İhbar Tarihi</PanelTableTh>
-                    <PanelTableTh colId="flow" className="table-th-center">İzle</PanelTableTh>
-                    <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredFiles.map((f) => (
-                    <tr
-                      key={f.id}
-                      className="cursor-pointer transition-colors hover:bg-slate-50"
-                      onClick={() => openDrawer(f.id, 'ozet')}
-                    >
-                      <PanelTableTd colId="fileNumber" className="table-td-center px-4 py-3 text-sm font-medium text-slate-900">
-                        {fileNoOf(f)}
-                      </PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td-center px-4 py-3 text-sm text-slate-600">
-                        {formatClaimSubjectLabel(f.lossType, undefined, f.subject)}
-                      </PanelTableTd>
-                      <PanelTableTd colId="status" className="table-td-center px-4 py-3">
-                        <span
-                          className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
-                          style={{
-                            background: f.currentStatus?.colorCode ? `${f.currentStatus.colorCode}20` : '#f3f4f6',
-                            color: f.currentStatus?.colorCode ?? '#374151',
-                          }}
-                        >
-                          {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
-                        </span>
-                      </PanelTableTd>
-                      <PanelTableTd colId="reporter" className="table-td-center px-4 py-3 text-sm text-slate-600">
-                        {(() => {
-                          const reporter = reporterOf(f);
-                          if (reporter.name === '—') return '—';
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
+                  <PanelTableColGroup />
+                  <thead className="bg-[#F5F6F8]">
+                    <tr>
+                      {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                        const thClass = CENTERED_COLS.has(col.id)
+                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                          : RIGHT_COLS.has(col.id)
+                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                        if (col.id === 'actions') {
                           return (
-                            <span className="block">
-                              <span className="font-medium text-slate-800">{reporter.name}</span>
-                              {reporter.role ? (
-                                <span className="mt-0.5 block text-[11px] text-slate-500">{reporter.role}</span>
-                              ) : null}
-                            </span>
+                            <PanelTableTh
+                              key={col.id}
+                              colId={col.id}
+                              resizable={col.resizable !== false}
+                              className={thClass}
+                            >
+                              {col.label}
+                            </PanelTableTh>
                           );
-                        })()}
-                      </PanelTableTd>
-                      <PanelTableTd colId="assignedUser" className="table-td-center px-4 py-3 text-sm text-slate-600">
-                        {meridyenOwner(f)}
-                      </PanelTableTd>
-                      <PanelTableTd colId="createdAt" className="table-td-center px-4 py-3 text-sm text-slate-500">
-                        {fmtDateTime(ihbarAt(f))}
-                      </PanelTableTd>
-                      <PanelTableTd colId="flow" className="table-td-center px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDrawer(f.id, 'operasyon');
-                          }}
-                          className="text-sm font-medium text-brand-600 hover:text-brand-800"
-                        >
-                          İzle
-                        </button>
-                      </PanelTableTd>
-                      <PanelTableTd colId="actions" className="table-td-center px-4 py-3">
-                        <button
-                          type="button"
-                          title="Mesaj Gönder"
-                          aria-label="Mesaj Gönder"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNoteFileId(f.id);
-                          }}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                        </button>
-                      </PanelTableTd>
+                        }
+                        return (
+                          <SortablePanelTableTh
+                            key={col.id}
+                            colId={col.id}
+                            sortKey={col.id}
+                            activeSortKey={clientSort?.key ?? null}
+                            sortDir={clientSort?.dir ?? 'asc'}
+                            onSort={(key) => setClientSort((prev) => cycleClientSort(prev, key))}
+                            resizable={col.resizable !== false}
+                            className={thClass}
+                          >
+                            {col.label}
+                          </SortablePanelTableTh>
+                        );
+                      })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#E7E9EE] bg-white">
+                    {filteredFiles.map((f) => {
+                      const reporter = reporterOf(f);
+                      const ownerName = meridyenOwnerName(f);
+                      const ownerPhone = meridyenOwnerPhone(f);
+                      return (
+                        <tr
+                          key={f.id}
+                          className="cursor-pointer transition-colors hover:bg-[#F5F7FB]"
+                          onClick={() => openDrawer(f.id, 'ozet')}
+                        >
+                          {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                            switch (col.id) {
+                              case 'fileNumber':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="fileNumber"
+                                    className="px-3 py-2.5 text-[13px] font-semibold tabular-nums text-[#10151F]"
+                                  >
+                                    {fileNoOf(f)}
+                                  </PanelTableTd>
+                                );
+                              case 'subject':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="subject"
+                                    className="table-td-center px-3 py-2.5 text-[13px] text-[#4B5565]"
+                                  >
+                                    {formatClaimSubjectLabel(f.lossType, undefined, f.subject ?? f.claimSubject?.name)}
+                                  </PanelTableTd>
+                                );
+                              case 'status':
+                                return (
+                                  <PanelTableTd key={col.id} colId="status" className="table-td-center px-3 py-2.5">
+                                    <span
+                                      className="inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold"
+                                      style={{
+                                        background: f.currentStatus?.colorCode
+                                          ? `${f.currentStatus.colorCode}20`
+                                          : '#f3f4f6',
+                                        color: f.currentStatus?.colorCode ?? '#374151',
+                                      }}
+                                    >
+                                      {portalStatusLabel(f.currentStatus?.code, f.currentStatus?.name)}
+                                    </span>
+                                  </PanelTableTd>
+                                );
+                              case 'amount':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="amount"
+                                    className="px-3 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#10151F]"
+                                  >
+                                    {fmtMoney(dosyaBedeliOf(f))}
+                                  </PanelTableTd>
+                                );
+                              case 'reporter':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="reporter"
+                                    className="px-3 py-2.5 text-[13px] text-[#4B5565]"
+                                  >
+                                    {reporter.name === '—' ? (
+                                      '—'
+                                    ) : (
+                                      <span className="block min-w-0">
+                                        <span className="block truncate font-medium text-slate-800">{reporter.name}</span>
+                                        {reporter.role ? (
+                                          <span className="mt-0.5 block truncate text-[11px] text-slate-500">
+                                            {reporter.role}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    )}
+                                  </PanelTableTd>
+                                );
+                              case 'assignedUser':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="assignedUser"
+                                    className="px-3 py-2.5 text-[13px] text-[#4B5565]"
+                                  >
+                                    {ownerName === '—' ? (
+                                      '—'
+                                    ) : (
+                                      <div
+                                        className="min-w-0 space-y-1"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <span className="block truncate font-medium text-slate-800">
+                                          {ownerName}
+                                        </span>
+                                        {ownerPhone ? (
+                                          <PhoneContactActions
+                                            phone={ownerPhone}
+                                            size="sm"
+                                            whatsappMessage={`Meridyen — Dosya: ${fileNoOf(f)}`}
+                                          />
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </PanelTableTd>
+                                );
+                              case 'createdAt':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId="createdAt"
+                                    className="px-3 py-2.5 text-[13px] text-[#6B7280]"
+                                  >
+                                    {fmtDateTime(ihbarAt(f))}
+                                  </PanelTableTd>
+                                );
+                              case 'actions':
+                                return (
+                                  <PanelTableTd key={col.id} colId="actions" className="table-td-center px-3 py-2.5">
+                                    <InsuranceDosyalarActions
+                                      rowId={f.id}
+                                      onFileSummary={() => openDrawer(f.id, 'ozet')}
+                                      onAddNote={() => setNoteFileId(f.id)}
+                                      onDocuments={() => setDocsFileId(f.id)}
+                                      onHistory={() => openDrawer(f.id, 'notlar')}
+                                      onCopyFileNo={() => void copyFileNo(f)}
+                                    />
+                                  </PanelTableTd>
+                                );
+                              default:
+                                return null;
+                            }
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </PanelTableFrame>
           </TableColumnsProvider>
         </>
@@ -478,6 +646,8 @@ export default function SigortaDosyalarPage() {
         onClose={() => setDrawerFileId(null)}
         file={drawerFile ? toDrawerFile(drawerFile) : null}
         initialTab={drawerTab}
+        audience="insurance"
+        canUploadDocuments={false}
         onOpenDocuments={() => drawerFileId && setDocsFileId(drawerFileId)}
         onOpenNote={() => drawerFileId && setNoteFileId(drawerFileId)}
         notesRefreshToken={notesRefreshToken}
@@ -486,12 +656,18 @@ export default function SigortaDosyalarPage() {
       <ExpertFileDocumentsModal
         open={Boolean(docsFileId)}
         claimFileId={docsFileId}
+        allowUpload={false}
         onClose={() => setDocsFileId(null)}
       />
 
       <ExpertFileNoteModal
         open={Boolean(noteFileId)}
         claimFileId={noteFileId}
+        fileNo={(() => {
+          const f = files.find((x) => x.id === noteFileId);
+          return f ? fileNoOf(f) : undefined;
+        })()}
+        insuredName={files.find((x) => x.id === noteFileId)?.insuredName}
         onClose={() => setNoteFileId(null)}
         onSaved={() => {
           setNotesRefreshToken((n) => n + 1);

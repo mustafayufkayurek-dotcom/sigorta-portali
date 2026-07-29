@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Printer, X } from 'lucide-react';
+import { PortalBreakdownBarCard } from '@/components/panel/portal-breakdown-bar-card';
+import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
+import { buildPortalWeeklyActivity } from '@/utils/portal-weekly-activity';
 import {
   buildInsuranceBranchStats,
   filterInsuranceFilesByDimensions,
@@ -59,7 +62,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+      className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
         active
           ? 'bg-brand-600 text-white shadow-sm'
           : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -67,6 +70,34 @@ function Chip({
     >
       {label}
     </button>
+  );
+}
+
+function FilterColumn({
+  title,
+  onClear,
+  children,
+}: {
+  title: string;
+  onClear?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold text-slate-500">{title}</p>
+        {onClear ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-[11px] font-semibold text-brand-600 hover:underline"
+          >
+            Temizle
+          </button>
+        ) : null}
+      </div>
+      <div className="flex max-h-[5.5rem] flex-wrap gap-1.5 overflow-y-auto">{children}</div>
+    </div>
   );
 }
 
@@ -80,7 +111,7 @@ function BranchResultTable({
   const maxTotal = Math.max(1, ...rows.map((r) => r.total));
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 py-10 text-center">
+      <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center">
         <p className="text-sm font-medium text-slate-500">{emptyText}</p>
       </div>
     );
@@ -124,7 +155,7 @@ function BranchResultTable({
 }
 
 /**
- * Detaylı istatistik — beyaz zemin; il + eksper + kanal çoklu seçimi ile branş kırılımı.
+ * Detaylı istatistik — filtreler yan yana; branş bar + haftalık trend (Dosya Sorumlusu dilinde).
  */
 export function InsuranceDetailedStatsModal({
   open,
@@ -177,6 +208,15 @@ export function InsuranceDetailedStatsModal({
   );
 
   const branchRows = useMemo(() => buildInsuranceBranchStats(filtered), [filtered]);
+  const branchChartData = useMemo(
+    () =>
+      branchRows.map((r) => ({
+        label: toTitleCaseTR(r.label),
+        count: r.total,
+      })),
+    [branchRows],
+  );
+  const weeklyTrend = useMemo(() => buildPortalWeeklyActivity(filtered), [filtered]);
 
   const selectionSummary = useMemo(() => {
     const parts: string[] = [];
@@ -193,9 +233,8 @@ export function InsuranceDetailedStatsModal({
   const handlePrint = () => {
     const node = printRef.current;
     if (!node) return;
-    const win = window.open('', '_blank', 'noopener,noreferrer,width=960,height=720');
-    if (!win) return;
-    win.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"/><title>Detaylı İstatistik</title>
+
+    const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"/><title>Detaylı İstatistik</title>
 <style>
   body{font-family:system-ui,-apple-system,sans-serif;color:#0f172a;padding:24px;margin:0}
   h1{font-size:18px;margin:0 0 4px} h2{font-size:14px;margin:20px 0 8px}
@@ -203,23 +242,59 @@ export function InsuranceDetailedStatsModal({
   table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
   th,td{border:1px solid #e2e8f0;padding:6px 8px;text-align:left}
   th{background:#f8fafc} td.num,th.num{text-align:right}
-</style></head><body>${node.innerHTML}</body></html>`);
-    win.document.close();
-    win.focus();
-    win.print();
+  @media print{body{padding:12px}}
+</style></head><body>${node.innerHTML}</body></html>`;
+
+    // Popup engeli / noopener sorununa karşı iframe ile yazdır
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(iframe);
+
+    const frameWindow = iframe.contentWindow;
+    const frameDoc = frameWindow?.document;
+    if (!frameWindow || !frameDoc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    frameDoc.open();
+    frameDoc.write(html);
+    frameDoc.close();
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 800);
+    };
+
+    const trigger = () => {
+      try {
+        frameWindow.focus();
+        frameWindow.print();
+      } finally {
+        cleanup();
+      }
+    };
+
+    if (frameDoc.readyState === 'complete') {
+      window.setTimeout(trigger, 50);
+    } else {
+      iframe.onload = () => window.setTimeout(trigger, 50);
+    }
   };
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true">
       <button type="button" className="absolute inset-0 bg-slate-950/45" aria-label="Kapat" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+      <div className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-900">Detaylı İstatistik</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Birden fazla il ve eksper seçerek branş kırılımını görün (ör. Adana + eksper → yangın / dahili su).
+            <p className="mt-0.5 text-xs text-slate-500">
+              İl ve eksper seçerek branş kırılımı ve haftalık hareketi görün.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -242,15 +317,11 @@ export function InsuranceDetailedStatsModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold text-slate-500">Kanal (Çoklu Seçim)</p>
-            <div className="flex flex-wrap gap-2">
-              <Chip
-                label="Toplam"
-                active={tracks.length === 0}
-                onClick={() => setTracks([])}
-              />
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3.5">
+          {/* Çoklu seçimler yan yana — grafik alanını ezmesin */}
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            <FilterColumn title="Kanal (Çoklu Seçim)">
+              <Chip label="Toplam" active={tracks.length === 0} onClick={() => setTracks([])} />
               {TRACK_OPTS.map((opt) => (
                 <Chip
                   key={opt.id}
@@ -259,23 +330,12 @@ export function InsuranceDetailedStatsModal({
                   onClick={() => setTracks((prev) => toggleTrack(prev, opt.id))}
                 />
               ))}
-            </div>
-          </div>
+            </FilterColumn>
 
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold text-slate-500">İl (Çoklu Seçim)</p>
-              {cities.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setCities([])}
-                  className="text-[11px] font-semibold text-brand-600 hover:underline"
-                >
-                  Temizle
-                </button>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-2">
+            <FilterColumn
+              title="İl (Çoklu Seçim)"
+              onClear={cities.length > 0 ? () => setCities([]) : undefined}
+            >
               {cityOptions.length === 0 ? (
                 <p className="text-xs text-slate-400">İl kaydı yok</p>
               ) : (
@@ -288,23 +348,12 @@ export function InsuranceDetailedStatsModal({
                   />
                 ))
               )}
-            </div>
-          </div>
+            </FilterColumn>
 
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold text-slate-500">Eksper (Çoklu Seçim)</p>
-              {experts.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setExperts([])}
-                  className="text-[11px] font-semibold text-brand-600 hover:underline"
-                >
-                  Temizle
-                </button>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-2">
+            <FilterColumn
+              title="Eksper (Çoklu Seçim)"
+              onClear={experts.length > 0 ? () => setExperts([]) : undefined}
+            >
               {expertOptions.length === 0 ? (
                 <p className="text-xs text-slate-400">Eksper kaydı yok</p>
               ) : (
@@ -319,22 +368,37 @@ export function InsuranceDetailedStatsModal({
                   />
                 ))
               )}
-            </div>
+            </FilterColumn>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
             <p className="text-xs text-slate-600">
               <span className="font-semibold text-slate-800">Seçim:</span> {selectionSummary}
+              <span className="mx-1.5 text-slate-300">·</span>
+              Eşleşen dosya:{' '}
+              <span className="font-semibold tabular-nums text-slate-800">{filtered.length}</span>
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Eşleşen dosya: <span className="font-semibold tabular-nums text-slate-800">{filtered.length}</span>
-            </p>
+          </div>
+
+          {/* Grafikler önde — Dosya Sorumlusu dilinde */}
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <PortalBreakdownBarCard
+              title="Branş Dağılımı"
+              data={branchChartData}
+              emptyText="Seçime uyan branş dağılımı yok."
+            />
+            <PortalWeeklyTrendCard
+              title="Haftalık Dosya Hareketi"
+              data={weeklyTrend}
+              emptyText="Seçime uyan haftalık hareket görünmüyor."
+              showEmptyChart
+            />
           </div>
 
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-slate-900">Branş Kırılımı</h3>
             <p className="text-xs text-slate-500">
-              Seçilen il ve eksper kesişiminde branş / konu sayıları (yangın, dahili su vb.).
+              Seçilen il ve eksper kesişiminde branş / konu sayıları.
             </p>
             <BranchResultTable
               rows={branchRows}
@@ -343,7 +407,7 @@ export function InsuranceDetailedStatsModal({
           </div>
         </div>
 
-        <div ref={printRef} className="hidden" aria-hidden>
+        <div ref={printRef} className="pointer-events-none absolute -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0" aria-hidden>
           <h1>Detaylı İstatistik</h1>
           <p>{selectionSummary}</p>
           <p>Eşleşen dosya: {filtered.length}</p>

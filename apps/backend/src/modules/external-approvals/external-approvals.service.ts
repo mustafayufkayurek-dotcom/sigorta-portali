@@ -229,6 +229,7 @@ export class ExternalApprovalsService {
 
     const newStatus = dto.action === 'approved' ? 'approved' : 'rejected';
     const reportStatus = dto.action === 'approved' ? 'externally_approved' : 'externally_rejected';
+    const historyUserId = user.id || approval.sentByUserId;
 
     await this.prisma.$transaction(async (tx) => {
       await tx.externalApproval.update({
@@ -244,27 +245,34 @@ export class ExternalApprovalsService {
       await tx.reportApprovalHistory.create({
         data: {
           reportId: approval.reportId,
-          userId: approval.sentByUserId,
+          userId: historyUserId,
           action: reportStatus,
           reason: dto.comments,
         },
       });
     });
 
-    await this.prisma.notification.create({
-      data: {
-        userId: approval.sentByUserId,
-        type: dto.action === 'approved' ? 'external_approval_approved' : 'external_approval_rejected',
-        title: dto.action === 'approved' ? 'Dış Onay Verildi' : 'Dış Onay Reddedildi',
-        body: dto.action === 'approved'
-          ? 'Dış onay talebiniz onaylandı.'
-          : `Dış onay talebiniz reddedildi.${dto.comments ? ` Neden: ${dto.comments}` : ''}`,
-        channel: 'in_app',
-        status: 'pending',
-        relatedEntityType: 'external_approval',
-        relatedEntityId: approval.id,
-      },
-    });
+    // Bildirim onay sonucunu engellemesin (gönderen kullanıcı silinmiş olabilir)
+    try {
+      await this.prisma.notification.create({
+        data: {
+          userId: approval.sentByUserId,
+          type: dto.action === 'approved' ? 'external_approval_approved' : 'external_approval_rejected',
+          title: dto.action === 'approved' ? 'Dış Onay Verildi' : 'Dış Onay Reddedildi',
+          body: dto.action === 'approved'
+            ? 'Dış onay talebiniz onaylandı.'
+            : `Dış onay talebiniz reddedildi.${dto.comments ? ` Neden: ${dto.comments}` : ''}`,
+          channel: 'in_app',
+          status: 'pending',
+          relatedEntityType: 'external_approval',
+          relatedEntityId: approval.id,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Onay bildirimi oluşturulamadı (approval=${id}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
 
     return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
   }
@@ -352,6 +360,7 @@ export class ExternalApprovalsService {
                 id: true,
                 fileNo: true,
                 lossType: true,
+                claimSubject: { select: { name: true } },
                 insuranceCompany: { select: { name: true } },
               },
             },
