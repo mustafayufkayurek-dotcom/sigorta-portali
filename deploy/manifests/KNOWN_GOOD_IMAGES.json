@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-29",
-  "label": "v412-sigorta-menu-dosyalar",
-  "description": "Web-only: Sigorta sol menü — Dosyalar, Bekleyen Onaylar önüne alındı. Health PASS, nginx→web PASS, Route Gate PASS. Backend v410. Rollback web v411.",
+  "label": "v413-dosya-hareketi-donem",
+  "description": "Web-only: Sigorta Dosya Takip grafiğine Son 7/15 Gün, Son 1 Ay ve geriye dönük ay/yıl seçenekleri. Health PASS, nginx→web PASS, Route Gate PASS. Backend v410. Rollback web v412.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v410-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v412-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v413-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v411-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v412-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v409-amd64"
   },
   "mustPassSmokeRoutes": [
