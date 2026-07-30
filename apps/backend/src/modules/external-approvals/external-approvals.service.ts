@@ -549,10 +549,18 @@ export class ExternalApprovalsService {
       });
 
       const approvalUrl = this.buildPublicUrl(token);
-      let pdfBuffer: Buffer | string | null = null;
+      let pdfBuffer: Buffer | null = null;
       try {
         pdfBuffer = await this.pdfService.generate(report as any, 'external');
-      } catch (_) {}
+      } catch (pdfErr) {
+        this.logger.error(
+          `Dış onay maili için PDF üretilemedi (approval: ${approvalId}): ${(pdfErr as Error)?.message ?? pdfErr}`,
+        );
+      }
+
+      if (!pdfBuffer?.length) {
+        throw new Error('PDF ek oluşmadan dış onay maili gönderilemez');
+      }
 
       const mailOptions: Record<string, unknown> = {
         from: this.config.get<string>('SMTP_USER'),
@@ -568,7 +576,7 @@ export class ExternalApprovalsService {
               <p style="margin: 4px 0;"><strong>Hasar Dosya No:</strong> ${report.claimFile?.fileNo ?? '—'}</p>
               <p style="margin: 4px 0;"><strong>Sigorta Şirketi:</strong> ${report.claimFile?.insuranceCompany?.name ?? '—'}</p>
             </div>
-            <p>Raporu incelemek ve onaylamak için aşağıdaki linke tıklayın:</p>
+            <p>Rapor PDF ektedir. İncelemek ve onaylamak için aşağıdaki linke tıklayın:</p>
             <a href="${approvalUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
               Raporu İncele ve Onayla
             </a>
@@ -577,19 +585,19 @@ export class ExternalApprovalsService {
             </p>
           </div>
         `,
-        attachments: [] as any[],
+        attachments: [
+          {
+            filename: `hasar-raporu-DIS-${report.reportNo}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
       };
 
-      if (pdfBuffer) {
-        (mailOptions.attachments as any[]).push({
-          filename: `onarim-raporu-${report.reportNo}.txt`,
-          content: pdfBuffer,
-          contentType: 'text/plain',
-        });
-      }
-
       await transporter.sendMail(mailOptions);
-      this.logger.log(`Dış onay maili gönderildi: ${email} (approval: ${approvalId})`);
+      this.logger.log(
+        `Dış onay maili PDF eki ile gönderildi: ${email} (approval: ${approvalId}, pdfBytes: ${pdfBuffer.length})`,
+      );
     } catch (err) {
       this.logger.error('Dış onay maili gönderilemedi', err);
     }

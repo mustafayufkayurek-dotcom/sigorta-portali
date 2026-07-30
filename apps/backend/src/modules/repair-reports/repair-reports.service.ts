@@ -782,6 +782,12 @@ export class RepairReportsService {
         },
         images: { orderBy: { sortOrder: 'asc' } },
         damageTypes: { orderBy: { sortOrder: 'asc' } },
+        approvalHistory: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
