@@ -19,7 +19,7 @@ export type MgmtKpiItem = {
 export function MgmtKpiRow({ items, loading }: { items: MgmtKpiItem[]; loading?: boolean }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid min-w-0 grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -32,7 +32,7 @@ export function MgmtKpiRow({ items, loading }: { items: MgmtKpiItem[]; loading?:
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+    <div className="grid min-w-0 grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
       {items.map((item) => {
         const Icon = item.icon;
         const TrendIcon =
@@ -50,7 +50,7 @@ export function MgmtKpiRow({ items, loading }: { items: MgmtKpiItem[]; loading?:
         return (
           <div
             key={item.id}
-            className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white px-3 pb-3 pt-2.5 transition duration-200 hover:z-10 hover:border-slate-300 hover:shadow-md"
+            className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white px-3 pb-3 pt-2.5 transition duration-200 hover:z-10 hover:border-slate-300 hover:shadow-md"
             style={{ height: MGMT.kpiH, boxShadow: MGMT.shadow }}
           >
             <span

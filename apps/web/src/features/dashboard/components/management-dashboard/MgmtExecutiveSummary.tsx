@@ -41,7 +41,7 @@ export function MgmtExecutiveSummary({ cells }: { cells: MgmtSummaryCell[] }) {
       <div className="mb-2">
         <h2 className="text-[14px] font-semibold text-[#0F172A]">Yönetici Özeti</h2>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         {cells.map((cell) => {
           const Icon = ICONS[cell.id as keyof typeof ICONS] || TrendingUp;
           const tone =

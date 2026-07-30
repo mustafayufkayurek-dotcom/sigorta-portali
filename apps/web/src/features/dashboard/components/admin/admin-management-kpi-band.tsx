@@ -119,7 +119,7 @@ export function AdminManagementKpiBand({ staggerIndex = 0 }: AdminManagementKpiB
           Şirket Yönetimi
         </h2>
         <div
-          className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/80"
+          className="inline-flex max-w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/80 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Yönetim Dönemi"
         >
@@ -132,7 +132,7 @@ export function AdminManagementKpiBand({ staggerIndex = 0 }: AdminManagementKpiB
                 role="tab"
                 aria-selected={active}
                 onClick={() => setPeriod(tab.id)}
-                className={`rounded px-2 py-1 text-[10px] font-medium transition ${
+                className={`shrink-0 rounded px-2 py-1 text-[10px] font-medium transition ${
                   active
                     ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'

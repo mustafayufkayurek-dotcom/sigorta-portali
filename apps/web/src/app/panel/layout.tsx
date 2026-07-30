@@ -480,7 +480,7 @@ function Navbar({
   const showQuickActions = canCreateHasar || canCreateAcil || canOpenMonday;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+    <header className="sticky top-0 z-50 overflow-x-hidden border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
       <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full items-center`}>
         {/* Marka rayı — sidebar genişliği ile aynı; arama içerik sol kenarına hizalanır */}
         <div
@@ -642,7 +642,7 @@ function Navbar({
 
               {notifOpen && (
                 <>
-                  <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-xl border border-slate-100/80 z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-slate-100/80 bg-white shadow-xl">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-800">Bildirimler</span>
@@ -787,38 +787,66 @@ function Navbar({
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobil menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-100 py-3 space-y-0.5">
-            {!isPortalUser
-              ? visibleMainLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <span className="inline-flex min-w-0 items-center gap-2">
-                      {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                      <span className="truncate">{link.title}</span>
-                    </span>
-                    {link.alertCount && link.alertCount > 0 ? (
-                      <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        {link.alertCount > 99 ? '99+' : link.alertCount}
-                      </span>
-                    ) : null}
-                  </Link>
-                ))
-              : (
-                  <>
-                  <p className="px-3 pb-2 text-xs text-slate-500">
-                    Sayfa geçişleri ekranın altındaki menüden yapılır.
-                  </p>
-                  {userGuide ? (
+        {/* Mobil menü — h-14 flex satırının DIŞINDA (yatay taşma / yüzen link bug fix) */}
+        {mobileMenuOpen ? (
+          <>
+            <div
+              className="fixed inset-0 top-14 z-40 bg-black/30 md:hidden"
+              aria-hidden
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div
+              className="relative z-50 max-h-[min(70vh,calc(100dvh-3.5rem))] w-full overflow-y-auto border-t border-slate-100 bg-white py-3 shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-950"
+              role="navigation"
+              aria-label="Mobil Menü"
+            >
+              <div className="space-y-0.5 px-1">
+                {!isPortalUser
+                  ? visibleMainLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                          <span className="truncate">{link.title}</span>
+                        </span>
+                        {link.alertCount && link.alertCount > 0 ? (
+                          <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            {link.alertCount > 99 ? '99+' : link.alertCount}
+                          </span>
+                        ) : null}
+                      </Link>
+                    ))
+                  : (
+                      <>
+                        <p className="px-3 pb-2 text-xs text-slate-500">
+                          Sayfa geçişleri ekranın altındaki menüden yapılır.
+                        </p>
+                        {userGuide ? (
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50/60"
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              helpDrawer?.setOpen(true);
+                            }}
+                          >
+                            <BookOpen className="h-4 w-4 shrink-0 text-brand-600" />
+                            {userGuide.title}
+                          </button>
+                        ) : null}
+                      </>
+                    )}
+                <div className={`border-t border-slate-100 pt-2 dark:border-slate-800 ${isPortalUser ? '' : 'mt-2'}`}>
+                  {userGuide && !isPortalUser ? (
                     <button
                       type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50/60"
                       onClick={() => {
                         setMobileMenuOpen(false);
                         helpDrawer?.setOpen(true);
@@ -828,39 +856,25 @@ function Navbar({
                       {userGuide.title}
                     </button>
                   ) : null}
-                  </>
-                )}
-            <div className={`border-t border-slate-100 pt-2 ${isPortalUser ? '' : 'mt-2'}`}>
-              {userGuide ? (
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50/60 rounded-lg transition-colors"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    helpDrawer?.setOpen(true);
-                  }}
-                >
-                  <BookOpen className="h-4 w-4 shrink-0 text-brand-600" />
-                  {userGuide.title}
-                </button>
-              ) : null}
-              <Link
-                href="/panel/profil"
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Profilim
-              </Link>
-              <button type="button"
-                onClick={() => { setMobileMenuOpen(false); onLogout(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                Çıkış Yap
-              </button>
+                  <Link
+                    href="/panel/profil"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-200"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Profilim
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); onLogout(); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    Çıkış Yap
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          </>
+        ) : null}
     </header>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   Briefcase,
   Building2,
@@ -629,7 +630,14 @@ export default function CrmPage() {
         if (!cancelled) {
           setEntities(next);
           setCorporateSignature(signature);
-          setSelected((prev) => prev ?? next[0] ?? null);
+          setSelected((prev) => {
+            if (prev) return prev;
+            const narrow =
+              typeof window !== 'undefined' &&
+              window.matchMedia('(max-width: 1279px)').matches;
+            if (narrow) return null;
+            return next[0] ?? null;
+          });
           if (next.length > 0) {
             const summaries = await apiClient.post<Record<string, CrmSummary>>('/crm/relationships/summaries', {
               relationships: next.map((item) => ({ kind: item.kind, id: item.id })),
@@ -850,7 +858,7 @@ export default function CrmPage() {
               Operasyon İlişkileri <span className="mx-1 text-slate-300">&gt;</span> CRM
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 shadow-sm">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 overflow-x-auto rounded-full border border-slate-200 bg-white px-2.5 py-1 shadow-sm">
             <PoolSummaryItem label="Toplam ilişki" value={`${summary.total}`} />
             <PoolSummaryItem label="Açık takip" value={summary.follow > 0 ? `${summary.follow}` : 'Yok'} tone={summary.follow ? 'amber' : 'slate'} />
             <PoolSummaryItem label="Risk sinyali" value={summary.risk > 0 ? `${summary.risk}` : 'Yok'} tone={summary.risk ? 'rose' : 'slate'} />
@@ -905,8 +913,8 @@ export default function CrmPage() {
           </div>
         </div>
 
-        <section className="grid gap-3 xl:grid-cols-[minmax(360px,0.4fr)_minmax(0,0.6fr)] 2xl:grid-cols-[minmax(420px,0.38fr)_minmax(0,0.62fr)]">
-          <div className="min-w-0 space-y-2">
+        <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(360px,0.4fr)_minmax(0,0.6fr)] 2xl:grid-cols-[minmax(420px,0.38fr)_minmax(0,0.62fr)]">
+          <div className={`min-w-0 space-y-2 ${selected ? 'hidden xl:block' : ''}`}>
 
             {error && (
               <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -918,7 +926,8 @@ export default function CrmPage() {
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div className="border-b border-slate-100 px-2.5 py-2">
                 <p className="text-xs font-semibold text-slate-500">İlişki Havuzu</p>
-                <p className="mt-0.5 text-xs text-slate-600">Seçilen ilişki sağdaki workspace alanında açılır.</p>
+                <p className="mt-0.5 text-xs text-slate-600 xl:hidden">Seçilen ilişki detayda açılır.</p>
+                <p className="mt-0.5 hidden text-xs text-slate-600 xl:block">Seçilen ilişki sağdaki workspace alanında açılır.</p>
               </div>
 
               <div className="max-h-[calc(100vh-250px)] min-h-[390px] divide-y divide-slate-100 overflow-y-auto">
@@ -962,12 +971,20 @@ export default function CrmPage() {
             </div>
           </div>
 
-          <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <section className={`min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm ${!selected ? 'hidden xl:block' : ''}`}>
             {selected ? (
               <div className="flex h-full flex-col">
                 <div className="border-b border-slate-200 bg-white p-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 xl:hidden"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    İlişki Havuzuna Dön
+                  </button>
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-brand-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
                       <h2 className="mt-0.5 text-base font-bold text-slate-950">{selected.name}</h2>
                       <p className="mt-0.5 text-xs text-slate-500">{[selected.city, selected.district].filter(Boolean).join(' / ') || 'Konum yok'}</p>

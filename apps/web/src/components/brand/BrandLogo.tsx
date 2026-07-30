@@ -29,8 +29,8 @@ type BrandLogoProps = {
 
 /** Topbar / panel: orta boy + oval (kapsül) kabuk — ne login kadar büyük ne eski kadar küçük */
 const TOPBAR_SHELL =
-  'inline-flex h-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/90 bg-white px-3.5 py-1.5 shadow-sm dark:border-slate-600 dark:bg-slate-900';
-const TOPBAR_IMG = 'block h-10 w-auto max-w-[200px] object-contain object-left sm:h-11 sm:max-w-[220px]';
+  'inline-flex h-10 max-w-[min(120px,36vw)] shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/90 bg-white px-2.5 py-1 shadow-sm sm:h-12 sm:max-w-none sm:px-3.5 sm:py-1.5 dark:border-slate-600 dark:bg-slate-900';
+const TOPBAR_IMG = 'block h-8 w-auto max-w-[120px] object-contain object-left sm:h-10 sm:max-w-[200px] md:h-11 md:max-w-[220px]';
 
 const variantStyles: Record<BrandLogoVariant, { shell: string; img: string; width?: number; height?: number }> = {
   topbar: {

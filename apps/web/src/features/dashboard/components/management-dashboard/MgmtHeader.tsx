@@ -38,7 +38,8 @@ export function MgmtHeader({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:flex-wrap sm:overflow-visible">
         {PRESETS.map((preset) => {
           const active = activePreset === preset || (preset === 'ozel' && customOpen);
           return (
@@ -46,7 +47,7 @@ export function MgmtHeader({
               key={preset}
               type="button"
               onClick={() => onSelectPreset(preset)}
-              className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition hover:scale-[1.03] ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-medium transition hover:scale-[1.03] ${
                 active
                   ? 'bg-[#2563EB] text-white shadow-sm'
                   : 'border border-[#E2E8F0] bg-white text-[#64748B] hover:bg-slate-50'
@@ -59,7 +60,7 @@ export function MgmtHeader({
 
         {customOpen ? (
           <div
-            className="inline-flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-[12px] text-[#0F172A]"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-[12px] text-[#0F172A]"
             title={`${formatTrDate(range.dateFrom)} - ${formatTrDate(range.dateTo)}`}
           >
             <TrDateInput
@@ -79,11 +80,12 @@ export function MgmtHeader({
         <button
           type="button"
           onClick={onOpenMeeting}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-blue-700"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-blue-700"
         >
           <Presentation className="h-3.5 w-3.5" />
           Yönetim Özeti
         </button>
+        </div>
       </div>
     </div>
   );
