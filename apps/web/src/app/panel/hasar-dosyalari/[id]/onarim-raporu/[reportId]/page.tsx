@@ -549,7 +549,26 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
 
 // ─── Metraj Hesaplama Asistanı Modal ─────────────────────────────────────────
 
-type HesaplamaTuru = 'duvar_boyasi' | 'tavan_boyasi' | 'zemin_kaplama' | 'siva' | 'alcipan_tavan' | 'alcipan_duvar' | 'ozel';
+type HesaplamaTuru =
+  | 'duvar_boyasi'
+  | 'tavan_boyasi'
+  | 'zemin_kaplama'
+  | 'siva'
+  | 'alcipan_tavan'
+  | 'alcipan_duvar'
+  | 'supurgelik'
+  | 'kartonpiyer'
+  | 'pvc_dograma'
+  | 'ozel';
+
+interface MetrajEntry {
+  id: string;
+  room: string;
+  calcType: string;
+  area: number;
+  formula: string;
+  compact: string;
+}
 
 interface Kesinti {
   id: string;
@@ -568,7 +587,61 @@ interface Oda {
   kesintiler: Kesinti[];
 }
 
+type PvcTip = 'pencere' | 'kapi' | 'surme' | 'balkon';
+
 const ODA_ADLARI = ['Salon', 'Oturma Odası', 'Yatak Odası', 'Çocuk Odası', 'Mutfak', 'Banyo', 'WC', 'Koridor', 'Balkon', 'Depo', 'Diğer'];
+
+const HESAPLAMA_TURU_LABEL: Record<HesaplamaTuru, string> = {
+  duvar_boyasi: 'Duvar Boyası',
+  tavan_boyasi: 'Tavan Boyası',
+  zemin_kaplama: 'Zemin Kaplama',
+  siva: 'Sıva',
+  alcipan_tavan: 'Alçıpan (Tavan)',
+  alcipan_duvar: 'Alçıpan (Duvar)',
+  supurgelik: 'Süpürgelik',
+  kartonpiyer: 'Kartonpiyer',
+  pvc_dograma: 'PVC Doğrama',
+  ozel: 'Özel Formül',
+};
+
+const PVC_TIP_LABEL: Record<PvcTip, string> = {
+  pencere: 'Pencere',
+  kapi: 'Kapı',
+  surme: 'Sürme',
+  balkon: 'Balkon',
+};
+
+function needsHeight(tur: HesaplamaTuru): boolean {
+  return tur === 'duvar_boyasi' || tur === 'siva' || tur === 'alcipan_duvar';
+}
+
+function isAlanTuru(tur: HesaplamaTuru): boolean {
+  return tur === 'tavan_boyasi' || tur === 'zemin_kaplama' || tur === 'alcipan_tavan';
+}
+
+function isMetretulTuru(tur: HesaplamaTuru): boolean {
+  return tur === 'supurgelik' || tur === 'kartonpiyer';
+}
+
+function metrajBirim(tur: string): string {
+  return tur === 'supurgelik' || tur === 'kartonpiyer' ? 'mt' : 'm²';
+}
+
+function pvcKanatCarpan(kanat: number): number {
+  if (kanat <= 1) return 1;
+  if (kanat === 2) return 1.05;
+  if (kanat === 3) return 1.12;
+  return 1.18;
+}
+
+/** Profil + mahal yüksekliğinden önerilen maliyet katsayısı (metretül işler). */
+function onerilenMaliyetKatsayi(profilCm: number, mahalM: number): number {
+  let k = 1;
+  if (profilCm > 12) k = 1.2;
+  else if (profilCm > 8) k = 1.1;
+  if (mahalM > 3) k = Math.min(1.3, Math.round((k + 0.1) * 100) / 100);
+  return k;
+}
 
 function newOda(): Oda {
   return { id: Math.random().toString(36).slice(2), ad: 'Salon', en: '', boy: '', yukseklik: '2.80', kesintiler: [] };
@@ -589,12 +662,55 @@ function fmt2(n: number): string {
   return n.toFixed(2);
 }
 
+function readMetrajEntries(metrajData: unknown): MetrajEntry[] {
+  if (!metrajData || typeof metrajData !== 'object') return [];
+  const raw = (metrajData as Record<string, unknown>).entries;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === 'object')
+    .map((e) => ({
+      id: String(e.id ?? Math.random().toString(36).slice(2)),
+      room: String(e.room ?? ''),
+      calcType: String(e.calcType ?? ''),
+      area: typeof e.area === 'number' ? e.area : parseFloat(String(e.area ?? 0)) || 0,
+      formula: String(e.formula ?? ''),
+      compact: String(e.compact ?? ''),
+    }))
+    .filter((e) => e.area > 0);
+}
+
+function metrajEntriesTotal(entries: MetrajEntry[]): number {
+  return entries.reduce((s, e) => s + e.area, 0);
+}
+
+function withMetrajEntries(
+  existing: Record<string, unknown> | null | undefined,
+  entries: MetrajEntry[],
+): Record<string, unknown> {
+  const base = existing && typeof existing === 'object' ? { ...existing } : {};
+  if (entries.length === 0) {
+    delete base.entries;
+  } else {
+    base.entries = entries.map((e) => ({
+      id: e.id,
+      room: e.room,
+      calcType: e.calcType,
+      area: e.area,
+      formula: e.formula,
+      compact: e.compact,
+    }));
+  }
+  return base;
+}
+
 interface OdaHesap {
   zeminTavan: number;
   brutDuvar: number;
   toplamCevre: number;
   toplamKesinti: number;
   netDuvar: number;
+  kapiGenislik: number;
+  netSupurgelik: number;
 }
 
 function hesaplaOda(oda: Oda): OdaHesap {
@@ -606,49 +722,229 @@ function hesaplaOda(oda: Oda): OdaHesap {
   const toplamCevre = 2 * (en + boy);
   const toplamKesinti = oda.kesintiler.reduce((s, k) => s + k.adet * k.en * k.boy, 0);
   const netDuvar = Math.max(0, brutDuvar - toplamKesinti);
-  return { zeminTavan, brutDuvar, toplamCevre, toplamKesinti, netDuvar };
+  const kapiGenislik = oda.kesintiler
+    .filter((k) => k.tip === 'kapi')
+    .reduce((s, k) => s + k.adet * k.en, 0);
+  const netSupurgelik = Math.max(0, toplamCevre - kapiGenislik);
+  return { zeminTavan, brutDuvar, toplamCevre, toplamKesinti, netDuvar, kapiGenislik, netSupurgelik };
 }
 
-function odaUyarisi(oda: Oda): string[] {
+function odaUyarisi(oda: Oda, tur: HesaplamaTuru): string[] {
   const uyarilar: string[] = [];
   const en = parseN(oda.en);
   const boy = parseN(oda.boy);
   const yuk = parseN(oda.yukseklik);
   if (en > 0 && (en < 0.5 || en > 30)) uyarilar.push('En değeri 0.5m–30m aralığında olmalıdır.');
   if (boy > 0 && (boy < 0.5 || boy > 30)) uyarilar.push('Boy değeri 0.5m–30m aralığında olmalıdır.');
-  if (yuk > 0 && (yuk < 2 || yuk > 5)) uyarilar.push('Yükseklik 2m–5m aralığında olmalıdır.');
+  if (needsHeight(tur) && yuk > 0 && (yuk < 2 || yuk > 5)) uyarilar.push('Yükseklik 2m–5m aralığında olmalıdır.');
   const h = hesaplaOda(oda);
-  if (h.toplamKesinti > h.brutDuvar && h.brutDuvar > 0) uyarilar.push('Kesinti toplamı brüt duvar alanından büyük!');
+  if (needsHeight(tur) && h.toplamKesinti > h.brutDuvar && h.brutDuvar > 0) {
+    uyarilar.push('Kesinti toplamı brüt duvar alanından büyük!');
+  }
+  if (tur === 'supurgelik' && h.kapiGenislik > h.toplamCevre && h.toplamCevre > 0) {
+    uyarilar.push('Kapı genişliği toplamı çevreden büyük!');
+  }
   return uyarilar;
 }
 
-function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => void; onAktar: (deger: string) => void; location?: string }) {
+function buildOdaMetrajEntry(
+  oda: Oda,
+  tur: HesaplamaTuru,
+  area: number,
+  opts?: { maliyetKatsayi?: number; netMtul?: number; profilCm?: number },
+): MetrajEntry {
+  const en = parseN(oda.en);
+  const boy = parseN(oda.boy);
+  const yuk = parseN(oda.yukseklik);
+  const h = hesaplaOda(oda);
+  const room = oda.ad.trim() || 'Mahal';
+  const unit = metrajBirim(tur);
+  const katsayi = opts?.maliyetKatsayi;
+  const netMtul = opts?.netMtul;
+  let formula: string;
+  if (isAlanTuru(tur)) {
+    formula = `${room} en ${fmt2(en)} × boy ${fmt2(boy)} = ${fmt2(area)} ${unit}`;
+  } else if (tur === 'kartonpiyer') {
+    const base = `${room} 2×(${fmt2(en)}+${fmt2(boy)})`;
+    formula = katsayi && katsayi !== 1 && netMtul != null
+      ? `${base} = ${fmt2(netMtul)} mt × katsayı ${fmt2(katsayi)} = ${fmt2(area)} ${unit}`
+      : `${base} = ${fmt2(area)} ${unit}`;
+  } else if (tur === 'supurgelik') {
+    const base = h.kapiGenislik > 0
+      ? `${room} 2×(${fmt2(en)}+${fmt2(boy)}) − kapı ${fmt2(h.kapiGenislik)}`
+      : `${room} 2×(${fmt2(en)}+${fmt2(boy)})`;
+    formula = katsayi && katsayi !== 1 && netMtul != null
+      ? `${base} = ${fmt2(netMtul)} mt × katsayı ${fmt2(katsayi)} = ${fmt2(area)} ${unit}`
+      : `${base} = ${fmt2(area)} ${unit}`;
+  } else if (h.toplamKesinti > 0) {
+    formula = `${room} (2×${fmt2(en)}+2×${fmt2(boy)})×${fmt2(yuk)} − ${fmt2(h.toplamKesinti)} = ${fmt2(area)} ${unit}`;
+  } else {
+    formula = `${room} (2×${fmt2(en)}+2×${fmt2(boy)})×${fmt2(yuk)} = ${fmt2(area)} ${unit}`;
+  }
+  if (opts?.profilCm && opts.profilCm > 0 && isMetretulTuru(tur)) {
+    formula += ` (profil ${fmt2(opts.profilCm)} cm)`;
+  }
+  return {
+    id: Math.random().toString(36).slice(2),
+    room,
+    calcType: tur,
+    area,
+    formula,
+    compact: `${room} ${fmt2(area)} ${unit}`,
+  };
+}
+
+function buildPvcMetrajEntry(input: {
+  tip: PvcTip;
+  en: number;
+  boy: number;
+  adet: number;
+  kanat: number;
+  includeCam: boolean;
+  includePervaz: boolean;
+  includeDenizlik: boolean;
+}): MetrajEntry | null {
+  const { tip, en, boy, adet, kanat, includeCam, includePervaz, includeDenizlik } = input;
+  if (en <= 0 || boy <= 0 || adet <= 0) return null;
+  const carpan = pvcKanatCarpan(kanat);
+  const alan = en * boy * adet;
+  const area = alan * carpan;
+  const tipLabel = PVC_TIP_LABEL[tip];
+  const extras: string[] = [];
+  if (includeCam) extras.push(`cam ${fmt2(alan)} m²`);
+  if (includePervaz) extras.push(`pervaz ${fmt2(2 * (en + boy) * adet)} mt`);
+  if (includeDenizlik && tip === 'pencere') extras.push(`denizlik ${fmt2(en * adet)} mt`);
+  const extraStr = extras.length ? ` · ${extras.join(' · ')}` : '';
+  const formula =
+    `${tipLabel} ${fmt2(en)}×${fmt2(boy)}×${adet} adet × kanat×${fmt2(carpan)} = ${fmt2(area)} m²${extraStr}`;
+  return {
+    id: Math.random().toString(36).slice(2),
+    room: tipLabel,
+    calcType: 'pvc_dograma',
+    area,
+    formula,
+    compact: `${tipLabel} ${fmt2(area)} m²`,
+  };
+}
+
+function MetrajHesaplamaModal({
+  onClose,
+  onEntriesChange,
+  location,
+  initialEntries = [],
+}: {
+  onClose: () => void;
+  onEntriesChange: (entries: MetrajEntry[], totalQty: string) => void;
+  location?: string;
+  initialEntries?: MetrajEntry[];
+}) {
   const [odalar, setOdalar] = useState<Oda[]>([newOda()]);
   const [hesaplamaTuru, setHesaplamaTuru] = useState<HesaplamaTuru>('duvar_boyasi');
   const [ozelFormul, setOzelFormul] = useState('');
+  const [eklenenler, setEklenenler] = useState<MetrajEntry[]>(initialEntries);
 
-  const tumUyarilar = odalar.flatMap((o) => odaUyarisi(o));
+  // Metretül maliyet katsayısı
+  const [profilYukseklikCm, setProfilYukseklikCm] = useState('8');
+  const [mahalYukseklikM, setMahalYukseklikM] = useState('');
+  const [maliyetKatsayi, setMaliyetKatsayi] = useState(1);
+  const [katsayiUygulandi, setKatsayiUygulandi] = useState(false);
+
+  // PVC doğrama
+  const [pvcTip, setPvcTip] = useState<PvcTip>('pencere');
+  const [pvcEn, setPvcEn] = useState('');
+  const [pvcBoy, setPvcBoy] = useState('');
+  const [pvcAdet, setPvcAdet] = useState('1');
+  const [pvcKanat, setPvcKanat] = useState(1);
+  const [pvcCam, setPvcCam] = useState(true);
+  const [pvcPervaz, setPvcPervaz] = useState(true);
+  const [pvcDenizlik, setPvcDenizlik] = useState(true);
+
+  const showHeight = needsHeight(hesaplamaTuru);
+  const birimEtiket = isMetretulTuru(hesaplamaTuru) ? 'mt' : 'm²';
+  const tumUyarilar = odalar.flatMap((o) => odaUyarisi(o, hesaplamaTuru));
+  const onerilenKatsayi = onerilenMaliyetKatsayi(parseN(profilYukseklikCm), parseN(mahalYukseklikM));
 
   const odaToplami = (oda: Oda): number => {
     const h = hesaplaOda(oda);
+    let net = 0;
     switch (hesaplamaTuru) {
-      case 'duvar_boyasi': return h.netDuvar;
-      case 'tavan_boyasi': return h.zeminTavan;
-      case 'zemin_kaplama': return h.zeminTavan;
-      case 'siva': return h.netDuvar;
-      case 'alcipan_tavan': return h.zeminTavan;
-      case 'alcipan_duvar': return h.netDuvar;
-      case 'ozel': {
-        const sonuc = evaluateExpression(ozelFormul);
-        return sonuc !== null ? sonuc : 0;
-      }
+      case 'duvar_boyasi': net = h.netDuvar; break;
+      case 'tavan_boyasi': net = h.zeminTavan; break;
+      case 'zemin_kaplama': net = h.zeminTavan; break;
+      case 'siva': net = h.netDuvar; break;
+      case 'alcipan_tavan': net = h.zeminTavan; break;
+      case 'alcipan_duvar': net = h.netDuvar; break;
+      case 'supurgelik': net = h.netSupurgelik; break;
+      case 'kartonpiyer': net = h.toplamCevre; break;
+      case 'pvc_dograma':
+      case 'ozel':
       default: return 0;
     }
+    if (isMetretulTuru(hesaplamaTuru) && katsayiUygulandi) {
+      return net * maliyetKatsayi;
+    }
+    return net;
   };
 
-  const genelToplam = hesaplamaTuru === 'ozel'
-    ? (evaluateExpression(ozelFormul) ?? 0)
-    : odalar.reduce((s, o) => s + odaToplami(o), 0);
+  const syncEntries = (next: MetrajEntry[]) => {
+    setEklenenler(next);
+    onEntriesChange(next, fmt2(metrajEntriesTotal(next)));
+  };
+
+  const raporaEkleOda = (oda: Oda) => {
+    if (isMetretulTuru(hesaplamaTuru) && !katsayiUygulandi) return;
+    const h = hesaplaOda(oda);
+    const netMtul = hesaplamaTuru === 'supurgelik' ? h.netSupurgelik : h.toplamCevre;
+    const area = odaToplami(oda);
+    const uyarilar = odaUyarisi(oda, hesaplamaTuru);
+    if (area <= 0 || uyarilar.some((u) => u.includes('büyük'))) return;
+    syncEntries([
+      ...eklenenler,
+      buildOdaMetrajEntry(oda, hesaplamaTuru, area, isMetretulTuru(hesaplamaTuru)
+        ? {
+            maliyetKatsayi,
+            netMtul,
+            profilCm: parseN(profilYukseklikCm),
+          }
+        : undefined),
+    ]);
+  };
+
+  const raporaEkleOzel = () => {
+    const sonuc = evaluateExpression(ozelFormul);
+    if (sonuc === null || sonuc <= 0) return;
+    const formulaText = ozelFormul.trim();
+    syncEntries([
+      ...eklenenler,
+      {
+        id: Math.random().toString(36).slice(2),
+        room: 'Özel Formül',
+        calcType: 'ozel',
+        area: sonuc,
+        formula: `${formulaText} = ${fmt2(sonuc)} m²`,
+        compact: `Özel ${fmt2(sonuc)} m²`,
+      },
+    ]);
+  };
+
+  const raporaEklePvc = () => {
+    const entry = buildPvcMetrajEntry({
+      tip: pvcTip,
+      en: parseN(pvcEn),
+      boy: parseN(pvcBoy),
+      adet: Math.max(1, Math.round(parseN(pvcAdet)) || 1),
+      kanat: pvcKanat,
+      includeCam: pvcCam,
+      includePervaz: pvcPervaz,
+      includeDenizlik: pvcDenizlik,
+    });
+    if (!entry) return;
+    syncEntries([...eklenenler, entry]);
+  };
+
+  const removeEklenen = (id: string) => {
+    syncEntries(eklenenler.filter((e) => e.id !== id));
+  };
 
   const updateOda = (id: string, patch: Partial<Oda>) => {
     setOdalar((prev) => prev.map((o) => o.id === id ? { ...o, ...patch } : o));
@@ -674,15 +970,34 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
     setOdalar((prev) => prev.filter((o) => o.id !== id));
   };
 
-  const hesaplamaTuruLabel: Record<HesaplamaTuru, string> = {
-    duvar_boyasi: 'Duvar Boyası',
-    tavan_boyasi: 'Tavan Boyası',
-    zemin_kaplama: 'Zemin Kaplama',
-    siva: 'Sıva',
-    alcipan_tavan: 'Alçıpan (Tavan)',
-    alcipan_duvar: 'Alçıpan (Duvar)',
-    ozel: 'Özel Formül',
+  const setHesaplamaTuruSafe = (t: HesaplamaTuru) => {
+    setHesaplamaTuru(t);
+    setKatsayiUygulandi(false);
+    setMaliyetKatsayi(1);
+    if (t === 'supurgelik') {
+      setOdalar((prev) => prev.map((o) => ({
+        ...o,
+        kesintiler: o.kesintiler.filter((k) => k.tip === 'kapi'),
+      })));
+    } else if (t === 'kartonpiyer' || isAlanTuru(t) || t === 'pvc_dograma') {
+      setOdalar((prev) => prev.map((o) => ({ ...o, kesintiler: [] })));
+    }
   };
+
+  const uygulaKatsayi = () => {
+    const k = onerilenKatsayi;
+    setMaliyetKatsayi(k);
+    setKatsayiUygulandi(true);
+  };
+
+  const eklenenToplam = metrajEntriesTotal(eklenenler);
+  const ozelSonuc = hesaplamaTuru === 'ozel' ? evaluateExpression(ozelFormul) : null;
+  const pvcCarpan = pvcKanatCarpan(pvcKanat);
+  const pvcAlanHam = parseN(pvcEn) * parseN(pvcBoy) * Math.max(1, Math.round(parseN(pvcAdet)) || 1);
+  const pvcAlan = pvcAlanHam * pvcCarpan;
+  const footerBirim = eklenenler.length > 0
+    ? (eklenenler.every((e) => metrajBirim(e.calcType) === 'mt') ? 'mt' : 'm²')
+    : birimEtiket;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
@@ -709,30 +1024,204 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
         <div className="px-6 pt-4 pb-2">
           <p className="text-xs font-semibold text-slate-500 tracking-wide mb-2">Hesaplama Türü</p>
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(hesaplamaTuruLabel) as HesaplamaTuru[]).map((t) => (
+            {(Object.keys(HESAPLAMA_TURU_LABEL) as HesaplamaTuru[]).map((t) => (
               <button
                 key={t}
                 type="button"
-                onClick={() => setHesaplamaTuru(t)}
+                onClick={() => setHesaplamaTuruSafe(t)}
                 className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${hesaplamaTuru === t ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
-                {hesaplamaTuruLabel[t]}
+                {HESAPLAMA_TURU_LABEL[t]}
               </button>
             ))}
           </div>
           {hesaplamaTuru === 'ozel' && (
-            <div className="mt-2">
-              <label className="text-xs text-slate-500 block mb-1">Özel Formül (örn: 12.5 * 2 + 8)</label>
-              <input
-                type="text"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Formülü girin..."
-                value={ozelFormul}
-                onChange={(e) => setOzelFormul(e.target.value)}
-              />
-              {ozelFormul && evaluateExpression(ozelFormul) !== null && (
-                <p className="text-xs text-brand-600 mt-1 font-mono">= {fmt2(evaluateExpression(ozelFormul)!)} m²</p>
+            <div className="mt-2 flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-slate-500 block mb-1">Özel Formül (örn: 12.5 * 2 + 8)</label>
+                <input
+                  type="text"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Formülü girin..."
+                  value={ozelFormul}
+                  onChange={(e) => setOzelFormul(e.target.value)}
+                />
+                {ozelSonuc !== null && (
+                  <p className="text-xs text-brand-600 mt-1 font-mono">= {fmt2(ozelSonuc)} m²</p>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={ozelSonuc === null || ozelSonuc <= 0}
+                onClick={raporaEkleOzel}
+                className="flex-shrink-0 bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Rapora Ekle
+              </button>
+            </div>
+          )}
+
+          {isMetretulTuru(hesaplamaTuru) && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-900">
+                Yükseklik Maliyeti — {HESAPLAMA_TURU_LABEL[hesaplamaTuru]}
+              </p>
+              <p className="text-[11px] text-amber-800">
+                Metretül çevre formülüne oda yüksekliği girmez; ancak profil veya mahal yüksekliği birim maliyeti artırır.
+                Katsayıyı hesaba uygulamadan Rapora Ekle kilitlidir.
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <label className="block text-[11px] font-medium text-slate-700">
+                  Profil Yüksekliği (Cm)
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    value={profilYukseklikCm}
+                    onChange={(e) => {
+                      setProfilYukseklikCm(e.target.value);
+                      setKatsayiUygulandi(false);
+                    }}
+                    className="mt-1 w-full rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="block text-[11px] font-medium text-slate-700">
+                  Mahal Yüksekliği (M)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={mahalYukseklikM}
+                    onChange={(e) => {
+                      setMahalYukseklikM(e.target.value);
+                      setKatsayiUygulandi(false);
+                    }}
+                    placeholder="Opsiyonel"
+                    className="mt-1 w-full rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <div className="flex flex-col justify-end">
+                  <p className="text-[11px] text-slate-600">Önerilen Katsayı</p>
+                  <p className="text-sm font-bold text-slate-900">{fmt2(onerilenKatsayi)}</p>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={uygulaKatsayi}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-semibold ${
+                      katsayiUygulandi
+                        ? 'bg-status-success/15 text-status-success ring-1 ring-status-success/30'
+                        : 'bg-brand-600 text-white hover:bg-brand-700'
+                    }`}
+                  >
+                    {katsayiUygulandi ? `Uygulandı (×${fmt2(maliyetKatsayi)})` : 'Katsayıyı Hesaba Uygula'}
+                  </button>
+                </div>
+              </div>
+              {!katsayiUygulandi && (
+                <p className="text-[11px] font-medium text-amber-900">
+                  Önce katsayıyı uygulayın; aksi halde mahal Rapora Ekle yapılamaz.
+                </p>
               )}
+            </div>
+          )}
+
+          {hesaplamaTuru === 'pvc_dograma' && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
+              <p className="text-xs font-semibold text-slate-700">PVC Doğrama — Açıklık Metrajı</p>
+              <p className="text-[11px] text-slate-500">
+                Miktar = en × boy × adet × kanat çarpanı (m²). Cam / pervaz / denizlik Metraj Özeti formülüne eklenir.
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <label className="block text-[11px] font-medium text-slate-600">
+                  Tip
+                  <select
+                    value={pvcTip}
+                    onChange={(e) => setPvcTip(e.target.value as PvcTip)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                  >
+                    {(Object.keys(PVC_TIP_LABEL) as PvcTip[]).map((t) => (
+                      <option key={t} value={t}>{PVC_TIP_LABEL[t]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-[11px] font-medium text-slate-600">
+                  En (M)
+                  <input type="number" min="0" step="0.01" value={pvcEn} onChange={(e) => setPvcEn(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm" />
+                </label>
+                <label className="block text-[11px] font-medium text-slate-600">
+                  Boy (M)
+                  <input type="number" min="0" step="0.01" value={pvcBoy} onChange={(e) => setPvcBoy(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm" />
+                </label>
+                <label className="block text-[11px] font-medium text-slate-600">
+                  Adet
+                  <input type="number" min="1" step="1" value={pvcAdet} onChange={(e) => setPvcAdet(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm" />
+                </label>
+                <label className="block text-[11px] font-medium text-slate-600">
+                  Kanat
+                  <select
+                    value={pvcKanat}
+                    onChange={(e) => setPvcKanat(parseInt(e.target.value, 10) || 1)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                  >
+                    {[1, 2, 3, 4].map((n) => (
+                      <option key={n} value={n}>{n} (×{fmt2(pvcKanatCarpan(n))})</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs text-slate-700">
+                <label className="inline-flex items-center gap-1.5">
+                  <input type="checkbox" checked={pvcCam} onChange={(e) => setPvcCam(e.target.checked)} className="accent-brand-600" />
+                  Cam (M²)
+                </label>
+                <label className="inline-flex items-center gap-1.5">
+                  <input type="checkbox" checked={pvcPervaz} onChange={(e) => setPvcPervaz(e.target.checked)} className="accent-brand-600" />
+                  Pervaz (Mt)
+                </label>
+                {pvcTip === 'pencere' && (
+                  <label className="inline-flex items-center gap-1.5">
+                    <input type="checkbox" checked={pvcDenizlik} onChange={(e) => setPvcDenizlik(e.target.checked)} className="accent-brand-600" />
+                    Denizlik (Mt)
+                  </label>
+                )}
+              </div>
+              {pvcAlan > 0 && (
+                <div className="rounded-lg border border-blue-100 bg-white px-3 py-2 text-xs font-mono space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Doğrama:</span>
+                    <span className="font-semibold text-brand-700">{fmt2(pvcAlanHam)} × {fmt2(pvcCarpan)} = {fmt2(pvcAlan)} m²</span>
+                  </div>
+                  {pvcCam && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Cam:</span><span>{fmt2(pvcAlanHam)} m²</span>
+                    </div>
+                  )}
+                  {pvcPervaz && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Pervaz:</span>
+                      <span>{fmt2(2 * (parseN(pvcEn) + parseN(pvcBoy)) * Math.max(1, Math.round(parseN(pvcAdet)) || 1))} mt</span>
+                    </div>
+                  )}
+                  {pvcDenizlik && pvcTip === 'pencere' && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Denizlik:</span>
+                      <span>{fmt2(parseN(pvcEn) * Math.max(1, Math.round(parseN(pvcAdet)) || 1))} mt</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={pvcAlan <= 0}
+                onClick={raporaEklePvc}
+                className="bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Rapora Ekle
+              </button>
             </div>
           )}
         </div>
@@ -748,196 +1237,286 @@ function MetrajHesaplamaModal({ onClose, onAktar, location }: { onClose: () => v
 
         {/* Oda Listesi */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {odalar.map((oda, odaIdx) => {
+          {hesaplamaTuru !== 'ozel' && hesaplamaTuru !== 'pvc_dograma' && odalar.map((oda, odaIdx) => {
             const h = hesaplaOda(oda);
             const toplamBuOda = odaToplami(oda);
-            const uyarilar = odaUyarisi(oda);
+            const netMtulBase = hesaplamaTuru === 'supurgelik' ? h.netSupurgelik : h.toplamCevre;
+            const uyarilar = odaUyarisi(oda, hesaplamaTuru);
             const hasError = uyarilar.length > 0;
+            const canAdd = toplamBuOda > 0
+              && !uyarilar.some((u) => u.includes('büyük'))
+              && (!isMetretulTuru(hesaplamaTuru) || katsayiUygulandi);
+            const isListeAdi = ODA_ADLARI.includes(oda.ad) && oda.ad !== 'Diğer';
+            const selectValue = isListeAdi ? oda.ad : 'Diğer';
+            const dimFields = showHeight
+              ? ([
+                  { field: 'en', label: 'En (m)', placeholder: '0.00' },
+                  { field: 'boy', label: 'Boy (m)', placeholder: '0.00' },
+                  { field: 'yukseklik', label: 'Yükseklik (m)', placeholder: '2.80' },
+                ] as const)
+              : ([
+                  { field: 'en', label: 'En (m)', placeholder: '0.00' },
+                  { field: 'boy', label: 'Boy (m)', placeholder: '0.00' },
+                ] as const);
 
             return (
               <div key={oda.id} className={`border rounded-xl p-4 space-y-3 ${hasError ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-slate-50/40'}`}>
-                {/* Oda Başlık */}
+                {/* Oda adı — tek select; Diğer’de serbest metin */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-400 w-5">{odaIdx + 1}.</span>
                   <select
-                    className="border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white flex-shrink-0 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    value={ODA_ADLARI.includes(oda.ad) ? oda.ad : 'Diğer'}
+                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[140px] focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    value={selectValue}
                     onChange={(e) => {
-                      if (e.target.value !== 'Diğer') updateOda(oda.id, { ad: e.target.value });
+                      if (e.target.value === 'Diğer') updateOda(oda.id, { ad: '' });
+                      else updateOda(oda.id, { ad: e.target.value });
                     }}
                   >
                     {ODA_ADLARI.map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
-                  <input
-                    type="text"
-                    className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    placeholder="Oda adı..."
-                    value={oda.ad}
-                    onChange={(e) => updateOda(oda.id, { ad: e.target.value })}
-                  />
+                  {selectValue === 'Diğer' && (
+                    <input
+                      type="text"
+                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-600"
+                      placeholder="Mahal adı yazın..."
+                      value={oda.ad}
+                      onChange={(e) => updateOda(oda.id, { ad: e.target.value })}
+                    />
+                  )}
                   {odalar.length > 1 && (
-                    <button type="button" onClick={() => removeOda(oda.id)} className="text-slate-300 hover:text-status-danger w-6 h-6 flex items-center justify-center rounded hover:bg-red-50">
+                    <button type="button" onClick={() => removeOda(oda.id)} className="text-slate-300 hover:text-status-danger w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 ml-auto">
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5"><path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5.5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/><path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                     </button>
                   )}
                 </div>
 
-                {/* Boyutlar */}
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    { field: 'en', label: 'En (m)', placeholder: '0.00' },
-                    { field: 'boy', label: 'Boy (m)', placeholder: '0.00' },
-                    { field: 'yukseklik', label: 'Yükseklik (m)', placeholder: '2.80' },
-                  ] as const).map(({ field, label, placeholder }) => (
-                    <div key={field}>
-                      <label className="text-xs text-slate-500 block mb-1">{label}</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        placeholder={placeholder}
-                        value={(oda as any)[field]}
-                        onChange={(e) => updateOda(oda.id, { [field]: e.target.value } as any)}
-                      />
-                    </div>
-                  ))}
+                {/* Boyutlar + Rapora Ekle */}
+                <div className="flex items-end gap-2">
+                  <div className={`grid gap-2 flex-1 ${showHeight ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    {dimFields.map(({ field, label, placeholder }) => (
+                      <div key={field}>
+                        <label className="text-xs text-slate-500 block mb-1">{label}</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-600"
+                          placeholder={placeholder}
+                          value={(oda as any)[field]}
+                          onChange={(e) => updateOda(oda.id, { [field]: e.target.value } as any)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!canAdd}
+                    onClick={() => raporaEkleOda(oda)}
+                    className="flex-shrink-0 bg-brand-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    Rapora Ekle
+                  </button>
                 </div>
 
-                {/* Formüller — her zaman görünür */}
+                {/* Tür bazlı otomatik hesap */}
                 {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && (
                   <div className="bg-white border border-blue-100 rounded-lg px-3 py-2 space-y-1">
                     <p className="text-xs font-semibold text-brand-600 mb-1.5">Otomatik Hesaplamalar</p>
                     <div className="grid grid-cols-1 gap-1 text-xs font-mono">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Zemin/Tavan Alanı:</span>
-                        <span className="text-slate-700 font-semibold">
-                          {fmt2(parseN(oda.en))} × {fmt2(parseN(oda.boy))} = <span className="text-blue-700">{fmt2(h.zeminTavan)} m²</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Brüt Duvar Alanı:</span>
-                        <span className="text-slate-700 font-semibold">
-                          (2×{fmt2(parseN(oda.en))} + 2×{fmt2(parseN(oda.boy))}) × {fmt2(parseN(oda.yukseklik))} = <span className="text-blue-700">{fmt2(h.brutDuvar)} m²</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Toplam Çevre:</span>
-                        <span className="text-slate-700 font-semibold">
-                          2×({fmt2(parseN(oda.en))}+{fmt2(parseN(oda.boy))}) = <span className="text-blue-700">{fmt2(h.toplamCevre)} mt</span>
-                        </span>
-                      </div>
+                      {isAlanTuru(hesaplamaTuru) && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Zemin/Tavan Alanı:</span>
+                          <span className="text-slate-700 font-semibold">
+                            {fmt2(parseN(oda.en))} × {fmt2(parseN(oda.boy))} = <span className="text-brand-700">{fmt2(h.zeminTavan)} m²</span>
+                          </span>
+                        </div>
+                      )}
+                      {isMetretulTuru(hesaplamaTuru) && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Çevre (Metretül):</span>
+                            <span className="text-slate-700 font-semibold">
+                              2×({fmt2(parseN(oda.en))}+{fmt2(parseN(oda.boy))}) = <span className="text-brand-700">{fmt2(h.toplamCevre)} mt</span>
+                            </span>
+                          </div>
+                          {hesaplamaTuru === 'supurgelik' && h.kapiGenislik > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500">Net Süpürgelik:</span>
+                              <span className="font-bold text-emerald-700">{fmt2(h.toplamCevre)} − {fmt2(h.kapiGenislik)} = {fmt2(h.netSupurgelik)} mt</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {needsHeight(hesaplamaTuru) && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Brüt Duvar Alanı:</span>
+                            <span className="text-slate-700 font-semibold">
+                              (2×{fmt2(parseN(oda.en))} + 2×{fmt2(parseN(oda.boy))}) × {fmt2(parseN(oda.yukseklik))} = <span className="text-brand-700">{fmt2(h.brutDuvar)} m²</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Toplam Çevre:</span>
+                            <span className="text-slate-700 font-semibold">
+                              2×({fmt2(parseN(oda.en))}+{fmt2(parseN(oda.boy))}) = <span className="text-brand-700">{fmt2(h.toplamCevre)} mt</span>
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Kesintiler */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-xs font-semibold text-slate-600">Kesintiler</p>
-                    <button type="button" onClick={() => addKesinti(oda.id, 'pencere')}
-                      className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-lg hover:bg-sky-200 font-medium">+ Pencere</button>
-                    <button type="button" onClick={() => addKesinti(oda.id, 'kapi')}
-                      className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg hover:bg-amber-200 font-medium">+ Kapı</button>
-                  </div>
-                  {oda.kesintiler.length > 0 && (
-                    <div className="space-y-1.5">
-                      {oda.kesintiler.map((k) => (
-                        <div key={k.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${k.tip === 'pencere' ? 'bg-sky-50 border border-sky-100' : 'bg-amber-50 border border-amber-100'}`}>
-                          <span className={`text-xs font-medium w-14 flex-shrink-0 ${k.tip === 'pencere' ? 'text-sky-700' : 'text-amber-700'}`}>
-                            {k.tip === 'pencere' ? 'Pencere' : 'Kapı'}
-                          </span>
-                          <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">Adet:</div>
-                          <input type="number" min="1" step="1"
-                            className="w-12 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
-                            value={k.adet}
-                            onChange={(e) => updateKesinti(oda.id, k.id, { adet: parseInt(e.target.value) || 1 })}
-                          />
-                          <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">En:</div>
-                          <input type="number" min="0" step="0.01"
-                            className="w-14 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
-                            value={k.en}
-                            onChange={(e) => updateKesinti(oda.id, k.id, { en: parseFloat(e.target.value) || 0 })}
-                          />
-                          <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">Boy:</div>
-                          <input type="number" min="0" step="0.01"
-                            className="w-14 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
-                            value={k.boy}
-                            onChange={(e) => updateKesinti(oda.id, k.id, { boy: parseFloat(e.target.value) || 0 })}
-                          />
-                          <span className="text-xs font-mono text-slate-500 ml-auto flex-shrink-0">
-                            {k.adet} × ({fmt2(k.en)} × {fmt2(k.boy)}) = <span className="font-semibold text-slate-700">{fmt2(k.adet * k.en * k.boy)} m²</span>
-                          </span>
-                          <button type="button" onClick={() => removeKesinti(oda.id, k.id)} className="text-slate-300 hover:text-status-danger ml-1">×</button>
-                        </div>
-                      ))}
-                      <div className="flex justify-between items-center px-2 pt-1 font-mono text-xs">
-                        <span className="text-slate-500">Toplam Kesinti:</span>
-                        <span className={`font-semibold ${h.toplamKesinti > h.brutDuvar && h.brutDuvar > 0 ? 'text-red-600' : 'text-slate-700'}`}>
-                          {fmt2(h.toplamKesinti)} m²
-                        </span>
-                      </div>
-                      {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && (
-                        <div className="flex justify-between items-center px-2 font-mono text-xs">
-                          <span className="text-slate-500">Net Duvar Alanı:</span>
-                          <span className="font-bold text-emerald-700">{fmt2(h.brutDuvar)} − {fmt2(h.toplamKesinti)} = {fmt2(h.netDuvar)} m²</span>
-                        </div>
+                {/* Kesintiler — duvar: pencere+kapı; süpürgelik: yalnız kapı */}
+                {(needsHeight(hesaplamaTuru) || hesaplamaTuru === 'supurgelik') && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-xs font-semibold text-slate-600">
+                        {hesaplamaTuru === 'supurgelik' ? 'Kapı Kesintisi' : 'Kesintiler'}
+                      </p>
+                      {needsHeight(hesaplamaTuru) && (
+                        <button type="button" onClick={() => addKesinti(oda.id, 'pencere')}
+                          className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-lg hover:bg-sky-200 font-medium">+ Pencere</button>
                       )}
+                      <button type="button" onClick={() => addKesinti(oda.id, 'kapi')}
+                        className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg hover:bg-amber-200 font-medium">+ Kapı</button>
                     </div>
-                  )}
-                </div>
+                    {oda.kesintiler.length > 0 && (
+                      <div className="space-y-1.5">
+                        {oda.kesintiler.map((k) => (
+                          <div key={k.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${k.tip === 'pencere' ? 'bg-sky-50 border border-sky-100' : 'bg-amber-50 border border-amber-100'}`}>
+                            <span className={`text-xs font-medium w-14 flex-shrink-0 ${k.tip === 'pencere' ? 'text-sky-700' : 'text-amber-700'}`}>
+                              {k.tip === 'pencere' ? 'Pencere' : 'Kapı'}
+                            </span>
+                            <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">Adet:</div>
+                            <input type="number" min="1" step="1"
+                              className="w-12 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
+                              value={k.adet}
+                              onChange={(e) => updateKesinti(oda.id, k.id, { adet: parseInt(e.target.value) || 1 })}
+                            />
+                            <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">
+                              {hesaplamaTuru === 'supurgelik' ? 'Genişlik:' : 'En:'}
+                            </div>
+                            <input type="number" min="0" step="0.01"
+                              className="w-14 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
+                              value={k.en}
+                              onChange={(e) => updateKesinti(oda.id, k.id, { en: parseFloat(e.target.value) || 0 })}
+                            />
+                            {hesaplamaTuru !== 'supurgelik' && (
+                              <>
+                                <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">Boy:</div>
+                                <input type="number" min="0" step="0.01"
+                                  className="w-14 border border-slate-200 rounded px-1.5 py-0.5 text-xs bg-white text-center"
+                                  value={k.boy}
+                                  onChange={(e) => updateKesinti(oda.id, k.id, { boy: parseFloat(e.target.value) || 0 })}
+                                />
+                              </>
+                            )}
+                            <span className="text-xs font-mono text-slate-500 ml-auto flex-shrink-0">
+                              {hesaplamaTuru === 'supurgelik'
+                                ? <>{k.adet} × {fmt2(k.en)} = <span className="font-semibold text-slate-700">{fmt2(k.adet * k.en)} mt</span></>
+                                : <>{k.adet} × ({fmt2(k.en)} × {fmt2(k.boy)}) = <span className="font-semibold text-slate-700">{fmt2(k.adet * k.en * k.boy)} m²</span></>}
+                            </span>
+                            <button type="button" onClick={() => removeKesinti(oda.id, k.id)} className="text-slate-300 hover:text-status-danger ml-1">×</button>
+                          </div>
+                        ))}
+                        {needsHeight(hesaplamaTuru) && (
+                          <>
+                            <div className="flex justify-between items-center px-2 pt-1 font-mono text-xs">
+                              <span className="text-slate-500">Toplam Kesinti:</span>
+                              <span className={`font-semibold ${h.toplamKesinti > h.brutDuvar && h.brutDuvar > 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                {fmt2(h.toplamKesinti)} m²
+                              </span>
+                            </div>
+                            {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && (
+                              <div className="flex justify-between items-center px-2 font-mono text-xs">
+                                <span className="text-slate-500">Net Duvar Alanı:</span>
+                                <span className="font-bold text-emerald-700">{fmt2(h.brutDuvar)} − {fmt2(h.toplamKesinti)} = {fmt2(h.netDuvar)} m²</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Bu oda toplamı */}
-                {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && hesaplamaTuru !== 'ozel' && (
-                  <div className="flex justify-between items-center bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                    <span className="text-xs font-semibold text-indigo-700">{oda.ad} — {hesaplamaTuruLabel[hesaplamaTuru]}</span>
-                    <span className="text-sm font-bold text-indigo-800">{fmt2(toplamBuOda)} m²</span>
+                {parseN(oda.en) > 0 && parseN(oda.boy) > 0 && (
+                  <div className="flex justify-between items-center bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+                    <span className="text-xs font-semibold text-slate-700">{oda.ad || 'Mahal'} — {HESAPLAMA_TURU_LABEL[hesaplamaTuru]}</span>
+                    <span className="text-sm font-bold text-slate-900 text-right">
+                      {isMetretulTuru(hesaplamaTuru) && katsayiUygulandi && maliyetKatsayi !== 1 ? (
+                        <>
+                          <span className="block text-[10px] font-medium text-slate-500">{fmt2(netMtulBase)} mt × {fmt2(maliyetKatsayi)}</span>
+                          {fmt2(toplamBuOda)} {birimEtiket}
+                        </>
+                      ) : (
+                        <>{fmt2(toplamBuOda)} {birimEtiket}</>
+                      )}
+                    </span>
                   </div>
                 )}
               </div>
             );
           })}
 
-          <button
-            type="button"
-            onClick={() => setOdalar((prev) => [...prev, newOda()])}
-            className="w-full border-2 border-dashed border-slate-200 rounded-xl py-2.5 text-sm text-slate-500 hover:border-blue-300 hover:text-brand-600 hover:bg-blue-50/30 transition-colors font-medium"
-          >
-            + Oda Ekle
-          </button>
+          {hesaplamaTuru !== 'ozel' && hesaplamaTuru !== 'pvc_dograma' && (
+            <button
+              type="button"
+              onClick={() => setOdalar((prev) => [...prev, newOda()])}
+              className="w-full border-2 border-dashed border-slate-200 rounded-xl py-2.5 text-sm text-slate-500 hover:border-blue-300 hover:text-brand-600 hover:bg-blue-50/30 transition-colors font-medium"
+            >
+              + Oda Ekle
+            </button>
+          )}
+
+          {/* Rapora eklenenler */}
+          {eklenenler.length > 0 && (
+            <div className="border border-brand-200 bg-brand-50/40 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-brand-700">Rapora Eklenenler</p>
+              {eklenenler.map((e) => (
+                <div key={e.id} className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono text-slate-700 truncate">{e.formula}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {HESAPLAMA_TURU_LABEL[e.calcType as HesaplamaTuru] ?? e.calcType}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-brand-700 flex-shrink-0">{fmt2(e.area)} {metrajBirim(e.calcType)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeEklenen(e.id)}
+                    className="text-slate-300 hover:text-status-danger flex-shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                    title="Kaldır"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Footer — Toplam ve Aktar */}
+        {/* Footer — Eklenen toplam + Tamam */}
         <div className="border-t border-slate-100 px-6 py-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-500">Toplam Alan ({hesaplamaTuruLabel[hesaplamaTuru]})</p>
-              <p className={`text-2xl font-bold ${genelToplam < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                {genelToplam < 0 ? (
-                  <span className="text-red-600 text-base font-semibold">Hata: Negatif Sonuç</span>
-                ) : (
-                  <>{fmt2(genelToplam)} <span className="text-base font-medium text-slate-500">m²</span></>
-                )}
+              <p className="text-xs text-slate-500">Rapora Eklenen Toplam</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {fmt2(eklenenToplam)} <span className="text-base font-medium text-slate-500">{footerBirim}</span>
               </p>
-              {hesaplamaTuru !== 'ozel' && odalar.length > 1 && (
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  {odalar.map((o) => `${fmt2(odaToplami(o))}`).join(' + ')} = {fmt2(genelToplam)}
-                </p>
+              {eklenenler.length > 0 && (
+                <p className="text-xs text-slate-400 mt-0.5">{eklenenler.length} mahal</p>
               )}
             </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm hover:bg-slate-50">
-                İptal
-              </button>
-              <button
-                type="button"
-                disabled={genelToplam <= 0 || tumUyarilar.some((u) => u.includes('büyük'))}
-                onClick={() => { onAktar(fmt2(genelToplam)); onClose(); }}
-                className="bg-brand-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Miktarı Rapora Yansıt ({fmt2(genelToplam)} m²)
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition-colors"
+            >
+              Tamam
+            </button>
           </div>
         </div>
       </div>
@@ -2635,25 +3214,35 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* Miktar — CalcInput */}
                 <td className={`${tdCls(rowIdx, 'quantity')} text-right`}>
                   {isEditable ? (
-                    <div className="flex items-center w-full">
-                      <CalcInput
-                        data-cell={`${rowIdx}-quantity`}
-                        className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
-                        value={row.quantity}
-                        onChange={(v) => updateRow(row._id, 'quantity', v)}
-                        onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { quantity: v }), 50)}
-                        tabIndex={getCellTabIndex(rowIdx, 'quantity')}
-                        onFocus={() => setActiveCell({ rowIdx, col: 'quantity' })}
-                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'quantity', row._id)}
-                      />
-                      <button
-                        type="button"
-                        title="Metraj Hesaplama Asistanı"
-                        onClick={() => setMetrajModalRowId(row._id)}
-                        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
-                      >
-                        📐
-                      </button>
+                    <div className="w-full">
+                      <div className="flex items-center w-full">
+                        <CalcInput
+                          data-cell={`${rowIdx}-quantity`}
+                          className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
+                          value={row.quantity}
+                          onChange={(v) => updateRow(row._id, 'quantity', v)}
+                          onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { quantity: v }), 50)}
+                          tabIndex={getCellTabIndex(rowIdx, 'quantity')}
+                          onFocus={() => setActiveCell({ rowIdx, col: 'quantity' })}
+                          onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'quantity', row._id)}
+                        />
+                        <button
+                          type="button"
+                          title="Metraj Hesaplama Asistanı"
+                          onClick={() => setMetrajModalRowId(row._id)}
+                          className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
+                        >
+                          📐
+                        </button>
+                      </div>
+                      {(() => {
+                        const entryCount = readMetrajEntries(row.metrajData).length;
+                        return entryCount > 0 ? (
+                          <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                            Metraj: {entryCount} mahal
+                          </p>
+                        ) : null;
+                      })()}
                     </div>
                   ) : (
                     <span className="px-2 text-xs text-slate-700 block py-3 text-right">{row.quantity}</span>
@@ -2897,25 +3486,35 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* Miktar — CalcInput */}
               <td className={`${tdCls('new', 'quantity')} text-right`}>
-                <div className="flex items-center w-full">
-                  <CalcInput
-                    data-cell="new-quantity"
-                    className={`${cellCls('new', 'quantity', true)} text-right flex-1`}
-                    value={addingRow.quantity}
-                    onChange={(v) => { setAddingRow((p) => ({ ...p, quantity: v })); setAddingDirty(true); }}
-                    onCommit={() => {}}
-                    tabIndex={getCellTabIndex('new', 'quantity')}
-                    onFocus={() => setActiveCell({ rowIdx: 'new', col: 'quantity' })}
-                    onKeyDown={(e) => handleCellKeyDown(e, 'new', 'quantity')}
-                  />
-                  <button
-                    type="button"
-                    title="Metraj Hesaplama Asistanı"
-                    onClick={() => setMetrajModalRowId('new')}
-                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
-                  >
-                    📐
-                  </button>
+                <div className="w-full">
+                  <div className="flex items-center w-full">
+                    <CalcInput
+                      data-cell="new-quantity"
+                      className={`${cellCls('new', 'quantity', true)} text-right flex-1`}
+                      value={addingRow.quantity}
+                      onChange={(v) => { setAddingRow((p) => ({ ...p, quantity: v })); setAddingDirty(true); }}
+                      onCommit={() => {}}
+                      tabIndex={getCellTabIndex('new', 'quantity')}
+                      onFocus={() => setActiveCell({ rowIdx: 'new', col: 'quantity' })}
+                      onKeyDown={(e) => handleCellKeyDown(e, 'new', 'quantity')}
+                    />
+                    <button
+                      type="button"
+                      title="Metraj Hesaplama Asistanı"
+                      onClick={() => setMetrajModalRowId('new')}
+                      className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-blue-50 rounded transition-colors ml-0.5"
+                    >
+                      📐
+                    </button>
+                  </div>
+                  {(() => {
+                    const entryCount = readMetrajEntries(addingRow.metrajData).length;
+                    return entryCount > 0 ? (
+                      <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                        Metraj: {entryCount} mahal
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
               </td>
               {/* Birim */}
@@ -3069,25 +3668,40 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     })()}
 
     {/* Metraj Hesaplama Modal */}
-    {metrajModalRowId !== null && (
-      <MetrajHesaplamaModal
-        onClose={() => setMetrajModalRowId(null)}
-        location={
-          metrajModalRowId === 'new'
-            ? addingRow.location || undefined
-            : rows.find((r) => r._id === metrajModalRowId)?.location || undefined
-        }
-        onAktar={(deger) => {
-          if (metrajModalRowId === 'new') {
-            setAddingRow((p) => ({ ...p, quantity: deger }));
-            setAddingDirty(true);
-          } else {
-            updateRow(metrajModalRowId, 'quantity', deger);
-            setTimeout(() => tryAutoSaveRow(metrajModalRowId, { quantity: deger }), 50);
-          }
-        }}
-      />
-    )}
+    {metrajModalRowId !== null && (() => {
+      const sourceRow = metrajModalRowId === 'new'
+        ? addingRow
+        : rows.find((r) => r._id === metrajModalRowId);
+      const initialEntries = readMetrajEntries(sourceRow?.metrajData);
+      return (
+        <MetrajHesaplamaModal
+          onClose={() => setMetrajModalRowId(null)}
+          location={sourceRow?.location || undefined}
+          initialEntries={initialEntries}
+          onEntriesChange={(entries, totalQty) => {
+            if (metrajModalRowId === 'new') {
+              setAddingRow((p) => ({
+                ...p,
+                quantity: totalQty,
+                metrajData: withMetrajEntries(p.metrajData, entries),
+              }));
+              setAddingDirty(true);
+            } else {
+              const current = rowsRef.current.find((r) => r._id === metrajModalRowId);
+              const nextMetraj = withMetrajEntries(current?.metrajData, entries);
+              updateRowFields(metrajModalRowId, {
+                quantity: totalQty,
+                metrajData: nextMetraj,
+              });
+              setTimeout(() => tryAutoSaveRow(metrajModalRowId, {
+                quantity: totalQty,
+                metrajData: nextMetraj,
+              }), 50);
+            }
+          }}
+        />
+      );
+    })()}
     </>
   );
 });

@@ -4,7 +4,10 @@ import { API, authHeader } from '@/utils/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
-import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
+import {
+  FieldSurveyCameraModal,
+  type FieldSurveyCameraDimension,
+} from '@/components/field-survey/FieldSurveyCameraModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   FIELD_SURVEY_ITEM_TYPE_OPTIONS,
@@ -49,6 +52,12 @@ function fmtCmInput(n: number | null): string {
   return String(n);
 }
 
+function hasFilledDimension(rows: DimensionRow[]): boolean {
+  return rows.some(
+    (d) => d.genislikCm != null || d.yukseklikCm != null || d.derinlikCm != null,
+  );
+}
+
 interface FieldSurveyBriefModalProps {
   open: boolean;
   onClose: () => void;
@@ -73,6 +82,7 @@ export function FieldSurveyBriefModal({
   const [savedId, setSavedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [annotatedPhotoUrl, setAnnotatedPhotoUrl] = useState<string | null>(null);
   const [itemType, setItemType] = useState<FieldSurveyItemType>('diger');
   const [title, setTitle] = useState('Keşif Ölçüsü');
   const [summaryText, setSummaryText] = useState('');
@@ -87,6 +97,7 @@ export function FieldSurveyBriefModal({
     setSavedId(null);
     setMessage(null);
     setPhotoUrl(null);
+    setAnnotatedPhotoUrl(null);
     setItemType('diger');
     setTitle('Keşif Ölçüsü');
     setSummaryText('');
@@ -107,32 +118,63 @@ export function FieldSurveyBriefModal({
     if (open && defaultPhone) setSharePhone(defaultPhone);
   }, [open, defaultPhone]);
 
-  const handleScan = async (file: File) => {
+  const handleScan = async (
+    file: File,
+    options?: {
+      preserveDimensions?: boolean;
+      cameraDimensions?: FieldSurveyCameraDimension[];
+      annotatedFile?: File | null;
+    },
+  ) => {
     setScanning(true);
     setMessage(null);
+
+    const cameraDims = options?.cameraDimensions;
+    const preserveFromCamera =
+      Boolean(options?.preserveDimensions) &&
+      Array.isArray(cameraDims) &&
+      cameraDims.some((d) => d.genislikCm != null || d.yukseklikCm != null || d.derinlikCm != null);
+
+    if (preserveFromCamera && cameraDims) {
+      setDimensions(
+        cameraDims.map((d, i) => ({
+          label: d.label?.trim() || `Alan ${i + 1}`,
+          genislikCm: d.genislikCm,
+          yukseklikCm: d.yukseklikCm,
+          derinlikCm: d.derinlikCm,
+        })),
+      );
+    }
+
+    // İşaretli foto varsa onu kanıt olarak yükle (ölçü özeti basılı)
+    const uploadFile = options?.annotatedFile ?? file;
+
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', uploadFile);
       const res = await axios.post(
         `${API}/claim-files/${claimFileId}/field-survey-briefs/scan`,
         fd,
         { headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' } },
       );
       const data = res.data?.data ?? {};
+
       if (data.itemType) setItemType(data.itemType);
       if (data.title) setTitle(data.title);
       if (data.summaryText) setSummaryText(data.summaryText);
-      if (Array.isArray(data.dimensions) && data.dimensions.length > 0) {
-        setDimensions(
-          data.dimensions.map((d: DimensionRow, i: number) => ({
-            label: d.label || `Modül ${i + 1}`,
-            genislikCm: d.genislikCm ?? null,
-            yukseklikCm: d.yukseklikCm ?? null,
-            derinlikCm: d.derinlikCm ?? null,
-          })),
-        );
+
+      // Elle / kameradan girilen ölçüleri AI tahminiyle ezme
+      if (!preserveFromCamera && Array.isArray(data.dimensions) && data.dimensions.length > 0) {
+        const aiDims = data.dimensions.map((d: DimensionRow, i: number) => ({
+          label: d.label || `Alan ${i + 1}`,
+          genislikCm: d.genislikCm ?? null,
+          yukseklikCm: d.yukseklikCm ?? null,
+          derinlikCm: d.derinlikCm ?? null,
+        }));
+        setDimensions((prev) => (hasFilledDimension(prev) ? prev : aiDims));
       }
-      if (Array.isArray(data.materials)) {
+
+      if (Array.isArray(data.materials) && data.materials.length > 0) {
         setMaterials(
           data.materials.map((m: MaterialRow) => ({
             name: m.name ?? '',
@@ -142,13 +184,21 @@ export function FieldSurveyBriefModal({
         );
       }
       if (data.aiConfidence != null) setAiConfidence(data.aiConfidence);
-      if (data.photoUrl) setPhotoUrl(data.photoUrl);
-      setMessage(data.message ?? 'Fotoğraf işlendi.');
+      if (data.photoUrl) {
+        setPhotoUrl(data.photoUrl);
+        if (options?.annotatedFile) setAnnotatedPhotoUrl(data.photoUrl);
+      }
+
+      if (preserveFromCamera) {
+        setMessage('Fotoğraf kaydedildi — ölçü özeti forma aktarıldı. Kontrol edip kaydedin.');
+      } else {
+        setMessage(data.message ?? 'Fotoğraf kaydedildi — ölçüleri kontrol edin.');
+      }
     } catch (err: unknown) {
       const msg =
         axios.isAxiosError(err) && err.response?.data?.message
           ? String(err.response.data.message)
-          : 'Fotoğraf okunamadı. Alanları elle doldurabilirsiniz.';
+          : 'Fotoğraf kaydedilemedi. Ölçüleri elle girebilirsiniz.';
       setMessage(msg);
     } finally {
       setScanning(false);
@@ -156,10 +206,6 @@ export function FieldSurveyBriefModal({
   };
 
   const handlePickFile = () => {
-    if (prefersNativeCameraCapture()) {
-      fileInputRef.current?.click();
-      return;
-    }
     setShowCamera(true);
   };
 
@@ -168,7 +214,7 @@ export function FieldSurveyBriefModal({
     title: title.trim() || 'Keşif Ölçüsü',
     summaryText: summaryText.trim(),
     dimensions: dimensions.map((d) => ({
-      label: d.label.trim() || 'Modül',
+      label: d.label.trim() || 'Alan',
       genislikCm: d.genislikCm,
       yukseklikCm: d.yukseklikCm,
       derinlikCm: d.derinlikCm,
@@ -183,6 +229,7 @@ export function FieldSurveyBriefModal({
     aiConfidence,
     isEstimated: true,
     photoUrl,
+    annotatedPhotoUrl,
     status,
   });
 
@@ -301,7 +348,7 @@ export function FieldSurveyBriefModal({
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <span className="font-semibold">Tahmini Keşif Ölçüsü</span>
               {' — '}
-              Lazer metre ile aldığınız ölçüleri buraya girin; fotoğraftan AI tahmini destek olur.
+              Lazer metre ile aldığınız ölçüleri kamerada veya aşağıya girin; fotoğraf kanıt ve özet içindir.
               Kesin ölçü dosya onayı sonrası tedarikçi/usta tarafından sahada alınır.
             </div>
 
@@ -319,7 +366,7 @@ export function FieldSurveyBriefModal({
                 if (files[0]) void handleScan(files[0]);
               }}
               className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-4 transition-colors"
-              activeClassName="border-blue-400 bg-blue-50"
+              activeClassName="border-brand-400 bg-brand-50"
             >
               <div className="flex flex-wrap gap-2">
                 <button
@@ -331,11 +378,11 @@ export function FieldSurveyBriefModal({
                   disabled={scanning}
                   className="btn-secondary text-sm"
                 >
-                  {scanning ? 'Okunuyor…' : 'Fotoğraf Çek / Seç'}
+                  {scanning ? 'Kaydediliyor…' : 'Fotoğraf Çek / Ölçü Gir'}
                 </button>
-                {photoUrl && (
+                {(annotatedPhotoUrl || photoUrl) && (
                   <a
-                    href={photoUrl}
+                    href={annotatedPhotoUrl || photoUrl || undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-brand-600 hover:underline self-center"
@@ -345,7 +392,9 @@ export function FieldSurveyBriefModal({
                   </a>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400 mt-2">Fotoğrafı buraya sürükleyebilirsiniz</p>
+              <p className="text-[11px] text-slate-400 mt-2">
+                Kamera ölçü emareleri ve ölçü özeti ile açılır. Fotoğrafı buraya da sürükleyebilirsiniz.
+              </p>
             </FileDropZone>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -392,7 +441,7 @@ export function FieldSurveyBriefModal({
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-600">Tahmini Ölçü Alanları</span>
+                <span className="text-xs font-medium text-slate-600">Ölçü Özeti</span>
                 <button
                   type="button"
                   className="text-xs text-brand-600 hover:underline"
@@ -420,7 +469,7 @@ export function FieldSurveyBriefModal({
                         setDimensions((prev) => prev.map((r, i) => (i === idx ? { ...r, genislikCm: v } : r)));
                       }}
                       className="rounded border border-slate-200 px-2 py-1.5 text-xs"
-                      placeholder="Genişlik (Tahmini) cm"
+                      placeholder="Genişlik (Cm)"
                     />
                     <input
                       value={fmtCmInput(row.yukseklikCm)}
@@ -429,7 +478,7 @@ export function FieldSurveyBriefModal({
                         setDimensions((prev) => prev.map((r, i) => (i === idx ? { ...r, yukseklikCm: v } : r)));
                       }}
                       className="rounded border border-slate-200 px-2 py-1.5 text-xs"
-                      placeholder="Yükseklik (Tahmini) cm"
+                      placeholder="Yükseklik (Cm)"
                     />
                     <input
                       value={fmtCmInput(row.derinlikCm)}
@@ -438,13 +487,13 @@ export function FieldSurveyBriefModal({
                         setDimensions((prev) => prev.map((r, i) => (i === idx ? { ...r, derinlikCm: v } : r)));
                       }}
                       className="rounded border border-slate-200 px-2 py-1.5 text-xs"
-                      placeholder="Derinlik (Tahmini) cm"
+                      placeholder="Derinlik (Cm)"
                     />
                     <button
                       type="button"
                       disabled={dimensions.length <= 1}
                       onClick={() => setDimensions((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-xs text-red-600 hover:underline disabled:opacity-40"
+                      className="text-xs text-status-danger hover:underline disabled:opacity-40"
                     >
                       Sil
                     </button>
@@ -504,7 +553,7 @@ export function FieldSurveyBriefModal({
                       <button
                         type="button"
                         onClick={() => setMaterials((prev) => prev.filter((_, i) => i !== idx))}
-                        className="text-xs text-red-600 hover:underline"
+                        className="text-xs text-status-danger hover:underline"
                       >
                         Sil
                       </button>
@@ -526,7 +575,7 @@ export function FieldSurveyBriefModal({
 
             {aiConfidence != null && (
               <p className="text-[11px] text-slate-400">
-                AI Güven Skoru: %{Math.round(aiConfidence * 100)} (tahmini)
+                Destek Skoru: %{Math.round(aiConfidence * 100)} (tahmini)
               </p>
             )}
           </div>
@@ -563,10 +612,17 @@ export function FieldSurveyBriefModal({
         </div>
       </div>
 
-      <ReceiptCameraModal
+      <FieldSurveyCameraModal
         open={showCamera}
         onClose={() => setShowCamera(false)}
-        onCapture={(file) => void handleScan(file)}
+        initialDimensions={dimensions}
+        onCapture={({ file, annotatedFile, dimensions: cameraDims }) => {
+          void handleScan(file, {
+            preserveDimensions: true,
+            cameraDimensions: cameraDims,
+            annotatedFile,
+          });
+        }}
       />
     </>
   );

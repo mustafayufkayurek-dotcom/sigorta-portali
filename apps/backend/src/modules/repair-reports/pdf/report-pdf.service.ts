@@ -141,6 +141,54 @@ function formatMahalBolge(item: ReportItem): string {
   return location || scope || '—';
 }
 
+interface MetrajEntryPdf {
+  room: string;
+  formula: string;
+  compact: string;
+  area: number;
+  calcType: string;
+}
+
+function readMetrajEntriesPdf(metrajData: ReportItem['metrajData']): MetrajEntryPdf[] {
+  if (!metrajData || typeof metrajData !== 'object') return [];
+  const raw = (metrajData as Record<string, unknown>).entries;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === 'object')
+    .map((e) => ({
+      room: String(e.room ?? ''),
+      formula: String(e.formula ?? ''),
+      compact: String(e.compact ?? ''),
+      area: typeof e.area === 'number' ? e.area : parseFloat(String(e.area ?? 0)) || 0,
+      calcType: String(e.calcType ?? ''),
+    }))
+    .filter((e) => e.area > 0);
+}
+
+/** Ana tablo için kısa metraj satırı — en fazla 3 mahal */
+function formatMetrajCompactLine(entries: MetrajEntryPdf[], max = 3): string {
+  if (entries.length === 0) return '';
+  const shown = entries.slice(0, max).map((e) => e.compact || `${e.room} ${e.area.toFixed(2)} m²`);
+  const rest = entries.length - max;
+  const body = shown.join(' · ');
+  return rest > 0 ? `Metraj: ${body} +${rest} mahal` : `Metraj: ${body}`;
+}
+
+function formatJobDescriptionCell(item: ReportItem, opts?: { includeDescription?: boolean }): string {
+  const includeDescription = opts?.includeDescription !== false;
+  const entries = readMetrajEntriesPdf(item.metrajData);
+  const compact = formatMetrajCompactLine(entries);
+  const desc = includeDescription ? (item.description ?? '').trim() : '';
+  let html = `<strong>${escHtml(item.jobDescription)}</strong>`;
+  if (desc) {
+    html += `<br><span class="item-desc">${escHtml(desc)}</span>`;
+  }
+  if (compact) {
+    html += `<br><span class="item-metraj">${escHtml(compact)}</span>`;
+  }
+  return html;
+}
+
 function fmtCurrency(n: number): string {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 }
@@ -371,7 +419,7 @@ export class ReportPdfService {
             <tr class="${zebra}">
               <td>${catDot} ${escHtml(wgCell)}</td>
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
-              <td><strong>${escHtml(item.jobDescription)}</strong>${item.description ? `<br><span class="item-desc">${escHtml(item.description)}</span>` : ''}</td>
+              <td>${formatJobDescriptionCell(item)}</td>
               <td class="text-center">${qty}</td>
               <td class="text-center">${unit}</td>
               <td class="text-right">${fmtCurrency(supplierUnitPrice)}</td>
@@ -380,12 +428,13 @@ export class ReportPdfService {
               <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
             </tr>`;
           } else {
+            const descNote = (item.description ?? '').trim();
             html += `
             <tr class="${zebra}">
               <td>${catDot} ${escHtml(wgCell)}</td>
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
-              <td><strong>${escHtml(item.jobDescription)}</strong>${item.description ? `<br><span class="item-desc">${escHtml(item.description)}</span>` : ''}</td>
-              <td>${item.description ? escHtml(item.description) : '—'}</td>
+              <td>${formatJobDescriptionCell(item, { includeDescription: false })}</td>
+              <td>${descNote ? escHtml(descNote) : '—'}</td>
               <td class="text-center">${qty}</td>
               <td class="text-center">${unit}</td>
               <td class="text-right">${unitPriceStr}</td>
@@ -540,6 +589,43 @@ export class ReportPdfService {
         <div class="photo-gallery">
           ${imageItems}
         </div>`;
+    }
+
+    // Metraj özeti eki — formül detayları ana tabloyu şişirmesin
+    const metrajAppendixRows = allItems.flatMap((item) =>
+      readMetrajEntriesPdf(item.metrajData).map((entry) => ({
+        jobDescription: item.jobDescription,
+        location: formatMahalBolge(item),
+        entry,
+      })),
+    );
+    let metrajAppendixHtml = '';
+    if (metrajAppendixRows.length > 0) {
+      const rowsHtml = metrajAppendixRows.map((row) => `
+        <tr>
+          <td>${escHtml(row.jobDescription)}</td>
+          <td>${escHtml(row.location)}</td>
+          <td>${escHtml(row.entry.room || '—')}</td>
+          <td class="metraj-formula">${escHtml(row.entry.formula || row.entry.compact)}</td>
+          <td class="text-right">${row.entry.area.toFixed(2)} m²</td>
+        </tr>`).join('');
+      metrajAppendixHtml = `
+        <div class="page-break"></div>
+        <div class="section-header">Metraj Özeti (Rapor Eki)</div>
+        <table class="metraj-appendix-table">
+          <thead>
+            <tr>
+              <th style="width:22%">İş Tanımı</th>
+              <th style="width:18%">Mahal/Bölge</th>
+              <th style="width:12%">Oda</th>
+              <th style="width:36%">Hesap</th>
+              <th style="width:12%" class="text-right">Alan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>`;
     }
 
     return `<!DOCTYPE html>
@@ -870,6 +956,13 @@ export class ReportPdfService {
     font-size: 7.5pt;
     color: #64748b;
     font-style: italic;
+  }
+
+  .item-metraj {
+    font-size: 7pt;
+    color: #475569;
+    font-weight: 500;
+    font-style: normal;
   }
 
   /* ── Feature 7: Kategori renk noktalari ── */
@@ -1218,6 +1311,34 @@ export class ReportPdfService {
   .damage-summary-table tbody td { padding: 5px 10px; border-bottom: 1px solid #f0f4f8; }
   .damage-summary-table tbody tr:nth-child(even) td { background: #f8fafc; }
 
+  /* ── Metraj özeti eki ── */
+  .metraj-appendix-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 8.5pt;
+    border: 1px solid #e2e8f0;
+  }
+  .metraj-appendix-table thead tr { background: #f1f5f9; color: #374151; }
+  .metraj-appendix-table thead th {
+    padding: 6px 8px;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .metraj-appendix-table thead th.text-right { text-align: right; }
+  .metraj-appendix-table tbody td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #f0f4f8;
+    vertical-align: top;
+  }
+  .metraj-appendix-table tbody tr:nth-child(even) td { background: #f8fafc; }
+  .metraj-appendix-table .metraj-formula {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 7.5pt;
+    color: #475569;
+  }
+
   /* ── Tespit resimleri eki: 3 sütun; 2–3. sayfaya taşabilir ── */
   .photo-gallery {
     display: grid;
@@ -1418,6 +1539,9 @@ ${approvalTrailHtml}
     <div class="signature-name">${escHtml(resolveRepairReportExpertName(report) ?? '') || '..............................'}</div>
   </div>
 </div>
+
+<!-- METRAJ ÖZETİ (RAPOR EKİ) -->
+${metrajAppendixHtml}
 
 <!-- TESPİT RESİMLERİ (RAPOR EKİ) -->
 ${photoGalleryHtml}

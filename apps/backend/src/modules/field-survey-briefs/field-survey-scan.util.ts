@@ -143,7 +143,7 @@ export async function extractFieldSurveyFieldsFromImage(
       materials: [],
       aiConfidence: null,
       message:
-        'Otomatik okuma için sistem yöneticisinin OPENAI_API_KEY tanımlaması gerekiyor. Fotoğraf kaydedildi; alanları elle doldurabilirsiniz.',
+        'Fotoğraf kaydedildi — ölçüleri kontrol edin. (Otomatik özet önerisi şu an kullanılamıyor.)',
     };
   }
 
@@ -184,8 +184,8 @@ export async function extractFieldSurveyFieldsFromImage(
       configured: true,
       ...parsed,
       message: hasData
-        ? 'Fotoğraf okundu — tahmini ölçüleri kontrol edip kaydedin.'
-        : 'Fotoğraf kaydedildi ancak otomatik ölçü çıkarımı yapılamadı. Lütfen elle girin.',
+        ? 'Fotoğraf kaydedildi — ölçü ve özeti kontrol edip kaydedin.'
+        : 'Fotoğraf kaydedildi — ölçüleri kontrol edin.',
     };
   } catch (err) {
     logger.error('Keşif ölçüsü vision hatası', err);
@@ -197,7 +197,7 @@ export async function extractFieldSurveyFieldsFromImage(
       dimensions: [{ label: 'Alan 1', genislikCm: null, yukseklikCm: null, derinlikCm: null }],
       materials: [],
       aiConfidence: null,
-      message: 'Fotoğraf kaydedildi fakat otomatik okuma başarısız oldu. Alanları elle doldurun.',
+      message: 'Fotoğraf kaydedildi — ölçüleri kontrol edin.',
     };
   }
 }
