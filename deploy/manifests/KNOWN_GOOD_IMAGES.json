@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-30",
-  "label": "v418-saha-kesif-metraj-pvc",
-  "description": "Full: Saha Keşif ölçü emareli kamera + ölçü yumuşatma; Metraj PVC doğrama + süpürgelik/kartonpiyer yükseklik katsayısı; PDF metraj özeti. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback backend v417 / web v416.",
+  "updatedAt": "2026-07-31",
+  "label": "v419-mobil-kabuk-crm",
+  "description": "Web-only: mobil navbar drawer+backdrop, CRM master-detail, dashboard/şerit taşma kilidi. Backend sabit v418. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v418 / backend v418.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v418-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v418-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v419-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v416-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v417-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v418-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v418-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
