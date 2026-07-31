@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-31",
-  "label": "v421-logout-force-password",
-  "description": "Web-only: çıkış sonrası şifresiz yeniden giriş kilidi (backend logout + force-password). Backend sabit v418. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v420 / backend v418.",
+  "label": "v422-mobil-operasyon-alt",
+  "description": "Web-only: mobil hamburger menüde Operasyon alt linkleri (Hasar/Acil) + Anketler children. Backend sabit v418. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v421 / backend v418.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v418-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v421-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v422-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v420-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v421-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v418-amd64"
   },
   "mustPassSmokeRoutes": [
