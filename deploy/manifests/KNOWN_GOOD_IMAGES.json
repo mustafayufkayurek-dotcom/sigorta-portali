@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-07-31",
-  "label": "v420-profil-dropdown",
-  "description": "Web-only hotfix: header overflow-x-hidden kaldırıldı — profil/bildirim dropdown clip regresyonu. Backend sabit v418. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v419 / backend v418.",
+  "label": "v421-logout-force-password",
+  "description": "Web-only: çıkış sonrası şifresiz yeniden giriş kilidi (backend logout + force-password). Backend sabit v418. Health PASS, nginx→web PASS, Route Gate PASS (login PARTIAL env). Rollback web v420 / backend v418.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v418-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v420-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v421-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v419-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v420-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v418-amd64"
   },
   "mustPassSmokeRoutes": [
