@@ -666,16 +666,16 @@ function OperasyonPageContent() {
             <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/panel/operasyon/gelen-kutusu" className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+        <div className="page-header-actions">
+          <Link href="/panel/operasyon/gelen-kutusu" className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
             Gelen Kutusu
           </Link>
-          <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60">
+          <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60 justify-center">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Hasar Dosyası
           </Link>
-          <Link href="/panel/operasyon?filter=acil&yeni=1" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+          <Link href="/panel/operasyon?filter=acil&yeni=1" className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Yeni Acil Dosyası
           </Link>
@@ -689,7 +689,7 @@ function OperasyonPageContent() {
 
       {/* Operasyon KPI — dikey kartlar; 1440’te tek satır taşma/kesilme yok */}
       <div
-        className="grid grid-cols-4 gap-3 xl:grid-cols-8"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
         data-testid="ops-kpi-band"
       >
         <OpsStripKpi
@@ -788,19 +788,19 @@ function OperasyonPageContent() {
 
       <div className="table-container">
         <div className="flex flex-col gap-2 px-4 py-2.5 border-b border-slate-100">
-          <div className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="section-heading mb-0 shrink-0">
               <span className="section-heading-bar" />
               <span className="section-heading-text">Tüm Dosyalar</span>
             </div>
-            <div className="flex flex-nowrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="search"
                 value={customerQuery}
                 onChange={(e) => setCustomerQuery(e.target.value)}
                 placeholder="Müşteri Ara…"
                 data-testid="ops-customer-search"
-                className="w-40 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                className="w-full sm:w-40 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                 title="Müşteri adı veya tipine göre ara"
               />
               <div className="flex items-center rounded-xl border border-slate-200 overflow-hidden text-xs font-medium">
@@ -841,7 +841,9 @@ function OperasyonPageContent() {
                 <option value="fileNo:asc">Dosya No A-Z</option>
                 <option value="priority:desc">Öncelik</option>
               </select>
-              <PanelTableColumnPicker tableColumns={tableColumns} />
+              <div className="hidden lg:block">
+                <PanelTableColumnPicker tableColumns={tableColumns} />
+              </div>
             </div>
           </div>
 
@@ -883,7 +885,71 @@ function OperasyonPageContent() {
         ) : filteredRows.length === 0 ? (
           <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobil / tablet kart — masaüstü tablo lg+ */}
+          <div className="grid gap-3 p-3 lg:hidden">
+            {filteredRows.map((row) => (
+              <button
+                key={`${row.kind}-${row.id}`}
+                type="button"
+                onClick={() =>
+                  router.push(
+                    row.kind === 'hasar'
+                      ? `/panel/hasar-dosyalari/${row.id}?grup=operasyon`
+                      : `/panel/acil-yardim/${row.id}`,
+                  )
+                }
+                className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40 ${
+                  row.approval72hExceeded || row.delayRisk
+                    ? 'border-red-200 bg-red-50/30'
+                    : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {row.kind === 'hasar' ? (
+                        <span className="badge badge-blue">Hasar</span>
+                      ) : (
+                        <span className="badge badge-orange">Acil</span>
+                      )}
+                      {row.approval72hExceeded ? (
+                        <span className="badge badge-red">72s</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1.5 font-mono text-sm font-bold text-slate-900">{row.fileNo}</div>
+                    <div className="mt-0.5 truncate text-xs font-medium text-slate-600">{row.customerName}</div>
+                  </div>
+                  {row.kind === 'hasar' ? (
+                    <span className={row.statusTone}>{row.statusLabel}</span>
+                  ) : (
+                    <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
+                      {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-slate-400">Sigortalı</p>
+                    <p className="mt-0.5 truncate font-medium text-slate-700">{row.insuredName || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Tarih</p>
+                    <p className="mt-0.5 font-medium text-slate-700">{fmtDate(row.date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Sorumlu</p>
+                    <p className="mt-0.5 truncate font-medium text-slate-700">{row.assigneeName || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Konu</p>
+                    <p className="mt-0.5 truncate font-medium text-slate-700">{row.subject || '—'}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
               <thead className="table-head-row">
@@ -1111,6 +1177,7 @@ function OperasyonPageContent() {
               </tbody>
             </table>
           </div>
+          </>
         )}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <span>

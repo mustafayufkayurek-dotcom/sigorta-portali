@@ -1,0 +1,27 @@
+---
+description: Mobil panel kabuğu kilidi — header/menü yerleşimi bozulmasın
+alwaysApply: true
+---
+
+# Mobil Kabuk Kilidi (panel topbar + hamburger)
+
+**Amaç:** Cep telefonunda bir düzeltme yaparken header / menü / profil yerleşiminin tekrar bozulmasını engellemek.
+
+## Yasak (açık onay yoksa)
+
+1. `header` üzerinde `overflow-x-hidden` / `overflow-hidden` — profil ve bildirim dropdown kesilir.
+2. Mobil menüyü `h-14` / `PANEL_NAVBAR_HEIGHT` flex satırının **içine** koymak — yatay taşma, yüzen link.
+3. Mobil menü panelini sticky header içinde `relative` akış elemanı yapmak — header şişer, sayfa yerleşimi bozulur.
+4. Operasyon (ve diğer) alt linklerini **hep açık** listelemek — masaüstü accordion ile uyumsuz; menü şişer.
+
+## Zorunlu
+
+1. Topbar satırı: sabit yükseklik (`PANEL_NAVBAR_HEIGHT`) + `shrink-0` + `min-w-0`.
+2. Mobil menü: `fixed left-0 right-0 top-14 z-50` + `max-h-[min(70vh,...)]` + kendi içinde scroll.
+3. Alt başlıklar: **accordion** (chevron); varsayılan kapalı; aktif rota grubu açık olabilir.
+4. Profil dropdown `z-[60]+`; header overflow ile kesilmemeli.
+5. Değişiklik sonrası kontrol: Login · Logout · Profil · Mobil Menü · Operasyon alt link · Header hizası.
+
+## Kod işareti
+
+`layout.tsx` içinde `MOBILE_SHELL_LOCK` yorum bloğuna aykırı değişiklik = dur, Mustafa onayı iste.

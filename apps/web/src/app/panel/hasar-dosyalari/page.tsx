@@ -411,12 +411,12 @@ function ClaimFilesPageContent() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="page-header-actions">
           {Object.keys(pendingRevisionMap).length > 0 && (
             <button
               type="button"
               onClick={() => setPendingRevisionFilter((v) => !v)}
-              className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${pendingRevisionFilter ? 'bg-amber-50 border-amber-300 text-amber-700 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              className={`flex items-center justify-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${pendingRevisionFilter ? 'bg-amber-50 border-amber-300 text-amber-700 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
             >
               <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
               Revizyon Bekleyenler
@@ -428,7 +428,7 @@ function ClaimFilesPageContent() {
           <button
             type="button"
             onClick={() => { setPendingReportFilter((v) => !v); setPage(1); }}
-            className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${pendingReportFilter ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+            className={`flex items-center justify-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${pendingReportFilter ? 'bg-orange-50 border-orange-300 text-orange-800 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
           >
             <span className="inline-block w-2 h-2 rounded-full bg-orange-400" />
             Rapor Onay Bekleyen
@@ -439,7 +439,7 @@ function ClaimFilesPageContent() {
             )}
           </button>
           {!isFieldStaff && (
-            <button type="button" onClick={openNewPanel} className="btn-primary">
+            <button type="button" onClick={openNewPanel} className="btn-primary justify-center">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Yeni Dosya
             </button>
@@ -511,7 +511,9 @@ function ClaimFilesPageContent() {
             </button>
           )}
           <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
-            <PanelTableColumnPicker tableColumns={tableColumns} />
+            <div className="hidden lg:block">
+              <PanelTableColumnPicker tableColumns={tableColumns} />
+            </div>
           </div>
         </div>
       </div>
@@ -594,7 +596,7 @@ function ClaimFilesPageContent() {
         </div>
       ) : (
         <div className="table-container">
-          <div className="grid gap-3 p-3 md:hidden">
+          <div className="grid gap-3 p-3 lg:hidden">
             {visibleClaims.map((claim: any) => {
               const customerName = claim.insuranceCompany?.name ?? '—';
               const insuredName = resolveHasarInsuredName(claim);
@@ -602,6 +604,16 @@ function ClaimFilesPageContent() {
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
               const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
               const rapor = claim.latestRepairReport;
+              const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
+              const supplierName =
+                claim.assignedAdjuster?.adjuster?.company
+                ?? (claim.assignedAdjuster
+                  ? (`${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim() || null)
+                  : null)
+                ?? claim.assignedVendor?.name
+                ?? claim.vendor?.name
+                ?? null;
+              const priority = claim.priority ?? 'normal';
               return (
                 <button
                   key={claim.id}
@@ -613,6 +625,9 @@ function ClaimFilesPageContent() {
                     <div className="min-w-0">
                       <div className="font-mono text-sm font-bold text-slate-900">{claim.fileNo ?? claim.claimNo ?? '—'}</div>
                       <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
+                      {subject ? (
+                        <div className="mt-0.5 truncate text-[11px] text-slate-500">{subject}</div>
+                      ) : null}
                     </div>
                     <ClaimStatusBadge
                       status={claim.currentStatus}
@@ -628,6 +643,16 @@ function ClaimFilesPageContent() {
                     <div>
                       <p className="text-slate-400">Tarih</p>
                       <p className="mt-0.5 font-medium text-slate-700">{fmtDate(claim.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Tedarikçi</p>
+                      <p className="mt-0.5 truncate font-medium text-slate-700">{supplierName ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Öncelik</p>
+                      <span className={`mt-0.5 inline-flex ${PRIORITY_CLASSES[priority] ?? 'badge badge-gray'}`}>
+                        {PRIORITY_LABELS[priority] ?? priority}
+                      </span>
                     </div>
                     <div>
                       <p className="text-slate-400">Fatura</p>
@@ -659,7 +684,7 @@ function ClaimFilesPageContent() {
               );
             })}
           </div>
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>

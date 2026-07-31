@@ -388,7 +388,7 @@ interface NavbarProps {
 }
 
 function Navbar({
-  user, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser, isAssistanceCompanyUser,
+  user, pathname, roleCode, isPortalUser, isExpert, isInsuranceCompanyUser, isAssistanceCompanyUser,
   pendingRevisionCount, onLogout,
   unreadCount, notifOpen, onNotifOpen, onNotifClose, notifications, onMarkAllRead,
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
@@ -420,6 +420,8 @@ function Navbar({
   })();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  /** Mobil alt menü accordion — masaüstü sidebar ile aynı davranış */
+  const [mobileExpandedGroups, setMobileExpandedGroups] = useState<Record<string, boolean>>({});
   const [profileDropOpen, setProfileDropOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -480,9 +482,13 @@ function Navbar({
   const showQuickActions = canCreateHasar || canCreateAcil || canOpenMonday;
 
   return (
-    // overflow-x-hidden YASAK: overflow-x hidden → overflow-y de clip olur; profil/bildirim dropdown kesilir
+    // MOBILE_SHELL_LOCK (v423+):
+    // 1) header'a overflow-x-hidden KOYMA — profil dropdown kesilir
+    // 2) mobil menüyü h-14 flex satırının İÇİNE koyma — yatay taşma / yüzen link
+    // 3) mobil menü paneli fixed top-14 olmalı — sticky header şişmesin
+    // 4) alt başlıklar accordion (varsayılan kapalı; aktif rota açıksın)
     <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-      <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full min-w-0 items-center`}>
+      <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full min-w-0 shrink-0 items-center`}>
         {/* Marka rayı — sidebar genişliği ile aynı; arama içerik sol kenarına hizalanır */}
         <div
           className={`hidden h-full shrink-0 items-center border-r border-transparent md:flex ${
@@ -795,7 +801,7 @@ function Navbar({
         </div>
       </div>
 
-        {/* Mobil menü — h-14 flex satırının DIŞINDA (yatay taşma / yüzen link bug fix) */}
+        {/* MOBILE_SHELL_LOCK: menü h-14 DIŞINDA + fixed — header yüksekliği sabit kalsın */}
         {mobileMenuOpen ? (
           <>
             <div
@@ -804,7 +810,7 @@ function Navbar({
               onClick={() => setMobileMenuOpen(false)}
             />
             <div
-              className="relative z-50 max-h-[min(70vh,calc(100dvh-3.5rem))] w-full overflow-y-auto border-t border-slate-100 bg-white py-3 shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-950"
+              className="fixed left-0 right-0 top-14 z-50 max-h-[min(70vh,calc(100dvh-3.5rem))] w-full overflow-x-hidden overflow-y-auto overscroll-contain border-b border-slate-100 bg-white py-3 shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-950"
               role="navigation"
               aria-label="Mobil Menü"
             >
@@ -812,35 +818,80 @@ function Navbar({
                 {!isPortalUser
                   ? visibleMainLinks.map((link) => {
                       const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
+                      const hasChildren = visibleChildren.length > 0;
+                      const childIsActive = hasChildren
+                        && visibleChildren.some((child) => {
+                          const pathOnly = child.href.split('?')[0] || child.href;
+                          if (pathOnly === '/panel') return pathname === '/panel';
+                          return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
+                        });
+                      const isExpanded = hasChildren
+                        ? (mobileExpandedGroups[link.href] ?? childIsActive)
+                        : false;
+
                       return (
                         <div key={`${link.href}:${link.title}`} className="space-y-0.5">
-                          <Link
-                            href={link.href}
-                            className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            <span className="inline-flex min-w-0 items-center gap-2">
-                              {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                              <span className="truncate">{link.title}</span>
-                            </span>
-                            {link.alertCount && link.alertCount > 0 ? (
-                              <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                {link.alertCount > 99 ? '99+' : link.alertCount}
+                          <div className="flex items-stretch gap-0.5">
+                            <Link
+                              href={link.href}
+                              className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:hover:bg-slate-800 ${
+                                childIsActive || pathname === link.href.split('?')[0]
+                                  ? 'bg-blue-50/50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
+                                  : 'text-slate-700 dark:text-slate-200'
+                              }`}
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              <span className="inline-flex min-w-0 items-center gap-2">
+                                {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                                <span className="truncate">{link.title}</span>
                               </span>
+                              {link.alertCount && link.alertCount > 0 ? (
+                                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  {link.alertCount > 99 ? '99+' : link.alertCount}
+                                </span>
+                              ) : null}
+                            </Link>
+                            {hasChildren ? (
+                              <button
+                                type="button"
+                                className="flex w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                                aria-label={isExpanded ? `${link.title} alt menüsünü kapat` : `${link.title} alt menüsünü aç`}
+                                aria-expanded={isExpanded}
+                                onClick={() =>
+                                  setMobileExpandedGroups((prev) => ({
+                                    ...prev,
+                                    [link.href]: !isExpanded,
+                                  }))
+                                }
+                              >
+                                <ChevronDown
+                                  className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                  strokeWidth={1.75}
+                                />
+                              </button>
                             ) : null}
-                          </Link>
-                          {visibleChildren.length > 0 ? (
+                          </div>
+                          {hasChildren && isExpanded ? (
                             <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2 dark:border-slate-800">
-                              {visibleChildren.map((child) => (
-                                <Link
-                                  key={`${child.href}:${child.title}`}
-                                  href={child.href}
-                                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                                  onClick={() => setMobileMenuOpen(false)}
-                                >
-                                  <span className="truncate">{child.title}</span>
-                                </Link>
-                              ))}
+                              {visibleChildren.map((child) => {
+                                const pathOnly = child.href.split('?')[0] || child.href;
+                                const active =
+                                  pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
+                                return (
+                                  <Link
+                                    key={`${child.href}:${child.title}`}
+                                    href={child.href}
+                                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:hover:bg-slate-800 ${
+                                      active
+                                        ? 'bg-blue-50/50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
+                                        : 'text-slate-600 dark:text-slate-300'
+                                    }`}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                  >
+                                    <span className="truncate">{child.title}</span>
+                                  </Link>
+                                );
+                              })}
                             </div>
                           ) : null}
                         </div>

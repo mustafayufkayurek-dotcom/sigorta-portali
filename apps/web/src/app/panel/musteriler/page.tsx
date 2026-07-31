@@ -2284,7 +2284,101 @@ export default function MusterilerPage() {
             </span>
             <span className="text-xs text-slate-400">Sayfa {page} / {Math.max(1, Math.ceil(total / limit))}</span>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobil / tablet kart */}
+          <div className="grid gap-3 p-3 lg:hidden">
+            {displayedCustomers.map((c) => {
+              const name = c.customerType === 'individual'
+                ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() : c.companyName ?? '—';
+              const subTypeDef = customerSubTypes.find((t) => t.value === c.subType);
+              const subTypeLabel = subTypeDef?.label ?? null;
+              const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
+              const overdueDays = isOverdue ? Math.floor((Date.now() - new Date(c.followUpDate).getTime()) / 86_400_000) : 0;
+              return (
+                <div
+                  key={c.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors active:bg-slate-50 ${
+                    selectedIds.has(c.id) ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200'
+                  } ${isOverdue ? 'border-l-4 border-l-amber-400' : ''}`}
+                  onClick={() => {
+                    setDrawerCustomerId(c.id);
+                    setDrawerOpen(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setDrawerCustomerId(c.id);
+                      setDrawerOpen(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
+                      {(name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{name || '—'}</p>
+                          {c.city ? <p className="mt-0.5 truncate text-xs text-slate-500">{c.city}</p> : null}
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
+                        </span>
+                        {subTypeLabel ? (
+                          <span className="inline-flex rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">{subTypeLabel}</span>
+                        ) : null}
+                        {c.serviceType ? (
+                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                            isHasarCustomerServiceType(c.serviceType)
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              : 'bg-orange-50 text-orange-700 border-orange-100'
+                          }`}>
+                            {customerServiceTypeLabel(c.serviceType)}
+                          </span>
+                        ) : null}
+                        <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          {c._count?.claimFiles ?? 0} dosya
+                        </span>
+                      </div>
+                      {c.phone ? (
+                        <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                          <PhoneContactActions phone={c.phone} variant="inline" accent="emerald" size="sm" />
+                        </div>
+                      ) : null}
+                      <p className={`mt-2 text-[11px] font-medium ${isOverdue ? 'text-status-danger' : activityColor(c.lastActivityDate)}`}>
+                        {isOverdue ? `${overdueDays}g gecikme` : relativeTime(c.lastActivityDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/panel/musteriler/${c.id}`}
+                      className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white"
+                    >
+                      Detay
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => void openCustomerForEditById(c.id)}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                      Düzenle
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="sticky top-0 z-10">
                 <tr className="table-head-row">
