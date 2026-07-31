@@ -10,6 +10,7 @@ import {
   storeAuthAfterLogin,
   loadRememberedLoginForm,
   setRememberMePreference,
+  isPasswordLoginRequired,
 } from '@/utils/auth-session';
 
 const API_URL = API;
@@ -305,6 +306,8 @@ function LoginPageInner() {
       setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
     } else if (reason === 'timeout') {
       setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
+    } else if (reason === 'logout') {
+      setError('Çıkış yapıldı. Devam etmek için şifrenizle giriş yapın.');
     }
     if (!authHydrated.current) {
       authHydrated.current = true;
@@ -314,9 +317,17 @@ function LoginPageInner() {
       setFormReady(true);
     }
 
-    attemptAutoLogin(API_URL).then((ok) => {
-      if (ok) router.replace('/panel');
-    });
+    const blockAuto =
+      isPasswordLoginRequired()
+      || reason === 'logout'
+      || reason === 'timeout'
+      || reason === 'session_expired';
+
+    if (!blockAuto) {
+      attemptAutoLogin(API_URL).then((ok) => {
+        if (ok) router.replace('/panel');
+      });
+    }
 
     // Fetch public company name only; login logo is fixed to the accepted static brand asset.
     axios.get(`${API_URL}/system-settings/company-info`)
@@ -327,7 +338,7 @@ function LoginPageInner() {
       .catch(() => {
         // fallback: keep local logo asset
       });
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleRememberChange = (checked: boolean) => {
     setRememberMe(checked);

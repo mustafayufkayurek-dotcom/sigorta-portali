@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearAuth, ensureValidSession, getAccessToken, isRememberMeSession } from '@/utils/auth-session';
+import { clearAuth, ensureValidSession, getAccessToken, isRememberMeSession, logoutAndRedirect } from '@/utils/auth-session';
 import { useNavigationGuardOptional } from '@/contexts/NavigationGuardContext';
 import { API } from '@/utils/api';
 
@@ -53,8 +53,7 @@ export default function SessionTimeoutBar() {
 
   const doLogout = useCallback(() => {
     const proceed = () => {
-      clearAuth({ preserveRememberedEmail: true });
-      router.push('/giris?reason=timeout');
+      void logoutAndRedirect(API, (url) => router.push(url), 'timeout');
     };
     if (navigationGuard) {
       navigationGuard.tryNavigate(proceed, 'logout');

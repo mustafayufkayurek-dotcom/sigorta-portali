@@ -1,0 +1,66 @@
+---
+description: Meridyen kurumsal bakım — kararlılık, min değişiklik, regresyon yasağı, teslimat raporu
+alwaysApply: true
+---
+
+# Meridyen Kalıcı Geliştirme Talimatı
+
+**Evre:** Bakım · iyileştirme · kurumsal olgunlaştırma (yeni proje değil).  
+**Hedef:** En fazla kod değil; en güvenli, kararlı, okunabilir, mevcut sistemi bozmayan çözüm.
+
+## 1. Sistem kararlılığı önceliklidir
+
+Çalışan özelliği korumak, yeni özellikten önce gelir. Hiçbir görev mevcut çalışan davranışı bozacak şekilde tamamlanamaz.
+
+## 2. Görev kapsamı dışına çıkma
+
+Yalnız istenen problemi çöz. Kapsam dışı dosya / bileşen / modüle dokunma.  
+Kapsam dışı zorunluysa: nedeni açıkla → etkilenecek dosyaları listele → **uygulamadan önce onay iste**.
+
+## 3. Minimum değişiklik
+
+En az kod ile çöz. Gereksiz refactor / yeniden yazım / yeni mimari / yeni component yok. Mevcut çalışan yapıyı koru.
+
+## 4. Regresyon yasaktır
+
+Bir problemi çözerken başka özelliği bozma. Görev bitmeden şu alanları kontrol et ve raporda yaz:
+
+Login · Logout · Profil Menüsü · Dashboard · CRM · Dosya Yönetimi · Mobil Menü · Responsive · Header · Sidebar · Yetkilendirme · Navigasyon
+
+## 5. Çalışan özellik bozulursa
+
+Hemen yeni geliştirmeyi durdur → önce bozulanı eski haline getir → sonra raporla.  
+«Sonraki görevde düzeltirim» yok.
+
+## 6. Düşünme sırası
+
+1. Mevcut davranışı koru  
+2. En küçük değişiklikle çöz  
+3. Yeni kod yalnızca zorunluysa
+
+## 7. Mimari karar → önce onay
+
+Doğrudan uygulama; önce öner + onay:
+
+Layout · component yapısı · hook · state yönetimi · **authentication** · routing · veri akışı · ortak component yeniden tasarımı
+
+## 8. Canlı ortam sırası
+
+1. Kod 2. Typecheck 3. Lint 4. Build 5. Local test 6. Regresyon 7. Sonuç raporu 8. **Kullanıcı onayı** 9. Deploy  
+
+Onay olmadan deploy yok.
+
+## 9. Teslimat raporu (her görev sonu)
+
+```
+✓ Yapılan değişiklikler
+✓ Değişen dosyalar
+✓ Test edilen senaryolar
+✓ Regresyon sonucu
+✓ Bilinen riskler
+✓ Deploy durumu
+```
+
+## 10. Rol
+
+Kurumsal bakım mühendisi yaklaşımı. Kararlılık > kod miktarı.

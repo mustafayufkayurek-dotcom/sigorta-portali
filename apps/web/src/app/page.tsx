@@ -10,7 +10,8 @@ export default function HomePage() {
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
     attemptAutoLogin(apiBase).then((ok) => {
-      router.push(ok ? '/panel' : '/giris');
+      if (ok) router.push('/panel');
+      else router.push('/giris');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -7,6 +7,10 @@ export const REMEMBERED_EMAIL_KEY = 'rememberedEmail';
 export const AUTH_PERSISTENCE_KEY = 'authPersistence';
 export const TOKEN_EXPIRY_KEY = 'tokenExpiry';
 export const LAST_AUTH_ACTIVITY_KEY = 'meridyenLastAuthActivity';
+/** Çıkış / oturum düşümü sonrası şifresiz otomatik giriş engeli — yalnızca şifreli giriş temizler */
+export const FORCE_PASSWORD_LOGIN_KEY = 'meridyenForcePasswordLogin';
+/** Sekmeler arası çıkış yayını */
+export const AUTH_LOGOUT_BROADCAST_KEY = 'meridyenAuthLogoutAt';
 const TAB_SESSION_KEY = 'meridyenAuthTab';
 const BROWSER_SESSION_KEY = 'meridyenBrowserSession';
 
@@ -51,6 +55,32 @@ function purgeSessionTokens(): void {
   sessionStorage.removeItem('accessToken');
   sessionStorage.removeItem('refreshToken');
   sessionStorage.removeItem('authSession');
+}
+
+export function isPasswordLoginRequired(): boolean {
+  return typeof window !== 'undefined' && localStorage.getItem(FORCE_PASSWORD_LOGIN_KEY) === '1';
+}
+
+/** Çıkış sonrası şifre zorunlu — auto-login ve token geri yazımı engellenir */
+export function requirePasswordLogin(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(FORCE_PASSWORD_LOGIN_KEY, '1');
+  localStorage.setItem(AUTH_LOGOUT_BROADCAST_KEY, String(Date.now()));
+}
+
+export function clearPasswordLoginRequirement(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(FORCE_PASSWORD_LOGIN_KEY);
+}
+
+/** Logout API için ham okuma (force kilidine bakmaz) */
+function peekStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
+  if (typeof window === 'undefined') return { accessToken: null, refreshToken: null };
+  const accessToken =
+    localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  const refreshToken =
+    localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+  return { accessToken, refreshToken };
 }
 
 export function touchAuthActivity(): void {
@@ -143,6 +173,7 @@ export function isRememberMePreferred(): boolean {
 export function getAccessToken(): string | null {
   initAuthStorage();
   if (typeof window === 'undefined') return null;
+  if (isPasswordLoginRequired()) return null;
 
   if (isRememberMeSession()) {
     if (isRememberMeExpired() || isRememberMeInactive()) return null;
@@ -164,6 +195,7 @@ export function getAccessToken(): string | null {
 export function getRefreshToken(): string | null {
   initAuthStorage();
   if (typeof window === 'undefined') return null;
+  if (isPasswordLoginRequired()) return null;
 
   if (isRememberMeSession()) {
     if (isRememberMeExpired() || isRememberMeInactive()) return null;
@@ -218,6 +250,7 @@ export function clearSessionTokensOnly() {
 export function hasValidSessionScope(): boolean {
   initAuthStorage();
   if (typeof window === 'undefined') return false;
+  if (isPasswordLoginRequired()) return false;
 
   const persistence = getAuthPersistence();
   if (persistence === 'remember' && isRememberMePreferred()) {
@@ -234,14 +267,21 @@ export function hasValidSessionScope(): boolean {
     && Boolean(sessionStorage.getItem('accessToken'));
 }
 
+/**
+ * Oturumu düşür. Şifresiz otomatik giriş engellenir.
+ * preserveRememberedEmail: yalnızca form e-posta / kutucuk tercihi (token asla kalmaz).
+ */
 export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
-  const keepRememberPrefs = Boolean(options?.preserveRememberedEmail) || isRememberMePreferred();
-  const rememberedEmail = keepRememberPrefs ? localStorage.getItem(REMEMBERED_EMAIL_KEY) : null;
-  const rememberFlag = keepRememberPrefs ? localStorage.getItem(REMEMBER_ME_FLAG) : null;
+  const keepEmailPref =
+    options?.preserveRememberedEmail === true || isRememberMePreferred();
+  const rememberedEmail = keepEmailPref ? localStorage.getItem(REMEMBERED_EMAIL_KEY) : null;
+  const rememberFlag = keepEmailPref && isRememberMePreferred() ? '1' : null;
 
+  requirePasswordLogin();
   clearSessionTokensOnly();
   localStorage.removeItem(REMEMBER_ME_FLAG);
   localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
 
   if (rememberFlag === '1') {
     localStorage.setItem(REMEMBER_ME_FLAG, '1');
@@ -253,6 +293,9 @@ export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
 
 export function persistTokens(accessToken: string, refreshToken: string) {
   initAuthStorage();
+  // Çıkış sonrası yarış: refresh token geri yazmasın
+  if (isPasswordLoginRequired()) return;
+
   if (isRememberMeSession()) {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
@@ -276,6 +319,7 @@ export function storeAuthAfterLogin(
     throw new Error('Giriş yanıtında oturum bilgisi alınamadı.');
   }
 
+  clearPasswordLoginRequirement();
   clearSessionTokensOnly();
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -325,6 +369,7 @@ export function isRememberMeInactive(): boolean {
 
 /** Oturum geçerli mi kontrol eder; 401 ise refresh dener. */
 export async function ensureValidSession(apiBase: string): Promise<boolean> {
+  if (isPasswordLoginRequired()) return false;
   const token = getAccessToken();
   if (!token) return false;
 
@@ -357,10 +402,15 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
 }
 
 /**
- * Şifresiz otomatik giriş yalnızca Beni Hatırla açıkken ve süre sınırı içinde.
+ * Şifresiz otomatik giriş yalnızca Beni Hatırla açıkken, süre sınırı içinde
+ * ve çıkış kilidi yokken.
  */
 export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
   initAuthStorage();
+
+  if (isPasswordLoginRequired()) {
+    return false;
+  }
 
   if (!isRememberMePreferred() || !isRememberMeSession()) {
     return false;
@@ -381,6 +431,48 @@ export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
     clearSessionTokensOnly();
   }
   return ok;
+}
+
+/**
+ * Tek çıkış yolu: backend revoke + yerel temizlik + şifre zorunluluğu.
+ * Tüm ekranlar bunu kullanmalı.
+ */
+export async function logoutAndRedirect(
+  apiBase: string,
+  redirect: (url: string) => void,
+  reason: 'logout' | 'timeout' | 'session_expired' = 'logout',
+): Promise<void> {
+  const base = apiBase.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+  const { accessToken, refreshToken } = peekStoredTokens();
+
+  // Önce kilit — in-flight refresh token geri yazamasın
+  requirePasswordLogin();
+  clearSessionTokensOnly();
+  localStorage.removeItem('user');
+
+  if (accessToken) {
+    try {
+      await axios.post(
+        `${base}/auth/logout`,
+        refreshToken ? { refreshToken } : {},
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          timeout: 8000,
+        },
+      );
+    } catch {
+      /* ağ hatası çıkışı engellemez */
+    }
+  }
+
+  clearAuth({ preserveRememberedEmail: true });
+  try {
+    sessionStorage.clear();
+  } catch {
+    purgeSessionTokens();
+  }
+  requirePasswordLogin();
+  redirect(`/giris?reason=${reason}`);
 }
 
 /** @deprecated attemptAutoLogin kullanın */

@@ -7,8 +7,8 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
-import { SESSION_KEEPALIVE_MS } from '@/utils/api';
-import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired } from '@/utils/auth-session';
+import { SESSION_KEEPALIVE_MS, API } from '@/utils/api';
+import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired, logoutAndRedirect } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
@@ -1522,9 +1522,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     tryNavigateRef.current(() => {
-      clearAuth();
-      sessionStorage.clear();
-      router.push('/giris');
+      void logoutAndRedirect(API, (url) => {
+        router.push(url);
+      }, 'logout');
     }, 'logout');
   };
 
