@@ -810,24 +810,42 @@ function Navbar({
             >
               <div className="space-y-0.5 px-1">
                 {!isPortalUser
-                  ? visibleMainLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <span className="inline-flex min-w-0 items-center gap-2">
-                          {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                          <span className="truncate">{link.title}</span>
-                        </span>
-                        {link.alertCount && link.alertCount > 0 ? (
-                          <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
-                            {link.alertCount > 99 ? '99+' : link.alertCount}
-                          </span>
-                        ) : null}
-                      </Link>
-                    ))
+                  ? visibleMainLinks.map((link) => {
+                      const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
+                      return (
+                        <div key={`${link.href}:${link.title}`} className="space-y-0.5">
+                          <Link
+                            href={link.href}
+                            className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            <span className="inline-flex min-w-0 items-center gap-2">
+                              {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                              <span className="truncate">{link.title}</span>
+                            </span>
+                            {link.alertCount && link.alertCount > 0 ? (
+                              <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                {link.alertCount > 99 ? '99+' : link.alertCount}
+                              </span>
+                            ) : null}
+                          </Link>
+                          {visibleChildren.length > 0 ? (
+                            <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2 dark:border-slate-800">
+                              {visibleChildren.map((child) => (
+                                <Link
+                                  key={`${child.href}:${child.title}`}
+                                  href={child.href}
+                                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                  onClick={() => setMobileMenuOpen(false)}
+                                >
+                                  <span className="truncate">{child.title}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })
                   : (
                       <>
                         <p className="px-3 pb-2 text-xs text-slate-500">
