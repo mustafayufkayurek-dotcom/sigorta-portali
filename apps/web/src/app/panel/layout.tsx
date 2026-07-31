@@ -480,8 +480,9 @@ function Navbar({
   const showQuickActions = canCreateHasar || canCreateAcil || canOpenMonday;
 
   return (
-    <header className="sticky top-0 z-50 overflow-x-hidden border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-      <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full items-center`}>
+    // overflow-x-hidden YASAK: overflow-x hidden → overflow-y de clip olur; profil/bildirim dropdown kesilir
+    <header className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+      <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full min-w-0 items-center`}>
         {/* Marka rayı — sidebar genişliği ile aynı; arama içerik sol kenarına hizalanır */}
         <div
           className={`hidden h-full shrink-0 items-center border-r border-transparent md:flex ${
@@ -715,12 +716,14 @@ function Navbar({
             <PanelThemeToggle />
 
             {/* Profil Dropdown — satır 1: kurum/bağlam · satır 2: ad soyad (band büyümesin) */}
-            <div className="relative min-w-0 max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]" ref={profileDropRef}>
+            <div className="relative z-[60] min-w-0 max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]" ref={profileDropRef}>
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
-                className="flex max-w-full items-center gap-2 rounded-xl py-1 pl-1.5 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
+                className="relative z-[60] flex max-w-full items-center gap-2 rounded-xl py-1 pl-1.5 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
                 title={[profileContextLabel, `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()].filter(Boolean).join(' · ') || 'Profil'}
+                aria-expanded={profileDropOpen}
+                aria-haspopup="menu"
               >
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white shadow-sm shadow-blue-200">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
@@ -741,7 +744,10 @@ function Navbar({
               </button>
               {profileDropOpen && (
                 <>
-                  <div className="absolute right-0 top-full z-50 mt-1.5 w-56 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-[70] mt-1.5 w-56 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                  >
                     <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-700">
                       {profileContextLabel ? (
                         <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">{profileContextLabel}</p>
