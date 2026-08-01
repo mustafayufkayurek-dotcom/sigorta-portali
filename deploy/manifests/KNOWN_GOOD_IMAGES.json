@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-01",
-  "label": "v437-akilli-olcum-mm-evidence",
-  "description": "Full SM-only: Akıllı Ölçüm nihai mimari (mm, FileAsset, status, metraj+PDF). Rollback web v436 / backend v436.",
+  "label": "v438-smart-measure-page-ssot",
+  "description": "Web-only: SmartMeasureList Raporlar mount SSOT (repo=canlı). Backend v437. Rollback web v437 / backend v436.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v437-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v437-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v438-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v436-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v437-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v436-amd64"
   },
   "mustPassSmokeRoutes": [
