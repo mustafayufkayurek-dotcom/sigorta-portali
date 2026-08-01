@@ -1,13 +1,11 @@
 # Akıllı Ölçüm — Nihai Mimari v2 (Onaylı + Revizyon 1–10)
 
 **Tarih:** 2026-08-01  
-**Durum:** Mimari onaylandı + kod hizalı.  
-**Migration canlı:** `20260801163000_smart_measures_mm_evidence` **UYGULANDI** (2026-08-01) — ALTER; eski cm/photo_url kolonları v436 uyumu için bırakıldı.  
-**Commit / Deploy (yeni kod image):** **YOK** — ayrı onay bekleniyor.
-
-Taslak artefaktlar:
-- `docs/features/ai-ar-smart-measure/DRAFT_prisma_models.prisma`
-- `docs/features/ai-ar-smart-measure/DRAFT_migration.sql`
+**Durum:** Mimari onaylandı + kod hizalı + **v437 canlı**.  
+**Migration canlı:** `20260801163000_smart_measures_mm_evidence` **UYGULANDI**.  
+**Git:** `cc022bf`. Rollback: v436.  
+**WIP ayrımı:** Field Survey / CRM / Finans / Dashboard → `docs/project-governance/inbox/WIP_NON_SM_20260801/`  
+**Teslim raporu:** `AI_AR_AKILLI_OLCUM_TESLIM.md`
 
 ---
 
