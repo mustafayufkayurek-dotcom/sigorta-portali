@@ -1,12 +1,15 @@
 # Akıllı Ölçüm — Teknik Teslim Raporu
 
 **Modül:** AI + AR Akıllı Ölçüm (Smart Measurement)  
+**Durum:** **Closed** (Faz 1 tamamlandı)  
 **Tarih:** 2026-08-01  
-**Canlı:** Web + Backend **v437**  
-**Git:** `cc022bf` — `feat(smart-measures): mm Evidence Chain mimarisi — v437 hazır`  
-**Rollback image:** v436  
+**Canlı:** Web **v438** + Backend **v437**  
+**Git (özellik):** `cc022bf` — mm Evidence Chain · `b1e4eb9` — SmartMeasureList mount SSOT  
+**Git (operasyon):** `chore(deploy): KNOWN_GOOD v438-smart-measure-page-ssot`  
+**Rollback web:** v437 · **Rollback backend:** v436  
 **Migration canlı:** `20260801140000_smart_measures` + `20260801163000_smart_measures_mm_evidence`  
-**Durum:** Bağımsız ürün modülü olarak kapatıldı. Field Survey / CRM / Finans / Dashboard WIP ayrıldı (`docs/project-governance/inbox/WIP_NON_SM_20260801/`).
+**Kapanış raporu:** `docs/features/AI_AR_AKILLI_OLCUM_FAZ1_KAPANIS.md`  
+**Not:** Field Survey / CRM / Finans / Dashboard WIP ayrıldı (`docs/project-governance/inbox/WIP_NON_SM_20260801/`).
 
 ---
 
@@ -190,7 +193,7 @@ LiDAR · 3D Room Scan · Video · Drone · BIM/CAD import · Digital Twin · ço
 
 | Öncelik | Öneri |
 |---------|--------|
-| P0 | `page.tsx` SmartMeasureList mount’unu SM feature branch’te resmi commit |
+| P0 | ~~`page.tsx` SmartMeasureList mount~~ ✅ `fix/smart-measure-page-mount-ssot` |
 | P0 | `pnpm-lock.yaml` mobil bağımlılık senkronu |
 | P1 | Legacy `*_cm` / `photo_url` drop migration (deploy sonrası) |
 | P1 | Foto backfill / ClaimDocument görünürlük UX |
