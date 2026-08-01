@@ -199,6 +199,9 @@ model User {
   assignedInboundMessages  InboundMessage[]          @relation("InboundMessageAssignee")
   vendorDiscoverySessions  VendorDiscoverySession[]
   createdFieldSurveyBriefs FieldSurveyBrief[]
+  createdSmartMeasureElements SmartMeasureElement[] @relation("SmartMeasureElementCreatedBy")
+  archivedSmartMeasureElements SmartMeasureElement[] @relation("SmartMeasureElementArchivedBy")
+  measuredSmartMeasureVersions SmartMeasureVersion[] @relation("SmartMeasureVersionMeasuredBy")
   activitySessions         ActivitySession[]
   reportWriteSessions      ReportWriteSession[]
 
@@ -409,6 +412,8 @@ model ClaimFile {
   fileAppointments     FileAppointment[]
   inboundMessages      InboundMessage[]
   fieldSurveyBriefs    FieldSurveyBrief[]
+  smartMeasureElements SmartMeasureElement[]
+  smartMeasureVersions SmartMeasureVersion[]
 
   @@index([fileNo])
   @@index([insuranceCompanyId])
@@ -703,6 +708,8 @@ model FileAsset {
   uploadedBy User            @relation(fields: [uploadedByUserId], references: [id])
   documents  ClaimDocument[]
   adjusterReports AdjusterReport[]
+  smartMeasurePhotos          SmartMeasureVersion[] @relation("SmartMeasurePhotoAsset")
+  smartMeasureAnnotatedPhotos SmartMeasureVersion[] @relation("SmartMeasureAnnotatedPhotoAsset")
 
   @@index([ownerType, ownerId])
   @@map("file_assets")
@@ -3837,6 +3844,84 @@ model FieldSurveyBrief {
   @@index([claimFileId, createdAt])
   @@index([createdByUserId])
   @@map("field_survey_briefs")
+}
+
+/// AI + AR Akıllı Ölçüm — yapı elemanı (Evidence Chain kökü). Soft archive; hard delete yok.
+model SmartMeasureElement {
+  id               String    @id @default(uuid())
+  claimFileId      String    @map("claim_file_id")
+  /// draft | measured | reviewed | approved | archived
+  status           String    @default("draft")
+  locationLabel    String?   @map("location_label")
+  roomLabel        String?   @map("room_label")
+  elementType      String    @map("element_type")
+  title            String
+  createdByUserId  String    @map("created_by_user_id")
+  archivedAt       DateTime? @map("archived_at")
+  archivedByUserId String?   @map("archived_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  claimFile      ClaimFile             @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdByUser  User                  @relation("SmartMeasureElementCreatedBy", fields: [createdByUserId], references: [id])
+  archivedByUser User?                 @relation("SmartMeasureElementArchivedBy", fields: [archivedByUserId], references: [id])
+  versions       SmartMeasureVersion[]
+
+  @@index([claimFileId, createdAt], map: "idx_sme_claim_created")
+  @@index([claimFileId, status], map: "idx_sme_claim_status")
+  @@index([createdByUserId], map: "idx_sme_created_by")
+  @@index([elementType], map: "idx_sme_element_type")
+  @@index([archivedAt], map: "idx_sme_archived")
+  @@map("smart_measure_elements")
+}
+
+/// Akıllı ölçüm sürümü — append-only Evidence; mm integer; FileAsset foto.
+model SmartMeasureVersion {
+  id                        String   @id @default(uuid())
+  claimFileId               String   @map("claim_file_id")
+  elementId                 String   @map("element_id")
+  versionNo                 Int      @map("version_no")
+  widthMm                   Int?     @map("width_mm")
+  heightMm                  Int?     @map("height_mm")
+  depthMm                   Int?     @map("depth_mm")
+  quantity                  Float    @default(1)
+  aiConfidence              Float?   @map("ai_confidence")
+  /// very_high | high | medium | low
+  aiConfidenceLevel         String?  @map("ai_confidence_level")
+  aiDetectedType            String?  @map("ai_detected_type")
+  isAiProduced              Boolean  @default(false) @map("is_ai_produced")
+  isUserCorrected           Boolean  @default(false) @map("is_user_corrected")
+  isManualRevision          Boolean  @default(false) @map("is_manual_revision")
+  photoFileAssetId          String?  @map("photo_file_asset_id")
+  annotatedPhotoFileAssetId String?  @map("annotated_photo_file_asset_id")
+  overlayJson               Json?    @map("overlay_json")
+  extensionJson             Json?    @map("extension_json")
+  gpsLat                    Float?   @map("gps_lat")
+  gpsLng                    Float?   @map("gps_lng")
+  deviceInfoJson            Json?    @map("device_info_json")
+  measuredAt                DateTime @map("measured_at")
+  measuredByUserId          String   @map("measured_by_user_id")
+  /// Genişletilebilir TEXT (enum değil)
+  source                    String   @default("mobile_ar")
+  note                      String?
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  claimFile               ClaimFile           @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  element                 SmartMeasureElement @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  measuredBy              User                @relation("SmartMeasureVersionMeasuredBy", fields: [measuredByUserId], references: [id])
+  photoFileAsset          FileAsset?          @relation("SmartMeasurePhotoAsset", fields: [photoFileAssetId], references: [id], onDelete: SetNull)
+  annotatedPhotoFileAsset FileAsset?          @relation("SmartMeasureAnnotatedPhotoAsset", fields: [annotatedPhotoFileAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([elementId, versionNo], map: "uq_smv_element_ver")
+  @@index([claimFileId, measuredAt], map: "idx_smv_claim_measured")
+  @@index([elementId, versionNo], map: "idx_smv_element_ver")
+  @@index([measuredAt], map: "idx_smv_measured_at")
+  @@index([measuredByUserId], map: "idx_smv_measured_by")
+  @@index([source], map: "idx_smv_source")
+  @@index([claimFileId, source], map: "idx_smv_claim_source")
+  @@index([aiConfidenceLevel], map: "idx_smv_ai_level")
+  @@index([photoFileAssetId], map: "idx_smv_photo_asset")
+  @@map("smart_measure_versions")
 }
 
 // Operasyonel erişim izinleri (vekalet) — Faz 1

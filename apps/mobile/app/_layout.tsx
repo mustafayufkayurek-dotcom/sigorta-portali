@@ -5,6 +5,11 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="index" options={{ title: 'Giriş' }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="smart-measure/[claimFileId]"
+        options={{ title: 'Kamera İle Ölç' }}
+      />
     </Stack>
   );
 }
+

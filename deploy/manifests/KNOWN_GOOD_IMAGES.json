@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-07-31",
-  "label": "v423-mobil-ab-paket",
-  "description": "Web-only A+B: mobil accordion+fixed menü; Operasyon KPI/kart; Hasar tablet kart+header; Müşteri mobil kart. Backend v418. Health PASS, nginx PASS, Route Gate PASS (login PARTIAL). Rollback web v422 / backend v418.",
+  "updatedAt": "2026-08-01",
+  "label": "v437-akilli-olcum-mm-evidence",
+  "description": "Full SM-only: Akıllı Ölçüm nihai mimari (mm, FileAsset, status, metraj+PDF). Rollback web v436 / backend v436.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v418-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v423-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v437-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v437-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v422-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v418-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v436-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v436-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

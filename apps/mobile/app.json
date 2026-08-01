@@ -18,6 +18,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Saha personeli konumunuzu randevu takibi için arka planda kullanıyoruz.",
         "NSLocationWhenInUseUsageDescription": "Randevu check-in işlemi için konumunuza erişim gereklidir.",
         "NSLocationAlwaysUsageDescription": "Saha personeli konumunuzu arka planda izlemek için kullanıyoruz.",
+        "NSCameraUsageDescription": "Akıllı ölçüm için kapı ve yapı elemanı fotoğrafı / AR ölçümü yapılır.",
         "UIBackgroundModes": ["location", "fetch"]
       }
     },
@@ -30,18 +31,34 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE"
+        "FOREGROUND_SERVICE",
+        "CAMERA"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Saha personeli konum takibi için izin gereklidir.",
           "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "@reactvision/react-viro",
+        {
+          "android": {
+            "xRMode": "AR"
+          },
+          "ios": {
+            "cameraUsagePermission": "Akıllı ölçüm için kamera ve AR kullanılır.",
+            "microphoneUsagePermission": "AR deneyimi için mikrofon erişimi gerekebilir.",
+            "photosPermission": "Ölçüm kanıt fotoğrafları için galeri erişimi.",
+            "savephotosPermission": "Ölçüm görsellerini kaydetmek için izin."
+          }
         }
       ]
     ]

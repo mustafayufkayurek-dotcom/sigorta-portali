@@ -88,6 +88,7 @@ import { CrmModule } from './modules/crm/crm.module';
 import { OperationInboxModule } from './modules/operation-inbox/operation-inbox.module';
 import { OperationalAccessGrantsModule } from './modules/operational-access-grants/operational-access-grants.module';
 import { FieldSurveyBriefsModule } from './modules/field-survey-briefs/field-survey-briefs.module';
+import { SmartMeasuresModule } from './modules/smart-measures/smart-measures.module';
 import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -221,6 +222,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     OperationInboxModule,
     OperationalAccessGrantsModule,
     FieldSurveyBriefsModule,
+    SmartMeasuresModule,
     CacheModule,
   ],
   providers: [

@@ -12,10 +12,12 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import * as ScreenCapture from 'expo-screen-capture';
 import axios from 'axios';
+import { useRouter } from 'expo-router';
 
 const API_BASE = 'http://localhost:3000/api/v1';
 
 export default function AssignedClaimsScreen() {
+  const router = useRouter();
   const [claims, setClaims] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [screenshotWarning, setScreenshotWarning] = useState(false);
@@ -139,6 +141,18 @@ export default function AssignedClaimsScreen() {
                 <Text style={styles.callButtonText}>Ara</Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={styles.measureButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/smart-measure/[claimFileId]',
+                  params: { claimFileId: item.id, fileNo: item.fileNo },
+                })
+              }
+            >
+              <Text style={styles.measureButtonText}>Kamera İle Ölç</Text>
+            </TouchableOpacity>
           </View>
         )}
         ListEmptyComponent={
@@ -201,6 +215,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   callButtonText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  measureButton: {
+    marginTop: 8,
+    backgroundColor: '#1d4ed8',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  measureButtonText: {
     color: 'white',
     fontSize: 13,
     fontWeight: '600',
