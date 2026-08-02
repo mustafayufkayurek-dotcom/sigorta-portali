@@ -324,7 +324,7 @@ Aşağıdakilerden **biri** gerçekleşirse geri dönüş değerlendirilir:
 | Deploy | **YAPILMADI** |
 | Canlı işlem | **YAPILMADI** |
 | Push / merge | **YAPILMADI** |
-| **Staging Operasyon Review Gate** | **BEKLİYOR — ürün sahibi uygulama onayı** |
+| **Staging Operasyon Review Gate** | **ONAYLANDI** (2026-08-02) |
 
 ### Onay sonrası tek cümlelik scope
 
@@ -342,7 +342,7 @@ Bu plan **yalnızca staging** kapsamındadır. Canlı ortam ayrı Review Gate il
 Değerlendirme: Staging Operasyon Review Gate — Plan
 Tarih: 2026-08-02
 Hazırlayan: BUILD MODE operasyon hazırlığı
-Ürün sahibi uygulama onayı: Bekleniyor
+Ürün sahibi uygulama onayı: ONAYLANDI (6 faz sırası kabul)
 Migration deploy: Planlandı — henüz uygulanmadı
 Deploy: Planlandı — henüz yapılmadı
 Canlı: Kapsam dışı
