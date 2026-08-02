@@ -202,6 +202,8 @@ model User {
   createdSmartMeasureElements SmartMeasureElement[] @relation("SmartMeasureElementCreatedBy")
   archivedSmartMeasureElements SmartMeasureElement[] @relation("SmartMeasureElementArchivedBy")
   measuredSmartMeasureVersions SmartMeasureVersion[] @relation("SmartMeasureVersionMeasuredBy")
+  createdTakeoffRuns           TakeoffRun[]          @relation("TakeoffRunCreatedBy")
+  createdTakeoffRuleVersions   TakeoffRuleVersion[]  @relation("TakeoffRuleVersionCreatedBy")
   activitySessions         ActivitySession[]
   reportWriteSessions      ReportWriteSession[]
 
@@ -414,6 +416,7 @@ model ClaimFile {
   fieldSurveyBriefs    FieldSurveyBrief[]
   smartMeasureElements SmartMeasureElement[]
   smartMeasureVersions SmartMeasureVersion[]
+  takeoffRuns          TakeoffRun[]
 
   @@index([fileNo])
   @@index([insuranceCompanyId])
@@ -3922,6 +3925,159 @@ model SmartMeasureVersion {
   @@index([aiConfidenceLevel], map: "idx_smv_ai_level")
   @@index([photoFileAssetId], map: "idx_smv_photo_asset")
   @@map("smart_measure_versions")
+}
+
+// Smart Quantity Takeoff — S3 persist omurgası (BUILD MODE; production migrate deploy ayrı onay)
+enum TakeoffRunStatus {
+  draft
+  active
+  superseded
+  archived
+}
+
+enum TakeoffLineItemStatus {
+  active
+  void
+}
+
+model TakeoffRule {
+  id                   String  @id @default(uuid())
+  code                 String  @unique
+  name                 String
+  structureElementType String  @map("structure_element_type")
+  active               Boolean @default(true)
+  decisionSpecJson     Json    @map("decision_spec_json")
+  calculationBindJson  Json    @map("calculation_bind_json")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  versionMembers TakeoffRuleVersionMember[]
+  lineItems      TakeoffLineItem[]
+
+  @@index([structureElementType, active])
+  @@map("takeoff_rules")
+}
+
+model TakeoffRuleVersion {
+  id                  String   @id @default(uuid())
+  versionTag          String   @unique @map("version_tag")
+  librarySnapshotHash String   @map("library_snapshot_hash")
+  effectiveFrom       DateTime @map("effective_from")
+  createdByUserId     String   @map("created_by_user_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  notes               String?
+
+  createdByUser User                       @relation("TakeoffRuleVersionCreatedBy", fields: [createdByUserId], references: [id])
+  runs          TakeoffRun[]
+  members       TakeoffRuleVersionMember[]
+
+  @@map("takeoff_rule_versions")
+}
+
+model TakeoffRuleVersionMember {
+  id            String @id @default(uuid())
+  ruleVersionId String @map("rule_version_id")
+  ruleId        String @map("rule_id")
+  ruleBodyJson  Json   @map("rule_body_json")
+
+  ruleVersion TakeoffRuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Cascade)
+  rule        TakeoffRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleVersionId, ruleId])
+  @@map("takeoff_rule_version_members")
+}
+
+model TakeoffRun {
+  id                String           @id @default(uuid())
+  claimFileId       String           @map("claim_file_id")
+  ruleVersionId     String           @map("rule_version_id")
+  runNumber         Int              @map("run_number")
+  status            TakeoffRunStatus @default(active)
+  note              String?
+  createdByUserId   String           @map("created_by_user_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  supersededByRunId String?          @map("superseded_by_run_id")
+
+  claimFile       ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  ruleVersion     TakeoffRuleVersion @relation(fields: [ruleVersionId], references: [id])
+  createdByUser   User               @relation("TakeoffRunCreatedBy", fields: [createdByUserId], references: [id])
+  supersededByRun TakeoffRun?        @relation("TakeoffRunSupersedes", fields: [supersededByRunId], references: [id], onDelete: SetNull)
+  supersedesRuns  TakeoffRun[]       @relation("TakeoffRunSupersedes")
+  lineItems       TakeoffLineItem[]
+
+  @@unique([claimFileId, runNumber])
+  @@index([claimFileId, status])
+  @@map("takeoff_runs")
+}
+
+model TakeoffLineItem {
+  id                     String                @id @default(uuid())
+  takeoffRunId           String                @map("takeoff_run_id")
+  operationItemCode      String                @map("operation_item_code")
+  displayName            String                @map("display_name")
+  structureElementType   String                @map("structure_element_type")
+  sourceMeasureElementId String?               @map("source_measure_element_id")
+  unit                   String
+  quantityEngine         Decimal               @map("quantity_engine") @db.Decimal(18, 4)
+  quantityFinal          Decimal               @map("quantity_final") @db.Decimal(18, 4)
+  hasOverride            Boolean               @default(false) @map("has_override")
+  ruleId                 String                @map("rule_id")
+  ruleVersionId          String                @map("rule_version_id")
+  metrajSnapshotJson     Json?                 @map("metraj_snapshot_json")
+  sortOrder              Int                   @default(0) @map("sort_order")
+  status                 TakeoffLineItemStatus @default(active)
+
+  run         TakeoffRun                @relation(fields: [takeoffRunId], references: [id], onDelete: Cascade)
+  rule        TakeoffRule               @relation(fields: [ruleId], references: [id])
+  explanation TakeoffCalculationExplanation?
+  overrides   TakeoffManualOverride[]
+  sources     TakeoffLineItemSource[]
+
+  @@index([takeoffRunId])
+  @@map("takeoff_line_items")
+}
+
+model TakeoffLineItemSource {
+  id                    String @id @default(uuid())
+  takeoffLineItemId     String @map("takeoff_line_item_id")
+  smartMeasureVersionId String @map("smart_measure_version_id")
+
+  lineItem TakeoffLineItem @relation(fields: [takeoffLineItemId], references: [id], onDelete: Cascade)
+
+  @@index([smartMeasureVersionId])
+  @@map("takeoff_line_item_sources")
+}
+
+model TakeoffManualOverride {
+  id                      String   @id @default(uuid())
+  takeoffLineItemId       String   @map("takeoff_line_item_id")
+  quantityEnginePreserved Decimal  @map("quantity_engine_preserved") @db.Decimal(18, 4)
+  quantityOverride        Decimal  @map("quantity_override") @db.Decimal(18, 4)
+  reason                  String
+  createdByUserId         String   @map("created_by_user_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+  active                  Boolean  @default(true)
+
+  lineItem TakeoffLineItem @relation(fields: [takeoffLineItemId], references: [id], onDelete: Cascade)
+
+  @@index([takeoffLineItemId, active])
+  @@map("takeoff_manual_overrides")
+}
+
+model TakeoffCalculationExplanation {
+  id                   String @id @default(uuid())
+  takeoffLineItemId    String @unique @map("takeoff_line_item_id")
+  measureSummary       String @map("measure_summary")
+  ruleCode             String @map("rule_code")
+  ruleVersionTag       String @map("rule_version_tag")
+  decisionPathJson     Json   @map("decision_path_json")
+  calculationStepsJson Json   @map("calculation_steps_json")
+  overrideSummaryJson  Json?  @map("override_summary_json")
+  humanReadableText    String @map("human_readable_text")
+
+  lineItem TakeoffLineItem @relation(fields: [takeoffLineItemId], references: [id], onDelete: Cascade)
+
+  @@map("takeoff_calculation_explanations")
 }
 
 // Operasyonel erişim izinleri (vekalet) — Faz 1

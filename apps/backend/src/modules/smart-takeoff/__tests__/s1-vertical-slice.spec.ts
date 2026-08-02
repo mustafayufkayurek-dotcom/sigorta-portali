@@ -7,9 +7,13 @@ import { RuleEngine } from '../rule-engine/rule-engine';
 import { RuleRegistry } from '../rule-engine/rule-registry';
 import { registerS1Rules } from '../rule-library/register-s1-rules';
 import { S1_RULE_DEFINITIONS } from '../rule-library/s1-rule-definitions';
-import { InMemoryTakeoffPersistAdapter } from '../adapters/in-memory-takeoff-persist.adapter';
+import {
+  IN_MEMORY_RULE_VERSION_ID,
+  InMemoryTakeoffPersistAdapter,
+} from '../adapters/in-memory-takeoff-persist.adapter';
 import { InMemoryMeasureReadPort } from '../ports/measure-read.port';
 import { SmartTakeoffService } from '../smart-takeoff.service';
+import { RuleVersionResolver } from '../versioning/rule-version-resolver';
 
 function buildService(): SmartTakeoffService {
   const registry = new RuleRegistry();
@@ -19,6 +23,14 @@ function buildService(): SmartTakeoffService {
   const pipeline = new TakeoffPipeline(decisionEngine, calculationEngine);
   const persist = new InMemoryTakeoffPersistAdapter();
   const measureRead = new InMemoryMeasureReadPort();
+  const ruleVersionResolver = {
+    resolveCurrent: jest.fn().mockResolvedValue({
+      id: IN_MEMORY_RULE_VERSION_ID,
+      versionTag: 's1.2026.08.02.1',
+      librarySnapshotHash: 'test',
+      effectiveFrom: new Date('2026-08-02'),
+    }),
+  } as unknown as RuleVersionResolver;
   const service = new SmartTakeoffService(
     registry,
     ruleEngine,
@@ -26,6 +38,7 @@ function buildService(): SmartTakeoffService {
     calculationEngine,
     pipeline,
     { findOne: jest.fn() } as never,
+    ruleVersionResolver,
     measureRead,
     persist,
   );

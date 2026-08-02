@@ -2,21 +2,22 @@
 
 Bounded Context. SSOT: `docs/features/SMART_QUANTITY_TAKEOFF_*.md`.
 
-## S2 — TAMAMLANDI (2026-08-02)
+## S3 — TAMAMLANDI (2026-08-02)
 
 Branch: `feature/smart-quantity-takeoff-s1`  
 BUILD MODE · Reusable Platform First
 
-| Öğe | S2 durumu |
+| Öğe | S3 durumu |
 |-----|--------|
 | AppModule kaydı | **Evet** |
 | REST API | `POST/GET claim-files/:id/smart-takeoff/runs` |
-| SM adapter | `PrismaMeasureReadAdapter` (salt okuma) |
-| Persist | `InMemoryTakeoffPersistAdapter` (Review Gate → Prisma migration) |
-| Migration | **Yok** (Sprint Review Gate sonrası) |
+| SM adapter | `PrismaMeasureReadAdapter` — gerçek SM tipleri + SKIRTING extensionJson |
+| Persist | **`PrismaTakeoffPersistAdapter`** (InMemory test override) |
+| Migration | **`20260802160000_smart_takeoff_s3`** (dosya oluşturuldu; production deploy ayrı onay) |
+| RuleVersion | **DB-backed** — `TakeoffRuleVersion` + S1 seed (`RuleVersionResolver`) |
 | Rule Library | S1 — 4 kural (değişmedi) |
 | S1 pipeline | Korundu |
-| UI | Yok (S3+) |
+| UI | Yok (S4+) |
 
 ## API
 
@@ -33,3 +34,15 @@ BUILD MODE · Reusable Platform First
 - **Decision Engine** — hangi iş kalemleri (matematik yok)
 - **Calculation Engine** — yalnız matematik
 - **Pipeline** — zinciri bağlar; katmanları birleştirmez
+- **RuleVersionResolver** — aktif kural sürümü (DB)
+- **PrismaTakeoffPersistAdapter** — TakeoffRun + TakeoffLineItem + Explanation kalıcı persist
+
+## SKIRTING / süpürgelik notu
+
+SM katalogunda `supurgelik` tipi henüz resmi değil. S3 yolu:
+
+- `extensionJson.takeoffStructureType = SKIRTING`
+- `extensionJson.metrajElementType = supurgelik` (duvar elemanında)
+- `extensionJson.lengthMm` veya `widthMm` (koşu uzunluğu)
+
+SmartMeasureVersion şemasına `lengthMm` eklenmedi — extensionJson ile hizalandı.

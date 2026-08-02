@@ -22,6 +22,7 @@ export interface PersistedTakeoffRun {
   readonly id: string;
   readonly claimFileId: string;
   readonly runNumber: number;
+  readonly ruleVersionId: string;
   readonly ruleVersionTag: string;
   readonly status: string;
   readonly note: string | null;
@@ -32,6 +33,7 @@ export interface PersistedTakeoffRun {
 
 export interface CreateTakeoffRunInput {
   readonly claimFileId: string;
+  readonly ruleVersionId: string;
   readonly ruleVersionTag: string;
   readonly note?: string | null;
   readonly createdByUserId: string;

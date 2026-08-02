@@ -62,7 +62,7 @@ export class PrismaMeasureReadAdapter implements MeasureReadPort {
   }
 }
 
-function resolveLengthMm(
+export function resolveLengthMm(
   structureElementType: string,
   version: {
     widthMm: number | null;
@@ -74,9 +74,24 @@ function resolveLengthMm(
   if (structureElementType !== StructureElementTypes.SKIRTING) {
     return undefined;
   }
-  const ext = version.extensionJson as { lengthMm?: number } | null | undefined;
+
+  const ext = version.extensionJson as
+    | { lengthMm?: number; perimeterMm?: number }
+    | null
+    | undefined;
+
   if (typeof ext?.lengthMm === 'number' && ext.lengthMm > 0) {
     return ext.lengthMm;
   }
+
+  if (typeof ext?.perimeterMm === 'number' && ext.perimeterMm > 0) {
+    return ext.perimeterMm;
+  }
+
+  // SM pratiği: koşu/uzunluk ölçüsü widthMm veya depthMm alanında tutulabilir
+  if (version.widthMm != null && version.widthMm > 0 && version.heightMm == null) {
+    return version.widthMm;
+  }
+
   return version.widthMm ?? version.depthMm ?? null;
 }

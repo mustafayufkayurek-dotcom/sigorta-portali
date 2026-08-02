@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClaimFilesModule } from '@/modules/claim-files/claim-files.module';
 import { PrismaModule } from '@/prisma/prisma.module';
-import { InMemoryTakeoffPersistAdapter } from './adapters/in-memory-takeoff-persist.adapter';
+import { PrismaTakeoffPersistAdapter } from './adapters/prisma-takeoff-persist.adapter';
 import { PrismaMeasureReadAdapter } from './adapters/prisma-measure-read.adapter';
 import { CalculationEngine } from './calculation-engine/calculation-engine';
 import { DecisionEngine } from './decision-engine/decision-engine';
@@ -12,10 +12,11 @@ import { RuleEngine } from './rule-engine/rule-engine';
 import { RuleRegistry } from './rule-engine/rule-registry';
 import { SmartTakeoffController } from './smart-takeoff.controller';
 import { SmartTakeoffService } from './smart-takeoff.service';
+import { RuleVersionResolver } from './versioning/rule-version-resolver';
 
 /**
- * Smart Quantity Takeoff — S2 platform bağlantısı.
- * BUILD MODE: InMemory persist (Review Gate migration sonrası Prisma).
+ * Smart Quantity Takeoff — S3 Prisma persist + RuleVersion DB.
+ * Tests: InMemoryTakeoffPersistAdapter via DI override.
  */
 @Module({
   imports: [PrismaModule, ClaimFilesModule],
@@ -27,14 +28,16 @@ import { SmartTakeoffService } from './smart-takeoff.service';
     CalculationEngine,
     TakeoffPipeline,
     SmartTakeoffService,
+    RuleVersionResolver,
     PrismaMeasureReadAdapter,
+    PrismaTakeoffPersistAdapter,
     {
       provide: MEASURE_READ_PORT,
       useExisting: PrismaMeasureReadAdapter,
     },
     {
       provide: TAKEOFF_PERSIST_PORT,
-      useClass: InMemoryTakeoffPersistAdapter,
+      useExisting: PrismaTakeoffPersistAdapter,
     },
   ],
   exports: [SmartTakeoffService],

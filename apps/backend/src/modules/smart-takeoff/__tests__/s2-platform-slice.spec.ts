@@ -1,7 +1,10 @@
 import { CalculationEngine } from '../calculation-engine/calculation-engine';
 import { DecisionEngine } from '../decision-engine/decision-engine';
 import { InMemoryMeasureReadPort } from '../ports/measure-read.port';
-import { InMemoryTakeoffPersistAdapter } from '../adapters/in-memory-takeoff-persist.adapter';
+import {
+  IN_MEMORY_RULE_VERSION_ID,
+  InMemoryTakeoffPersistAdapter,
+} from '../adapters/in-memory-takeoff-persist.adapter';
 import { mapSmElementTypeToTakeoff } from '../adapters/sm-structure-type.mapper';
 import { OperationItemCodes, StructureElementTypes } from '../domain/domain.types';
 import { TakeoffPipeline } from '../pipeline/takeoff-pipeline';
@@ -9,6 +12,7 @@ import { RuleEngine } from '../rule-engine/rule-engine';
 import { RuleRegistry } from '../rule-engine/rule-registry';
 import { registerS1Rules } from '../rule-library/register-s1-rules';
 import { SmartTakeoffService } from '../smart-takeoff.service';
+import { RuleVersionResolver } from '../versioning/rule-version-resolver';
 
 function buildS2Service(
   measureRead = new InMemoryMeasureReadPort([
@@ -28,6 +32,14 @@ function buildS2Service(
   const decisionEngine = new DecisionEngine(ruleEngine);
   const calculationEngine = new CalculationEngine();
   const pipeline = new TakeoffPipeline(decisionEngine, calculationEngine);
+  const ruleVersionResolver = {
+    resolveCurrent: jest.fn().mockResolvedValue({
+      id: IN_MEMORY_RULE_VERSION_ID,
+      versionTag: 's1.2026.08.02.1',
+      librarySnapshotHash: 'test',
+      effectiveFrom: new Date('2026-08-02'),
+    }),
+  } as unknown as RuleVersionResolver;
   const service = new SmartTakeoffService(
     registry,
     ruleEngine,
@@ -35,6 +47,7 @@ function buildS2Service(
     calculationEngine,
     pipeline,
     { findOne: jest.fn().mockResolvedValue({ id: 'cf-1' }) } as never,
+    ruleVersionResolver,
     measureRead,
     persist,
   );

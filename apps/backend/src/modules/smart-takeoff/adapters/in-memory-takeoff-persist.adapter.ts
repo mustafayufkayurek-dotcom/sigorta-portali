@@ -5,9 +5,12 @@ import type {
   TakeoffPersistPort,
 } from '../ports/takeoff-persist.port';
 
+/** S2/S3 test default — InMemory runs without DB RuleVersion row. */
+export const IN_MEMORY_RULE_VERSION_ID = '00000000-0000-4000-8000-000000000001';
+
 /**
- * S2 persist — BUILD MODE default until Review Gate migration.
- * Prisma adapter Review Gate sonrası varsayılan olacak.
+ * S2 persist — tests and DI override.
+ * Production default: PrismaTakeoffPersistAdapter.
  */
 export class InMemoryTakeoffPersistAdapter implements TakeoffPersistPort {
   private readonly runs = new Map<string, PersistedTakeoffRun>();
@@ -40,6 +43,7 @@ export class InMemoryTakeoffPersistAdapter implements TakeoffPersistPort {
       id: runId,
       claimFileId: input.claimFileId,
       runNumber: nextNo,
+      ruleVersionId: input.ruleVersionId,
       ruleVersionTag: input.ruleVersionTag,
       status: 'active',
       note: input.note ?? null,

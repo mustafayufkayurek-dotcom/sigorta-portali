@@ -24,12 +24,13 @@ import { RuleRegistry } from './rule-engine/rule-registry';
 import { registerS1Rules } from './rule-library/register-s1-rules';
 import { S1_RULE_VERSION_TAG } from './rule-library/s1-rule-definitions';
 import { S1_PLACEHOLDER_CALCULATION_VERSION_TAG } from './versioning/version.types';
+import { RuleVersionResolver } from './versioning/rule-version-resolver';
 
 type RequestUser = { id: string; roleCode?: string };
 
 /**
- * Smart Quantity Takeoff — S2 platform bağlantısı.
- * S1 pipeline korunur; SM adapter + persist + REST API eklenir.
+ * Smart Quantity Takeoff — S3 Prisma persist + RuleVersion DB bağlantısı.
+ * S1 pipeline korunur; SM adapter + persist + REST API.
  */
 @Injectable()
 export class SmartTakeoffService implements OnModuleInit {
@@ -40,6 +41,7 @@ export class SmartTakeoffService implements OnModuleInit {
     private readonly calculationEngine: CalculationEngine,
     private readonly pipeline: TakeoffPipeline,
     private readonly claimFiles: ClaimFilesService,
+    private readonly ruleVersionResolver: RuleVersionResolver,
     @Inject(MEASURE_READ_PORT)
     private readonly measureRead: MeasureReadPort & {
       listByElementIds?(claimFileId: string, elementIds: string[]): Promise<MeasureReadSnapshot[]>;
@@ -61,7 +63,7 @@ export class SmartTakeoffService implements OnModuleInit {
   getSkeletonStatus() {
     this.ensureS1RulesLoaded();
     return {
-      sprint: 'S2',
+      sprint: 'S3',
       ruleCount: this.ruleRegistry.count(),
       ruleVersionTag: S1_RULE_VERSION_TAG,
       calculationVersionTag: S1_PLACEHOLDER_CALCULATION_VERSION_TAG,
@@ -77,6 +79,7 @@ export class SmartTakeoffService implements OnModuleInit {
       persistence: true,
       persistenceAdapter: this.persist.constructor.name,
       measureReadAdapter: 'PrismaMeasureReadAdapter',
+      ruleVersionSource: 'TakeoffRuleVersion (DB)',
     };
   }
 
@@ -97,18 +100,21 @@ export class SmartTakeoffService implements OnModuleInit {
     const measures = await this.resolveMeasures(claimFileId, dto.measureElementIds);
     if (measures.length === 0) {
       throw new BadRequestException(
-        'Metraj üretilecek uygun akıllı ölçüm bulunamadı. Kapı, pencere veya tavan ölçüsü gerekir.',
+        'Metraj üretilecek uygun akıllı ölçüm bulunamadı. Kapı, pencere, tavan veya süpürgelik ölçüsü gerekir.',
       );
     }
 
+    const ruleVersion = await this.ruleVersionResolver.resolveCurrent(user.id);
+
     const workItems = measures.flatMap((measure) => {
-      const result = this.pipeline.runFromMeasure(measure, S1_RULE_VERSION_TAG);
+      const result = this.pipeline.runFromMeasure(measure, ruleVersion.versionTag);
       return [...result.workItems];
     });
 
     const run = await this.persist.createRun({
       claimFileId,
-      ruleVersionTag: S1_RULE_VERSION_TAG,
+      ruleVersionId: ruleVersion.id,
+      ruleVersionTag: ruleVersion.versionTag,
       note: dto.note?.trim() || null,
       createdByUserId: user.id,
       workItems,
