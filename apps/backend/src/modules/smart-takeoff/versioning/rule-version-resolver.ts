@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { RuleVersionRef } from './version.types';
 import { S1_RULE_DEFINITIONS, S1_RULE_VERSION_TAG } from '../rule-library/s1-rule-definitions';
@@ -71,15 +72,23 @@ export class RuleVersionResolver {
             name: def.displayFamily,
             structureElementType: def.structureElementType,
             active: true,
-            decisionSpecJson: { plannedItems: def.plannedItems },
-            calculationBindJson: { requiredDimensions: def.requiredDimensions },
+            decisionSpecJson: {
+              plannedItems: def.plannedItems,
+            } as unknown as Prisma.InputJsonValue,
+            calculationBindJson: {
+              requiredDimensions: def.requiredDimensions,
+            } as unknown as Prisma.InputJsonValue,
           },
           update: {
             name: def.displayFamily,
             structureElementType: def.structureElementType,
             active: true,
-            decisionSpecJson: { plannedItems: def.plannedItems },
-            calculationBindJson: { requiredDimensions: def.requiredDimensions },
+            decisionSpecJson: {
+              plannedItems: def.plannedItems,
+            } as unknown as Prisma.InputJsonValue,
+            calculationBindJson: {
+              requiredDimensions: def.requiredDimensions,
+            } as unknown as Prisma.InputJsonValue,
           },
         });
       }
