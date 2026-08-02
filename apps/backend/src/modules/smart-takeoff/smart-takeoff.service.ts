@@ -25,12 +25,16 @@ import { registerS1Rules } from './rule-library/register-s1-rules';
 import { S1_RULE_VERSION_TAG } from './rule-library/s1-rule-definitions';
 import { S1_PLACEHOLDER_CALCULATION_VERSION_TAG } from './versioning/version.types';
 import { RuleVersionResolver } from './versioning/rule-version-resolver';
+import { TAKEOFF_MAX_MEASURES_PER_RUN } from './constants/takeoff-limits';
 
 type RequestUser = { id: string; roleCode?: string };
 
 /**
- * Smart Quantity Takeoff — S4 UI + manual override API.
- * S1 pipeline korunur; SM adapter + persist + REST API.
+ * Smart Quantity Takeoff — S5 E2E validation + SM real data flow.
+ * S1 pipeline korunur; SM adapter + persist + REST API + override audit.
+ *
+ * Run lifecycle: createRun → listRuns → getRun → applyLineItemOverride.
+ * Re-run: each createRun appends a new run (runNumber++); prior runs immutable.
  */
 @Injectable()
 export class SmartTakeoffService implements OnModuleInit {
@@ -63,7 +67,7 @@ export class SmartTakeoffService implements OnModuleInit {
   getSkeletonStatus() {
     this.ensureS1RulesLoaded();
     return {
-      sprint: 'S4',
+      sprint: 'S5',
       ruleCount: this.ruleRegistry.count(),
       ruleVersionTag: S1_RULE_VERSION_TAG,
       calculationVersionTag: S1_PLACEHOLDER_CALCULATION_VERSION_TAG,
@@ -102,6 +106,11 @@ export class SmartTakeoffService implements OnModuleInit {
     if (measures.length === 0) {
       throw new BadRequestException(
         'Metraj üretilecek uygun akıllı ölçüm bulunamadı. Kapı, pencere, tavan veya süpürgelik ölçüsü gerekir.',
+      );
+    }
+    if (measures.length > TAKEOFF_MAX_MEASURES_PER_RUN) {
+      throw new BadRequestException(
+        `Tek seferde en fazla ${TAKEOFF_MAX_MEASURES_PER_RUN} ölçü işlenebilir. Lütfen ölçü seçimini daraltın.`,
       );
     }
 

@@ -2,23 +2,33 @@
 
 Bounded Context. SSOT: `docs/features/SMART_QUANTITY_TAKEOFF_*.md`.
 
-## S4 — TAMAMLANDI (2026-08-02)
+## S5 — TAMAMLANDI (2026-08-02)
 
 Branch: `feature/smart-quantity-takeoff-s1`  
 BUILD MODE · Reusable Platform First
 
-| Öğe | S4 durumu |
+| Öğe | S5 durumu |
 |-----|--------|
 | AppModule kaydı | **Evet** |
 | REST API | `POST/GET/PATCH claim-files/:id/smart-takeoff/...` |
-| SM adapter | `PrismaMeasureReadAdapter` — gerçek SM tipleri + SKIRTING extensionJson |
+| SM adapter | `PrismaMeasureReadAdapter` — doğrudan id sorgusu + tüm SM senaryoları |
 | Persist | **`PrismaTakeoffPersistAdapter`** (InMemory test override) |
 | Migration | **`20260802160000_smart_takeoff_s3`** (dosya oluşturuldu; production deploy ayrı onay) |
-| RuleVersion | **DB-backed** — `TakeoffRuleVersion` + S1 seed (`RuleVersionResolver`) |
-| Rule Library | S1 — 4 kural (değişmedi) |
-| S1 pipeline | Korundu |
-| UI | **Hasar dosyası → Raporlar → Operasyon İş Kalemleri** |
-| Manual Override | **PATCH line-item override** + `TakeoffManualOverride` audit |
+| RuleVersion | **DB-backed** — `TakeoffRuleVersion` + S1 seed |
+| E2E testler | **s5-e2e-scenarios · s5-lifecycle · s5-performance · s5-prisma-measure-read** |
+| Batch limit | `TAKEOFF_MAX_MEASURES_PER_RUN = 200` |
+| Local smoke | `scripts/smoke-smart-takeoff-s5.sh` |
+| UI | **Hasar dosyası → Raporlar → Operasyon İş Kalemleri** (S4) |
+| Manual Override | **PATCH line-item override** + audit trail |
+
+## Run lifecycle
+
+1. `createRun` — SM ölçülerinden iş kalemi üretir; her çağrı yeni koşum (`runNumber++`)
+2. `listRuns` — dosyaya ait koşumlar (azalan runNumber)
+3. `getRun` — detay + açıklama + override geçmişi
+4. `applyLineItemOverride` — `quantityFinal` günceller; `quantityEngine` korunur
+
+Re-run: önceki koşumlar değişmez; yeni koşum bağımsız üretilir.
 
 ## API
 
@@ -39,18 +49,15 @@ BUILD MODE · Reusable Platform First
 - **RuleVersionResolver** — aktif kural sürümü (DB)
 - **PrismaTakeoffPersistAdapter** — TakeoffRun + TakeoffLineItem + Explanation + Override kalıcı persist
 
-## SKIRTING / süpürgelik notu
+## Test çalıştırma
 
-SM katalogunda `supurgelik` tipi henüz resmi değil. S3 yolu:
-
-- `extensionJson.takeoffStructureType = SKIRTING`
-- `extensionJson.metrajElementType = supurgelik` (duvar elemanında)
-- `extensionJson.lengthMm` veya `widthMm` (koşu uzunluğu)
-
-SmartMeasureVersion şemasına `lengthMm` eklenmedi — extensionJson ile hizalandı.
+```bash
+cd apps/backend && pnpm exec jest modules/smart-takeoff --no-cache
+# veya
+bash scripts/smoke-smart-takeoff-s5.sh
+```
 
 ## Web bileşenleri
 
-- `apps/web/src/components/smart-takeoff/SmartTakeoffPanel.tsx` — ana tablo + koşum seçici
-- `TakeoffExplanationDrawer.tsx` — açıklanabilir hesap
-- `TakeoffOverrideDrawer.tsx` — manuel düzeltme formu
+- `apps/web/src/components/smart-takeoff/SmartTakeoffPanel.tsx`
+- `TakeoffExplanationDrawer.tsx` · `TakeoffOverrideDrawer.tsx`

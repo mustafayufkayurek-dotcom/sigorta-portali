@@ -28,4 +28,15 @@ export class InMemoryMeasureReadPort implements MeasureReadPort {
   async listForClaimFile(claimFileId: string): Promise<MeasureReadSnapshot[]> {
     return this.measures.filter((m) => m.claimFileId === claimFileId);
   }
+
+  async listByElementIds(
+    claimFileId: string,
+    elementIds: string[],
+  ): Promise<MeasureReadSnapshot[]> {
+    if (elementIds.length === 0) return [];
+    const idSet = new Set(elementIds);
+    return this.measures.filter(
+      (m) => m.claimFileId === claimFileId && idSet.has(m.measureElementId),
+    );
+  }
 }

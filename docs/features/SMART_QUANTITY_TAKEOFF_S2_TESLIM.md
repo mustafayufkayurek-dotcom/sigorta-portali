@@ -165,7 +165,7 @@ Tests:       16 passed, 16 total
 ```
 Ürün sahibi: Mustafa
 Sprint: S2
-Karar: Review Gate bekleniyor
+Karar: ONAYLANDI (16/16 test, BUILD MODE kuralları korundu)
 Push: YOK
 Deploy: YOK
 Migration: YOK

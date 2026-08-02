@@ -4,9 +4,31 @@ import type { MeasureReadPort, MeasureReadSnapshot } from '../ports/measure-read
 import { StructureElementTypes } from '../domain/domain.types';
 import { mapSmElementTypeToTakeoff } from './sm-structure-type.mapper';
 
+const SM_ELEMENT_INCLUDE = {
+  versions: { orderBy: { versionNo: 'desc' as const }, take: 1 },
+} as const;
+
+const SM_ACTIVE_WHERE = {
+  archivedAt: null,
+  status: { not: 'archived' as const },
+} as const;
+
+type SmElementRow = {
+  id: string;
+  elementType: string;
+  versions: Array<{
+    id: string;
+    widthMm: number | null;
+    heightMm: number | null;
+    depthMm: number | null;
+    extensionJson: unknown;
+  }>;
+};
+
 /**
  * Reads latest Smart Measurement version per element (salt okuma).
  * Does not modify Smart Measures module.
+ * Filter/order aligned with SmartMeasuresService.listForClaimFile.
  */
 @Injectable()
 export class PrismaMeasureReadAdapter implements MeasureReadPort {
@@ -14,41 +36,12 @@ export class PrismaMeasureReadAdapter implements MeasureReadPort {
 
   async listForClaimFile(claimFileId: string): Promise<MeasureReadSnapshot[]> {
     const elements = await this.prisma.smartMeasureElement.findMany({
-      where: {
-        claimFileId,
-        archivedAt: null,
-        status: { not: 'archived' },
-      },
-      include: {
-        versions: { orderBy: { versionNo: 'desc' }, take: 1 },
-      },
+      where: { claimFileId, ...SM_ACTIVE_WHERE },
+      include: SM_ELEMENT_INCLUDE,
       orderBy: { createdAt: 'asc' },
     });
 
-    const snapshots: MeasureReadSnapshot[] = [];
-
-    for (const el of elements) {
-      const version = el.versions[0];
-      if (!version) continue;
-
-      const structureElementType = mapSmElementTypeToTakeoff(
-        el.elementType,
-        version.extensionJson,
-      );
-      if (!structureElementType) continue;
-
-      snapshots.push({
-        measureElementId: el.id,
-        measureVersionId: version.id,
-        structureElementType,
-        widthMm: version.widthMm,
-        heightMm: version.heightMm,
-        lengthMm: resolveLengthMm(structureElementType, version),
-        claimFileId,
-      });
-    }
-
-    return snapshots;
+    return mapElementsToSnapshots(elements, claimFileId);
   }
 
   async listByElementIds(
@@ -56,10 +49,49 @@ export class PrismaMeasureReadAdapter implements MeasureReadPort {
     elementIds: string[],
   ): Promise<MeasureReadSnapshot[]> {
     if (elementIds.length === 0) return [];
-    const all = await this.listForClaimFile(claimFileId);
-    const idSet = new Set(elementIds);
-    return all.filter((m) => idSet.has(m.measureElementId));
+
+    const elements = await this.prisma.smartMeasureElement.findMany({
+      where: {
+        claimFileId,
+        id: { in: elementIds },
+        ...SM_ACTIVE_WHERE,
+      },
+      include: SM_ELEMENT_INCLUDE,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return mapElementsToSnapshots(elements, claimFileId);
   }
+}
+
+export function mapElementsToSnapshots(
+  elements: SmElementRow[],
+  claimFileId: string,
+): MeasureReadSnapshot[] {
+  const snapshots: MeasureReadSnapshot[] = [];
+
+  for (const el of elements) {
+    const version = el.versions[0];
+    if (!version) continue;
+
+    const structureElementType = mapSmElementTypeToTakeoff(
+      el.elementType,
+      version.extensionJson,
+    );
+    if (!structureElementType) continue;
+
+    snapshots.push({
+      measureElementId: el.id,
+      measureVersionId: version.id,
+      structureElementType,
+      widthMm: version.widthMm,
+      heightMm: version.heightMm,
+      lengthMm: resolveLengthMm(structureElementType, version),
+      claimFileId,
+    });
+  }
+
+  return snapshots;
 }
 
 export function resolveLengthMm(

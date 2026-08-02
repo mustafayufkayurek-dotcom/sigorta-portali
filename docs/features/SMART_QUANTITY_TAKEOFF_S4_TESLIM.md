@@ -134,7 +134,9 @@ Frontend component testi: proje deseni yok; manuel doğrulama notları aşağıd
 ```
 Ürün sahibi: Mustafa
 Sprint: S4
-Karar: BUILD MODE teslim — Review Gate deploy öncesi
+Karar: ONAYLANDI — Review Gate geçildi
+Test: 32/32 PASS
+Onay tarihi: 2026-08-02
 Push: YOK
 Deploy: YOK
 Migration deploy: YOK
