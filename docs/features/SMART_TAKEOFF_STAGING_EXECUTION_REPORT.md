@@ -3,10 +3,11 @@
 | Alan | Değer |
 |------|--------|
 | Tarih | 2026-08-02 |
-| Branch | `feature/smart-quantity-takeoff-s1` (HEAD `929c4aa`) |
+| Branch | `feature/smart-quantity-takeoff-s1` (HEAD `72e74fa`) |
 | Operasyon planı | [SMART_TAKEOFF_STAGING_OPERATION_PLAN.md](./SMART_TAKEOFF_STAGING_OPERATION_PLAN.md) |
 | Operasyon kararı | **ONAY** — ürün sahibi |
-| Execution durumu | **Faz 0 kısmi tamamlandı — Faz 1–6 staging sunucusunda bekliyor** |
+| **Staging Execution Gate** | **Faz 0 ONAYLANDI** (2026-08-02) |
+| Execution durumu | **Faz 1–6 bekliyor** — sunucu erişimi + uygulama etiketi gerekli |
 | Canlı | **Kapsam dışı** — ayrı Review Gate |
 
 ---
@@ -20,6 +21,23 @@
 | Uygulama sırası | 6 faz kabul (DB → Backend → Web → Smoke → E2E → Kapanış) |
 | Kod değişikliği | **Yasak** — uygulama sırasında |
 | Canlı deploy | **Yasak** — ayrı onay gerekir |
+
+### Staging Execution Gate (Faz 0)
+
+| Alan | Karar |
+|------|--------|
+| Faz 0 ön kontroller | **ONAYLANDI** |
+| Staging operasyon planı | Kabul |
+| Faz 1–6 checklist | Hazır |
+| Staging sunucu işlemi | **Henüz başlatılmadı** |
+| Faz 1 başlangıç koşulu | Staging erişim bilgileri + uygulama etiketi |
+| **Sonraki Review Gate** | Staging smoke + Manuel E2E sonuçları sonrası |
+
+**Uygulama kuralları (Faz 1–6):**
+- Kod değişikliği yok · yeni feature yok
+- Migration yalnız staging DB backup sonrası
+- Backend/Web deploy yalnız onaylı sıra ile
+- Canlı ortam işlemi yok
 
 ---
 
@@ -52,7 +70,7 @@
 | 0.4 `pre-deploy-safety.sh <ETİKET>` | ⏳ | Ops |
 | 0.5 `verify-critical-paths.sh --remote` | ⏳ | Ops |
 
-**Faz 0 sonucu:** Yerel hazırlık **PASS** — staging sunucu ön koşulları **bekliyor**. Faz 1'e geçiş için B1 + D1 + D2 zorunlu.
+**Faz 0 sonucu:** **ONAYLANDI** (Staging Execution Gate). Yerel/repo kontrolleri PASS. Sunucu ön koşulları (B1, D1–D5, E1–E3) Faz 1 öncesi tamamlanacak.
 
 ---
 
@@ -60,7 +78,7 @@
 
 | Faz | Açıklama | Durum | Not |
 |-----|----------|--------|-----|
-| **0** | Ön kontroller | **KISMI PASS** | Yerel ✅ · Sunucu ⏳ |
+| **0** | Ön kontroller | **ONAYLANDI** | Execution Gate geçildi · sunucu adımları Faz 1 öncesi |
 | **1** | DB — backup + migrate deploy | **BEKLİYOR** | `20260802160000_smart_takeoff_s3` |
 | **2** | Backend — generate + build + deploy | **BEKLİYOR** | Faz 1 sonrası |
 | **3** | Web — build + deploy | **BEKLİYOR** | Faz 2 sonrası |
@@ -170,11 +188,13 @@ Canlı hazırlık önerisi: Staging PASS sonrası ayrı Review Gate
 | Alan | Değer |
 |------|--------|
 | **Operasyon ONAY** | **VERİLDİ** |
+| **Faz 0 Execution Gate** | **ONAYLANDI** |
 | **Yerel hazırlık** | **PASS** (59/59 · prisma validate · migration dosyası) |
-| **Staging uygulama** | **BAŞLATILMADI** — sunucu adımları ops ekibi / onay sonrası |
+| **Staging uygulama (Faz 1–6)** | **BEKLİYOR** — erişim + etiket sonrası başlatılır |
+| **Sonraki Review Gate** | Smoke + Manuel E2E sonrası |
 | **Canlı** | **Kapsam dışı** |
 
-Smart Quantity Takeoff staging operasyonu **onaylanmış ve uygulamaya hazırdır**. Fiziksel staging deploy bu oturumda **yapılmamıştır** (BUILD MODE kısıtı + sunucu erişimi gerekir). Ops ekibi Faz 0 sunucu checklist'ini tamamladıktan sonra Faz 1'den devam edebilir; tamamlanan fazlar bu raporda güncellenmelidir.
+Smart Quantity Takeoff staging operasyonu **Faz 0 onaylı** durumdadır. Fiziksel staging deploy **henüz başlatılmamıştır**. Faz 1 (DB backup → migration deploy) yalnız staging operasyon erişimi ve uygulama etiketi sağlandığında başlatılabilir. Tamamlanan fazlar bu raporda güncellenmelidir.
 
 ---
 
@@ -182,10 +202,12 @@ Smart Quantity Takeoff staging operasyonu **onaylanmış ve uygulamaya hazırdı
 
 ```
 Ürün sahibi: Mustafa
-Karar: Staging Operasyon ONAY
+Karar: Staging Execution Gate — Faz 0 ONAYLANDI
 Tarih: 2026-08-02
 Kapsam: 6 faz staging aktarım (canlı hariç)
-Execution report: İlk sürüm — Faz 0 kısmi PASS
+Faz 0: ONAYLANDI (yerel/repo PASS)
+Faz 1–6: Bekliyor (sunucu erişimi + uygulama etiketi)
+Sonraki Review Gate: Staging smoke + Manuel E2E sonrası
 Push: YOK
 Canlı deploy: YOK
 ```
