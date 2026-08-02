@@ -11,7 +11,7 @@
 | Merge | **Yok** |
 | Migration | **Yok** |
 | Deploy | **Yok** |
-| Review Gate | Bekliyor (Ürün Sahibi) |
+| Review Gate | **ONAYLANDI** (2026-08-02) |
 
 ---
 
