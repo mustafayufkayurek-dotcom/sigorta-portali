@@ -29,6 +29,17 @@ interface MaterialRow {
   note: string;
 }
 
+/** Scan sonrası AI önerisi — kullanıcı Onayla/Düzenle demeden forma yazılmaz. */
+interface AiSuggestion {
+  itemType: FieldSurveyItemType | null;
+  title: string | null;
+  summaryText: string | null;
+  dimensions: DimensionRow[] | null;
+  materials: MaterialRow[] | null;
+  aiConfidence: number | null;
+  message: string | null;
+}
+
 const ITEM_TYPE_OPTIONS = FIELD_SURVEY_ITEM_TYPE_OPTIONS;
 
 function emptyDimension(index: number): DimensionRow {
@@ -89,6 +100,7 @@ export function FieldSurveyBriefModal({
   const [dimensions, setDimensions] = useState<DimensionRow[]>([emptyDimension(1)]);
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [aiConfidence, setAiConfidence] = useState<number | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [sharePhone, setSharePhone] = useState(defaultPhone ?? '');
 
   const resetForm = useCallback(() => {
@@ -104,6 +116,7 @@ export function FieldSurveyBriefModal({
     setDimensions([emptyDimension(1)]);
     setMaterials([]);
     setAiConfidence(null);
+    setAiSuggestion(null);
     setSharePhone(defaultPhone ?? '');
   }, [defaultPhone]);
 
@@ -159,40 +172,58 @@ export function FieldSurveyBriefModal({
       );
       const data = res.data?.data ?? {};
 
-      if (data.itemType) setItemType(data.itemType);
-      if (data.title) setTitle(data.title);
-      if (data.summaryText) setSummaryText(data.summaryText);
-
-      // Elle / kameradan girilen ölçüleri AI tahminiyle ezme
-      if (!preserveFromCamera && Array.isArray(data.dimensions) && data.dimensions.length > 0) {
-        const aiDims = data.dimensions.map((d: DimensionRow, i: number) => ({
-          label: d.label || `Alan ${i + 1}`,
-          genislikCm: d.genislikCm ?? null,
-          yukseklikCm: d.yukseklikCm ?? null,
-          derinlikCm: d.derinlikCm ?? null,
-        }));
-        setDimensions((prev) => (hasFilledDimension(prev) ? prev : aiDims));
-      }
-
-      if (Array.isArray(data.materials) && data.materials.length > 0) {
-        setMaterials(
-          data.materials.map((m: MaterialRow) => ({
-            name: m.name ?? '',
-            quantity: m.quantity ?? '',
-            note: m.note ?? '',
-          })),
-        );
-      }
-      if (data.aiConfidence != null) setAiConfidence(data.aiConfidence);
+      // Fotoğraf kanıtı — AI yorumu değil; doğrudan saklanır
       if (data.photoUrl) {
         setPhotoUrl(data.photoUrl);
         if (options?.annotatedFile) setAnnotatedPhotoUrl(data.photoUrl);
       }
 
-      if (preserveFromCamera) {
-        setMessage('Fotoğraf kaydedildi — ölçü özeti forma aktarıldı. Kontrol edip kaydedin.');
+      const aiDims: DimensionRow[] | null =
+        Array.isArray(data.dimensions) && data.dimensions.length > 0
+          ? data.dimensions.map((d: DimensionRow, i: number) => ({
+              label: d.label || `Alan ${i + 1}`,
+              genislikCm: d.genislikCm ?? null,
+              yukseklikCm: d.yukseklikCm ?? null,
+              derinlikCm: d.derinlikCm ?? null,
+            }))
+          : null;
+
+      const aiMats: MaterialRow[] | null =
+        Array.isArray(data.materials) && data.materials.length > 0
+          ? data.materials.map((m: MaterialRow) => ({
+              name: m.name ?? '',
+              quantity: m.quantity ?? '',
+              note: m.note ?? '',
+            }))
+          : null;
+
+      const hasAiContent = Boolean(
+        data.itemType || data.title || data.summaryText || aiDims || aiMats,
+      );
+
+      if (hasAiContent) {
+        // AI sonucu öneri — Onayla/Düzenle olmadan forma yazılmaz
+        setAiSuggestion({
+          itemType: (data.itemType as FieldSurveyItemType) || null,
+          title: data.title ? String(data.title) : null,
+          summaryText: data.summaryText ? String(data.summaryText) : null,
+          dimensions: preserveFromCamera ? null : aiDims,
+          materials: aiMats,
+          aiConfidence: data.aiConfidence ?? null,
+          message: data.message ? String(data.message) : null,
+        });
+        setMessage(
+          preserveFromCamera
+            ? 'Fotoğraf ve ölçü özeti kaydedildi. Destek önerisini onaylayın veya düzenleyin.'
+            : 'Fotoğraf kaydedildi. Destek önerisini onaylamadan kayıt kesinleşmez.',
+        );
       } else {
-        setMessage(data.message ?? 'Fotoğraf kaydedildi — ölçüleri kontrol edin.');
+        setAiSuggestion(null);
+        setMessage(
+          preserveFromCamera
+            ? 'Fotoğraf kaydedildi — ölçü özeti forma aktarıldı. Kontrol edip kaydedin.'
+            : data.message ?? 'Fotoğraf kaydedildi — ölçüleri elle girebilirsiniz.',
+        );
       }
     } catch (err: unknown) {
       const msg =
@@ -207,6 +238,37 @@ export function FieldSurveyBriefModal({
 
   const handlePickFile = () => {
     setShowCamera(true);
+  };
+
+  const applyAiSuggestion = (suggestion: AiSuggestion) => {
+    if (suggestion.itemType) setItemType(suggestion.itemType);
+    if (suggestion.title) setTitle(suggestion.title);
+    if (suggestion.summaryText) setSummaryText(suggestion.summaryText);
+    if (suggestion.dimensions?.length) {
+      setDimensions((prev) => (hasFilledDimension(prev) ? prev : suggestion.dimensions!));
+    }
+    if (suggestion.materials?.length) {
+      setMaterials(suggestion.materials);
+    }
+    if (suggestion.aiConfidence != null) setAiConfidence(suggestion.aiConfidence);
+    setAiSuggestion(null);
+  };
+
+  const handleApproveAi = () => {
+    if (!aiSuggestion) return;
+    applyAiSuggestion(aiSuggestion);
+    setMessage('Destek önerisi onaylandı. Kontrol edip kaydedebilirsiniz.');
+  };
+
+  const handleEditAi = () => {
+    if (!aiSuggestion) return;
+    applyAiSuggestion(aiSuggestion);
+    setMessage('Destek önerisi forma aktarıldı — dilediğiniz alanları düzenleyin.');
+  };
+
+  const handleDismissAi = () => {
+    setAiSuggestion(null);
+    setMessage('Destek önerisi atlandı. Ölçüleri elle girerek kaydedebilirsiniz.');
   };
 
   const buildPayload = (status: 'draft' | 'sent') => ({
@@ -234,6 +296,10 @@ export function FieldSurveyBriefModal({
   });
 
   const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
+    if (aiSuggestion) {
+      setMessage('Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.');
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -259,6 +325,10 @@ export function FieldSurveyBriefModal({
 
   const ensureSaved = async (status: 'draft' | 'sent' = 'draft'): Promise<string | null> => {
     if (savedId) return savedId;
+    if (aiSuggestion) {
+      setMessage('Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.');
+      return null;
+    }
     setSaving(true);
     try {
       const res = await axios.post(
@@ -284,7 +354,8 @@ export function FieldSurveyBriefModal({
   const handlePdfDownload = async () => {
     const id = await ensureSaved('draft');
     if (!id) return;
-    const url = `${API}/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf`;
+    // İç operasyon PDF
+    const url = `${API}/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf?variant=internal`;
     const res = await axios.get(url, { headers: authHeader(), responseType: 'blob' });
     const blob = new Blob([res.data], { type: 'application/pdf' });
     const link = document.createElement('a');
@@ -354,6 +425,91 @@ export function FieldSurveyBriefModal({
 
             {message && (
               <p className="text-xs text-slate-600 dark:text-slate-300">{message}</p>
+            )}
+
+            {aiSuggestion && (
+              <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-3 py-3 space-y-2">
+                <p className="text-xs font-semibold text-slate-800">Destek Önerisi</p>
+                <p className="text-[11px] text-slate-600">
+                  Bu değerler öneridir. Onaylamadan kayda yazılmaz.
+                  {aiSuggestion.aiConfidence != null && (
+                    <> Güven: %{Math.round(aiSuggestion.aiConfidence * 100)}</>
+                  )}
+                </p>
+                <dl className="grid gap-1 text-xs text-slate-700">
+                  {aiSuggestion.itemType && (
+                    <div>
+                      <dt className="inline font-medium">Parça Tipi: </dt>
+                      <dd className="inline">
+                        {ITEM_TYPE_OPTIONS.find((o) => o.value === aiSuggestion.itemType)?.label ??
+                          aiSuggestion.itemType}
+                      </dd>
+                    </div>
+                  )}
+                  {aiSuggestion.title && (
+                    <div>
+                      <dt className="inline font-medium">Başlık: </dt>
+                      <dd className="inline">{aiSuggestion.title}</dd>
+                    </div>
+                  )}
+                  {aiSuggestion.summaryText && (
+                    <div>
+                      <dt className="font-medium">Özet</dt>
+                      <dd className="text-slate-600">{aiSuggestion.summaryText}</dd>
+                    </div>
+                  )}
+                  {aiSuggestion.materials && aiSuggestion.materials.length > 0 && (
+                    <div>
+                      <dt className="font-medium">Malzeme</dt>
+                      <dd>
+                        {aiSuggestion.materials
+                          .map((m) => `${m.name}${m.quantity ? ` × ${m.quantity}` : ''}`)
+                          .join(', ')}
+                      </dd>
+                    </div>
+                  )}
+                  {aiSuggestion.dimensions && aiSuggestion.dimensions.length > 0 && (
+                    <div>
+                      <dt className="font-medium">Ölçü Önerisi</dt>
+                      <dd>
+                        {aiSuggestion.dimensions
+                          .map((d) => {
+                            const parts = [
+                              d.genislikCm != null ? `G:${d.genislikCm}` : null,
+                              d.yukseklikCm != null ? `Y:${d.yukseklikCm}` : null,
+                              d.derinlikCm != null ? `D:${d.derinlikCm}` : null,
+                            ].filter(Boolean);
+                            return `${d.label}${parts.length ? ` (${parts.join(' ')})` : ''}`;
+                          })
+                          .join('; ')}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleApproveAi}
+                    className="rounded-xl bg-brand-600 hover:bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white"
+                  >
+                    Onayla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEditAi}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Düzenle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDismissAi}
+                    className="rounded-xl px-3 py-2.5 text-xs font-medium text-slate-500 hover:underline"
+                  >
+                    Öneriyi Atla
+                  </button>
+                </div>
+              </div>
             )}
 
             <FileDropZone
@@ -573,7 +729,7 @@ export function FieldSurveyBriefModal({
               />
             </label>
 
-            {aiConfidence != null && (
+            {aiConfidence != null && !aiSuggestion && (
               <p className="text-[11px] text-slate-400">
                 Destek Skoru: %{Math.round(aiConfidence * 100)} (tahmini)
               </p>
@@ -586,7 +742,7 @@ export function FieldSurveyBriefModal({
             </button>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || Boolean(aiSuggestion)}
               onClick={() => void handleSave('draft')}
               className="btn-secondary text-sm"
             >
@@ -594,17 +750,19 @@ export function FieldSurveyBriefModal({
             </button>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || Boolean(aiSuggestion)}
               onClick={() => void handlePdfDownload()}
               className="btn-secondary text-sm"
+              title="İç operasyon PDF"
             >
               PDF İndir
             </button>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || Boolean(aiSuggestion)}
               onClick={() => void handleWhatsApp()}
               className="btn-primary text-sm"
+              title="Tedarikçi PDF (kişisel veri yok)"
             >
               Tedarikçiye WhatsApp Gönder
             </button>

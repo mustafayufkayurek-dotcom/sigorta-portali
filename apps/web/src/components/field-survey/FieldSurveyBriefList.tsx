@@ -56,15 +56,18 @@ export function FieldSurveyBriefList({ claimFileId, refreshKey = 0 }: FieldSurve
             <span className="text-slate-800 font-medium">{row.title}</span>
             <span className="text-xs text-slate-500">{itemTypeLabel(row.itemType)}</span>
             <a
-              href={`${API}/claim-files/${claimFileId}/field-survey-briefs/${row.id}/pdf`}
+              href={`${API}/claim-files/${claimFileId}/field-survey-briefs/${row.id}/pdf?variant=internal`}
               className="text-xs text-brand-600 hover:underline"
               onClick={(e) => {
                 e.preventDefault();
                 void axios
-                  .get(`${API}/claim-files/${claimFileId}/field-survey-briefs/${row.id}/pdf`, {
-                    headers: authHeader(),
-                    responseType: 'blob',
-                  })
+                  .get(
+                    `${API}/claim-files/${claimFileId}/field-survey-briefs/${row.id}/pdf?variant=internal`,
+                    {
+                      headers: authHeader(),
+                      responseType: 'blob',
+                    },
+                  )
                   .then((res) => {
                     const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
                     const a = document.createElement('a');

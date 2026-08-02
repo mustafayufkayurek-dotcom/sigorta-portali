@@ -64,13 +64,16 @@ export class FieldSurveyBriefsController {
 
   @Get(':id/pdf')
   @RequirePermissions('claim_file.view')
-  @ApiOperation({ summary: 'Keşif ölçüsü PDF indir' })
+  @ApiOperation({ summary: 'Keşif ölçüsü PDF indir (variant=internal|supplier)' })
   async pdf(
     @Param('claimFileId') claimFileId: string,
     @Param('id') id: string,
+    @Query('variant') variantRaw: string | undefined,
     @Res() res: Response,
   ) {
-    const { buffer, filename } = await this.service.generatePdf(claimFileId, id);
+    const variant =
+      variantRaw === 'supplier' || variantRaw === 'external' ? 'supplier' : 'internal';
+    const { buffer, filename } = await this.service.generatePdf(claimFileId, id, variant);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': toFieldSurveyPdfContentDisposition(filename),
@@ -80,7 +83,7 @@ export class FieldSurveyBriefsController {
 
   @Get(':id/share')
   @RequirePermissions('claim_file.view')
-  @ApiOperation({ summary: 'WhatsApp ve PDF paylaşım bağlantıları' })
+  @ApiOperation({ summary: 'WhatsApp paylaşımı — tedarikçi PDF (PII yok)' })
   async share(
     @Param('claimFileId') claimFileId: string,
     @Param('id') id: string,

@@ -10,7 +10,10 @@ import { StorageService } from '@/modules/storage/storage.service';
 import { extractFieldSurveyFieldsFromImage } from './field-survey-scan.util';
 import { FieldSurveyScanResult } from './field-survey-scan.types';
 import { CreateFieldSurveyBriefDto } from './dto/create-field-survey-brief.dto';
-import { FieldSurveyPdfService } from './pdf/field-survey-pdf.service';
+import {
+  FieldSurveyPdfService,
+  type FieldSurveyPdfVariant,
+} from './pdf/field-survey-pdf.service';
 
 @Injectable()
 export class FieldSurveyBriefsService {
@@ -102,37 +105,63 @@ export class FieldSurveyBriefsService {
     return brief;
   }
 
-  async generatePdf(claimFileId: string, id: string): Promise<{ buffer: Buffer; filename: string }> {
+  async generatePdf(
+    claimFileId: string,
+    id: string,
+    variant: FieldSurveyPdfVariant = 'internal',
+  ): Promise<{ buffer: Buffer; filename: string }> {
     const brief = await this.findOne(claimFileId, id);
     const cf = brief.claimFile;
-    const addr = cf.propertyAddress
-      ? [
-          cf.propertyAddress.addressLine,
-          cf.propertyAddress.district,
-          cf.propertyAddress.city,
-        ]
-          .filter(Boolean)
-          .join(', ')
+    const isSupplier = variant === 'supplier';
+    const addr =
+      !isSupplier && cf.propertyAddress
+        ? [
+            cf.propertyAddress.addressLine,
+            cf.propertyAddress.district,
+            cf.propertyAddress.city,
+          ]
+            .filter(Boolean)
+            .join(', ')
+        : null;
+
+    const expertName = !isSupplier
+      ? [brief.createdByUser?.firstName, brief.createdByUser?.lastName].filter(Boolean).join(' ') ||
+        null
       : null;
 
-    const buffer = await this.pdfService.generate({
-      title: brief.title,
-      itemType: brief.itemType,
-      summaryText: brief.summaryText,
-      fileNo: cf.fileNo,
-      claimNo: cf.claimNo,
-      customerName: cf.customer?.fullName ?? cf.customer?.companyName ?? null,
-      address: addr,
-      dimensions: brief.dimensionsJson as any[],
-      materials: brief.materialsJson as any[],
-      aiConfidence: brief.aiConfidence,
-      createdAt: brief.createdAt,
-    });
+    const photoDataUrl = await this.resolvePhotoDataUrl(
+      brief.annotatedPhotoUrl ?? brief.photoUrl,
+    );
 
-    const safeTitle = brief.title.replace(/[^\w\u00C0-\u024F\s-]/g, '').trim().slice(0, 40) || 'kesif-olcusu';
+    // Supplier: Sigortalı Adı Soyadı gösterilir; telefon/e-posta/adres/eksper iletişim ASLA gönderilmez
+    const customerDisplayName =
+      cf.customer?.fullName ?? cf.customer?.companyName ?? null;
+
+    const buffer = await this.pdfService.generate(
+      {
+        title: brief.title,
+        itemType: brief.itemType,
+        summaryText: brief.summaryText,
+        fileNo: cf.fileNo,
+        claimNo: isSupplier ? null : cf.claimNo,
+        customerName: customerDisplayName,
+        address: addr,
+        expertName,
+        dimensions: brief.dimensionsJson as any[],
+        materials: brief.materialsJson as any[],
+        aiConfidence: isSupplier ? null : brief.aiConfidence,
+        createdAt: brief.createdAt,
+        photoDataUrl,
+      },
+      variant,
+    );
+
+    const safeTitle =
+      brief.title.replace(/[^\w\u00C0-\u024F\s-]/g, '').trim().slice(0, 40) || 'kesif-olcusu';
+    const prefix = isSupplier ? 'tedarikci-kesif-olcusu' : 'tahmini-kesif-olcusu';
     return {
       buffer,
-      filename: `tahmini-kesif-olcusu-${cf.fileNo}-${safeTitle}.pdf`,
+      filename: `${prefix}-${cf.fileNo}-${safeTitle}.pdf`,
     };
   }
 
@@ -142,12 +171,39 @@ export class FieldSurveyBriefsService {
       this.config.get<string>('BACKEND_URL') ??
       this.config.get<string>('API_PUBLIC_URL') ??
       'http://localhost:3000';
-    const pdfUrl = `${apiBase.replace(/\/+$/, '')}/api/v1/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf`;
+    // WhatsApp / tedarikçi paylaşımı — supplier PDF (ad var; iletişim/adres yok)
+    const pdfUrl = `${apiBase.replace(/\/+$/, '')}/api/v1/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf?variant=supplier`;
 
     const summaryText = this.buildShareSummary(brief);
     const whatsappUrl = this.buildWhatsAppUrl(summaryText, pdfUrl, phone);
 
-    return { pdfUrl, whatsappUrl, summaryText };
+    return { pdfUrl, whatsappUrl, summaryText, variant: 'supplier' as const };
+  }
+
+  /** Storage URL → PDF embed için data URI; başarısızsa null (PDF yine üretilir). */
+  private async resolvePhotoDataUrl(photoUrl: string | null | undefined): Promise<string | null> {
+    if (!photoUrl?.trim()) return null;
+    const key = this.extractStorageKey(photoUrl);
+    if (!key) return null;
+    try {
+      const buf = await this.storage.download(key);
+      const ext = key.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mime =
+        ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    } catch {
+      return null;
+    }
+  }
+
+  private extractStorageKey(photoUrl: string): string | null {
+    const trimmed = photoUrl.trim();
+    if (trimmed.startsWith('field-survey-briefs/')) return trimmed;
+    const uploadsMatch = trimmed.match(/\/uploads\/(.+)$/);
+    if (uploadsMatch?.[1]) return uploadsMatch[1];
+    const fsbMatch = trimmed.match(/(field-survey-briefs\/[^?#]+)/);
+    if (fsbMatch?.[1]) return fsbMatch[1];
+    return null;
   }
 
   private buildShareSummary(brief: {
