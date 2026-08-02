@@ -10,6 +10,7 @@
 | Merge | **Yok** |
 | Migration deploy | **Yok** |
 | Deploy | **Yok** |
+| Review Gate | **ONAYLANDI** (2026-08-02) |
 
 ---
 
@@ -123,8 +124,11 @@ Tests:       59 passed, 59 total
 ```
 Ürün sahibi: Mustafa
 Sprint: S5
-Karar: BUILD MODE teslim — Review Gate deploy öncesi
+Karar: ONAYLANDI — 59/59 test, SM adapter refaktör, performans guardrail,
+       lifecycle/e2e/performance testleri, BUILD MODE kuralları korundu
 Push: YOK
+Merge: YOK
 Deploy: YOK
 Migration deploy: YOK
+Sonraki adım: Staging akışı + migration planı ayrı Review Gate kapsamında
 ```
