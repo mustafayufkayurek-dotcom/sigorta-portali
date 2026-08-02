@@ -104,6 +104,21 @@ Smart Measurement (PrismaMeasureReadAdapter)
 
 Mimari referans: `docs/features/SMART_QUANTITY_TAKEOFF_MIMARI.md` — `TakeoffRun` / `TakeoffLineItem` modelleri şemada henüz yok; InMemory persist BUILD MODE kuralına uygun.
 
+### Kapsam hizalama (Review Gate)
+
+| Kaynak | S2 tanımı | Bu sprintte |
+|--------|-----------|-------------|
+| `SMART_QUANTITY_TAKEOFF_IMPLEMENTATION_PLAN.md` | Explanation persist/UI, RuleVersion bağının görünmesi | Kısmen — explanation API yanıtında; DB persist + UI yok |
+| S1 teslim önerisi | Persist + API + SM adapter + UI listesi | Kısmen — API + adapter + InMemory persist; UI yok |
+| **BUILD MODE S2 talimatı** | SM adapter · persist · REST API · okunabilir iş kalemi · uçtan uca akış | **Esas alınan kapsam** |
+
+**Karar özeti:** Migration/deploy yasağı nedeniyle Prisma şema (P01) ve kalıcı explanation persist Review Gate sonrasına ertelendi. Plan §S2'nin UI ve RuleVersion DB bağlantısı S3 önerisine taşındı.
+
+**SM uyumluluk notları ([S1 Smart Takeoff keşfi](f01233f9-9dcc-4be1-8b97-2038d59235e7)):**
+- Tip eşlemesi: `kapi` → `DOOR`, `pencere` → `WINDOW`, `tavan` → `CEILING` (adapter'da)
+- `SKIRTING` kuralı: SM `elementType` listesinde süpürgelik yok; canlıda tetiklenmez
+- `SmartMeasureVersion`'da `lengthMm` yok — süpürgelik kuralı SM verisiyle henüz uyumlu değil
+
 ---
 
 ## 4. Test sonuçları
