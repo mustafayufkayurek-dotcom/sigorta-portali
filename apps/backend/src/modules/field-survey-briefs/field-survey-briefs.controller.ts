@@ -19,6 +19,7 @@ import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { RECEIPT_IMAGE_VALIDATION_PIPE } from '@/common/pipes/file-validation.pipe';
 import { CreateFieldSurveyBriefDto } from './dto/create-field-survey-brief.dto';
+import { toFieldSurveyPdfContentDisposition } from './field-survey-briefs-content-disposition.util';
 import { FieldSurveyBriefsService } from './field-survey-briefs.service';
 
 @ApiTags('field-survey-briefs')
@@ -72,7 +73,7 @@ export class FieldSurveyBriefsController {
     const { buffer, filename } = await this.service.generatePdf(claimFileId, id);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': toFieldSurveyPdfContentDisposition(filename),
     });
     res.send(buffer);
   }
