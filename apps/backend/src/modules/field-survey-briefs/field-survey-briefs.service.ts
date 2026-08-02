@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StorageService } from '@/modules/storage/storage.service';
+import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { extractFieldSurveyFieldsFromImage } from './field-survey-scan.util';
 import { FieldSurveyScanResult } from './field-survey-scan.types';
 import { CreateFieldSurveyBriefDto } from './dto/create-field-survey-brief.dto';
@@ -22,6 +23,7 @@ export class FieldSurveyBriefsService {
     private readonly storage: StorageService,
     private readonly config: ConfigService,
     private readonly pdfService: FieldSurveyPdfService,
+    private readonly auditLogs: AuditLogsService,
   ) {}
 
   async scanPhoto(
@@ -98,11 +100,48 @@ export class FieldSurveyBriefsService {
             insuranceCompany: { select: { name: true } },
           },
         },
-        createdByUser: { select: { id: true, firstName: true, lastName: true } },
+        createdByUser: {
+          select: { id: true, firstName: true, lastName: true, phone: true, email: true },
+        },
       },
     });
     if (!brief) throw new NotFoundException('Keşif ölçüsü bulunamadı');
     return brief;
+  }
+
+  async remove(
+    claimFileId: string,
+    id: string,
+    user: { id: string; email?: string | null },
+  ) {
+    const brief = await this.findOne(claimFileId, id);
+    await this.prisma.fieldSurveyBrief.delete({ where: { id: brief.id } });
+
+    for (const url of [brief.photoUrl, brief.annotatedPhotoUrl]) {
+      const key = url ? this.extractStorageKey(url) : null;
+      if (key) {
+        try {
+          await this.storage.delete(key);
+        } catch {
+          /* dosya yoksa sessiz geç */
+        }
+      }
+    }
+
+    this.auditLogs.log({
+      entityType: 'FieldSurveyBrief',
+      entityId: brief.id,
+      action: 'DELETE',
+      oldValue: {
+        claimFileId,
+        title: brief.title,
+        itemType: brief.itemType,
+      },
+      userId: user.id,
+      userEmail: user.email ?? null,
+    });
+
+    return { id: brief.id, deleted: true };
   }
 
   async generatePdf(
@@ -133,7 +172,7 @@ export class FieldSurveyBriefsService {
       brief.annotatedPhotoUrl ?? brief.photoUrl,
     );
 
-    // Supplier: Sigortalı Adı Soyadı gösterilir; telefon/e-posta/adres/eksper iletişim ASLA gönderilmez
+    // Supplier: Sigortalı Adı Soyadı; telefon/e-posta/adres/eksper/dosya/poliçe ASLA
     const customerDisplayName =
       cf.customer?.fullName ?? cf.customer?.companyName ?? null;
 
@@ -144,9 +183,16 @@ export class FieldSurveyBriefsService {
         summaryText: brief.summaryText,
         fileNo: cf.fileNo,
         claimNo: isSupplier ? null : cf.claimNo,
+        policyNo: isSupplier ? null : (cf.policyNo ?? null),
         customerName: customerDisplayName,
+        customerPhone: isSupplier
+          ? null
+          : (cf.insuredPhone ?? cf.customer?.phone ?? null),
+        customerEmail: isSupplier ? null : (cf.customer?.email ?? null),
         address: addr,
         expertName,
+        expertPhone: isSupplier ? null : (brief.createdByUser?.phone ?? null),
+        expertEmail: isSupplier ? null : (brief.createdByUser?.email ?? null),
         dimensions: brief.dimensionsJson as any[],
         materials: brief.materialsJson as any[],
         aiConfidence: isSupplier ? null : brief.aiConfidence,
@@ -209,7 +255,6 @@ export class FieldSurveyBriefsService {
   private buildShareSummary(brief: {
     title: string;
     summaryText: string;
-    claimFile: { fileNo: string };
     dimensionsJson: unknown;
   }): string {
     const dims = Array.isArray(brief.dimensionsJson) ? brief.dimensionsJson : [];
@@ -226,8 +271,9 @@ export class FieldSurveyBriefsService {
       .filter(Boolean)
       .join('; ');
 
+    // Tedarikçi mesajı — dosya/hasar no yok
     const lines = [
-      `*Tahmini Keşif Ölçüsü* — ${brief.claimFile.fileNo}`,
+      '*Tahmini Keşif Ölçüsü*',
       brief.title,
       brief.summaryText,
       dimLines ? `Ölçüler: ${dimLines}` : null,

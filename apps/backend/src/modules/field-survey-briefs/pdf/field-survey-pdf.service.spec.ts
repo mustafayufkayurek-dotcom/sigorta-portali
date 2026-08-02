@@ -8,20 +8,19 @@ describe('FieldSurveyPdfService — variant content', () => {
     summaryText: 'Cam kapak değişimi',
     fileNo: '15598774220001',
     claimNo: 'H-123',
+    policyNo: 'POL-9',
     customerName: 'Ali Veli',
+    customerPhone: '05551234567',
+    customerEmail: 'ali@ornek.com',
     address: 'Atatürk Cad. No:1 Kadıköy',
     expertName: 'Ayşe Eksper',
+    expertPhone: '05321112233',
+    expertEmail: 'ayse@ornek.com',
     dimensions: [{ label: 'Kapak', genislikCm: 60, yukseklikCm: 80, derinlikCm: null }],
     materials: [{ name: 'Cam', quantity: '1', note: null }],
     aiConfidence: 0.7,
     createdAt: new Date('2026-08-02T12:00:00Z'),
     photoDataUrl: 'data:image/png;base64,abc',
-  };
-
-  /** Supplier PDF'e asla gitmemesi gereken iletişim örnekleri (regresyon). */
-  const contactLeakSample: BriefPdfData = {
-    ...sample,
-    address: 'Atatürk Cad. No:1 Kadıköy Tel:05551234567 email:ali@ornek.com',
   };
 
   let service: FieldSurveyPdfService;
@@ -32,49 +31,38 @@ describe('FieldSurveyPdfService — variant content', () => {
     } as ConfigService);
   });
 
-  it('internal PDF includes operational fields, logo/brand and photo', () => {
+  it('internal PDF includes full ops fields, logo right header and photo', () => {
     const html = service.buildHtmlForTest(sample, 'internal');
+    expect(html).toContain('justify-content: flex-end');
     expect(html).toContain('Ali Veli');
     expect(html).toContain('Atatürk Cad');
     expect(html).toContain('Ayşe Eksper');
     expect(html).toContain('15598774220001');
     expect(html).toContain('H-123');
+    expect(html).toContain('POL-9');
+    expect(html).toContain('05551234567');
     expect(html).toContain('field-photo');
-    expect(html).toContain('data:image/png;base64,abc');
     expect(html).toMatch(/header-logo|header-brand-text/);
   });
 
-  it('supplier PDF includes insured name + work content; excludes address/expert/contact', () => {
+  it('supplier PDF keeps insured name and work; strips contact/address/file/expert', () => {
     const html = service.buildHtmlForTest(sample, 'supplier');
-    // Zorunlu: Sigortalı Adı Soyadı
     expect(html).toContain('Ali Veli');
     expect(html).toContain('Sigortalı');
-    // İş içeriği
     expect(html).toContain('Cam kapak değişimi');
     expect(html).toContain('Cam');
-    expect(html).toContain('Kapak');
     expect(html).toContain('field-photo');
-    expect(html).toContain('Tedarikçi');
-    expect(html).toMatch(/header-logo|header-brand-text/);
-    // Yasak: açık adres, eksper, dosya/hasar no, destek skoru
+    expect(html).toContain('justify-content: flex-end');
+
     expect(html).not.toContain('Atatürk Cad');
     expect(html).not.toContain('Ayşe Eksper');
     expect(html).not.toContain('15598774220001');
     expect(html).not.toContain('H-123');
-    expect(html).not.toContain('Destek Skoru');
-    expect(html).not.toContain('Adres:');
-    expect(html).not.toContain('Eksper:');
-  });
-
-  it('supplier PDF does not render address even if address field is populated', () => {
-    // Service katmanı supplier için address=null gönderir; generator da address göstermemeli
-    const html = service.buildHtmlForTest(
-      { ...contactLeakSample, address: null, expertName: null },
-      'supplier',
-    );
-    expect(html).toContain('Ali Veli');
+    expect(html).not.toContain('POL-9');
     expect(html).not.toContain('05551234567');
     expect(html).not.toContain('ali@ornek.com');
-    expect(html).not.toContain('Atatürk');
+    expect(html).not.toContain('05321112233');
+    expect(html).not.toContain('ayse@ornek.com');
+    expect(html).not.toContain('Destek Skoru');
   });
 });

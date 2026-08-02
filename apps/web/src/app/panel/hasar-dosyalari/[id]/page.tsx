@@ -1435,7 +1435,11 @@ export default function ClaimFileDetailPage() {
         </div>
       )}
 
-      <FieldSurveyBriefList claimFileId={id!} refreshKey={fieldSurveyRefreshKey} />
+      <FieldSurveyBriefList
+        claimFileId={id!}
+        refreshKey={fieldSurveyRefreshKey}
+        canDelete={canEditFieldSurvey}
+      />
 
       <FieldSurveyBriefModal
         open={fieldSurveyOpen}

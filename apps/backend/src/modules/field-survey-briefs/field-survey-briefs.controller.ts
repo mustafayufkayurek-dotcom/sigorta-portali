@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -83,13 +84,25 @@ export class FieldSurveyBriefsController {
 
   @Get(':id/share')
   @RequirePermissions('claim_file.view')
-  @ApiOperation({ summary: 'WhatsApp paylaşımı — tedarikçi PDF (PII yok)' })
+  @ApiOperation({ summary: 'WhatsApp paylaşımı — tedarikçi PDF' })
   async share(
     @Param('claimFileId') claimFileId: string,
     @Param('id') id: string,
     @Query('phone') phone?: string,
   ) {
     const data = await this.service.getSharePayload(claimFileId, id, phone);
+    return { success: true, data };
+  }
+
+  @Delete(':id')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Keşif ölçüsü kaydını sil' })
+  async remove(
+    @Param('claimFileId') claimFileId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; email?: string | null },
+  ) {
+    const data = await this.service.remove(claimFileId, id, user);
     return { success: true, data };
   }
 }

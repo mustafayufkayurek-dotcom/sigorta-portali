@@ -8,6 +8,7 @@ import {
   FieldSurveyCameraModal,
   type FieldSurveyCameraDimension,
 } from '@/components/field-survey/FieldSurveyCameraModal';
+import { FieldSurveyCropModal } from '@/components/field-survey/FieldSurveyCropModal';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   FIELD_SURVEY_ITEM_TYPE_OPTIONS,
@@ -88,6 +89,12 @@ export function FieldSurveyBriefModal({
 }: FieldSurveyBriefModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [pendingScanOptions, setPendingScanOptions] = useState<{
+    preserveDimensions?: boolean;
+    cameraDimensions?: FieldSurveyCameraDimension[];
+    annotatedFile?: File | null;
+  } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -124,8 +131,22 @@ export function FieldSurveyBriefModal({
     if (!open) {
       resetForm();
       setShowCamera(false);
+      setCropFile(null);
+      setPendingScanOptions(null);
     }
   }, [open, resetForm]);
+
+  const openCropThenScan = (
+    file: File,
+    options?: {
+      preserveDimensions?: boolean;
+      cameraDimensions?: FieldSurveyCameraDimension[];
+      annotatedFile?: File | null;
+    },
+  ) => {
+    setPendingScanOptions(options ?? null);
+    setCropFile(file);
+  };
 
   useEffect(() => {
     if (open && defaultPhone) setSharePhone(defaultPhone);
@@ -519,7 +540,7 @@ export function FieldSurveyBriefModal({
               clickToOpen={false}
               inputRef={fileInputRef}
               onFiles={(files) => {
-                if (files[0]) void handleScan(files[0]);
+                if (files[0]) openCropThenScan(files[0]);
               }}
               className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-4 transition-colors"
               activeClassName="border-brand-400 bg-brand-50"
@@ -775,10 +796,30 @@ export function FieldSurveyBriefModal({
         onClose={() => setShowCamera(false)}
         initialDimensions={dimensions}
         onCapture={({ file, annotatedFile, dimensions: cameraDims }) => {
-          void handleScan(file, {
+          openCropThenScan(file, {
             preserveDimensions: true,
             cameraDimensions: cameraDims,
             annotatedFile,
+          });
+        }}
+      />
+
+      <FieldSurveyCropModal
+        open={Boolean(cropFile)}
+        file={cropFile}
+        onClose={() => {
+          setCropFile(null);
+          setPendingScanOptions(null);
+        }}
+        onSave={(cropped) => {
+          const opts = pendingScanOptions;
+          setCropFile(null);
+          setPendingScanOptions(null);
+          // Kırpılmış görsel kanıt + AI girdisi olur; işaretli ham kare yerine kırpılmış dosya
+          void handleScan(cropped, {
+            preserveDimensions: opts?.preserveDimensions,
+            cameraDimensions: opts?.cameraDimensions,
+            annotatedFile: cropped,
           });
         }}
       />
