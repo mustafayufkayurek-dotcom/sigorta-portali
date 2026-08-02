@@ -96,7 +96,7 @@ Kapı, pencere, mutfak/banyo dolabı, tezgâh, duvar, cam, seramik, fayans, park
 | **2a** | Mobil: Kapı — foto + cm + API kayıt (AR motoru köprüsü) | ✅ |
 | **2b** | Mobil: ARKit/ARCore (`@reactvision/react-viro@2.41.6` + expo-dev-client) | ✅ local — development build gerekir |
 | **3** | AI nesne tanıma + güven skoru + sınır kutusu | ✅ v436 |
-| **4** | Metraj otomasyonu + PDF zenginleştirme | ✅ local — deploy bekliyor |
+| **4** | Metraj otomasyonu + PDF zenginleştirme | ✅ v437 |
 
 ---
 

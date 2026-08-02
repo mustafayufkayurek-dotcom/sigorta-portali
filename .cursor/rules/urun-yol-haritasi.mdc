@@ -1,0 +1,44 @@
+---
+description: Resmi ürün yol haritası ve geliştirme standartları — tek modül, faz kilidi, 3 soru kapısı
+alwaysApply: true
+---
+
+# Ürün Geliştirme Yol Haritası (zorunlu)
+
+**Kaynak (değiştirilemez ürün standardı):** `docs/project-governance/URUN_GELISTIRME_YOL_HARITASI.md`
+
+## Omurga (sıra kilitli)
+
+| Faz | Modül | Durum |
+|-----|--------|--------|
+| 1 | Smart Measurement | **Closed** — yalnız bakım / hata / performans |
+| 2 | Smart Quantity Takeoff (Akıllı Metraj) | Sıradaki — Faz 1 Closed sonrası; 3 soru + iş analizi onayı şart |
+| 3 | Supplier Intelligence | Faz 2 bitmeden yok |
+| 4 | Digital Twin | Faz 3 bitmeden yok |
+| 5 | Repair Knowledge Library | Faz 4 bitmeden yok |
+
+Aynı anda yalnızca **bir** ürün modülü. Yaşam döngüsü (analiz → teslim) eksiksiz; yarım modül yok.
+
+## Dokunulmaz (ihtiyaç + açık onay yoksa)
+
+CRM · Finans · Dashboard · Layout · Authentication · Storage · Field Survey · diğer ürün modülleri
+
+## Branch / deploy / repo
+
+- Modül başına ayrı feature branch, commit geçmişi, teslim raporu, release, rollback
+- Bir branch kapanmadan yeni geliştirme branch'i açma
+- Deploy yalnızca ilgili modül; kapsam dışı dosya yok
+- Deploy öncesi: Git Diff · Deploy Dosya Listesi · Migration Kontrolü · Rollback Planı
+- Git = tek doğruluk kaynağı; canlıda repo dışı kod yok; release sonunda repo ≡ canlı
+
+## Geliştirme başlamadan — 3 soru (yazılı cevap zorunlu)
+
+1. Yol haritasında hangi faz?
+2. Başka modül etkileniyor mu? (evet → modüller, neden, dosya listesi)
+3. Beş sütundan hangisi? (SM · Quantity Takeoff · Supplier Intelligence · Digital Twin · Repair Knowledge Library)
+
+Cevap yoksa kod / migration / deploy yok.
+
+## UI dili
+
+Faz adları teknik omurgadır. Kullanıcıya görünen etiketlerde `URUN_STANDARDI_TEKNOLOJI_GORUNMEZ.md` geçerlidir (ör. “Tedarikçi Hafızası” motor markası olarak UI’ya sızmaz).

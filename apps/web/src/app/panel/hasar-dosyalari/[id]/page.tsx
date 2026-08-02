@@ -26,6 +26,7 @@ import {
 import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
+import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
@@ -1490,7 +1491,10 @@ export default function ClaimFileDetailPage() {
         />
       )}
       {activeGroup === 'raporlar' && (
-        <OnarimRaporuTab claimId={id!} />
+        <div className="space-y-3">
+          <SmartMeasureList claimFileId={id!} showEmpty />
+          <OnarimRaporuTab claimId={id!} />
+        </div>
       )}
       {activeGroup === 'evraklar' && (
         <EvraklarTab claimId={id!} claim={claim} />
