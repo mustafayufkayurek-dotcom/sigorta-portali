@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -60,6 +61,18 @@ export class FieldSurveyBriefsController {
   @ApiOperation({ summary: 'Dosyaya ait keşif ölçülerini listele' })
   async list(@Param('claimFileId') claimFileId: string) {
     const data = await this.service.listByClaimFile(claimFileId);
+    return { success: true, data };
+  }
+
+  @Patch(':id')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Keşif ölçüsü kaydını güncelle' })
+  async update(
+    @Param('claimFileId') claimFileId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateFieldSurveyBriefDto,
+  ) {
+    const data = await this.service.update(claimFileId, id, dto);
     return { success: true, data };
   }
 

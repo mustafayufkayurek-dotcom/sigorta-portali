@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import {
@@ -9,6 +9,7 @@ import {
   type FieldSurveyCameraDimension,
 } from '@/components/field-survey/FieldSurveyCameraModal';
 import { FieldSurveyCropModal } from '@/components/field-survey/FieldSurveyCropModal';
+import { FieldSurveySpeechButton } from '@/components/field-survey/FieldSurveySpeechButton';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   FIELD_SURVEY_ITEM_TYPE_OPTIONS,
@@ -28,6 +29,64 @@ interface MaterialRow {
   name: string;
   quantity: string;
   note: string;
+}
+
+type DraftSnapshot = {
+  savedId: string | null;
+  itemType: FieldSurveyItemType;
+  title: string;
+  summaryText: string;
+  dimensions: DimensionRow[];
+  materials: MaterialRow[];
+  photoUrl: string | null;
+  annotatedPhotoUrl: string | null;
+  aiConfidence: number | null;
+  sharePhone: string;
+};
+
+function draftStorageKey(claimFileId: string): string {
+  return `fsb-draft:${claimFileId}`;
+}
+
+function readDraft(claimFileId: string): DraftSnapshot | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(draftStorageKey(claimFileId));
+    if (!raw) return null;
+    return JSON.parse(raw) as DraftSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(claimFileId: string, draft: DraftSnapshot): void {
+  try {
+    localStorage.setItem(draftStorageKey(claimFileId), JSON.stringify(draft));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function clearDraft(claimFileId: string): void {
+  try {
+    localStorage.removeItem(draftStorageKey(claimFileId));
+  } catch {
+    /* ignore */
+  }
+}
+
+function snapshotKey(s: Omit<DraftSnapshot, 'savedId'> & { savedId?: string | null }): string {
+  return JSON.stringify({
+    itemType: s.itemType,
+    title: s.title,
+    summaryText: s.summaryText,
+    dimensions: s.dimensions,
+    materials: s.materials,
+    photoUrl: s.photoUrl,
+    annotatedPhotoUrl: s.annotatedPhotoUrl,
+    aiConfidence: s.aiConfidence,
+    sharePhone: s.sharePhone,
+  });
 }
 
 /** Scan sonrası AI önerisi — kullanıcı Onayla/Düzenle demeden forma yazılmaz. */
@@ -109,6 +168,38 @@ export function FieldSurveyBriefModal({
   const [aiConfidence, setAiConfidence] = useState<number | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [sharePhone, setSharePhone] = useState(defaultPhone ?? '');
+  const [baselineKey, setBaselineKey] = useState('');
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const hydratedRef = useRef(false);
+
+  const currentSnapshot = useMemo(
+    (): DraftSnapshot => ({
+      savedId,
+      itemType,
+      title,
+      summaryText,
+      dimensions,
+      materials,
+      photoUrl,
+      annotatedPhotoUrl,
+      aiConfidence,
+      sharePhone,
+    }),
+    [
+      savedId,
+      itemType,
+      title,
+      summaryText,
+      dimensions,
+      materials,
+      photoUrl,
+      annotatedPhotoUrl,
+      aiConfidence,
+      sharePhone,
+    ],
+  );
+
+  const isDirty = Boolean(baselineKey) && snapshotKey(currentSnapshot) !== baselineKey;
 
   const resetForm = useCallback(() => {
     setScanning(false);
@@ -125,6 +216,9 @@ export function FieldSurveyBriefModal({
     setAiConfidence(null);
     setAiSuggestion(null);
     setSharePhone(defaultPhone ?? '');
+    setBaselineKey('');
+    setExitConfirmOpen(false);
+    hydratedRef.current = false;
   }, [defaultPhone]);
 
   useEffect(() => {
@@ -133,8 +227,69 @@ export function FieldSurveyBriefModal({
       setShowCamera(false);
       setCropFile(null);
       setPendingScanOptions(null);
+      return;
     }
-  }, [open, resetForm]);
+
+    const draft = readDraft(claimFileId);
+    if (draft) {
+      setSavedId(draft.savedId);
+      setItemType(draft.itemType || 'diger');
+      setTitle(draft.title || 'Keşif Ölçüsü');
+      setSummaryText(draft.summaryText || '');
+      setDimensions(draft.dimensions?.length ? draft.dimensions : [emptyDimension(1)]);
+      setMaterials(draft.materials ?? []);
+      setPhotoUrl(draft.photoUrl);
+      setAnnotatedPhotoUrl(draft.annotatedPhotoUrl);
+      setAiConfidence(draft.aiConfidence);
+      setSharePhone(draft.sharePhone || defaultPhone || '');
+      setBaselineKey(snapshotKey(draft));
+      setMessage('Kaydedilmemiş taslak geri yüklendi.');
+    } else {
+      const empty: DraftSnapshot = {
+        savedId: null,
+        itemType: 'diger',
+        title: 'Keşif Ölçüsü',
+        summaryText: '',
+        dimensions: [emptyDimension(1)],
+        materials: [],
+        photoUrl: null,
+        annotatedPhotoUrl: null,
+        aiConfidence: null,
+        sharePhone: defaultPhone ?? '',
+      };
+      setBaselineKey(snapshotKey(empty));
+    }
+    // Taslak yazmayı bir tick ertele — açılış state güncellemesi tamamlanmadan boş draft yazılmasın
+    hydratedRef.current = false;
+    const readyTimer = window.setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => window.clearTimeout(readyTimer);
+  }, [open, claimFileId, defaultPhone, resetForm]);
+
+  useEffect(() => {
+    if (!open || !hydratedRef.current || !isDirty) return;
+    const t = window.setTimeout(() => {
+      writeDraft(claimFileId, currentSnapshot);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [open, claimFileId, currentSnapshot, isDirty]);
+
+  const requestClose = () => {
+    if (saving) return;
+    if (isDirty) {
+      setExitConfirmOpen(true);
+      return;
+    }
+    clearDraft(claimFileId);
+    onClose();
+  };
+
+  const discardAndClose = () => {
+    clearDraft(claimFileId);
+    setExitConfirmOpen(false);
+    onClose();
+  };
 
   const openCropThenScan = (
     file: File,
@@ -316,60 +471,71 @@ export function FieldSurveyBriefModal({
     status,
   });
 
-  const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
+  const persistBrief = async (
+    status: 'draft' | 'sent' = 'draft',
+  ): Promise<string | null> => {
     if (aiSuggestion) {
       setMessage('Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.');
-      return;
+      return null;
     }
     setSaving(true);
     setMessage(null);
     try {
-      const res = await axios.post(
-        `${API}/claim-files/${claimFileId}/field-survey-briefs`,
-        buildPayload(status),
-        { headers: authHeader() },
-      );
-      const id = res.data?.data?.id as string | undefined;
-      if (id) setSavedId(id);
-      setMessage(status === 'sent' ? 'Keşif ölçüsü kaydedildi ve gönderildi olarak işaretlendi.' : 'Keşif ölçüsü kaydedildi.');
+      const payload = buildPayload(status);
+      const res = savedId
+        ? await axios.patch(
+            `${API}/claim-files/${claimFileId}/field-survey-briefs/${savedId}`,
+            payload,
+            { headers: authHeader() },
+          )
+        : await axios.post(
+            `${API}/claim-files/${claimFileId}/field-survey-briefs`,
+            payload,
+            { headers: authHeader() },
+          );
+      const id = (res.data?.data?.id as string | undefined) ?? savedId;
+      if (!id) {
+        setMessage('Kayıt başarısız.');
+        return null;
+      }
+      setSavedId(id);
+      const next: DraftSnapshot = { ...currentSnapshot, savedId: id };
+      setBaselineKey(snapshotKey(next));
+      clearDraft(claimFileId);
       onSaved?.();
+      return id;
     } catch (err: unknown) {
       const msg =
         axios.isAxiosError(err) && err.response?.data?.message
           ? String(err.response.data.message)
           : 'Kayıt başarısız.';
       setMessage(msg);
+      return null;
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
+    const id = await persistBrief(status);
+    if (!id) return;
+    setMessage(
+      status === 'sent'
+        ? 'Keşif ölçüsü kaydedildi ve gönderildi olarak işaretlendi.'
+        : 'Keşif ölçüsü kaydedildi.',
+    );
+  };
+
+  const saveAndClose = async () => {
+    const id = await persistBrief('draft');
+    if (!id) return;
+    setExitConfirmOpen(false);
+    onClose();
+  };
+
   const ensureSaved = async (status: 'draft' | 'sent' = 'draft'): Promise<string | null> => {
-    if (savedId) return savedId;
-    if (aiSuggestion) {
-      setMessage('Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.');
-      return null;
-    }
-    setSaving(true);
-    try {
-      const res = await axios.post(
-        `${API}/claim-files/${claimFileId}/field-survey-briefs`,
-        buildPayload(status),
-        { headers: authHeader() },
-      );
-      const id = res.data?.data?.id as string | undefined;
-      if (id) {
-        setSavedId(id);
-        onSaved?.();
-        return id;
-      }
-      return null;
-    } catch {
-      setMessage('Önce kayıt yapılamadı.');
-      return null;
-    } finally {
-      setSaving(false);
-    }
+    if (savedId && !isDirty) return savedId;
+    return persistBrief(status);
   };
 
   const handlePdfDownload = async () => {
@@ -410,7 +576,7 @@ export function FieldSurveyBriefModal({
   return (
     <>
       <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={requestClose} aria-hidden />
         <div
           className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800"
           role="dialog"
@@ -428,7 +594,7 @@ export function FieldSurveyBriefModal({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
               aria-label="Kapat"
             >
@@ -601,8 +767,22 @@ export function FieldSurveyBriefModal({
               </label>
             </div>
 
-            <label className="block text-xs font-medium text-slate-600">
-              Keşif Özeti (Tedarikçi / Usta)
+            <div>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-600">
+                  Keşif Özeti (Tedarikçi / Tekniker)
+                </span>
+                <FieldSurveySpeechButton
+                  disabled={Boolean(aiSuggestion) || saving}
+                  onError={(msg) => setMessage(msg)}
+                  onTranscript={(text) => {
+                    setSummaryText((prev) => {
+                      const base = prev.trim();
+                      return base ? `${base} ${text}` : text;
+                    });
+                  }}
+                />
+              </div>
               <textarea
                 value={summaryText}
                 onChange={(e) => setSummaryText(e.target.value)}
@@ -611,10 +791,10 @@ export function FieldSurveyBriefModal({
                   if (v) setSummaryText(v);
                 }}
                 rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 placeholder="Kısa keşif notu…"
               />
-            </label>
+            </div>
 
             <div>
               <div className="mb-2 flex items-center justify-between">
@@ -758,12 +938,12 @@ export function FieldSurveyBriefModal({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-700">
-            <button type="button" onClick={onClose} className="btn-secondary text-sm">
+            <button type="button" onClick={requestClose} className="btn-secondary text-sm">
               İptal
             </button>
             <button
               type="button"
-              disabled={saving || Boolean(aiSuggestion)}
+              disabled={saving || Boolean(aiSuggestion) || !isDirty}
               onClick={() => void handleSave('draft')}
               className="btn-secondary text-sm"
             >
@@ -790,6 +970,48 @@ export function FieldSurveyBriefModal({
           </div>
         </div>
       </div>
+
+      {exitConfirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/45"
+            onClick={() => !saving && setExitConfirmOpen(false)}
+            aria-hidden
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-800">Kaydedilmemiş Değişiklikler</p>
+            <p className="mt-2 text-xs text-slate-600">
+              Çıkmadan önce değişiklikleri kaydetmek ister misiniz?
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveAndClose()}
+                className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {saving ? 'Kaydediliyor…' : 'Kaydet ve Çık'}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={discardAndClose}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-status-danger hover:bg-red-50 disabled:opacity-50"
+              >
+                Değişiklikleri Sil
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setExitConfirmOpen(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FieldSurveyCameraModal
         open={showCamera}

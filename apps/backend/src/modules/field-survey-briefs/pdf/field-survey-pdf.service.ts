@@ -158,30 +158,26 @@ export class FieldSurveyPdfService {
   </div>`
       : '';
 
+    /** Internal Dosya Bilgileri: 1–8 sabit sıra; sonra Parça / Destek Skoru / Adres */
     const metaInternal = `
     <div class="meta-grid">
       <div><span class="k">Dosya No</span> ${escHtml(data.fileNo)}</div>
       ${data.claimNo ? `<div><span class="k">Hasar No</span> ${escHtml(data.claimNo)}</div>` : ''}
       ${data.policyNo ? `<div><span class="k">Poliçe No</span> ${escHtml(data.policyNo)}</div>` : ''}
-      ${data.customerName ? `<div><span class="k">Sigortalı</span> ${escHtml(data.customerName)}</div>` : ''}
+      ${data.customerName ? `<div><span class="k">Sigortalı Adı Soyadı</span> ${escHtml(data.customerName)}</div>` : ''}
       ${data.customerPhone ? `<div><span class="k">Telefon</span> ${escHtml(data.customerPhone)}</div>` : ''}
       ${data.customerEmail ? `<div><span class="k">E-posta</span> ${escHtml(data.customerEmail)}</div>` : ''}
-      ${data.expertName ? `<div><span class="k">Eksper</span> ${escHtml(data.expertName)}</div>` : ''}
-      ${data.expertPhone ? `<div><span class="k">Eksper Tel</span> ${escHtml(data.expertPhone)}</div>` : ''}
-      ${data.expertEmail ? `<div><span class="k">Eksper E-posta</span> ${escHtml(data.expertEmail)}</div>` : ''}
-      <div><span class="k">Parça</span> ${escHtml(itemLabel)}</div>
+      ${data.expertName ? `<div><span class="k">Eksper Adı</span> ${escHtml(data.expertName)}</div>` : ''}
       <div><span class="k">Tarih</span> ${fmtDate(data.createdAt)}</div>
+      <div><span class="k">Parça</span> ${escHtml(itemLabel)}</div>
       <div><span class="k">Destek Skoru</span> ${confidence}</div>
       ${data.address ? `<div class="span2"><span class="k">Adres</span> ${escHtml(data.address)}</div>` : ''}
     </div>`;
 
-    /** Supplier: yalnızca Sigortalı Adı + iş içeriği — iletişim/adres/eksper/dosya/poliçe/skor YOK */
+    /** Supplier Dosya Bilgileri: yalnızca Sigortalı Adı Soyadı */
     const metaSupplier = `
     <div class="meta-grid">
-      ${data.customerName ? `<div><span class="k">Sigortalı</span> ${escHtml(data.customerName)}</div>` : ''}
-      <div><span class="k">İş Kalemi</span> ${escHtml(itemLabel)}</div>
-      <div><span class="k">Tarih</span> ${fmtDate(data.createdAt)}</div>
-      <div class="span2"><span class="k">Başlık</span> ${escHtml(data.title)}</div>
+      ${data.customerName ? `<div><span class="k">Sigortalı Adı Soyadı</span> ${escHtml(data.customerName)}</div>` : ''}
     </div>`;
 
     const badgeLabel = isSupplier ? 'Tedarikçi Keşif Ölçüsü' : 'Tahmini Keşif Ölçüsü';
@@ -192,9 +188,9 @@ export class FieldSurveyPdfService {
   <meta charset="utf-8" />
   <style>
     body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; color: #1f2937; font-size: 9.5pt; margin: 0; line-height: 1.35; }
-    .header { display: flex; align-items: flex-start; justify-content: flex-end; margin-bottom: 8px; min-height: 28px; }
-    .header-logo { height: 28px; width: auto; max-width: 120px; object-fit: contain; }
-    .header-brand-text { font-size: 11pt; font-weight: 700; color: #0f172a; }
+    .header { display: flex; align-items: flex-start; justify-content: flex-end; margin-bottom: 10px; min-height: 40px; }
+    .header-logo { width: 90px; max-width: 100px; height: auto; object-fit: contain; }
+    .header-brand-text { font-size: 13pt; font-weight: 700; color: #0f172a; }
     h1 { font-size: 13pt; margin: 0 0 4px; font-weight: 700; }
     .badge { display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 8pt; font-weight: 700; margin-bottom: 6px; }
     .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin-bottom: 8px; font-size: 8.5pt; color: #374151; }

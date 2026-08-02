@@ -78,6 +78,33 @@ export class FieldSurveyBriefsService {
     return brief;
   }
 
+  async update(
+    claimFileId: string,
+    id: string,
+    dto: CreateFieldSurveyBriefDto,
+  ) {
+    await this.findOne(claimFileId, id);
+
+    return this.prisma.fieldSurveyBrief.update({
+      where: { id },
+      data: {
+        itemType: dto.itemType,
+        title: dto.title.trim(),
+        summaryText: dto.summaryText.trim(),
+        dimensionsJson: dto.dimensions as unknown as Prisma.InputJsonValue,
+        materialsJson: dto.materials as unknown as Prisma.InputJsonValue,
+        aiConfidence: dto.aiConfidence ?? null,
+        isEstimated: dto.isEstimated ?? true,
+        photoUrl: dto.photoUrl ?? null,
+        annotatedPhotoUrl: dto.annotatedPhotoUrl ?? null,
+        status: dto.status ?? 'draft',
+      },
+      include: {
+        createdByUser: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+  }
+
   async listByClaimFile(claimFileId: string) {
     await this.assertClaimFileExists(claimFileId);
     return this.prisma.fieldSurveyBrief.findMany({
@@ -181,7 +208,7 @@ export class FieldSurveyBriefsService {
         title: brief.title,
         itemType: brief.itemType,
         summaryText: brief.summaryText,
-        fileNo: cf.fileNo,
+        fileNo: isSupplier ? '' : cf.fileNo,
         claimNo: isSupplier ? null : cf.claimNo,
         policyNo: isSupplier ? null : (cf.policyNo ?? null),
         customerName: customerDisplayName,
