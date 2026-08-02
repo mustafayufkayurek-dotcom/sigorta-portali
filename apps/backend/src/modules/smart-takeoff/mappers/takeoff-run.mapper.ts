@@ -1,6 +1,7 @@
 import type { PersistedTakeoffLineItem, PersistedTakeoffRun } from '../ports/takeoff-persist.port';
 import type {
   TakeoffLineItemResponseDto,
+  TakeoffManualOverrideResponseDto,
   TakeoffRunResponseDto,
 } from '../dto/takeoff-run.dto';
 
@@ -18,7 +19,7 @@ export function toTakeoffRunResponse(run: PersistedTakeoffRun): TakeoffRunRespon
   };
 }
 
-function toTakeoffLineItemResponse(item: PersistedTakeoffLineItem): TakeoffLineItemResponseDto {
+export function toTakeoffLineItemResponse(item: PersistedTakeoffLineItem): TakeoffLineItemResponseDto {
   return {
     id: item.id,
     operationItemCode: item.operationItemCode,
@@ -28,6 +29,7 @@ function toTakeoffLineItemResponse(item: PersistedTakeoffLineItem): TakeoffLineI
     unit: item.unit,
     quantityEngine: item.quantityEngine,
     quantityFinal: item.quantityFinal,
+    hasOverride: item.hasOverride,
     ruleCode: item.ruleCode,
     ruleVersionTag: item.ruleVersionTag,
     sortOrder: item.sortOrder,
@@ -41,6 +43,22 @@ function toTakeoffLineItemResponse(item: PersistedTakeoffLineItem): TakeoffLineI
         input: s.input,
         output: s.output,
       })),
+      overrideSummary: item.explanation.overrideSummary ?? null,
     },
+    overrides: item.overrides.map(toManualOverrideResponse),
+  };
+}
+
+function toManualOverrideResponse(
+  override: PersistedTakeoffLineItem['overrides'][number],
+): TakeoffManualOverrideResponseDto {
+  return {
+    id: override.id,
+    quantityEnginePreserved: override.quantityEnginePreserved,
+    quantityOverride: override.quantityOverride,
+    reason: override.reason,
+    createdAt: override.createdAt.toISOString(),
+    createdByUserId: override.createdByUserId,
+    active: override.active,
   };
 }

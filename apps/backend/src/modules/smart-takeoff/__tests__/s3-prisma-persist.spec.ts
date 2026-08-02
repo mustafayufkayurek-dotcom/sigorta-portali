@@ -76,8 +76,10 @@ describe('S3 — PrismaTakeoffPersistAdapter (mocked Prisma)', () => {
           unit: 'm2',
           quantityEngine: new Prisma.Decimal('1.8900'),
           quantityFinal: new Prisma.Decimal('1.8900'),
+          hasOverride: false,
           sortOrder: 0,
           sources: [{ smartMeasureVersionId: 'mv-1' }],
+          overrides: [],
           explanation: {
             ruleCode: 'DOOR_PAINTING_SET',
             ruleVersionTag: 's1.2026.08.02.1',

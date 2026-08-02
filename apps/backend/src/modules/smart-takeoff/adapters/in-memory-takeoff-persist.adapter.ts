@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import type {
+  ApplyLineItemOverrideInput,
   CreateTakeoffRunInput,
+  PersistedTakeoffLineItem,
   PersistedTakeoffRun,
   TakeoffPersistPort,
 } from '../ports/takeoff-persist.port';
@@ -33,10 +35,12 @@ export class InMemoryTakeoffPersistAdapter implements TakeoffPersistPort {
       unit: item.unit,
       quantityEngine: item.quantityEngine,
       quantityFinal: item.quantityFinal,
+      hasOverride: false,
       ruleCode: item.ruleCode,
       ruleVersionTag: item.ruleVersionTag,
       sortOrder: index,
       explanation: item.explanation,
+      overrides: [],
     }));
 
     const run: PersistedTakeoffRun = {
@@ -66,5 +70,53 @@ export class InMemoryTakeoffPersistAdapter implements TakeoffPersistPort {
     return [...this.runs.values()]
       .filter((r) => r.claimFileId === claimFileId)
       .sort((a, b) => b.runNumber - a.runNumber);
+  }
+
+  async applyLineItemOverride(input: ApplyLineItemOverrideInput): Promise<PersistedTakeoffLineItem> {
+    const run = this.runs.get(input.runId);
+    if (!run || run.claimFileId !== input.claimFileId) {
+      throw new Error('Metraj koşumu bulunamadı');
+    }
+
+    const itemIndex = run.lineItems.findIndex((li) => li.id === input.lineItemId);
+    if (itemIndex < 0) {
+      throw new Error('İş kalemi bulunamadı');
+    }
+
+    const item = run.lineItems[itemIndex];
+    const createdAt = new Date();
+    const deactivatedOverrides = item.overrides.map((o) =>
+      o.active ? { ...o, active: false } : o,
+    );
+
+    const override = {
+      id: randomUUID(),
+      quantityEnginePreserved: item.quantityEngine,
+      quantityOverride: input.quantityOverride,
+      reason: input.reason.trim(),
+      createdByUserId: input.createdByUserId,
+      createdAt,
+      active: true,
+    };
+
+    const overrideSummary = `${item.quantityEngine} → ${input.quantityOverride} (${input.reason.trim()})`;
+
+    const updatedItem: PersistedTakeoffLineItem = {
+      ...item,
+      quantityFinal: input.quantityOverride,
+      hasOverride: true,
+      overrides: [...deactivatedOverrides, override],
+      explanation: {
+        ...item.explanation,
+        overrideSummary,
+        humanReadableText: `${item.explanation.humanReadableText} · Manuel düzeltme: ${overrideSummary}`,
+      },
+    };
+
+    const updatedLineItems = [...run.lineItems];
+    updatedLineItems[itemIndex] = updatedItem;
+    this.runs.set(input.runId, { ...run, lineItems: updatedLineItems });
+
+    return updatedItem;
   }
 }

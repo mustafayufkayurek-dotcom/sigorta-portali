@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { CalculationExplanationModel } from '../explanation/calculation-explanation.model';
 import type {
+  ApplyLineItemOverrideInput,
   CreateTakeoffRunInput,
   PersistedTakeoffLineItem,
   PersistedTakeoffRun,
@@ -17,9 +18,21 @@ const RUN_INCLUDE = {
       explanation: true,
       sources: true,
       rule: true,
+      overrides: {
+        orderBy: { createdAt: 'desc' as const },
+      },
     },
   },
 } satisfies Prisma.TakeoffRunInclude;
+
+const LINE_ITEM_INCLUDE = {
+  explanation: true,
+  sources: true,
+  rule: true,
+  overrides: {
+    orderBy: { createdAt: 'desc' as const },
+  },
+} satisfies Prisma.TakeoffLineItemInclude;
 
 type RunWithRelations = Prisma.TakeoffRunGetPayload<{ include: typeof RUN_INCLUDE }>;
 
@@ -113,6 +126,66 @@ export class PrismaTakeoffPersistAdapter implements TakeoffPersistPort {
     return runs.map(mapRun);
   }
 
+  async applyLineItemOverride(input: ApplyLineItemOverrideInput): Promise<PersistedTakeoffLineItem> {
+    const lineItem = await this.prisma.takeoffLineItem.findFirst({
+      where: {
+        id: input.lineItemId,
+        status: 'active',
+        run: { id: input.runId, claimFileId: input.claimFileId },
+      },
+      include: LINE_ITEM_INCLUDE,
+    });
+
+    if (!lineItem) {
+      throw new NotFoundException('İş kalemi bulunamadı');
+    }
+
+    const quantityEnginePreserved = lineItem.quantityEngine;
+    const overrideSummary = buildOverrideSummary(
+      decimalToNumber(quantityEnginePreserved),
+      input.quantityOverride,
+      input.reason,
+    );
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.takeoffManualOverride.updateMany({
+        where: { takeoffLineItemId: input.lineItemId, active: true },
+        data: { active: false },
+      });
+
+      await tx.takeoffManualOverride.create({
+        data: {
+          takeoffLineItemId: input.lineItemId,
+          quantityEnginePreserved,
+          quantityOverride: input.quantityOverride,
+          reason: input.reason.trim(),
+          createdByUserId: input.createdByUserId,
+          active: true,
+        },
+      });
+
+      return tx.takeoffLineItem.update({
+        where: { id: input.lineItemId },
+        data: {
+          quantityFinal: input.quantityOverride,
+          hasOverride: true,
+          explanation: {
+            update: {
+              overrideSummaryJson: overrideSummary,
+              humanReadableText: appendOverrideText(
+                lineItem.explanation?.humanReadableText ?? '',
+                overrideSummary,
+              ),
+            },
+          },
+        },
+        include: LINE_ITEM_INCLUDE,
+      });
+    });
+
+    return mapLineItem(updated);
+  }
+
   private async loadRulesByCode() {
     const rules = await this.prisma.takeoffRule.findMany({
       where: { active: true },
@@ -145,7 +218,7 @@ function mapRun(run: RunWithRelations): PersistedTakeoffRun {
 }
 
 function mapLineItem(
-  item: RunWithRelations['lineItems'][number],
+  item: RunWithRelations['lineItems'][number] | Prisma.TakeoffLineItemGetPayload<{ include: typeof LINE_ITEM_INCLUDE }>,
 ): PersistedTakeoffLineItem {
   const explanation = item.explanation;
   if (!explanation) {
@@ -162,6 +235,7 @@ function mapLineItem(
     unit: item.unit,
     quantityEngine: decimalToNumber(item.quantityEngine),
     quantityFinal: decimalToNumber(item.quantityFinal),
+    hasOverride: item.hasOverride,
     ruleCode: explanation.ruleCode,
     ruleVersionTag: explanation.ruleVersionTag,
     sortOrder: item.sortOrder,
@@ -174,7 +248,31 @@ function mapLineItem(
       overrideSummary: explanation.overrideSummaryJson as string | null | undefined,
       humanReadableText: explanation.humanReadableText,
     },
+    overrides: item.overrides.map((o) => ({
+      id: o.id,
+      quantityEnginePreserved: decimalToNumber(o.quantityEnginePreserved),
+      quantityOverride: decimalToNumber(o.quantityOverride),
+      reason: o.reason,
+      createdByUserId: o.createdByUserId,
+      createdAt: o.createdAt,
+      active: o.active,
+    })),
   };
+}
+
+function buildOverrideSummary(
+  quantityEngine: number,
+  quantityOverride: number,
+  reason: string,
+): string {
+  return `${quantityEngine} → ${quantityOverride} (${reason.trim()})`;
+}
+
+function appendOverrideText(base: string, overrideSummary: string): string {
+  const suffix = `Manuel düzeltme: ${overrideSummary}`;
+  if (!base) return suffix;
+  if (base.includes('Manuel düzeltme:')) return base;
+  return `${base} · ${suffix}`;
 }
 
 function decimalToNumber(value: Prisma.Decimal): number {

@@ -89,12 +89,19 @@ Tests:       27 passed, 27 total
 
 ---
 
+## S3 Review Gate ONAY — ONAYLANDI (2026-08-02)
+
+- 27/27 test kabul edildi
+- S4 öncesi persist + RuleVersion omurgası onaylı
+
+---
+
 ## Onay kaydı
 
 ```
 Ürün sahibi: Mustafa
 Sprint: S3
-Karar: Review Gate bekleniyor
+Karar: ONAYLANDI — Review Gate geçildi
 Push: YOK
 Deploy: YOK
 Migration deploy: YOK

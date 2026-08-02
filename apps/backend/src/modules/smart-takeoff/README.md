@@ -2,22 +2,23 @@
 
 Bounded Context. SSOT: `docs/features/SMART_QUANTITY_TAKEOFF_*.md`.
 
-## S3 — TAMAMLANDI (2026-08-02)
+## S4 — TAMAMLANDI (2026-08-02)
 
 Branch: `feature/smart-quantity-takeoff-s1`  
 BUILD MODE · Reusable Platform First
 
-| Öğe | S3 durumu |
+| Öğe | S4 durumu |
 |-----|--------|
 | AppModule kaydı | **Evet** |
-| REST API | `POST/GET claim-files/:id/smart-takeoff/runs` |
+| REST API | `POST/GET/PATCH claim-files/:id/smart-takeoff/...` |
 | SM adapter | `PrismaMeasureReadAdapter` — gerçek SM tipleri + SKIRTING extensionJson |
 | Persist | **`PrismaTakeoffPersistAdapter`** (InMemory test override) |
 | Migration | **`20260802160000_smart_takeoff_s3`** (dosya oluşturuldu; production deploy ayrı onay) |
 | RuleVersion | **DB-backed** — `TakeoffRuleVersion` + S1 seed (`RuleVersionResolver`) |
 | Rule Library | S1 — 4 kural (değişmedi) |
 | S1 pipeline | Korundu |
-| UI | Yok (S4+) |
+| UI | **Hasar dosyası → Raporlar → Operasyon İş Kalemleri** |
+| Manual Override | **PATCH line-item override** + `TakeoffManualOverride` audit |
 
 ## API
 
@@ -26,6 +27,7 @@ BUILD MODE · Reusable Platform First
 | POST | `/api/v1/claim-files/:claimFileId/smart-takeoff/runs` | SM ölçülerinden iş kalemi koşumu |
 | GET | `/api/v1/claim-files/:claimFileId/smart-takeoff/runs` | Koşum listesi |
 | GET | `/api/v1/claim-files/:claimFileId/smart-takeoff/runs/:runId` | Koşum detayı + iş kalemleri |
+| PATCH | `/api/v1/claim-files/:claimFileId/smart-takeoff/runs/:runId/line-items/:lineItemId/override` | Manuel düzeltme (audit) |
 
 ## Katman ayrımı (zorunlu)
 
@@ -35,7 +37,7 @@ BUILD MODE · Reusable Platform First
 - **Calculation Engine** — yalnız matematik
 - **Pipeline** — zinciri bağlar; katmanları birleştirmez
 - **RuleVersionResolver** — aktif kural sürümü (DB)
-- **PrismaTakeoffPersistAdapter** — TakeoffRun + TakeoffLineItem + Explanation kalıcı persist
+- **PrismaTakeoffPersistAdapter** — TakeoffRun + TakeoffLineItem + Explanation + Override kalıcı persist
 
 ## SKIRTING / süpürgelik notu
 
@@ -46,3 +48,9 @@ SM katalogunda `supurgelik` tipi henüz resmi değil. S3 yolu:
 - `extensionJson.lengthMm` veya `widthMm` (koşu uzunluğu)
 
 SmartMeasureVersion şemasına `lengthMm` eklenmedi — extensionJson ile hizalandı.
+
+## Web bileşenleri
+
+- `apps/web/src/components/smart-takeoff/SmartTakeoffPanel.tsx` — ana tablo + koşum seçici
+- `TakeoffExplanationDrawer.tsx` — açıklanabilir hesap
+- `TakeoffOverrideDrawer.tsx` — manuel düzeltme formu

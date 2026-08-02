@@ -9,8 +9,8 @@ import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
 import { PrismaMeasureReadAdapter } from './adapters/prisma-measure-read.adapter';
 import { CalculationEngine } from './calculation-engine/calculation-engine';
 import { DecisionEngine } from './decision-engine/decision-engine';
-import type { CreateTakeoffRunDto } from './dto/takeoff-run.dto';
-import { toTakeoffRunResponse } from './mappers/takeoff-run.mapper';
+import type { ApplyLineItemOverrideDto, CreateTakeoffRunDto } from './dto/takeoff-run.dto';
+import { toTakeoffLineItemResponse, toTakeoffRunResponse } from './mappers/takeoff-run.mapper';
 import type { TakeoffPipelineResult } from './pipeline/takeoff-pipeline';
 import { TakeoffPipeline } from './pipeline/takeoff-pipeline';
 import type { MeasureReadPort, MeasureReadSnapshot } from './ports/measure-read.port';
@@ -29,7 +29,7 @@ import { RuleVersionResolver } from './versioning/rule-version-resolver';
 type RequestUser = { id: string; roleCode?: string };
 
 /**
- * Smart Quantity Takeoff — S3 Prisma persist + RuleVersion DB bağlantısı.
+ * Smart Quantity Takeoff — S4 UI + manual override API.
  * S1 pipeline korunur; SM adapter + persist + REST API.
  */
 @Injectable()
@@ -63,7 +63,7 @@ export class SmartTakeoffService implements OnModuleInit {
   getSkeletonStatus() {
     this.ensureS1RulesLoaded();
     return {
-      sprint: 'S3',
+      sprint: 'S4',
       ruleCount: this.ruleRegistry.count(),
       ruleVersionTag: S1_RULE_VERSION_TAG,
       calculationVersionTag: S1_PLACEHOLDER_CALCULATION_VERSION_TAG,
@@ -75,11 +75,12 @@ export class SmartTakeoffService implements OnModuleInit {
       },
       supportedElements: ['DOOR', 'WINDOW', 'SKIRTING', 'CEILING'],
       registeredInAppModule: true,
-      apiEndpoints: 3,
+      apiEndpoints: 4,
       persistence: true,
       persistenceAdapter: this.persist.constructor.name,
       measureReadAdapter: 'PrismaMeasureReadAdapter',
       ruleVersionSource: 'TakeoffRuleVersion (DB)',
+      manualOverride: true,
     };
   }
 
@@ -136,6 +137,41 @@ export class SmartTakeoffService implements OnModuleInit {
       throw new NotFoundException('Metraj koşumu bulunamadı');
     }
     return toTakeoffRunResponse(run);
+  }
+
+  async applyLineItemOverride(
+    claimFileId: string,
+    runId: string,
+    lineItemId: string,
+    user: RequestUser,
+    dto: ApplyLineItemOverrideDto,
+  ) {
+    await this.assertClaimAccess(claimFileId, user);
+    const reason = dto.reason?.trim();
+    if (!reason) {
+      throw new BadRequestException('Düzeltme gerekçesi zorunludur');
+    }
+
+    const run = await this.persist.getRun(claimFileId, runId);
+    if (!run) {
+      throw new NotFoundException('Metraj koşumu bulunamadı');
+    }
+
+    const lineItem = run.lineItems.find((li) => li.id === lineItemId);
+    if (!lineItem) {
+      throw new NotFoundException('İş kalemi bulunamadı');
+    }
+
+    const updated = await this.persist.applyLineItemOverride({
+      claimFileId,
+      runId,
+      lineItemId,
+      quantityOverride: dto.quantityOverride,
+      reason,
+      createdByUserId: user.id,
+    });
+
+    return toTakeoffLineItemResponse(updated);
   }
 
   private async resolveMeasures(

@@ -27,6 +27,7 @@ import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/uti
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
+import { SmartTakeoffPanel } from '@/components/smart-takeoff/SmartTakeoffPanel';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
@@ -1493,6 +1494,10 @@ export default function ClaimFileDetailPage() {
       {activeGroup === 'raporlar' && (
         <div className="space-y-3">
           <SmartMeasureList claimFileId={id!} showEmpty />
+          <SmartTakeoffPanel
+            claimFileId={id!}
+            canUpdate={userHasPermission('claim_file.update')}
+          />
           <OnarimRaporuTab claimId={id!} />
         </div>
       )}

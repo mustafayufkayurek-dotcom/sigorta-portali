@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -10,7 +11,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
-import { CreateTakeoffRunDto } from './dto/takeoff-run.dto';
+import { ApplyLineItemOverrideDto, CreateTakeoffRunDto } from './dto/takeoff-run.dto';
 import { SmartTakeoffService } from './smart-takeoff.service';
 
 type AuthUser = { id: string; email?: string | null; roleCode?: string; role?: { code?: string } };
@@ -61,6 +62,26 @@ export class SmartTakeoffController {
     @CurrentUser() user: AuthUser,
   ) {
     const data = await this.service.getRun(claimFileId, runId, toRequestUser(user));
+    return { success: true, data };
+  }
+
+  @Patch('runs/:runId/line-items/:lineItemId/override')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'İş kalemi manuel düzeltme — audit kaydı ile' })
+  async applyLineItemOverride(
+    @Param('claimFileId') claimFileId: string,
+    @Param('runId') runId: string,
+    @Param('lineItemId') lineItemId: string,
+    @Body() dto: ApplyLineItemOverrideDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const data = await this.service.applyLineItemOverride(
+      claimFileId,
+      runId,
+      lineItemId,
+      toRequestUser(user),
+      dto,
+    );
     return { success: true, data };
   }
 }
