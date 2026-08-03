@@ -35,6 +35,8 @@ Kurallar:
 - title: kısa parça/alan adı (max 80 karakter)
 - dimensions: en az 1 satır; L form dolap, oda duvarları, seramik alanları ayrı satır olabilir
 - materials: boya rengi/kat, seramik ebat, mermerit, ayna, süpürgelik vb.
+- Dolap/kapak malzemelerinde cam ve ahşap (veya lake) kapakları AYRI say; görünen her kapak tipini doğru malzeme adıyla yaz (ör. 1 cam + 1 ahşap kapak → Cam x 1 adet, Ahşap x 1 adet)
+- Görselde cam olmayan solid/lake kapakları Cam olarak sayma; yalnızca gerçekten cam/glass görünen kapakları Cam olarak yaz
 - aiConfidence: 0-1 arası güven skoru
 - Okuyamazsan boş diziler ve null ölçüler kullan
 - Başka metin ekleme`;

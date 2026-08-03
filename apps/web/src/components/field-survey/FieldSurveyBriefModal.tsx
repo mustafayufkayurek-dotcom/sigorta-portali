@@ -147,6 +147,7 @@ export function FieldSurveyBriefModal({
   onSaved,
 }: FieldSurveyBriefModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const aiSuggestionRef = useRef<HTMLDivElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [pendingScanOptions, setPendingScanOptions] = useState<{
@@ -159,6 +160,11 @@ export function FieldSurveyBriefModal({
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{
+    tone: 'success' | 'warning' | 'error';
+    text: string;
+  } | null>(null);
+  const [aiSuggestionPulse, setAiSuggestionPulse] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [annotatedPhotoUrl, setAnnotatedPhotoUrl] = useState<string | null>(null);
   const [itemType, setItemType] = useState<FieldSurveyItemType>('diger');
@@ -202,6 +208,8 @@ export function FieldSurveyBriefModal({
 
   const isDirty = Boolean(baselineKey) && snapshotKey(currentSnapshot) !== baselineKey;
 
+  const saveBlocked = saving ? false : Boolean(aiSuggestion) || !isDirty;
+
   // Kaydet butonu disabled iken tıklama olayı hiç tetiklenmez (persistBrief içindeki
   // uyarı mesajı bu yüzden hiç görünmez) — kullanıcı nedeni buradan görsün.
   const saveDisabledReason: string | null = saving
@@ -212,11 +220,19 @@ export function FieldSurveyBriefModal({
         ? 'Kaydedilecek yeni bir değişiklik yok.'
         : null;
 
+  const focusAiSuggestion = () => {
+    aiSuggestionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setAiSuggestionPulse(true);
+    window.setTimeout(() => setAiSuggestionPulse(false), 2200);
+  };
+
   const resetForm = useCallback(() => {
     setScanning(false);
     setSaving(false);
     setSavedId(null);
     setMessage(null);
+    setSaveNotice(null);
+    setAiSuggestionPulse(false);
     setPhotoUrl(null);
     setAnnotatedPhotoUrl(null);
     setItemType('diger');
@@ -444,18 +460,30 @@ export function FieldSurveyBriefModal({
   const handleApproveAi = () => {
     if (!aiSuggestion) return;
     applyAiSuggestion(aiSuggestion);
-    setMessage('Destek önerisi onaylandı. Kontrol edip kaydedebilirsiniz.');
+    setMessage(null);
+    setSaveNotice({
+      tone: 'warning',
+      text: 'Öneri forma aktarıldı. Kaydet ile kaydı tamamlayın.',
+    });
   };
 
   const handleEditAi = () => {
     if (!aiSuggestion) return;
     applyAiSuggestion(aiSuggestion);
-    setMessage('Destek önerisi forma aktarıldı — dilediğiniz alanları düzenleyin.');
+    setMessage(null);
+    setSaveNotice({
+      tone: 'warning',
+      text: 'Öneri forma aktarıldı. Düzenleyip Kaydet ile kaydı tamamlayın.',
+    });
   };
 
   const handleDismissAi = () => {
     setAiSuggestion(null);
-    setMessage('Destek önerisi atlandı. Ölçüleri elle girerek kaydedebilirsiniz.');
+    setMessage(null);
+    setSaveNotice({
+      tone: 'warning',
+      text: 'Destek önerisi atlandı. Kaydet ile kaydı tamamlayın.',
+    });
   };
 
   const buildPayload = (status: 'draft' | 'sent') => ({
@@ -486,11 +514,15 @@ export function FieldSurveyBriefModal({
     status: 'draft' | 'sent' = 'draft',
   ): Promise<string | null> => {
     if (aiSuggestion) {
-      setMessage('Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.');
+      const blockedText =
+        'Kayıt için önce destek önerisini onaylayın, düzenleyin veya atlayın.';
+      setMessage(blockedText);
+      setSaveNotice({ tone: 'warning', text: blockedText });
       return null;
     }
     setSaving(true);
     setMessage(null);
+    setSaveNotice(null);
     try {
       const payload = buildPayload(status);
       const res = savedId
@@ -506,7 +538,9 @@ export function FieldSurveyBriefModal({
           );
       const id = (res.data?.data?.id as string | undefined) ?? savedId;
       if (!id) {
-        setMessage('Kayıt başarısız.');
+        const failText = 'Kayıt başarısız.';
+        setMessage(failText);
+        setSaveNotice({ tone: 'error', text: failText });
         return null;
       }
       setSavedId(id);
@@ -521,6 +555,7 @@ export function FieldSurveyBriefModal({
           ? String(err.response.data.message)
           : 'Kayıt başarısız.';
       setMessage(msg);
+      setSaveNotice({ tone: 'error', text: msg });
       return null;
     } finally {
       setSaving(false);
@@ -530,11 +565,29 @@ export function FieldSurveyBriefModal({
   const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
     const id = await persistBrief(status);
     if (!id) return;
-    setMessage(
+    const successText =
       status === 'sent'
         ? 'Keşif ölçüsü kaydedildi ve gönderildi olarak işaretlendi.'
-        : 'Keşif ölçüsü kaydedildi.',
-    );
+        : 'Keşif ölçüsü kaydedildi.';
+    setMessage(null);
+    setSaveNotice({ tone: 'success', text: successText });
+  };
+
+  const handleSaveClick = async (status: 'draft' | 'sent' = 'draft') => {
+    if (saving) return;
+    if (aiSuggestion) {
+      setSaveNotice({
+        tone: 'warning',
+        text: 'Kaydetmeden önce destek önerisini onaylayın, düzenleyin veya "Öneriyi Atla" seçin.',
+      });
+      focusAiSuggestion();
+      return;
+    }
+    if (!isDirty) {
+      setSaveNotice({ tone: 'warning', text: 'Kaydedilecek yeni bir değişiklik yok.' });
+      return;
+    }
+    await handleSave(status);
   };
 
   const saveAndClose = async () => {
@@ -542,6 +595,20 @@ export function FieldSurveyBriefModal({
     if (!id) return;
     setExitConfirmOpen(false);
     onClose();
+  };
+
+  const handleSaveAndCloseClick = async () => {
+    if (saving) return;
+    if (aiSuggestion) {
+      setSaveNotice({
+        tone: 'warning',
+        text: 'Kaydetmeden önce destek önerisini onaylayın, düzenleyin veya "Öneriyi Atla" seçin.',
+      });
+      setExitConfirmOpen(false);
+      focusAiSuggestion();
+      return;
+    }
+    await saveAndClose();
   };
 
   const ensureSaved = async (status: 'draft' | 'sent' = 'draft'): Promise<string | null> => {
@@ -639,7 +706,12 @@ export function FieldSurveyBriefModal({
             )}
 
             {aiSuggestion && (
-              <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-3 py-3 space-y-2">
+              <div
+                ref={aiSuggestionRef}
+                className={`rounded-xl border border-brand-200 bg-brand-50/60 px-3 py-3 space-y-2 transition-shadow ${
+                  aiSuggestionPulse ? 'ring-2 ring-status-warning shadow-md' : ''
+                }`}
+              >
                 <p className="text-xs font-semibold text-slate-800">Destek Önerisi</p>
                 <p className="text-[11px] text-slate-600">
                   Bu değerler öneridir. Onaylamadan kayda yazılmaz.
@@ -962,7 +1034,20 @@ export function FieldSurveyBriefModal({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-700">
-            {saveDisabledReason && (
+            {saveNotice && (
+              <p
+                className={`w-full text-left text-xs font-semibold ${
+                  saveNotice.tone === 'success'
+                    ? 'text-status-success'
+                    : saveNotice.tone === 'warning'
+                      ? 'text-status-warning'
+                      : 'text-status-danger'
+                }`}
+              >
+                {saveNotice.text}
+              </p>
+            )}
+            {!saveNotice && saveDisabledReason && (
               <p className="w-full text-left text-[11px] text-slate-400">{saveDisabledReason}</p>
             )}
             <button type="button" onClick={requestClose} className="btn-secondary text-sm">
@@ -970,9 +1055,10 @@ export function FieldSurveyBriefModal({
             </button>
             <button
               type="button"
-              disabled={saving || Boolean(aiSuggestion) || !isDirty}
-              onClick={() => void handleSave('draft')}
-              className="btn-secondary text-sm"
+              disabled={saving}
+              aria-disabled={saveBlocked}
+              onClick={() => void handleSaveClick('draft')}
+              className={`btn-secondary text-sm ${saveBlocked ? 'opacity-50' : ''}`}
             >
               {saving ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
@@ -1019,12 +1105,18 @@ export function FieldSurveyBriefModal({
             {!aiSuggestion && message && (
               <p className="mt-2 text-[11px] text-slate-600">{message}</p>
             )}
+            {!aiSuggestion && saveNotice && saveNotice.tone === 'error' && (
+              <p className="mt-2 text-[11px] text-status-danger">{saveNotice.text}</p>
+            )}
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
-                disabled={saving || Boolean(aiSuggestion)}
-                onClick={() => void saveAndClose()}
-                className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                disabled={saving}
+                aria-disabled={Boolean(aiSuggestion)}
+                onClick={() => void handleSaveAndCloseClick()}
+                className={`rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 ${
+                  aiSuggestion ? 'opacity-50' : ''
+                }`}
               >
                 {saving ? 'Kaydediliyor…' : 'Kaydet ve Çık'}
               </button>
