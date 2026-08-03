@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-01",
-  "label": "v438-smart-measure-page-ssot",
-  "description": "Web-only: SmartMeasureList Raporlar mount SSOT (repo=canlı). Backend v437. Rollback web v437 / backend v436.",
+  "updatedAt": "2026-08-03",
+  "label": "v445-fsb-phase1.2-regression-fix",
+  "description": "Web-only: Saha Tespit başlığı + Kaydet/Kaydet ve Çık UX mesajları düzeltmesi. Ayrıca nginx Permissions-Policy: microphone=(self) (mikrofon izni, sesli not). Backend v444 (değişmedi). Rollback web v444 / backend v444.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v437-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v438-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v444-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v445-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v437-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v436-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v444-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v444-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
