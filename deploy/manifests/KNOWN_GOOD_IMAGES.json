@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-03",
-  "label": "v445-fsb-phase1.2-regression-fix",
-  "description": "Web-only: Saha Tespit başlığı + Kaydet/Kaydet ve Çık UX mesajları düzeltmesi. Ayrıca nginx Permissions-Policy: microphone=(self) (mikrofon izni, sesli not). Backend v444 (değişmedi). Rollback web v444 / backend v444.",
+  "label": "v446-fsb-save-ai-fix",
+  "description": "Web+backend: Kaydet footer geri bildirimi + destek önerisi kaydırma; vision prompt cam/ahşap kapak ayrımı. Rollback web v445 / backend v444.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v444-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v445-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v446-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v446-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v444-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v445-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v444-amd64"
   },
   "mustPassSmokeRoutes": [
