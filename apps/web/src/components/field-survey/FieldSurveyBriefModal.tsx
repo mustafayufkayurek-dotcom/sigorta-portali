@@ -156,6 +156,7 @@ export function FieldSurveyBriefModal({
   } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -539,17 +540,30 @@ export function FieldSurveyBriefModal({
   };
 
   const handlePdfDownload = async () => {
-    const id = await ensureSaved('draft');
-    if (!id) return;
-    // İç operasyon PDF
-    const url = `${API}/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf?variant=internal`;
-    const res = await axios.get(url, { headers: authHeader(), responseType: 'blob' });
-    const blob = new Blob([res.data], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `tahmini-kesif-olcusu-${claimFileNo}.pdf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    if (downloadingPdf) return; // ikinci tıklama → yeni request engellenir
+    setDownloadingPdf(true);
+    setMessage(null);
+    try {
+      const id = await ensureSaved('draft');
+      if (!id) return;
+      // İç operasyon PDF
+      const url = `${API}/claim-files/${claimFileId}/field-survey-briefs/${id}/pdf?variant=internal`;
+      const res = await axios.get(url, { headers: authHeader(), responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `tahmini-kesif-olcusu-${claimFileNo}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err: unknown) {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.message
+          ? String(err.response.data.message)
+          : 'PDF oluşturulamadı. Lütfen tekrar deneyin.';
+      setMessage(msg);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleWhatsApp = async () => {
@@ -951,12 +965,12 @@ export function FieldSurveyBriefModal({
             </button>
             <button
               type="button"
-              disabled={saving || Boolean(aiSuggestion)}
+              disabled={saving || downloadingPdf || Boolean(aiSuggestion)}
               onClick={() => void handlePdfDownload()}
               className="btn-secondary text-sm"
               title="İç operasyon PDF"
             >
-              PDF İndir
+              {downloadingPdf ? 'PDF Hazırlanıyor…' : 'PDF İndir'}
             </button>
             <button
               type="button"

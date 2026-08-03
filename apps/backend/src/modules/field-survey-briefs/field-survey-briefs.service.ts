@@ -200,8 +200,11 @@ export class FieldSurveyBriefsService {
     );
 
     // Supplier: Sigortalı Adı Soyadı; telefon/e-posta/adres/eksper/dosya/poliçe ASLA
+    // Kök neden: cf.customer, hasar dosyasının CRM kurumsal müşterisidir (örn. sözleşmeli
+    // eksper/ekspertiz firması) — gerçek sigortalı değildir. Dosyanın kendi "Sigortalı adı"
+    // alanı (insuredName) öncelikli kaynak olmalı; customer sadece o alan boşsa yedek olur.
     const customerDisplayName =
-      cf.customer?.fullName ?? cf.customer?.companyName ?? null;
+      cf.insuredName?.trim() || cf.customer?.fullName || cf.customer?.companyName || null;
 
     const buffer = await this.pdfService.generate(
       {

@@ -51,6 +51,21 @@ export function FieldSurveyBriefList({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+
+  const handlePdfClick = async (briefId: string, variant: 'internal' | 'supplier') => {
+    const key = `${briefId}:${variant}`;
+    if (downloadingKey) return; // devam eden bir PDF isteği varken ikinci tıklama engellenir
+    setDownloadingKey(key);
+    setMessage(null);
+    try {
+      await downloadPdf(claimFileId, briefId, variant);
+    } catch {
+      setMessage('PDF oluşturulamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setDownloadingKey(null);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,17 +125,19 @@ export function FieldSurveyBriefList({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="text-xs font-semibold text-brand-600 hover:underline"
-                onClick={() => void downloadPdf(claimFileId, row.id, 'internal')}
+                disabled={Boolean(downloadingKey)}
+                className="text-xs font-semibold text-brand-600 hover:underline disabled:opacity-50"
+                onClick={() => void handlePdfClick(row.id, 'internal')}
               >
-                İç Pdf
+                {downloadingKey === `${row.id}:internal` ? 'Hazırlanıyor…' : 'İç Pdf'}
               </button>
               <button
                 type="button"
-                className="text-xs font-semibold text-brand-600 hover:underline"
-                onClick={() => void downloadPdf(claimFileId, row.id, 'supplier')}
+                disabled={Boolean(downloadingKey)}
+                className="text-xs font-semibold text-brand-600 hover:underline disabled:opacity-50"
+                onClick={() => void handlePdfClick(row.id, 'supplier')}
               >
-                Tedarikçi Pdf
+                {downloadingKey === `${row.id}:supplier` ? 'Hazırlanıyor…' : 'Tedarikçi Pdf'}
               </button>
               {canDelete && (
                 <button
