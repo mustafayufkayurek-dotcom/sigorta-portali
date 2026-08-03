@@ -1,3 +1,4 @@
+/** FSB_PHASE_1_2_LOCK — docs/project-governance/canli-kabul/FIELD_SURVEY_BRIEFS_PHASE_1_2_KILIT.md */
 import { Logger } from '@nestjs/common';
 import {
   FIELD_SURVEY_ITEM_TYPES,

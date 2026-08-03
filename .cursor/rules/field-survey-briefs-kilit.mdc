@@ -1,0 +1,33 @@
+---
+description: Field Survey Briefs Phase 1.2 kilidi — Saha Keşif Ölçüsü modülü
+globs:
+  - apps/web/src/components/field-survey/**
+  - apps/backend/src/modules/field-survey-briefs/**
+alwaysApply: false
+---
+
+# Field Survey Briefs Phase 1.2 Kilidi
+
+**Kaynak:** `docs/project-governance/canli-kabul/FIELD_SURVEY_BRIEFS_PHASE_1_2_KILIT.md`
+
+**Temel cümle:** FSB Phase 1.2 kapalıdır; yalnız hata sınıfı düzeltme yapılır.
+
+## Yasak (açık onay yoksa)
+
+- Yeni özellik, yeni ekran, yeni PDF alanı
+- Prisma schema / migration
+- Smart Takeoff entegrasyonu
+- AI onay kapısını kaldırma veya bypass
+- Supplier PDF'de dosya no / telefon / eksper bilgisi geri getirme
+- PDF tasarımını baştan yazma
+
+## İzinli
+
+- Kayıt/PDF/scan regresyon düzeltmesi
+- Görünür UX mesajı (Kaydet geri bildirimi vb.)
+- Vision prompt ince ayarı (malzeme sayımı)
+- PDF footer/mapping metin düzeltmesi
+
+## Kod işareti
+
+`FSB_PHASE_1_2_LOCK` yorum bloğuna aykırı değişiklik = dur, Mustafa onayı iste.

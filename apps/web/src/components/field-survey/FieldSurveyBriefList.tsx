@@ -1,5 +1,6 @@
 'use client';
 
+/** FSB_PHASE_1_2_LOCK — docs/project-governance/canli-kabul/FIELD_SURVEY_BRIEFS_PHASE_1_2_KILIT.md */
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Trash2 } from 'lucide-react';

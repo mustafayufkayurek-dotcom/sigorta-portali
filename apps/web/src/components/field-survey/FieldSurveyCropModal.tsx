@@ -1,5 +1,6 @@
 'use client';
 
+/** FSB_PHASE_1_2_LOCK — docs/project-governance/canli-kabul/FIELD_SURVEY_BRIEFS_PHASE_1_2_KILIT.md */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type AspectKey = 'original' | '1:1' | '4:3' | '16:9';

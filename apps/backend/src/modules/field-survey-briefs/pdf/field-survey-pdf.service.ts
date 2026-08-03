@@ -1,3 +1,4 @@
+/** FSB_PHASE_1_2_LOCK — docs/project-governance/canli-kabul/FIELD_SURVEY_BRIEFS_PHASE_1_2_KILIT.md */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
@@ -247,9 +248,7 @@ export class FieldSurveyPdfService {
   ${photoHtml}
 
   <div class="footer">
-    Bu belge tahmini saha keşif ölçüsüdür; kesin ölçü dosya onayı sonrası ilgili tedarikçi/usta tarafından sahada alınacaktır.
-    Meridyen — ${escHtml(this.config.get('APP_NAME', 'Meridyen'))}
-    ${isSupplier ? ' · Tedarikçi kopyası (iletişim ve adres bilgisi içermez)' : ''}
+    Bu belge tahmini saha keşif ölçüsüdür; kesin ölçü dosya onayı sonrası ilgili tedarikçi/usta tarafından sahada alınacaktır.${isSupplier ? ' Tedarikçi kopyası (iletişim ve adres bilgisi içermez).' : ''}
   </div>
 </body>
 </html>`;

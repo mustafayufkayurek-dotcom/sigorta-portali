@@ -48,6 +48,8 @@ describe('FieldSurveyPdfService — variant content', () => {
     expect(html).toMatch(/header-logo|header-brand-text/);
     expect(html).not.toContain('Eksper Tel');
     expect(html).not.toContain('Eksper E-posta');
+    expect(html).toContain('tahmini saha keşif ölçüsüdür');
+    expect(html).not.toContain('Meridyen — Meridyen');
 
     const dosya = html.indexOf('Dosya No');
     const hasar = html.indexOf('Hasar No');
@@ -87,5 +89,8 @@ describe('FieldSurveyPdfService — variant content', () => {
     expect(html).not.toContain('05321112233');
     expect(html).not.toContain('ayse@ornek.com');
     expect(html).not.toContain('Destek Skoru');
+    expect(html).toContain('tahmini saha keşif ölçüsüdür');
+    expect(html).toContain('Tedarikçi kopyası');
+    expect(html).not.toMatch(/Meridyen\s+—/);
   });
 });
