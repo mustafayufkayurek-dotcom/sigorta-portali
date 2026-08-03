@@ -202,6 +202,16 @@ export function FieldSurveyBriefModal({
 
   const isDirty = Boolean(baselineKey) && snapshotKey(currentSnapshot) !== baselineKey;
 
+  // Kaydet butonu disabled iken tıklama olayı hiç tetiklenmez (persistBrief içindeki
+  // uyarı mesajı bu yüzden hiç görünmez) — kullanıcı nedeni buradan görsün.
+  const saveDisabledReason: string | null = saving
+    ? null
+    : aiSuggestion
+      ? 'Kaydetmeden önce yukarıdaki destek önerisini onaylayın, düzenleyin veya "Öneriyi Atla" seçin.'
+      : !isDirty
+        ? 'Kaydedilecek yeni bir değişiklik yok.'
+        : null;
+
   const resetForm = useCallback(() => {
     setScanning(false);
     setSaving(false);
@@ -784,7 +794,7 @@ export function FieldSurveyBriefModal({
             <div>
               <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium text-slate-600">
-                  Keşif Özeti (Tedarikçi / Tekniker)
+                  Saha Tespit
                 </span>
                 <FieldSurveySpeechButton
                   disabled={Boolean(aiSuggestion) || saving}
@@ -952,6 +962,9 @@ export function FieldSurveyBriefModal({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-700">
+            {saveDisabledReason && (
+              <p className="w-full text-left text-[11px] text-slate-400">{saveDisabledReason}</p>
+            )}
             <button type="button" onClick={requestClose} className="btn-secondary text-sm">
               İptal
             </button>
@@ -997,10 +1010,19 @@ export function FieldSurveyBriefModal({
             <p className="mt-2 text-xs text-slate-600">
               Çıkmadan önce değişiklikleri kaydetmek ister misiniz?
             </p>
+            {aiSuggestion && (
+              <p className="mt-2 text-[11px] text-status-danger">
+                Kaydetmeden çıkmak için önce ana ekrandaki destek önerisini onaylayın, düzenleyin
+                veya &quot;Öneriyi Atla&quot; seçin.
+              </p>
+            )}
+            {!aiSuggestion && message && (
+              <p className="mt-2 text-[11px] text-slate-600">{message}</p>
+            )}
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || Boolean(aiSuggestion)}
                 onClick={() => void saveAndClose()}
                 className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
               >
