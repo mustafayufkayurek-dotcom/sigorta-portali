@@ -13,6 +13,8 @@ import { usePanelHelpDrawerOptional } from '@/contexts/PanelHelpDrawerContext';
 type PanelSidebarGuideFooterProps = PanelGuideContext & {
   collapsed: boolean;
   onToggleCollapsed?: () => void;
+  /** Sigorta / asistans / eksper portalında teknik sürüm satırını gizle (müşteri prestiji) */
+  hideVersionLine?: boolean;
 };
 
 /**
@@ -20,7 +22,7 @@ type PanelSidebarGuideFooterProps = PanelGuideContext & {
  * Kalıcı sağ kılavuz paneli yok.
  */
 export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
-  const { collapsed, onToggleCollapsed, ...ctx } = props;
+  const { collapsed, onToggleCollapsed, hideVersionLine = false, ...ctx } = props;
   const guide = resolvePanelUserGuide(ctx);
   const helpDrawer = usePanelHelpDrawerOptional();
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
@@ -29,7 +31,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
     helpDrawer?.setOpen(true);
   };
 
-  const versionLine = !collapsed ? (
+  const versionLine = !collapsed && !hideVersionLine ? (
     <p className="truncate px-2 pb-1 pt-0.5 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
       Web {PANEL_WEB_VERSION} · {PANEL_BACKEND_VERSION.replace(/^v/, 'v')} · Kılavuz {GUIDE_CONTENT_VERSION}
     </p>

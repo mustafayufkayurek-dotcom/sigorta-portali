@@ -1229,6 +1229,7 @@ function PanelSidebar({
           isOfficeStaff={isOfficeStaff}
           collapsed={collapsed}
           onToggleCollapsed={onToggleCollapsed}
+          hideVersionLine={isPortalUser}
         />
       </div>
     </aside>

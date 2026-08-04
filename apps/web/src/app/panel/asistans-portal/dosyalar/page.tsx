@@ -417,7 +417,7 @@ function AsistansDosyalarContent() {
       ) : null}
 
       {error ? (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
           <button type="button" onClick={() => setError(null)} className="ml-4 font-bold text-red-700 hover:text-red-900">
             &times;
@@ -432,36 +432,24 @@ function AsistansDosyalarContent() {
             Hesabınıza bağlı asistans firması bulunamadı. Meridyen operasyon ekibinden kapsam ataması isteyin.
           </p>
         </div>
-      ) : !error && files.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-          <p className="font-medium text-slate-500">Henüz Acil Yardım Dosyası Bulunmuyor.</p>
-        </div>
-      ) : !error && filteredFiles.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-          <p className="font-medium text-slate-500">
-            {searchQuery.trim()
-              ? 'Aramaya Uyan Dosya Yok.'
-              : stageFilter === 'all'
-                ? 'Acil yardım dosyası yok.'
-                : 'Bu Aşamada Dosya Yok.'}
-          </p>
-        </div>
       ) : (
         <>
-          <PortalMobileFileList
-            showInsurance={false}
-            showAssigned
-            items={filteredFiles.map((f) => ({
-              id: f.id,
-              fileNo: fileNoOf(f),
-              subject: subjectOf(f, dosyaKonusuCatalog),
-              statusName: stageLabelOf(f),
-              createdAt: ihbarAt(f),
-              assignedUser: f.assignedUserName || null,
-              reporterLabel: locationOf(f) !== '—' ? locationOf(f) : null,
-            }))}
-            onItemClick={(id) => openDrawer(id, 'ozet')}
-          />
+          {filteredFiles.length > 0 && (
+            <PortalMobileFileList
+              showInsurance={false}
+              showAssigned
+              items={filteredFiles.map((f) => ({
+                id: f.id,
+                fileNo: fileNoOf(f),
+                subject: subjectOf(f, dosyaKonusuCatalog),
+                statusName: stageLabelOf(f),
+                createdAt: ihbarAt(f),
+                assignedUser: f.assignedUserName || null,
+                reporterLabel: locationOf(f) !== '—' ? locationOf(f) : null,
+              }))}
+              onItemClick={(id) => openDrawer(id, 'ozet')}
+            />
+          )}
 
           <TableColumnsProvider value={tableColumns}>
             <PanelTableFrame
@@ -520,97 +508,118 @@ function AsistansDosyalarContent() {
                       })}
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredFiles.map((f) => (
-                      <tr
-                        key={f.id}
-                        onClick={() => openDrawer(f.id, 'ozet')}
-                        className={`cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80 ${
-                          drawerFileId === f.id ? 'bg-brand-50/40' : 'bg-white'
-                        }`}
-                      >
-                        {tableColumns.prefs.orderedVisibleColumns.map((col) => {
-                          switch (col.id) {
-                            case 'fileNumber':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openDrawer(f.id, 'ozet');
-                                    }}
-                                    className="font-semibold text-slate-800 hover:text-brand-700"
-                                  >
-                                    {fileNoOf(f)}
-                                  </button>
-                                </PanelTableTd>
-                              );
-                            case 'subject':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5 text-slate-700">
-                                  {subjectOf(f, dosyaKonusuCatalog)}
-                                </PanelTableTd>
-                              );
-                            case 'city':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
-                                  {locationOf(f)}
-                                </PanelTableTd>
-                              );
-                            case 'stage':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5">
-                                  <span className={expertStatusBadgeClass(stageLabelOf(f))}>{stageLabelOf(f)}</span>
-                                </PanelTableTd>
-                              );
-                            case 'status':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
-                                  {emergencyStatusLabel(f.status)}
-                                </PanelTableTd>
-                              );
-                            case 'amount':
-                              return (
-                                <PanelTableTd
-                                  key={col.id}
-                                  colId={col.id}
-                                  className="px-3 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#10151F]"
-                                >
-                                  {formatTryAmount(amountOf(f))}
-                                </PanelTableTd>
-                              );
-                            case 'assignedUser':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
-                                  {f.assignedUserName || '—'}
-                                </PanelTableTd>
-                              );
-                            case 'createdAt':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5 text-slate-500">
-                                  {fmtDateTime(ihbarAt(f))}
-                                </PanelTableTd>
-                              );
-                            case 'actions':
-                              return (
-                                <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5">
-                                  <InsuranceDosyalarActions
-                                    rowId={f.id}
-                                    onFileSummary={() => openDrawer(f.id, 'ozet')}
-                                    onAddNote={() => openDrawer(f.id, 'notlar')}
-                                    onDocuments={() => openDrawer(f.id, 'belgeler')}
-                                    onHistory={() => openDrawer(f.id, 'notlar')}
-                                    onCopyFileNo={() => void copyFileNo(f)}
-                                  />
-                                </PanelTableTd>
-                              );
-                            default:
-                              return null;
-                          }
-                        })}
+                  <tbody className="divide-y divide-[#E7E9EE] bg-white">
+                    {filteredFiles.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={Math.max(tableColumns.prefs.orderedVisibleColumns.length, 1)}
+                          className="px-4 py-14 text-center"
+                        >
+                          <p className="font-medium text-slate-500">
+                            {error
+                              ? 'Dosyalar yüklenemedi.'
+                              : searchQuery.trim()
+                                ? 'Aramaya Uyan Dosya Bulunamadı.'
+                                : files.length === 0
+                                  ? 'Henüz Acil Yardım Dosyası Bulunmuyor.'
+                                  : stageFilter === 'all'
+                                    ? 'Henüz Acil Yardım Dosyası Bulunmuyor.'
+                                    : 'Bu Aşamada Dosya Bulunmuyor.'}
+                          </p>
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredFiles.map((f) => (
+                        <tr
+                          key={f.id}
+                          onClick={() => openDrawer(f.id, 'ozet')}
+                          className={`cursor-pointer border-t border-slate-100 transition hover:bg-slate-50/80 ${
+                            drawerFileId === f.id ? 'bg-brand-50/40' : 'bg-white'
+                          }`}
+                        >
+                          {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                            switch (col.id) {
+                              case 'fileNumber':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openDrawer(f.id, 'ozet');
+                                      }}
+                                      className="font-semibold text-slate-800 hover:text-brand-700"
+                                    >
+                                      {fileNoOf(f)}
+                                    </button>
+                                  </PanelTableTd>
+                                );
+                              case 'subject':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5 text-slate-700">
+                                    {subjectOf(f, dosyaKonusuCatalog)}
+                                  </PanelTableTd>
+                                );
+                              case 'city':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
+                                    {locationOf(f)}
+                                  </PanelTableTd>
+                                );
+                              case 'stage':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5">
+                                    <span className={expertStatusBadgeClass(stageLabelOf(f))}>{stageLabelOf(f)}</span>
+                                  </PanelTableTd>
+                                );
+                              case 'status':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
+                                    {emergencyStatusLabel(f.status)}
+                                  </PanelTableTd>
+                                );
+                              case 'amount':
+                                return (
+                                  <PanelTableTd
+                                    key={col.id}
+                                    colId={col.id}
+                                    className="px-3 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[#10151F]"
+                                  >
+                                    {formatTryAmount(amountOf(f))}
+                                  </PanelTableTd>
+                                );
+                              case 'assignedUser':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5 text-slate-600">
+                                    {f.assignedUserName || '—'}
+                                  </PanelTableTd>
+                                );
+                              case 'createdAt':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="px-3 py-2.5 text-slate-500">
+                                    {fmtDateTime(ihbarAt(f))}
+                                  </PanelTableTd>
+                                );
+                              case 'actions':
+                                return (
+                                  <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5">
+                                    <InsuranceDosyalarActions
+                                      rowId={f.id}
+                                      onFileSummary={() => openDrawer(f.id, 'ozet')}
+                                      onAddNote={() => openDrawer(f.id, 'notlar')}
+                                      onDocuments={() => openDrawer(f.id, 'belgeler')}
+                                      onHistory={() => openDrawer(f.id, 'notlar')}
+                                      onCopyFileNo={() => void copyFileNo(f)}
+                                    />
+                                  </PanelTableTd>
+                                );
+                              default:
+                                return null;
+                            }
+                          })}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
