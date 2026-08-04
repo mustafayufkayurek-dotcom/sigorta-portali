@@ -217,34 +217,71 @@ export function useManagementDashboardData(
     const pl = plEnabled ? plQuery.data : undefined;
     const prevPl = plEnabled ? prevPlQuery.data : undefined;
     const ops = opsQuery.data;
+    const lifetime = financeQuery.data?.summary;
+    const monthly = financeQuery.data?.monthlyTrend ?? [];
+    const monthKey =
+      plPeriod.mode === 'month'
+        ? `${plPeriod.year}-${String(plPeriod.month).padStart(2, '0')}`
+        : null;
+    const monthPoint = monthKey ? monthly.find((m) => m.month.startsWith(monthKey)) : undefined;
 
+    const periodRevenue = monthPoint?.revenue ?? pl?.totalRevenue;
+    const periodCost = monthPoint?.cost ?? pl?.totalCost;
+    const periodProfit = monthPoint?.profit ?? pl?.netProfit;
+    const periodHasMoney =
+      (periodRevenue ?? 0) > 0 || (periodCost ?? 0) > 0 || (periodProfit ?? 0) !== 0;
+    const lifetimeHasMoney =
+      (lifetime?.totalRevenue ?? 0) > 0 ||
+      (lifetime?.totalCost ?? 0) > 0 ||
+      (lifetime?.totalProfit ?? 0) !== 0;
+
+    // Dönemde fatura yoksa tüm dönem özeti (dosya varken ciro 0 yanılsamasını kırar)
+    const useLifetime = !periodHasMoney && lifetimeHasMoney;
+    const revenue = useLifetime ? lifetime!.totalRevenue : periodRevenue;
+    const cost = useLifetime ? lifetime!.totalCost : periodCost;
+    const profit = useLifetime ? lifetime!.totalProfit : periodProfit;
+    const marginPct = useLifetime
+      ? lifetime!.avgMarginPct
+      : periodRevenue != null && periodRevenue > 0 && periodProfit != null
+        ? (periodProfit / periodRevenue) * 100
+        : pl?.netMarginPct;
+
+    const moneyReady = revenue != null || cost != null || profit != null;
     const moneyOrDash = (n: number | undefined) =>
-      pl && n != null ? formatCurrency(n) : '—';
+      moneyReady && n != null ? formatCurrency(n) : '—';
 
     const revTrend = trendLabel(
-      pl && prevPl ? computeChangePct(pl.totalRevenue, prevPl.totalRevenue) : null,
+      !useLifetime && pl && prevPl
+        ? computeChangePct(pl.totalRevenue, prevPl.totalRevenue)
+        : null,
     );
     const costTrend = trendLabel(
-      pl && prevPl ? computeChangePct(pl.totalCost, prevPl.totalCost) : null,
+      !useLifetime && pl && prevPl ? computeChangePct(pl.totalCost, prevPl.totalCost) : null,
     );
     const profitTrend = trendLabel(
-      pl && prevPl ? computeChangePct(pl.netProfit, prevPl.netProfit) : null,
+      !useLifetime && pl && prevPl ? computeChangePct(pl.netProfit, prevPl.netProfit) : null,
     );
     const marginTrend = trendLabel(
-      pl && prevPl ? computeChangePct(pl.netMarginPct, prevPl.netMarginPct) : null,
+      !useLifetime && pl && prevPl
+        ? computeChangePct(pl.netMarginPct, prevPl.netMarginPct)
+        : null,
     );
 
-    const periodGap = !plEnabled
-        ? 'Bu dönem için finans API yok'
+    const periodGap = financeQuery.isError
+      ? 'Finans verisi alınamadı'
       : plQuery.isError
-        ? 'Finans verisi alınamadı'
-        : 'Önceki döneme göre';
+        ? 'Dönem P/L alınamadı'
+        : useLifetime
+          ? 'Seçili dönemde fatura yok — tüm dönem'
+          : !plEnabled
+            ? 'Bu dönem için finans API yok'
+            : 'Önceki döneme göre';
 
     return [
       {
         id: 'ciro',
         title: 'Toplam Ciro',
-        value: moneyOrDash(pl?.totalRevenue),
+        value: moneyOrDash(revenue),
         trendLabel: revTrend.trendLabel,
         trendTitle: periodGap,
         trendDirection: revTrend.trendDirection,
@@ -254,7 +291,7 @@ export function useManagementDashboardData(
       {
         id: 'gider',
         title: 'Toplam Gider',
-        value: moneyOrDash(pl?.totalCost),
+        value: moneyOrDash(cost),
         trendLabel: costTrend.trendLabel,
         trendTitle: periodGap,
         trendDirection: costTrend.trendDirection,
@@ -264,7 +301,7 @@ export function useManagementDashboardData(
       {
         id: 'kar',
         title: 'Toplam Kâr',
-        value: moneyOrDash(pl?.netProfit),
+        value: moneyOrDash(profit),
         trendLabel: profitTrend.trendLabel,
         trendTitle: periodGap,
         trendDirection: profitTrend.trendDirection,
@@ -275,8 +312,8 @@ export function useManagementDashboardData(
         id: 'marj',
         title: 'Kâr Marjı',
         value:
-          pl && pl.netMarginPct != null
-            ? `%${pl.netMarginPct.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
+          marginPct != null
+            ? `%${marginPct.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
             : '—',
         trendLabel: marginTrend.trendLabel,
         trendTitle: periodGap,
@@ -309,10 +346,15 @@ export function useManagementDashboardData(
     ];
   }, [
     plEnabled,
+    plPeriod.mode,
+    plPeriod.year,
+    plPeriod.month,
     plQuery.data,
     plQuery.isError,
     prevPlQuery.data,
     opsQuery.data,
+    financeQuery.data,
+    financeQuery.isError,
   ]);
 
   const summary = useMemo((): MgmtSummaryCell[] => {

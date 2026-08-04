@@ -29,6 +29,8 @@ import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { getDefaultScreensForRole } from '@/utils/screen-permissions-defaults';
 import { PanelSidebarGuideFooter } from '@/components/panel/PanelSidebarGuideFooter';
+import { PANEL_BACKEND_VERSION, PANEL_WEB_VERSION } from '@/config/panel-build-info';
+import { GUIDE_CONTENT_VERSION } from '@/config/panel-user-guide';
 import { PanelHelpDrawer } from '@/components/panel/PanelHelpDrawer';
 import { PanelThemeToggle } from '@/components/panel/PanelThemeToggle';
 import { PanelSystemHealth } from '@/components/panel/PanelSystemHealth';
@@ -945,6 +947,9 @@ function Navbar({
                   >
                     Çıkış Yap
                   </button>
+                  <p className="truncate px-3 pt-2 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                    Web {PANEL_WEB_VERSION} · {PANEL_BACKEND_VERSION.replace(/^v/, 'v')} · Kılavuz {GUIDE_CONTENT_VERSION}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1229,7 +1234,6 @@ function PanelSidebar({
           isOfficeStaff={isOfficeStaff}
           collapsed={collapsed}
           onToggleCollapsed={onToggleCollapsed}
-          hideVersionLine={isPortalUser}
         />
       </div>
     </aside>

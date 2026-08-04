@@ -13,16 +13,14 @@ import { usePanelHelpDrawerOptional } from '@/contexts/PanelHelpDrawerContext';
 type PanelSidebarGuideFooterProps = PanelGuideContext & {
   collapsed: boolean;
   onToggleCollapsed?: () => void;
-  /** Sigorta / asistans / eksper portalında teknik sürüm satırını gizle (müşteri prestiji) */
-  hideVersionLine?: boolean;
 };
 
 /**
  * Sidebar alt — daralt + Yardım (aynı Help Drawer).
- * Kalıcı sağ kılavuz paneli yok.
+ * Sürüm satırı tüm panel rolleri / ekranlarda aynı konumda kalır.
  */
 export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
-  const { collapsed, onToggleCollapsed, hideVersionLine = false, ...ctx } = props;
+  const { collapsed, onToggleCollapsed, ...ctx } = props;
   const guide = resolvePanelUserGuide(ctx);
   const helpDrawer = usePanelHelpDrawerOptional();
   const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
@@ -31,11 +29,20 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
     helpDrawer?.setOpen(true);
   };
 
-  const versionLine = !collapsed && !hideVersionLine ? (
-    <p className="truncate px-2 pb-1 pt-0.5 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
-      Web {PANEL_WEB_VERSION} · {PANEL_BACKEND_VERSION.replace(/^v/, 'v')} · Kılavuz {GUIDE_CONTENT_VERSION}
+  const versionText = collapsed
+    ? PANEL_WEB_VERSION
+    : `Web ${PANEL_WEB_VERSION} · ${PANEL_BACKEND_VERSION.replace(/^v/, 'v')} · Kılavuz ${GUIDE_CONTENT_VERSION}`;
+
+  const versionLine = (
+    <p
+      className={`truncate pb-0.5 pt-0.5 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500 ${
+        collapsed ? 'px-0' : 'px-2'
+      }`}
+      title={`Web ${PANEL_WEB_VERSION} · ${PANEL_BACKEND_VERSION} · Kılavuz ${GUIDE_CONTENT_VERSION}`}
+    >
+      {versionText}
     </p>
-  ) : null;
+  );
 
   const helpControl = (
     <SidebarNavTooltip label={guide.title} collapsed={collapsed}>

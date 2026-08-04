@@ -101,7 +101,7 @@ function TrendBody({ data, tall }: { data: TrendPoint[]; tall?: boolean }) {
       <MgmtEmpty
         icon={BarChart3}
         title="Trend Verisi Henüz Oluşmadı"
-        description="Dönemsel ciro-gider-kâr zaman serisi bağlandığında grafik burada görünecek."
+        description="Son 12 ayda faturalı ciro/gider hareketi yok. Finans kaydı oluşunca grafik burada dolar."
         tall={tall}
       />
     );
