@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v456-email-notification-enterprise",
-  "description": "Backend-only: Operasyon bilgilendirme mailleri enterprise şablon; şifre/davet mailleri değişmedi. Migration yok. Rollback backend v455 / web v455.",
+  "label": "v458-performans-yonetimi",
+  "description": "Full: Performans Yönetimi kabuğu + team-workload API (ofis/saha iş yükü). Migration yok. Rollback web v457 / backend v457.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v456-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v455-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v458-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v458-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v454-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v455-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v457-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v457-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -36,6 +36,7 @@
     "/panel/sigorta-portal/faturalar",
     "/panel/asistans-portal",
     "/panel/asistans-portal/dosyalar",
-    "/panel/personel-ozluk"
+    "/panel/personel-ozluk",
+    "/panel/personel-yonetimi"
   ]
 }
