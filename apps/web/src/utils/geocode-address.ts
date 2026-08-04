@@ -19,6 +19,9 @@ export interface GeocodeResult {
 
 const NOMINATIM_HEADERS = { 'User-Agent': 'MeridyenAssistance/1.0 (contact@meridyenassistance.com)' };
 
+const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
+
 function normalizeStreet(value: string): string {
   return value
     .replace(/\bCad\.\b/gi, 'Caddesi')
@@ -53,16 +56,16 @@ export function buildGeocodeQueries(input: GeocodeAddressInput): string[] {
   };
 
   if (street && buildingNo) {
-    push([street, buildingNo, neighborhood, district, city]);
+    push([street, buildingNo, neighborhood, district, city, 'Türkiye']);
   }
   if (street) {
-    push([street, neighborhood, district, city]);
+    push([street, neighborhood, district, city, 'Türkiye']);
   }
   if (siteName) {
-    push([siteName, neighborhood, district, city]);
+    push([siteName, neighborhood, district, city, 'Türkiye']);
   }
   if (neighborhood && district && city) {
-    push([neighborhood, district, city]);
+    push([neighborhood, district, city, 'Türkiye']);
   }
   if (input.streetName?.trim()) {
     push([
@@ -71,13 +74,42 @@ export function buildGeocodeQueries(input: GeocodeAddressInput): string[] {
       buildingNo ? `No: ${buildingNo}` : undefined,
       district,
       city,
+      'Türkiye',
     ]);
+  }
+  if (district && city) {
+    push([district, city, 'Türkiye']);
+    if (/\s+Merkez$/i.test(district)) {
+      push(['Merkez', city, 'Türkiye']);
+      push([district.replace(/\s+Merkez$/i, '').trim(), city, 'Türkiye']);
+    }
+  }
+  if (city) {
+    push([city, 'Türkiye']);
   }
 
   return queries;
 }
 
-async function nominatimSearch(query: string): Promise<GeocodeResult | null> {
+async function geocodeViaBackend(query: string): Promise<GeocodeResult | null> {
+  try {
+    const res = await fetch(`${API}/locations/geocode?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json?.data;
+    if (!data || typeof data.lat !== 'number' || typeof data.lng !== 'number') return null;
+    return {
+      lat: data.lat,
+      lng: data.lng,
+      displayName: (data.displayName as string) ?? query,
+      approximate: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function nominatimSearchDirect(query: string): Promise<GeocodeResult | null> {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tr&limit=1`;
   const res = await fetch(url, { headers: NOMINATIM_HEADERS });
   if (!res.ok) return null;
@@ -89,6 +121,12 @@ async function nominatimSearch(query: string): Promise<GeocodeResult | null> {
     displayName: (data[0].display_name as string) ?? query,
     approximate: false,
   };
+}
+
+async function nominatimSearch(query: string): Promise<GeocodeResult | null> {
+  const viaBackend = await geocodeViaBackend(query);
+  if (viaBackend) return viaBackend;
+  return nominatimSearchDirect(query);
 }
 
 /** Sırayla sorgu dener; ilk eşleşmeyi döndürür. */

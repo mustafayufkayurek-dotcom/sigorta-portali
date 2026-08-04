@@ -35,4 +35,11 @@ export class LocationsController {
     );
     return { success: true, data };
   }
+
+  @Get('geocode')
+  @ApiOperation({ summary: 'Adres metninden koordinat (Nominatim proxy)' })
+  async geocode(@Query('q') q?: string) {
+    const data = await this.locationsService.geocodeQuery(q?.trim() ?? '');
+    return { success: true, data };
+  }
 }

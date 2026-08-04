@@ -58,13 +58,14 @@ export function NeighborhoodSelect({
     };
   }, [provinceName, districtName]);
 
-  const isDisabled = disabled || !districtName.trim() || loading;
+  // Liste yüklenirken alanı kilitleme — Overpass gecikmesinde "pasif" görünmesin
+  const isDisabled = disabled || !districtName.trim();
 
-  const placeholder = loading
-    ? ADDRESS_FIELD.neighborhoodLoading
-    : districtName.trim()
-      ? ADDRESS_FIELD.neighborhoodSearch
-      : ADDRESS_FIELD.districtPlaceholder;
+  const placeholder = !districtName.trim()
+    ? ADDRESS_FIELD.districtPlaceholder
+    : loading
+      ? ADDRESS_FIELD.neighborhoodLoading
+      : ADDRESS_FIELD.neighborhoodSearch;
 
   return (
     <div className={className}>
@@ -90,8 +91,11 @@ export function NeighborhoodSelect({
           ))}
         </datalist>
       )}
+      {loading && districtName.trim() && (
+        <p className="text-[11px] text-content-tertiary mt-1">Mahalle listesi yükleniyor… İsterseniz şimdi yazabilirsiniz.</p>
+      )}
       {!loading && districtName && options.length === 0 && (
-        <p className="text-[11px] text-slate-400 mt-1">
+        <p className="text-[11px] text-content-tertiary mt-1">
           Liste boş — {ADDRESS_FIELD.neighborhoodPlaceholder} yazarak devam edebilirsiniz.
         </p>
       )}

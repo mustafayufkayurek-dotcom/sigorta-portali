@@ -23,6 +23,7 @@ import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { relativeTime } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { validateIBAN } from '@/utils/validators';
@@ -201,7 +202,12 @@ const Icon = {
 type Province = { id: string; plateCode: number; name: string };
 type District = { id: string; name: string; provinceId: string };
 type WorkGroup = { id: string; code: string; name: string; sortOrder: number };
-type ServiceArea = { provinceId: string; districtId?: string | null };
+type ServiceArea = {
+  provinceId: string;
+  districtId?: string | null;
+  provinceName?: string | null;
+  districtName?: string | null;
+};
 type ContactPerson = {
   id?: string;
   firstName: string;
@@ -931,29 +937,38 @@ export default function VendorsPage() {
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMsg, setGeocodeMsg] = useState<string | null>(null);
 
-  const handleGeocodeAddress = useCallback(async (
-    city: string, district: string, neighborhood: string, streetName: string, buildingNo: string,
-  ) => {
-    const parts = [neighborhood, streetName, buildingNo ? `No: ${buildingNo}` : '', district, city].filter(Boolean);
-    if (!parts.length) return;
-    setGeocoding(true); setGeocodeMsg(null);
+  const handleGeocodeAddress = useCallback(async () => {
+    if (!form.city?.trim() && !form.district?.trim() && !form.neighborhood?.trim() && !form.streetName?.trim()) {
+      return;
+    }
+    setGeocoding(true);
+    setGeocodeMsg(null);
     try {
-      const q = encodeURIComponent(parts.join(', ') + ', Türkiye');
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&countrycodes=tr`, {
-        headers: { 'Accept-Language': 'tr', 'User-Agent': 'sigorta-hasar-sistemi/1.0' },
+      const result = await geocodeAddressCascade({
+        city: form.city,
+        district: form.district,
+        neighborhood: form.neighborhood,
+        streetName: form.streetName,
+        siteName: form.address,
+        buildingNo: form.buildingNo,
       });
-      const data = await res.json();
-      if (data.length > 0) {
-        const { lat, lon, display_name } = data[0];
-        setLocationCoords({ lat: parseFloat(lat), lng: parseFloat(lon) });
-        setGeocodeMsg(`Konum bulundu: ${display_name}`);
+      if (result) {
+        setLocationCoords({ lat: result.lat, lng: result.lng });
+        const shortName = result.displayName.split(',').slice(0, 2).join(',');
+        setGeocodeMsg(
+          result.approximate
+            ? `Yaklaşık konum bulundu: ${shortName}`
+            : `Konum bulundu: ${shortName}`,
+        );
       } else {
         setGeocodeMsg('Konum bulunamadı. Lütfen adresi kontrol edin veya haritadan seçin.');
       }
     } catch {
       setGeocodeMsg('Geocoding hatası. İnternet bağlantınızı kontrol edin.');
-    } finally { setGeocoding(false); }
-  }, []);
+    } finally {
+      setGeocoding(false);
+    }
+  }, [form.city, form.district, form.neighborhood, form.streetName, form.address, form.buildingNo]);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1431,7 +1446,11 @@ export default function VendorsPage() {
     const key = `${provinceId}:`;
     const exists = serviceAreas.some((sa) => !sa.districtId && `${sa.provinceId}:` === key);
     if (exists) setServiceAreas((p) => p.filter((sa) => sa.districtId || `${sa.provinceId}:` !== key));
-    else setServiceAreas((p) => [...p, { provinceId, districtId: null }]);
+    else {
+      setServiceAreas((p) =>
+        addWholeProvinceEntry(p, provinceId, selectedProvince?.name),
+      );
+    }
   };
 
   const addAllDistrictsForProvince = (prov: Province) => {
@@ -1571,7 +1590,12 @@ export default function VendorsPage() {
     try {
       const r = await axios.get(`${API}/vendors/${v.id}`, { headers: authHeader() });
       const full = r.data.data;
-      setServiceAreas((full.serviceAreas || []).map((sa: any) => ({ provinceId: sa.provinceId, districtId: sa.districtId ?? null })));
+      setServiceAreas((full.serviceAreas || []).map((sa: any) => ({
+        provinceId: sa.provinceId,
+        districtId: sa.districtId ?? null,
+        provinceName: sa.province?.name ?? null,
+        districtName: sa.district?.name ?? null,
+      })));
       setSelectedWorkGroupIds((full.vendorWorkGroups || []).map((vwg: any) => vwg.workGroupId));
       applyServiceBranchFields(
         Array.isArray(full.serviceBranches) ? full.serviceBranches : [],
@@ -1652,6 +1676,12 @@ export default function VendorsPage() {
       return;
     }
 
+    if (serviceAreas.length === 0) {
+      showToast('warning', 'En az bir hizmet bölgesi seçin.');
+      setActiveSection(2);
+      return;
+    }
+
     const cardNotesError = validateCardNoteEntries(form.cardNotes);
     if (cardNotesError) {
       errors.cardNotes = cardNotesError;
@@ -1700,7 +1730,11 @@ export default function VendorsPage() {
         contractStartDate: form.contractStartDate ? new Date(form.contractStartDate).toISOString() : null,
         contractEndDate: form.contractEndDate ? new Date(form.contractEndDate).toISOString() : null,
         contractNotes: form.contractNotes || null,
-        serviceAreas, workGroupIds: selectedWorkGroupIds.filter((id) => id !== HIZMET_KOLU_OTHER_KEY),
+        serviceAreas: serviceAreas.map((sa) => ({
+          provinceId: sa.provinceId,
+          districtId: sa.districtId ?? null,
+        })),
+        workGroupIds: selectedWorkGroupIds.filter((id) => id !== HIZMET_KOLU_OTHER_KEY),
         serviceBranches: buildServiceBranchesPayload(),
         contacts: contacts.filter((c) => c.firstName.trim() || c.lastName.trim() || c.phone.trim() || c.email.trim()).map(mapContactToPayload),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
@@ -3359,8 +3393,8 @@ export default function VendorsPage() {
                         <button
                           type="button"
                           disabled={geocoding || !vendorAddressLabel}
-                          onClick={() => handleGeocodeAddress(form.city, form.district, form.neighborhood, form.streetName, form.buildingNo)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                          onClick={() => void handleGeocodeAddress()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 transition"
                           title={!vendorAddressLabel ? 'Önce adres bilgisi girin' : undefined}
                         >
                           {geocoding ? (
@@ -3396,7 +3430,7 @@ export default function VendorsPage() {
                       </div>
                     )}
                     {geocodeMsg && (
-                      <div className={`col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.startsWith('Konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <div className={`col-span-1 sm:col-span-2 text-xs px-3 py-2 rounded-lg ${geocodeMsg.includes('Konum bulundu') || geocodeMsg.includes('Yaklaşık konum bulundu') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         {geocodeMsg}
                       </div>
                     )}
@@ -3417,7 +3451,7 @@ export default function VendorsPage() {
                   <LocationPickerModal
                     open={showLocationPicker}
                     initial={locationCoords}
-                    addressHint={[form.neighborhood, form.streetName, form.buildingNo ? `No: ${form.buildingNo}` : '', form.district, form.city].filter(Boolean).join(' ') || undefined}
+                    addressHint={vendorAddressLabel || undefined}
                     onConfirm={(coords) => { setLocationCoords(coords); setShowLocationPicker(false); setGeocodeMsg(null); }}
                     onClose={() => setShowLocationPicker(false)}
                   />
@@ -3438,7 +3472,20 @@ export default function VendorsPage() {
                   )}
 
                   <SectionDivider icon={Icon.mapPin} title="Hizmet Bölgeleri" />
+                  <p className="text-xs text-slate-500 mb-2">En az bir il veya ilçe seçimi zorunludur. Acil ve hasar önerilerinde bu bölgeler kullanılır.</p>
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
+                    {provinces.length === 0 ? (
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <p className="text-xs text-status-warning">İl listesi yüklenemedi. Hizmet bölgesi seçilemiyor.</p>
+                        <button
+                          type="button"
+                          onClick={() => void loadProvinces()}
+                          className="text-xs font-semibold text-brand-600 hover:text-brand-700"
+                        >
+                          Yeniden Dene
+                        </button>
+                      </div>
+                    ) : (
                     <div className="flex gap-2 mb-3">
                       <SearchableSelect
                         className="flex-1 min-w-0"
@@ -3451,7 +3498,7 @@ export default function VendorsPage() {
                         }}
                         placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
                         emptyText={ADDRESS_FIELD.provinceSearchEmpty}
-                        inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30"
                       />
                       {selectedProvince && (
                         <button type="button" onClick={() => addAllDistrictsForProvince(selectedProvince)}
@@ -3460,6 +3507,7 @@ export default function VendorsPage() {
                         </button>
                       )}
                     </div>
+                    )}
                     {selectedProvince && serviceDistricts.length > 0 && (
                       <DistrictCheckboxGrid
                         districts={serviceDistricts}
@@ -3470,12 +3518,21 @@ export default function VendorsPage() {
                         className="mb-3"
                       />
                     )}
+                    {selectedProvince && serviceDistricts.length === 0 && (
+                      <p className="text-[11px] text-content-tertiary mb-3">
+                        İlçe listesi yükleniyor veya boş. İsterseniz «Tüm İlçeleri Ekle» ile il genelini kaydedebilirsiniz.
+                      </p>
+                    )}
                     {serviceAreas.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {serviceAreas.map((sa, i) => {
                           const prov = provinces.find((p) => p.id === sa.provinceId);
                           const dist = serviceDistricts.find((d) => d.id === sa.districtId);
-                          const label = sa.districtId ? `${prov?.name}/${dist?.name ?? sa.districtId}` : `${prov?.name} (Tümü)`;
+                          const provLabel = sa.provinceName ?? prov?.name ?? 'İl';
+                          const distLabel = sa.districtName ?? dist?.name;
+                          const label = sa.districtId
+                            ? `${provLabel}/${distLabel ?? 'İlçe'}`
+                            : `${provLabel} (Tümü)`;
                           return (
                             <span key={i} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 border border-blue-100">
                               {label}
@@ -3487,6 +3544,9 @@ export default function VendorsPage() {
                           );
                         })}
                       </div>
+                    )}
+                    {serviceAreas.length === 0 && provinces.length > 0 && (
+                      <p className="text-[11px] text-content-tertiary mt-1">Henüz hizmet bölgesi seçilmedi.</p>
                     )}
                   </div>
                 </div>

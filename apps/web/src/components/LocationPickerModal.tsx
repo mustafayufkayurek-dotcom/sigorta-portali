@@ -58,9 +58,20 @@ const DEFAULT_LAT = 39.9255;
 const DEFAULT_LNG = 32.8663;
 const DEFAULT_ZOOM = 6;
 
-/** Nominatim geocoding — adres metninden koordinat döndürür (kademeli) */
+/** Nominatim geocoding — adres metninden koordinat döndürür (kademeli + backend proxy) */
 async function geocodeAddress(address: string): Promise<LatLng | null> {
-  const result = await geocodeAddressCascade({ streetName: address });
+  const trimmed = address.trim();
+  if (!trimmed) return null;
+  // Adres özeti genelde "Mahalle, Cadde, İlçe, İl" — cascade bunu streetName olarak dener
+  // ve il/ilçe fallback'leriyle genişletir.
+  const parts = trimmed.split(',').map((p) => p.trim()).filter(Boolean);
+  const city = parts.length >= 2 ? parts[parts.length - 1] : undefined;
+  const district = parts.length >= 2 ? parts[parts.length - 2] : undefined;
+  const result = await geocodeAddressCascade({
+    streetName: trimmed,
+    city,
+    district,
+  });
   if (!result) return null;
   return { lat: result.lat, lng: result.lng };
 }

@@ -22,6 +22,34 @@ export class LocationsService {
     });
   }
 
+  /**
+   * UI "Muş Merkez" / OSM "Merkez" gibi isim farklarını mahalle sorgusunda birleştirir.
+   */
+  districtNameAliases(provinceName: string, districtName: string): string[] {
+    const province = provinceName.trim();
+    const district = districtName.trim();
+    if (!district) return [];
+    const aliases = new Set<string>([district]);
+    const lower = district.toLocaleLowerCase('tr-TR');
+
+    if (lower.endsWith(' merkez')) {
+      aliases.add('Merkez');
+      const withoutMerkez = district.replace(/\s+Merkez$/i, '').trim();
+      if (withoutMerkez) aliases.add(withoutMerkez);
+      if (province) aliases.add(province);
+    }
+    if (lower === 'merkez' && province) {
+      aliases.add(`${province} Merkez`);
+      aliases.add(province);
+    }
+    if (province && lower === province.toLocaleLowerCase('tr-TR')) {
+      aliases.add('Merkez');
+      aliases.add(`${province} Merkez`);
+    }
+
+    return [...aliases];
+  }
+
   async findNeighborhoodsByNames(provinceName: string, districtName: string) {
     if (!provinceName.trim() || !districtName.trim()) {
       return [];
@@ -34,12 +62,30 @@ export class LocationsService {
       return [];
     }
 
-    const district = await this.prisma.district.findFirst({
-      where: {
-        provinceId: province.id,
-        name: { equals: districtName, mode: 'insensitive' },
-      },
-    });
+    const aliases = this.districtNameAliases(province.name, districtName);
+    let district =
+      (await this.prisma.district.findFirst({
+        where: {
+          provinceId: province.id,
+          name: { equals: districtName, mode: 'insensitive' },
+        },
+      })) ?? null;
+
+    if (!district) {
+      for (const alias of aliases) {
+        if (alias.toLocaleLowerCase('tr-TR') === districtName.trim().toLocaleLowerCase('tr-TR')) {
+          continue;
+        }
+        district = await this.prisma.district.findFirst({
+          where: {
+            provinceId: province.id,
+            name: { equals: alias, mode: 'insensitive' },
+          },
+        });
+        if (district) break;
+      }
+    }
+
     if (!district) {
       this.logger.warn(`Mahalle sorgusu: ilçe bulunamadı (${provinceName}/${districtName})`);
       return [];
@@ -54,7 +100,13 @@ export class LocationsService {
       return cached;
     }
 
-    const fetched = await this.fetchNeighborhoodsFromOverpass(province.name, district.name);
+    const overpassNames = this.districtNameAliases(province.name, district.name);
+    let fetched: string[] = [];
+    for (const osmDistrictName of overpassNames) {
+      fetched = await this.fetchNeighborhoodsFromOverpass(province.name, osmDistrictName);
+      if (fetched.length > 0) break;
+    }
+
     if (fetched.length > 0) {
       await this.prisma.neighborhood.createMany({
         data: fetched.map((name) => ({ districtId: district.id, name })),
@@ -68,6 +120,46 @@ export class LocationsService {
     }
 
     return [];
+  }
+
+  /** Nominatim sunucu tarafı arama — tarayıcı CORS / User-Agent kısıtlarını aşar. */
+  async geocodeQuery(query: string): Promise<{
+    lat: number;
+    lng: number;
+    displayName: string;
+  } | null> {
+    const q = query.trim();
+    if (!q) return null;
+    try {
+      const url =
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}` +
+        `&countrycodes=tr&limit=1`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'MeridyenAssistance/1.0 (locations-geocode)',
+          Accept: 'application/json',
+          'Accept-Language': 'tr',
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as Array<{
+        lat?: string;
+        lon?: string;
+        display_name?: string;
+      }>;
+      if (!Array.isArray(data) || data.length === 0 || !data[0].lat || !data[0].lon) {
+        return null;
+      }
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        displayName: data[0].display_name ?? q,
+      };
+    } catch (err) {
+      this.logger.warn(`Geocode başarısız (${q}): ${err}`);
+      return null;
+    }
   }
 
   private async fetchNeighborhoodsFromOverpass(
