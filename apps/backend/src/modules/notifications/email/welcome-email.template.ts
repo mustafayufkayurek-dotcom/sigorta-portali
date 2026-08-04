@@ -46,7 +46,7 @@ interface RoleTemplateContent {
 const DEFAULT_PORTAL_URL = 'https://app.meridyen-tr.com/giris';
 const DEFAULT_SUPPORT_EMAIL = 'destek@meridyen-tr.com';
 const BRAND_NAME = 'Meridyen Asistans';
-const BRAND_AFFILIATION = 'Safran Birleşik Hizmetler Alt Kuruluşudur.';
+const BRAND_AFFILIATION = 'Safran Birleşik Hizmetler Yan Kuruluşudur.';
 const WELCOME_SUBJECT = "Meridyen Operasyon Platformu'na Hoş Geldiniz";
 const GENERIC_GREETING = 'Sayın Kullanıcımız,';
 
