@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v454-sigorta-kilavuz-v21",
-  "description": "Web-only: Sigorta Dosya Takip kılavuzu v2.1 (Canlı İzle, Operasyon Ağı, Yardım linkleri). Migration yok. Rollback web v453 / backend v453.",
+  "label": "v455-yan-kurulus",
+  "description": "Full: Alt Kuruluşudur → Yan Kuruluşudur (kılavuzlar + welcome e-posta). Migration yok. Rollback web v454 / backend v453.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v453-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v454-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v455-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v455-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v453-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v452-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v454-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v453-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
