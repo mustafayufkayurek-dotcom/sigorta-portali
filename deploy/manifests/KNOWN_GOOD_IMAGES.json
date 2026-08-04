@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-03",
-  "label": "v447-fsb-pdf-footer-fix",
-  "description": "Backend-only: PDF footer tekrarlayan Meridyen kaldırıldı (internal + supplier). Web v446 sabit. Rollback backend v446 / web v445.",
+  "updatedAt": "2026-08-04",
+  "label": "v448-acil-kapanis-resim-upload-fix",
+  "description": "Backend-only: S3 bucket bootstrap — Acil Yardım kapanış resim yükleme NoSuchBucket 500 giderildi. Web v446 sabit. Rollback backend v447 / web v445.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v447-amd64",
+    "backend": "app-backend:dalga2-agreement-hr-01-v448-amd64",
     "web": "sigorta-web:dalga2-agreement-hr-01-v446-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v445-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v446-amd64"
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v447-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
