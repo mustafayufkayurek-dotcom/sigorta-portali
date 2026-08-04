@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v452-hr-rol-onay",
-  "description": "Full: Personel Özlük Admin/Finans tek onay (Onayla Ve Kilitle), Admin kendi puantajını oluşturmaz, özlük evrak yükleme Finans/yetkili. Migration yok. Rollback web v451 / backend v451.",
+  "label": "v453-portal-dosyalar-empty",
+  "description": "Web-only: Sigorta/asistans Dosyalar boş durumunu Onaylar tablosuyla hizala; portal kullanıcılarında sidebar teknik sürüm satırı gizlendi. Migration yok. Rollback web v452 / backend v452.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v452-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v452-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v453-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v451-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v452-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v451-amd64"
   },
   "mustPassSmokeRoutes": [
