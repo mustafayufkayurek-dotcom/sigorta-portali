@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailConfig } from '@/modules/system-settings/system-settings.service';
-import { buildEmailHtml, buildWelcomeInviteEmailHtml, EmailTemplateData } from './email.template';
+import {
+  buildNotificationEmailHtml,
+  buildWelcomeInviteEmailHtml,
+  type NotificationEmailTemplateData,
+} from './email.template';
 import { WelcomeEmailService } from './welcome-email.service';
 import { WelcomeEmailData, WelcomeEmailRole } from './welcome-email.template';
 
@@ -179,13 +183,13 @@ export class EmailService {
     });
   }
 
-  /** Template tabanlı email gönder */
+  /** Operasyon bilgilendirme e-postası (enterprise şablon — şifre/davet değil) */
   async sendTemplateEmail(
     to: string,
     subject: string,
-    templateData: EmailTemplateData,
+    templateData: NotificationEmailTemplateData,
   ): Promise<EmailSendResult> {
-    const html = buildEmailHtml(templateData);
+    const html = buildNotificationEmailHtml(templateData);
     return this.sendEmail(to, subject, html);
   }
 
@@ -195,7 +199,7 @@ export class EmailService {
     preferenceKey: keyof Omit<import('@prisma/client').UserEmailPreferences, 'id' | 'userId' | 'user'>,
     to: string,
     subject: string,
-    templateData: EmailTemplateData,
+    templateData: NotificationEmailTemplateData,
   ): Promise<EmailSendResult> {
     const prefs = await this.prisma.userEmailPreferences.findUnique({
       where: { userId },

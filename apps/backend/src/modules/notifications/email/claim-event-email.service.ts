@@ -66,12 +66,17 @@ export class ClaimEventEmailService {
       `Hasar Dosyası Atandı: ${params.fileNo}`,
       {
         title: 'Dosya Ataması',
+        badgeLabel: 'Yeni Atama',
         preheader: `${params.fileNo} numaralı dosya size atandı.`,
+        greeting: params.assigneeName ? `Sayın ${params.assigneeName},` : undefined,
+        bodyNote: 'Size atanan dosyayı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.',
+        summaryTitle: 'Dosya Özeti',
         rows: [
           { label: 'Dosya No', value: params.fileNo },
           { label: 'Müşteri', value: params.customer },
           { label: 'Atanan Personel', value: params.assigneeName },
         ],
+        nextStepText: 'Dosyayı açarak güncel durumu, belgeleri ve operasyon notlarını kontrol edin.',
         actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
