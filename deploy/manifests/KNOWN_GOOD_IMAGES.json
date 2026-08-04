@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v448-acil-kapanis-resim-upload-fix",
-  "description": "Backend-only: S3 bucket bootstrap — Acil Yardım kapanış resim yükleme NoSuchBucket 500 giderildi. Web v446 sabit. Rollback backend v447 / web v445.",
+  "label": "v449-acil-atama-tedarikci-fix",
+  "description": "Web-only: Acil Yardım Saha Tedarikçisi/Dosya Sorumlusu atama listeleri düzeltildi (API unwrap + zorunlu atama + Tedarikçiler yönlendirme). Backend v448 sabit. Rollback web v446 / backend v447.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v448-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v446-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v449-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v445-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v446-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v447-amd64"
   },
   "mustPassSmokeRoutes": [
