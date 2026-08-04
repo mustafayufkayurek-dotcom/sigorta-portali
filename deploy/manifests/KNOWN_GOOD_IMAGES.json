@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v449-acil-atama-tedarikci-fix",
-  "description": "Web-only: Acil Yardım Saha Tedarikçisi/Dosya Sorumlusu atama listeleri düzeltildi (API unwrap + zorunlu atama + Tedarikçiler yönlendirme). Backend v448 sabit. Rollback web v446 / backend v447.",
+  "label": "v450-hr-ozluk-izin-zimmet",
+  "description": "Full: Personel Özlük denetim/puantaj/izin, özlük evrakları, zimmet (fixed_assets, migration yok), Ayarlar→Personel izin türü ve zimmet kategorileri. Rollback web v449 / backend v448.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v448-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v449-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v450-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v450-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v446-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v447-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v449-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v448-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -35,6 +35,7 @@
     "/panel/sigorta-portal/onaylar",
     "/panel/sigorta-portal/faturalar",
     "/panel/asistans-portal",
-    "/panel/asistans-portal/dosyalar"
+    "/panel/asistans-portal/dosyalar",
+    "/panel/personel-ozluk"
   ]
 }
