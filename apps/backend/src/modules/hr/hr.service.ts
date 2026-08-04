@@ -32,7 +32,6 @@ import {
   getWorkHoursSchedule,
   istanbulDateKey,
 } from './hr-work-hours.helper';
-import { getPublicHolidayName } from './hr-turkey-calendar.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 
