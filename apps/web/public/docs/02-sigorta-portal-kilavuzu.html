@@ -30,6 +30,7 @@
       position: relative;
     }
     .page-break { page-break-before: always; }
+    [id] { scroll-margin-top: 20px; }
 
     .doc-header {
       background: var(--navy);
@@ -344,7 +345,7 @@
     <div class="cover-title">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
 
     <div class="cover-badge">Sigorta Şirketi Kullanıcıları İçin</div>
-    <div class="cover-version">Versiyon 2.0 — Temmuz 2026</div>
+    <div class="cover-version">Versiyon 2.1 — Ağustos 2026</div>
   </div>
   <div class="cover-footer">Meridyen Asistans — Safran Birleşik Hizmetler Alt Kuruluşudur.</div>
 </div>
@@ -356,19 +357,20 @@
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 2.0 &nbsp;|&nbsp; Temmuz 2026</div>
+    <div class="doc-meta">Versiyon 2.1 &nbsp;|&nbsp; Ağustos 2026</div>
   </div>
   <div class="content">
     <div class="section-title"><span class="num">i</span> İçindekiler</div>
     <div class="toc-item"><span class="toc-num">1.</span><span class="toc-title">Platforma Giriş</span></div>
-    <div class="toc-item"><span class="toc-num">2.</span><span class="toc-title">Sigorta Paneli Ana Ekran</span></div>
-    <div class="toc-item"><span class="toc-num">3.</span><span class="toc-title">Türkiye Hasar Haritası</span></div>
-    <div class="toc-item"><span class="toc-num">4.</span><span class="toc-title">Dosya Listesi</span></div>
-    <div class="toc-item"><span class="toc-num">5.</span><span class="toc-title">Onay Talepleri</span></div>
+    <div class="toc-item"><span class="toc-num">2.</span><span class="toc-title">Dosya Takip Ana Ekran</span></div>
+    <div class="toc-item"><span class="toc-num">3.</span><span class="toc-title">Dosyalar</span></div>
+    <div class="toc-item"><span class="toc-num">4.</span><span class="toc-title">Bekleyen Onaylar</span></div>
+    <div class="toc-item"><span class="toc-num">5.</span><span class="toc-title">Canlı İzle</span></div>
     <div class="toc-item"><span class="toc-num">6.</span><span class="toc-title">Faturalar</span></div>
-    <div class="toc-item"><span class="toc-num">7.</span><span class="toc-title">Yetkiniz Dahilindeki Bilgiler</span></div>
-    <div class="toc-item"><span class="toc-num">8.</span><span class="toc-title">Meridyen ile Neler Kazanırsınız?</span></div>
-    <div class="toc-item"><span class="toc-num">9.</span><span class="toc-title">Destek ve İletişim</span></div>
+    <div class="toc-item"><span class="toc-num">7.</span><span class="toc-title">Operasyon Ağı</span></div>
+    <div class="toc-item"><span class="toc-num">8.</span><span class="toc-title">Yetkiniz Dahilindeki Bilgiler</span></div>
+    <div class="toc-item"><span class="toc-num">9.</span><span class="toc-title">Meridyen ile Neler Kazanırsınız?</span></div>
+    <div class="toc-item"><span class="toc-num">10.</span><span class="toc-title">Destek ve İletişim</span></div>
   </div>
   <div class="doc-footer">
     <strong>Meridyen Asistans</strong>
@@ -377,7 +379,7 @@
 </div>
 
 <!-- 1. GİRİŞ -->
-<div class="page page-break">
+<div class="page page-break" id="giris">
   <div class="doc-header">
     <div class="logo-area">
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
@@ -388,11 +390,11 @@
   <div class="content">
     <div class="section-title"><span class="num">1</span> Platforma Giriş</div>
 
-    <p>Meridyen Hasar Yönetim Platformu, sigorta şirketi kullanıcılarının yetkili oldukları hasar dosyalarını izlemesi, onay taleplerini yanıtlaması ve faturaları görüntülemesi için hazırlanmıştır.</p>
+    <p>Meridyen Dosya Takip alanı, sigorta şirketi kullanıcılarının yetkili oldukları hasar dosyalarını izlemesi, onay taleplerini yanıtlaması, faturaları görüntülemesi ve operasyon görünümünü takip etmesi için hazırlanmıştır.</p>
 
     <div class="highlight-box">
-      <div class="label">Önemli — Türkiye Hasar Haritası</div>
-      <p>Hasar dosyalarınızı Türkiye haritası üzerinde konumlarına göre görebilir; durum sinyalleriyle açık, incelemede veya aksiyon bekleyen dosyaları anında fark edebilirsiniz.</p>
+      <div class="label">Sol Menü</div>
+      <p><strong>Dosya Takip</strong>, <strong>Dosyalar</strong>, <strong>Bekleyen Onaylar</strong>, <strong>Canlı İzle</strong>, <strong>Faturalar</strong> ve <strong>Operasyon Ağı</strong> menülerine sol panelden ulaşabilirsiniz. Günlük işiniz için ana ekran <strong>Dosya Takip</strong>’tir.</p>
     </div>
 
     <p><strong>Giriş adresi:</strong> <span style="color:var(--blue);">https://app.meridyen-tr.com/giris</span></p>
@@ -415,18 +417,22 @@
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
-          <strong>Sigorta Paneline Geçin</strong>
-          <p>Giriş sonrası doğrudan Sigorta Paneli ana ekranına yönlendirilirsiniz.</p>
+          <strong>Dosya Takip Ekranına Geçin</strong>
+          <p>Giriş sonrası doğrudan Dosya Takip ana ekranına yönlendirilirsiniz.</p>
         </div>
       </div>
     </div>
 
     <div class="info-box">
-      <strong>Şifremi unuttum:</strong> Giriş ekranındaki bağlantı ile e-posta adresinize şifre sıfırlama talebi gönderebilirsiniz.
+      <strong>Şifremi Unuttum:</strong> Giriş ekranındaki bağlantı ile e-posta adresinize şifre sıfırlama talebi gönderebilirsiniz.
     </div>
 
     <div class="info-box">
-      <strong>Güvenlik notu:</strong> Giriş bilgilerinizi kimseyle paylaşmayın. Şüpheli bir durum görürseniz Meridyen destek ekibiyle iletişime geçin.
+      <strong>Güvenlik Notu:</strong> Giriş bilgilerinizi kimseyle paylaşmayın. Şüpheli bir durum görürseniz Meridyen destek ekibiyle iletişime geçin.
+    </div>
+
+    <div class="info-box">
+      <strong>Yardım:</strong> Sol menüdeki <strong>Yardım</strong> ile bu kılavuzun ilgili bölümlerine hızlıca ulaşabilirsiniz.
     </div>
   </div>
   <div class="doc-footer">
@@ -435,59 +441,53 @@
   </div>
 </div>
 
-<!-- 2. ANA EKRAN -->
-<div class="page page-break">
+<!-- 2. DOSYA TAKİP -->
+<div class="page page-break" id="dosya-takip">
   <div class="doc-header">
     <div class="logo-area">
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Bölüm 2–3</div>
+    <div class="doc-meta">Bölüm 2</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">2</span> Sigorta Paneli Ana Ekran</div>
+    <div class="section-title"><span class="num">2</span> Dosya Takip Ana Ekran</div>
 
-    <p>Sigorta Paneli ana ekranı, günlük takibiniz için özet bilgileri ve son hareketleri sunar.</p>
+    <p><strong>Dosya Takip</strong> ana ekranı günlük önceliklerinizi özetler. Dosyalar iki izleme hattında gruplanır:</p>
+    <ul>
+      <li><strong>Eksper İhbarlı Takip</strong> — Eksper ihbarıyla açılan ve izlenen dosyalar</li>
+      <li><strong>Departman İhbarlı Takip</strong> — Departman / doğrudan süreç dosyaları</li>
+    </ul>
 
     <div class="feature-grid">
       <div class="feature-card">
-        <h4>Bekleyen Onaylar</h4>
-        <p>İncelemeniz gereken onay taleplerinin sayısını gösterir.</p>
+        <h4>Özet Kartlar</h4>
+        <p>Yeni ihbar, açık dosya, onay bekleyen ve benzeri özet sayılara tıklayarak ilgili listeye gidebilirsiniz.</p>
       </div>
       <div class="feature-card">
-        <h4>Toplam Dosya</h4>
-        <p>Yetkili olduğunuz sigorta şirketi kapsamındaki toplam hasar dosyası sayısını özetler.</p>
+        <h4>Güncel Hareketler</h4>
+        <p>Son işlem gören dosyaları listeler. Satıra tıklayınca dosya özeti sağdan açılır.</p>
       </div>
       <div class="feature-card">
-        <h4>Faturalar</h4>
-        <p>Şirketinize kesilen faturalara hızlı erişim sağlar.</p>
+        <h4>Öncelik Kuyrukları</h4>
+        <p>Takip hattına göre öncelikli dosya kuyruklarını gösterir.</p>
       </div>
       <div class="feature-card">
-        <h4>Son Onay Talepleri</h4>
-        <p>En son iletilen onay taleplerini dosya no, tarih ve durum bilgisiyle listeler.</p>
+        <h4>Haftalık Görünüm</h4>
+        <p>Ekranın altında haftalık hareket özeti yer alır; dönem seçerek trendi izleyebilirsiniz.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Yeni İhbar</h4>
+        <p>Yetkiniz varsa Departman İhbarlı taraftan yeni ihbar oluşturabilirsiniz.</p>
       </div>
       <div class="feature-card">
         <h4>Şirket Bilgisi</h4>
         <p>Üst bölümde adınız ve yetkili olduğunuz sigorta şirketi adı görüntülenir.</p>
       </div>
-      <div class="feature-card">
-        <h4>Menü Kısayolları</h4>
-        <p>Sigorta Paneli, Bekleyen Onaylar, Dosyalar ve Faturalar menülerine sol menüden ulaşabilirsiniz.</p>
-      </div>
     </div>
 
-    <div class="section-title"><span class="num">3</span> Türkiye Hasar Haritası</div>
-
-    <p>Hasar dosyalarınızı Türkiye haritası üzerinde il ve konum bazında görüntüleyebilirsiniz. Her dosya, bulunduğu bölgede bir işaret ile temsil edilir.</p>
-
-    <ul>
-      <li><strong>Durum sinyalleri:</strong> Dosyanın güncel aşamasına göre yanıp dönen veya renkli ikonlarla gösterilir — böylece acil müdahale veya onay bekleyen dosyalar haritada hemen fark edilir.</li>
-      <li><strong>İşaret seçimi:</strong> Haritadaki bir işarete tıklayarak dosya numarası, konu ve güncel durum bilgisine ulaşabilirsiniz.</li>
-      <li><strong>Yetkili kapsam:</strong> Haritada yalnızca şirketinize ait ve hesabınıza tanımlı kapsamdaki dosyalar gösterilir.</li>
-    </ul>
-
     <div class="info-box">
-      Harita görünümü, liste ekranıyla birlikte çalışır; aynı dosyayı hem haritada hem listede takip edebilirsiniz.
+      Dosya satırından özet, belgeler ve notlar gibi ayrıntılara sağ panel üzerinden ulaşırsınız. Yükleme yetkisi olmayan alanlar salt görüntüleme olarak kalır.
     </div>
   </div>
   <div class="doc-footer">
@@ -496,19 +496,19 @@
   </div>
 </div>
 
-<!-- 4. DOSYALAR -->
-<div class="page page-break">
+<!-- 3. DOSYALAR -->
+<div class="page page-break" id="dosyalar">
   <div class="doc-header">
     <div class="logo-area">
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Bölüm 4</div>
+    <div class="doc-meta">Bölüm 3</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">4</span> Dosya Listesi</div>
+    <div class="section-title"><span class="num">3</span> Dosyalar</div>
 
-    <p><strong>Dosyalar</strong> ekranında yetkili olduğunuz hasar dosyalarını tablo halinde görürsünüz.</p>
+    <p><strong>Dosyalar</strong> ekranında yetkili olduğunuz hasar dosyalarını tablo halinde görürsünüz. Üstte <strong>Toplam</strong>, <strong>Eksper İhbarlı</strong> ve <strong>Departman İhbarlı</strong> filtreleri bulunur.</p>
 
     <table class="field-table">
       <thead>
@@ -531,18 +531,30 @@
           <td>Güncel süreç aşaması; renkli etiket ile gösterilir.</td>
         </tr>
         <tr>
-          <td>Atanan Personel</td>
-          <td>Dosyadan sorumlu saha personeli.</td>
+          <td>Dosya Bedeli</td>
+          <td>Dosyaya bağlı bedel bilgisi (varsa).</td>
         </tr>
         <tr>
-          <td>Tarih</td>
-          <td>Dosyanın açıldığı tarih.</td>
+          <td>İhbar Eden</td>
+          <td>İhbarı yapan kişi / rol bilgisi.</td>
+        </tr>
+        <tr>
+          <td>Meridyen Sorumlusu</td>
+          <td>Dosyadan sorumlu Meridyen personeli; iletişim kısayolları satırda yer alabilir.</td>
+        </tr>
+        <tr>
+          <td>İhbar Tarihi</td>
+          <td>Dosyanın ihbar / açılış tarihi.</td>
+        </tr>
+        <tr>
+          <td>İşlemler</td>
+          <td>Dosya özeti, not, belgeler ve geçmişe hızlı erişim.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="info-box">
-      Tablo sütunlarını ihtiyacınıza göre düzenleyebilirsiniz. Kapsamınızda dosya yoksa bilgilendirme mesajı görüntülenir.
+      Tabloda arama kutusu ve <strong>Sütunlar</strong> ile görünümü düzenleyebilirsiniz. Kapsamınızda dosya yoksa tablo iskeleti korunur; “Henüz Dosya Bulunmuyor.” mesajı satır içinde görünür.
     </div>
   </div>
   <div class="doc-footer">
@@ -551,26 +563,26 @@
   </div>
 </div>
 
-<!-- 5-6. ONAY + FATURA -->
-<div class="page page-break">
+<!-- 4. BEKLEYEN ONAYLAR -->
+<div class="page page-break" id="bekleyen-onaylar">
   <div class="doc-header">
     <div class="logo-area">
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Bölüm 5–6</div>
+    <div class="doc-meta">Bölüm 4</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">5</span> Onay Talepleri</div>
+    <div class="section-title"><span class="num">4</span> Bekleyen Onaylar</div>
 
-    <p>Meridyen operasyon ekibinin ilettiği onay talepleri <strong>Bekleyen Onaylar</strong> ekranında listelenir.</p>
+    <p>Meridyen operasyon ekibinin ilettiği onarım raporu onay talepleri <strong>Bekleyen Onaylar</strong> ekranında listelenir. Sol menüde bekleyen sayı rozeti görünebilir.</p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
           <strong>Talebi İnceleyin</strong>
-          <p>Dosya no, rapor bilgisi, tutar, gönderim tarihi ve son tarih bilgilerini kontrol edin.</p>
+          <p>Dosya no, rapor no, konu, dosya bedeli, gönderim tarihi ve son tarih bilgilerini kontrol edin.</p>
         </div>
       </div>
       <div class="step">
@@ -584,15 +596,63 @@
         <div class="step-num">3</div>
         <div class="step-body">
           <strong>Sonucu Takip Edin</strong>
-          <p>İşlem sonrası talep listeden kalkar; ana ekrandaki bekleyen onay sayısı güncellenir.</p>
+          <p>İşlem sonrası talep listeden kalkar; menüdeki bekleyen onay sayısı güncellenir.</p>
         </div>
       </div>
     </div>
 
     <div class="info-box">
-      Onay durumları: <strong>Bekliyor</strong>, <strong>Onaylandı</strong>, <strong>Reddedildi</strong>, <strong>Süresi Doldu</strong>. Son tarihi geçmiş talepler ayrıca vurgulanır.
+      Onay durumları: <strong>Bekliyor</strong>, <strong>Onaylandı</strong>, <strong>Reddedildi</strong>, <strong>Süresi Doldu</strong>. Son tarihi geçmiş talepler ayrıca vurgulanır. Bekleyen talep yoksa tabloda “Bekleyen Onay İsteği Bulunmuyor.” mesajı görünür.
     </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
 
+<!-- 5. CANLI İZLE -->
+<div class="page page-break" id="canli-izle">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 5</div>
+  </div>
+  <div class="content">
+    <div class="section-title"><span class="num">5</span> Canlı İzle</div>
+
+    <p><strong>Canlı İzle</strong>, yetkili olduğunuz hasar dosyalarını Türkiye haritası üzerinde konum ve durum bazında gösterir. Bu ekran günlük dosya izleme içindir.</p>
+
+    <ul>
+      <li><strong>Durum Filtresi:</strong> Tümü, Açık, Onarımda, Onay Bekliyor.</li>
+      <li><strong>İl / Konu / Sorumlu:</strong> Listeyi daraltmak için filtreleri kullanabilirsiniz.</li>
+      <li><strong>Harita veya İl Görünümü:</strong> Harita ile il özeti arasında geçiş yapabilirsiniz.</li>
+      <li><strong>İşaret Seçimi:</strong> Haritadaki bir işarete tıklayarak dosya özetine ve not ekleme gibi işlemlere ulaşabilirsiniz.</li>
+    </ul>
+
+    <div class="highlight-box">
+      <div class="label">Canlı İzle × Operasyon Ağı</div>
+      <p><strong>Canlı İzle</strong> şirketinizin güncel dosyalarını gösterir. <strong>Operasyon Ağı</strong> ise Meridyen’in tamamlanmış referans operasyon örnekleridir; günlük dosya listesi değildir.</p>
+    </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
+
+<!-- 6. FATURALAR -->
+<div class="page page-break" id="faturalar">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 6</div>
+  </div>
+  <div class="content">
     <div class="section-title"><span class="num">6</span> Faturalar</div>
 
     <p><strong>Faturalar</strong> ekranında şirketinize kesilen faturaları görüntülersiniz.</p>
@@ -629,7 +689,7 @@
     </table>
 
     <div class="info-box">
-      Faturalar sayfasında ödenen ve bekleyen tutar özetleri de görüntülenir.
+      Faturalar sayfasında ödenen ve bekleyen tutar özetleri de görüntülenir. Arama ve sütun görünümü tablo araç çubuğundan düzenlenir.
     </div>
   </div>
   <div class="doc-footer">
@@ -638,24 +698,57 @@
   </div>
 </div>
 
-<!-- 7-9. KAPSAM + KAZANIM + DESTEK -->
-<div class="page page-break">
+<!-- 7. OPERASYON AĞI -->
+<div class="page page-break" id="operasyon-agi">
   <div class="doc-header">
     <div class="logo-area">
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Bölüm 7–9</div>
+    <div class="doc-meta">Bölüm 7</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">7</span> Yetkiniz Dahilindeki Bilgiler</div>
+    <div class="section-title"><span class="num">7</span> Operasyon Ağı</div>
 
-    <p>Hesabınıza tanımlı sigorta şirketi veya şirketler kapsamında yalnızca size açılan kayıtları görürsünüz:</p>
+    <p><strong>Operasyon Ağı</strong> (Türkiye Operasyon Referans Ağı), Meridyen’in farklı sektörlerde tamamladığı seçili operasyon örneklerini harita ve özet kartlarla sunar.</p>
+
     <ul>
-      <li><strong>Hasar dosyaları</strong> — Yetkili şirketinize bağlı dosyalar</li>
-      <li><strong>Onay talepleri</strong> — Şirketinize iletilen bekleyen onaylar</li>
+      <li><strong>Özet Kartlar:</strong> Konut, endüstriyel, kamu / kritik altyapı, denizcilik gibi grupların sayıları.</li>
+      <li><strong>Filtreler:</strong> Kategori, il ve tarih aralığı ile örnekleri daraltabilirsiniz.</li>
+      <li><strong>Harita:</strong> Seçili örneklere konum işaretleriyle bakabilirsiniz.</li>
+      <li><strong>Öne Çıkanlar:</strong> Sağ panelde öne çıkan operasyon örnekleri listelenir.</li>
+    </ul>
+
+    <div class="highlight-box">
+      <div class="label">Önemli</div>
+      <p>Bu ekran referans / kabiliyet görünümüdür. Günlük dosya takibi için <strong>Dosya Takip</strong> veya <strong>Canlı İzle</strong> ekranına dönün. Kurum adları gizlilik kurallarına göre maskelenebilir.</p>
+    </div>
+  </div>
+  <div class="doc-footer">
+    <strong>Meridyen Asistans</strong>
+    Safran Birleşik Hizmetler Alt Kuruluşudur.
+  </div>
+</div>
+
+<!-- 8-10. KAPSAM + KAZANIM + DESTEK -->
+<div class="page page-break" id="kapsam">
+  <div class="doc-header">
+    <div class="logo-area">
+      <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
+      <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
+    </div>
+    <div class="doc-meta">Bölüm 8–10</div>
+  </div>
+  <div class="content">
+    <div class="section-title"><span class="num">8</span> Yetkiniz Dahilindeki Bilgiler</div>
+
+    <p>Hesabınıza tanımlı sigorta şirketi kapsamında yalnızca size açılan kayıtları görürsünüz:</p>
+    <ul>
+      <li><strong>Hasar Dosyaları</strong> — Yetkili şirketinize bağlı dosyalar</li>
+      <li><strong>Onay Talepleri</strong> — Şirketinize iletilen bekleyen onaylar</li>
       <li><strong>Faturalar</strong> — Şirketinize kesilen faturalar</li>
-      <li><strong>Harita görünümü</strong> — Aynı kapsamdaki dosyaların coğrafi dağılımı</li>
+      <li><strong>Canlı İzle</strong> — Aynı kapsamdaki dosyaların coğrafi dağılımı</li>
+      <li><strong>Operasyon Ağı</strong> — Referans operasyon örnekleri (günlük dosya listesi değil)</li>
     </ul>
 
     <div class="highlight-box">
@@ -663,18 +756,19 @@
       <p>Kapsam tanımınız eksik veya hatalıysa listeler boş görünebilir. Bu durumda Meridyen destek ekibiyle iletişime geçin.</p>
     </div>
 
-    <div class="section-title"><span class="num">8</span> Meridyen ile Neler Kazanırsınız?</div>
+    <div class="section-title" id="kazanim"><span class="num">9</span> Meridyen ile Neler Kazanırsınız?</div>
 
     <ul class="benefit-list">
-      <li>Türkiye haritasında dosya konumu ve durum sinyalleriyle anlık görünüm</li>
-      <li>Yetkili hasar dosyalarını liste ve durum takibi</li>
+      <li>Dosya Takip ana ekranında eksper / departman hatlarıyla günlük öncelik yönetimi</li>
+      <li>Dosyalar tablosunda arama, sütun ve filtre ile hızlı liste takibi</li>
+      <li>Canlı İzle ile dosya konumu ve durum görünümü</li>
       <li>Onay taleplerini platform üzerinden onaylama veya gerekçeli red</li>
       <li>Şirketinize kesilen faturaları vade ve tutar bilgisiyle izleme</li>
-      <li>Bekleyen onay sayısı ve son hareketleri ana ekranda görme</li>
+      <li>Operasyon Ağı ile Meridyen referans kabiliyet görünümü</li>
       <li>Masaüstü ve mobil tarayıcıdan güvenli erişim</li>
     </ul>
 
-    <div class="section-title"><span class="num">9</span> Destek ve İletişim</div>
+    <div class="section-title" id="destek"><span class="num">10</span> Destek ve İletişim</div>
 
     <p>Platform kullanımında sorun yaşarsanız aşağıdaki kanallardan bize ulaşabilirsiniz.</p>
 

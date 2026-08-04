@@ -2,7 +2,7 @@
  * Rol bazlı panel kullanım kılavuzları.
  * HTML kılavuz güncellendiğinde GUIDE_CONTENT_VERSION artırılmalıdır.
  */
-export const GUIDE_CONTENT_VERSION = '2026-07-11b';
+export const GUIDE_CONTENT_VERSION = '2026-08-04';
 
 export type PanelGuideEntry = {
   href: string;
@@ -34,7 +34,7 @@ const GUIDE_BY_ROLE: Record<string, PanelGuideEntry> = {
   insurance_company_user: {
     href: '/docs/02-sigorta-portal-kilavuzu.html',
     title: 'Dosya Takip Kılavuzu',
-    subtitle: 'Dosya durumu, akış ve faturalar — salt izleme',
+    subtitle: 'Dosya takip, onaylar, canlı izle ve faturalar',
   },
   broker_user: {
     href: '/docs/04-broker-portal-kilavuzu.html',

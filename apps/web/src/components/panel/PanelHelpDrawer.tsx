@@ -14,8 +14,20 @@ import {
 
 type GuideLink = { label: string; href: string };
 
-function buildGuideLinks(guideHref: string): GuideLink[] {
+function buildGuideLinks(guideHref: string, opts?: { isInsuranceCompanyUser?: boolean }): GuideLink[] {
   const base = guideHref.split('#')[0] || '/docs/01-personel-kullanim-kilavuzu.html';
+  if (opts?.isInsuranceCompanyUser || base.includes('02-sigorta-portal-kilavuzu')) {
+    return [
+      { label: 'Hızlı Başlangıç', href: `${base}#giris` },
+      { label: 'Dosya Takip', href: `${base}#dosya-takip` },
+      { label: 'Dosyalar', href: `${base}#dosyalar` },
+      { label: 'Bekleyen Onaylar', href: `${base}#bekleyen-onaylar` },
+      { label: 'Canlı İzle', href: `${base}#canli-izle` },
+      { label: 'Faturalar', href: `${base}#faturalar` },
+      { label: 'Operasyon Ağı', href: `${base}#operasyon-agi` },
+      { label: 'Tüm Kılavuz', href: base },
+    ];
+  }
   return [
     { label: 'Hızlı Başlangıç', href: guideHref },
     { label: 'Dashboard Kullanımı', href: `${base}#operasyon-merkezi` },
@@ -31,7 +43,9 @@ type PanelHelpDrawerProps = PanelGuideContext;
 export function PanelHelpDrawer(props: PanelHelpDrawerProps) {
   const { open, width, setOpen, setWidth } = usePanelHelpDrawer();
   const guide = resolvePanelUserGuide(props);
-  const links = buildGuideLinks(guide.href);
+  const links = buildGuideLinks(guide.href, {
+    isInsuranceCompanyUser: props.isInsuranceCompanyUser,
+  });
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   useEffect(() => {

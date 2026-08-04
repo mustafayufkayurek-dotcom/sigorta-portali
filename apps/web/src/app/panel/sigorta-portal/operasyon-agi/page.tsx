@@ -137,8 +137,8 @@ export default function SigortaOperasyonAgiPage() {
           seçili operasyon örnekleri. Günlük dosya izleme için{' '}
           <Link href="/panel/sigorta-portal" className="font-semibold text-brand-600 hover:underline">
             Dosya Takip
-          </Link>
-          ’ne dönün.
+          </Link>{' '}
+          ekranına dönün.
         </p>
 
         <OperationReferenceKpiCards stats={kpiStats} />
