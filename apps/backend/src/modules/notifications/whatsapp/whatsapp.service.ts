@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 
 @Injectable()
 export class WhatsAppService {
@@ -32,8 +33,11 @@ export class WhatsAppService {
       return;
     }
 
-    const phone = to.replace(/\D/g, '').replace(/^0/, '');
-    const internationalPhone = phone.startsWith('90') ? phone : `90${phone}`;
+    const internationalPhone = normalizeWhatsAppPhone(to);
+    if (!internationalPhone) {
+      this.logger.warn(`[WhatsApp] Geçersiz telefon, mesaj gönderilmedi: ${to}`);
+      return;
+    }
 
     const body = {
       messaging_product: 'whatsapp',
@@ -77,8 +81,6 @@ export class WhatsAppService {
    * Fallback: WhatsApp web URL'si oluştur
    */
   buildWhatsAppUrl(phone: string, message: string): string {
-    const recipient = phone.replace(/\D/g, '').replace(/^0/, '');
-    const internationalPhone = recipient.startsWith('90') ? recipient : `90${recipient}`;
-    return `https://wa.me/${internationalPhone}?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
   }
 }

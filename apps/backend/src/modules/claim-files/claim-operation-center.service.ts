@@ -4,6 +4,7 @@ import {
   MessageTemplateService,
   TEMPLATE_TYPES,
 } from '@/modules/notifications/sms/message-template.service';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 
 type Actor = {
   id?: string;
@@ -58,16 +59,7 @@ export class ClaimOperationCenterService {
   }
 
   private waUrl(phone: string | null | undefined, message: string): string | null {
-    const digits = phone?.replace(/\D/g, '') ?? '';
-    if (!digits) return null;
-    const normalized = digits.startsWith('0')
-      ? `90${digits.slice(1)}`
-      : digits.startsWith('90')
-        ? digits
-        : digits.length === 10
-          ? `90${digits}`
-          : digits;
-    return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message);
   }
 
   private async log(

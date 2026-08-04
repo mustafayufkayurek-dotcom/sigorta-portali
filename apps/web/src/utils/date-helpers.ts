@@ -65,20 +65,40 @@ export function activityColor(dateStr: string | null | undefined): string {
 }
 
 /**
+ * WhatsApp wa.me için rakam dizisi (ülke kodu dahil, + yok).
+ * TR: 0532… / 532… / +90 532… → 90532…
+ * Çift 90 (9090…) ve baştaki 00 temizlenir — aksi halde WhatsApp
+ * «numarası WhatsApp kullanmıyor» uyarısı verebilir.
+ */
+export function normalizeWhatsAppPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  }
+
+  while (digits.startsWith('9090') && digits.length >= 14) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.startsWith('0')) {
+    digits = `90${digits.slice(1)}`;
+  } else if (!digits.startsWith('90') && digits.length === 10) {
+    digits = `90${digits}`;
+  }
+
+  if (digits.length < 11) return null;
+  return digits;
+}
+
+/**
  * Telefon numarasını WhatsApp wa.me linkine dönüştürür.
- * Türkiye numaraları için 0 ile başlıyorsa 90 ekler.
- * Numara zaten + veya 90 ile başlıyorsa aynen kullanır.
  */
 export function toWhatsAppLink(phone: string | null | undefined, message?: string | null): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (!digits) return null;
-  let normalized = digits;
-  if (digits.startsWith('0') && digits.length === 11) {
-    normalized = `90${digits.slice(1)}`;
-  } else if (!digits.startsWith('90') && digits.length === 10) {
-    normalized = `90${digits}`;
-  }
+  const normalized = normalizeWhatsAppPhone(phone);
+  if (!normalized) return null;
   const base = `https://wa.me/${normalized}`;
   const text = message?.trim();
   if (!text) return base;

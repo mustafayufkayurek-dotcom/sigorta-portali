@@ -12,6 +12,7 @@ import {
   renderDigitalApprovalQrBlock,
 } from '@/common/utils/document-qr';
 import { buildAppPath } from '@/common/utils/app-url';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
@@ -426,10 +427,12 @@ export class FileDocumentsService {
     const kindLabel =
       doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
 
-    const message = encodeURIComponent(
-      `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`,
-    );
-    const waUrl = `https://wa.me/${dto.phone.replace(/\D/g, '')}?text=${message}`;
+    const message =
+      `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
+    const waUrl = buildWhatsAppMeUrl(dto.phone, message);
+    if (!waUrl) {
+      throw new BadRequestException('Geçerli bir WhatsApp telefon numarası giriniz');
+    }
 
     await this.prisma.fileDocument.update({
       where: { id },

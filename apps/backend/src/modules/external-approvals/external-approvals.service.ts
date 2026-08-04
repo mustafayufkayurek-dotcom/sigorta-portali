@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ReportPdfService } from '../repair-reports/pdf/report-pdf.service';
@@ -519,8 +520,7 @@ export class ExternalApprovalsService {
   private buildWhatsAppUrl(token: string, reportNo: string, phone?: string): string {
     const url = this.buildPublicUrl(token);
     const message = `${reportNo} numaralı hasar onarım raporunu onaylamanız bekleniyor: ${url}`;
-    const recipient = phone ? `90${phone.replace(/\D/g, '')}` : '';
-    return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
   }
 
   private async sendApprovalEmail(

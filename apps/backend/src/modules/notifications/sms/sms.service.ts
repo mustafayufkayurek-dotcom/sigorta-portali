@@ -4,6 +4,7 @@ import { ISmsProvider, SMS_PROVIDER } from './sms-provider.interface';
 import { ConfigService } from '@nestjs/config';
 import { SmsConfig } from '@/modules/system-settings/system-settings.service';
 import { resolveDbSmsProvider, resolveEnvSmsProvider } from './sms-provider.resolver';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 
 export type SmsNotificationType = 'appointment_sms' | 'appointment_whatsapp' | 'claim_assignment';
 
@@ -155,7 +156,6 @@ export class SmsService {
   }
 
   buildWhatsAppUrl(phone: string | undefined, message: string): string {
-    const recipient = phone ? `90${phone.replace(/\D/g, '')}` : '';
-    return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
   }
 }

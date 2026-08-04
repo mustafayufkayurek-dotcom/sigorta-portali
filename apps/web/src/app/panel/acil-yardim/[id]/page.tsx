@@ -38,6 +38,7 @@ import { RecommendedVendorsTabs } from '@/components/vendor-discovery/Recommende
 import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { toWhatsAppLink } from '@/utils/date-helpers';
 import {
   ACIL_STAGES,
   AcilLocalFlow,
@@ -474,11 +475,7 @@ function statusLabel(status: EmergencyStatus): string {
 }
 
 function openWhatsApp(phone: string | null | undefined, text: string) {
-  const digits = (phone || '').replace(/\D/g, '');
-  const withCountry = digits.startsWith('90') ? digits : digits ? `90${digits.replace(/^0/, '')}` : '';
-  const url = withCountry
-    ? `https://wa.me/${withCountry}?text=${encodeURIComponent(text)}`
-    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const url = toWhatsAppLink(phone, text) ?? `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 

@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, u
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu, formatHasarAdresi } from '@/utils/text-helpers';
-import { fmtDateTime, formatReportDuration } from '@/utils/date-helpers';
+import { fmtDateTime, formatReportDuration, toWhatsAppLink } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions, type DamageReasonOption } from '@/utils/damage-reason-options';
 import { buildRepairReportShareRecipients, type ClaimVendorSource } from '@/utils/repair-report-share-recipients';
 import dynamic from 'next/dynamic';
@@ -5854,7 +5854,8 @@ export default function RepairReportPage() {
                       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                     } else {
                       for (const digits of phones) {
-                        window.open(`https://wa.me/90${digits}?text=${encodeURIComponent(message)}`, '_blank');
+                        const wa = toWhatsAppLink(digits, message);
+                        if (wa) window.open(wa, '_blank');
                       }
                     }
                     setShowWhatsApp(false);
