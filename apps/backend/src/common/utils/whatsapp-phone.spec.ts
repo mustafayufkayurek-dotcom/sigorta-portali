@@ -33,6 +33,10 @@ describe('normalizeWhatsAppPhone', () => {
   it('fazla basamağı TR cep için kırpar', () => {
     expect(normalizeWhatsAppPhone('90532647011899')).toBe('905326470118');
   });
+
+  it('11 haneli 5xx yapıştırmasını 10 haneye indirir', () => {
+    expect(normalizeWhatsAppPhone('53264701189')).toBe('905326470118');
+  });
 });
 
 describe('buildWhatsAppMeUrl', () => {
@@ -40,5 +44,9 @@ describe('buildWhatsAppMeUrl', () => {
     expect(buildWhatsAppMeUrl('05326470118', 'Merhaba')).toBe(
       `https://api.whatsapp.com/send?phone=905326470118&text=${encodeURIComponent('Merhaba')}`,
     );
+  });
+
+  it('wa.me kullanmaz', () => {
+    expect(buildWhatsAppMeUrl('05326470118')).not.toContain('wa.me');
   });
 });

@@ -859,7 +859,7 @@ export class RepairReportsService {
     const url = `${baseUrl}/onay/${approval.token}`;
     return {
       url,
-      whatsappUrl: `https://wa.me/?text=${encodeURIComponent(`Hasar Onarım Raporu: ${url}`)}`,
+      whatsappUrl: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hasar Onarım Raporu: ${url}`)}`,
     };
   }
 

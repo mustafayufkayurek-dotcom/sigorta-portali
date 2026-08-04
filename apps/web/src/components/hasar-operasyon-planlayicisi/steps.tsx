@@ -29,7 +29,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
-import { toWhatsAppLink } from '@/utils/date-helpers';
+import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import type { StepId } from './types';
 import { usePlanner } from './planner-context';
@@ -79,6 +79,10 @@ function WhatsAppOpenButton({
       href={url}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={(e) => {
+        e.preventDefault();
+        openWhatsAppChat(phone, message);
+      }}
       className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white hover:bg-emerald-700 ${className}`}
     >
       <MessageCircle className="h-3.5 w-3.5" />

@@ -475,7 +475,7 @@ function statusLabel(status: EmergencyStatus): string {
 }
 
 function openWhatsApp(phone: string | null | undefined, text: string) {
-  const url = toWhatsAppLink(phone, text) ?? `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const url = toWhatsAppLink(phone, text) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 

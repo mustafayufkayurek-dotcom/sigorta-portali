@@ -1137,7 +1137,7 @@ function LoginPageInner() {
                 </svg>
                 <span>0533 633 07 13</span>
               </a>
-              <a className="nav-contact-item nav-contact-whatsapp" href="https://wa.me/905336330713" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp destek hattını aç">
+              <a className="nav-contact-item nav-contact-whatsapp" href="https://api.whatsapp.com/send?phone=905336330713" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp destek hattını aç">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20.5 11.7a8.5 8.5 0 01-12.6 7.4L4 20l.9-3.8a8.5 8.5 0 1115.6-4.5z"/>
                   <path d="M9.2 8.8c.2-.5.4-.5.7-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2.1.4 0 .5l-.4.5c-.1.1-.2.3-.1.5.3.7 1.1 1.7 2.2 2.2.2.1.3.1.5-.1l.6-.7c.1-.2.3-.2.5-.1l1.7.8c.2.1.4.2.4.4 0 .4-.2 1.2-.8 1.5-.5.3-1.7.3-3.3-.5-2.8-1.3-4.5-3.9-4.7-5.6-.1-.6.1-.9.4-1z"/>

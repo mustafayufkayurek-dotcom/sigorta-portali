@@ -65,9 +65,9 @@ export function activityColor(dateStr: string | null | undefined): string {
 }
 
 /**
- * WhatsApp wa.me / api.whatsapp.com için rakam dizisi (ülke kodu dahil, + yok).
+ * WhatsApp api.whatsapp.com / whatsapp:// için rakam dizisi (ülke kodu dahil, + yok).
  * TR: 0532… / 532… / +90 532… / +90 0532… → 90532…
- * Çift 90 (9090…) ve baştaki 00 temizlenir — aksi halde WhatsApp
+ * Çift 90, 00 öneki ve trunk-0 temizlenir — aksi halde WhatsApp
  * «numarası WhatsApp kullanmıyor» uyarısı verebilir.
  */
 export function normalizeWhatsAppPhone(phone: string | null | undefined): string | null {
@@ -88,23 +88,33 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
     digits = `90${digits.slice(3)}`;
   }
 
+  // 11 hane ve 5 ile başlıyorsa fazla basamak — ilk 10’u al
+  if (/^5\d{10}$/.test(digits)) {
+    digits = digits.slice(0, 10);
+  }
+
   if (digits.startsWith('0')) {
     digits = `90${digits.slice(1)}`;
   } else if (!digits.startsWith('90') && digits.length === 10) {
     digits = `90${digits}`;
   }
 
-  if (digits.startsWith('90') && digits.length > 12 && /^90[5]/.test(digits)) {
+  if (digits.startsWith('90') && digits.length > 12 && digits[2] === '5') {
     digits = digits.slice(0, 12);
   }
 
   if (digits.length < 11) return null;
+
+  if (digits.startsWith('905') && !/^905\d{9}$/.test(digits)) {
+    return null;
+  }
+
   return digits;
 }
 
 /**
- * Telefon numarasını WhatsApp gönderim linkine dönüştürür.
- * Desktop için api.whatsapp.com/send kullanılır.
+ * Telefon numarasını WhatsApp HTTPS gönderim linkine dönüştürür.
+ * Desktop için api.whatsapp.com/send kullanılır (wa.me değil).
  */
 export function toWhatsAppLink(phone: string | null | undefined, message?: string | null): string | null {
   const normalized = normalizeWhatsAppPhone(phone);
@@ -112,4 +122,44 @@ export function toWhatsAppLink(phone: string | null | undefined, message?: strin
   const text = message?.trim();
   if (!text) return `https://api.whatsapp.com/send?phone=${normalized}`;
   return `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`;
+}
+
+/**
+ * Masaüstünde önce WhatsApp uygulamasını (whatsapp://) dener;
+ * açılmazsa api.whatsapp.com HTTPS yedeğine geçer.
+ * Mobilde doğrudan HTTPS açılır.
+ */
+export function openWhatsAppChat(
+  phone: string | null | undefined,
+  message?: string | null,
+): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const normalized = normalizeWhatsAppPhone(phone);
+  const text = message?.trim() ?? '';
+  if (!normalized && !text) return false;
+
+  const webUrl = normalized
+    ? text
+      ? `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?phone=${normalized}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  if (!isMobile && normalized) {
+    const appUrl = text
+      ? `whatsapp://send?phone=${normalized}&text=${encodeURIComponent(text)}`
+      : `whatsapp://send?phone=${normalized}`;
+    const openedAt = Date.now();
+    window.location.href = appUrl;
+    window.setTimeout(() => {
+      if (document.visibilityState === 'visible' && Date.now() - openedAt < 2500) {
+        window.open(webUrl, '_blank', 'noopener,noreferrer');
+      }
+    }, 700);
+    return true;
+  }
+
+  window.open(webUrl, '_blank', 'noopener,noreferrer');
+  return true;
 }

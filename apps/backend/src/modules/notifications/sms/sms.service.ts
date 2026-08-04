@@ -156,6 +156,6 @@ export class SmsService {
   }
 
   buildWhatsAppUrl(phone: string | undefined, message: string): string {
-    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
 }

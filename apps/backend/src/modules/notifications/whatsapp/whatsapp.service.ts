@@ -81,6 +81,6 @@ export class WhatsAppService {
    * Fallback: WhatsApp web URL'si oluştur
    */
   buildWhatsAppUrl(phone: string, message: string): string {
-    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
 }

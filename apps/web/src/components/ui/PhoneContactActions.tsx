@@ -1,6 +1,6 @@
 'use client';
 
-import { toWhatsAppLink } from '@/utils/date-helpers';
+import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
 import { formatPhoneGrouped } from '@/utils/validators';
 
 export type PhoneContactActionsVariant = 'inline' | 'panel';
@@ -13,7 +13,7 @@ type PhoneContactActionsProps = {
   accent?: 'blue' | 'indigo' | 'emerald' | 'teal' | 'purple';
   /** inline varyantında metin boyutu */
   size?: 'xs' | 'sm';
-  /** WhatsApp mesaj gövdesi (wa.me?text=) */
+  /** WhatsApp mesaj gövdesi */
   whatsappMessage?: string | null;
 };
 
@@ -38,7 +38,15 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-function WhatsAppLinkButton({ href, size }: { href: string; size: 'sm' | 'md' }) {
+function WhatsAppLinkButton({
+  href,
+  size,
+  onOpen,
+}: {
+  href: string;
+  size: 'sm' | 'md';
+  onOpen: () => void;
+}) {
   if (size === 'md') {
     return (
       <a
@@ -47,6 +55,11 @@ function WhatsAppLinkButton({ href, size }: { href: string; size: 'sm' | 'md' })
         rel="noopener noreferrer"
         title="WhatsApp"
         aria-label="WhatsApp ile mesaj gönder"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onOpen();
+        }}
         className="w-7 h-7 bg-green-50 hover:bg-green-100 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
       >
         <WhatsAppIcon className="w-3.5 h-3.5 text-green-600" />
@@ -61,6 +74,11 @@ function WhatsAppLinkButton({ href, size }: { href: string; size: 'sm' | 'md' })
       rel="noopener noreferrer"
       title="WhatsApp"
       aria-label="WhatsApp ile mesaj gönder"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpen();
+      }}
       className="text-green-500 hover:text-green-600 transition-colors flex-shrink-0"
     >
       <WhatsAppIcon className="w-3.5 h-3.5" />
@@ -68,7 +86,7 @@ function WhatsAppLinkButton({ href, size }: { href: string; size: 'sm' | 'md' })
   );
 }
 
-/** Telefon arama (tel:) + WhatsApp (wa.me) — liste, panel ve kartlarda ortak kullanım */
+/** Telefon arama (tel:) + WhatsApp — liste, panel ve kartlarda ortak kullanım */
 export function PhoneContactActions({
   phone,
   variant = 'inline',
@@ -81,6 +99,9 @@ export function PhoneContactActions({
   if (!trimmed) return null;
 
   const waLink = toWhatsAppLink(trimmed, whatsappMessage);
+  const openWa = () => {
+    openWhatsAppChat(trimmed, whatsappMessage);
+  };
   const displayPhone = formatPhoneGrouped(trimmed);
 
   if (variant === 'panel') {
@@ -106,7 +127,7 @@ export function PhoneContactActions({
           </span>
           <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
         </a>
-        {waLink && <WhatsAppLinkButton href={waLink} size="md" />}
+        {waLink && <WhatsAppLinkButton href={waLink} size="md" onOpen={openWa} />}
       </div>
     );
   }
@@ -122,7 +143,7 @@ export function PhoneContactActions({
         <PhoneIcon className="w-3 h-3 flex-shrink-0" />
         <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
       </a>
-      {waLink && <WhatsAppLinkButton href={waLink} size="sm" />}
+      {waLink && <WhatsAppLinkButton href={waLink} size="sm" onOpen={openWa} />}
     </div>
   );
 }

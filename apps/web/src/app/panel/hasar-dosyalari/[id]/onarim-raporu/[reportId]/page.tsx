@@ -5851,7 +5851,7 @@ export default function RepairReportPage() {
                       ? vendorPhones
                       : [whatsAppPhone.replace(/\D/g, '')].filter(Boolean);
                     if (phones.length === 0) {
-                      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
                     } else {
                       for (const digits of phones) {
                         const wa = toWhatsAppLink(digits, message);

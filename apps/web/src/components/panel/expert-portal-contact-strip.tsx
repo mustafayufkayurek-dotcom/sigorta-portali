@@ -1,4 +1,4 @@
-export const EXPERT_WHATSAPP_SUPPORT_URL = 'https://wa.me/905336330713';
+export const EXPERT_WHATSAPP_SUPPORT_URL = 'https://api.whatsapp.com/send?phone=905336330713';
 export const EXPERT_WHATSAPP_SUPPORT_PHONE = '0533 633 07 13';
 export const EXPERT_CALL_CENTER_PHONE = '0850 885 25 55';
 export const EXPERT_CALL_CENTER_TEL = 'tel:+908508852555';

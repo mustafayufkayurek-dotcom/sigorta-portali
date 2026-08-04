@@ -1,7 +1,7 @@
 /**
  * WhatsApp deep-link için E.164 benzeri rakam dizisi (ülke kodu dahil, + yok).
  * TR: 0532… / 532… / +90 532… / +90 0532… → 90532…
- * Çift 90 (9090…) ve baştaki 00 temizlenir.
+ * Çift 90 (9090…), 00 öneki ve trunk-0 (+90 0532…) temizlenir.
  */
 export function normalizeWhatsAppPhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -22,18 +22,29 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
     digits = `90${digits.slice(3)}`;
   }
 
+  // 11 hane ve 5 ile başlıyorsa fazla basamak (yapıştırma) — ilk 10’u al
+  if (/^5\d{10}$/.test(digits)) {
+    digits = digits.slice(0, 10);
+  }
+
   if (digits.startsWith('0')) {
     digits = `90${digits.slice(1)}`;
   } else if (!digits.startsWith('90') && digits.length === 10) {
     digits = `90${digits}`;
   }
 
-  // TR cep: 90 + 10 hane = 12. Fazla basamak varsa (yapıştırma hatası) kırp.
-  if (digits.startsWith('90') && digits.length > 12 && /^90[5]/.test(digits)) {
+  // TR cep: 90 + 10 hane = 12. Fazla basamak varsa kırp.
+  if (digits.startsWith('90') && digits.length > 12 && digits[2] === '5') {
     digits = digits.slice(0, 12);
   }
 
   if (digits.length < 11) return null;
+
+  // TR cep numarası net formatta olmalı — aksi halde WhatsApp «kullanmıyor» der
+  if (digits.startsWith('905') && !/^905\d{9}$/.test(digits)) {
+    return null;
+  }
+
   return digits;
 }
 
@@ -53,4 +64,16 @@ export function buildWhatsAppMeUrl(
   }
   if (!text) return `https://api.whatsapp.com/send?phone=${normalized}`;
   return `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`;
+}
+
+/** Desktop uygulaması için protokol linki (HTTPS yedekle birlikte kullanılır). */
+export function buildWhatsAppAppUrl(
+  phone: string | null | undefined,
+  message?: string | null,
+): string | null {
+  const normalized = normalizeWhatsAppPhone(phone);
+  if (!normalized) return null;
+  const text = message?.trim();
+  if (!text) return `whatsapp://send?phone=${normalized}`;
+  return `whatsapp://send?phone=${normalized}&text=${encodeURIComponent(text)}`;
 }

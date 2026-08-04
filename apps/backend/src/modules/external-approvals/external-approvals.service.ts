@@ -520,7 +520,7 @@ export class ExternalApprovalsService {
   private buildWhatsAppUrl(token: string, reportNo: string, phone?: string): string {
     const url = this.buildPublicUrl(token);
     const message = `${reportNo} numaralı hasar onarım raporunu onaylamanız bekleniyor: ${url}`;
-    return buildWhatsAppMeUrl(phone, message) ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
+    return buildWhatsAppMeUrl(phone, message) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
 
   private async sendApprovalEmail(

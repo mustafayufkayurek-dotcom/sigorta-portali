@@ -19,7 +19,7 @@ import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
-import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
+import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 import {
   buildVendorNearbyWhere,
   buildInspectorFallbackWhere,
@@ -2589,8 +2589,8 @@ export class ClaimFilesService {
             const rawPhone = vendor.authorizedPhone ?? vendor.phone ?? '';
             const url =
               buildWhatsAppMeUrl(rawPhone, message)
-              ?? `https://wa.me/?text=${encodeURIComponent(message)}`;
-            const phone = rawPhone.replace(/\D/g, '') || null;
+              ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            const phone = normalizeWhatsAppPhone(rawPhone);
             const item = { vendorId: vendor.id, vendorName: vendor.name, phone, message, url };
             assignmentWhatsApps.push(item);
             if (!assignmentWhatsApp) assignmentWhatsApp = { phone: item.phone, message: item.message, url: item.url };

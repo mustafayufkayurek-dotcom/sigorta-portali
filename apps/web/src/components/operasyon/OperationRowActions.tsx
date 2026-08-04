@@ -116,7 +116,7 @@ export function OperationRowActions({
     e.stopPropagation();
   };
 
-  const waHref = `https://wa.me/?text=${encodeURIComponent(`Meridyen — Dosya: ${fileNo}`)}`;
+  const waHref = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Meridyen — Dosya: ${fileNo}`)}`;
 
   const handlePdf = async () => {
     setOpen(false);
