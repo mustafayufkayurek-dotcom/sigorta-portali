@@ -57,7 +57,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     description: 'Dosya, konu, durum ve evrak tanımları.',
     icon: BookOpenText,
     links: [
-      { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Tüm tanım sözlükleri: departman, ilişki türü, dosya konusu, evrak, iş grubu, mahal, tedarikçi hizmet kolu, müşteri tipi.' },
+      { title: 'Tanımlar Merkezi', href: '/panel/ayarlar/tanimlar', icon: BookOpenText, description: 'Tüm tanım sözlükleri: departman, ilişki türü, dosya konusu, evrak, iş grubu, mahal, tedarikçi hizmet kolu, müşteri tipi, personel izin türü.' },
       { title: 'Sigorta ve Asistans Firmaları', href: '/panel/ayarlar/sigorta-sirketleri', icon: Building2, description: 'Sigorta şirketi ve asistans firması tanımlarını iki sekmede yönetin.' },
       { title: 'Eksper–Sigorta İlişkileri', href: '/panel/ayarlar/eksper-sigorta-iliskileri', icon: GitBranch, description: 'Eksper firması ↔ sigorta şirketi dosya kapsam matrisi.' },
       { title: 'Durumlar', href: '/panel/ayarlar/durumlar', icon: GitBranch, description: 'Dosya durumları ve süreç sırası.' },

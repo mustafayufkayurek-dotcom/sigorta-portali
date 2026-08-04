@@ -1,8 +1,9 @@
-import { IsDateString, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import { HR_LEAVE_TYPE } from '../hr.constants';
+import { IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateLeaveRequestDto {
-  @IsIn(Object.values(HR_LEAVE_TYPE))
+  /** Ayarlar → Tanımlar → Personel üzerinden yapılandırılabilir izin türü kodu; geçerlilik servis katmanında doğrulanır. */
+  @IsString()
+  @MaxLength(60)
   leaveType!: string;
 
   @IsDateString()

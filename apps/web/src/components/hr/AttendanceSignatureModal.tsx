@@ -113,7 +113,7 @@ export function AttendanceSignatureModal({
             />
             <span>
               Puantaj kayıtlarını inceledim; ad-soyad yazarak dijital onay verdiğimi kabul ediyorum.
-              Bu onay 5070 kapsamında nitelikli e-imza değildir.
+              Bu onay 5070 sayılı Kanun kapsamında nitelikli e-imza değildir; zaman damgalı &quot;adi delil&quot; niteliğindedir.
             </span>
           </label>
         </div>

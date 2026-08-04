@@ -242,6 +242,38 @@ export class SystemSettingsController {
     return { success: true, data };
   }
 
+  @Get('hr-leave-types')
+  @RequirePermissions('settings.view', 'settings.manage', 'hr.view', 'hr.leave.request')
+  @ApiOperation({ summary: 'Personel izin türlerini getir' })
+  async getHrLeaveTypes() {
+    const data = await this.service.getHrLeaveTypes();
+    return { success: true, data };
+  }
+
+  @Put('hr-leave-types')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Personel izin türlerini güncelle' })
+  async setHrLeaveTypes(@Body() body: { values: Array<{ code: string; label: string; active?: boolean }> }) {
+    const data = await this.service.setHrLeaveTypes(body.values ?? []);
+    return { success: true, data };
+  }
+
+  @Get('hr-asset-categories')
+  @RequirePermissions('settings.view', 'settings.manage', 'hr.view', 'hr.supervise', 'hr.attendance.manage')
+  @ApiOperation({ summary: 'Personel zimmet kategorilerini getir' })
+  async getHrAssetCategories() {
+    const data = await this.service.getHrAssetCategories();
+    return { success: true, data };
+  }
+
+  @Put('hr-asset-categories')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Personel zimmet kategorilerini güncelle' })
+  async setHrAssetCategories(@Body() body: { values: Array<{ code: string; label: string; active?: boolean }> }) {
+    const data = await this.service.setHrAssetCategories(body.values ?? []);
+    return { success: true, data };
+  }
+
   @Get('service-types')
   @RequirePermissions('settings.view', 'customer.view', 'customer.create')
   @ApiOperation({ summary: 'Özel Müşteri hizmet türlerini getir' })

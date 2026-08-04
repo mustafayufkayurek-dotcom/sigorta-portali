@@ -3,14 +3,15 @@ import { isFieldStaff } from './field-staff.helper';
 
 export const CLAIM_FILE_ACCESS_EXPIRY_HOURS = 48;
 
-export type RequestUser = { id: string; roleCode: string };
+export type RequestUser = { id: string; roleCode: string; permissions?: string[] };
 
 export function normalizeRequestUser(user: any): RequestUser | undefined {
   if (!user) return undefined;
   const id = user.id ?? user.userId;
   const roleCode = user.roleCode ?? user.role?.code;
   if (!id || !roleCode) return undefined;
-  return { id: String(id), roleCode: String(roleCode) };
+  const permissions = Array.isArray(user.permissions) ? user.permissions.map(String) : undefined;
+  return { id: String(id), roleCode: String(roleCode), permissions };
 }
 
 export function isInsuranceCompanyUser(roleCode: string | undefined | null): boolean {

@@ -80,6 +80,29 @@ const DEFAULT_RELATIONSHIP_TYPES: RelationshipType[] = [
   { label: 'Diğer', active: true, usageAreas: ['musteri', 'eksper', 'tedarikci', 'dosya'] },
 ];
 
+export interface HrLeaveTypeOption {
+  code: string;
+  label: string;
+  active: boolean;
+}
+
+const DEFAULT_HR_LEAVE_TYPES: HrLeaveTypeOption[] = [
+  { code: 'annual', label: 'Yıllık İzin', active: true },
+  { code: 'sick', label: 'Hastalık İzni', active: true },
+  { code: 'unpaid', label: 'Ücretsiz İzin', active: true },
+  { code: 'other', label: 'Diğer', active: true },
+];
+
+/** Zimmet demirbaş kategorileri — Ayarlar → Tanımlar → Personel */
+export type HrAssetCategoryOption = HrLeaveTypeOption;
+
+const DEFAULT_HR_ASSET_CATEGORIES: HrAssetCategoryOption[] = [
+  { code: 'phone', label: 'Cep Telefonu', active: true },
+  { code: 'laptop', label: 'Dizüstü', active: true },
+  { code: 'tablet', label: 'Tablet', active: true },
+  { code: 'other', label: 'Diğer', active: true },
+];
+
 const DEFAULT_SERVICE_TYPES = [
   'Hasar Onarım',
   'Restorasyon',
@@ -709,6 +732,70 @@ export class SystemSettingsService {
   async setRelationshipTypes(values: RelationshipType[]): Promise<RelationshipType[]> {
     await this.set('relationship_types', values);
     return values;
+  }
+
+  async getHrLeaveTypes(): Promise<HrLeaveTypeOption[]> {
+    try {
+      const value = await this.get('hr_leave_types');
+      if (!value) return DEFAULT_HR_LEAVE_TYPES;
+      if (Array.isArray(value) && value.length > 0) {
+        return value as HrLeaveTypeOption[];
+      }
+      return DEFAULT_HR_LEAVE_TYPES;
+    } catch {
+      return DEFAULT_HR_LEAVE_TYPES;
+    }
+  }
+
+  async setHrLeaveTypes(
+    values: Array<{ code: string; label: string; active?: boolean }>,
+  ): Promise<HrLeaveTypeOption[]> {
+    const cleaned = (values ?? [])
+      .map((item) => ({
+        code: String(item.code ?? '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, '')
+          .slice(0, 40),
+        label: String(item.label ?? '').trim(),
+        active: item.active !== false,
+      }))
+      .filter((item) => item.code && item.label);
+    await this.set('hr_leave_types', cleaned);
+    return cleaned;
+  }
+
+  async getHrAssetCategories(): Promise<HrAssetCategoryOption[]> {
+    try {
+      const value = await this.get('hr_asset_categories');
+      if (!value) return DEFAULT_HR_ASSET_CATEGORIES;
+      if (Array.isArray(value) && value.length > 0) {
+        return value as HrAssetCategoryOption[];
+      }
+      return DEFAULT_HR_ASSET_CATEGORIES;
+    } catch {
+      return DEFAULT_HR_ASSET_CATEGORIES;
+    }
+  }
+
+  async setHrAssetCategories(
+    values: Array<{ code: string; label: string; active?: boolean }>,
+  ): Promise<HrAssetCategoryOption[]> {
+    const cleaned = (values ?? [])
+      .map((item) => ({
+        code: String(item.code ?? '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, '')
+          .slice(0, 40),
+        label: String(item.label ?? '').trim(),
+        active: item.active !== false,
+      }))
+      .filter((item) => item.code && item.label);
+    await this.set('hr_asset_categories', cleaned);
+    return cleaned;
   }
 
   async getServiceTypes(): Promise<string[]> {

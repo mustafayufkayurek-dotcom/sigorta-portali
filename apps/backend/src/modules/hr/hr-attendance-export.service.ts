@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import * as ExcelJS from 'exceljs';
 import { HrService } from './hr.service';
-import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import { CompanyInfo, SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { SendAttendanceAccountantDto } from './dto/send-attendance-accountant.dto';
-import { HR_ATTENDANCE_STATUS_LABELS } from './hr.constants';
+import { HR_ATTENDANCE_STATUS_LABELS, HR_LEAVE_TYPE_LABELS, HrLeaveType } from './hr.constants';
 
 type AuthUser = {
   id?: string;
@@ -16,8 +16,16 @@ type AuthUser = {
 
 const DISCLAIMER_LINES = [
   'Bu çıktı resmi puantaj defteri yerine geçmez.',
-  'Ad-soyad yazarak dijital onay kaydı tutulur; 5070 kapsamında nitelikli e-imza değildir.',
+  'Ad-soyad yazarak verilen dijital onay, 5070 sayılı Kanun kapsamında nitelikli elektronik imza değildir; zaman damgalı "adi delil" niteliğindedir.',
   'Mesai giriş/çıkış saatleri panel nabız referansıdır; resmi mesai kartı yerine geçmez.',
+  'Bordro hesaplama veya SGK bildirim kaynağı değildir.',
+  'Mali müşavir incelemesi için bilgilendirme amaçlıdır; nihai kayıt muhasebe/bordro sürecindedir.',
+];
+
+const BULK_DISCLAIMER_LINES = [
+  'Bu çıktı resmi puantaj defteri yerine geçmez.',
+  'Ad-soyad yazarak verilen dijital onay, 5070 sayılı Kanun kapsamında nitelikli elektronik imza değildir; zaman damgalı "adi delil" niteliğindedir.',
+  'İzin formları personel bazlı onaylı izin taleplerinin elektronik kaydıdır; ıslak imzalı evrak yerine geçmez.',
   'Bordro hesaplama veya SGK bildirim kaynağı değildir.',
   'Mali müşavir incelemesi için bilgilendirme amaçlıdır; nihai kayıt muhasebe/bordro sürecindedir.',
 ];
@@ -154,6 +162,301 @@ export class HrAttendanceExportService {
     }
   }
 
+  async exportBulkAttendance(
+    user: AuthUser,
+    year: number,
+    month: number,
+    res: Response,
+  ): Promise<void> {
+    const ctx = await this.buildBulkExportContext(user, year, month);
+    const filename = `puantaj-toplu-${year}-${String(month).padStart(2, '0')}`;
+    const buffer = await this.buildBulkXlsxBuffer(ctx);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}.xlsx"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  async sendBulkToAccountant(
+    user: AuthUser,
+    dto: SendAttendanceAccountantDto,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!this.isValidEmail(dto.to)) {
+      throw new BadRequestException('Geçerli bir e-posta adresi girin');
+    }
+
+    const smtpHost = this.config.get<string>('SMTP_HOST');
+    if (!smtpHost) {
+      return {
+        success: false,
+        message: 'SMTP yapılandırması eksik. SMTP_HOST, SMTP_PORT, SMTP_USER ve SMTP_PASS tanımlayın.',
+      };
+    }
+
+    const ctx = await this.buildBulkExportContext(user, dto.year, dto.month);
+    const buffer = await this.buildBulkXlsxBuffer(ctx);
+    const periodLabel = `${MONTH_LABELS[dto.month - 1]} ${dto.year}`;
+    const filename = `puantaj-toplu-${dto.year}-${String(dto.month).padStart(2, '0')}.xlsx`;
+
+    const summaryText = [
+      `Dönem: ${periodLabel}`,
+      `Personel Sayısı: ${ctx.employees.length}`,
+      `Onaylı İzin Sayısı: ${ctx.leaves.length}`,
+    ].join('\n');
+
+    const disclaimerHtml = BULK_DISCLAIMER_LINES.map((line) => `<li>${this.escapeHtml(line)}</li>`).join('');
+    const messageBlock = dto.message?.trim()
+      ? `<p><strong>Not:</strong> ${this.escapeHtml(dto.message.trim())}</p>`
+      : '';
+
+    const htmlBody = `
+      <p>Merhaba,</p>
+      <p>${periodLabel} dönemi için tüm personelin elektronik onaylı puantaj özeti ve onaylı izin formları ekte yer almaktadır.</p>
+      ${messageBlock}
+      <p><strong>Özet</strong></p>
+      <pre style="font-family: sans-serif; white-space: pre-wrap;">${this.escapeHtml(summaryText)}</pre>
+      <p><strong>Önemli Uyarılar</strong></p>
+      <ul>${disclaimerHtml}</ul>
+      <p style="font-size:12px;color:#64748b;">Bu e-posta Meridyen panelinden otomatik gönderilmiştir.</p>
+    `;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: this.config.get<number>('SMTP_PORT') ?? 587,
+        secure: false,
+        auth: {
+          user: this.config.get<string>('SMTP_USER'),
+          pass: this.config.get<string>('SMTP_PASS'),
+        },
+      });
+
+      const from = this.config.get<string>('SMTP_USER') ?? ctx.companyInfo.email ?? 'noreply@meridyen-tr.com';
+      await transporter.sendMail({
+        from,
+        to: dto.to,
+        subject: `Puantaj — Toplu — ${periodLabel}`,
+        html: htmlBody,
+        text: `${periodLabel} — toplu puantaj ve izin formu özeti ekte.\n\n${BULK_DISCLAIMER_LINES.join('\n')}`,
+        attachments: [
+          {
+            filename,
+            content: buffer,
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          },
+        ],
+      });
+
+      return { success: true, message: 'Toplu puantaj raporu mali müşavire gönderildi' };
+    } catch (err) {
+      this.logger.error('Toplu puantaj e-posta gönderme hatası', err);
+      return { success: false, message: 'E-posta gönderilemedi' };
+    }
+  }
+
+  /** Özet Ve Denetim — "Onaylamayanlara Mail Gönder" gerçek gönderim. */
+  async notifyMissingAttendance(
+    user: AuthUser,
+  ): Promise<{ success: boolean; message: string; sentCount: number }> {
+    const smtpHost = this.config.get<string>('SMTP_HOST');
+    if (!smtpHost) {
+      return {
+        success: false,
+        message: 'SMTP yapılandırması eksik. SMTP_HOST, SMTP_PORT, SMTP_USER ve SMTP_PASS tanımlayın.',
+        sentCount: 0,
+      };
+    }
+
+    const recipients = await this.hrService.getMissingAttendanceRecipients(user);
+    if (recipients.length === 0) {
+      return { success: true, message: 'Onaylamayan personel yok', sentCount: 0 };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: this.config.get<number>('SMTP_PORT') ?? 587,
+      secure: false,
+      auth: {
+        user: this.config.get<string>('SMTP_USER'),
+        pass: this.config.get<string>('SMTP_PASS'),
+      },
+    });
+
+    const from = this.config.get<string>('SMTP_USER') ?? 'noreply@meridyen-tr.com';
+    let sentCount = 0;
+
+    for (const recipient of recipients) {
+      if (!recipient.email || !this.isValidEmail(recipient.email)) continue;
+      try {
+        await transporter.sendMail({
+          from,
+          to: recipient.email,
+          subject: 'Puantaj Onayı Bekliyor',
+          html: `
+            <p>Merhaba ${this.escapeHtml(recipient.fullName)},</p>
+            <p>Bugünkü (${this.escapeHtml(recipient.missingDates[0] ?? '')}) puantaj onayınız henüz tamamlanmadı.
+            Lütfen Personel Özlük → Puantaj sayfasından onaylayın.</p>
+            <p style="font-size:12px;color:#64748b;">Bu e-posta Meridyen panelinden otomatik gönderilmiştir.</p>
+          `,
+          text: `${recipient.fullName} — bugünkü puantaj onayınız bekliyor. Personel Özlük → Puantaj sayfasından onaylayın.`,
+        });
+        sentCount += 1;
+      } catch (err) {
+        this.logger.warn(`Puantaj hatırlatma e-postası gönderilemedi (${recipient.email}): ${err}`);
+      }
+    }
+
+    return {
+      success: true,
+      message: `${sentCount} personele hatırlatma maili gönderildi`,
+      sentCount,
+    };
+  }
+
+  private async buildBulkExportContext(user: AuthUser, year: number, month: number) {
+    const [profiles, leaves, companyInfo] = await Promise.all([
+      this.hrService.listActiveEmployeeProfilesForPeriod(user),
+      this.hrService.listApprovedLeavesForPeriod(user, year, month),
+      this.systemSettings.getCompanyInfo(),
+    ]);
+
+    const employees = [];
+    for (const profile of profiles) {
+      const attendance = await this.hrService.getAttendanceForEmployee(user, profile.id, year, month);
+      const pastDays = attendance.days.filter((d) => !d.isFuture);
+      employees.push({
+        profileId: profile.id,
+        name: `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim(),
+        personnelNo: profile.personnelNo ?? '—',
+        department: profile.department?.name ?? '—',
+        days: pastDays,
+        summary: attendance.summary,
+        periodLock: attendance.periodLock,
+      });
+    }
+
+    const leaveTypes = await this.systemSettings.getHrLeaveTypes();
+    const leaveTypeLabels = new Map(leaveTypes.map((t) => [t.code, t.label]));
+
+    return {
+      employees,
+      leaves,
+      companyInfo,
+      leaveTypeLabels,
+      generatedAt: new Date(),
+      periodLabel: `${MONTH_LABELS[month - 1]} ${year}`,
+    };
+  }
+
+  private async buildBulkXlsxBuffer(
+    ctx: Awaited<ReturnType<typeof this.buildBulkExportContext>>,
+  ): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+
+    const summarySheet = workbook.addWorksheet('Özet');
+    summarySheet.addRow(['Toplu Puantaj Raporu — Bilgilendirme Amaçlı']);
+    for (const line of BULK_DISCLAIMER_LINES) {
+      summarySheet.addRow([line]);
+    }
+    summarySheet.addRow([]);
+    const employer = this.resolveEmployerIdentity(ctx.companyInfo);
+    summarySheet.addRow(['İşyeri', employer.name]);
+    summarySheet.addRow(['Adres', employer.address]);
+    summarySheet.addRow(['Vergi No', employer.taxNumber]);
+    summarySheet.addRow(['Ticaret Sicil No', employer.tradeRegistryNo]);
+    summarySheet.addRow(['Dönem', ctx.periodLabel]);
+    summarySheet.addRow(['Oluşturulma', this.formatDateTimeTr(ctx.generatedAt)]);
+    summarySheet.addRow(['Personel Sayısı', ctx.employees.length]);
+    summarySheet.addRow([]);
+    summarySheet.addRow([
+      'Personel', 'Departman', 'Personel No', 'Çalışılan Gün', 'İzinli Gün', 'Tatil Günü', 'Devamsız Gün',
+      'Onaylı Gün', 'Bekleyen Gün', 'Personel Aylık Onay', 'Yönetici Ay Kilidi',
+    ]);
+    const summaryHeader = summarySheet.lastRow;
+    if (summaryHeader) summaryHeader.font = { bold: true };
+    for (const emp of ctx.employees) {
+      const dayCounts = this.summarizeDayTypes(emp.days);
+      summarySheet.addRow([
+        emp.name,
+        emp.department,
+        emp.personnelNo,
+        dayCounts.present + dayCounts.half_day,
+        dayCounts.leave,
+        dayCounts.holiday + dayCounts.weekly_rest,
+        dayCounts.absent,
+        emp.summary.confirmedDays,
+        emp.summary.pendingConfirmationDays,
+        emp.periodLock?.employeeConfirmedAt ? this.formatDateTimeTr(new Date(emp.periodLock.employeeConfirmedAt)) : '—',
+        emp.periodLock?.lockedAt ? this.formatDateTimeTr(new Date(emp.periodLock.lockedAt)) : '—',
+      ]);
+    }
+    summarySheet.columns.forEach((col) => { col.width = 18; });
+
+    const detailSheet = workbook.addWorksheet('Puantaj Detay');
+    detailSheet.addRow(['Personel', 'Tarih', 'Gün', 'Durum', 'Mesai Giriş', 'Mesai Bitiş', 'Kayıtlı Süre', 'Kaynak', 'Personel Onayı']);
+    const detailHeader = detailSheet.lastRow;
+    if (detailHeader) detailHeader.font = { bold: true };
+    for (const emp of ctx.employees) {
+      for (const day of emp.days) {
+        const status =
+          day.statusLabel
+          ?? (day.attendanceStatus
+            ? HR_ATTENDANCE_STATUS_LABELS[day.attendanceStatus as keyof typeof HR_ATTENDANCE_STATUS_LABELS]
+              ?? day.attendanceStatus
+            : 'Kayıt Yok');
+        detailSheet.addRow([
+          emp.name,
+          this.formatDateTr(day.date),
+          WEEKDAY_LABELS[day.weekday] ?? '',
+          status,
+          this.formatTimeTr(day.clockInAt),
+          this.formatTimeTr(day.clockOutAt),
+          this.formatMinutes(day.minutesWorked),
+          day.source ? (SOURCE_LABELS[day.source] ?? day.source) : '—',
+          day.employeeConfirmedAt ? 'Onaylı' : '—',
+        ]);
+      }
+    }
+    detailSheet.columns.forEach((col) => { col.width = 18; });
+
+    const leaveSheet = workbook.addWorksheet('İzin Formları');
+    leaveSheet.addRow(['Personel', 'İzin Türü', 'Başlangıç', 'Bitiş', 'Gün Sayısı', 'Açıklama', 'Onaylayan', 'Onay Tarihi']);
+    const leaveHeader = leaveSheet.lastRow;
+    if (leaveHeader) leaveHeader.font = { bold: true };
+    if (ctx.leaves.length === 0) {
+      leaveSheet.addRow(['Bu dönemde onaylı izin formu bulunmuyor.']);
+    }
+    for (const leave of ctx.leaves) {
+      const empName = `${leave.employeeProfile.user.firstName ?? ''} ${leave.employeeProfile.user.lastName ?? ''}`.trim();
+      const approverName = leave.approvedBy
+        ? `${leave.approvedBy.firstName ?? ''} ${leave.approvedBy.lastName ?? ''}`.trim()
+        : '—';
+      leaveSheet.addRow([
+        empName,
+        ctx.leaveTypeLabels.get(leave.leaveType) ?? HR_LEAVE_TYPE_LABELS[leave.leaveType as HrLeaveType] ?? leave.leaveType,
+        this.formatDateTr(this.dateToKey(leave.startDate)),
+        this.formatDateTr(this.dateToKey(leave.endDate)),
+        leave.dayCount ?? '—',
+        leave.reason ?? '—',
+        approverName,
+        leave.approvedAt ? this.formatDateTimeTr(new Date(leave.approvedAt)) : '—',
+      ]);
+    }
+    leaveSheet.columns.forEach((col) => { col.width = 20; });
+
+    return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+  }
+
+  private dateToKey(value: Date): string {
+    return value.toISOString().slice(0, 10);
+  }
+
   private async buildExportContext(user: AuthUser, year: number, month: number) {
     const [attendance, summary, companyInfo] = await Promise.all([
       this.hrService.listAttendance(user, year, month),
@@ -187,6 +490,13 @@ export class HrAttendanceExportService {
     for (const line of DISCLAIMER_LINES) {
       sheet.addRow([line]);
     }
+    sheet.addRow([]);
+
+    const employer = this.resolveEmployerIdentity(ctx.companyInfo);
+    sheet.addRow(['İşyeri', employer.name]);
+    sheet.addRow(['Adres', employer.address]);
+    sheet.addRow(['Vergi No', employer.taxNumber]);
+    sheet.addRow(['Ticaret Sicil No', employer.tradeRegistryNo]);
     sheet.addRow([]);
 
     sheet.addRow(['Personel', ctx.employeeName]);
@@ -253,6 +563,18 @@ export class HrAttendanceExportService {
       `Bekleyen: ${ctx.attendance.summary.pendingConfirmationDays}`,
     ]);
 
+    const dayCounts = this.summarizeDayTypes(pastDays);
+    sheet.addRow([]);
+    sheet.addRow(['Gün Tipi Dökümü']);
+    sheet.addRow(['Çalışılan Gün', dayCounts.present]);
+    sheet.addRow(['Yarım Gün', dayCounts.half_day]);
+    sheet.addRow(['İzinli Gün', dayCounts.leave]);
+    sheet.addRow(['Resmi Tatil / Hafta Tatili', dayCounts.holiday + dayCounts.weekly_rest]);
+    sheet.addRow(['Devamsız Gün', dayCounts.absent]);
+    if (dayCounts.none > 0) {
+      sheet.addRow(['Kayıtsız Gün', dayCounts.none]);
+    }
+
     sheet.columns.forEach((col) => {
       col.width = 18;
     });
@@ -261,9 +583,11 @@ export class HrAttendanceExportService {
   }
 
   private buildPrintHtml(ctx: Awaited<ReturnType<typeof this.buildExportContext>>): string {
-    const companyName = ctx.companyInfo.name?.trim() || 'Meridyen';
+    const employer = this.resolveEmployerIdentity(ctx.companyInfo);
+    const companyName = employer.name?.trim() || 'Meridyen';
     const pastDays = ctx.attendance.days.filter((d) => !d.isFuture);
     const lock = ctx.attendance.periodLock;
+    const dayCounts = this.summarizeDayTypes(pastDays);
 
     const disclaimerItems = DISCLAIMER_LINES.map((line) => `<li>${this.escapeHtml(line)}</li>`).join('');
     const rows = pastDays.map((day) => {
@@ -334,12 +658,14 @@ export class HrAttendanceExportService {
   <div class="page">
     <button type="button" class="print-btn no-print" onclick="window.print()">Yazdır</button>
     <h1>Puantaj — ${this.escapeHtml(ctx.periodLabel)}</h1>
-    <div class="meta">${this.escapeHtml(companyName)} · Oluşturulma: ${this.escapeHtml(this.formatDateTimeTr(ctx.generatedAt))}</div>
+    <div class="meta">${this.escapeHtml(companyName)} · Vergi No: ${this.escapeHtml(employer.taxNumber)} · Oluşturulma: ${this.escapeHtml(this.formatDateTimeTr(ctx.generatedAt))}</div>
     <div class="disclaimer">
       <strong>Önemli Uyarılar</strong>
       <ul>${disclaimerItems}</ul>
     </div>
     <div class="info-grid">
+      <div><strong>İşyeri Adresi:</strong> ${this.escapeHtml(employer.address)}</div>
+      <div><strong>Ticaret Sicil No:</strong> ${this.escapeHtml(employer.tradeRegistryNo)}</div>
       <div><strong>Personel:</strong> ${this.escapeHtml(ctx.employeeName)}</div>
       <div><strong>E-posta:</strong> ${this.escapeHtml(ctx.employeeEmail)}</div>
       <div><strong>Personel No:</strong> ${this.escapeHtml(String(ctx.personnelNo))}</div>
@@ -360,9 +686,57 @@ export class HrAttendanceExportService {
       Onaylı Gün ${ctx.attendance.summary.confirmedDays} ·
       Bekleyen Onay ${ctx.attendance.summary.pendingConfirmationDays}
     </div>
+    <div class="summary">
+      <strong>Gün Tipi Dökümü:</strong>
+      Çalışılan ${dayCounts.present + dayCounts.half_day} ·
+      İzinli ${dayCounts.leave} ·
+      Resmi Tatil/Hafta Tatili ${dayCounts.holiday + dayCounts.weekly_rest} ·
+      Devamsız ${dayCounts.absent}
+    </div>
   </div>
 </body>
 </html>`;
+  }
+
+  /** İş Kanununa İlişkin Çalışma Süreleri Yönetmeliği m.9 — puantaj kayıtlarında işyeri kimliği bulunmalıdır. */
+  private resolveEmployerIdentity(companyInfo: CompanyInfo) {
+    const usePayroll = Boolean(companyInfo.payrollEmployerEnabled);
+    const name = (usePayroll && companyInfo.payrollEmployerName) || companyInfo.name || '—';
+    const address = (usePayroll && companyInfo.payrollEmployerAddress) || companyInfo.address || '—';
+    const taxNumber = (usePayroll && companyInfo.payrollEmployerTaxNumber) || companyInfo.taxNumber || '—';
+    const tradeRegistryNo =
+      (usePayroll && companyInfo.payrollEmployerTradeRegistryNo) || companyInfo.tradeRegistryNo || '—';
+    return { name, address, taxNumber, tradeRegistryNo };
+  }
+
+  /** Puantaj cetveli standardı — aylık gün tipi dökümü (çalışılan/izinli/raporlu/tatil/devamsız). */
+  private summarizeDayTypes(days: Array<{ attendanceStatus?: string | null }>) {
+    const counts = { present: 0, half_day: 0, leave: 0, holiday: 0, weekly_rest: 0, absent: 0, none: 0 };
+    for (const day of days) {
+      switch (day.attendanceStatus) {
+        case 'present':
+          counts.present += 1;
+          break;
+        case 'half_day':
+          counts.half_day += 1;
+          break;
+        case 'leave':
+          counts.leave += 1;
+          break;
+        case 'holiday':
+          counts.holiday += 1;
+          break;
+        case 'weekly_rest':
+          counts.weekly_rest += 1;
+          break;
+        case 'absent':
+          counts.absent += 1;
+          break;
+        default:
+          counts.none += 1;
+      }
+    }
+    return counts;
   }
 
   private formatMinutes(minutes: number | null | undefined): string {

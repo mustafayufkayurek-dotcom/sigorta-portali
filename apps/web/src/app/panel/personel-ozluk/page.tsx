@@ -12,14 +12,22 @@ import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-inp
 import { apiClient } from '@/lib/api-client';
 import { AttendanceCalendar } from '@/components/hr/AttendanceCalendar';
 import { AttendanceAccountantPanel } from '@/components/hr/AttendanceAccountantPanel';
+import { AttendanceBulkAccountantPanel } from '@/components/hr/AttendanceBulkAccountantPanel';
 import { AttendanceMonthCloseBanner } from '@/components/hr/AttendanceMonthCloseBanner';
 import { AttendanceSignatureModal } from '@/components/hr/AttendanceSignatureModal';
+import { AttendanceDayEndBanner } from '@/components/hr/AttendanceDayEndBanner';
+import { AdminAttendanceSupervisionPanel } from '@/components/hr/AdminAttendanceSupervisionPanel';
 import { PuantajProcessGuide } from '@/components/hr/PuantajProcessGuide';
+import { HrPersonnelDocumentsPanel } from '@/components/hr/HrPersonnelDocumentsPanel';
+import { HrAssignedAssetsPanel } from '@/components/hr/HrAssignedAssetsPanel';
+import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
+import { Paperclip } from 'lucide-react';
 
-type TabKey = 'attendance' | 'leaves' | 'approval' | 'summary';
+type TabKey = 'attendance' | 'leaves' | 'summary' | 'documents' | 'assets';
 
 type HrSummary = {
   profile: {
+    id?: string;
     user: { firstName: string; lastName: string; email: string };
     department?: { name: string } | null;
     manager?: { firstName: string; lastName: string } | null;
@@ -41,6 +49,13 @@ type HrSummary = {
     pendingApprovalQueue: number;
   };
   canApprove: boolean;
+  canSupervise?: boolean;
+  dayEndWarning?: {
+    pending: boolean;
+    workDateLabel: string;
+    cutoffLabel: string;
+    message: string | null;
+  };
 };
 
 type AttendanceDay = {
@@ -61,10 +76,19 @@ type AttendanceDay = {
   isAutoMarked: boolean;
 };
 
+type EmployeeListItem = {
+  id: string;
+  userId: string;
+  personnelNo?: string | null;
+  user: { firstName: string; lastName: string; email: string };
+  department?: { name: string } | null;
+};
+
 type AttendanceResponse = {
   year: number;
   month: number;
   days: AttendanceDay[];
+  employee?: { id: string; userId: string; name: string; department: string | null };
   periodLock?: {
     employeeConfirmedAt: string | null;
     employeeSignature: string | null;
@@ -97,14 +121,20 @@ type LeaveRequest = {
     user: { firstName: string; lastName: string };
     department?: { name: string } | null;
   };
+  department?: string | null;
+  decidedByName?: string | null;
+  decidedAt?: string | null;
 };
 
-const LEAVE_TYPE_OPTIONS = [
+/** Ayarlar → Tanımlar → Personel'den yönetilen izin türü listesi alınamazsa kullanılan varsayılan. */
+const DEFAULT_LEAVE_TYPE_OPTIONS = [
   { value: 'annual', label: 'Yıllık İzin' },
   { value: 'sick', label: 'Hastalık İzni' },
   { value: 'unpaid', label: 'Ücretsiz İzin' },
   { value: 'other', label: 'Diğer' },
 ];
+
+type HrLeaveTypeOption = { code: string; label: string; active: boolean };
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Taslak',
@@ -134,6 +164,11 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  return `${formatDate(value)} · ${formatClockTime(value)}`;
+}
+
 function formatClockTime(value?: string | null) {
   if (!value) return '—';
   const d = new Date(value);
@@ -160,13 +195,23 @@ export default function PersonelOzlukPage() {
   const searchParams = useSearchParams();
   const roleCode = usePanelRoleCode();
   const canApproveByRole = roleCode === 'admin' || roleCode === 'manager';
+  const canSuperviseByRole =
+    roleCode === 'admin' ||
+    roleCode === 'manager' ||
+    roleCode === 'finance' ||
+    roleCode === 'finans' ||
+    roleCode === 'accountant';
+  const designPreview = searchParams.get('tasarim') === '1';
   const now = new Date();
   const [activeTab, setActiveTab] = useState<TabKey>('summary');
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [confirmingDate, setConfirmingDate] = useState<string | null>(null);
   const [monthConfirmLoading, setMonthConfirmLoading] = useState(false);
+  const [bulkConfirmLoading, setBulkConfirmLoading] = useState(false);
   const [signatureModal, setSignatureModal] = useState<'month' | 'lock' | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
   const [leaveForm, setLeaveForm] = useState({
     leaveType: 'annual',
     startDate: '',
@@ -176,7 +221,15 @@ export default function PersonelOzlukPage() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab === 'attendance' || tab === 'leaves' || tab === 'approval' || tab === 'summary') {
+    if (tab === 'supervision') {
+      setActiveTab('summary');
+    } else if (
+      tab === 'attendance' ||
+      tab === 'leaves' ||
+      tab === 'summary' ||
+      tab === 'documents' ||
+      tab === 'assets'
+    ) {
       setActiveTab(tab);
     }
     const y = Number(searchParams.get('year'));
@@ -191,15 +244,36 @@ export default function PersonelOzlukPage() {
   );
   const summary = summaryRaw as HrSummary | undefined;
 
+  const canSupervise =
+    designPreview ||
+    Boolean(summary?.canSupervise) ||
+    canSuperviseByRole ||
+    canApproveByRole;
+
+  const { data: employeesRaw } = useApiQuery<EmployeeListItem[]>(
+    ['hr-employees-list'],
+    'hr/employees',
+    {
+      enabled:
+        canSupervise &&
+        (activeTab === 'attendance' || activeTab === 'assets' || activeTab === 'documents' || activeTab === 'summary'),
+    },
+  );
+  const employeeList = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const isViewingOther = canSupervise && Boolean(selectedEmployeeId);
+
   const {
     data: attendanceRaw,
     isLoading: attendanceLoading,
     isError: attendanceError,
     error: attendanceErr,
   } = useApiQuery<AttendanceResponse>(
-    ['hr-attendance', year, month],
+    ['hr-attendance', year, month, selectedEmployeeId],
     'hr/attendance',
-    { params: { year, month }, enabled: activeTab === 'attendance' },
+    {
+      params: { year, month, employeeProfileId: selectedEmployeeId || undefined },
+      enabled: activeTab === 'attendance',
+    },
   );
   const attendance = attendanceRaw as AttendanceResponse | undefined;
 
@@ -210,6 +284,18 @@ export default function PersonelOzlukPage() {
   );
   const leaves = Array.isArray(leavesRaw) ? leavesRaw : [];
 
+  const { data: leaveTypesRaw } = useApiQuery<HrLeaveTypeOption[]>(
+    ['hr-leave-types'],
+    'system-settings/hr-leave-types',
+  );
+  const leaveTypeOptions = useMemo(() => {
+    const active = (Array.isArray(leaveTypesRaw) ? leaveTypesRaw : []).filter((t) => t.active !== false);
+    if (active.length === 0) return DEFAULT_LEAVE_TYPE_OPTIONS;
+    return active.map((t) => ({ value: t.code, label: t.label }));
+  }, [leaveTypesRaw]);
+
+  const canApproveLeaves = Boolean(summary?.canApprove) || canApproveByRole;
+
   const {
     data: pendingRaw,
     isLoading: pendingLoading,
@@ -218,9 +304,20 @@ export default function PersonelOzlukPage() {
   } = useApiQuery<LeaveRequest[]>(
     ['hr-pending-approval'],
     'hr/leave-requests/pending-approval',
-    { enabled: activeTab === 'approval' && Boolean(summary?.canApprove) },
+    { enabled: activeTab === 'leaves' && canApproveLeaves },
   );
   const pending = Array.isArray(pendingRaw) ? pendingRaw : [];
+
+  const {
+    data: allLeavesRaw,
+    isLoading: allLeavesLoading,
+    isError: allLeavesError,
+  } = useApiQuery<LeaveRequest[]>(
+    ['hr-leaves-all'],
+    'hr/leave-requests/all',
+    { enabled: activeTab === 'leaves' && canApproveLeaves },
+  );
+  const allLeaves = Array.isArray(allLeavesRaw) ? allLeavesRaw : [];
 
   const createLeave = useApiMutation<LeaveRequest, typeof leaveForm & { submit?: boolean }>(
     'hr/leave-requests',
@@ -230,6 +327,7 @@ export default function PersonelOzlukPage() {
         showToast('success', 'İzin Talebi Kaydedildi');
         setLeaveForm({ leaveType: 'annual', startDate: '', endDate: '', reason: '' });
         queryClient.invalidateQueries({ queryKey: ['hr-leaves'] });
+        queryClient.invalidateQueries({ queryKey: ['hr-leaves-all'] });
         queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
         queryClient.invalidateQueries({ queryKey: ['hr-pending-approval'] });
       },
@@ -240,20 +338,22 @@ export default function PersonelOzlukPage() {
   const canManagePuantaj = summary?.canApprove || canApproveByRole;
 
   const tabs = useMemo(() => {
+    const leavesBadge =
+      (summary?.stats.pendingLeaveRequests || 0) +
+      (canApproveLeaves ? summary?.stats.pendingApprovalQueue || 0 : 0);
     const items: { key: TabKey; label: string; badge?: number }[] = [
-      { key: 'summary', label: 'Özet' },
+      {
+        key: 'summary',
+        label: canSupervise ? 'Özet Ve Denetim' : 'Özet',
+        badge: canSupervise && designPreview ? 4 : undefined,
+      },
       { key: 'attendance', label: 'Puantaj' },
-      { key: 'leaves', label: 'İzinlerim', badge: summary?.stats.pendingLeaveRequests || undefined },
+      { key: 'leaves', label: 'İzinlerim', badge: leavesBadge || undefined },
+      { key: 'documents', label: 'Özlük Evrakları' },
+      { key: 'assets', label: 'Zimmet' },
     ];
-    if (summary?.canApprove || canApproveByRole) {
-      items.push({
-        key: 'approval',
-        label: 'İzin Onay',
-        badge: summary?.stats.pendingApprovalQueue || undefined,
-      });
-    }
     return items;
-  }, [summary, canApproveByRole]);
+  }, [summary, canApproveLeaves, canSupervise, designPreview]);
 
   const handleCreateLeave = () => {
     if (!isCompleteTrDateValue(leaveForm.startDate) || !isCompleteTrDateValue(leaveForm.endDate)) {
@@ -290,6 +390,30 @@ export default function PersonelOzlukPage() {
       showToast('error', e instanceof Error ? e.message : 'Onay Başarısız');
     } finally {
       setConfirmingDate(null);
+    }
+  };
+
+  const handleConfirmPendingDays = async () => {
+    if (attendance?.periodLock?.isLocked) {
+      showToast('warning', 'Bu Ay Kilitli');
+      return;
+    }
+    setBulkConfirmLoading(true);
+    try {
+      const result = await apiClient.post<{ confirmedCount: number }>('hr/attendance/confirm-pending', {
+        year,
+        month,
+      });
+      showToast(
+        'success',
+        result.confirmedCount > 0 ? `${result.confirmedCount} Gün Onaylandı` : 'Onaylanacak Bekleyen Gün Yok',
+      );
+      queryClient.invalidateQueries({ queryKey: ['hr-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Toplu Onay Başarısız');
+    } finally {
+      setBulkConfirmLoading(false);
     }
   };
 
@@ -330,6 +454,7 @@ export default function PersonelOzlukPage() {
       await apiClient.patch(`hr/leave-requests/${id}/approve`);
       showToast('success', 'İzin Onaylandı');
       queryClient.invalidateQueries({ queryKey: ['hr-pending-approval'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-leaves-all'] });
       queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
     } catch {
       showToast('error', 'Onay Başarısız');
@@ -341,6 +466,7 @@ export default function PersonelOzlukPage() {
       await apiClient.patch(`hr/leave-requests/${id}/reject`, { rejectionReason: 'Yönetici tarafından reddedildi' });
       showToast('success', 'İzin Reddedildi');
       queryClient.invalidateQueries({ queryKey: ['hr-pending-approval'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-leaves-all'] });
       queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
     } catch {
       showToast('error', 'Reddetme Başarısız');
@@ -364,14 +490,32 @@ export default function PersonelOzlukPage() {
           </div>
           <div>
             <h2 className="page-title">Personel Özlük</h2>
-            <p className="page-subtitle">Puantaj, İzin Talebi Ve Onay Takibi</p>
+            <p className="page-subtitle">
+              {designPreview
+                ? 'Tasarım Önizleme — Admin Denetim Ve Gün Sonu Puantaj Uyarısı'
+                : 'Puantaj, İzin Talebi Ve Onay Takibi'}
+            </p>
           </div>
         </div>
       </div>
 
+      {designPreview && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-content-secondary">
+          Bu ekran <span className="font-semibold text-content-primary">lokal tasarım önizlemesidir</span>.
+          Veriler örnek; API ve bildirimler henüz bağlanmadı. Onaylarsanız bir sonraki adımda gerçek veriye geçeriz.
+        </div>
+      )}
+
+      <AttendanceDayEndBanner
+        preview={designPreview}
+        message={designPreview ? undefined : summary?.dayEndWarning?.message ?? undefined}
+        workDateLabel={designPreview ? undefined : summary?.dayEndWarning?.workDateLabel}
+        cutoffLabel={designPreview ? undefined : summary?.dayEndWarning?.cutoffLabel}
+      />
+
       <AttendanceMonthCloseBanner />
 
-      {canManagePuantaj && (
+      {canManagePuantaj && !designPreview && (
         <PuantajProcessGuide onGoToAttendance={() => setActiveTab('attendance')} />
       )}
 
@@ -401,7 +545,16 @@ export default function PersonelOzlukPage() {
         <div className="p-6">
           {activeTab === 'summary' && (
             <div className="space-y-6">
-              {summaryLoading ? (
+              {canSupervise ? (
+                <AdminAttendanceSupervisionPanel
+                  preview={designPreview}
+                  onOpenEmployeeFile={(employee) => {
+                    if (designPreview) return;
+                    setSelectedEmployeeId(employee.id);
+                    setActiveTab('attendance');
+                  }}
+                />
+              ) : summaryLoading ? (
                 <div className="animate-pulse h-32 bg-slate-100 rounded-xl" />
               ) : summaryError ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -425,9 +578,9 @@ export default function PersonelOzlukPage() {
                         </p>
                       )}
                     </div>
-                    <div className="rounded-xl border border-blue-100 p-5 bg-blue-50/40">
+                    <div className="rounded-xl border border-brand-100 p-5 bg-brand-50/40">
                       <p className="text-xs font-medium text-slate-500 mb-2">{summary.leaveBalance.leaveTypeLabel} ({summary.leaveBalance.year})</p>
-                      <p className="text-3xl font-bold text-blue-700">{summary.leaveBalance.remainingDays} gün</p>
+                      <p className="text-3xl font-bold text-brand-700">{summary.leaveBalance.remainingDays} gün</p>
                       <p className="text-sm text-slate-600 mt-2">
                         Toplam {summary.leaveBalance.totalDays} · Kullanılan {summary.leaveBalance.usedDays} · Bekleyen {summary.leaveBalance.pendingDays}
                       </p>
@@ -457,87 +610,221 @@ export default function PersonelOzlukPage() {
               ) : (
                 <p className="text-sm text-slate-500">Özet yüklenemedi.</p>
               )}
+              {canSupervise && (
+                <HrAssignedAssetsPanel
+                  preview={designPreview}
+                  canAdd={!designPreview}
+                  onOpenEmployee={(profileId) => {
+                    setSelectedEmployeeId(profileId);
+                    setActiveTab('documents');
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'documents' && (
+            <div className="space-y-6" id="hr-ozluk-evraklari">
+              {canSupervise && (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <label className="text-xs font-medium text-content-tertiary">Personel</label>
+                  <select
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={selectedEmployeeId}
+                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  >
+                    <option value="">Kendi Özlük Dosyam</option>
+                    {employeeList.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.user.firstName} {emp.user.lastName}
+                        {emp.department ? ` · ${emp.department.name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <HrPersonnelDocumentsPanel
+                preview={designPreview}
+                employeeName={
+                  selectedEmployeeId
+                    ? (() => {
+                        const emp = employeeList.find((e) => e.id === selectedEmployeeId);
+                        return emp
+                          ? `${emp.user.firstName} ${emp.user.lastName}`.trim()
+                          : 'Personel';
+                      })()
+                    : summary
+                      ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
+                      : 'Personel'
+                }
+                canSelectEmployee={false}
+                canUpload
+                onUploadRequest={() => {
+                  const el = document.getElementById('hr-ozluk-yukleme');
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+              />
+              {!designPreview && (selectedEmployeeId || summary?.profile?.id) && (
+                <div id="hr-ozluk-yukleme" className="rounded-2xl border border-border bg-surface p-5 space-y-3">
+                  <h3 className="text-sm font-semibold text-content-primary">Evrak Yükleme</h3>
+                  <p className="text-xs text-content-secondary">
+                    Islak imzalı PDF/JPG dosyalarını buradan yükleyin. Dosya adında evrak türünü belirtin
+                    (ör. Kvkk-Aydinlatma.pdf).
+                  </p>
+                  <EntityDocumentsTab
+                    mode="entity"
+                    entityType="hr_employee_profile"
+                    entityId={selectedEmployeeId || summary!.profile.id!}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'assets' && (
+            <div className="space-y-4">
+              <HrAssignedAssetsPanel
+                preview={designPreview}
+                employeeProfileId={canSupervise ? undefined : summary?.profile?.id}
+                employeeName={
+                  canSupervise
+                    ? undefined
+                    : summary
+                      ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
+                      : undefined
+                }
+                canAdd={canSupervise && !designPreview}
+                onOpenEmployee={(profileId) => {
+                  setSelectedEmployeeId(profileId);
+                  setActiveTab('documents');
+                }}
+              />
             </div>
           )}
 
           {activeTab === 'attendance' && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 text-sm text-slate-700">
-                <p className="font-medium text-slate-800 mb-1">Puantaj Onay Akışı</p>
-                <p>
-                  Resmi tatil ve hafta tatili (Pazar) otomatik işaretlenir. Onaylı izinler &quot;İzinli&quot; görünür.
-                  Çalıştığınız günlerde <strong>Onayla</strong> ile dijital teyit verin; ay sonunda Aylık Onay, yönetici Ay Kilitle.
-                </p>
-                <p className="text-xs text-slate-500 mt-2">
-                  Hukuki not: Aylık onay ve ay kilidi ad-soyad dijital imza ile kaydedilir; 5070 nitelikli e-imza değildir.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="text-xs font-medium text-slate-500">Ay Seç</label>
-                <select
-                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <option key={m} value={m}>{m}. Ay</option>
-                  ))}
-                </select>
-                <select
-                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                >
-                  {[year - 1, year, year + 1].map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-                {attendance?.periodLock?.isLocked ? (
-                  <span className="text-xs font-medium text-red-600 ml-auto">Ay Kilitli</span>
-                ) : (
-                  <div className="ml-auto flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={monthConfirmLoading || (attendance?.summary?.pendingConfirmationDays ?? 0) > 0}
-                      onClick={handleConfirmMonth}
-                      className="rounded-lg bg-[#1a4080] text-white text-xs font-medium px-3 py-2 hover:bg-[#153366] disabled:opacity-50"
-                    >
-                      Aylık Onay
-                    </button>
-                    {(summary?.canApprove || canApproveByRole) && attendance?.periodLock?.employeeConfirmedAt && (
-                      <button
-                        type="button"
-                        disabled={monthConfirmLoading}
-                        onClick={handleLockMonth}
-                        className="rounded-lg border border-slate-300 text-xs font-medium px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        Ayı Kilitle (İK)
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {attendance?.summary && (
-                <div className="flex flex-wrap gap-4 text-xs text-slate-600">
-                  <span>Onaylı Gün: {attendance.summary.confirmedDays}</span>
-                  <span>Bekleyen: {attendance.summary.pendingConfirmationDays}</span>
-                  {attendance.periodLock?.employeeConfirmedAt && (
-                    <span className="text-emerald-700">
-                      Personel aylık onay: {formatDate(attendance.periodLock.employeeConfirmedAt)}
-                      {attendance.periodLock.employeeSignature ? ` (${attendance.periodLock.employeeSignature})` : ''}
-                    </span>
-                  )}
-                  {attendance.periodLock?.managerSignature && (
-                    <span className="text-blue-700">
-                      İK imza: {attendance.periodLock.managerSignature}
+              {canSupervise && (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <label className="text-xs font-medium text-content-tertiary">Personel</label>
+                  <select
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={selectedEmployeeId}
+                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  >
+                    <option value="">Kendi Puantajım</option>
+                    {employeeList.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.user.firstName} {emp.user.lastName}
+                        {emp.department ? ` · ${emp.department.name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {isViewingOther && (
+                    <span className="ml-auto text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 rounded-full px-3 py-1">
+                      Salt Okunur — {attendance?.employee?.name ?? 'Seçili Personel'}
                     </span>
                   )}
                 </div>
               )}
 
-              {!attendanceLoading && !attendanceError && attendance && (
+              <div className="rounded-xl border border-slate-100 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <select
+                        className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs"
+                        value={month}
+                        onChange={(e) => setMonth(Number(e.target.value))}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <option key={m} value={m}>{m}. Ay</option>
+                        ))}
+                      </select>
+                      <select
+                        className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs"
+                        value={year}
+                        onChange={(e) => setYear(Number(e.target.value))}
+                      >
+                        {[year - 1, year, year + 1].map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Onaylı {attendance?.summary?.confirmedDays ?? 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Bekleyen {attendance?.summary?.pendingConfirmationDays ?? 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" />
+                      İzinli {(attendance?.days ?? []).filter((d) => !d.isFuture && d.attendanceStatus === 'leave').length}
+                    </span>
+                  </div>
+
+                  {attendance?.periodLock?.isLocked ? (
+                    <span className="text-xs font-semibold text-status-danger">Ay Kilitli</span>
+                  ) : isViewingOther ? (
+                    <span className="text-xs text-content-tertiary">Onay Aksiyonları Personelin Kendi Ekranındadır</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={bulkConfirmLoading || (attendance?.summary?.pendingConfirmationDays ?? 0) === 0}
+                        onClick={handleConfirmPendingDays}
+                        className="rounded-lg bg-emerald-600 text-white text-xs font-semibold px-3 py-2 hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {bulkConfirmLoading ? 'Onaylanıyor...' : 'Bekleyenleri Onayla'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={monthConfirmLoading || (attendance?.summary?.pendingConfirmationDays ?? 0) > 0}
+                        onClick={handleConfirmMonth}
+                        className="rounded-lg bg-brand-600 text-white text-xs font-semibold px-3 py-2 hover:bg-brand-700 disabled:opacity-50"
+                      >
+                        Aylık Onay
+                      </button>
+                      {(summary?.canApprove || canApproveByRole) && attendance?.periodLock?.employeeConfirmedAt && (
+                        <button
+                          type="button"
+                          disabled={monthConfirmLoading}
+                          onClick={handleLockMonth}
+                          className="rounded-lg border border-slate-300 text-xs font-semibold px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          Ayı Kilitle (İK)
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-content-tertiary">
+                  Mesai: Hafta İçi 08:30–18:00 · Cumartesi 08:30–13:00 · Pazar Ve Resmi Tatiller Çalışılmıyor.
+                  Resmi tatil ve hafta tatili otomatik işaretlenir; onaylı izinler &quot;İzinli&quot; görünür.
+                  {!isViewingOther && ' Ay sonunda Aylık Onay verin; yönetici Ayı Kilitler.'}
+                </p>
+
+                {attendance?.periodLock && (attendance.periodLock.employeeConfirmedAt || attendance.periodLock.managerSignature) && (
+                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
+                    {attendance.periodLock.employeeConfirmedAt && (
+                      <span className="text-emerald-700">
+                        Personel aylık onay: {formatDate(attendance.periodLock.employeeConfirmedAt)}
+                        {attendance.periodLock.employeeSignature ? ` (${attendance.periodLock.employeeSignature})` : ''}
+                      </span>
+                    )}
+                    {attendance.periodLock.managerSignature && (
+                      <span className="text-blue-700">
+                        İK imza: {attendance.periodLock.managerSignature}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!isViewingOther && !attendanceLoading && !attendanceError && attendance && (
                 <AttendanceAccountantPanel
                   year={year}
                   month={month}
@@ -546,6 +833,8 @@ export default function PersonelOzlukPage() {
                   defaultExpanded={canManagePuantaj}
                 />
               )}
+
+              {canSupervise && <AttendanceBulkAccountantPanel year={year} month={month} />}
 
               {attendanceLoading ? (
                 <div className="animate-pulse h-64 bg-slate-100 rounded-xl" />
@@ -563,8 +852,8 @@ export default function PersonelOzlukPage() {
                     days={attendance?.days ?? []}
                     year={year}
                     month={month}
-                    isLocked={attendance?.periodLock?.isLocked}
-                    onConfirmDay={handleConfirmDay}
+                    isLocked={isViewingOther || attendance?.periodLock?.isLocked}
+                    onConfirmDay={isViewingOther ? undefined : handleConfirmDay}
                     confirmingDate={confirmingDate}
                   />
                   <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -595,7 +884,16 @@ export default function PersonelOzlukPage() {
                             <td className="px-4 py-2.5">{minutesToHours(day.minutesWorked)}</td>
                             <td className="px-4 py-2.5 text-slate-600">{minutesToHours(day.suggestedMinutes)}</td>
                             <td className="px-4 py-2.5 text-xs">
-                              {day.employeeConfirmedAt ? '✓ Onaylı' : '—'}
+                              {day.employeeConfirmedAt ? (
+                                <span className="text-emerald-700">
+                                  Personel Tarafından Onaylandı
+                                  <span className="block text-slate-400 text-[11px]">
+                                    {formatClockTime(day.employeeConfirmedAt)}
+                                  </span>
+                                </span>
+                              ) : (
+                                '—'
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -608,6 +906,7 @@ export default function PersonelOzlukPage() {
           )}
 
           {activeTab === 'leaves' && (
+            <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-700">İzin Geçmişim</h3>
@@ -624,19 +923,41 @@ export default function PersonelOzlukPage() {
                 ) : (
                   <div className="space-y-2">
                     {leaves.map((leave) => (
-                      <div key={leave.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">
-                            {LEAVE_TYPE_OPTIONS.find((o) => o.value === leave.leaveType)?.label ?? leave.leaveType}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
-                            {leave.dayCount ? ` · ${leave.dayCount} gün` : ''}
-                          </p>
+                      <div key={leave.id} className="rounded-xl border border-slate-100">
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">
+                              {leaveTypeOptions.find((o) => o.value === leave.leaveType)?.label ?? leave.leaveType}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
+                              {leave.dayCount ? ` · ${leave.dayCount} gün` : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_BADGE[leave.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                              {STATUS_LABELS[leave.status] ?? leave.status}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedLeaveId((cur) => (cur === leave.id ? null : leave.id))}
+                              title="İzin Evrakları"
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                            >
+                              <Paperclip className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_BADGE[leave.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                          {STATUS_LABELS[leave.status] ?? leave.status}
-                        </span>
+                        {expandedLeaveId === leave.id && (
+                          <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+                            <EntityDocumentsTab
+                              mode="entity"
+                              entityType="hr_leave_request"
+                              entityId={leave.id}
+                              title="İzin Evrakları"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -653,7 +974,7 @@ export default function PersonelOzlukPage() {
                       value={leaveForm.leaveType}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, leaveType: e.target.value }))}
                     >
-                      {LEAVE_TYPE_OPTIONS.map((o) => (
+                      {leaveTypeOptions.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
@@ -691,54 +1012,159 @@ export default function PersonelOzlukPage() {
                   >
                     {createLeave.isPending ? 'Gönderiliyor...' : 'Onaya Gönder'}
                   </button>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Talep oluşturduktan sonra soldaki listeden ataç ikonuna tıklayarak fiziki izin evrağınızı (ör. rapor) yükleyebilirsiniz.
+                  </p>
                 </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'approval' && (summary?.canApprove || canApproveByRole) && (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600">
-                Bekleyen izin talepleri: <span className="font-semibold text-orange-600">{pending.length}</span>
-              </p>
-              {pendingLoading ? (
-                <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
-              ) : pendingError ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  Onay kuyruğu alınamadı: {(pendingErr as Error)?.message ?? 'Bağlantı hatası'}.
-                </div>
-              ) : pending.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">
-                  Onay bekleyen izin talebi yok.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {pending.map((item) => (
-                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">
-                          {item.employeeName ?? `${item.employeeProfile?.user.firstName ?? ''} ${item.employeeProfile?.user.lastName ?? ''}`.trim()}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {LEAVE_TYPE_OPTIONS.find((o) => o.value === item.leaveType)?.label} · {formatDate(item.startDate)} – {formatDate(item.endDate)}
-                          {item.dayCount ? ` · ${item.dayCount} gün` : ''}
-                        </p>
-                        {item.reason && <p className="text-xs text-slate-600 mt-1">{item.reason}</p>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => handleApprove(item.id)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100">
-                          Onayla
-                        </button>
-                        <button type="button" onClick={() => handleReject(item.id)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100">
-                          Reddet
-                        </button>
-                      </div>
+            {canApproveLeaves && (
+              <div className="space-y-8 border-t border-slate-100 pt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700">Bekleyen Onaylar</h3>
+                    <span className="text-xs font-medium text-orange-600">{pending.length} talep</span>
+                  </div>
+                  {pendingLoading ? (
+                    <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
+                  ) : pendingError ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      Onay kuyruğu alınamadı: {(pendingErr as Error)?.message ?? 'Bağlantı hatası'}.
                     </div>
-                  ))}
+                  ) : pending.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                      Onay bekleyen izin talebi yok.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {pending.map((item) => (
+                        <div key={item.id} className="rounded-xl border border-slate-100">
+                          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">
+                                {item.employeeName ?? `${item.employeeProfile?.user.firstName ?? ''} ${item.employeeProfile?.user.lastName ?? ''}`.trim()}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {leaveTypeOptions.find((o) => o.value === item.leaveType)?.label ?? item.leaveType} · {formatDate(item.startDate)} – {formatDate(item.endDate)}
+                                {item.dayCount ? ` · ${item.dayCount} gün` : ''}
+                              </p>
+                              {item.reason && <p className="text-xs text-slate-600 mt-1">{item.reason}</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedLeaveId((cur) => (cur === item.id ? null : item.id))}
+                                title="İzin Evrakları"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleApprove(item.id)}
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100">
+                                Onayla
+                              </button>
+                              <button type="button" onClick={() => handleReject(item.id)}
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100">
+                                Reddet
+                              </button>
+                            </div>
+                          </div>
+                          {expandedLeaveId === item.id && (
+                            <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+                              <EntityDocumentsTab
+                                mode="entity"
+                                entityType="hr_leave_request"
+                                entityId={item.id}
+                                title="İzin Evrakları"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-700">Tüm Personel İzin Geçmişi</h3>
+                  {allLeavesLoading ? (
+                    <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
+                  ) : allLeavesError ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      İzin geçmişi alınamadı. Sayfayı yenileyin veya yöneticinize bildirin.
+                    </div>
+                  ) : allLeaves.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                      Henüz izin kaydı yok.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-100">
+                      <table className="min-w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500">
+                          <tr>
+                            <th className="px-4 py-2.5 font-medium">Personel</th>
+                            <th className="px-4 py-2.5 font-medium">Tür</th>
+                            <th className="px-4 py-2.5 font-medium">Başlangıç</th>
+                            <th className="px-4 py-2.5 font-medium">Bitiş</th>
+                            <th className="px-4 py-2.5 font-medium">Gün</th>
+                            <th className="px-4 py-2.5 font-medium">Durum</th>
+                            <th className="px-4 py-2.5 font-medium">Onaylayan</th>
+                            <th className="px-4 py-2.5 font-medium">Onay Tarihi/Saati</th>
+                            <th className="px-4 py-2.5 font-medium">Ek</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {allLeaves.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50/60">
+                              <td className="px-4 py-2.5">
+                                <p className="font-medium text-slate-800">
+                                  {item.employeeName ?? `${item.employeeProfile?.user.firstName ?? ''} ${item.employeeProfile?.user.lastName ?? ''}`.trim()}
+                                </p>
+                                {item.department && <p className="text-slate-400">{item.department}</p>}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                {leaveTypeOptions.find((o) => o.value === item.leaveType)?.label ?? item.leaveType}
+                              </td>
+                              <td className="px-4 py-2.5">{formatDate(item.startDate)}</td>
+                              <td className="px-4 py-2.5">{formatDate(item.endDate)}</td>
+                              <td className="px-4 py-2.5">{item.dayCount ?? '—'}</td>
+                              <td className="px-4 py-2.5">
+                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_BADGE[item.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                                  {STATUS_LABELS[item.status] ?? item.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5">{item.decidedByName ?? '—'}</td>
+                              <td className="px-4 py-2.5">{formatDateTime(item.decidedAt)}</td>
+                              <td className="px-4 py-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedLeaveId((cur) => (cur === item.id ? null : item.id))}
+                                  title="İzin Evrakları"
+                                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                                >
+                                  <Paperclip className="w-3 h-3" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {allLeaves.some((item) => expandedLeaveId === item.id) && (
+                        <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+                          <EntityDocumentsTab
+                            mode="entity"
+                            entityType="hr_leave_request"
+                            entityId={expandedLeaveId as string}
+                            title="İzin Evrakları"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             </div>
           )}
         </div>

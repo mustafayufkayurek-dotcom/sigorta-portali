@@ -14,7 +14,8 @@ type MetricKey =
   | 'locations'
   | 'workGroups'
   | 'claimSubjects'
-  | 'documentTypes';
+  | 'documentTypes'
+  | 'hrLeaveTypes';
 
 interface DefinitionMetric {
   total: number | null;
@@ -64,6 +65,13 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         purpose: 'Müşteri kartında önce seçilen alt tip sözlüğü (sigorta, broker, eksper, asistans…).',
         href: '/panel/ayarlar/musteri-tipleri',
         tone: 'blue',
+      },
+      {
+        key: 'hrLeaveTypes',
+        title: 'Personel',
+        purpose: 'İzin türleri; izin evrağı ve vekalet seçiminde kullanılır.',
+        href: '/panel/ayarlar/personel',
+        tone: 'amber',
       },
     ],
   },
@@ -191,6 +199,7 @@ export default function TanimlarPage() {
     workGroups: emptyMetric(),
     claimSubjects: emptyMetric(),
     documentTypes: emptyMetric(),
+    hrLeaveTypes: emptyMetric(),
   });
 
   useEffect(() => {
@@ -207,6 +216,7 @@ export default function TanimlarPage() {
         workGroups,
         claimSubjects,
         documentTypes,
+        hrLeaveTypes,
       ] = await Promise.all([
         safeMetric(axios.get(`${API}/departments`, { headers }), (raw) => {
           const items = extractArray(raw);
@@ -258,6 +268,10 @@ export default function TanimlarPage() {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
         }),
+        safeMetric(axios.get(`${API}/system-settings/hr-leave-types`, { headers }), (raw) => {
+          const items = extractArray(raw);
+          return { total: items.length, active: countActive(items) };
+        }),
       ]);
 
       if (!alive) return;
@@ -270,6 +284,7 @@ export default function TanimlarPage() {
         workGroups,
         claimSubjects,
         documentTypes,
+        hrLeaveTypes,
       });
     }
 

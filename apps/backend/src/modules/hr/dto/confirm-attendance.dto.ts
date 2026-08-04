@@ -23,6 +23,18 @@ export class ConfirmAttendanceDayDto {
   clockOutAt?: string;
 }
 
+export class ConfirmPendingAttendanceDto {
+  @IsInt()
+  @Min(2020)
+  @Max(2100)
+  year!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month!: number;
+}
+
 export class ConfirmAttendanceMonthDto {
   @IsInt()
   @Min(2020)

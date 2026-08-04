@@ -19,8 +19,14 @@ import { HrService } from './hr.service';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { RejectLeaveRequestDto } from './dto/reject-leave-request.dto';
 import { UpsertAttendanceDto } from './dto/upsert-attendance.dto';
-import { ConfirmAttendanceDayDto, ConfirmAttendanceMonthDto } from './dto/confirm-attendance.dto';
+import {
+  ConfirmAttendanceDayDto,
+  ConfirmAttendanceMonthDto,
+  ConfirmPendingAttendanceDto,
+} from './dto/confirm-attendance.dto';
 import { SendAttendanceAccountantDto } from './dto/send-attendance-accountant.dto';
+import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
+import { CreateHrAssetDto } from './dto/create-hr-asset.dto';
 import { HrAttendanceExportService } from './hr-attendance-export.service';
 import { HrAttendanceReminderService } from './hr-attendance-reminder.service';
 
@@ -56,18 +62,83 @@ export class HrController {
     return { data };
   }
 
+  @Get('employees')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async listEmployees(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.listEmployeeProfiles(user);
+    return { data };
+  }
+
+  @Get('employees/candidates')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async listEmployeeCandidates(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.listUsersWithoutProfile(user);
+    return { data };
+  }
+
+  @Post('employees')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async upsertEmployee(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Body() dto: UpsertEmployeeProfileDto,
+  ) {
+    const data = await this.hrService.upsertEmployeeProfile(user, dto);
+    return { data };
+  }
+
+  @Get('attendance/day-end-summary')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async dayEndSupervisionSummary(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.getDayEndSupervisionSummary(user);
+    return { data };
+  }
+
+  @Post('attendance/notify-missing')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async notifyMissingAttendance(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrAttendanceExport.notifyMissingAttendance(user);
+    return { data };
+  }
+
   @Get('attendance')
   @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
   @RequirePermissions('hr.view')
   async attendance(
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
     @Query('year') yearStr?: string,
     @Query('month') monthStr?: string,
+    @Query('employeeProfileId') employeeProfileId?: string,
   ) {
     const now = new Date();
     const year = yearStr ? Number(yearStr) : now.getFullYear();
     const month = monthStr ? Number(monthStr) : now.getMonth() + 1;
-    const data = await this.hrService.listAttendance(user, year, month);
+    const data = employeeProfileId
+      ? await this.hrService.getAttendanceForEmployee(user, employeeProfileId, year, month)
+      : await this.hrService.listAttendance(user, year, month);
+    return { data };
+  }
+
+  @Post('attendance/confirm-pending')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.view')
+  async confirmPendingDays(
+    @CurrentUser() user: { id: string },
+    @Body() dto: ConfirmPendingAttendanceDto,
+  ) {
+    const data = await this.hrService.confirmPendingAttendanceDays(user, dto.year, dto.month);
     return { data };
   }
 
@@ -105,6 +176,32 @@ export class HrController {
     @Body() dto: SendAttendanceAccountantDto,
   ) {
     const result = await this.hrAttendanceExport.sendToAccountant(user, dto);
+    return { data: result };
+  }
+
+  @Get('attendance/export-bulk')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async exportBulkAttendance(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Res() res: Response,
+    @Query('year') yearStr?: string,
+    @Query('month') monthStr?: string,
+  ) {
+    const now = new Date();
+    const year = yearStr ? Number(yearStr) : now.getFullYear();
+    const month = monthStr ? Number(monthStr) : now.getMonth() + 1;
+    await this.hrAttendanceExport.exportBulkAttendance(user, year, month, res);
+  }
+
+  @Post('attendance/send-accountant-bulk')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async sendBulkToAccountant(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Body() dto: SendAttendanceAccountantDto,
+  ) {
+    const result = await this.hrAttendanceExport.sendBulkToAccountant(user, dto);
     return { data: result };
   }
 
@@ -170,6 +267,16 @@ export class HrController {
     return { data };
   }
 
+  @Get('leave-requests/all')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.leave.approve')
+  async allLeaveRequests(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.listAllLeaveRequests(user);
+    return { data };
+  }
+
   @Get('leave-requests')
   @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
   @RequirePermissions('hr.view')
@@ -220,6 +327,28 @@ export class HrController {
     @Body() dto: RejectLeaveRequestDto,
   ) {
     const data = await this.hrService.rejectLeaveRequest(user, id, dto.rejectionReason);
+    return { data };
+  }
+
+  @Get('assets')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.view', 'hr.supervise', 'hr.attendance.manage', 'hr.leave.approve')
+  async listAssets(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Query('employeeProfileId') employeeProfileId?: string,
+  ) {
+    const data = await this.hrService.listAssignedAssets(user, employeeProfileId);
+    return { data };
+  }
+
+  @Post('assets')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.attendance.manage', 'hr.leave.approve')
+  async createAsset(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Body() dto: CreateHrAssetDto,
+  ) {
+    const data = await this.hrService.createAssignedAsset(user, dto);
     return { data };
   }
 }

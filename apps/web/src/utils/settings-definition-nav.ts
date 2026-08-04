@@ -5,6 +5,7 @@ export const TANIMLAR_BACK_HREF = '/panel/ayarlar/tanimlar';
 export const TANIMLAR_BACK_TEXT = '← Tanımlar Merkezi';
 
 export const DEFINITION_SETTINGS_PAGES = [
+  '/panel/ayarlar/personel',
   '/panel/ayarlar/musteri-tipleri',
   '/panel/ayarlar/sigorta-sirketleri',
   '/panel/ayarlar/eksper-sigorta-iliskileri',

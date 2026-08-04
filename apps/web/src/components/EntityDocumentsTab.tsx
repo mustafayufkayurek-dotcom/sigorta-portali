@@ -204,6 +204,11 @@ export function EntityDocumentsTab({
 
   useEffect(() => {
     loadDocuments();
+    if (mode === 'entity' && entityType !== 'customer' && entityType !== 'insurance_company') {
+      // Müşteri/sigorta şirketi evrak tür kataloğu bu entityType için anlamlı değil (ör. izin evrağı) — tür seçimi opsiyonel kalır.
+      setDocTypes([]);
+      return;
+    }
     const params: Record<string, string> = { status: 'active' };
     if (mode === 'entity') {
       params.entityScope = 'customer';

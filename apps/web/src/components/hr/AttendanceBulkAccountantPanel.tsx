@@ -5,46 +5,24 @@ import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
+import { Users, Mail, FileSpreadsheet } from 'lucide-react';
 
 const DISCLAIMER_ITEMS = [
   'Bu çıktı resmi puantaj defteri yerine geçmez.',
+  'Tüm aktif personelin elektronik onaylı puantaj özeti ve onaylı izin formları tek dosyada birleştirilir.',
   'Ad-soyad yazarak verilen dijital onay, 5070 sayılı Kanun kapsamında nitelikli elektronik imza değildir; zaman damgalı "adi delil" niteliğindedir.',
-  'Mesai saatleri panel nabız referansıdır; resmi mesai kartı değildir.',
-  'Bordro hesaplama veya SGK bildirim kaynağı değildir.',
   'Mali müşavir incelemesi için bilgilendirme amaçlıdır.',
 ];
 
-type PeriodLock = {
-  employeeConfirmedAt?: string | null;
-  managerConfirmedAt?: string | null;
-  lockedAt?: string | null;
-  isLocked?: boolean;
-};
-
-type AttendanceSummary = {
-  confirmedDays: number;
-  pastWorkDays: number;
-  pendingConfirmationDays: number;
-};
-
-interface AttendanceAccountantPanelProps {
+interface Props {
   year: number;
   month: number;
-  summary?: AttendanceSummary;
-  periodLock?: PeriodLock;
-  defaultExpanded?: boolean;
 }
 
-export function AttendanceAccountantPanel({
-  year,
-  month,
-  summary,
-  periodLock,
-  defaultExpanded = false,
-}: AttendanceAccountantPanelProps) {
+export function AttendanceBulkAccountantPanel({ year, month }: Props) {
   const { showToast } = useToast();
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const [exportLoading, setExportLoading] = useState<'xlsx' | 'print' | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
@@ -61,48 +39,28 @@ export function AttendanceAccountantPanel({
       .catch(() => {});
   }, []);
 
-  const exportUrl = (format: 'xlsx' | 'print') =>
-    `${API}/hr/attendance/export?year=${year}&month=${month}&format=${format}`;
-
   const handleDownloadXlsx = async () => {
-    setExportLoading('xlsx');
+    setExportLoading(true);
     try {
-      const res = await fetch(exportUrl('xlsx'), { headers: authHeader() });
-      if (!res.ok) throw new Error('Excel indirilemedi');
+      const res = await fetch(
+        `${API}/hr/attendance/export-bulk?year=${year}&month=${month}`,
+        { headers: authHeader() },
+      );
+      if (!res.ok) throw new Error('Toplu Excel indirilemedi');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `puantaj-${year}-${String(month).padStart(2, '0')}.xlsx`;
+      link.download = `puantaj-toplu-${year}-${String(month).padStart(2, '0')}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showToast('success', 'Excel İndirildi');
+      showToast('success', 'Toplu Rapor İndirildi');
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Excel İndirilemedi');
+      showToast('error', e instanceof Error ? e.message : 'Toplu Rapor İndirilemedi');
     } finally {
-      setExportLoading(null);
-    }
-  };
-
-  const handlePrint = async () => {
-    setExportLoading('print');
-    try {
-      const res = await fetch(exportUrl('print'), { headers: authHeader() });
-      if (!res.ok) throw new Error('Yazdırma sayfası açılamadı');
-      const html = await res.text();
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        showToast('warning', 'Açılır Pencere Engellendi — Tarayıcı İzinlerini Kontrol Edin');
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
-    } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Yazdırma Başarısız');
-    } finally {
-      setExportLoading(null);
+      setExportLoading(false);
     }
   };
 
@@ -118,38 +76,41 @@ export function AttendanceAccountantPanel({
     setEmailSending(true);
     try {
       const result = await apiClient.post<{ success: boolean; message: string }>(
-        'hr/attendance/send-accountant',
+        'hr/attendance/send-accountant-bulk',
         { to, year, month, message: emailMessage.trim() || undefined },
       );
       if (result.success) {
-        showToast('success', result.message || 'E-posta Gönderildi');
+        showToast('success', result.message || 'Toplu Rapor Gönderildi');
         setEmailOpen(false);
         setEmailMessage('');
       } else {
-        showToast('error', result.message || 'E-posta Gönderilemedi');
+        showToast('error', result.message || 'Toplu Rapor Gönderilemedi');
       }
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'E-posta Gönderilemedi');
+      showToast('error', e instanceof Error ? e.message : 'Toplu Rapor Gönderilemedi');
     } finally {
       setEmailSending(false);
     }
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-xl border border-brand-100 bg-brand-50/30 overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50/80 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-brand-50/60 transition-colors"
       >
-        <span className="text-sm font-semibold text-slate-800">Mali Müşavir Çıktısı</span>
-        <span className="text-xs text-slate-500">{expanded ? 'Gizle' : 'Göster'}</span>
+        <span className="flex items-center gap-2 text-sm font-semibold text-content-primary">
+          <Users className="h-4 w-4 text-brand-600" />
+          Ay Sonu Toplu Rapor — Tüm Personel
+        </span>
+        <span className="text-xs text-content-tertiary">{expanded ? 'Gizle' : 'Göster'}</span>
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-4 border-t border-slate-100">
-          <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-3 text-xs text-slate-700">
-            <p className="font-medium text-slate-800 mb-2">Önemli Uyarılar</p>
+        <div className="px-4 pb-4 space-y-4 border-t border-brand-100">
+          <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-3 text-xs text-content-secondary">
+            <p className="font-medium text-content-primary mb-2">Önemli Uyarılar</p>
             <ul className="list-disc pl-4 space-y-1">
               {DISCLAIMER_ITEMS.map((item) => (
                 <li key={item}>{item}</li>
@@ -157,42 +118,28 @@ export function AttendanceAccountantPanel({
             </ul>
           </div>
 
-          {summary && (
-            <div className="flex flex-wrap gap-3 text-xs text-slate-600">
-              <span>Onaylı Gün: {summary.confirmedDays}</span>
-              <span>Bekleyen: {summary.pendingConfirmationDays}</span>
-              {periodLock?.employeeConfirmedAt && (
-                <span className="text-emerald-700">Personel Aylık Onay Verildi</span>
-              )}
-              {periodLock?.isLocked && (
-                <span className="text-red-600">Ay Kilitli</span>
-              )}
-            </div>
-          )}
+          <p className="text-xs text-content-secondary">
+            Rapor; her personel için onaylı puantaj günlerini ve dönem içindeki onaylı izin formlarını
+            tek Excel dosyasında (Özet · Puantaj Detay · İzin Formları) birleştirir.
+          </p>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={exportLoading !== null}
+              disabled={exportLoading}
               onClick={handleDownloadXlsx}
-              className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-2 hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold px-3 py-2 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {exportLoading === 'xlsx' ? 'İndiriliyor...' : 'Excel İndir'}
-            </button>
-            <button
-              type="button"
-              disabled={exportLoading !== null}
-              onClick={handlePrint}
-              className="rounded-lg border border-slate-300 text-xs font-medium px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
-            >
-              {exportLoading === 'print' ? 'Açılıyor...' : 'Yazdır'}
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              {exportLoading ? 'İndiriliyor...' : 'Toplu Excel İndir'}
             </button>
             <button
               type="button"
               onClick={() => setEmailOpen(true)}
-              className="rounded-lg bg-[#1a4080] text-white text-xs font-medium px-3 py-2 hover:bg-[#153366]"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 text-white text-xs font-semibold px-3 py-2 hover:bg-brand-700"
             >
-              Mali Müşavire Gönder
+              <Mail className="h-3.5 w-3.5" />
+              Mali Müşavire Toplu Gönder
             </button>
           </div>
         </div>
@@ -202,7 +149,7 @@ export function AttendanceAccountantPanel({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">Mali Müşavire Gönder</h3>
+              <h3 className="text-sm font-semibold text-content-primary">Mali Müşavire Toplu Gönder</h3>
               <button
                 type="button"
                 onClick={() => setEmailOpen(false)}
@@ -212,11 +159,11 @@ export function AttendanceAccountantPanel({
                 ×
               </button>
             </div>
-            <p className="text-xs text-slate-500">
-              {year} yılı {month}. ay puantaj özeti e-posta ekinde Excel olarak gönderilir.
+            <p className="text-xs text-content-tertiary">
+              {year} yılı {month}. ay — tüm personelin puantaj + izin formu özeti e-posta ekinde Excel olarak gönderilir.
             </p>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Alıcı E-posta</label>
+              <label className="block text-xs font-medium text-content-tertiary mb-1">Alıcı E-posta</label>
               <input
                 type="email"
                 className={`w-full border rounded-lg px-3 py-2 text-sm${emailError ? ' border-red-300' : ' border-slate-200'}`}
@@ -232,7 +179,7 @@ export function AttendanceAccountantPanel({
               {emailError && <p className="mt-1 text-xs text-red-600">{emailError}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Mesaj (Opsiyonel)</label>
+              <label className="block text-xs font-medium text-content-tertiary mb-1">Mesaj (Opsiyonel)</label>
               <textarea
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[72px]"
                 value={emailMessage}
@@ -252,7 +199,7 @@ export function AttendanceAccountantPanel({
                 type="button"
                 disabled={emailSending}
                 onClick={handleSendEmail}
-                className="rounded-lg bg-[#1a4080] text-white px-4 py-2 text-xs font-medium hover:bg-[#153366] disabled:opacity-50"
+                className="rounded-lg bg-brand-600 text-white px-4 py-2 text-xs font-medium hover:bg-brand-700 disabled:opacity-50"
               >
                 {emailSending ? 'Gönderiliyor...' : 'Gönder'}
               </button>

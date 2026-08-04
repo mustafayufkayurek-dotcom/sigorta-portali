@@ -74,6 +74,41 @@ export class EntityDocumentsService {
       });
       if (!emergencyCase) throw new NotFoundException('Dosya bulunamadı');
     }
+
+    if (entityType === 'hr_leave_request') {
+      const leaveRequest = await this.prisma.hrLeaveRequest.findUnique({
+        where: { id: entityId },
+        select: { employeeProfile: { select: { userId: true } } },
+      });
+      if (!leaveRequest) throw new NotFoundException('İzin talebi bulunamadı');
+      const isOwner = leaveRequest.employeeProfile.userId === requestingUser.id;
+      const canApproveLeave =
+        requestingUser.roleCode?.toUpperCase() === 'ADMIN'
+        || (requestingUser.permissions ?? []).includes('hr.leave.approve');
+      if (!isOwner && !canApproveLeave) {
+        throw new ForbiddenException('Bu izin talebine erişim izniniz bulunmamaktadır');
+      }
+      return;
+    }
+
+    if (entityType === 'hr_employee_profile') {
+      const profile = await this.prisma.hrEmployeeProfile.findUnique({
+        where: { id: entityId },
+        select: { userId: true },
+      });
+      if (!profile) throw new NotFoundException('Personel profili bulunamadı');
+      const isOwner = profile.userId === requestingUser.id;
+      const role = requestingUser.roleCode?.toUpperCase() ?? '';
+      const perms = requestingUser.permissions ?? [];
+      const canManageHr =
+        role === 'ADMIN'
+        || perms.includes('hr.supervise')
+        || perms.includes('hr.attendance.manage')
+        || perms.includes('hr.leave.approve');
+      if (!isOwner && !canManageHr) {
+        throw new ForbiddenException('Bu özlük dosyasına erişim izniniz bulunmamaktadır');
+      }
+    }
   }
 
   async findByEntity(

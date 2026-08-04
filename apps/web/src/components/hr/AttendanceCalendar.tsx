@@ -24,7 +24,18 @@ const STATUS_STYLES: Record<string, string> = {
   weekly_rest: 'bg-slate-100 border-slate-200 text-slate-500',
 };
 
+/** Onaysız geçmiş iş günü — "boş hücre" hissini gidermek için amber vurgu. */
+const PENDING_STYLE = 'bg-amber-50 border-amber-200 text-amber-800';
+const FUTURE_STYLE = 'bg-white border-slate-100 text-slate-300';
+
 const WEEKDAY_LABELS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+const LEGEND_ITEMS = [
+  { label: 'Onaylı', dot: 'bg-emerald-500' },
+  { label: 'Bekliyor', dot: 'bg-amber-500' },
+  { label: 'İzinli', dot: 'bg-blue-500' },
+  { label: 'Tatil / Hafta Sonu', dot: 'bg-slate-400' },
+];
 
 function minutesLabel(minutes: number | null | undefined) {
   if (minutes == null) return '';
@@ -32,6 +43,18 @@ function minutesLabel(minutes: number | null | undefined) {
   const m = minutes % 60;
   if (h === 0) return `${m} dk`;
   return `${h}s ${m}d`;
+}
+
+function confirmedAtTime(iso: string | null | undefined) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }
 
 type Props = {
@@ -73,26 +96,45 @@ export function AttendanceCalendar({
           if (!day) {
             return <div key={dom} className="min-h-[88px] bg-white" />;
           }
-          const style = day.attendanceStatus ? STATUS_STYLES[day.attendanceStatus] ?? 'bg-white border-slate-100' : 'bg-white border-slate-100 text-slate-400';
-          const canConfirm = !isLocked && !day.isFuture && onConfirmDay
-            && day.attendanceStatus !== 'weekly_rest'
-            && day.attendanceStatus !== 'holiday'
-            && !day.employeeConfirmedAt;
+
+          const isSpecialStatus =
+            day.attendanceStatus === 'weekly_rest' || day.attendanceStatus === 'holiday' || day.attendanceStatus === 'leave';
+          const isPending = !day.isFuture && !isSpecialStatus && !day.employeeConfirmedAt;
+          const style = day.isFuture
+            ? FUTURE_STYLE
+            : isSpecialStatus
+              ? (STATUS_STYLES[day.attendanceStatus as string] ?? 'bg-white border-slate-100')
+              : isPending
+                ? PENDING_STYLE
+                : STATUS_STYLES.present;
+
+          const canConfirm = !isLocked && !day.isFuture && onConfirmDay && isPending;
+          const shortLabel = day.isFuture
+            ? ''
+            : day.statusLabel
+              ?? (isPending ? 'Bekliyor' : day.attendanceStatus ? day.attendanceStatus : '—');
 
           return (
             <div
               key={day.date}
-              className={`min-h-[88px] bg-white p-1.5 flex flex-col border ${style} ${day.isFuture ? 'opacity-40' : ''}`}
+              className={`min-h-[88px] bg-white p-1.5 flex flex-col border ${style}`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-bold">{dom}</span>
                 {day.employeeConfirmedAt && (
-                  <span className="text-[10px] text-emerald-600" title="Onaylandı">✓</span>
+                  <span
+                    className="text-[10px] text-emerald-600"
+                    title={`Personel Tarafından Onaylandı · ${confirmedAtTime(day.employeeConfirmedAt)}`}
+                  >
+                    ✓
+                  </span>
                 )}
               </div>
-              <p className="text-[10px] leading-tight mt-1 font-medium truncate">
-                {day.statusLabel ?? (day.attendanceStatus ? day.attendanceStatus : '—')}
-              </p>
+              {shortLabel && (
+                <p className="text-[10px] leading-tight mt-1 font-medium truncate">
+                  {shortLabel}
+                </p>
+              )}
               {(day.minutesWorked ?? day.suggestedMinutes) != null && (
                 <p className="text-[10px] text-slate-500 mt-auto">
                   {minutesLabel(day.minutesWorked ?? day.suggestedMinutes)}
@@ -110,7 +152,7 @@ export function AttendanceCalendar({
                   type="button"
                   disabled={confirmingDate === day.date}
                   onClick={() => onConfirmDay(day.date)}
-                  className="mt-1 text-[10px] rounded-md bg-[#1a4080] text-white py-0.5 px-1 hover:bg-[#153366] disabled:opacity-50"
+                  className="mt-1 text-[10px] rounded-md bg-brand-600 text-white py-0.5 px-1 hover:bg-brand-700 disabled:opacity-50"
                 >
                   {confirmingDate === day.date ? '…' : 'Onayla'}
                 </button>
@@ -118,6 +160,14 @@ export function AttendanceCalendar({
             </div>
           );
         })}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-t border-slate-100 bg-slate-50/60">
+        {LEGEND_ITEMS.map((item) => (
+          <span key={item.label} className="flex items-center gap-1.5 text-[11px] text-slate-500">
+            <span className={`h-2 w-2 rounded-full ${item.dot}`} />
+            {item.label}
+          </span>
+        ))}
       </div>
     </div>
   );
