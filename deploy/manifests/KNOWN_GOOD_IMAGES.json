@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-04",
-  "label": "v451-whatsapp-geocode",
-  "description": "Full: WhatsApp api.whatsapp.com + trunk-0 normalizasyonu; tedarikçi mahalle/hizmet bölgesi/konum geocode. Rollback web v450 / backend v450.",
+  "label": "v452-hr-rol-onay",
+  "description": "Full: Personel Özlük Admin/Finans tek onay (Onayla Ve Kilitle), Admin kendi puantajını oluşturmaz, özlük evrak yükleme Finans/yetkili. Migration yok. Rollback web v451 / backend v451.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v451-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v451-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v452-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v452-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v450-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v450-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v451-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v451-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -35,6 +35,7 @@
     "/panel/sigorta-portal/onaylar",
     "/panel/sigorta-portal/faturalar",
     "/panel/asistans-portal",
-    "/panel/asistans-portal/dosyalar"
+    "/panel/asistans-portal/dosyalar",
+    "/panel/personel-ozluk"
   ]
 }
