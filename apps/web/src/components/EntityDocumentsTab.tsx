@@ -122,6 +122,8 @@ type Props = {
   vendorCategory?: string | null;
   /** Optional section card title */
   title?: string;
+  /** true ise yükleme alanı gizlenir (salt görüntüleme) */
+  readOnly?: boolean;
 };
 
 // ── Icon Action Button ─────────────────────────────────────────────────────────
@@ -163,6 +165,7 @@ export function EntityDocumentsTab({
   customerSubType,
   vendorCategory,
   title = 'Evraklar',
+  readOnly = false,
 }: Props) {
   const { showToast } = useToast();
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -296,6 +299,7 @@ export function EntityDocumentsTab({
   return (
     <div className="space-y-4">
       {/* Upload Panel */}
+      {!readOnly && (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <h4 className="text-sm font-semibold text-gray-700 mb-4 border-b border-gray-100 pb-2">{title} — Yükle</h4>
         <div className="flex flex-wrap gap-3 items-end">
@@ -344,6 +348,7 @@ export function EntityDocumentsTab({
           </div>
         </div>
       </div>
+      )}
 
       {/* Documents List */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">

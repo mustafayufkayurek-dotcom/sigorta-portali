@@ -49,4 +49,9 @@ export class ConfirmAttendanceMonthDto {
   /** Ad-soyad yazarak dijital imza (F5b) */
   @IsString()
   signature!: string;
+
+  /** Denetim: Admin/Finans başka personelin ayını onaylayıp kilitler */
+  @IsOptional()
+  @IsString()
+  employeeProfileId?: string;
 }

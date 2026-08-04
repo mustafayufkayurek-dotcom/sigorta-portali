@@ -107,6 +107,7 @@ async function main() {
     { code: 'hr.leave.approve', name: 'İzin Onayla', module: 'hr', action: 'leave_approve' },
     { code: 'hr.attendance.manage', name: 'Puantaj Düzenle', module: 'hr', action: 'attendance_manage' },
     { code: 'hr.supervise', name: 'Personel Denetim Özeti', module: 'hr', action: 'supervise' },
+    { code: 'hr.documents.manage', name: 'Özlük Evrak Yükle', module: 'hr', action: 'documents_manage' },
   ];
 
   const createdPermissions = await Promise.all(
@@ -265,7 +266,7 @@ async function main() {
     'bank_account.view', 'bank_account.create', 'bank_account.update', 'bank_account.delete',
     'report.view',
     'operation_inbox.view', 'operation_inbox.manage',
-    'hr.view', 'hr.supervise', 'hr.leave.approve', 'hr.attendance.manage',
+    'hr.view', 'hr.supervise', 'hr.leave.approve', 'hr.attendance.manage', 'hr.documents.manage',
   ];
   await assignPermissions(financeRole.id, financePermCodes, createdPermissions);
 

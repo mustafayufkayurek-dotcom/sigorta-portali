@@ -50,6 +50,10 @@ type HrSummary = {
   };
   canApprove: boolean;
   canSupervise?: boolean;
+  /** Admin false — denetleyen; Finans true — kendi puantajını da tutar */
+  mustConfirmOwnAttendance?: boolean;
+  /** Finans + yetkili; Admin false */
+  canManagePersonnelDocuments?: boolean;
   dayEndWarning?: {
     pending: boolean;
     workDateLabel: string;
@@ -194,7 +198,12 @@ export default function PersonelOzlukPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const roleCode = usePanelRoleCode();
-  const canApproveByRole = roleCode === 'admin' || roleCode === 'manager';
+  const canApproveByRole =
+    roleCode === 'admin' ||
+    roleCode === 'manager' ||
+    roleCode === 'finance' ||
+    roleCode === 'finans' ||
+    roleCode === 'accountant';
   const canSuperviseByRole =
     roleCode === 'admin' ||
     roleCode === 'manager' ||
@@ -250,17 +259,37 @@ export default function PersonelOzlukPage() {
     canSuperviseByRole ||
     canApproveByRole;
 
+  const isAdminRole = roleCode === 'admin';
+  const isFinanceRole =
+    roleCode === 'finance' || roleCode === 'finans' || roleCode === 'accountant';
+  const mustConfirmOwnAttendance =
+    designPreview
+      ? true
+      : summary?.mustConfirmOwnAttendance != null
+        ? Boolean(summary.mustConfirmOwnAttendance)
+        : !isAdminRole;
+  const canManagePersonnelDocuments =
+    designPreview
+      ? true
+      : summary?.canManagePersonnelDocuments != null
+        ? Boolean(summary.canManagePersonnelDocuments)
+        : isFinanceRole;
+  /** Admin: yalnız denetim — kendi puantaj akışına düşmez */
+  const attendanceSuperviseOnly = canSupervise && !mustConfirmOwnAttendance;
+
   const { data: employeesRaw } = useApiQuery<EmployeeListItem[]>(
     ['hr-employees-list'],
     'hr/employees',
     {
       enabled:
-        canSupervise &&
+        (canSupervise || canManagePersonnelDocuments) &&
         (activeTab === 'attendance' || activeTab === 'assets' || activeTab === 'documents' || activeTab === 'summary'),
     },
   );
   const employeeList = Array.isArray(employeesRaw) ? employeesRaw : [];
   const isViewingOther = canSupervise && Boolean(selectedEmployeeId);
+  /** Admin puantajda personel seçmeden kendi kaydına düşmez */
+  const needsAttendanceEmployeePick = attendanceSuperviseOnly && !selectedEmployeeId;
 
   const {
     data: attendanceRaw,
@@ -268,11 +297,13 @@ export default function PersonelOzlukPage() {
     isError: attendanceError,
     error: attendanceErr,
   } = useApiQuery<AttendanceResponse>(
-    ['hr-attendance', year, month, selectedEmployeeId],
+    ['hr-attendance', year, month, selectedEmployeeId, mustConfirmOwnAttendance],
     'hr/attendance',
     {
       params: { year, month, employeeProfileId: selectedEmployeeId || undefined },
-      enabled: activeTab === 'attendance',
+      enabled:
+        activeTab === 'attendance' &&
+        (mustConfirmOwnAttendance || Boolean(selectedEmployeeId)),
     },
   );
   const attendance = attendanceRaw as AttendanceResponse | undefined;
@@ -336,6 +367,8 @@ export default function PersonelOzlukPage() {
   );
 
   const canManagePuantaj = summary?.canApprove || canApproveByRole;
+  /** Admin veya Finans — personel aylık onayından sonra tek onay yeter */
+  const canLockAttendance = Boolean(summary?.canApprove) || canApproveByRole;
 
   const tabs = useMemo(() => {
     const leavesBadge =
@@ -432,8 +465,13 @@ export default function PersonelOzlukPage() {
         await apiClient.post('hr/attendance/confirm-month', { year, month, signature });
         showToast('success', 'Aylık Puantaj Onaylandı');
       } else if (signatureModal === 'lock') {
-        await apiClient.post('hr/attendance/lock-month', { year, month, signature });
-        showToast('success', 'Ay Kilitlendi');
+        await apiClient.post('hr/attendance/lock-month', {
+          year,
+          month,
+          signature,
+          employeeProfileId: selectedEmployeeId || undefined,
+        });
+        showToast('success', 'Puantaj Onaylandı Ve Ay Kilitlendi');
       }
       setSignatureModal(null);
       queryClient.invalidateQueries({ queryKey: ['hr-attendance'] });
@@ -493,7 +531,11 @@ export default function PersonelOzlukPage() {
             <p className="page-subtitle">
               {designPreview
                 ? 'Tasarım Önizleme — Admin Denetim Ve Gün Sonu Puantaj Uyarısı'
-                : 'Puantaj, İzin Talebi Ve Onay Takibi'}
+                : attendanceSuperviseOnly
+                  ? 'Puantaj Denetimi, İzin Onayı Ve Personel Takibi'
+                  : canSupervise
+                    ? 'Denetim, Kendi Puantajınız, İzin Ve Özlük Takibi'
+                    : 'Puantaj, İzin Talebi Ve Onay Takibi'}
             </p>
           </div>
         </div>
@@ -506,17 +548,26 @@ export default function PersonelOzlukPage() {
         </div>
       )}
 
-      <AttendanceDayEndBanner
-        preview={designPreview}
-        message={designPreview ? undefined : summary?.dayEndWarning?.message ?? undefined}
-        workDateLabel={designPreview ? undefined : summary?.dayEndWarning?.workDateLabel}
-        cutoffLabel={designPreview ? undefined : summary?.dayEndWarning?.cutoffLabel}
-      />
+      {mustConfirmOwnAttendance && (
+        <AttendanceDayEndBanner
+          preview={designPreview}
+          message={designPreview ? undefined : summary?.dayEndWarning?.message ?? undefined}
+          workDateLabel={designPreview ? undefined : summary?.dayEndWarning?.workDateLabel}
+          cutoffLabel={designPreview ? undefined : summary?.dayEndWarning?.cutoffLabel}
+        />
+      )}
 
       <AttendanceMonthCloseBanner />
 
       {canManagePuantaj && !designPreview && (
         <PuantajProcessGuide onGoToAttendance={() => setActiveTab('attendance')} />
+      )}
+      {attendanceSuperviseOnly && !designPreview && (
+        <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-content-secondary">
+          Admin olarak kendi puantajınızı oluşturmazsınız; personeli denetler ve gerektiğinde{' '}
+          <span className="font-semibold text-content-primary">Onayla Ve Kilitle</span> uygularsınız.
+          Finans da aynı onayı verebilir — birinin onayı yeter, çift onay aranmaz.
+        </div>
       )}
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-card">
@@ -625,7 +676,7 @@ export default function PersonelOzlukPage() {
 
           {activeTab === 'documents' && (
             <div className="space-y-6" id="hr-ozluk-evraklari">
-              {canSupervise && (
+              {(canSupervise || canManagePersonnelDocuments) && (
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
                   <label className="text-xs font-medium text-content-tertiary">Personel</label>
                   <select
@@ -633,7 +684,9 @@ export default function PersonelOzlukPage() {
                     value={selectedEmployeeId}
                     onChange={(e) => setSelectedEmployeeId(e.target.value)}
                   >
-                    <option value="">Kendi Özlük Dosyam</option>
+                    <option value="">
+                      {canManagePersonnelDocuments ? 'Personel seçin' : 'Personel seçin (denetim)'}
+                    </option>
                     {employeeList.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.user.firstName} {emp.user.lastName}
@@ -643,40 +696,71 @@ export default function PersonelOzlukPage() {
                   </select>
                 </div>
               )}
-              <HrPersonnelDocumentsPanel
-                preview={designPreview}
-                employeeName={
-                  selectedEmployeeId
-                    ? (() => {
-                        const emp = employeeList.find((e) => e.id === selectedEmployeeId);
-                        return emp
-                          ? `${emp.user.firstName} ${emp.user.lastName}`.trim()
-                          : 'Personel';
-                      })()
-                    : summary
-                      ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
-                      : 'Personel'
-                }
-                canSelectEmployee={false}
-                canUpload
-                onUploadRequest={() => {
-                  const el = document.getElementById('hr-ozluk-yukleme');
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-              />
-              {!designPreview && (selectedEmployeeId || summary?.profile?.id) && (
-                <div id="hr-ozluk-yukleme" className="rounded-2xl border border-border bg-surface p-5 space-y-3">
-                  <h3 className="text-sm font-semibold text-content-primary">Evrak Yükleme</h3>
-                  <p className="text-xs text-content-secondary">
-                    Islak imzalı PDF/JPG dosyalarını buradan yükleyin. Dosya adında evrak türünü belirtin
-                    (ör. Kvkk-Aydinlatma.pdf).
-                  </p>
-                  <EntityDocumentsTab
-                    mode="entity"
-                    entityType="hr_employee_profile"
-                    entityId={selectedEmployeeId || summary!.profile.id!}
-                  />
+
+              {!canManagePersonnelDocuments && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-content-secondary">
+                  {attendanceSuperviseOnly || isAdminRole
+                    ? 'Özlük evrak yükleme Finans veya yetkili personel tarafından yapılır. Siz denetler, gerektiğinde talimat verirsiniz.'
+                    : 'Özlük evraklarınızı Finans takip eder. Eksik belge için Finans ile iletişime geçin; yükleme personel ekranından yapılmaz.'}
                 </div>
+              )}
+
+              {canManagePersonnelDocuments && !selectedEmployeeId && !designPreview && (
+                <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-content-tertiary">
+                  Evrak yüklemek veya takip etmek için personel seçin. İşe giriş / çıkış ve çalışma süreci evrakları buradan imzalatılır ve saklanır.
+                </div>
+              )}
+
+              {(selectedEmployeeId || (!canSupervise && !canManagePersonnelDocuments && summary?.profile?.id) || designPreview) && (
+                <>
+                  <HrPersonnelDocumentsPanel
+                    preview={designPreview}
+                    employeeName={
+                      selectedEmployeeId
+                        ? (() => {
+                            const emp = employeeList.find((e) => e.id === selectedEmployeeId);
+                            return emp
+                              ? `${emp.user.firstName} ${emp.user.lastName}`.trim()
+                              : 'Personel';
+                          })()
+                        : summary
+                          ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
+                          : 'Personel'
+                    }
+                    canSelectEmployee={false}
+                    canUpload={canManagePersonnelDocuments}
+                    onUploadRequest={() => {
+                      if (!canManagePersonnelDocuments) return;
+                      const el = document.getElementById('hr-ozluk-yukleme');
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  />
+                  {!designPreview && canManagePersonnelDocuments && selectedEmployeeId && (
+                    <div id="hr-ozluk-yukleme" className="rounded-2xl border border-border bg-surface p-5 space-y-3">
+                      <h3 className="text-sm font-semibold text-content-primary">Evrak Yükleme</h3>
+                      <p className="text-xs text-content-secondary">
+                        Islak imzalı PDF/JPG dosyalarını buradan yükleyin. Dosya adında evrak türünü belirtin
+                        (ör. Kvkk-Aydinlatma.pdf).
+                      </p>
+                      <EntityDocumentsTab
+                        mode="entity"
+                        entityType="hr_employee_profile"
+                        entityId={selectedEmployeeId}
+                      />
+                    </div>
+                  )}
+                  {!designPreview && !canManagePersonnelDocuments && (selectedEmployeeId || summary?.profile?.id) && (
+                    <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
+                      <h3 className="text-sm font-semibold text-content-primary">Yüklenen Evraklar</h3>
+                      <EntityDocumentsTab
+                        mode="entity"
+                        entityType="hr_employee_profile"
+                        entityId={selectedEmployeeId || summary!.profile.id!}
+                        readOnly
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -712,7 +796,9 @@ export default function PersonelOzlukPage() {
                     value={selectedEmployeeId}
                     onChange={(e) => setSelectedEmployeeId(e.target.value)}
                   >
-                    <option value="">Kendi Puantajım</option>
+                    <option value="">
+                      {mustConfirmOwnAttendance ? 'Kendi Puantajım' : 'Personel seçin (denetim)'}
+                    </option>
                     {employeeList.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.user.firstName} {emp.user.lastName}
@@ -725,9 +811,26 @@ export default function PersonelOzlukPage() {
                       Salt Okunur — {attendance?.employee?.name ?? 'Seçili Personel'}
                     </span>
                   )}
+                  {attendanceSuperviseOnly && !selectedEmployeeId && (
+                    <span className="ml-auto text-xs font-semibold text-content-secondary bg-slate-100 border border-slate-200 rounded-full px-3 py-1">
+                      Denetim Modu — Personel Seçin
+                    </span>
+                  )}
                 </div>
               )}
 
+              {needsAttendanceEmployeePick ? (
+                <div className="rounded-xl border border-dashed border-border p-10 text-center space-y-2">
+                  <p className="text-sm font-semibold text-content-primary">Puantaj Denetimi Ve Onay</p>
+                  <p className="text-sm text-content-secondary max-w-lg mx-auto">
+                    Personel seçerek puantajı inceleyin. Personel aylık onay gönderdikten sonra
+                    <span className="font-semibold text-content-primary"> Onayla Ve Kilitle </span>
+                    ile tamamlayın. Finans aynı onayı vermişse tekrar Admin onayı gerekmez.
+                  </p>
+                  {canSupervise && <AttendanceBulkAccountantPanel year={year} month={month} />}
+                </div>
+              ) : (
+              <>
               <div className="rounded-xl border border-slate-100 bg-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-4">
@@ -766,9 +869,38 @@ export default function PersonelOzlukPage() {
                   </div>
 
                   {attendance?.periodLock?.isLocked ? (
-                    <span className="text-xs font-semibold text-status-danger">Ay Kilitli</span>
+                    <span className="text-xs font-semibold text-status-danger">
+                      Onaylandı Ve Kilitli
+                      {attendance.periodLock.managerSignature
+                        ? ` · ${attendance.periodLock.managerSignature}`
+                        : ''}
+                    </span>
                   ) : isViewingOther ? (
-                    <span className="text-xs text-content-tertiary">Onay Aksiyonları Personelin Kendi Ekranındadır</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!attendance?.periodLock?.employeeConfirmedAt ? (
+                        <span className="text-xs text-content-tertiary">
+                          Personel Aylık Onayı Bekleniyor
+                        </span>
+                      ) : canLockAttendance ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={monthConfirmLoading}
+                            onClick={handleLockMonth}
+                            className="rounded-lg bg-brand-600 text-white text-xs font-semibold px-3 py-2 hover:bg-brand-700 disabled:opacity-50"
+                          >
+                            Onayla Ve Kilitle
+                          </button>
+                          <span className="text-[11px] text-content-tertiary max-w-[220px]">
+                            Admin veya Finans — biri yeterli
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-content-tertiary">
+                          Personel onayladı; yetkili onay bekleniyor
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -787,14 +919,14 @@ export default function PersonelOzlukPage() {
                       >
                         Aylık Onay
                       </button>
-                      {(summary?.canApprove || canApproveByRole) && attendance?.periodLock?.employeeConfirmedAt && (
+                      {canLockAttendance && attendance?.periodLock?.employeeConfirmedAt && (
                         <button
                           type="button"
                           disabled={monthConfirmLoading}
                           onClick={handleLockMonth}
                           className="rounded-lg border border-slate-300 text-xs font-semibold px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
                         >
-                          Ayı Kilitle (İK)
+                          Onayla Ve Kilitle
                         </button>
                       )}
                     </div>
@@ -804,7 +936,9 @@ export default function PersonelOzlukPage() {
                 <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-content-tertiary">
                   Mesai: Hafta İçi 08:30–18:00 · Cumartesi 08:30–13:00 · Pazar Ve Resmi Tatiller Çalışılmıyor.
                   Resmi tatil ve hafta tatili otomatik işaretlenir; onaylı izinler &quot;İzinli&quot; görünür.
-                  {!isViewingOther && ' Ay sonunda Aylık Onay verin; yönetici Ayı Kilitler.'}
+                  {isViewingOther
+                    ? ' Personel aylık onay gönderir; Admin veya Finans’tan biri Onayla Ve Kilitle ile tamamlar (çift onay aranmaz).'
+                    : ' Ay sonunda Aylık Onay verin; Admin veya Finans Onayla Ve Kilitle uygular.'}
                 </p>
 
                 {attendance?.periodLock && (attendance.periodLock.employeeConfirmedAt || attendance.periodLock.managerSignature) && (
@@ -817,7 +951,10 @@ export default function PersonelOzlukPage() {
                     )}
                     {attendance.periodLock.managerSignature && (
                       <span className="text-blue-700">
-                        İK imza: {attendance.periodLock.managerSignature}
+                        Yetkili onay: {attendance.periodLock.managerSignature}
+                        {attendance.periodLock.managerConfirmedAt
+                          ? ` · ${formatDate(attendance.periodLock.managerConfirmedAt)}`
+                          : ''}
                       </span>
                     )}
                   </div>
@@ -901,6 +1038,8 @@ export default function PersonelOzlukPage() {
                     </table>
                   </div>
                 </>
+              )}
+              </>
               )}
             </div>
           )}
@@ -1172,13 +1311,13 @@ export default function PersonelOzlukPage() {
 
       <AttendanceSignatureModal
         open={signatureModal !== null}
-        title={signatureModal === 'lock' ? 'Ay Kilidi — Dijital İmza' : 'Aylık Puantaj Onayı — Dijital İmza'}
+        title={signatureModal === 'lock' ? 'Onayla Ve Kilitle — Dijital İmza' : 'Aylık Puantaj Onayı — Dijital İmza'}
         description={
           signatureModal === 'lock'
-            ? 'Ayı kilitlemeden önce puantaj kayıtlarını incelediğinizi ad-soyad yazarak onaylayın.'
+            ? 'Personelin aylık onayını incelediniz. Onayladığınızda ay kilitlenir. Admin veya Finans’tan biri yeterli; çift onay aranmaz.'
             : 'Ay sonu puantajınızı incelediğinizi ad-soyad yazarak onaylayın.'
         }
-        confirmLabel={signatureModal === 'lock' ? 'Ayı Kilitle' : 'Aylık Onay Ver'}
+        confirmLabel={signatureModal === 'lock' ? 'Onayla Ve Kilitle' : 'Aylık Onay Ver'}
         expectedFullName={expectedFullName}
         loading={monthConfirmLoading}
         onClose={() => !monthConfirmLoading && setSignatureModal(null)}

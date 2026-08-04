@@ -100,15 +100,38 @@ export class EntityDocumentsService {
       const isOwner = profile.userId === requestingUser.id;
       const role = requestingUser.roleCode?.toUpperCase() ?? '';
       const perms = requestingUser.permissions ?? [];
-      const canManageHr =
+      const canViewHr =
         role === 'ADMIN'
+        || role === 'FINANCE'
+        || role === 'FINANS'
+        || role === 'ACCOUNTANT'
         || perms.includes('hr.supervise')
         || perms.includes('hr.attendance.manage')
-        || perms.includes('hr.leave.approve');
-      if (!isOwner && !canManageHr) {
+        || perms.includes('hr.leave.approve')
+        || perms.includes('hr.documents.manage');
+      if (!isOwner && !canViewHr) {
         throw new ForbiddenException('Bu özlük dosyasına erişim izniniz bulunmamaktadır');
       }
     }
+  }
+
+  /** Özlük evrak yükleme: Finans + yetkili; Admin yüklemez, personel kendi yüklemez. */
+  private assertPersonnelDocumentWrite(user?: any): void {
+    const requestingUser = normalizeRequestUser(user);
+    if (!requestingUser) {
+      throw new ForbiddenException('Kullanıcı bilgisi bulunamadı');
+    }
+    const role = requestingUser.roleCode?.toUpperCase() ?? '';
+    if (role === 'ADMIN') {
+      throw new ForbiddenException(
+        'Özlük evrak yükleme Finans veya yetkili personel tarafından yapılır. Admin yalnızca denetler.',
+      );
+    }
+    if (role === 'FINANCE' || role === 'FINANS' || role === 'ACCOUNTANT') return;
+    if ((requestingUser.permissions ?? []).includes('hr.documents.manage')) return;
+    throw new ForbiddenException(
+      'Özlük evrak yükleme yetkiniz yok. Bu işlem Finans veya yetkili personel tarafından yapılır.',
+    );
   }
 
   async findByEntity(
@@ -141,6 +164,9 @@ export class EntityDocumentsService {
   }) {
     const { file, entityType, entityId, documentTypeId, notes, uploadedByUserId, requestingUser, insuranceCompanyIds } = params;
     await this.assertEntityAccess(entityType, entityId, requestingUser, insuranceCompanyIds);
+    if (entityType === 'hr_employee_profile') {
+      this.assertPersonnelDocumentWrite(requestingUser);
+    }
     const isImage = this.imageOptimizer.isImage(file.mimetype);
     const uuid = randomUUID();
 

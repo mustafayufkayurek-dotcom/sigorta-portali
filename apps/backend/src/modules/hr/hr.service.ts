@@ -76,6 +76,7 @@ export class HrService {
   private canApprove(user: AuthUser): boolean {
     const role = user.roleCode?.toUpperCase();
     if (role === 'ADMIN') return true;
+    if (role === 'FINANCE' || role === 'FINANS' || role === 'ACCOUNTANT') return true;
     return (user.permissions ?? []).includes('hr.leave.approve');
   }
 
@@ -85,6 +86,26 @@ export class HrService {
     if (role === 'ADMIN' || role === 'MANAGER') return true;
     if (role === 'FINANCE' || role === 'ACCOUNTANT' || role === 'FINANS') return true;
     return (user.permissions ?? []).includes('hr.supervise');
+  }
+
+  /**
+   * Admin puantaj oluşturmaz / kendi gününü onaylamaz — denetleyen taraftır.
+   * Finans aynı denetim rolünde iken kendi puantajını da tutmak zorundadır.
+   */
+  private mustConfirmOwnAttendance(user: AuthUser): boolean {
+    const role = user.roleCode?.toUpperCase();
+    return role !== 'ADMIN';
+  }
+
+  /**
+   * Özlük evrak yükleme: Finans + yetkili personel.
+   * Admin yalnızca denetler; yüklemez.
+   */
+  canManagePersonnelDocuments(user: AuthUser): boolean {
+    const role = user.roleCode?.toUpperCase();
+    if (role === 'ADMIN') return false;
+    if (role === 'FINANCE' || role === 'FINANS' || role === 'ACCOUNTANT') return true;
+    return (user.permissions ?? []).includes('hr.documents.manage');
   }
 
   /** Türkçe ad-soyad karşılaştırması (AgreementConsentModal ile uyumlu). */
@@ -622,7 +643,9 @@ export class HrService {
       }),
     ]);
     const todayAuto = this.resolveAutoStatus(todayKey, todayApprovedLeaves);
-    const todayPending = !todayAuto && !todayEntry?.employeeConfirmedAt;
+    const subjectToOwnAttendance = this.mustConfirmOwnAttendance(user);
+    const todayPending =
+      subjectToOwnAttendance && !todayAuto && !todayEntry?.employeeConfirmedAt;
     const workDateLabel = todayDate.toLocaleDateString('tr-TR', {
       day: 'numeric',
       month: 'long',
@@ -662,6 +685,8 @@ export class HrService {
       },
       canApprove: this.canApprove(user),
       canSupervise: this.canSupervise(user),
+      mustConfirmOwnAttendance: subjectToOwnAttendance,
+      canManagePersonnelDocuments: this.canManagePersonnelDocuments(user),
     };
   }
 
@@ -1050,14 +1075,40 @@ export class HrService {
     });
   }
 
-  /** Yönetici ay kilidi — İK onayı */
+  /**
+   * Yönetici / Finans ay kilidi — personel aylık onayından sonra.
+   * Admin veya Finans'tan biri onaylarsa yeter; çift onay aranmaz (izin ile aynı).
+   */
   async lockAttendanceMonth(user: AuthUser, dto: ConfirmAttendanceMonthDto) {
     if (!this.canApprove(user)) {
-      throw new ForbiddenException('Puantaj kilitleme yetkiniz yok');
+      throw new ForbiddenException('Puantaj onay / kilitleme yetkiniz yok');
     }
 
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
-    const existing = await this.getPeriodLock(profile.id, dto.year, dto.month);
+    let employeeProfileId: string;
+    if (dto.employeeProfileId) {
+      if (!this.canSupervise(user) && !this.canApprove(user)) {
+        throw new ForbiddenException('Başka personelin puantajını onaylama yetkiniz yok');
+      }
+      const target = await this.prisma.hrEmployeeProfile.findUnique({
+        where: { id: dto.employeeProfileId },
+        select: { id: true, status: true },
+      });
+      if (!target || target.status !== 'active') {
+        throw new NotFoundException('Personel profili bulunamadı');
+      }
+      employeeProfileId = target.id;
+    } else {
+      const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+      employeeProfileId = profile.id;
+    }
+
+    const existing = await this.getPeriodLock(employeeProfileId, dto.year, dto.month);
+
+    if (existing?.lockedAt) {
+      throw new BadRequestException(
+        'Bu ay zaten onaylanmış ve kilitlenmiş. Admin veya Finans onayından biri yeterli olduğu için tekrar onay gerekmez.',
+      );
+    }
 
     if (!existing?.employeeConfirmedAt) {
       throw new BadRequestException('Personel aylık onayı tamamlanmadan kilitlenemez');
@@ -1069,7 +1120,7 @@ export class HrService {
     return this.prisma.hrAttendancePeriodLock.upsert({
       where: {
         employeeProfileId_year_month: {
-          employeeProfileId: profile.id,
+          employeeProfileId,
           year: dto.year,
           month: dto.month,
         },
@@ -1082,7 +1133,7 @@ export class HrService {
         lockedByUserId: this.authUserId(user),
       },
       create: {
-        employeeProfileId: profile.id,
+        employeeProfileId,
         year: dto.year,
         month: dto.month,
         employeeConfirmedAt: existing.employeeConfirmedAt,
