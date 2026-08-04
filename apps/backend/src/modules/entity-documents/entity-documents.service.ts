@@ -64,6 +64,15 @@ export class EntityDocumentsService {
       });
       if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
       assertClaimFileAccess(claimFile, requestingUser, insuranceCompanyIds);
+      return;
+    }
+
+    if (entityType === 'emergency_case') {
+      const emergencyCase = await this.prisma.emergencyCase.findUnique({
+        where: { id: entityId },
+        select: { id: true },
+      });
+      if (!emergencyCase) throw new NotFoundException('Dosya bulunamadı');
     }
   }
 

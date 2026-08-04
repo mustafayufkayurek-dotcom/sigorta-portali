@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -6,6 +12,8 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as fs from 'fs';
@@ -18,7 +26,7 @@ export interface UploadResult {
 }
 
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly provider: string;
   private readonly s3Client: S3Client | null = null;
@@ -46,6 +54,72 @@ export class StorageService {
       this.logger.log(`StorageService: S3 provider initialized (endpoint=${endpoint}, bucket=${this.bucket})`);
     } else {
       this.logger.log(`StorageService: local provider (dir=${this.localUploadsDir})`);
+    }
+  }
+
+  async onModuleInit(): Promise<void> {
+    if (this.provider !== 's3') return;
+    try {
+      await this.ensureBucketReady();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`S3 bucket hazırlığı başarısız (${this.bucket}): ${message}`);
+    }
+  }
+
+  private isMissingBucketError(err: unknown): boolean {
+    if (!err || typeof err !== 'object') return false;
+    const e = err as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
+    return (
+      e.name === 'NoSuchBucket'
+      || e.name === 'NotFound'
+      || e.Code === 'NoSuchBucket'
+      || e.$metadata?.httpStatusCode === 404
+    );
+  }
+
+  /** MinIO/S3: bucket yoksa oluştur (production NoSuchBucket upload 500 önlemi). */
+  private async ensureBucketReady(): Promise<void> {
+    if (!this.s3Client) return;
+
+    try {
+      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      return;
+    } catch (err) {
+      if (!this.isMissingBucketError(err)) throw err;
+    }
+
+    await this.s3Client.send(new CreateBucketCommand({ Bucket: this.bucket }));
+    this.logger.warn(`S3 bucket otomatik oluşturuldu: ${this.bucket}`);
+  }
+
+  private async putObjectToS3(
+    file: Buffer,
+    key: string,
+    contentType: string,
+  ): Promise<void> {
+    if (!this.s3Client) throw new Error('S3 client not initialized');
+
+    try {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file,
+          ContentType: contentType,
+        }),
+      );
+    } catch (err) {
+      if (!this.isMissingBucketError(err)) throw err;
+      await this.ensureBucketReady();
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file,
+          ContentType: contentType,
+        }),
+      );
     }
   }
 
@@ -95,16 +169,16 @@ export class StorageService {
     key: string,
     contentType: string,
   ): Promise<UploadResult> {
-    if (!this.s3Client) throw new Error('S3 client not initialized');
-
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: file,
-        ContentType: contentType,
-      }),
-    );
+    try {
+      await this.putObjectToS3(file, key, contentType);
+    } catch (err) {
+      if (this.isMissingBucketError(err)) {
+        throw new ServiceUnavailableException(
+          'Dosya depolama alanı hazır değil. Lütfen kısa süre sonra tekrar deneyin.',
+        );
+      }
+      throw err;
+    }
 
     const endpoint = this.configService.get<string>('S3_ENDPOINT', '');
     const url = `${endpoint}/${this.bucket}/${key}`;

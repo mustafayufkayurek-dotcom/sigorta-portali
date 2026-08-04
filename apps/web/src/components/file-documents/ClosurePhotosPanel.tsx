@@ -91,9 +91,12 @@ export default function ClosurePhotosPanel({
       }
       await load();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? 'Yükleme başarısız';
+      const res = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data;
+      const raw = res?.message;
+      const msg = Array.isArray(raw)
+        ? raw.join(', ')
+        : raw
+          ?? 'Yükleme başarısız';
       setError(msg);
     } finally {
       setUploading(false);
