@@ -27,6 +27,39 @@ import type { DeptSlice, MarginPoint, TrendPoint } from './MgmtChartsRow';
 import type { DeptFinanceRow } from './MgmtDepartmentTable';
 import type { MgmtDateRange, MgmtPeriodPreset } from './period';
 
+type FinanceDashboardResponse = {
+  summary: {
+    totalRevenue: number;
+    totalCost: number;
+    totalProfit: number;
+    avgMarginPct: number;
+  };
+  monthlyTrend: Array<{
+    month: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+  }>;
+  insuranceCollections?: Array<{
+    name: string;
+    revenue: number;
+    collected: number;
+    count: number;
+    collectionRate: number;
+  }>;
+};
+
+const MONTH_TR = [
+  'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
+  'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara',
+];
+
+function monthTrendLabel(ym: string): string {
+  const [y, m] = ym.split('-');
+  const mi = Math.max(0, Math.min(11, (Number(m) || 1) - 1));
+  return `${MONTH_TR[mi]} ${String(y).slice(-2)}`;
+}
+
 type UserPerformanceRow = {
   userId: string;
   userName: string;
@@ -156,6 +189,11 @@ export function useManagementDashboardData(
     plPeriod.mode === 'month' ? prev.year : plYear - 1,
     plPeriod.mode === 'month' ? prev.month : 0,
   );
+  const financeQuery = useApiQuery<FinanceDashboardResponse>(
+    ['dashboard-finance-mgmt'],
+    '/dashboard/finance',
+    { staleTime: 60_000 },
+  );
   const opsQuery = useDashboardOperations();
   const slaQuery = useSlaSummary();
   const ownershipQuery = useOwnershipLoad();
@@ -172,6 +210,7 @@ export function useManagementDashboardData(
     ownershipQuery.isLoading ||
     userPerfQuery.isLoading ||
     surveysQuery.isLoading ||
+    financeQuery.isLoading ||
     (plEnabled && (plQuery.isLoading || prevPlQuery.isLoading));
 
   const kpis = useMemo((): MgmtKpiItem[] => {
@@ -258,7 +297,9 @@ export function useManagementDashboardData(
       {
         id: 'tamamlanan',
         title: 'Tamamlanan Dosya',
-        value: ops ? formatNumber(ops.closedClaims ?? 0) : '—',
+        value: ops
+          ? formatNumber((ops.closedClaims ?? 0) + (ops.closedEmergencyCases ?? 0))
+          : '—',
         trendLabel: null,
         trendTitle: 'Güncel stok',
         trendDirection: null,
@@ -279,6 +320,10 @@ export function useManagementDashboardData(
     const topStaff = (userPerfQuery.data?.users ?? [])[0];
     const bottlenecksCritical =
       (ownershipQuery.data?.items ?? []).filter((i) => (i.criticalFiles ?? 0) > 0).length;
+    const ins = [...(financeQuery.data?.insuranceCollections ?? [])].sort(
+      (a, b) => b.revenue - a.revenue,
+    );
+    const topIns = ins[0];
 
     return [
       {
@@ -294,22 +339,22 @@ export function useManagementDashboardData(
       {
         id: 'ciro',
         title: 'En Yüksek Ciro',
-        primary: 'Departman Kırılımı Henüz Yok',
-        secondary: 'Toplam ciro KPI’da görünür',
-        tone: 'neutral',
+        primary: topIns?.name?.trim() || 'Müşteri Ciro Kırılımı Yok',
+        secondary: topIns ? formatCurrency(topIns.revenue) : 'Toplam ciro KPI’da görünür',
+        tone: topIns ? 'positive' : 'neutral',
         detailHref: '/panel/finans/karlilik',
       },
       {
         id: 'gider',
         title: 'En Yüksek Gider',
-        primary: 'Departman Kırılımı Henüz Yok',
+        primary: 'Gider Kırılımı Henüz Yok',
         tone: 'neutral',
         detailHref: '/panel/finans/masraflar',
       },
       {
         id: 'marj',
         title: 'En Yüksek Kâr Marjı',
-        primary: 'Departman Kırılımı Henüz Yok',
+        primary: 'Marj Kırılımı Henüz Yok',
         tone: 'neutral',
         detailHref: '/panel/finans/karlilik',
       },
@@ -335,7 +380,7 @@ export function useManagementDashboardData(
         detailHref: '/panel/sahiplik#personel-verimlilik',
       },
     ];
-  }, [surveysQuery.data, userPerfQuery.data, ownershipQuery.data]);
+  }, [surveysQuery.data, userPerfQuery.data, ownershipQuery.data, financeQuery.data]);
 
   const staffRows = useMemo((): StaffProductivityRow[] => {
     const users = userPerfQuery.data?.users ?? [];
@@ -383,21 +428,39 @@ export function useManagementDashboardData(
     };
   }, [slaQuery.data]);
 
-  const emptyTrend: TrendPoint[] = [];
-  const emptyDepartments: DeptSlice[] = [];
-  const emptyMargins: MarginPoint[] = [];
-  const emptyDeptRows: DeptFinanceRow[] = [];
+  const { trend, margins, departments, deptRows, deptDataAvailable } = useMemo(() => {
+    const monthly = financeQuery.data?.monthlyTrend ?? [];
+    const trendPoints: TrendPoint[] = monthly.map((m) => ({
+      label: monthTrendLabel(m.month),
+      revenue: m.revenue,
+      cost: m.cost,
+      profit: m.profit,
+    }));
+    const marginPoints: MarginPoint[] = monthly.map((m) => ({
+      label: monthTrendLabel(m.month),
+      margin: m.revenue > 0 ? Math.round(((m.profit / m.revenue) * 100) * 10) / 10 : 0,
+    }));
+
+    // Departman kırılımı ayrı kaynak ister; burada yalnızca ay trend/marj bağlanır
+    return {
+      trend: trendPoints,
+      margins: marginPoints,
+      departments: [] as DeptSlice[],
+      deptRows: [] as DeptFinanceRow[],
+      deptDataAvailable: false,
+    };
+  }, [financeQuery.data]);
 
   return {
     loading,
     kpis,
     summary,
     staffRows,
-    deptRows: emptyDeptRows,
-    deptDataAvailable: false,
-    trend: emptyTrend,
-    departments: emptyDepartments,
-    margins: emptyMargins,
+    deptRows,
+    deptDataAvailable,
+    trend,
+    departments,
+    margins,
     slaPct: sla.slaPct,
     slaSlices: sla.slices,
   };

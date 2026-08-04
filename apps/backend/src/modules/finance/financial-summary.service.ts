@@ -158,37 +158,90 @@ export class FinancialSummaryService {
    * Portföy genelinde P&L özeti (Finans Analitik API için)
    */
   async getPortfolioPL(filters?: { year?: number; month?: number }) {
-    const where: any = {};
+    /**
+     * Dönem filtresi: dosya açılış tarihine göre değil, fatura tarihine göre.
+     * Aksi halde "Bu Ay" KPI'ları yeni açılan (henüz faturasız) dosyalarda 0 kalır;
+     * eski dosyaların dönem cirosu da görünmez.
+     */
+    if (filters?.year) {
+      const periodStart = new Date(
+        filters.year,
+        filters.month ? filters.month - 1 : 0,
+        1,
+      );
+      const periodEnd = new Date(
+        filters.year,
+        filters.month ? filters.month : 12,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
 
-    if (filters?.year || filters?.month) {
-      const periodStart = filters.year
-        ? new Date(
-            filters.year,
-            filters.month ? filters.month - 1 : 0,
-            1,
-          )
-        : undefined;
-      const periodEnd = filters.year
-        ? new Date(
-            filters.year,
-            filters.month ? filters.month : 12,
-            0,
-            23,
-            59,
-            59,
-          )
-        : undefined;
-
-      where.claimFile = {
-        createdAt: {
-          ...(periodStart && { gte: periodStart }),
-          ...(periodEnd && { lte: periodEnd }),
+      const invoices = await this.prisma.invoice.findMany({
+        where: {
+          invoiceDate: { gte: periodStart, lte: periodEnd },
+          status: { not: 'cancelled' },
         },
+        select: {
+          invoiceType: true,
+          totalAmount: true,
+          claimFileId: true,
+          status: true,
+        },
+      });
+
+      const fileIds = new Set<string>();
+      let totalRevenue = 0;
+      let totalCost = 0;
+      let totalCollected = 0;
+      for (const inv of invoices) {
+        if (inv.claimFileId) fileIds.add(inv.claimFileId);
+        const amount = Number(inv.totalAmount) || 0;
+        if (inv.invoiceType === 'sales') {
+          totalRevenue += amount;
+          if (inv.status === 'paid') totalCollected += amount;
+        } else {
+          totalCost += amount;
+        }
+      }
+
+      const summaries = fileIds.size
+        ? await this.prisma.claimFinancialSummary.findMany({
+            where: { claimFileId: { in: [...fileIds] } },
+            select: {
+              fileFeeRevenue: true,
+              extraWorkRevenue: true,
+              totalVariableCost: true,
+              overheadShare: true,
+            },
+          })
+        : [];
+
+      const fileFeeRevenue = summaries.reduce((s, r) => s + (r.fileFeeRevenue ?? 0), 0);
+      const extraWorkRevenue = summaries.reduce((s, r) => s + (r.extraWorkRevenue ?? 0), 0);
+      const totalVariableCost = summaries.reduce((s, r) => s + (r.totalVariableCost ?? 0), 0);
+      const overheadShare = summaries.reduce((s, r) => s + (r.overheadShare ?? 0), 0);
+      const netProfit = totalRevenue - totalCost;
+      const netMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      return {
+        fileCount: fileIds.size,
+        totalRevenue,
+        fileFeeRevenue,
+        extraWorkRevenue,
+        totalCost,
+        totalVariableCost,
+        overheadShare,
+        netProfit,
+        totalCollected,
+        outstandingBalance: Math.max(0, totalRevenue - totalCollected),
+        netMarginPct: Math.round(netMarginPct * 100) / 100,
       };
     }
 
     const summaries = await this.prisma.claimFinancialSummary.findMany({
-      where,
       include: {
         claimFile: {
           select: {

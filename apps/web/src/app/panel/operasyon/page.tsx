@@ -374,6 +374,14 @@ function OperasyonPageContent() {
   }, []);
 
   const loadClaims = useCallback(async () => {
+    // "Acil Dosya" KPI = acil yardım stoku; hasar listesi karışmasın
+    if (opsPreset === 'urgent') {
+      setClaims([]);
+      setClaimsTotal(0);
+      setClaimsLoading(false);
+      setClaimsError('');
+      return;
+    }
     setClaimsLoading(true);
     setClaimsError('');
     try {
@@ -402,7 +410,13 @@ function OperasyonPageContent() {
   }, []);
 
   const loadCases = useCallback(async () => {
-    if (opsPreset) {
+    // Hasar-only KPI filtrelerinde acil listesi gerekmez
+    const needsAcil =
+      !opsPreset ||
+      opsPreset === 'open' ||
+      opsPreset === 'urgent' ||
+      opsPreset === 'opened_today';
+    if (!needsAcil) {
       setCases([]);
       setCasesLoading(false);
       return;
@@ -410,7 +424,7 @@ function OperasyonPageContent() {
     setCasesLoading(true);
     try {
       const res = await getCases();
-      setCases(res.data.slice(0, PAGE_SIZE));
+      setCases(res.data.slice(0, PAGE_SIZE * 3));
     } catch { /* ignore */ }
     finally { setCasesLoading(false); }
   }, [opsPreset]);
@@ -476,7 +490,26 @@ function OperasyonPageContent() {
     };
   });
 
-  const acilRows: UnifiedRow[] = cases.map((c) => {
+  const acilRows: UnifiedRow[] = cases
+    .filter((c) => {
+      const closed = c.status === 'COZULDU' || c.status === 'FATURALANDILDI';
+      if (opsPreset === 'urgent' || opsPreset === 'open') return !closed;
+      if (opsPreset === 'opened_today') {
+        if (!c.createdAt) return false;
+        const created = new Date(c.createdAt);
+        const now = new Date();
+        const trDay = (d: Date) =>
+          new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Europe/Istanbul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(d);
+        return trDay(created) === trDay(now);
+      }
+      return true;
+    })
+    .map((c) => {
     const customer = resolveOperationCustomer(c.customer);
     return {
       kind: 'acil' as const,
@@ -519,9 +552,16 @@ function OperasyonPageContent() {
   }
 
   const filteredRows: UnifiedRow[] = (() => {
-    const merged = filterType === 'hasar'
+    // KPI preset acil/açık/bugün: hasar+acil birleşik; diğer hasar KPI'ları yalnız hasar
+    const effectiveType: typeof filterType =
+      opsPreset === 'urgent'
+        ? 'acil'
+        : opsPreset === 'open' || opsPreset === 'opened_today'
+          ? 'all'
+          : filterType;
+    const merged = effectiveType === 'hasar'
       ? hasarRows
-      : filterType === 'acil'
+      : effectiveType === 'acil'
         ? acilRows
         : [...hasarRows, ...acilRows];
     const q = customerQuery.trim().toLocaleLowerCase('tr');
@@ -586,12 +626,23 @@ function OperasyonPageContent() {
   };
 
   const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
-  const isLoading = claimsLoading || (filterType !== 'hasar' && !opsPreset && casesLoading);
+  const isLoading =
+    (opsPreset !== 'urgent' && claimsLoading) ||
+    (
+      (
+        opsPreset === 'urgent' ||
+        opsPreset === 'open' ||
+        opsPreset === 'opened_today' ||
+        (!opsPreset && filterType !== 'hasar')
+      ) && casesLoading
+    );
   const totalPages = Math.max(1, Math.ceil(claimsTotal / PAGE_SIZE));
 
   const togglePreset = (preset: OperationPreset) => {
     setOpsPreset((prev) => (prev === preset ? '' : preset));
-    setFilterType('hasar');
+    if (preset === 'urgent') setFilterType('acil');
+    else if (preset === 'open' || preset === 'opened_today') setFilterType('all');
+    else setFilterType('hasar');
   };
 
   const columnFitSamples = useMemo(() => {

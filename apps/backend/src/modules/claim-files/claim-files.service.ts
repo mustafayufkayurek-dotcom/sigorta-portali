@@ -302,6 +302,24 @@ export class ClaimFilesService {
     return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
+  /** İstanbul takvim günü — canlı sunucu UTC olsa da "bugün" operasyon gününe hizalı. */
+  private istanbulDayRange(now = new Date()): { from: Date; to: Date; dateKey: string } {
+    const dateKey = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+    // Türkiye sabit UTC+3 (yaz saati yok)
+    const from = new Date(`${dateKey}T00:00:00+03:00`);
+    const to = new Date(`${dateKey}T23:59:59.999+03:00`);
+    return { from, to, dateKey };
+  }
+
+  private closedEmergencyStatuses() {
+    return ['COZULDU', 'FATURALANDILDI'] as const;
+  }
+
   private parseSort(sort?: string): Record<string, 'asc' | 'desc'> {
     const raw = String(sort ?? 'createdAt:desc').trim();
     const [fieldRaw, dirRaw] = raw.split(':');
@@ -360,8 +378,7 @@ export class ClaimFilesService {
         ];
         break;
       case 'opened_today': {
-        const from = this.startOfUtcDay();
-        const to = this.endOfUtcDay();
+        const { from, to } = this.istanbulDayRange();
         baseWhere.createdAt = { gte: from, lte: to };
         break;
       }
@@ -597,18 +614,23 @@ export class ClaimFilesService {
     return this.prisma.claimFile.count({ where });
   }
 
-  /** Operasyon sayfası KPI sayaçları — tek round-trip */
+  /** Operasyon sayfası KPI sayaçları — hasar + acil yardım birlikte. */
   async getOperationStats(requestingUser?: { id: string; roleCode: string }) {
+    const closedEmergency = this.closedEmergencyStatuses();
+    const { from: todayFrom, to: todayTo } = this.istanbulDayRange();
+
     const [
-      open,
-      urgent,
-      openedToday,
+      openClaims,
+      priorityUrgentClaims,
+      openedTodayClaims,
       approvalPending,
       reportWriting,
       reportApproval,
       financeTransfer,
       delayRisk,
       approval72h,
+      openEmergency,
+      openedTodayEmergency,
     ] = await Promise.all([
       this.countForOpsPreset('open', requestingUser),
       this.countForOpsPreset('urgent', requestingUser),
@@ -619,18 +641,32 @@ export class ClaimFilesService {
       this.countForOpsPreset('finance_transfer', requestingUser),
       this.countForOpsPreset('delay_risk', requestingUser),
       this.countForOpsPreset('approval_72h', requestingUser),
+      this.prisma.emergencyCase.count({
+        where: { status: { notIn: [...closedEmergency] } },
+      }),
+      this.prisma.emergencyCase.count({
+        where: { createdAt: { gte: todayFrom, lte: todayTo } },
+      }),
     ]);
 
     return {
-      open,
-      urgent,
-      openedToday,
+      /** Açık hasar + açık acil */
+      open: openClaims + openEmergency,
+      /**
+       * UI etiketi "Acil Dosya" — acil yardım dosyası stoku.
+       * (Hasar önceliği "acil/high" ayrı tutulur; ürün dili Tür=Acil.)
+       */
+      urgent: openEmergency,
+      priorityUrgentClaims,
+      openedToday: openedTodayClaims + openedTodayEmergency,
       approvalPending,
       reportWriting,
       reportApproval,
       financeTransfer,
       delayRisk,
       approval72h,
+      openEmergency,
+      openedTodayEmergency,
     };
   }
 
