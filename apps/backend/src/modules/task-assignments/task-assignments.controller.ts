@@ -34,6 +34,13 @@ export class TaskAssignmentsController {
     return { data };
   }
 
+  /** Ekip iş yükü — Personel Performans Yönetimi kartları */
+  @Get('team-workload')
+  async getTeamWorkload() {
+    const data = await this.service.getTeamWorkload();
+    return { data };
+  }
+
   @Get('workload/:userId')
   async getWorkload(@Param('userId') userId: string) {
     const data = await this.service.getWorkload(userId);

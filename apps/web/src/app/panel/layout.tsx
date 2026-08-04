@@ -337,7 +337,7 @@ function getPanelMainLinks({
               { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
             ],
           },
-          { title: 'Personel', href: '/panel/personel-yonetimi', icon: UserCog, groupStart: true },
+          { title: 'Performans Yönetimi', href: '/panel/personel-yonetimi', icon: UserCog, groupStart: true },
           { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
           { title: 'Müşteriler', href: '/panel/musteriler', icon: Users, groupStart: true },

@@ -332,7 +332,7 @@ const SCREEN_LABELS: Record<string, string> = {
   kullanicilar:      'Kullanıcılar',
   guvenlik:          'Güvenlik',
   harita:            'Harita',
-  personel_yonetimi: 'Personel Yönetimi',
+  personel_yonetimi: 'Performans Yönetimi',
   personel_ozluk: 'Personel Özlük',
 };
 

@@ -31,6 +31,7 @@ interface StaffWorkload {
   role?: { name: string; code: string };
   activeCount: number;
   completedThisMonth: number;
+  completedToday?: number;
   pendingApproval: number;
   assignments?: AssignedFile[];
 }
@@ -422,20 +423,32 @@ export default function PersonelYonetimiPage() {
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
+  const [workloadError, setWorkloadError] = useState('');
+
   const loadWorkload = useCallback(async () => {
     setLoading(true);
+    setWorkloadError('');
     try {
       const r = await axios.get(`${API}/task-assignments/team-workload`, { headers: authHeader() });
       const data: StaffWorkload[] = r.data.data ?? r.data ?? [];
-      setWorkload(data);
-      setUserOptions(data.map((s) => ({ id: s.userId, firstName: s.firstName, lastName: s.lastName })));
+      setWorkload(Array.isArray(data) ? data : []);
+      setUserOptions(
+        (Array.isArray(data) ? data : []).map((s) => ({
+          id: s.userId,
+          firstName: s.firstName,
+          lastName: s.lastName,
+        })),
+      );
 
-      // Derive stats
       const totalActive = data.reduce((sum, s) => sum + (s.activeCount ?? 0), 0);
-      const completedToday = data.reduce((sum, s) => sum + (s.completedThisMonth ?? 0), 0);
+      const completedToday = data.reduce(
+        (sum, s) => sum + (s.completedToday ?? 0),
+        0,
+      );
       setStats((p) => ({ ...p, totalActive, completedToday }));
     } catch {
       setWorkload([]);
+      setWorkloadError('İş yükü verisi alınamadı. Yenileyip tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -744,16 +757,14 @@ export default function PersonelYonetimiPage() {
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Page header */}
-            {/* Breadcrumb */}
+    <div className="space-y-6">
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Personel Yönetimi</span>
+        <span className="text-slate-600 font-medium">Performans Yönetimi</span>
       </nav>
 
-<div className="page-header">
+      <div className="page-header">
         <div className="flex items-center gap-3">
           <div className="page-header-icon">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -761,67 +772,44 @@ export default function PersonelYonetimiPage() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">Personel Yönetimi</h2>
+            <h1 className="page-title">Personel Performans Yönetimi</h1>
             <p className="page-subtitle">İş Yükü Takibi, Atama ve Onay Yönetimi</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => { loadWorkload(); loadApprovals(); }}
-          className="btn-secondary"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Yenile
-        </button>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            onClick={() => { loadWorkload(); loadApprovals(); }}
+            className="btn-secondary"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Yenile
+          </button>
+        </div>
       </div>
 
-      {/* ── Stats strip ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="stat-card card-accent-blue">
-          <div className="flex items-start justify-between mb-2">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50">
-              <svg className="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-blue-700">{stats.totalActive}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Toplam Aktif Atama</p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-400">Toplam Aktif Atama</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{loading ? '—' : stats.totalActive}</p>
         </div>
-        <div className="stat-card card-accent-emerald">
-          <div className="flex items-start justify-between mb-2">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-green-700">{stats.completedToday}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Bugün Tamamlanan</p>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-400">Bugün Tamamlanan</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{loading ? '—' : stats.completedToday}</p>
         </div>
-        <div className="stat-card card-accent-purple">
-          <div className="flex items-start justify-between mb-2">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-purple-700">{stats.avgClosingDays ? `${stats.avgClosingDays} gün` : '—'}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Ort. Kapama Süresi</p>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-400">Ort. Kapama Süresi</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">
+            {stats.avgClosingDays ? `${stats.avgClosingDays} gün` : '—'}
+          </p>
         </div>
-        <div className="stat-card card-accent-orange">
-          <div className="flex items-start justify-between mb-2">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-orange-50">
-              <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-orange-700">{pendingApprovals.length}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Onay Bekleyen</p>
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-xs text-slate-400">Onay Bekleyen</p>
+          <p className={`mt-1 text-2xl font-bold ${pendingApprovals.length > 0 ? 'text-status-warning' : 'text-slate-800'}`}>
+            {approvalsLoading ? '—' : pendingApprovals.length}
+          </p>
         </div>
       </div>
 
@@ -848,17 +836,17 @@ export default function PersonelYonetimiPage() {
       )}
 
       {/* ── Tab Navigation ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card">
-        <div className="flex border-b border-slate-100 overflow-x-auto">
+      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex overflow-x-auto border-b border-slate-100">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3.5 text-sm font-semibold transition-colors ${
                 activeTab === tab.key
                   ? 'border-brand-600 text-brand-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200'
+                  : 'border-transparent text-slate-500 hover:border-slate-200 hover:text-slate-700'
               }`}
             >
               {tab.icon}
@@ -914,10 +902,22 @@ export default function PersonelYonetimiPage() {
                 ))}
               </div>
             ) : workload.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">👥</div>
-                <p className="text-slate-500 font-medium">Personel Verisi Bulunamadı</p>
-                <p className="text-xs text-slate-500 mt-1.5">Backend Endpoint&apos;i Kontrol Edin</p>
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-14 text-center">
+                <p className="text-sm font-semibold text-slate-700">
+                  {workloadError ? 'Veri Alınamadı' : 'Personel Verisi Bulunamadı'}
+                </p>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {workloadError || 'Aktif ofis / saha personeli veya açık atama kaydı yok.'}
+                </p>
+                {workloadError ? (
+                  <button
+                    type="button"
+                    onClick={() => loadWorkload()}
+                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                  >
+                    Tekrar Dene
+                  </button>
+                ) : null}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

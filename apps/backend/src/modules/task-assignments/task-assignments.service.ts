@@ -218,6 +218,170 @@ export class TaskAssignmentsService {
     };
   }
 
+  /**
+   * Ofis/saha personeli iş yükü — açık dosya atamaları + bu ay tamamlanan + onay bekleyen.
+   * UI: /panel/personel-yonetimi İş Yükü kartları.
+   */
+  async getTeamWorkload() {
+    const staffRoleCodes = ['office_staff', 'field_staff', 'OFFICE_STAFF', 'FIELD_STAFF'];
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const staff = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: staffRoleCodes } },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: { select: { name: true, code: true } },
+      },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+
+    if (staff.length === 0) return [];
+
+    const staffIds = staff.map((u) => u.id);
+
+    const [openFiles, closedThisMonth, pendingApprovals] = await Promise.all([
+      this.prisma.claimFile.findMany({
+        where: {
+          currentStatus: { isClosedState: false },
+          OR: [
+            { assignedOfficeUserId: { in: staffIds } },
+            { assignedFieldUserId: { in: staffIds } },
+          ],
+        },
+        select: {
+          id: true,
+          fileNo: true,
+          createdAt: true,
+          assignedOfficeUserId: true,
+          assignedFieldUserId: true,
+          currentStatus: { select: { code: true, name: true } },
+          customer: {
+            select: { firstName: true, lastName: true, companyName: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.claimFile.findMany({
+        where: {
+          currentStatus: { isClosedState: true },
+          closedAt: { gte: monthStart },
+          OR: [
+            { assignedOfficeUserId: { in: staffIds } },
+            { assignedFieldUserId: { in: staffIds } },
+          ],
+        },
+        select: {
+          assignedOfficeUserId: true,
+          assignedFieldUserId: true,
+          closedAt: true,
+        },
+      }),
+      this.prisma.taskAssignment.groupBy({
+        by: ['assignedToId'],
+        where: {
+          assignedToId: { in: staffIds },
+          status: 'PENDING_APPROVAL',
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const pendingByUser = new Map(
+      pendingApprovals.map((row) => [row.assignedToId, row._count._all]),
+    );
+
+    type Acc = {
+      activeCount: number;
+      completedThisMonth: number;
+      completedToday: number;
+      assignments: Array<{
+        id: string;
+        fileNumber: string;
+        status: string;
+        customer?: {
+          firstName?: string | null;
+          lastName?: string | null;
+          companyName?: string | null;
+        };
+        createdAt: string;
+      }>;
+    };
+
+    const byUser = new Map<string, Acc>();
+    for (const id of staffIds) {
+      byUser.set(id, {
+        activeCount: 0,
+        completedThisMonth: 0,
+        completedToday: 0,
+        assignments: [],
+      });
+    }
+
+    const bumpActive = (userId: string | null | undefined, file: (typeof openFiles)[0]) => {
+      if (!userId) return;
+      const acc = byUser.get(userId);
+      if (!acc) return;
+      acc.activeCount += 1;
+      if (acc.assignments.length < 20) {
+        acc.assignments.push({
+          id: file.id,
+          fileNumber: file.fileNo,
+          status: file.currentStatus?.code ?? file.currentStatus?.name ?? 'open',
+          customer: file.customer ?? undefined,
+          createdAt: file.createdAt.toISOString(),
+        });
+      }
+    };
+
+    for (const file of openFiles) {
+      bumpActive(file.assignedOfficeUserId, file);
+      if (
+        file.assignedFieldUserId &&
+        file.assignedFieldUserId !== file.assignedOfficeUserId
+      ) {
+        bumpActive(file.assignedFieldUserId, file);
+      }
+    }
+
+    for (const file of closedThisMonth) {
+      const closedAt = file.closedAt ? new Date(file.closedAt) : null;
+      const isToday = closedAt != null && closedAt >= todayStart;
+      for (const uid of [file.assignedOfficeUserId, file.assignedFieldUserId]) {
+        if (!uid) continue;
+        const acc = byUser.get(uid);
+        if (!acc) continue;
+        acc.completedThisMonth += 1;
+        if (isToday) acc.completedToday += 1;
+      }
+    }
+
+    return staff.map((u) => {
+      const acc = byUser.get(u.id)!;
+      return {
+        userId: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        role: u.role,
+        activeCount: acc.activeCount,
+        completedThisMonth: acc.completedThisMonth,
+        completedToday: acc.completedToday,
+        pendingApproval: pendingByUser.get(u.id) ?? 0,
+        assignments: acc.assignments,
+      };
+    });
+  }
+
   @Cron('0 */30 * * * *')
   async checkTimeouts() {
     const now = new Date();
