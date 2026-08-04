@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import {
   getDocumentBranding,
   renderDocumentHeaderHtml,
@@ -359,10 +360,12 @@ export class VendorContractsService {
   async recordWhatsappSent(id: string, phone: string) {
     const contract = await this.findOne(id);
     const link = buildAppPath(this.config, `/sozlesme/${contract.publicToken}`);
-    const message = encodeURIComponent(
-      `Sayın ${contract.vendorName},\n\nMeridyen Assistance tarafından "${contract.fileNo}" numaralı dosya için düzenlenen tedarikçi sözleşmesini aşağıdaki linkten inceleyebilir ve imzalayabilirsiniz:\n\n${link}\n\nSözleşme No: ${contract.contractNo}\nİmza Son Tarihi: ${contract.signDeadlineAt ? new Date(contract.signDeadlineAt).toLocaleDateString('tr-TR') : '—'}\n\nMeridyen Assistance`,
-    );
-    const waUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`;
+    const message =
+      `Sayın ${contract.vendorName},\n\nMeridyen Assistance tarafından "${contract.fileNo}" numaralı dosya için düzenlenen tedarikçi sözleşmesini aşağıdaki linkten inceleyebilir ve imzalayabilirsiniz:\n\n${link}\n\nSözleşme No: ${contract.contractNo}\nİmza Son Tarihi: ${contract.signDeadlineAt ? new Date(contract.signDeadlineAt).toLocaleDateString('tr-TR') : '—'}\n\nMeridyen Assistance`;
+    const waUrl = buildWhatsAppMeUrl(phone, message);
+    if (!waUrl) {
+      throw new BadRequestException('Geçerli bir WhatsApp telefon numarası gerekli');
+    }
 
     await this.prisma.vendorContract.update({
       where: { id },

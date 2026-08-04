@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { extractFieldSurveyFieldsFromImage } from './field-survey-scan.util';
 import { FieldSurveyScanResult } from './field-survey-scan.types';
 import { CreateFieldSurveyBriefDto } from './dto/create-field-survey-brief.dto';
@@ -316,8 +317,11 @@ export class FieldSurveyBriefsService {
 
   private buildWhatsAppUrl(summaryText: string, pdfUrl: string, phone?: string): string {
     const message = `${summaryText}\n\n${pdfUrl}`;
-    const recipient = phone ? `90${phone.replace(/\D/g, '')}` : '';
-    return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
+    // Yalnız telefon normalizasyonu — çift 90 / trunk-0 hatası; FSB ürün/UX değişmez
+    return (
+      buildWhatsAppMeUrl(phone, message) ??
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
+    );
   }
 
   private async uploadPhoto(file: Express.Multer.File): Promise<string> {

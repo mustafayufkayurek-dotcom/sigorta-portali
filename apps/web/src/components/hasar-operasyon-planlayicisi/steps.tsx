@@ -851,16 +851,21 @@ export function StepWhatsApp() {
     templatesFromSettings,
     templatesLoading,
     applyWaTemplateForRecipient,
+    assignedInspectorId,
+    assignedSupplierIds,
   } = usePlanner();
   const [marked, setMarked] = useState(false);
+
+  const assignedInspector = claim.inspectors.find((i) => i.id === assignedInspectorId);
+  const assignedSupplier = claim.suppliers.find((s) => assignedSupplierIds.includes(s.id));
 
   const recipientName =
     recipientType === 'Sigortalı'
       ? claim.insuredName
       : recipientType === 'Tespitçi'
-        ? 'Mehmet Kaya'
+        ? assignedInspector?.name ?? 'Tespitçi Seçilmedi'
         : recipientType === 'Tedarikçi'
-          ? 'Abc Boya'
+          ? assignedSupplier?.name ?? 'Tedarikçi Seçilmedi'
           : recipientType === 'Eksper Ofisi'
             ? 'Örnek Eksper Ofisi'
             : claim.insurer;
@@ -869,8 +874,10 @@ export function StepWhatsApp() {
     recipientType === 'Sigortalı'
       ? claim.insuredPhone
       : recipientType === 'Tespitçi'
-        ? '0532 111 22 33'
-        : '0532 000 00 00';
+        ? assignedInspector?.phone ?? ''
+        : recipientType === 'Tedarikçi'
+          ? assignedSupplier?.phone ?? ''
+          : '';
 
   const hasarTemplates = templates.length
     ? templates

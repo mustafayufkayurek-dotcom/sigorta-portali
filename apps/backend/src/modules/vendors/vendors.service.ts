@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
+import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 import { VendorRecommendationService } from './vendor-recommendation.service';
 import { VendorCostMemoryService } from '@/modules/vendor-cost-memory/vendor-cost-memory.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
@@ -342,17 +343,11 @@ export class VendorsService {
       );
     }
 
-    const recipientPhone = String(phone || vendor.phone || '').replace(/\D/g, '');
-    if (!recipientPhone) {
+    const recipientPhone = String(phone || vendor.phone || '').trim();
+    const internationalPhone = normalizeWhatsAppPhone(recipientPhone);
+    if (!internationalPhone) {
       throw new BadRequestException('WhatsApp teyidi için telefon numarası gereklidir.');
     }
-    const internationalPhone = recipientPhone.startsWith('0')
-      ? `90${recipientPhone.slice(1)}`
-      : recipientPhone.startsWith('90')
-        ? recipientPhone
-        : recipientPhone.length === 10
-          ? `90${recipientPhone}`
-          : recipientPhone;
     const message = [
       `Merhaba ${vendor.name},`,
       '',
@@ -364,7 +359,10 @@ export class VendorsService {
       'Bilgiler doğruysa “Onaylıyorum”, düzeltme varsa doğru bilgileri yazmanızı rica ederiz.',
       'Bu mesaj bilgilendirme amaçlıdır.',
     ].join('\n');
-    const waUrl = `https://wa.me/${internationalPhone}?text=${encodeURIComponent(message)}`;
+    const waUrl = buildWhatsAppMeUrl(internationalPhone, message);
+    if (!waUrl) {
+      throw new BadRequestException('WhatsApp bağlantısı oluşturulamadı.');
+    }
     const sentAt = new Date();
 
     await this.prisma.vendor.update({

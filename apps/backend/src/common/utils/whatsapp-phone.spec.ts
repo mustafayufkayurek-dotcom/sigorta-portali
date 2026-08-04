@@ -1,35 +1,44 @@
 import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from './whatsapp-phone';
 
 describe('normalizeWhatsAppPhone', () => {
-  it('TR 0 ile başlayan numarayı 90 ile normalize eder', () => {
+  it('baştaki 0 ile TR cep normalleştirir', () => {
     expect(normalizeWhatsAppPhone('0532 647 01 18')).toBe('905326470118');
   });
 
-  it('10 haneli yerel numaraya 90 ekler', () => {
+  it('10 haneli cep için 90 ekler', () => {
     expect(normalizeWhatsAppPhone('5326470118')).toBe('905326470118');
   });
 
-  it('+90 formatını bozmaz', () => {
+  it('+90 ile gelen numarayı temizler', () => {
     expect(normalizeWhatsAppPhone('+90 532 647 01 18')).toBe('905326470118');
   });
 
-  it('zaten 90 ile başlayan numarayı bozmaz', () => {
+  it('zaten 90 ile başlayanı korur', () => {
     expect(normalizeWhatsAppPhone('905326470118')).toBe('905326470118');
   });
 
-  it('çift 90 önekini temizler', () => {
+  it('çift 90 temizler', () => {
     expect(normalizeWhatsAppPhone('90905326470118')).toBe('905326470118');
   });
 
-  it('00 uluslararası önekini temizler', () => {
+  it('00 önekini temizler', () => {
     expect(normalizeWhatsAppPhone('00905326470118')).toBe('905326470118');
+  });
+
+  it('+90 0532 trunk-0 hatasını düzeltir', () => {
+    expect(normalizeWhatsAppPhone('+90 0532 647 01 18')).toBe('905326470118');
+    expect(normalizeWhatsAppPhone('9005326470118')).toBe('905326470118');
+  });
+
+  it('fazla basamağı TR cep için kırpar', () => {
+    expect(normalizeWhatsAppPhone('90532647011899')).toBe('905326470118');
   });
 });
 
 describe('buildWhatsAppMeUrl', () => {
-  it('normalize edilmiş wa.me linki üretir', () => {
+  it('api.whatsapp.com send linki üretir', () => {
     expect(buildWhatsAppMeUrl('05326470118', 'Merhaba')).toBe(
-      `https://wa.me/905326470118?text=${encodeURIComponent('Merhaba')}`,
+      `https://api.whatsapp.com/send?phone=905326470118&text=${encodeURIComponent('Merhaba')}`,
     );
   });
 });

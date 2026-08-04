@@ -65,8 +65,8 @@ export function activityColor(dateStr: string | null | undefined): string {
 }
 
 /**
- * WhatsApp wa.me için rakam dizisi (ülke kodu dahil, + yok).
- * TR: 0532… / 532… / +90 532… → 90532…
+ * WhatsApp wa.me / api.whatsapp.com için rakam dizisi (ülke kodu dahil, + yok).
+ * TR: 0532… / 532… / +90 532… / +90 0532… → 90532…
  * Çift 90 (9090…) ve baştaki 00 temizlenir — aksi halde WhatsApp
  * «numarası WhatsApp kullanmıyor» uyarısı verebilir.
  */
@@ -83,10 +83,19 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
     digits = digits.slice(2);
   }
 
+  // +90 0532… → 900532… (ülke kodundan sonra trunk 0)
+  while (digits.startsWith('90') && digits.length >= 13 && digits[2] === '0') {
+    digits = `90${digits.slice(3)}`;
+  }
+
   if (digits.startsWith('0')) {
     digits = `90${digits.slice(1)}`;
   } else if (!digits.startsWith('90') && digits.length === 10) {
     digits = `90${digits}`;
+  }
+
+  if (digits.startsWith('90') && digits.length > 12 && /^90[5]/.test(digits)) {
+    digits = digits.slice(0, 12);
   }
 
   if (digits.length < 11) return null;
@@ -94,13 +103,13 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
 }
 
 /**
- * Telefon numarasını WhatsApp wa.me linkine dönüştürür.
+ * Telefon numarasını WhatsApp gönderim linkine dönüştürür.
+ * Desktop için api.whatsapp.com/send kullanılır.
  */
 export function toWhatsAppLink(phone: string | null | undefined, message?: string | null): string | null {
   const normalized = normalizeWhatsAppPhone(phone);
   if (!normalized) return null;
-  const base = `https://wa.me/${normalized}`;
   const text = message?.trim();
-  if (!text) return base;
-  return `${base}?text=${encodeURIComponent(text)}`;
+  if (!text) return `https://api.whatsapp.com/send?phone=${normalized}`;
+  return `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`;
 }
