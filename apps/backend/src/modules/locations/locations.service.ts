@@ -50,6 +50,34 @@ export class LocationsService {
     return [...aliases];
   }
 
+  /** Overpass bazen yalnız "Merkez" gibi işe yaramaz adlar döndürüp DB'ye yazıyor. */
+  isLowQualityNeighborhoodList(
+    names: string[],
+    provinceName: string,
+    districtName: string,
+  ): boolean {
+    const cleaned = names
+      .map((n) => n.trim())
+      .filter((n) => n.length > 1)
+      .filter((n) => !this.isJunkNeighborhoodName(n, provinceName, districtName));
+    return cleaned.length < 5;
+  }
+
+  isJunkNeighborhoodName(
+    name: string,
+    provinceName: string,
+    districtName: string,
+  ): boolean {
+    const n = name.trim().toLocaleLowerCase('tr-TR');
+    const province = provinceName.trim().toLocaleLowerCase('tr-TR');
+    const district = districtName.trim().toLocaleLowerCase('tr-TR');
+    if (!n) return true;
+    if (n === 'merkez' || n === 'merkez mahallesi') return true;
+    if (n === province || n === `${province} mahallesi`) return true;
+    if (n === district || n === `${district} mahallesi`) return true;
+    return false;
+  }
+
   async findNeighborhoodsByNames(provinceName: string, districtName: string) {
     if (!provinceName.trim() || !districtName.trim()) {
       return [];
@@ -96,17 +124,25 @@ export class LocationsService {
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     });
+    const cachedNames = cached.map((r) => r.name);
+    const cacheUsable =
+      cached.length > 0 &&
+      !this.isLowQualityNeighborhoodList(cachedNames, province.name, district.name);
+
+    if (cacheUsable) {
+      return cached.filter(
+        (r) => !this.isJunkNeighborhoodName(r.name, province.name, district.name),
+      );
+    }
+
     if (cached.length > 0) {
-      return cached;
+      this.logger.warn(
+        `Mahalle cache düşük kalite — yenileniyor (${province.name}/${district.name}: ${cached.length} kayıt)`,
+      );
+      await this.prisma.neighborhood.deleteMany({ where: { districtId: district.id } });
     }
 
-    const overpassNames = this.districtNameAliases(province.name, district.name);
-    let fetched: string[] = [];
-    for (const osmDistrictName of overpassNames) {
-      fetched = await this.fetchNeighborhoodsFromOverpass(province.name, osmDistrictName);
-      if (fetched.length > 0) break;
-    }
-
+    const fetched = await this.fetchNeighborhoodNames(province.name, district.name);
     if (fetched.length > 0) {
       await this.prisma.neighborhood.createMany({
         data: fetched.map((name) => ({ districtId: district.id, name })),
@@ -120,6 +156,45 @@ export class LocationsService {
     }
 
     return [];
+  }
+
+  private async fetchNeighborhoodNames(
+    provinceName: string,
+    districtName: string,
+  ): Promise<string[]> {
+    const overpassNames = this.districtNameAliases(provinceName, districtName);
+    let fetched: string[] = [];
+
+    for (const osmDistrictName of overpassNames) {
+      fetched = await this.fetchNeighborhoodsFromOverpass(provinceName, osmDistrictName, false);
+      fetched = fetched.filter(
+        (n) => !this.isJunkNeighborhoodName(n, provinceName, districtName),
+      );
+      if (!this.isLowQualityNeighborhoodList(fetched, provinceName, districtName)) {
+        return fetched;
+      }
+    }
+
+    // Merkez ilçelerde OSM sınır adı genelde il adı; il genelinden admin_level=8 mahalleleri al
+    const isCentral =
+      districtName.trim().toLocaleLowerCase('tr-TR') === 'merkez' ||
+      districtName.trim().toLocaleLowerCase('tr-TR').endsWith(' merkez');
+    if (isCentral) {
+      const provinceWide = await this.fetchNeighborhoodsFromOverpass(
+        provinceName,
+        provinceName,
+        true,
+      );
+      const cleaned = provinceWide.filter(
+        (n) => !this.isJunkNeighborhoodName(n, provinceName, districtName),
+      );
+      if (!this.isLowQualityNeighborhoodList(cleaned, provinceName, districtName)) {
+        return cleaned;
+      }
+      if (cleaned.length > fetched.length) fetched = cleaned;
+    }
+
+    return fetched;
   }
 
   /** Nominatim sunucu tarafı arama — tarayıcı CORS / User-Agent kısıtlarını aşar. */
@@ -164,15 +239,29 @@ export class LocationsService {
 
   private async fetchNeighborhoodsFromOverpass(
     provinceName: string,
-    districtName: string,
+    districtOrAreaName: string,
+    provinceWideAdmin8: boolean,
   ): Promise<string[]> {
-    const query = `[out:json][timeout:20];
-area["name"="${this.escapeOverpass(provinceName)}"]["admin_level"="4"]->.p;
-area["name"="${this.escapeOverpass(districtName)}"]["admin_level"~"6|7|8"](area.p)->.d;
+    const province = this.escapeOverpass(provinceName);
+    const areaName = this.escapeOverpass(districtOrAreaName);
+
+    const query = provinceWideAdmin8
+      ? `[out:json][timeout:25];
+area["name"="${province}"]["admin_level"="4"]->.p;
 (
-  node["place"~"neighbourhood|suburb|quarter"](area.d);
-  way["place"~"neighbourhood|suburb|quarter"](area.d);
-  relation["place"~"neighbourhood|suburb|quarter"](area.d);
+  relation["boundary"="administrative"]["admin_level"="8"](area.p);
+  node["place"~"neighbourhood|suburb|quarter"](area.p);
+  way["place"~"neighbourhood|suburb|quarter"](area.p);
+);
+out tags;`
+      : `[out:json][timeout:25];
+area["name"="${province}"]["admin_level"="4"]->.p;
+area["name"="${areaName}"]["admin_level"~"6|7|8"](area.p)->.d;
+(
+  relation["boundary"="administrative"]["admin_level"="8"](area.d);
+  node["place"~"neighbourhood|suburb|quarter|village"](area.d);
+  way["place"~"neighbourhood|suburb|quarter|village"](area.d);
+  relation["place"~"neighbourhood|suburb|quarter|village"](area.d);
 );
 out tags;`;
 
@@ -184,7 +273,7 @@ out tags;`;
           'User-Agent': 'MeridyenAssistance/1.0 (locations-service)',
         },
         body: new URLSearchParams({ data: query }).toString(),
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) return [];
       const json = (await res.json()) as {
@@ -195,7 +284,9 @@ out tags;`;
         .filter((name): name is string => !!name && name.length > 1);
       return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'tr'));
     } catch (err) {
-      this.logger.warn(`Overpass mahalle sorgusu başarısız (${provinceName}/${districtName}): ${err}`);
+      this.logger.warn(
+        `Overpass mahalle sorgusu başarısız (${provinceName}/${districtOrAreaName}): ${err}`,
+      );
       return [];
     }
   }

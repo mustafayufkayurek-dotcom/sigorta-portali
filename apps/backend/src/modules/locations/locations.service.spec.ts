@@ -13,3 +13,30 @@ describe('LocationsService.districtNameAliases', () => {
     expect(aliases).toEqual(expect.arrayContaining(['Merkez', 'Bilecik Merkez', 'Bilecik']));
   });
 });
+
+describe('LocationsService mahalle kalite filtresi', () => {
+  const service = new LocationsService({} as any);
+
+  it('yalnız Merkez kayıtlarını düşük kalite sayar', () => {
+    expect(
+      service.isLowQualityNeighborhoodList(['Merkez', 'Merkez Mahallesi'], 'Uşak', 'Merkez'),
+    ).toBe(true);
+  });
+
+  it('gerçek mahalle listesini kabul eder', () => {
+    const names = [
+      'Kemalöz Mahallesi',
+      'Atatürk Mahallesi',
+      'Fatih Mahallesi',
+      'Cumhuriyet Mahallesi',
+      'Işık Mahallesi',
+      'Kurtuluş Mahallesi',
+    ];
+    expect(service.isLowQualityNeighborhoodList(names, 'Uşak', 'Merkez')).toBe(false);
+  });
+
+  it('junk isimleri ayıklar', () => {
+    expect(service.isJunkNeighborhoodName('Merkez', 'Uşak', 'Merkez')).toBe(true);
+    expect(service.isJunkNeighborhoodName('Kemalöz Mahallesi', 'Uşak', 'Merkez')).toBe(false);
+  });
+});
