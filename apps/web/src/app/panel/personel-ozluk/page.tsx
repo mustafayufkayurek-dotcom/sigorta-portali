@@ -17,6 +17,7 @@ import { AttendanceMonthCloseBanner } from '@/components/hr/AttendanceMonthClose
 import { AttendanceSignatureModal } from '@/components/hr/AttendanceSignatureModal';
 import { AttendanceDayEndBanner } from '@/components/hr/AttendanceDayEndBanner';
 import { AdminAttendanceSupervisionPanel } from '@/components/hr/AdminAttendanceSupervisionPanel';
+import { WorkHoursPreviewNote } from '@/components/hr/WorkHoursPreviewNote';
 import { PuantajProcessGuide } from '@/components/hr/PuantajProcessGuide';
 import { HrPersonnelDocumentsPanel } from '@/components/hr/HrPersonnelDocumentsPanel';
 import { HrAssignedAssetsPanel } from '@/components/hr/HrAssignedAssetsPanel';
@@ -54,10 +55,25 @@ type HrSummary = {
   mustConfirmOwnAttendance?: boolean;
   /** Finans + yetkili; Admin false */
   canManagePersonnelDocuments?: boolean;
+  workHours?: {
+    labels: { summary: string; weekday: string; saturday: string; sunday: string };
+  };
   dayEndWarning?: {
     pending: boolean;
     workDateLabel: string;
     cutoffLabel: string;
+    scheduleLabel?: string;
+    message: string | null;
+  };
+  workHoursWarning?: {
+    active: boolean;
+    workDateLabel: string;
+    expectedStart: string | null;
+    expectedEnd: string | null;
+    isLateStart: boolean;
+    isEarlyLeave: boolean;
+    lateStartMinutes: number | null;
+    earlyLeaveMinutes: number | null;
     message: string | null;
   };
 };
@@ -78,6 +94,12 @@ type AttendanceDay = {
   employeeConfirmedAt: string | null;
   isFuture: boolean;
   isAutoMarked: boolean;
+  expectedStart?: string | null;
+  expectedEnd?: string | null;
+  lateStartMinutes?: number | null;
+  earlyLeaveMinutes?: number | null;
+  isLateStart?: boolean;
+  isEarlyLeave?: boolean;
 };
 
 type EmployeeListItem = {
@@ -91,6 +113,9 @@ type EmployeeListItem = {
 type AttendanceResponse = {
   year: number;
   month: number;
+  workHours?: {
+    labels: { summary: string; weekday: string; saturday: string; sunday: string };
+  };
   days: AttendanceDay[];
   employee?: { id: string; userId: string; name: string; department: string | null };
   periodLock?: {
@@ -933,13 +958,36 @@ export default function PersonelOzlukPage() {
                   )}
                 </div>
 
-                <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-content-tertiary">
-                  Mesai: Hafta İçi 08:30–18:00 · Cumartesi 08:30–13:00 · Pazar Ve Resmi Tatiller Çalışılmıyor.
-                  Resmi tatil ve hafta tatili otomatik işaretlenir; onaylı izinler &quot;İzinli&quot; görünür.
-                  {isViewingOther
-                    ? ' Personel aylık onay gönderir; Admin veya Finans’tan biri Onayla Ve Kilitle ile tamamlar (çift onay aranmaz).'
-                    : ' Ay sonunda Aylık Onay verin; Admin veya Finans Onayla Ve Kilitle uygular.'}
-                </p>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <WorkHoursPreviewNote
+                    preview={designPreview}
+                    summaryLabel={
+                      attendance?.workHours?.labels.summary
+                      ?? summary?.workHours?.labels.summary
+                    }
+                    weekdayLabel={
+                      attendance?.workHours?.labels.weekday
+                      ?? summary?.workHours?.labels.weekday
+                      ?? 'Hafta İçi: 08:30 – 18:00'
+                    }
+                    saturdayLabel={
+                      attendance?.workHours?.labels.saturday
+                      ?? summary?.workHours?.labels.saturday
+                      ?? 'Cumartesi: 08:30 – 13:00'
+                    }
+                    sundayLabel={
+                      attendance?.workHours?.labels.sunday
+                      ?? summary?.workHours?.labels.sunday
+                      ?? 'Pazar Ve Resmi Tatiller: Çalışılmıyor'
+                    }
+                  />
+                  <p className="mt-2 text-xs text-content-tertiary">
+                    Resmi tatil ve hafta tatili otomatik işaretlenir; onaylı izinler &quot;İzinli&quot; görünür.
+                    {isViewingOther
+                      ? ' Personel aylık onay gönderir; Admin veya Finans’tan biri Onayla Ve Kilitle ile tamamlar (çift onay aranmaz).'
+                      : ' Ay sonunda Aylık Onay verin; Admin veya Finans Onayla Ve Kilitle uygular.'}
+                  </p>
+                </div>
 
                 {attendance?.periodLock && (attendance.periodLock.employeeConfirmedAt || attendance.periodLock.managerSignature) && (
                   <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-600">
@@ -1004,6 +1052,7 @@ export default function PersonelOzlukPage() {
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Durum</th>
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Mesai Giriş</th>
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Mesai Bitiş</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Denetim</th>
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Kayıtlı Süre</th>
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Önerilen</th>
                           <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">Onay</th>
@@ -1016,8 +1065,42 @@ export default function PersonelOzlukPage() {
                             <td className="px-4 py-2.5">
                               {day.statusLabel ?? (day.attendanceStatus ? (ATTENDANCE_LABELS[day.attendanceStatus] ?? day.attendanceStatus) : 'Kayıt Yok')}
                             </td>
-                            <td className="px-4 py-2.5 tabular-nums">{formatClockTime(day.clockInAt)}</td>
-                            <td className="px-4 py-2.5 tabular-nums">{formatClockTime(day.clockOutAt)}</td>
+                            <td className={`px-4 py-2.5 tabular-nums ${day.isLateStart ? 'text-status-warning font-semibold' : ''}`}>
+                              {formatClockTime(day.clockInAt)}
+                              {day.expectedStart ? (
+                                <span className="block text-[10px] font-normal text-content-tertiary">
+                                  Beklenen {day.expectedStart}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className={`px-4 py-2.5 tabular-nums ${day.isEarlyLeave ? 'text-status-warning font-semibold' : ''}`}>
+                              {formatClockTime(day.clockOutAt)}
+                              {day.expectedEnd ? (
+                                <span className="block text-[10px] font-normal text-content-tertiary">
+                                  Beklenen {day.expectedEnd}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-2.5 text-xs">
+                              {day.isLateStart || day.isEarlyLeave ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  {day.isLateStart ? (
+                                    <span className="rounded-full bg-status-warning/10 px-2 py-0.5 font-semibold text-status-warning">
+                                      Geç +{day.lateStartMinutes} dk
+                                    </span>
+                                  ) : null}
+                                  {day.isEarlyLeave ? (
+                                    <span className="rounded-full bg-status-danger/10 px-2 py-0.5 font-semibold text-status-danger">
+                                      Erken −{day.earlyLeaveMinutes} dk
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : day.expectedStart ? (
+                                <span className="text-content-tertiary">Uygun</span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
                             <td className="px-4 py-2.5">{minutesToHours(day.minutesWorked)}</td>
                             <td className="px-4 py-2.5 text-slate-600">{minutesToHours(day.suggestedMinutes)}</td>
                             <td className="px-4 py-2.5 text-xs">

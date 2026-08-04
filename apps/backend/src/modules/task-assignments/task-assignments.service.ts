@@ -62,14 +62,95 @@ export class TaskAssignmentsService {
   }
 
   async findPendingApprovals() {
-    return this.prisma.taskAssignment.findMany({
+    const rows = await this.prisma.taskAssignment.findMany({
       where: { status: 'PENDING_APPROVAL' },
       include: {
-        claimFile: { select: { id: true, fileNo: true } },
-        assignedTo: { select: { id: true, firstName: true, lastName: true, email: true } },
-        assignedBy: { select: { id: true, firstName: true, lastName: true } },
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            approvedBudgetAmount: true,
+            invoicedAmount: true,
+            financialSummary: {
+              select: { totalRevenue: true },
+            },
+          },
+        },
+        assignedTo: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        assignedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        notifications: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            type: true,
+            message: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const now = Date.now();
+    return rows.map((a) => {
+      const amount =
+        a.claimFile.approvedBudgetAmount ??
+        a.claimFile.invoicedAmount ??
+        a.claimFile.financialSummary?.totalRevenue ??
+        null;
+      const timeoutAt = new Date(
+        a.createdAt.getTime() + a.timeoutHours * 60 * 60 * 1000,
+      ).toISOString();
+      const delayMs = Math.max(0, now - a.createdAt.getTime());
+      const delayHours = Math.floor(delayMs / 3_600_000);
+      const requestEvents = a.notifications.filter((n) =>
+        ['ASSIGNMENT', 'REMINDER', 'TIMEOUT_WARNING'].includes(n.type),
+      );
+      const requests =
+        requestEvents.length > 0
+          ? requestEvents.map((n) => ({
+              id: n.id,
+              type: n.type,
+              message: n.message,
+              at: n.createdAt.toISOString(),
+            }))
+          : [
+              {
+                id: `created-${a.id}`,
+                type: 'ASSIGNMENT',
+                message: 'Onay talebi oluşturuldu',
+                at: a.createdAt.toISOString(),
+              },
+            ];
+
+      return {
+        id: a.id,
+        claimFileId: a.claimFile.id,
+        fileNumber: a.claimFile.fileNo,
+        amount,
+        priority: a.priority,
+        createdAt: a.createdAt.toISOString(),
+        timeoutAt,
+        timeoutHours: a.timeoutHours,
+        delayHours,
+        delayLabel:
+          delayHours < 1
+            ? 'Az önce'
+            : delayHours < 24
+              ? `${delayHours} saat`
+              : `${Math.floor(delayHours / 24)} gün`,
+        assignedUserId: a.assignedTo.id,
+        assignedUser: a.assignedTo,
+        assignedBy: a.assignedBy,
+        requestCount: requests.length,
+        firstRequestedAt: requests[0]?.at ?? a.createdAt.toISOString(),
+        lastRequestedAt: requests[requests.length - 1]?.at ?? a.createdAt.toISOString(),
+        requests,
+      };
     });
   }
 

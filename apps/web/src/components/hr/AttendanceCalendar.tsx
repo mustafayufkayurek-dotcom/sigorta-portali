@@ -13,6 +13,10 @@ type CalendarDay = {
   employeeConfirmedAt: string | null;
   isFuture: boolean;
   isAutoMarked: boolean;
+  isLateStart?: boolean;
+  isEarlyLeave?: boolean;
+  lateStartMinutes?: number | null;
+  earlyLeaveMinutes?: number | null;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -35,6 +39,7 @@ const LEGEND_ITEMS = [
   { label: 'Bekliyor', dot: 'bg-amber-500' },
   { label: 'İzinli', dot: 'bg-blue-500' },
   { label: 'Tatil / Hafta Sonu', dot: 'bg-slate-400' },
+  { label: 'Geç / Erken', dot: 'bg-status-warning' },
 ];
 
 function minutesLabel(minutes: number | null | undefined) {
@@ -145,6 +150,19 @@ export function AttendanceCalendar({
                   {day.clockInAt ? new Date(day.clockInAt).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
                   {' – '}
                   {day.clockOutAt ? new Date(day.clockOutAt).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
+                </p>
+              )}
+              {(day.isLateStart || day.isEarlyLeave) && (
+                <p
+                  className="text-[10px] font-semibold text-status-warning leading-tight"
+                  title={[
+                    day.isLateStart ? `Geç +${day.lateStartMinutes ?? 0} dk` : '',
+                    day.isEarlyLeave ? `Erken −${day.earlyLeaveMinutes ?? 0} dk` : '',
+                  ].filter(Boolean).join(' · ')}
+                >
+                  {day.isLateStart ? 'Geç' : ''}
+                  {day.isLateStart && day.isEarlyLeave ? ' · ' : ''}
+                  {day.isEarlyLeave ? 'Erken' : ''}
                 </p>
               )}
               {canConfirm && (

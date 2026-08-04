@@ -23,6 +23,16 @@ import {
   parseDateKey,
 } from './hr-turkey-calendar.helper';
 import { annualLeaveEntitlementDays } from './hr-leave-entitlement.helper';
+import {
+  evaluateClockCompliance,
+  evaluateEarlyExitNotice,
+  evaluatePanelAccess,
+  expectedWorkWindow,
+  formatIstanbulClock,
+  getWorkHoursSchedule,
+  istanbulDateKey,
+} from './hr-work-hours.helper';
+import { getPublicHolidayName } from './hr-turkey-calendar.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 
@@ -373,11 +383,92 @@ export class HrService {
     });
   }
 
+  getWorkHours() {
+    return getWorkHoursSchedule();
+  }
+
+  /**
+   * Panel giriş / çıkış mesai kapısı.
+   * Admin, yönetici ve portal rolleri muaf.
+   * Pazar + Türkiye resmi tatilleri + mesai bitişi sonrası → giriş kapalı.
+   */
+  getPanelAccess(user: AuthUser) {
+    const role = (user.roleCode ?? '').toUpperCase();
+    const subjectToGate = this.isSubjectToWorkHoursGate(role);
+    const schedule = getWorkHoursSchedule();
+    const access = evaluatePanelAccess(new Date());
+    const earlyExit = evaluateEarlyExitNotice(new Date());
+    const holidayName = getPublicHolidayName(access.dateKey);
+    const workDateLabel = this.toDateOnly(access.dateKey).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      weekday: 'long',
+      timeZone: 'UTC',
+    });
+
+    if (!subjectToGate) {
+      return {
+        subjectToGate: false,
+        canEnter: true,
+        notice: 'none' as const,
+        clockLabel: formatIstanbulClock(),
+        dateKey: istanbulDateKey(),
+        workDateLabel,
+        expectedStart: access.expectedStart,
+        expectedEnd: access.expectedEnd,
+        closedReasonLabel: null as string | null,
+        holidayName,
+        schedule,
+        earlyExit: {
+          show: false,
+          clockLabel: earlyExit.clockLabel,
+          expectedEnd: earlyExit.expectedEnd,
+        },
+      };
+    }
+
+    return {
+      subjectToGate: true,
+      canEnter: access.canEnter,
+      notice: access.notice,
+      clockLabel: access.clockLabel,
+      dateKey: access.dateKey,
+      workDateLabel,
+      expectedStart: access.expectedStart,
+      expectedEnd: access.expectedEnd,
+      closedReasonLabel: access.closedReasonLabel,
+      holidayName,
+      schedule,
+      earlyExit: {
+        show: earlyExit.show && access.canEnter,
+        clockLabel: earlyExit.clockLabel,
+        expectedEnd: earlyExit.expectedEnd,
+      },
+    };
+  }
+
+  private isSubjectToWorkHoursGate(role: string): boolean {
+    if (!role) return false;
+    if (role === 'ADMIN' || role === 'MANAGER') return false;
+    if (
+      role === 'EXPERT'
+      || role === 'INSURANCE_COMPANY_USER'
+      || role === 'ASSISTANCE_COMPANY_USER'
+      || role.includes('PORTAL')
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   /** Özet Ve Denetim ekranı — gün sonu puantaj onay durumu (gerçek veri). */
   async getDayEndSupervisionSummary(user: AuthUser) {
     this.assertCanSupervise(user);
     const todayKey = this.todayKeyInIstanbul();
     const targetDate = this.toDateOnly(todayKey);
+    const schedule = getWorkHoursSchedule();
+    const expected = expectedWorkWindow(todayKey);
     const workDateLabel = targetDate.toLocaleDateString('tr-TR', {
       day: 'numeric',
       month: 'long',
@@ -406,9 +497,20 @@ export class HrService {
       this.getSummary(user),
     ]);
 
+    const activities = await this.prisma.activitySession.findMany({
+      where: {
+        userId: { in: profiles.map((p) => p.userId) },
+        sessionDate: targetDate,
+      },
+      select: { userId: true, startedAt: true, lastBeatAt: true },
+    });
+    const activityByUser = new Map(activities.map((a) => [a.userId, a]));
+
     let approved = 0;
     let notApproved = 0;
     let onLeave = 0;
+    let lateStart = 0;
+    let earlyLeave = 0;
 
     const employees = await Promise.all(
       profiles.map(async (profile) => {
@@ -462,6 +564,22 @@ export class HrService {
           notApproved += 1;
         }
 
+        const activity = activityByUser.get(profile.userId) ?? null;
+        const clocks = this.resolveClockTimes(entry ?? undefined, activity);
+        const skipCompliance =
+          status === 'on_leave'
+          || auto?.status === HR_ATTENDANCE_STATUS.WEEKLY_REST
+          || auto?.status === HR_ATTENDANCE_STATUS.HOLIDAY
+          || auto?.status === HR_ATTENDANCE_STATUS.LEAVE;
+        const compliance = evaluateClockCompliance(
+          todayKey,
+          clocks.clockInAt,
+          clocks.clockOutAt,
+          { skip: skipCompliance },
+        );
+        if (compliance.isLateStart) lateStart += 1;
+        if (compliance.isEarlyLeave) earlyLeave += 1;
+
         return {
           id: profile.id,
           fullName: `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim(),
@@ -473,19 +591,30 @@ export class HrService {
           lastConfirmedDate,
           status,
           proxyName: null as string | null,
+          clockInAt: clocks.clockInAt,
+          clockOutAt: clocks.clockOutAt,
+          expectedStart: compliance.expectedStart,
+          expectedEnd: compliance.expectedEnd,
+          isLateStart: compliance.isLateStart,
+          isEarlyLeave: compliance.isEarlyLeave,
+          lateStartMinutes: compliance.lateStartMinutes,
+          earlyLeaveMinutes: compliance.earlyLeaveMinutes,
         };
       }),
     );
 
     return {
-      cutoffLabel: '18:00',
+      cutoffLabel: expected?.end ?? schedule.weekday.end,
       workDateLabel,
       workDate: todayKey,
+      workHours: schedule,
       totals: {
         totalEmployees: profiles.length,
         approved,
         notApproved,
         onLeave,
+        lateStart,
+        earlyLeave,
       },
       myLeaveBalance: {
         leaveTypeLabel: mySummary.leaveBalance.leaveTypeLabel,
@@ -624,7 +753,9 @@ export class HrService {
 
     const todayKey = this.todayKeyInIstanbul();
     const todayDate = this.toDateOnly(todayKey);
-    const [todayEntry, todayApprovedLeaves] = await Promise.all([
+    const schedule = getWorkHoursSchedule();
+    const expected = expectedWorkWindow(todayKey);
+    const [todayEntry, todayApprovedLeaves, todayActivity] = await Promise.all([
       this.prisma.hrAttendanceEntry.findFirst({
         where: {
           employeeProfileId: profile.id,
@@ -641,6 +772,10 @@ export class HrService {
         },
         select: { startDate: true, endDate: true },
       }),
+      this.prisma.activitySession.findFirst({
+        where: { userId: profile.userId, sessionDate: todayDate },
+        select: { startedAt: true, lastBeatAt: true },
+      }),
     ]);
     const todayAuto = this.resolveAutoStatus(todayKey, todayApprovedLeaves);
     const subjectToOwnAttendance = this.mustConfirmOwnAttendance(user);
@@ -652,13 +787,45 @@ export class HrService {
       year: 'numeric',
       timeZone: 'UTC',
     });
+    const todayClocks = this.resolveClockTimes(todayEntry ?? undefined, todayActivity);
+    const todayCompliance = evaluateClockCompliance(
+      todayKey,
+      todayClocks.clockInAt,
+      todayClocks.clockOutAt,
+      { skip: Boolean(todayAuto) },
+    );
+    const workHoursActive =
+      subjectToOwnAttendance
+      && (todayCompliance.isLateStart || todayCompliance.isEarlyLeave);
+    const workHoursParts: string[] = [];
+    if (todayCompliance.isLateStart && todayCompliance.lateStartMinutes != null) {
+      workHoursParts.push(`Geç başlangıç (+${todayCompliance.lateStartMinutes} dk)`);
+    }
+    if (todayCompliance.isEarlyLeave && todayCompliance.earlyLeaveMinutes != null) {
+      workHoursParts.push(`Erken çıkış (−${todayCompliance.earlyLeaveMinutes} dk)`);
+    }
 
     return {
+      workHours: schedule,
       dayEndWarning: {
         pending: todayPending,
         workDateLabel,
-        cutoffLabel: '18:00',
+        cutoffLabel: expected?.end ?? schedule.weekday.end,
+        scheduleLabel: schedule.labels.summary,
         message: todayPending ? 'Lütfen bugünkü puantajınızı onaylayınız.' : null,
+      },
+      workHoursWarning: {
+        active: workHoursActive,
+        workDateLabel,
+        expectedStart: todayCompliance.expectedStart,
+        expectedEnd: todayCompliance.expectedEnd,
+        isLateStart: todayCompliance.isLateStart,
+        isEarlyLeave: todayCompliance.isEarlyLeave,
+        lateStartMinutes: todayCompliance.lateStartMinutes,
+        earlyLeaveMinutes: todayCompliance.earlyLeaveMinutes,
+        message: workHoursActive
+          ? `Bugünkü giriş/çıkış saatiniz kurumsal mesai penceresinin dışında (${workHoursParts.join(' · ')}).`
+          : null,
       },
       profile: {
         id: profile.id,
@@ -836,11 +1003,18 @@ export class HrService {
       employeeConfirmedAt: string | null;
       isFuture: boolean;
       isAutoMarked: boolean;
+      expectedStart: string | null;
+      expectedEnd: string | null;
+      lateStartMinutes: number | null;
+      earlyLeaveMinutes: number | null;
+      isLateStart: boolean;
+      isEarlyLeave: boolean;
     }> = [];
 
     const todayKey = this.todayKeyInIstanbul();
     const totalDays = this.daysInMonth(year, month);
     const isLocked = Boolean(periodLock?.lockedAt);
+    const schedule = getWorkHoursSchedule();
 
     for (let day = 1; day <= totalDays; day += 1) {
       const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -858,6 +1032,18 @@ export class HrService {
       } else if (auto) {
         statusLabel = auto.label;
       }
+
+      const skipCompliance =
+        isFuture
+        || attendanceStatus === HR_ATTENDANCE_STATUS.WEEKLY_REST
+        || attendanceStatus === HR_ATTENDANCE_STATUS.HOLIDAY
+        || attendanceStatus === HR_ATTENDANCE_STATUS.LEAVE;
+      const compliance = evaluateClockCompliance(
+        key,
+        clocks.clockInAt,
+        clocks.clockOutAt,
+        { skip: skipCompliance },
+      );
 
       days.push({
         date: key,
@@ -877,6 +1063,12 @@ export class HrService {
         employeeConfirmedAt: entry?.employeeConfirmedAt?.toISOString() ?? null,
         isFuture,
         isAutoMarked: Boolean(!entry && auto),
+        expectedStart: compliance.expectedStart,
+        expectedEnd: compliance.expectedEnd,
+        lateStartMinutes: compliance.lateStartMinutes,
+        earlyLeaveMinutes: compliance.earlyLeaveMinutes,
+        isLateStart: compliance.isLateStart,
+        isEarlyLeave: compliance.isEarlyLeave,
       });
     }
 
@@ -893,6 +1085,7 @@ export class HrService {
     return {
       year,
       month,
+      workHours: schedule,
       days,
       entries,
       periodLock: periodLock
@@ -920,6 +1113,8 @@ export class HrService {
         confirmedDays,
         pastWorkDays,
         pendingConfirmationDays,
+        lateStartDays: days.filter((d) => d.isLateStart).length,
+        earlyLeaveDays: days.filter((d) => d.isEarlyLeave).length,
       },
     };
   }

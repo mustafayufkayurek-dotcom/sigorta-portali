@@ -49,9 +49,25 @@ export class HrController {
         module: PLATFORM_MODULE_CODES.PERSONNEL,
         enabled,
         phase: 'ozluk_scaffold',
-        capabilities: ['attendance', 'leave', 'leave_approval', 'summary', 'documents', 'attendance_export', 'attendance_month_close_reminder', 'attendance_clock_times', 'attendance_signature'],
+        capabilities: ['attendance', 'leave', 'leave_approval', 'summary', 'documents', 'attendance_export', 'attendance_month_close_reminder', 'attendance_clock_times', 'attendance_signature', 'attendance_work_hours'],
       },
     };
+  }
+
+  @Get('work-hours')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.view')
+  async workHours() {
+    return { data: this.hrService.getWorkHours() };
+  }
+
+  @Get('panel-access')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.view')
+  async panelAccess(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    return { data: this.hrService.getPanelAccess(user) };
   }
 
   @Get('summary')

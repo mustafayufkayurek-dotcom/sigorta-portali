@@ -114,20 +114,25 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined): string
 
 /**
  * Telefon numarasını WhatsApp HTTPS gönderim linkine dönüştürür.
- * Desktop için api.whatsapp.com/send kullanılır (wa.me değil).
+ * wa.me kullanılmaz (Desktop’ta yanlış «WhatsApp kullanmıyor» uyarısı üretebiliyor).
  */
 export function toWhatsAppLink(phone: string | null | undefined, message?: string | null): string | null {
   const normalized = normalizeWhatsAppPhone(phone);
   if (!normalized) return null;
   const text = message?.trim();
+  // Masaüstü tıklamasında openWhatsAppChat web.whatsapp.com kullanır;
+  // href yedek / mobilde api.whatsapp.com kalır.
   if (!text) return `https://api.whatsapp.com/send?phone=${normalized}`;
   return `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`;
 }
 
 /**
- * Masaüstünde önce WhatsApp uygulamasını (whatsapp://) dener;
- * açılmazsa api.whatsapp.com HTTPS yedeğine geçer.
- * Mobilde doğrudan HTTPS açılır.
+ * WhatsApp sohbetini açar.
+ *
+ * Önemli: Mac/Windows WhatsApp Desktop, whatsapp:// ve api.whatsapp.com
+ * deep-link’lerinde doğru numarada bile «telefon numarası WhatsApp kullanmıyor»
+ * uyarısı verebiliyor. Masaüstünde kalıcı yol: web.whatsapp.com/send.
+ * Mobilde api.whatsapp.com kullanılır (uygulamaya yönlendirir).
  */
 export function openWhatsAppChat(
   phone: string | null | undefined,
@@ -139,27 +144,23 @@ export function openWhatsAppChat(
   const text = message?.trim() ?? '';
   if (!normalized && !text) return false;
 
-  const webUrl = normalized
-    ? text
-      ? `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`
-      : `https://api.whatsapp.com/send?phone=${normalized}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  if (!isMobile && normalized) {
-    const appUrl = text
-      ? `whatsapp://send?phone=${normalized}&text=${encodeURIComponent(text)}`
-      : `whatsapp://send?phone=${normalized}`;
-    const openedAt = Date.now();
-    window.location.href = appUrl;
-    window.setTimeout(() => {
-      if (document.visibilityState === 'visible' && Date.now() - openedAt < 2500) {
-        window.open(webUrl, '_blank', 'noopener,noreferrer');
-      }
-    }, 700);
-    return true;
-  }
 
-  window.open(webUrl, '_blank', 'noopener,noreferrer');
+  const url = (() => {
+    if (!normalized) {
+      return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    }
+    if (isMobile) {
+      return text
+        ? `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`
+        : `https://api.whatsapp.com/send?phone=${normalized}`;
+    }
+    // Desktop: WhatsApp Web click-to-chat — Desktop protokolü false-negative üretmesin
+    return text
+      ? `https://web.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(text)}`
+      : `https://web.whatsapp.com/send?phone=${normalized}`;
+  })();
+
+  window.open(url, '_blank', 'noopener,noreferrer');
   return true;
 }

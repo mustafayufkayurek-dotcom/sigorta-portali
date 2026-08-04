@@ -10,6 +10,10 @@ import {
 } from '@/components/hr/AttendanceAccessGate';
 import { LeaveRequestProxyPreview } from '@/components/hr/LeaveRequestProxyPreview';
 import { WorkHoursPreviewNote } from '@/components/hr/WorkHoursPreviewNote';
+import {
+  WorkHoursNoticeModal,
+  type WorkHoursNoticeMode,
+} from '@/components/hr/WorkHoursNoticeModal';
 
 /**
  * Lokal tasarım önizleme — oturum gerektirmez.
@@ -17,6 +21,35 @@ import { WorkHoursPreviewNote } from '@/components/hr/WorkHoursPreviewNote';
  */
 export default function PersonelOzlukDenetimPreviewPage() {
   const [gateMode, setGateMode] = useState<AccessGateMode>('blocked');
+  const [noticeMode, setNoticeMode] = useState<WorkHoursNoticeMode>('late_entry');
+  const [noticeOpen, setNoticeOpen] = useState(true);
+
+  const noticePreview: Record<
+    WorkHoursNoticeMode,
+    {
+      clockLabel: string;
+      expectedLabel?: string;
+      closedReasonLabel?: string;
+      workDateLabel: string;
+    }
+  > = {
+    late_entry: {
+      clockLabel: '09:20',
+      expectedLabel: 'Beklenen mesai başlangıcı: 08:30',
+      workDateLabel: '3 Ağustos 2026 · Pazartesi',
+    },
+    early_exit: {
+      clockLabel: '17:05',
+      expectedLabel: 'Beklenen mesai bitişi: 18:00',
+      workDateLabel: '3 Ağustos 2026 · Pazartesi',
+    },
+    closed: {
+      clockLabel: '13:01',
+      expectedLabel: 'Cumartesi mesai: 08:30 – 13:00',
+      closedReasonLabel: 'Mesai bitişinden (13:00) sonra sisteme giriş kapalıdır.',
+      workDateLabel: '8 Ağustos 2026 · Cumartesi',
+    },
+  };
 
   return (
     <ToastProvider>
@@ -31,8 +64,8 @@ export default function PersonelOzlukDenetimPreviewPage() {
                 Puantaj Denetimi — Tasarım Önizleme
               </h1>
               <p className="text-sm text-content-secondary mt-1 max-w-2xl">
-                Yumuşak giriş notu, izin gününde ekran pasif, vekalet seçimi ve
-                mesai saatleri. Örnek veri — API henüz bağlı değil.
+                Mesai popup’ı (masum saat bildirimi), tatil/Cumartesi kapanış kapısı ve
+                puantaj onay uyarısı. Örnek veri.
               </p>
             </div>
             <span className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white">
@@ -43,7 +76,69 @@ export default function PersonelOzlukDenetimPreviewPage() {
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-content-primary">
-                1) Panele İlk Giriş — Kullanım Kilidi
+                1) Mesai Popup Penceresi
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { key: 'late_entry' as const, label: 'Geç Giriş 09:20' },
+                    { key: 'early_exit' as const, label: 'Erken Çıkış 17:05' },
+                    { key: 'closed' as const, label: 'Cumartesi 13:01 Kapalı' },
+                  ]
+                ).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setNoticeMode(item.key);
+                      setNoticeOpen(true);
+                    }}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      noticeMode === item.key && noticeOpen
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-white border border-border text-content-secondary hover:bg-slate-50'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-dashed border-border bg-white px-4 py-6 text-center">
+              <p className="text-sm text-content-secondary">
+                Popup açıkken arka plan kararır. Aşağıdaki düğmelerden senaryo seçin.
+              </p>
+              <p className="mt-2 text-xs text-content-tertiary">
+                Geç giriş / erken çıkış: büyük saat + uyarı ikonu, masum dil, Devam Et.
+                Pazar · resmi tatil · Cumartesi 13:01+: giriş kapalı, yöneticiniz ile irtibata geçin.
+              </p>
+              {!noticeOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setNoticeOpen(true)}
+                  className="mt-4 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                >
+                  Popup’ı Tekrar Aç
+                </button>
+              ) : null}
+            </div>
+            <WorkHoursNoticeModal
+              open={noticeOpen}
+              mode={noticeMode}
+              preview
+              clockLabel={noticePreview[noticeMode].clockLabel}
+              workDateLabel={noticePreview[noticeMode].workDateLabel}
+              expectedLabel={noticePreview[noticeMode].expectedLabel}
+              closedReasonLabel={noticePreview[noticeMode].closedReasonLabel}
+              onContinue={() => setNoticeOpen(false)}
+              onClose={() => setNoticeOpen(false)}
+            />
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-content-primary">
+                2) Panele İlk Giriş — Puantaj Kilidi
               </h2>
               <div className="flex flex-wrap gap-2">
                 {(
@@ -75,33 +170,25 @@ export default function PersonelOzlukDenetimPreviewPage() {
               onConfirmAttendance={() => setGateMode('open')}
               onConfirmLeaveReturn={() => setGateMode('blocked')}
             />
-            <ul className="text-xs text-content-tertiary space-y-1 list-disc list-inside">
-              <li>Puantaj onaylanmadan diğer sayfalar aktif olmaz.</li>
-              <li>
-                Onaylı izin gününde ilgili personelin ekranı pasiftir (vekalet
-                çalışır).
-              </li>
-              <li>İzin bitince önce “İzin Dönüşünü Onayla”, sonra puantaj.</li>
-            </ul>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-content-primary">
-              2) İzin Evrakı — Vekalet Seçimi
+              3) İzin Evrakı — Vekalet Seçimi
             </h2>
             <LeaveRequestProxyPreview />
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-content-primary">
-              3) Mesai Saatleri (Sonraki Denetim)
+              4) Mesai Kuralları (Kaynak)
             </h2>
-            <WorkHoursPreviewNote />
+            <WorkHoursPreviewNote preview />
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-content-primary">
-              4) Personel Ekranı — Gün Sonu Uyarısı
+              5) Puantaj Onay Uyarısı (Ayrı)
             </h2>
             <AttendanceDayEndBanner preview />
           </section>
@@ -131,8 +218,8 @@ export default function PersonelOzlukDenetimPreviewPage() {
             <div className="p-6">
               <h2 className="sr-only">Özet Ve Denetim</h2>
               <p className="mb-4 text-xs text-content-tertiary">
-                Admin / yönetici / finans: birleşik özet. Personel yalnız kendi
-                özetini görür.
+                Admin tarafında geç/erken sayıları ve kişi detayı (denetim).
+                Personele doğrudan “mesai ihlali” mesajı gitmez.
               </p>
               <AdminAttendanceSupervisionPanel preview />
             </div>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  Clock3,
   Mail,
   Plane,
   Users,
@@ -253,8 +254,13 @@ export function AdminAttendanceSupervisionPanel({
             )}
           </div>
           <p className="text-xs text-content-tertiary mt-1">
-            {data.workDateLabel} · Kesim {data.cutoffLabel}
+            {data.workDateLabel} · Mesai Bitiş / Kesim {data.cutoffLabel}
           </p>
+          {data.workHours?.labels.summary ? (
+            <p className="text-[11px] text-content-tertiary mt-0.5">
+              {data.workHours.labels.summary}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 min-w-[180px]">
           <p className="text-xs font-medium text-content-tertiary">
@@ -315,6 +321,18 @@ export function AdminAttendanceSupervisionPanel({
         <p>
           Gün sonunda <span className="font-semibold text-content-primary">Puantajı Onaylamayan</span>
           {' '}yöneticiye bildirim düşer; personele mail gönderilebilir.
+        </p>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+          <span className="inline-flex items-center gap-1 font-semibold text-status-warning">
+            <Clock3 className="h-3.5 w-3.5" />
+            Geç Başlangıç: {data.totals.lateStart ?? 0}
+          </span>
+          <span className="inline-flex items-center gap-1 font-semibold text-status-danger">
+            Erken Çıkış: {data.totals.earlyLeave ?? 0}
+          </span>
+          <span className="text-content-tertiary">
+            (Panel aktivitesi / kayıtlı saat · 5 dk tolerans)
+          </span>
         </p>
       </div>
 
@@ -393,6 +411,20 @@ export function AdminAttendanceSupervisionPanel({
                                   : ''
                               }`}
                         </p>
+                        {(employee.isLateStart || employee.isEarlyLeave) && (
+                          <p className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                            {employee.isLateStart ? (
+                              <span className="rounded-full bg-status-warning/10 px-2 py-0.5 text-status-warning">
+                                Geç +{employee.lateStartMinutes ?? 0} dk
+                              </span>
+                            ) : null}
+                            {employee.isEarlyLeave ? (
+                              <span className="rounded-full bg-status-danger/10 px-2 py-0.5 text-status-danger">
+                                Erken −{employee.earlyLeaveMinutes ?? 0} dk
+                              </span>
+                            ) : null}
+                          </p>
+                        )}
                       </div>
                       <span
                         className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${meta.className}`}
@@ -453,6 +485,31 @@ export function AdminAttendanceSupervisionPanel({
                       Puantaj onayı tamamlanmış.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {(selected.isLateStart || selected.isEarlyLeave || selected.expectedStart) && (
+                <div className="rounded-xl border border-border bg-slate-50/80 p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-content-secondary">Mesai Denetimi</p>
+                  <p className="text-xs text-content-tertiary">
+                    Beklenen:{' '}
+                    {selected.expectedStart && selected.expectedEnd
+                      ? `${selected.expectedStart} – ${selected.expectedEnd}`
+                      : 'Çalışılmıyor / İzin'}
+                  </p>
+                  {selected.isLateStart ? (
+                    <p className="text-xs font-semibold text-status-warning">
+                      Geç Başlangıç (+{selected.lateStartMinutes ?? 0} dk)
+                    </p>
+                  ) : null}
+                  {selected.isEarlyLeave ? (
+                    <p className="text-xs font-semibold text-status-danger">
+                      Erken Çıkış (−{selected.earlyLeaveMinutes ?? 0} dk)
+                    </p>
+                  ) : null}
+                  {!selected.isLateStart && !selected.isEarlyLeave && selected.expectedStart ? (
+                    <p className="text-xs font-medium text-status-success">Saatler Uygun</p>
+                  ) : null}
                 </div>
               )}
 

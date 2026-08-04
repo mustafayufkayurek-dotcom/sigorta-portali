@@ -3,6 +3,15 @@
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  Timer,
+  Users,
+  X,
+} from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import {
   PanelTableColumnPicker,
@@ -18,6 +27,7 @@ import {
   sortRowsByClientSort,
   type ClientSortState,
 } from '@/utils/panel-table-sort';
+import { formatTryAmount } from '@/utils/format-try-amount';
 
 
 
@@ -36,16 +46,31 @@ interface StaffWorkload {
   assignments?: AssignedFile[];
 }
 
+interface ApprovalRequestEvent {
+  id: string;
+  type: string;
+  message: string;
+  at: string;
+}
+
 interface PendingApproval {
   id: string;
   fileNumber: string;
   claimFileId: string;
   assignedUserId: string;
   assignedUser?: { firstName: string; lastName: string };
+  assignedBy?: { firstName: string; lastName: string } | null;
   jobType?: string;
   workType?: string;
+  amount?: number | null;
+  delayHours?: number;
+  delayLabel?: string;
   createdAt: string;
   timeoutAt?: string;
+  requestCount?: number;
+  firstRequestedAt?: string;
+  lastRequestedAt?: string;
+  requests?: ApprovalRequestEvent[];
 }
 
 interface AssignmentRule {
@@ -106,32 +131,278 @@ function waitingHours(createdAt: string): string {
   return `${Math.floor(hours / 24)} gün`;
 }
 
-function TimeoutCountdown({ timeoutAt }: { timeoutAt?: string }) {
-  const [remaining, setRemaining] = useState('');
+function formatDateTimeTR(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
-  useEffect(() => {
-    if (!timeoutAt) return;
-    const update = () => {
-      const diff = new Date(timeoutAt).getTime() - Date.now();
-      if (diff <= 0) { setRemaining('Zaman aşımı!'); return; }
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      setRemaining(`${h}s ${m}d`);
-    };
-    update();
-    const t = setInterval(update, 60_000);
-    return () => clearInterval(t);
-  }, [timeoutAt]);
+function requestTypeLabel(type: string): string {
+  switch (type) {
+    case 'ASSIGNMENT':
+      return 'Onay Talebi';
+    case 'REMINDER':
+      return 'Hatırlatma';
+    case 'TIMEOUT_WARNING':
+      return 'Süre Uyarısı';
+    case 'ESCALATION':
+      return 'Eskalasyon';
+    case 'OVERDUE':
+      return 'Gecikme';
+    default:
+      return 'Bildirim';
+  }
+}
 
-  if (!timeoutAt) return null;
-  const isUrgent = new Date(timeoutAt).getTime() - Date.now() < 3_600_000;
+function normalizePendingApproval(raw: Record<string, unknown>): PendingApproval {
+  const claimFile = (raw.claimFile as Record<string, unknown> | undefined) ?? undefined;
+  const assignedTo = (raw.assignedTo as PendingApproval['assignedUser']) ?? undefined;
+  const assignedUser = (raw.assignedUser as PendingApproval['assignedUser']) ?? assignedTo;
+  const requests = (raw.requests as ApprovalRequestEvent[] | undefined) ?? undefined;
+  const createdAt = String(raw.createdAt ?? '');
+  return {
+    id: String(raw.id ?? ''),
+    fileNumber: String(raw.fileNumber ?? claimFile?.fileNo ?? ''),
+    claimFileId: String(raw.claimFileId ?? claimFile?.id ?? ''),
+    assignedUserId: String(raw.assignedUserId ?? (assignedTo as { id?: string } | undefined)?.id ?? ''),
+    assignedUser: assignedUser ?? undefined,
+    assignedBy: (raw.assignedBy as PendingApproval['assignedBy']) ?? null,
+    jobType: (raw.jobType as string | undefined) ?? (raw.workType as string | undefined),
+    workType: raw.workType as string | undefined,
+    amount: (raw.amount as number | null | undefined) ?? null,
+    delayHours: raw.delayHours as number | undefined,
+    delayLabel: (raw.delayLabel as string | undefined) ?? (createdAt ? waitingHours(createdAt) : '—'),
+    createdAt,
+    timeoutAt: raw.timeoutAt as string | undefined,
+    requestCount: (raw.requestCount as number | undefined) ?? requests?.length ?? (createdAt ? 1 : 0),
+    firstRequestedAt: (raw.firstRequestedAt as string | undefined) ?? createdAt,
+    lastRequestedAt: (raw.lastRequestedAt as string | undefined) ?? createdAt,
+    requests:
+      requests ??
+      (createdAt
+        ? [
+            {
+              id: `created-${String(raw.id ?? '')}`,
+              type: 'ASSIGNMENT',
+              message: 'Onay talebi oluşturuldu',
+              at: createdAt,
+            },
+          ]
+        : []),
+  };
+}
+
+/** Lokal tasarım önizlemesi: /panel/personel-yonetimi?tasarim=1 */
+const DESIGN_PREVIEW_APPROVALS: PendingApproval[] = [
+  {
+    id: 'preview-1',
+    fileNumber: 'HSR-2026-0142',
+    claimFileId: 'preview-claim-1',
+    assignedUserId: 'preview-user-1',
+    assignedUser: { firstName: 'Ayşe', lastName: 'Yılmaz' },
+    assignedBy: { firstName: 'Sistem', lastName: 'Yöneticisi' },
+    amount: 48500,
+    delayHours: 26,
+    delayLabel: '1 gün',
+    createdAt: new Date(Date.now() - 26 * 3_600_000).toISOString(),
+    timeoutAt: new Date(Date.now() + 2 * 3_600_000).toISOString(),
+    requestCount: 3,
+    firstRequestedAt: new Date(Date.now() - 26 * 3_600_000).toISOString(),
+    lastRequestedAt: new Date(Date.now() - 4 * 3_600_000).toISOString(),
+    requests: [
+      {
+        id: 'r1',
+        type: 'ASSIGNMENT',
+        message: 'Onay talebi oluşturuldu',
+        at: new Date(Date.now() - 26 * 3_600_000).toISOString(),
+      },
+      {
+        id: 'r2',
+        type: 'REMINDER',
+        message: 'Onay hatırlatması gönderildi',
+        at: new Date(Date.now() - 12 * 3_600_000).toISOString(),
+      },
+      {
+        id: 'r3',
+        type: 'TIMEOUT_WARNING',
+        message: 'Süre aşımı uyarısı',
+        at: new Date(Date.now() - 4 * 3_600_000).toISOString(),
+      },
+    ],
+  },
+  {
+    id: 'preview-2',
+    fileNumber: 'ACL-2026-0088',
+    claimFileId: 'preview-claim-2',
+    assignedUserId: 'preview-user-2',
+    assignedUser: { firstName: 'Mehmet', lastName: 'Demir' },
+    assignedBy: { firstName: 'Sistem', lastName: 'Yöneticisi' },
+    amount: 12300,
+    delayHours: 5,
+    delayLabel: '5 saat',
+    createdAt: new Date(Date.now() - 5 * 3_600_000).toISOString(),
+    timeoutAt: new Date(Date.now() + 3 * 3_600_000).toISOString(),
+    requestCount: 1,
+    firstRequestedAt: new Date(Date.now() - 5 * 3_600_000).toISOString(),
+    lastRequestedAt: new Date(Date.now() - 5 * 3_600_000).toISOString(),
+    requests: [
+      {
+        id: 'r4',
+        type: 'ASSIGNMENT',
+        message: 'Onay talebi oluşturuldu',
+        at: new Date(Date.now() - 5 * 3_600_000).toISOString(),
+      },
+    ],
+  },
+  {
+    id: 'preview-3',
+    fileNumber: 'HSR-2026-0201',
+    claimFileId: 'preview-claim-3',
+    assignedUserId: 'preview-user-3',
+    assignedUser: { firstName: 'Elif', lastName: 'Kaya' },
+    amount: null,
+    delayHours: 0,
+    delayLabel: 'Az önce',
+    createdAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+    timeoutAt: new Date(Date.now() + 4 * 3_600_000).toISOString(),
+    requestCount: 1,
+    firstRequestedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+    lastRequestedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+    requests: [
+      {
+        id: 'r5',
+        type: 'ASSIGNMENT',
+        message: 'Onay talebi oluşturuldu',
+        at: new Date(Date.now() - 20 * 60_000).toISOString(),
+      },
+    ],
+  },
+];
+
+// ── Approval Detail Slide Panel ───────────────────────────────────────────────
+
+function ApprovalDetailPanel({
+  approval,
+  onClose,
+}: {
+  approval: PendingApproval | null;
+  onClose: () => void;
+}) {
+  if (!approval) return null;
+  const staffName = approval.assignedUser
+    ? `${approval.assignedUser.firstName} ${approval.assignedUser.lastName}`
+    : '—';
+  const requested = (approval.requestCount ?? 0) > 0 || (approval.requests?.length ?? 0) > 0;
+  const events = approval.requests ?? [];
+
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-mono font-semibold px-2 py-0.5 rounded-full ${isUrgent ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-600'}`}>
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      {remaining}
-    </span>
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed right-0 top-0 z-50 flex h-full w-[420px] max-w-[100vw] flex-col bg-white shadow-2xl">
+        <div className="border-b border-border bg-slate-50/80 px-6 py-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600/10 text-brand-600">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-content-primary">
+                  {approval.fileNumber || 'Dosya'}
+                </p>
+                <p className="text-xs text-content-secondary">{staffName}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary transition-colors hover:bg-slate-100 hover:text-content-primary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-border bg-white px-3 py-2.5 text-center">
+              <p className="text-xs text-content-tertiary">Bedel</p>
+              <p className="mt-0.5 text-sm font-semibold text-content-primary">
+                {approval.amount != null ? formatTryAmount(approval.amount, { fractionDigits: 0 }) : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-white px-3 py-2.5 text-center">
+              <p className="text-xs text-content-tertiary">Gecikme</p>
+              <p className="mt-0.5 text-sm font-semibold text-status-warning">
+                {approval.delayLabel ?? waitingHours(approval.createdAt)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <p className="mb-3 text-xs font-semibold text-content-secondary">Onay Talebi</p>
+          {requested ? (
+            <div className="mb-5 rounded-xl border border-border bg-slate-50/60 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-status-success">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Talep Edilmiş
+                </span>
+                <span className="rounded-full bg-brand-600/10 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                  {approval.requestCount ?? events.length} Defa
+                </span>
+              </div>
+              <dl className="mt-3 space-y-2 text-xs">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-content-tertiary">İlk Talep</dt>
+                  <dd className="font-medium text-content-primary">
+                    {formatDateTimeTR(approval.firstRequestedAt ?? approval.createdAt)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-content-tertiary">Son Talep</dt>
+                  <dd className="font-medium text-content-primary">
+                    {formatDateTimeTR(approval.lastRequestedAt ?? approval.createdAt)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <div className="mb-5 rounded-xl border border-dashed border-border bg-slate-50/40 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-content-secondary">Onay Talebi Kaydı Yok</p>
+              <p className="mt-1 text-xs text-content-tertiary">Bu atama için henüz talep geçmişi bulunamadı.</p>
+            </div>
+          )}
+
+          <p className="mb-3 text-xs font-semibold text-content-secondary">Talep Geçmişi</p>
+          {events.length === 0 ? (
+            <p className="text-sm text-content-tertiary">Kayıt bulunamadı.</p>
+          ) : (
+            <ol className="space-y-3">
+              {events.map((ev, idx) => (
+                <li
+                  key={ev.id}
+                  className="relative rounded-xl border border-border bg-white px-4 py-3 pl-10"
+                >
+                  <span className="absolute left-3 top-3.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                    {idx + 1}
+                  </span>
+                  <p className="text-sm font-semibold text-content-primary">{requestTypeLabel(ev.type)}</p>
+                  <p className="mt-0.5 text-xs text-content-secondary">{formatDateTimeTR(ev.at)}</p>
+                  {ev.message ? (
+                    <p className="mt-1.5 text-xs text-content-tertiary">{ev.message}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -350,11 +621,11 @@ interface ReportWriteUserStat {
 }
 
 const APPROVALS_TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 96 },
   { id: 'staff', label: 'Personel', defaultWidth: 160, minWidth: 120 },
-  { id: 'jobType', label: 'İş Tipi', defaultWidth: 120, minWidth: 96 },
-  { id: 'waiting', label: 'Bekleme', defaultWidth: 100, minWidth: 80 },
-  { id: 'timeout', label: 'Timeout', defaultWidth: 100, minWidth: 80 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 140, minWidth: 110 },
+  { id: 'amount', label: 'Bedel', defaultWidth: 120, minWidth: 96 },
+  { id: 'waiting', label: 'Gecikme Süresi', defaultWidth: 120, minWidth: 96 },
+  { id: 'requests', label: 'Talep', defaultWidth: 90, minWidth: 72 },
 ];
 
 const RULES_TABLE_COLUMNS: TableColumnDef[] = [
@@ -395,6 +666,8 @@ export default function PersonelYonetimiPage() {
   const [escalationRules, setEscalationRules] = useState({ warningDays: 3, criticalDays: 7, escalationDays: 14 });
 
   const [selectedStaff, setSelectedStaff] = useState<StaffWorkload | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<PendingApproval | null>(null);
+  const [designPreview, setDesignPreview] = useState(false);
 
   // Quick assign
   const [assignSearch, setAssignSearch] = useState('');
@@ -458,7 +731,12 @@ export default function PersonelYonetimiPage() {
     setApprovalsLoading(true);
     try {
       const r = await axios.get(`${API}/task-assignments/pending-approvals`, { headers: authHeader() });
-      setPendingApprovals(r.data.data ?? r.data ?? []);
+      const rows = r.data.data ?? r.data ?? [];
+      setPendingApprovals(
+        Array.isArray(rows)
+          ? rows.map((row: Record<string, unknown>) => normalizePendingApproval(row))
+          : [],
+      );
     } catch {
       setPendingApprovals([]);
     } finally {
@@ -517,6 +795,13 @@ export default function PersonelYonetimiPage() {
     loadWorkload();
     loadApprovals();
   }, [loadWorkload, loadApprovals]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const preview = params.get('tasarim') === '1';
+    setDesignPreview(preview);
+    if (preview) setActiveTab('approvals');
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'rules') { loadRules(); loadJobGroups(); }
@@ -644,20 +929,27 @@ export default function PersonelYonetimiPage() {
   const overdueTotal = overdueCounts.warning + overdueCounts.critical + overdueCounts.escalation;
   const filteredOverdue = filterLevel === 'all' ? overdueList : overdueList.filter((a) => a.escalationLevel === filterLevel);
 
+  const displayApprovals = useMemo(() => {
+    if (designPreview && pendingApprovals.length === 0) return DESIGN_PREVIEW_APPROVALS;
+    return pendingApprovals;
+  }, [designPreview, pendingApprovals]);
+
   const sortedPendingApprovals = useMemo(
     () =>
-      sortRowsByClientSort(pendingApprovals, clientSortApprovals, (a, key) => {
+      sortRowsByClientSort(displayApprovals, clientSortApprovals, (a, key) => {
         switch (key) {
           case 'fileNo': return a.fileNumber ?? a.claimFileId ?? '';
           case 'staff': return a.assignedUser ? `${a.assignedUser.firstName} ${a.assignedUser.lastName}` : '';
-          case 'jobType': return a.jobType ?? a.workType ?? 'Genel';
-          case 'waiting': return new Date(a.createdAt).getTime();
-          case 'timeout': return a.timeoutAt ? new Date(a.timeoutAt).getTime() : null;
+          case 'amount': return a.amount ?? -1;
+          case 'waiting': return a.delayHours ?? new Date(a.createdAt).getTime();
+          case 'requests': return a.requestCount ?? a.requests?.length ?? 0;
           default: return null;
         }
       }),
-    [pendingApprovals, clientSortApprovals],
+    [displayApprovals, clientSortApprovals],
   );
+
+  const approvalCountForUi = displayApprovals.length;
 
   const sortedRules = useMemo(
     () =>
@@ -710,7 +1002,7 @@ export default function PersonelYonetimiPage() {
     {
       key: 'approvals',
       label: 'Bekleyen Onaylar',
-      badge: pendingApprovals.length || undefined,
+      badge: approvalCountForUi || undefined,
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -791,45 +1083,82 @@ export default function PersonelYonetimiPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-400">Toplam Aktif Atama</p>
-          <p className="mt-1 text-2xl font-bold text-slate-800">{loading ? '—' : stats.totalActive}</p>
-        </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-400">Bugün Tamamlanan</p>
-          <p className="mt-1 text-2xl font-bold text-slate-800">{loading ? '—' : stats.completedToday}</p>
-        </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-400">Ort. Kapama Süresi</p>
-          <p className="mt-1 text-2xl font-bold text-slate-800">
-            {stats.avgClosingDays ? `${stats.avgClosingDays} gün` : '—'}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-400">Onay Bekleyen</p>
-          <p className={`mt-1 text-2xl font-bold ${pendingApprovals.length > 0 ? 'text-status-warning' : 'text-slate-800'}`}>
-            {approvalsLoading ? '—' : pendingApprovals.length}
-          </p>
-        </div>
+        {[
+          {
+            label: 'Toplam Aktif Atama',
+            value: loading ? '—' : String(stats.totalActive),
+            icon: Users,
+            iconClass: 'bg-brand-600/10 text-brand-600',
+            valueClass: 'text-content-primary',
+          },
+          {
+            label: 'Bugün Tamamlanan',
+            value: loading ? '—' : String(stats.completedToday),
+            icon: CheckCircle2,
+            iconClass: 'bg-status-success/10 text-status-success',
+            valueClass: 'text-content-primary',
+          },
+          {
+            label: 'Ort. Kapama Süresi',
+            value: stats.avgClosingDays ? `${stats.avgClosingDays} gün` : '—',
+            icon: Timer,
+            iconClass: 'bg-slate-100 text-content-secondary',
+            valueClass: 'text-content-primary',
+          },
+          {
+            label: 'Onay Bekleyen',
+            value: approvalsLoading ? '—' : String(approvalCountForUi),
+            icon: AlertTriangle,
+            iconClass:
+              approvalCountForUi > 0
+                ? 'bg-status-warning/10 text-status-warning'
+                : 'bg-slate-100 text-content-secondary',
+            valueClass:
+              approvalCountForUi > 0 ? 'text-status-warning' : 'text-content-primary',
+          },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="relative rounded-xl border border-border bg-white px-4 pb-5 pt-4 text-center shadow-sm"
+            >
+              <div
+                className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg ${card.iconClass}`}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} />
+              </div>
+              <p className="px-6 text-xs font-medium text-content-tertiary">{card.label}</p>
+              <p className={`mt-2 text-2xl font-bold tracking-tight ${card.valueClass}`}>
+                {card.value}
+              </p>
+            </div>
+          );
+        })}
       </div>
 
+      {designPreview ? (
+        <div className="rounded-xl border border-brand-600/20 bg-brand-600/5 px-4 py-3 text-sm text-brand-800">
+          Tasarım Önizlemesi Aktif — Örnek onay satırları gösteriliyor. Gerçek veri için{' '}
+          <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs">?tasarim=1</code> parametresini kaldırın.
+        </div>
+      ) : null}
+
       {/* ── Pending Approvals Banner ─────────────────────────────────────────── */}
-      {pendingApprovals.length > 0 && activeTab !== 'approvals' && (
+      {approvalCountForUi > 0 && activeTab !== 'approvals' && (
         <button
           type="button"
           onClick={() => setActiveTab('approvals')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 hover:border-orange-300 transition-all text-left"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-status-warning/30 bg-status-warning/10 text-content-primary hover:bg-status-warning/15 transition-all text-left"
         >
-          <span className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-200 flex items-center justify-center text-orange-700">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-warning/20 text-status-warning">
+            <AlertTriangle className="h-4 w-4" />
           </span>
           <div className="flex-1">
-            <p className="text-sm font-semibold">{pendingApprovals.length} Atama Onay Bekliyor</p>
-            <p className="text-xs text-orange-600 mt-0.5">Tıklayarak Yönetin</p>
+            <p className="text-sm font-semibold">{approvalCountForUi} Atama Onay Bekliyor</p>
+            <p className="mt-0.5 text-xs text-content-secondary">Tıklayarak Yönetin</p>
           </div>
-          <svg className="w-4 h-4 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-content-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -978,112 +1307,156 @@ export default function PersonelYonetimiPage() {
         {/* ── TAB: Bekleyen Onaylar ────────────────────────────────────────── */}
         {activeTab === 'approvals' && (
           <div className="p-6">
-            {pendingApprovals.length > 0 && (
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-slate-600 font-medium">
-                  <span className="text-orange-600 font-bold">{pendingApprovals.length}</span> Atama Onay Bekliyor
-                </p>
-                <button
-                  type="button"
-                  onClick={handleApproveAll}
-                  disabled={approvingAll}
-                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
-                >
-                  {approvingAll ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  Tümünü Onayla
-                </button>
+            {approvalCountForUi > 0 && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-content-secondary">
+                    <span className="font-bold text-status-warning">{approvalCountForUi}</span> Atama Onay Bekliyor
+                  </p>
+                  <p className="mt-0.5 text-xs text-content-tertiary">
+                    Dosya satırına tıklayarak talep tarihi, saati ve tekrar sayısını görün
+                  </p>
+                </div>
+                {!designPreview || pendingApprovals.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleApproveAll}
+                    disabled={approvingAll || (designPreview && pendingApprovals.length === 0)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-status-success px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                  >
+                    {approvingAll ? (
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Tümünü Onayla
+                  </button>
+                ) : null}
               </div>
             )}
 
             {approvalsLoading ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+                  <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />
                 ))}
               </div>
-            ) : pendingApprovals.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">✅</div>
-                <p className="text-slate-500 font-medium">Bekleyen Onay Yok</p>
-                <p className="text-sm text-slate-400 mt-1">Tüm Atamalar Onaylanmış Durumda</p>
+            ) : approvalCountForUi === 0 ? (
+              <div className="py-16 text-center">
+                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-status-success/10 text-status-success">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <p className="font-medium text-content-secondary">Bekleyen Onay Yok</p>
+                <p className="mt-1 text-sm text-content-tertiary">Tüm Atamalar Onaylanmış Durumda</p>
+                {process.env.NODE_ENV === 'development' ? (
+                  <a
+                    href="?tasarim=1"
+                    className="mt-4 inline-flex text-sm font-semibold text-brand-600 hover:text-brand-700"
+                  >
+                    Tasarım Önizlemesini Aç
+                  </a>
+                ) : null}
               </div>
             ) : (
               <TableColumnsProvider value={approvalsTableColumns}>
-              <div className="overflow-hidden rounded-xl border border-slate-100">
-                <div className="flex justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50/50">
+              <div className="overflow-hidden rounded-xl border border-border">
+                <div className="flex justify-end gap-2 border-b border-border bg-slate-50/50 px-4 py-2">
                   <PanelTableColumnPicker tableColumns={approvalsTableColumns} />
                 </div>
                 <table className="w-full text-sm" style={panelTableLayoutStyle(approvalsTableColumns)}>
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-5 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Dosya No</SortablePanelTableTh>
-                      <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Personel</SortablePanelTableTh>
-                      <SortablePanelTableTh colId="jobType" sortKey="jobType" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">İş Tipi</SortablePanelTableTh>
-                      <SortablePanelTableTh colId="waiting" sortKey="waiting" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Bekleme</SortablePanelTableTh>
-                      <SortablePanelTableTh colId="timeout" sortKey="timeout" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="text-center px-4 py-3.5 text-xs font-semibold text-slate-500 tracking-wide">Timeout</SortablePanelTableTh>
-                      <th className="px-4 py-3.5 w-32" />
+                    <tr className="border-b border-border bg-slate-50/80">
+                      <SortablePanelTableTh colId="staff" sortKey="staff" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="px-4 py-3.5 text-center text-xs font-semibold text-content-tertiary">Personel</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="px-5 py-3.5 text-center text-xs font-semibold text-content-tertiary">Dosya No</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="px-4 py-3.5 text-center text-xs font-semibold text-content-tertiary">Bedel</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="waiting" sortKey="waiting" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="px-4 py-3.5 text-center text-xs font-semibold text-content-tertiary">Gecikme Süresi</SortablePanelTableTh>
+                      <SortablePanelTableTh colId="requests" sortKey="requests" activeSortKey={clientSortApprovals?.key ?? null} sortDir={clientSortApprovals?.dir ?? 'asc'} onSort={(k) => setClientSortApprovals((p) => cycleClientSort(p, k))} className="px-4 py-3.5 text-center text-xs font-semibold text-content-tertiary">Talep</SortablePanelTableTh>
+                      <th className="w-36 px-4 py-3.5" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {sortedPendingApprovals.map((a) => {
                       const isLoading = actionLoading && approvalAction?.id === a.id;
+                      const isPreviewRow = a.id.startsWith('preview-');
+                      const delayText = a.delayLabel ?? waitingHours(a.createdAt);
+                      const delayUrgent = (a.delayHours ?? 0) >= 24;
                       return (
-                        <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr
+                          key={a.id}
+                          className="cursor-pointer transition-colors hover:bg-brand-600/[0.03]"
+                          onClick={() => setSelectedApproval(a)}
+                        >
+                          <PanelTableTd colId="staff" className="px-4 py-3.5 text-content-primary">
+                            <div className="flex items-center gap-2.5">
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-content-secondary">
+                                {a.assignedUser
+                                  ? `${a.assignedUser.firstName.charAt(0)}${a.assignedUser.lastName.charAt(0)}`
+                                  : '—'}
+                              </span>
+                              <span className="font-medium">
+                                {a.assignedUser
+                                  ? `${a.assignedUser.firstName} ${a.assignedUser.lastName}`
+                                  : '—'}
+                              </span>
+                            </div>
+                          </PanelTableTd>
                           <PanelTableTd colId="fileNo" className="px-5 py-3.5">
-                            <span className="font-semibold text-slate-800">{a.fileNumber ?? a.claimFileId?.slice(0, 8) ?? '—'}</span>
-                          </PanelTableTd>
-                          <PanelTableTd colId="staff" className="px-4 py-3.5 text-slate-700">
-                            {a.assignedUser ? `${a.assignedUser.firstName} ${a.assignedUser.lastName}` : '—'}
-                          </PanelTableTd>
-                          <PanelTableTd colId="jobType" className="px-4 py-3.5">
-                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                              {a.jobType ?? a.workType ?? 'Genel'}
+                            <span className="inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline">
+                              <FileText className="h-3.5 w-3.5 text-brand-600" />
+                              {a.fileNumber || a.claimFileId?.slice(0, 8) || '—'}
                             </span>
                           </PanelTableTd>
-                          <PanelTableTd colId="waiting" className="px-4 py-3.5 text-center text-xs text-slate-500">
-                            {waitingHours(a.createdAt)}
+                          <PanelTableTd colId="amount" className="px-4 py-3.5 text-center font-semibold tabular-nums text-content-primary">
+                            {a.amount != null
+                              ? formatTryAmount(a.amount, { fractionDigits: 0 })
+                              : '—'}
                           </PanelTableTd>
-                          <PanelTableTd colId="timeout" className="px-4 py-3.5 text-center">
-                            <TimeoutCountdown timeoutAt={a.timeoutAt} />
+                          <PanelTableTd colId="waiting" className="px-4 py-3.5 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                delayUrgent
+                                  ? 'bg-status-danger/10 text-status-danger'
+                                  : 'bg-status-warning/10 text-status-warning'
+                              }`}
+                            >
+                              <Clock3 className="h-3 w-3" />
+                              {delayText}
+                            </span>
                           </PanelTableTd>
-                          <td className="px-4 py-3.5 text-right">
-                            <div className="flex items-center gap-1.5 justify-end">
+                          <PanelTableTd colId="requests" className="px-4 py-3.5 text-center">
+                            <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-brand-600/10 px-2 py-0.5 text-xs font-bold text-brand-700">
+                              {a.requestCount ?? a.requests?.length ?? 1}
+                            </span>
+                          </PanelTableTd>
+                          <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => handleApprove(a.id)}
-                                disabled={isLoading}
-                                className="flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2.5 py-1.5 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 font-medium"
+                                onClick={() => setSelectedApproval(a)}
+                                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-600/10"
                               >
-                                {isLoading && approvalAction?.action === 'approve' ? (
-                                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                                ) : (
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                                Onayla
+                                Detay
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleReject(a.id)}
-                                disabled={isLoading}
-                                className="flex items-center gap-1 bg-red-50 text-red-700 text-xs px-2.5 py-1.5 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 font-medium"
-                              >
-                                {isLoading && approvalAction?.action === 'reject' ? (
-                                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                                ) : (
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                )}
-                                Reddet
-                              </button>
+                              {!isPreviewRow ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApprove(a.id)}
+                                    disabled={isLoading}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-status-success/10 px-2.5 py-1.5 text-xs font-medium text-status-success transition-colors hover:bg-status-success/15 disabled:opacity-50"
+                                  >
+                                    Onayla
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReject(a.id)}
+                                    disabled={isLoading}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-status-danger/10 px-2.5 py-1.5 text-xs font-medium text-status-danger transition-colors hover:bg-status-danger/15 disabled:opacity-50"
+                                  >
+                                    Reddet
+                                  </button>
+                                </>
+                              ) : null}
                             </div>
                           </td>
                         </tr>
@@ -1483,10 +1856,11 @@ export default function PersonelYonetimiPage() {
         )}
       </div>
 
-      {/* ── Staff Detail Panel ───────────────────────────────────────────────── */}
-      {selectedStaff && (
+      {/* ── Detail Panels ───────────────────────────────────────────────────── */}
+      {selectedStaff ? (
         <StaffDetailPanel staff={selectedStaff} onClose={() => setSelectedStaff(null)} />
-      )}
+      ) : null}
+      <ApprovalDetailPanel approval={selectedApproval} onClose={() => setSelectedApproval(null)} />
 
       {/* ── Add Rule Modal ───────────────────────────────────────────────────── */}
       {showAddRule && (

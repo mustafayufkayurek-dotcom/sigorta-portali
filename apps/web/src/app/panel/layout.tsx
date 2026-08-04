@@ -11,6 +11,7 @@ import { SESSION_KEEPALIVE_MS, API } from '@/utils/api';
 import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired, logoutAndRedirect } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
+import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
@@ -1271,6 +1272,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   );
   const router = useRouter();
   const tryNavigateRef = useRef<(proceed: () => void, intent?: 'leave' | 'logout') => void>((proceed) => proceed());
+  const workHoursGateRef = useRef<WorkHoursPanelGateHandle | null>(null);
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -1595,11 +1597,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   };
 
   const handleLogout = () => {
-    tryNavigateRef.current(() => {
-      void logoutAndRedirect(API, (url) => {
-        router.push(url);
+    const proceedLogout = () => {
+      tryNavigateRef.current(() => {
+        void logoutAndRedirect(API, (url) => {
+          router.push(url);
+        }, 'logout');
       }, 'logout');
-    }, 'logout');
+    };
+    if (workHoursGateRef.current) {
+      workHoursGateRef.current.beforeLogout(proceedLogout);
+    } else {
+      proceedLogout();
+    }
   };
 
   const notifTypeColor = (type: string) => {
@@ -1912,6 +1921,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           isOfficeStaff={isOfficeStaffRole(roleCode)}
         />
         <SessionTimeoutBar />
+        <WorkHoursPanelGate
+          ref={workHoursGateRef}
+          enabled={!isPortalUser && !mustChangePassword}
+        />
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
       </NavigationGuardProvider>

@@ -12,6 +12,7 @@ type Props = {
   message?: string;
 };
 
+/** Yalnız puantaj onay hatırlatması — mesai ihlali ayrı bannerda. */
 export function AttendanceDayEndBanner({
   preview = false,
   workDateLabel,
@@ -37,7 +38,7 @@ export function AttendanceDayEndBanner({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-content-primary">
-              Puantaj Hatırlatması
+              Puantaj Onay Uyarısı
             </p>
             {preview && (
               <span className="rounded-md bg-slate-800/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
@@ -47,7 +48,7 @@ export function AttendanceDayEndBanner({
           </div>
           <p className="text-sm text-content-secondary mt-1">{data.message}</p>
           <p className="text-xs text-content-tertiary mt-2">
-            İş Günü: {data.workDateLabel} · Uyarı Saati: {data.cutoffLabel}
+            İş Günü: {data.workDateLabel} · Onay Kesimi: {data.cutoffLabel}
           </p>
           <Link
             href="/panel/personel-ozluk?tab=attendance"
