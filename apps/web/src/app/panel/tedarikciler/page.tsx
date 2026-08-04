@@ -11,6 +11,7 @@ import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
+  addAllDistrictsInProvince,
   addWholeProvinceEntry,
   isDistrictAreaChecked,
   toggleDistrictArea,
@@ -890,7 +891,9 @@ export default function VendorsPage() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [serviceDistricts, setServiceDistricts] = useState<District[]>([]);
+  const [serviceDistrictsLoading, setServiceDistrictsLoading] = useState(false);
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
+  const autoSyncedServiceCityRef = useRef('');
 
   const [workGroups, setWorkGroups] = useState<WorkGroup[]>([]);
   const [selectedWorkGroupIds, setSelectedWorkGroupIds] = useState<string[]>([]);
@@ -1097,7 +1100,8 @@ export default function VendorsPage() {
 
   const resetForm = () => {
     setForm(emptyForm()); setServiceAreas([]); setSelectedWorkGroupIds([]);
-    setSelectedProvince(null); setServiceDistricts([]);
+    setSelectedProvince(null); setServiceDistricts([]); setServiceDistrictsLoading(false);
+    autoSyncedServiceCityRef.current = '';
     setGibError(null); setNviResult(null);
     setDuplicateConflicts({}); setShowDuplicateModal(false);
     setContacts([emptyContact()]); setContactInfos([emptyContactInfo()]);
@@ -1432,8 +1436,14 @@ export default function VendorsPage() {
   };
 
   const loadServiceDistricts = async (provinceId: string) => {
-    const list = await fetchProvinceDistricts(provinceId, { toastOnError: true });
-    setServiceDistricts(list.map((d) => ({ ...d, provinceId })));
+    setServiceDistrictsLoading(true);
+    setServiceDistricts([]);
+    try {
+      const list = await fetchProvinceDistricts(provinceId, { toastOnError: true });
+      setServiceDistricts(list.map((d) => ({ ...d, provinceId })));
+    } finally {
+      setServiceDistrictsLoading(false);
+    }
   };
 
   const toggleServiceArea = (provinceId: string, districtId?: string | null) => {
@@ -1454,9 +1464,27 @@ export default function VendorsPage() {
   };
 
   const addAllDistrictsForProvince = (prov: Province) => {
-    // İl geneli tek kayıt (districtId: null) — ilçe listesi yüklenmese bile çalışır
+    // Hasar ile aynı: ilçe listesi varsa her ilçeyi ayrı işaretle (çoklu ilçe)
+    if (serviceDistricts.length > 0 && serviceDistricts[0]?.provinceId === prov.id) {
+      setServiceAreas((p) => addAllDistrictsInProvince(p, prov.id, serviceDistricts, prov.name));
+      return;
+    }
     setServiceAreas((p) => addWholeProvinceEntry(p, prov.id, prov.name));
   };
+
+  // Adres ilinden Hizmet Bölgeleri ilini otomatik aç — çoklu ilçe kutuları hemen görünsün
+  useEffect(() => {
+    if (activeSection !== 2 || !form.city?.trim() || provinces.length === 0) return;
+    const cityKey = form.city.trim().toLocaleLowerCase('tr-TR');
+    if (autoSyncedServiceCityRef.current === cityKey) return;
+    const match = provinces.find(
+      (p) => p.name.toLocaleLowerCase('tr-TR') === cityKey,
+    );
+    if (!match) return;
+    autoSyncedServiceCityRef.current = cityKey;
+    setSelectedProvince(match);
+    void loadServiceDistricts(match.id);
+  }, [activeSection, form.city, provinces]);
 
   const handleAddVendorType = async () => {
     const t = newTypeName.trim();
@@ -1611,7 +1639,9 @@ export default function VendorsPage() {
       (v.vendorWorkGroups?.length ?? 0) > 0
       || (Array.isArray(v.serviceBranches) && v.serviceBranches.length > 0),
     );
-    setSelectedProvince(null); setServiceDistricts([]); setActiveSection(0); setShowModal(true);
+    autoSyncedServiceCityRef.current = '';
+    setSelectedProvince(null); setServiceDistricts([]); setServiceDistrictsLoading(false);
+    setActiveSection(0); setShowModal(true);
   };
 
   const handleSave = async (overrideSaveMode?: SaveMode) => {
@@ -3472,7 +3502,9 @@ export default function VendorsPage() {
                   )}
 
                   <SectionDivider icon={Icon.mapPin} title="Hizmet Bölgeleri" />
-                  <p className="text-xs text-slate-500 mb-2">En az bir il veya ilçe seçimi zorunludur. Acil ve hasar önerilerinde bu bölgeler kullanılır.</p>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Hasar ile aynı: il seçtikten sonra birden fazla ilçeyi işaretleyebilirsiniz. En az bir il veya ilçe zorunludur.
+                  </p>
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
                     {provinces.length === 0 ? (
                       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -3493,7 +3525,7 @@ export default function VendorsPage() {
                         value={selectedProvince?.id ?? ''}
                         onChange={(provinceId) => {
                           const p = provinces.find((x) => x.id === provinceId);
-                          if (p) { setSelectedProvince(p); loadServiceDistricts(p.id); }
+                          if (p) { setSelectedProvince(p); void loadServiceDistricts(p.id); }
                           else { setSelectedProvince(null); setServiceDistricts([]); }
                         }}
                         placeholder={ADDRESS_FIELD.provinceSearchPlaceholder}
@@ -3503,24 +3535,30 @@ export default function VendorsPage() {
                       {selectedProvince && (
                         <button type="button" onClick={() => addAllDistrictsForProvince(selectedProvince)}
                           className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 whitespace-nowrap">
-                          Tüm İlçeleri Ekle
+                          Tüm İlçeleri Seç
                         </button>
                       )}
                     </div>
                     )}
                     {selectedProvince && serviceDistricts.length > 0 && (
+                      <p className="text-[11px] text-content-tertiary mb-2">
+                        İstediğiniz ilçeleri işaretleyin (ör. Merkez, Banaz, Eşme). Birden fazla seçim yapılabilir.
+                      </p>
+                    )}
+                    {selectedProvince && (
                       <DistrictCheckboxGrid
                         districts={serviceDistricts}
-                        maxHeightClass="max-h-28"
-                        gridClassName="grid grid-cols-3 gap-1.5"
+                        loading={serviceDistrictsLoading}
+                        maxHeightClass="max-h-48"
+                        gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-1.5"
                         isChecked={(districtId) => isDistrictAreaChecked(serviceAreas, selectedProvince.id, districtId)}
                         onToggle={(districtId) => toggleServiceArea(selectedProvince.id, districtId)}
                         className="mb-3"
                       />
                     )}
-                    {selectedProvince && serviceDistricts.length === 0 && (
+                    {selectedProvince && !serviceDistrictsLoading && serviceDistricts.length === 0 && (
                       <p className="text-[11px] text-content-tertiary mb-3">
-                        İlçe listesi yükleniyor veya boş. İsterseniz «Tüm İlçeleri Ekle» ile il genelini kaydedebilirsiniz.
+                        İlçe listesi boş. «Tüm İlçeleri Seç» ile il genelini kaydedebilirsiniz.
                       </p>
                     )}
                     {serviceAreas.length > 0 && (
