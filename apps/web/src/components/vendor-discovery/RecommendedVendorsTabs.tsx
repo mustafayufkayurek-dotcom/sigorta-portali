@@ -305,9 +305,19 @@ function RegisteredVendorPoolPicker({
       {poolLoading ? (
         <p className="text-xs text-slate-400 py-1 text-center">Havuz yükleniyor...</p>
       ) : options.length === 0 ? (
-        <p className="text-xs text-slate-500 text-center py-2 leading-snug">
-          Kayıtlı Acil Yardım Tedarikçisi Bulunamadı
-        </p>
+        <div className="py-2 px-1 space-y-1.5 text-center">
+          <p className="text-xs text-slate-500 leading-snug">
+            Kayıtlı Acil Yardım Tedarikçisi Bulunamadı
+          </p>
+          <a
+            href="/panel/tedarikciler"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-xs font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
+          >
+            Tedarikçiler Sayfasından Ekleyin
+          </a>
+        </div>
       ) : (
         <ul className="space-y-1.5 max-h-48 overflow-y-auto">
           {options.slice(0, 12).map((v) => {

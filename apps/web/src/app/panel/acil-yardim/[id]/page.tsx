@@ -625,7 +625,17 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
               {loading ? (
                 <div className="py-4 text-center text-xs text-slate-400">Yükleniyor...</div>
               ) : options.length === 0 ? (
-                <div className="py-3 text-center text-xs text-slate-400">Sonuç bulunamadı</div>
+                <div className="py-3 px-3 space-y-2 text-center">
+                  <p className="text-xs text-slate-500">Sonuç bulunamadı</p>
+                  <a
+                    href="/panel/tedarikciler"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex text-xs font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
+                  >
+                    Tedarikçiler Sayfasından Ekleyin
+                  </a>
+                </div>
               ) : (
                 options.map((opt) => (
                   <button
@@ -639,9 +649,17 @@ function VendorSelector({ value, onChange }: VendorSelectorProps) {
                   </button>
                 ))
               )}
-              <div className="border-t border-slate-100 p-2">
-                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-semibold text-brand-600 hover:bg-blue-50 rounded-lg px-2 py-1.5">
-                  Yeni Tedarikçi Ekle
+              <div className="border-t border-slate-100 p-2 space-y-1">
+                <a
+                  href="/panel/tedarikciler"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center text-xs font-semibold text-brand-600 hover:bg-blue-50 rounded-lg px-2 py-1.5"
+                >
+                  Tedarikçiler Sayfasına Git
+                </a>
+                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-medium text-slate-600 hover:bg-slate-50 rounded-lg px-2 py-1.5">
+                  Hızlı Tedarikçi Ekle
                 </button>
               </div>
             </>

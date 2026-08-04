@@ -427,12 +427,18 @@ export interface VendorRecommendation {
 }
 
 export async function getEmergencyVendors(search?: string): Promise<{ data: VendorOption[]; meta: { total: number } }> {
-  return apiClient.get<{ data: VendorOption[]; meta: { total: number } }>('/vendors', {
+  // apiClient.get zarfı açar (data dizisini döner); meta için getWithMeta gerekir.
+  const res = await apiClient.getWithMeta<VendorOption[], { total?: number }>('/vendors', {
     category: 'acil',
     status: 'active',
     limit: 100,
     search,
   });
+  const data = Array.isArray(res.data) ? res.data : [];
+  return {
+    data,
+    meta: { total: typeof res.meta?.total === 'number' ? res.meta.total : data.length },
+  };
 }
 
 export async function createVendorQuick(body: {

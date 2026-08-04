@@ -3,6 +3,7 @@
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import Link from 'next/link';
 import { CustomerSelectModal } from '@/components/CustomerSelectModal';
 import { CollapsibleFormPanel } from '@/components/form/CollapsibleFormPanel';
 import { NewFilePanelShell } from '@/components/form/NewFilePanelShell';
@@ -202,8 +203,9 @@ export function EmergencyCaseNewForm({
   const [openSections, setOpenSections] = useState({
     asistans: true,
     dosya: true,
-    atama: false,
+    atama: true,
   });
+  const [lookupsLoading, setLookupsLoading] = useState(false);
 
   const toggleSection = (key: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -229,11 +231,17 @@ export function EmergencyCaseNewForm({
   ].filter(Boolean).join(' · ') || 'Zorunlu alanları doldurun';
 
   const atamaSummary = [
-    assignedUserId ? users.find((u) => u.id === assignedUserId)?.firstName : '',
+    assignedUserId
+      ? (() => {
+          const u = users.find((x) => x.id === assignedUserId);
+          return u ? `${u.firstName} ${u.lastName}`.trim() : '';
+        })()
+      : '',
     assignedVendorId ? vendors.find((v) => v.id === assignedVendorId)?.name : '',
-  ].filter(Boolean).join(' · ') || 'Opsiyonel';
+  ].filter(Boolean).join(' · ') || 'Saha Tedarikçisi Ve Dosya Sorumlusu Zorunlu';
 
   const loadLookups = useCallback(async () => {
+    setLookupsLoading(true);
     try {
       const subjectsRes = await axios
         .get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() })
@@ -261,9 +269,16 @@ export function EmergencyCaseNewForm({
       }
 
       const [vendorsRes, usersRes] = await Promise.all([
-        getEmergencyVendors(),
+        getEmergencyVendors().catch((err) => {
+          reportCaughtError(err, 'Saha tedarikçileri yüklenemedi.', { toastType: 'warning' });
+          return { data: [] as VendorOption[], meta: { total: 0 } };
+        }),
+        // Dosya sorumlusu listesi — /users (user.view) yerine atama için açık uç
         axios
-          .get(`${API}/users`, { headers: authHeader(), params: { limit: 100 } })
+          .get(`${API}/claim-files/assignable-staff`, {
+            headers: authHeader(),
+            params: { role: 'office_staff' },
+          })
           .catch(() => ({ data: { data: [] } })),
       ]);
       setVendors(vendorsRes.data ?? []);
@@ -272,6 +287,8 @@ export function EmergencyCaseNewForm({
       reportCaughtError(e, 'Form seçenekleri yüklenemedi. Varsayılan konular kullanılıyor.');
       setIssueTypes(FALLBACK_ISSUE_TYPES);
       setSubjectsLoadFailed(true);
+    } finally {
+      setLookupsLoading(false);
     }
   }, [isCustomerLocked]);
 
@@ -417,10 +434,17 @@ export function EmergencyCaseNewForm({
     if (!insuredName.trim()) errs.insuredName = 'Sigortalı adı soyadı zorunludur.';
     if (!address.trim()) errs.address = 'Adres zorunludur.';
     if (!findingsText.trim()) errs.findingsText = 'Tespit Bulguları zorunludur.';
+    if (!isCustomerLocked) {
+      if (!assignedVendorId) errs.assignedVendorId = 'Saha Tedarikçisi zorunludur.';
+      if (!assignedUserId) errs.assignedUserId = 'Dosya Sorumlusu zorunludur.';
+    }
     setErrors(errs);
     if (errs.assistant) setOpenSections((p) => ({ ...p, asistans: true }));
     if (errs.fileNo || errs.issueType || errs.insuredName || errs.address || errs.findingsText) {
       setOpenSections((p) => ({ ...p, dosya: true }));
+    }
+    if (errs.assignedVendorId || errs.assignedUserId) {
+      setOpenSections((p) => ({ ...p, atama: true }));
     }
     return Object.keys(errs).length === 0;
   };
@@ -807,23 +831,100 @@ export function EmergencyCaseNewForm({
   );
 
   const atamaSection = (
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <label className={label}>Saha Tedarikçisi</label>
-        <select className={field} value={assignedVendorId} onChange={(e) => setAssignedVendorId(e.target.value)}>
-          <option value="">Seçilmedi</option>
-          {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-        </select>
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={label}>
+            Saha Tedarikçisi <span className="text-status-danger">*</span>
+          </label>
+          <select
+            className={`${field} ${errors.assignedVendorId ? 'border-status-danger' : ''}`}
+            value={assignedVendorId}
+            onChange={(e) => {
+              setAssignedVendorId(e.target.value);
+              if (e.target.value) setErrors((prev) => ({ ...prev, assignedVendorId: '' }));
+            }}
+            disabled={lookupsLoading}
+            data-testid="acil-saha-tedarikci-select"
+          >
+            <option value="">{lookupsLoading ? 'Yükleniyor…' : 'Seçiniz'}</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+          {errors.assignedVendorId ? (
+            <p className="text-xs text-status-danger mt-0.5">{errors.assignedVendorId}</p>
+          ) : null}
+          {!lookupsLoading && vendors.length === 0 ? (
+            <p className="text-[11px] text-amber-800 mt-1 leading-snug">
+              Kayıtlı acil yardım tedarikçisi yok.{' '}
+              <Link
+                href="/panel/tedarikciler"
+                target="_blank"
+                className="font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
+              >
+                Tedarikçiler Sayfasından Ekleyin
+              </Link>
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-400 mt-1">
+              Listede yoksa{' '}
+              <Link
+                href="/panel/tedarikciler"
+                target="_blank"
+                className="font-medium text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
+              >
+                Tedarikçiler
+              </Link>
+              {' '}sayfasından ekleyin, sonra bu formu yenileyin.
+            </p>
+          )}
+        </div>
+        <div>
+          <label className={label}>
+            Dosya Sorumlusu <span className="text-status-danger">*</span>
+          </label>
+          <select
+            className={`${field} ${errors.assignedUserId ? 'border-status-danger' : ''}`}
+            value={assignedUserId}
+            onChange={(e) => {
+              setAssignedUserId(e.target.value);
+              if (e.target.value) setErrors((prev) => ({ ...prev, assignedUserId: '' }));
+            }}
+            disabled={lookupsLoading}
+            data-testid="acil-dosya-sorumlusu-select"
+          >
+            <option value="">{lookupsLoading ? 'Yükleniyor…' : 'Seçiniz'}</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+            ))}
+          </select>
+          {errors.assignedUserId ? (
+            <p className="text-xs text-status-danger mt-0.5">{errors.assignedUserId}</p>
+          ) : null}
+          {!lookupsLoading && users.length === 0 ? (
+            <p className="text-[11px] text-amber-800 mt-1 leading-snug">
+              Atanabilir dosya sorumlusu yok.{' '}
+              <Link
+                href="/panel/kullanicilar"
+                target="_blank"
+                className="font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
+              >
+                Kullanıcılar Sayfasından Tanımlayın
+              </Link>
+            </p>
+          ) : null}
+        </div>
       </div>
-      <div>
-        <label className={label}>Dosya Sorumlusu</label>
-        <select className={field} value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>
-          <option value="">Seçilmedi</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-          ))}
-        </select>
-      </div>
+      {!lookupsLoading && (vendors.length === 0 || users.length === 0) ? (
+        <button
+          type="button"
+          onClick={() => void loadLookups()}
+          className="text-[11px] font-semibold text-brand-600 hover:text-brand-700"
+        >
+          Listeleri Yenile
+        </button>
+      ) : null}
     </div>
   );
 
@@ -863,7 +964,7 @@ export function EmergencyCaseNewForm({
       {!isCustomerLocked ? (
         <CollapsibleFormPanel
           title="Atama"
-          hint="Saha tedarikçisi ve dosya sorumlusu"
+          hint="Saha tedarikçisi ve dosya sorumlusu zorunludur"
           open={openSections.atama}
           onToggle={() => toggleSection('atama')}
           summary={atamaSummary}
