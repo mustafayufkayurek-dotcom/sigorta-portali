@@ -6,11 +6,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useApiQuery, useApiMutation } from '@/hooks/useApi';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { useToast } from '@/contexts/ToastContext';
-import { TrDateInput } from '@/components/ui/TrDateInput';
-import { toTitleCaseTR } from '@/utils/text-helpers';
-import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-input';
-import { countBusinessDaysInclusive } from '@/utils/hr-leave-workdays';
-import { apiClient } from '@/lib/api-client';
+import { isoToTrDateDisplay } from '@/utils/tr-date-input';
+import { apiClient, getBaseUrl } from '@/lib/api-client';
+import { getAccessToken } from '@/utils/auth-session';
 import { AttendanceCalendar } from '@/components/hr/AttendanceCalendar';
 import { AttendanceAccountantPanel } from '@/components/hr/AttendanceAccountantPanel';
 import { AttendanceBulkAccountantPanel } from '@/components/hr/AttendanceBulkAccountantPanel';
@@ -28,10 +26,13 @@ import {
   ManagerHrWatchStrip,
   type LeaveApprovalItem,
 } from '@/components/hr/ManagerHrWatchStrip';
+import {
+  HrMyLeavesPanel,
+  type LeaveRow,
+  type LeaveSubmitPayload,
+} from '@/components/hr/HrMyLeavesPanel';
 import { DAY_END_SUPERVISION_PREVIEW } from '@/components/hr/attendance-day-end.preview';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
-import { Paperclip } from 'lucide-react';
-
 type TabKey =
   | 'attendance'
   | 'leaves'
@@ -271,12 +272,6 @@ export default function PersonelOzlukPage() {
   const [signatureModal, setSignatureModal] = useState<'month' | 'lock' | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
-  const [leaveForm, setLeaveForm] = useState({
-    leaveType: 'annual',
-    startDate: '',
-    endDate: '',
-    reason: '',
-  });
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -346,11 +341,12 @@ export default function PersonelOzlukPage() {
     'hr/employees',
     {
       enabled:
-        (canSupervise || canManagePersonnelDocuments) &&
+        (canSupervise || canManagePersonnelDocuments || activeTab === 'leaves') &&
         (activeTab === 'attendance' ||
           activeTab === 'assets' ||
           activeTab === 'documents' ||
-          activeTab === 'summary'),
+          activeTab === 'summary' ||
+          activeTab === 'leaves'),
     },
   );
   const employeeList = Array.isArray(employeesRaw) ? employeesRaw : [];
@@ -419,21 +415,19 @@ export default function PersonelOzlukPage() {
   );
   const allLeaves = (Array.isArray(allLeavesRaw) ? allLeavesRaw : []) as LeaveRequest[];
 
-  const createLeave = useApiMutation<LeaveRequest, typeof leaveForm & { submit?: boolean }>(
-    'hr/leave-requests',
-    'post',
-    {
-      onSuccess: () => {
-        showToast('success', 'İzin Talebi Kaydedildi');
-        setLeaveForm({ leaveType: 'annual', startDate: '', endDate: '', reason: '' });
-        queryClient.invalidateQueries({ queryKey: ['hr-leaves'] });
-        queryClient.invalidateQueries({ queryKey: ['hr-leaves-all'] });
-        queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
-        queryClient.invalidateQueries({ queryKey: ['hr-pending-approval'] });
-      },
-      onError: (e) => showToast('error', e.message || 'İzin Talebi Kaydedilemedi'),
+  const createLeave = useApiMutation<
+    LeaveRequest,
+    { leaveType: string; startDate: string; endDate: string; reason?: string; submit?: boolean }
+  >('hr/leave-requests', 'post', {
+    onSuccess: () => {
+      showToast('success', 'İzin Talebi Kaydedildi');
+      queryClient.invalidateQueries({ queryKey: ['hr-leaves'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-leaves-all'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-pending-approval'] });
     },
-  );
+    onError: (e) => showToast('error', e.message || 'İzin Talebi Kaydedilemedi'),
+  });
 
   const canManagePuantaj = summary?.canApprove || canApproveByRole;
   /** Admin veya Finans — personel aylık onayından sonra tek onay yeter */
@@ -483,30 +477,77 @@ export default function PersonelOzlukPage() {
     }
   };
 
-  const handleCreateLeave = () => {
-    if (!isCompleteTrDateValue(leaveForm.startDate) || !isCompleteTrDateValue(leaveForm.endDate)) {
-      showToast('warning', 'Geçerli Başlangıç Ve Bitiş Tarihi Girin (GG.AA.YYYY)');
-      return;
-    }
-    const startDate = normalizeTrDateValue(leaveForm.startDate);
-    const endDate = normalizeTrDateValue(leaveForm.endDate);
-    if (endDate < startDate) {
+  const handleCreateLeaveFromPanel = async (payload: LeaveSubmitPayload) => {
+    if (payload.endDate < payload.startDate) {
       showToast('warning', 'Bitiş Tarihi Başlangıçtan Önce Olamaz');
       return;
     }
-    const workDays = countBusinessDaysInclusive(leaveForm.startDate, leaveForm.endDate);
-    if (!workDays || workDays.workDays < 1) {
-      showToast('warning', 'Seçilen Aralıkta En Az 1 İş Günü Olmalı (Hafta Tatili Düşülür)');
-      return;
+    try {
+      const created = await createLeave.mutateAsync({
+        leaveType: payload.leaveType,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        reason: payload.reason,
+        submit: true,
+      });
+      if (payload.documentFile && created?.id) {
+        try {
+          const fd = new FormData();
+          fd.append('file', payload.documentFile);
+          fd.append('entityType', 'hr_leave_request');
+          fd.append('entityId', created.id);
+          const token = getAccessToken();
+          const res = await fetch(`${getBaseUrl().replace(/\/$/, '')}/entity-documents`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: fd,
+          });
+          if (!res.ok) throw new Error('upload failed');
+          showToast('success', 'İzin Evrakı Yüklendi');
+        } catch {
+          showToast(
+            'warning',
+            'Talep Oluştu; Evrak Yüklenemedi — Listeden Ataç İle Tekrar Yükleyin',
+          );
+        }
+      }
+    } catch {
+      /* toast from mutation onError */
     }
-    createLeave.mutate({
-      ...leaveForm,
-      startDate,
-      endDate,
-      reason: leaveForm.reason.trim() ? toTitleCaseTR(leaveForm.reason.trim()) : '',
-      submit: true,
-    });
   };
+
+  const myLeaveRows: LeaveRow[] = useMemo(() => {
+    return leaves.map((leave) => {
+      const status = (['draft', 'pending', 'approved', 'rejected'].includes(leave.status)
+        ? leave.status
+        : 'pending') as LeaveRow['status'];
+      const label =
+        leaveTypeOptions.find((o) => o.value === leave.leaveType)?.label ?? leave.leaveType;
+      const reason = leave.reason ?? null;
+      const proxyMatch = reason?.match(/Vekil:\s*(.+)$/i);
+      return {
+        id: leave.id,
+        leaveType: leave.leaveType,
+        leaveTypeLabel: label,
+        startDateLabel: isoToTrDateDisplay(String(leave.startDate).slice(0, 10)),
+        endDateLabel: isoToTrDateDisplay(String(leave.endDate).slice(0, 10)),
+        dayCount: leave.dayCount ?? 0,
+        reason,
+        status,
+        proxyName: proxyMatch?.[1]?.trim() ?? null,
+        hasDocument: false,
+      };
+    });
+  }, [leaves, leaveTypeOptions]);
+
+  const leaveProxyOptions = useMemo(() => {
+    const list = Array.isArray(employeesRaw) ? employeesRaw : [];
+    return list.map((e) => ({
+      id: e.id,
+      name: `${e.user.firstName} ${e.user.lastName}`.trim(),
+      role: e.department?.name ?? undefined,
+    }));
+  }, [employeesRaw]);
 
   const handleConfirmDay = async (date: string) => {
     if (attendance?.periodLock?.isLocked) {
@@ -1412,137 +1453,39 @@ export default function PersonelOzlukPage() {
           )}
 
           {activeTab === 'leaves' && (
-            <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700">İzin Taleplerim</h3>
-                {leavesLoading ? (
-                  <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
-                ) : leavesError ? (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    İzin listesi alınamadı. Sayfayı yenileyin veya yöneticinize bildirin.
-                  </div>
-                ) : leaves.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-                    Henüz izin talebiniz yok. Sağdaki formdan yeni talep oluşturabilirsiniz.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {leaves.map((leave) => (
-                      <div key={leave.id} className="rounded-xl border border-slate-100">
-                        <div className="flex items-center justify-between px-4 py-3">
-                          <div>
-                            <p className="text-sm font-medium text-slate-800">
-                              {leaveTypeOptions.find((o) => o.value === leave.leaveType)?.label ?? leave.leaveType}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
-                              {leave.dayCount ? ` · ${leave.dayCount} gün` : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_BADGE[leave.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                              {STATUS_LABELS[leave.status] ?? leave.status}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedLeaveId((cur) => (cur === leave.id ? null : leave.id))}
-                              title="İzin Evrakları"
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-                            >
-                              <Paperclip className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                        {expandedLeaveId === leave.id && (
-                          <div className="border-t border-slate-100 p-4 bg-slate-50/50">
-                            <EntityDocumentsTab
-                              mode="entity"
-                              entityType="hr_leave_request"
-                              entityId={leave.id}
-                              title="İzin Evrakları"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-slate-100 p-5 bg-slate-50/40 h-fit">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">Yeni İzin Talebi</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">İzin Tipi</label>
-                    <select
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      value={leaveForm.leaveType}
-                      onChange={(e) => setLeaveForm((p) => ({ ...p, leaveType: e.target.value }))}
-                    >
-                      {leaveTypeOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      Türler 4857 sayılı İş Kanunu izinleri ile sınırlıdır — «Diğer» yoktur.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Başlangıç Tarihi</label>
-                    <TrDateInput
-                      value={leaveForm.startDate}
-                      onChange={(startDate) => setLeaveForm((p) => ({ ...p, startDate }))}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      aria-label="İzin başlangıç tarihi"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Bitiş Tarihi</label>
-                    <TrDateInput
-                      value={leaveForm.endDate}
-                      onChange={(endDate) => setLeaveForm((p) => ({ ...p, endDate }))}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      aria-label="İzin bitiş tarihi"
-                    />
-                  </div>
-                  {(() => {
-                    const calc = countBusinessDaysInclusive(leaveForm.startDate, leaveForm.endDate);
-                    if (!calc) return null;
-                    return (
-                      <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-2.5 text-xs text-content-secondary">
-                        <p className="font-semibold text-content-primary">{calc.workDays} İş Günü</p>
-                        <p className="mt-0.5">
-                          Takvim {calc.calendarDays} gün · Hafta tatili düşüldü: {calc.weekendDays} gün
-                        </p>
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Açıklama</label>
-                    <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white min-h-[80px]"
-                      value={leaveForm.reason}
-                      onBlur={(e) => setLeaveForm((p) => ({ ...p, reason: toTitleCaseTR(e.target.value.trim()) }))}
-                      onChange={(e) => setLeaveForm((p) => ({ ...p, reason: e.target.value }))} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCreateLeave}
-                    disabled={createLeave.isPending}
-                    className="w-full bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-brand-700 disabled:opacity-50"
-                  >
-                    {createLeave.isPending ? 'Gönderiliyor...' : 'Onaya Gönder'}
-                  </button>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Fiziki izin evrakı (rapor / form taraması) zorunludur. Talep oluşunca soldaki
-                    listeden ataç ile hemen yükleyin; evraksız talep onaylanmaz.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-
-            </div>
+            <HrMyLeavesPanel
+              preview={designPreview}
+              leaveTypes={leaveTypeOptions.map((o) => ({ code: o.value, label: o.label }))}
+              proxyOptions={leaveProxyOptions}
+              entitlement={
+                summary?.leaveBalance
+                  ? {
+                      total: summary.leaveBalance.totalDays,
+                      used: summary.leaveBalance.usedDays,
+                      pending: summary.leaveBalance.pendingDays,
+                      remaining: summary.leaveBalance.remainingDays,
+                      rule: `${summary.leaveBalance.leaveTypeLabel} (${summary.leaveBalance.year})`,
+                    }
+                  : undefined
+              }
+              leaves={designPreview ? undefined : myLeaveRows}
+              leavesLoading={!designPreview && leavesLoading}
+              leavesError={!designPreview && leavesError}
+              submitting={createLeave.isPending}
+              onSubmitLive={designPreview ? undefined : handleCreateLeaveFromPanel}
+              documentsSlot={
+                designPreview
+                  ? undefined
+                  : (id) => (
+                      <EntityDocumentsTab
+                        mode="entity"
+                        entityType="hr_leave_request"
+                        entityId={id}
+                        title="İzin Evrakları"
+                      />
+                    )
+              }
+            />
           )}
         </div>
       </div>

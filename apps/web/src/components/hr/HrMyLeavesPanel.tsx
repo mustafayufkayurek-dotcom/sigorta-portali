@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   CalendarDays,
   CheckCircle2,
@@ -14,12 +14,16 @@ import {
 } from 'lucide-react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { useToast } from '@/contexts/ToastContext';
-import { countBusinessDaysInclusive, toTrDateLabel } from '@/utils/hr-leave-workdays';
+import {
+  countBusinessDaysInclusive,
+  toTrDateLabel,
+} from '@/utils/hr-leave-workdays';
+import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-input';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 
-type LeaveStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+export type LeaveStatus = 'draft' | 'pending' | 'approved' | 'rejected';
 
-type LeaveRow = {
+export type LeaveRow = {
   id: string;
   leaveType: string;
   leaveTypeLabel: string;
@@ -32,7 +36,20 @@ type LeaveRow = {
   hasDocument?: boolean;
 };
 
-const LEAVE_TYPES = [
+export type LeaveTypeOption = { code: string; label: string };
+export type ProxyOption = { id: string; name: string; role?: string };
+
+export type LeaveSubmitPayload = {
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  proxyName: string;
+  workDays: number;
+  documentFile: File | null;
+};
+
+const DEFAULT_LEAVE_TYPES: LeaveTypeOption[] = [
   { code: 'annual', label: 'Yıllık Ücretli İzin' },
   { code: 'sick', label: 'Hastalık / Raporlu İzin' },
   { code: 'maternity', label: 'Analık İzni' },
@@ -42,7 +59,7 @@ const LEAVE_TYPES = [
   { code: 'unpaid', label: 'Ücretsiz İzin' },
 ];
 
-const PROXY_OPTIONS = [
+const PROXY_OPTIONS_PREVIEW: ProxyOption[] = [
   { id: 'u1', name: 'Mehmet Kara', role: 'Saha Personeli' },
   { id: 'u2', name: 'Ayşe Demir', role: 'Dosya Sorumlusu' },
   { id: 'u3', name: 'Zeynep Aksoy', role: 'Dosya Sorumlusu' },
@@ -63,8 +80,13 @@ const STATUS_BADGE: Record<LeaveStatus, string> = {
   rejected: 'bg-status-danger/15 text-status-danger',
 };
 
-/** Önizleme — 4857 m.53: 8 yıl kıdem → 20 iş günü hakediş */
-const ENTITLEMENT = { total: 20, used: 1, rule: '5 yıldan fazla – 15 yıl → 20 iş günü' };
+const ENTITLEMENT_PREVIEW = {
+  total: 20,
+  used: 1,
+  pending: 5,
+  remaining: 14,
+  rule: '5 yıldan fazla – 15 yıl → 20 iş günü',
+};
 
 const PREVIEW_ROWS: LeaveRow[] = [
   {
@@ -110,15 +132,42 @@ const iconBtnClass =
 
 type Props = {
   preview?: boolean;
+  leaveTypes?: LeaveTypeOption[];
+  proxyOptions?: ProxyOption[];
+  entitlement?: {
+    total: number;
+    used: number;
+    pending: number;
+    remaining: number;
+    rule?: string;
+  };
+  leaves?: LeaveRow[];
+  leavesLoading?: boolean;
+  leavesError?: boolean;
+  submitting?: boolean;
+  onSubmitLive?: (payload: LeaveSubmitPayload) => void | Promise<void>;
+  documentsSlot?: (leaveId: string) => ReactNode;
 };
 
 /**
  * Personel izin talepleri — liste + yeni talep (vekalet + fiziki evrak zorunlu).
+ * preview=true: yerel önizleme · preview=false: canlı API (onSubmitLive).
  */
-export function HrMyLeavesPanel({ preview = true }: Props) {
+export function HrMyLeavesPanel({
+  preview = true,
+  leaveTypes,
+  proxyOptions,
+  entitlement,
+  leaves,
+  leavesLoading = false,
+  leavesError = false,
+  submitting = false,
+  onSubmitLive,
+  documentsSlot,
+}: Props) {
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<LeaveRow[]>(PREVIEW_ROWS);
+  const [previewRows, setPreviewRows] = useState<LeaveRow[]>(PREVIEW_ROWS);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [editId, setEditId] = useState<string | null>(null);
@@ -130,11 +179,32 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
     proxyId: '',
   });
   const [docFileName, setDocFileName] = useState<string | null>(null);
+  const [docFile, setDocFile] = useState<File | null>(null);
 
-  const pendingDays = rows
-    .filter((r) => r.status === 'pending' && r.leaveType === 'annual')
-    .reduce((s, r) => s + r.dayCount, 0);
-  const remaining = ENTITLEMENT.total - ENTITLEMENT.used - pendingDays;
+  const types = leaveTypes?.length ? leaveTypes : DEFAULT_LEAVE_TYPES;
+  const proxies = proxyOptions?.length
+    ? proxyOptions
+    : preview
+      ? PROXY_OPTIONS_PREVIEW
+      : [];
+  const bal = entitlement ?? (preview ? ENTITLEMENT_PREVIEW : null);
+  const rows = preview ? previewRows : leaves ?? [];
+
+  useEffect(() => {
+    if (!types.some((t) => t.code === form.leaveType) && types[0]) {
+      setForm((p) => ({ ...p, leaveType: types[0].code }));
+    }
+  }, [types, form.leaveType]);
+
+  const pendingDays = bal
+    ? bal.pending
+    : rows
+        .filter((r) => r.status === 'pending' && r.leaveType === 'annual')
+        .reduce((s, r) => s + r.dayCount, 0);
+  const usedDays = bal?.used ?? 0;
+  const totalDays = bal?.total ?? 0;
+  const remaining =
+    bal?.remaining ?? Math.max(0, totalDays - usedDays - pendingDays);
 
   const workDayCalc = useMemo(
     () => countBusinessDaysInclusive(form.startDate, form.endDate),
@@ -152,15 +222,22 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
   }, [rows, typeFilter]);
 
   const resetForm = () => {
-    setForm({ leaveType: 'annual', startDate: '', endDate: '', reason: '', proxyId: '' });
+    setForm({
+      leaveType: types[0]?.code ?? 'annual',
+      startDate: '',
+      endDate: '',
+      reason: '',
+      proxyId: '',
+    });
     setDocFileName(null);
+    setDocFile(null);
     setEditId(null);
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const submit = () => {
-    if (!form.startDate.trim() || !form.endDate.trim()) {
-      showToast('error', 'Başlangıç Ve Bitiş Tarihi Seçin');
+  const submit = async () => {
+    if (!isCompleteTrDateValue(form.startDate) || !isCompleteTrDateValue(form.endDate)) {
+      showToast('error', 'Geçerli Başlangıç Ve Bitiş Tarihi Girin (GG.AA.YYYY)');
       return;
     }
     const calc = countBusinessDaysInclusive(form.startDate, form.endDate);
@@ -168,7 +245,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
       showToast('error', 'Geçerli Tarih Aralığı Ve En Az 1 İş Günü Gerekli');
       return;
     }
-    if (!form.proxyId) {
+    if (!form.proxyId.trim()) {
       showToast('error', 'Vekalet İçin Personel Seçin');
       return;
     }
@@ -180,30 +257,64 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
       showToast('error', 'Kalan İzin Gününden Fazla Talep Edilemez');
       return;
     }
-    const type = LEAVE_TYPES.find((t) => t.code === form.leaveType);
-    const proxy = PROXY_OPTIONS.find((p) => p.id === form.proxyId);
-    const payload: LeaveRow = {
-      id: editId ?? `local-${Date.now()}`,
+
+    const type = types.find((t) => t.code === form.leaveType);
+    const proxy = proxies.find((p) => p.id === form.proxyId);
+    const proxyName = (proxy?.name ?? form.proxyId).trim();
+    if (!proxyName) {
+      showToast('error', 'Vekalet İçin Personel Seçin');
+      return;
+    }
+    const reasonBase = form.reason.trim() ? toTitleCaseTR(form.reason.trim()) : '';
+    const reasonWithProxy = reasonBase
+      ? `${reasonBase} · Vekil: ${proxyName}`
+      : `Vekil: ${proxyName}`;
+
+    if (preview) {
+      const payload: LeaveRow = {
+        id: editId ?? `local-${Date.now()}`,
+        leaveType: form.leaveType,
+        leaveTypeLabel: type?.label ?? 'İzin',
+        startDateLabel: toTrDateLabel(form.startDate),
+        endDateLabel: toTrDateLabel(form.endDate),
+        dayCount: calc.workDays,
+        reason: reasonBase || null,
+        status: 'pending',
+        proxyName,
+        hasDocument: true,
+      };
+      setPreviewRows((list) => {
+        if (editId) return list.map((r) => (r.id === editId ? payload : r));
+        return [payload, ...list];
+      });
+      showToast(
+        'success',
+        editId
+          ? 'İzin Talebi Güncellendi — Yöneticiye Bildirim (Önizleme)'
+          : 'İzin Talebi Gönderildi — Yöneticiye Mail (Önizleme)',
+      );
+      resetForm();
+      return;
+    }
+
+    if (!onSubmitLive) {
+      showToast('error', 'İzin Gönderimi Hazır Değil');
+      return;
+    }
+    if (editId) {
+      showToast('info', 'Canlıda Düzenleme Yakında — Yeni Talep Oluşturun');
+      return;
+    }
+
+    await onSubmitLive({
       leaveType: form.leaveType,
-      leaveTypeLabel: type?.label ?? 'İzin',
-      startDateLabel: toTrDateLabel(form.startDate),
-      endDateLabel: toTrDateLabel(form.endDate),
-      dayCount: calc.workDays,
-      reason: form.reason.trim() ? toTitleCaseTR(form.reason.trim()) : null,
-      status: 'pending',
-      proxyName: proxy?.name ?? null,
-      hasDocument: true,
-    };
-    setRows((list) => {
-      if (editId) return list.map((r) => (r.id === editId ? payload : r));
-      return [payload, ...list];
+      startDate: normalizeTrDateValue(form.startDate),
+      endDate: normalizeTrDateValue(form.endDate),
+      reason: reasonWithProxy,
+      proxyName,
+      workDays: calc.workDays,
+      documentFile: docFile,
     });
-    showToast(
-      'success',
-      editId
-        ? 'İzin Talebi Güncellendi — Yöneticiye Bildirim (Önizleme)'
-        : 'İzin Talebi Gönderildi — Yöneticiye Mail (Önizleme)',
-    );
     resetForm();
   };
 
@@ -212,15 +323,20 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
       showToast('info', 'Yalnız Onay Bekleyen Talepler Düzenlenebilir');
       return;
     }
+    if (!preview) {
+      showToast('info', 'Canlıda Düzenleme Yakında');
+      return;
+    }
     setEditId(row.id);
     setForm({
       leaveType: row.leaveType,
       startDate: row.startDateLabel,
       endDate: row.endDateLabel,
       reason: row.reason ?? '',
-      proxyId: PROXY_OPTIONS.find((p) => p.name === row.proxyName)?.id ?? '',
+      proxyId: proxies.find((p) => p.name === row.proxyName)?.id ?? '',
     });
     setDocFileName(row.hasDocument ? 'mevcut-evrak.pdf' : null);
+    setDocFile(null);
   };
 
   return (
@@ -228,7 +344,9 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
       <section className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-slate-100/90 px-4 py-3 sm:px-5">
           <h3 className="text-base font-semibold text-content-primary">İzin Bakiyesi</h3>
-          <p className="mt-0.5 text-xs text-content-tertiary">{ENTITLEMENT.rule}</p>
+          <p className="mt-0.5 text-xs text-content-tertiary">
+            {bal?.rule ?? 'Yıllık Ücretli İzin Bakiyesi'}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-4 sm:grid-cols-4 sm:p-5">
           {(
@@ -236,7 +354,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
               {
                 label: 'Hakedilen',
                 hint: 'İş kanunu hesabı',
-                value: ENTITLEMENT.total,
+                value: totalDays,
                 icon: Wallet,
                 wrap: 'border-slate-100 bg-slate-50/70',
                 iconCls: 'bg-brand-50 text-brand-600',
@@ -245,7 +363,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
               {
                 label: 'Kullanılan',
                 hint: 'Onaylı gün',
-                value: ENTITLEMENT.used,
+                value: usedDays,
                 icon: CheckCircle2,
                 wrap: 'border-slate-100 bg-slate-50/70',
                 iconCls: 'bg-slate-200 text-slate-600',
@@ -309,7 +427,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
               >
                 Tümü
               </button>
-              {LEAVE_TYPES.map((t) => (
+              {types.map((t) => (
                 <button
                   key={t.code}
                   type="button"
@@ -326,9 +444,15 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {leavesLoading ? (
+            <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+          ) : leavesError ? (
+            <div className="rounded-xl border border-status-danger/30 bg-status-danger/5 px-4 py-3 text-sm text-status-danger">
+              İzin Listesi Alınamadı. Sayfayı Yenileyin Veya Yöneticinize Bildirin.
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-content-tertiary">
-              Bu filtrede izin talebi yok.
+              Bu Filtrede İzin Talebi Yok.
             </div>
           ) : (
             <div className="table-container">
@@ -373,7 +497,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                             <span
                               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_BADGE[row.status]}`}
                             >
-                              {STATUS_LABEL[row.status]}
+                              {STATUS_LABEL[row.status] ?? row.status}
                             </span>
                           </td>
                           <td
@@ -392,7 +516,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                               >
                                 <Paperclip className="h-3.5 w-3.5" aria-hidden />
                               </button>
-                              {row.status === 'pending' ? (
+                              {row.status === 'pending' && preview ? (
                                 <button
                                   type="button"
                                   title="Düzenle"
@@ -409,11 +533,15 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                         {expandedId === row.id ? (
                           <tr>
                             <td colSpan={6} className="border-t border-border bg-slate-50/50 px-4 py-3">
-                              <p className="text-xs text-content-secondary">
-                                {row.hasDocument
-                                  ? 'Fiziki izin evrakı yüklü (önizleme).'
-                                  : 'Evrak eksik — talep tamamlanmamış sayılır.'}
-                              </p>
+                              {documentsSlot ? (
+                                documentsSlot(row.id)
+                              ) : (
+                                <p className="text-xs text-content-secondary">
+                                  {row.hasDocument
+                                    ? 'Fiziki izin evrakı yüklü (önizleme).'
+                                    : 'Evrak eksik — talep tamamlanmamış sayılır.'}
+                                </p>
+                              )}
                             </td>
                           </tr>
                         ) : null}
@@ -449,7 +577,7 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                 value={form.leaveType}
                 onChange={(e) => setForm((p) => ({ ...p, leaveType: e.target.value }))}
               >
-                {LEAVE_TYPES.map((t) => (
+                {types.map((t) => (
                   <option key={t.code} value={t.code}>
                     {t.label}
                   </option>
@@ -528,18 +656,33 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
               <label className="mb-1 block text-xs font-medium text-content-tertiary">
                 Vekaleten Görevlendireceğim <span className="text-status-danger">*</span>
               </label>
-              <select
-                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm"
-                value={form.proxyId}
-                onChange={(e) => setForm((p) => ({ ...p, proxyId: e.target.value }))}
-              >
-                <option value="">— Vekil Seçin —</option>
-                {PROXY_OPTIONS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.role}
-                  </option>
-                ))}
-              </select>
+              {proxies.length > 0 ? (
+                <select
+                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm"
+                  value={form.proxyId}
+                  onChange={(e) => setForm((p) => ({ ...p, proxyId: e.target.value }))}
+                >
+                  <option value="">— Vekil Seçin —</option>
+                  {proxies.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.role ? ` — ${p.role}` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm"
+                  placeholder="Vekil Ad Soyad"
+                  value={form.proxyId}
+                  onChange={(e) => setForm((p) => ({ ...p, proxyId: e.target.value }))}
+                  onBlur={(e) => {
+                    const v = toTitleCaseTR(e.target.value.trim());
+                    if (v) setForm((p) => ({ ...p, proxyId: v }));
+                  }}
+                />
+              )}
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-content-tertiary">
@@ -566,7 +709,8 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
+                  const f = e.target.files?.[0] ?? null;
+                  setDocFile(f);
                   setDocFileName(f ? f.name : null);
                 }}
               />
@@ -582,11 +726,16 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
 
             <button
               type="button"
-              onClick={submit}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+              onClick={() => void submit()}
+              disabled={submitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
               <Clock3 className="h-4 w-4" />
-              {editId ? 'Güncelle Ve Onaya Gönder' : 'Onaya Gönder'}
+              {submitting
+                ? 'Gönderiliyor...'
+                : editId
+                  ? 'Güncelle Ve Onaya Gönder'
+                  : 'Onaya Gönder'}
             </button>
             {editId ? (
               <button
@@ -597,11 +746,10 @@ export function HrMyLeavesPanel({ preview = true }: Props) {
                 Düzenlemeyi İptal
               </button>
             ) : null}
-            {preview ? (
-              <p className="text-[10px] text-content-tertiary">
-                Önizleme — mail ve arşiv canlıda bağlanır.
-              </p>
-            ) : null}
+            <p className="text-[11px] leading-relaxed text-content-tertiary">
+              Fiziki izin evrakı zorunludur. Talep sonrası listeden ataç ile de yükleyebilirsiniz;
+              evraksız talep onaylanmaz.
+            </p>
           </div>
         </div>
       </div>
