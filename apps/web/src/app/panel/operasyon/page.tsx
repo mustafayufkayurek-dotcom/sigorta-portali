@@ -45,11 +45,11 @@ import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
 import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
+import { SearchInput } from '@/components/ui/SearchInput';
 import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
-  formatApprovalDelayLabel,
   type OperationPreset,
   type OperationStageMeta,
 } from '@sigorta/shared';
@@ -93,13 +93,43 @@ const EMERGENCY_STATUS_LABELS: Record<string, string> = {
   COZULDU: 'Dosya Kapatıldı',
   FATURALANDILDI: 'Finansa Aktarıldı',
 };
+
+/** Acil operasyon akışına göre Dosya Durumu sinyali (renk + nokta). */
 const EMERGENCY_STATUS_CLASSES: Record<string, string> = {
-  GELEN:          'badge badge-gray',
-  ATANDI:         'badge badge-blue',
-  SAHADA:         'badge badge-orange',
-  COZULDU:        'badge badge-green',
-  FATURALANDILDI: 'badge badge-purple',
+  GELEN: 'badge badge-gray ring-1 ring-slate-300',
+  ATANDI: 'badge badge-blue ring-1 ring-blue-300',
+  SAHADA: 'badge badge-orange ring-1 ring-orange-300',
+  COZULDU: 'badge badge-green ring-1 ring-emerald-300',
+  FATURALANDILDI: 'badge badge-purple ring-1 ring-violet-300',
 };
+
+function AcilDosyaDurumuBadge({ code }: { code: string }) {
+  const label = EMERGENCY_STATUS_LABELS[code] ?? code;
+  const tone = EMERGENCY_STATUS_CLASSES[code] ?? 'badge badge-gray';
+  const showPulse = code === 'GELEN' || code === 'SAHADA';
+  const dotClass =
+    code === 'GELEN'
+      ? 'bg-slate-500'
+      : code === 'ATANDI'
+        ? 'bg-blue-500'
+        : code === 'SAHADA'
+          ? 'bg-orange-500'
+          : code === 'COZULDU'
+            ? 'bg-emerald-500'
+            : code === 'FATURALANDILDI'
+              ? 'bg-violet-500'
+              : 'bg-slate-400';
+  return (
+    <span
+      className={`${tone} inline-flex items-center gap-1.5`}
+      title={`Acil Dosya Durumu · ${label}`}
+      data-testid="acil-dosya-durumu"
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass} ${showPulse ? 'animate-pulse' : ''}`} />
+      {label}
+    </span>
+  );
+}
 
 const PRESET_CHIPS: OperationPreset[] = [
   'approval_pending',
@@ -128,6 +158,10 @@ type UnifiedRow =
       statusTone: string;
       invoiceStatus: string;
       amount: string | null;
+      expectedSales: string | null;
+      supplierCostTotal: string | null;
+      expectedProfit: string | null;
+      expectedProfitNegative?: boolean;
       delayHours: number | null;
       assigneeName: string;
       approval72hExceeded: boolean;
@@ -151,6 +185,10 @@ type UnifiedRow =
       statusCode: string;
       invoiceStatus: string;
       amount: string | null;
+      expectedSales: string | null;
+      supplierCostTotal: string | null;
+      expectedProfit: string | null;
+      expectedProfitNegative?: boolean;
       delayHours: number | null;
       assigneeName: string;
       approval72hExceeded: boolean;
@@ -222,46 +260,38 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'insured', label: 'Sigortalı Adı Soyadı', defaultWidth: 150, minWidth: 120 },
   { id: 'assignee', label: 'Kimde', defaultWidth: 120, minWidth: 88 },
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80, defaultVisible: false },
-  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 220, minWidth: 120, flex: true },
-  { id: 'status', label: 'Durum', defaultWidth: 130, minWidth: 100 },
-  { id: 'delayDuration', label: 'Gecikme Süresi', defaultWidth: 120, minWidth: 96 },
+  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 200, minWidth: 120, flex: true },
+  { id: 'status', label: 'Dosya Durumu', defaultWidth: 150, minWidth: 120 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160 },
+  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
+  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110 },
+  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
 const PAGE_SIZE = 50;
 
-const OPS_COLS_LEGACY_KEY = 'table-cols:operasyon-v7';
-const OPS_COLS_BASE_KEY = 'table-cols:operasyon-v8';
+/**
+ * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
+ * v11: Gecikme Süresi kalktı; filterType başına ayrı anahtar.
+ */
+const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
+  all: 'table-cols:operasyon-all-v11',
+  hasar: 'table-cols:operasyon-hasar-v11',
+  acil: 'table-cols:operasyon-acil-v11',
+};
 
-function resolveOpsColumnsStorageKey(): string {
-  if (typeof window === 'undefined') return OPS_COLS_BASE_KEY;
+function resolveOpsColumnsStorageKey(filterType: 'all' | 'hasar' | 'acil' = 'all'): string {
+  const base = OPS_COLS_KEY_BY_FILTER[filterType] ?? OPS_COLS_KEY_BY_FILTER.all;
+  if (typeof window === 'undefined') return base;
   try {
     const raw = localStorage.getItem('user') ?? '{}';
     const user = JSON.parse(raw) as { id?: string };
     const uid = typeof user?.id === 'string' && user.id.trim() ? user.id.trim() : '';
-    return uid ? `${OPS_COLS_BASE_KEY}:${uid}` : OPS_COLS_BASE_KEY;
+    return uid ? `${base}:${uid}` : base;
   } catch {
-    return OPS_COLS_BASE_KEY;
-  }
-}
-
-function migrateOpsColumnPrefs(targetKey: string) {
-  if (typeof window === 'undefined') return;
-  const suffixes = ['', ':order', ':widths'] as const;
-  for (const suffix of suffixes) {
-    const dest = `${targetKey}${suffix}`;
-    if (localStorage.getItem(dest)) continue;
-    const fromV7 = localStorage.getItem(`${OPS_COLS_LEGACY_KEY}${suffix}`);
-    if (fromV7) {
-      localStorage.setItem(dest, fromV7);
-      continue;
-    }
-    const fromBase = localStorage.getItem(`${OPS_COLS_BASE_KEY}${suffix}`);
-    if (fromBase && dest !== `${OPS_COLS_BASE_KEY}${suffix}`) {
-      localStorage.setItem(dest, fromBase);
-    }
+    return base;
   }
 }
 
@@ -304,7 +334,7 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_BASE_KEY);
+  const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_KEY_BY_FILTER.all);
   const tableColumns = usePanelTableColumns(colsStorageKey, TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
@@ -362,10 +392,8 @@ function OperasyonPageContent() {
   }, [router, searchParams]);
 
   useEffect(() => {
-    const key = resolveOpsColumnsStorageKey();
-    migrateOpsColumnPrefs(key);
-    setColsStorageKey(key);
-  }, []);
+    setColsStorageKey(resolveOpsColumnsStorageKey(filterType));
+  }, [filterType]);
 
   const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
     setClaims((prev) => prev.map((claim) => (
@@ -471,14 +499,26 @@ function OperasyonPageContent() {
       insuredName: resolveHasarInsuredName(claim),
       date: resolveClaimDisplayDate(claim),
       subject,
-      statusLabel: Boolean(claim.approval72hExceeded)
-        ? 'Onay Talep Et'
-        : (claim.operationStatusLabel ?? stage.label),
-      statusTone: Boolean(claim.approval72hExceeded)
-        ? 'badge badge-red'
-        : (BADGE_TONE_CLASS[stage.tone as OperationStageMeta['tone']] ?? 'badge badge-blue'),
+      statusLabel: stage.label,
+      statusTone: BADGE_TONE_CLASS[stage.tone as OperationStageMeta['tone']] ?? 'badge badge-blue',
       invoiceStatus: invStatus,
       amount: claim.invoicedAmount != null ? formatTryAmount(Number(claim.invoicedAmount), { fractionDigits: 0 }) : null,
+      expectedSales:
+        claim.latestRepairReport?.totalSalesAmount != null
+          ? formatTryAmount(Number(claim.latestRepairReport.totalSalesAmount), { fractionDigits: 0 })
+          : null,
+      supplierCostTotal:
+        claim.latestRepairReport?.totalSupplierCost != null
+          ? formatTryAmount(Number(claim.latestRepairReport.totalSupplierCost), { fractionDigits: 0 })
+          : null,
+      expectedProfit:
+        claim.latestRepairReport?.grossProfit != null
+          ? formatTryAmount(Number(claim.latestRepairReport.grossProfit), { fractionDigits: 0 })
+          : null,
+      expectedProfitNegative:
+        claim.latestRepairReport?.grossProfit != null
+          ? Number(claim.latestRepairReport.grossProfit) < 0
+          : false,
       delayHours: typeof claim.approvalWaitingHours === 'number' ? claim.approvalWaitingHours : null,
       assigneeName: claim.assigneeName ?? '—',
       approval72hExceeded: Boolean(claim.approval72hExceeded),
@@ -525,6 +565,13 @@ function OperasyonPageContent() {
       statusCode: c.status,
       invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
       amount: null,
+      expectedSales:
+        c.totalGelir != null ? formatTryAmount(Number(c.totalGelir), { fractionDigits: 0 }) : null,
+      supplierCostTotal:
+        c.totalGider != null ? formatTryAmount(Number(c.totalGider), { fractionDigits: 0 }) : null,
+      expectedProfit:
+        c.netKar != null ? formatTryAmount(Number(c.netKar), { fractionDigits: 0 }) : null,
+      expectedProfitNegative: c.netKar != null ? Number(c.netKar) < 0 : false,
       delayHours: null,
       assigneeName: '—',
       approval72hExceeded: false,
@@ -544,9 +591,11 @@ function OperasyonPageContent() {
       case 'date': return row.date;
       case 'subject': return row.subject;
       case 'status': return row.kind === 'hasar' ? row.statusLabel : row.statusCode;
-      case 'delayDuration': return row.delayHours == null ? '' : String(row.delayHours).padStart(5, '0');
       case 'invoice': return row.invoiceStatus;
       case 'amount': return row.amount ?? '';
+      case 'reportSales': return row.expectedSales ?? '';
+      case 'reportCost': return row.supplierCostTotal ?? '';
+      case 'reportProfit': return row.expectedProfit ?? '';
       default: return '';
     }
   }
@@ -566,7 +615,17 @@ function OperasyonPageContent() {
         : [...hasarRows, ...acilRows];
     const q = customerQuery.trim().toLocaleLowerCase('tr');
     let rows = q
-      ? merged.filter((row) => row.customerSearch.includes(q) || row.customerName.toLocaleLowerCase('tr').includes(q) || (row.customerTypeLabel ?? '').toLocaleLowerCase('tr').includes(q))
+      ? merged.filter((row) => {
+          if (row.customerSearch.includes(q) || row.customerName.toLocaleLowerCase('tr').includes(q)) return true;
+          if ((row.customerTypeLabel ?? '').toLocaleLowerCase('tr').includes(q)) return true;
+          // Acil listesi: Hasar filtre dili — dosya no / sigortalı / konu
+          if (filterType === 'acil') {
+            if (row.fileNo.toLocaleLowerCase('tr').includes(q)) return true;
+            if (row.insuredName.toLocaleLowerCase('tr').includes(q)) return true;
+            if ((row.subject ?? '').toLocaleLowerCase('tr').includes(q)) return true;
+          }
+          return false;
+        })
       : [...merged];
     if (clientSort) {
       const { key, dir } = clientSort;
@@ -626,6 +685,8 @@ function OperasyonPageContent() {
   };
 
   const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
+  /** Sidebar → Acil Yardım Dosyaları: Hasar listesi kabuğuna hizalı sade üst alan */
+  const isAcilListMode = filterType === 'acil';
   const isLoading =
     (opsPreset !== 'urgent' && claimsLoading) ||
     (
@@ -658,9 +719,11 @@ function OperasyonPageContent() {
       samples.date?.push(fmtDate(row.date));
       samples.subject?.push(row.subject);
       samples.status?.push(row.kind === 'hasar' ? row.statusLabel : (EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode));
-      samples.delayDuration?.push(formatApprovalDelayLabel(row.delayHours).text);
       samples.invoice?.push(INVOICE_STATUS_LABELS[row.invoiceStatus] ?? row.invoiceStatus);
       if (row.amount) samples.amount?.push(row.amount);
+      if (row.expectedSales) samples.reportSales?.push(row.expectedSales);
+      if (row.supplierCostTotal) samples.reportCost?.push(row.supplierCostTotal);
+      if (row.expectedProfit) samples.reportProfit?.push(row.expectedProfit);
       samples.actions?.push('İşlemler');
     }
     return samples;
@@ -698,38 +761,85 @@ function OperasyonPageContent() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className="space-y-6">
+    <div className={isAcilListMode ? 'space-y-5' : 'space-y-6'}>
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Operasyon</span>
+        {isAcilListMode ? (
+          <span className="text-slate-600 font-medium">Acil Yardım Dosyaları</span>
+        ) : (
+          <span className="text-slate-600 font-medium">Operasyon</span>
+        )}
       </nav>
 
       <div className="page-header">
         <div className="flex items-center gap-3">
+          {isAcilListMode ? (
+            <button
+              type="button"
+              onClick={() => router.push('/panel')}
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              aria-label="Dashboard"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+          ) : null}
           <div className="page-header-icon">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
           <div>
-            <h1 className="page-title">Operasyon</h1>
-            <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
+            {isAcilListMode ? (
+              <>
+                <h2 className="page-title">Acil Yardım Dosyaları</h2>
+                {!isLoading && (
+                  <p className="page-subtitle">
+                    {filteredRows.length} dosya bulundu
+                    {customerQuery.trim() ? (
+                      <span className="ml-2 text-brand-600 font-semibold">· Arama: {customerQuery.trim()}</span>
+                    ) : null}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <h1 className="page-title">Operasyon</h1>
+                <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
+              </>
+            )}
           </div>
         </div>
         <div className="page-header-actions">
-          <Link href="/panel/operasyon/gelen-kutusu" className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-            Gelen Kutusu
-          </Link>
-          <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60 justify-center">
+          {!isAcilListMode && (
+            <Link href="/panel/operasyon/gelen-kutusu" className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              Gelen Kutusu
+            </Link>
+          )}
+          {!isAcilListMode && (
+            <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60 justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Yeni Hasar Dosyası
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setAcilFormSession((s) => s + 1);
+              setShowNewAcilPanel(true);
+            }}
+            className={
+              isAcilListMode
+                ? 'btn-primary justify-center'
+                : 'inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all'
+            }
+          >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Yeni Hasar Dosyası
-          </Link>
-          <Link href="/panel/operasyon?filter=acil&yeni=1" className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-all">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Yeni Acil Dosyası
-          </Link>
+            {isAcilListMode ? 'Yeni Dosya' : 'Yeni Acil Dosyası'}
+          </button>
           {acilCreatedNotice ? (
             <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
               {acilCreatedNotice}
@@ -738,7 +848,8 @@ function OperasyonPageContent() {
         </div>
       </div>
 
-      {/* Operasyon KPI — dikey kartlar; 1440’te tek satır taşma/kesilme yok */}
+      {/* Operasyon KPI — Acil listesinde Hasar gibi sade kabuk; KPI gizlenir */}
+      {!isAcilListMode && (
       <div
         className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
         data-testid="ops-kpi-band"
@@ -808,11 +919,12 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('urgent')}
         />
       </div>
+      )}
 
-      {opsStats && opsStats.approval72h > 0 && (
+      {!isAcilListMode && opsStats && opsStats.approval72h > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 flex flex-wrap items-center justify-between gap-2">
           <p>
-            <span className="font-semibold">{opsStats.approval72h} dosyada</span> onay 72 saati aştı — <span className="font-semibold">Onay Talep Et</span> aksiyonu gerekli.
+            <span className="font-semibold">{opsStats.approval72h} dosyada</span> onay 72 saati aştı — satırlar uyarı ile işaretlendi.
           </p>
           <button
             type="button"
@@ -826,7 +938,7 @@ function OperasyonPageContent() {
 
       {claimsError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{claimsError}</div>}
       {deleteError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{deleteError}</div>}
-      {missingInsuredHasar.length > 0 && (
+      {!isAcilListMode && missingInsuredHasar.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-medium">
             {missingInsuredHasar.length} hasar dosyasında sigortalı adı soyadı kayıtlı değil.
@@ -837,7 +949,63 @@ function OperasyonPageContent() {
         </div>
       )}
 
+      {isAcilListMode && (
+        <div className="filter-bar">
+          <div className="panel-filter-bar">
+            <div className="panel-filter-search-wrap">
+              <SearchInput
+                placeholder="Dosya No, Sigortalı..."
+                value={customerQuery}
+                onChange={(val) => setCustomerQuery(val)}
+                onClear={() => setCustomerQuery('')}
+              />
+            </div>
+            <select
+              className="panel-filter-control"
+              value={filterInvoice}
+              onChange={(e) => setFilterInvoice(e.target.value)}
+            >
+              <option value="">Tüm Faturalar</option>
+              <option value="none">Fatura Yok</option>
+              <option value="draft">Taslak</option>
+              <option value="sent">Gönderildi</option>
+              <option value="paid">Ödendi</option>
+              <option value="overdue">Gecikmiş</option>
+            </select>
+            <select
+              className="panel-filter-control"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              title="Sıralama"
+            >
+              <option value="createdAt:desc">Yeni → Eski</option>
+              <option value="createdAt:asc">Eski → Yeni</option>
+              <option value="updatedAt:desc">Son Güncelleme</option>
+              <option value="fileNo:asc">Dosya No A-Z</option>
+            </select>
+            {customerQuery.trim() || filterInvoice ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerQuery('');
+                  setFilterInvoice('');
+                }}
+                className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap"
+              >
+                Temizle ×
+              </button>
+            ) : null}
+            <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
+              <div className="hidden lg:block">
+                <PanelTableColumnPicker tableColumns={tableColumns} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="table-container">
+        {!isAcilListMode && (
         <div className="flex flex-col gap-2 px-4 py-2.5 border-b border-slate-100">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="section-heading mb-0 shrink-0">
@@ -928,6 +1096,7 @@ function OperasyonPageContent() {
             )}
           </div>
         </div>
+        )}
 
         {isLoading ? (
           <div className="py-16 text-center text-sm text-slate-400">
@@ -951,9 +1120,11 @@ function OperasyonPageContent() {
                   )
                 }
                 className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40 ${
-                  row.approval72hExceeded || row.delayRisk
-                    ? 'border-red-200 bg-red-50/30'
-                    : 'border-slate-200'
+                  row.approval72hExceeded
+                    ? 'ops-row-approval-72h border-red-200'
+                    : row.delayRisk
+                      ? 'border-red-200 bg-red-50/30'
+                      : 'border-slate-200'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -974,9 +1145,7 @@ function OperasyonPageContent() {
                   {row.kind === 'hasar' ? (
                     <span className={row.statusTone}>{row.statusLabel}</span>
                   ) : (
-                    <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
-                      {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
-                    </span>
+                    <AcilDosyaDurumuBadge code={row.statusCode} />
                   )}
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -995,6 +1164,20 @@ function OperasyonPageContent() {
                   <div>
                     <p className="text-slate-400">Konu</p>
                     <p className="mt-0.5 truncate font-medium text-slate-700">{row.subject || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Beklenen Ciro</p>
+                    <p className="mt-0.5 font-semibold text-slate-700">{row.expectedSales ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Tedarikçi Maliyet</p>
+                    <p className="mt-0.5 font-semibold text-slate-700">{row.supplierCostTotal ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Beklenen Kar</p>
+                    <p className={`mt-0.5 font-semibold ${row.expectedProfitNegative ? 'text-status-danger' : 'text-slate-700'}`}>
+                      {row.expectedProfit ?? '—'}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -1036,7 +1219,13 @@ function OperasyonPageContent() {
                 {filteredRows.map((row) => (
                   <tr
                     key={`${row.kind}-${row.id}`}
-                    className={`table-row cursor-pointer ${row.approval72hExceeded || row.delayRisk ? 'bg-red-50/40' : ''}`}
+                    className={`table-row cursor-pointer ${
+                      row.approval72hExceeded
+                        ? 'ops-row-approval-72h'
+                        : row.delayRisk
+                          ? 'bg-red-50/40'
+                          : ''
+                    }`}
                     onClick={() =>
                       router.push(
                         row.kind === 'hasar'
@@ -1145,38 +1334,10 @@ function OperasyonPageContent() {
                               {row.kind === 'hasar' ? (
                                 <span className={row.statusTone}>{row.statusLabel}</span>
                               ) : (
-                                <span className={EMERGENCY_STATUS_CLASSES[row.statusCode] ?? 'badge badge-gray'}>
-                                  {EMERGENCY_STATUS_LABELS[row.statusCode] ?? row.statusCode}
-                                </span>
+                                <AcilDosyaDurumuBadge code={row.statusCode} />
                               )}
                             </PanelTableTd>
                           );
-                        case 'delayDuration': {
-                          const delay = formatApprovalDelayLabel(
-                            row.approval72hExceeded && (row.delayHours == null || row.delayHours < 72)
-                              ? 72
-                              : row.delayHours,
-                          );
-                          return (
-                            <PanelTableTd key={col.id} colId="delayDuration" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
-                              <span
-                                className={
-                                  delay.level === 'over96'
-                                    ? 'font-semibold text-red-800'
-                                    : delay.level === 'over72'
-                                      ? 'font-semibold text-red-700'
-                                      : delay.level === 'normal'
-                                        ? 'text-slate-700'
-                                        : 'text-slate-400'
-                                }
-                                data-testid="ops-delay-duration"
-                              >
-                                {delay.text}
-                                {delay.suffix ? ` ${delay.suffix}` : ''}
-                              </span>
-                            </PanelTableTd>
-                          );
-                        }
                         case 'invoice':
                           return (
                             <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
@@ -1191,6 +1352,30 @@ function OperasyonPageContent() {
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
+                        case 'reportSales':
+                          return (
+                            <PanelTableTd key={col.id} colId="reportSales" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                              {row.expectedSales ?? <span className="text-slate-300">—</span>}
+                            </PanelTableTd>
+                          );
+                        case 'reportCost':
+                          return (
+                            <PanelTableTd key={col.id} colId="reportCost" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                              {row.supplierCostTotal ?? <span className="text-slate-300">—</span>}
+                            </PanelTableTd>
+                          );
+                        case 'reportProfit':
+                          return (
+                            <PanelTableTd
+                              key={col.id}
+                              colId="reportProfit"
+                              className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER} ${
+                                row.expectedProfitNegative ? 'text-status-danger' : 'text-slate-800'
+                              }`}
+                            >
+                              {row.expectedProfit ?? <span className="text-slate-300">—</span>}
+                            </PanelTableTd>
+                          );
                         case 'actions':
                           return (
                             <PanelTableTd key={col.id} colId="actions" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
@@ -1200,7 +1385,6 @@ function OperasyonPageContent() {
                                 fileNo={row.fileNo}
                                 reportId={row.reportId}
                                 defaultEmailTo={row.defaultEmailTo}
-                                approval72hExceeded={row.approval72hExceeded}
                                 onAddNote={
                                   row.kind === 'hasar' ? () => setNoteFileId(row.id) : undefined
                                 }
@@ -1232,9 +1416,15 @@ function OperasyonPageContent() {
         )}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <span>
-            {filteredRows.length} satır &bull; Hasar toplam {claimsTotal}
-            {!opsPreset && filterType !== 'hasar' ? ` · Acil ${cases.length}` : ''}
-            {opsPreset ? ` · Filtre: ${OPERATION_PRESET_LABELS[opsPreset]}` : ''}
+            {isAcilListMode
+              ? `${filteredRows.length} dosya`
+              : (
+                <>
+                  {filteredRows.length} satır &bull; Hasar toplam {claimsTotal}
+                  {!opsPreset && filterType !== 'hasar' ? ` · Acil ${cases.length}` : ''}
+                  {opsPreset ? ` · Filtre: ${OPERATION_PRESET_LABELS[opsPreset]}` : ''}
+                </>
+              )}
           </span>
           <div className="flex items-center gap-2">
             <button

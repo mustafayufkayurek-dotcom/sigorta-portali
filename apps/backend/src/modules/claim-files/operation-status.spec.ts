@@ -29,13 +29,19 @@ describe('operation-status mapping', () => {
     expect(deriveOperationStage({ claimStatusCode: 'invoice_pending' }).label).toBe('Finansa Aktarıldı');
   });
 
-  it('72h override → Onay Talep Et', () => {
+  it('72h aşımı Dosya Durumu etiketini bozmaz; aksiyon nextAction’da kalır', () => {
     expect(
       resolveOperationStatusLabel({
         claimStatusCode: 'budget_preparing',
         reportStatus: 'pending_approval',
         approval72hExceeded: true,
       }),
+    ).toBe('Onay Bekliyor');
+    expect(
+      deriveOperationStage({
+        claimStatusCode: 'budget_preparing',
+        reportStatus: 'pending_approval',
+      }).nextAction,
     ).toBe('Onay Talep Et');
   });
 

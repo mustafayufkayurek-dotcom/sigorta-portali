@@ -539,6 +539,8 @@ model Customer {
   firstName       String?   @map("first_name")
   lastName        String?   @map("last_name")
   companyName     String?   @map("company_name")
+  /// Listelerde gösterilen kısa ad — UI zorunlu; mevcut kayıtlar için nullable
+  shortName       String?   @map("short_name")
   authorizedPerson String?  @map("authorized_person")
   contactFirstName String?  @map("contact_first_name")
   contactLastName  String?  @map("contact_last_name")

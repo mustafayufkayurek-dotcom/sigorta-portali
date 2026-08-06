@@ -23,6 +23,7 @@ import {
   FieldBottomRow,
 } from '@/features/dashboard/components/admin';
 import { ManagementDashboard } from '@/features/dashboard/components/management-dashboard';
+import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { resolveDashboardLayout } from '@/features/dashboard/registry/role-dashboard-layout';
 
@@ -125,6 +126,8 @@ export default function PanelPage() {
           showAcilAction={showAcilYardim || localOfficeDemo}
           isOfficeStaff
         />
+
+        <MissingShortNameBanner />
 
         <OfficeKpiBand staggerIndex={0} />
 

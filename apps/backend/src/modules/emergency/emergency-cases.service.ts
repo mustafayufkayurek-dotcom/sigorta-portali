@@ -559,6 +559,7 @@ export class EmergencyCasesService {
         customer: {
           select: {
             id: true,
+            shortName: true,
             fullName: true,
             companyName: true,
             firstName: true,
@@ -595,6 +596,7 @@ export class EmergencyCasesService {
         customer: {
           select: {
             id: true,
+            shortName: true,
             fullName: true,
             companyName: true,
             firstName: true,
@@ -791,6 +793,7 @@ export class EmergencyCasesService {
           select: {
             id: true,
             email: true,
+            shortName: true,
             companyName: true,
             fullName: true,
             firstName: true,

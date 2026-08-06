@@ -141,11 +141,14 @@ export function resolveCustomerType(c: {
 }
 
 export function customerDisplayName(c: {
+  shortName?: string | null;
   companyName?: string | null;
   fullName?: string | null;
   firstName?: string | null;
   lastName?: string | null;
 }): string {
+  const short = c.shortName?.trim();
+  if (short) return short;
   const company = c.companyName?.trim();
   if (company) return company;
   const personal =
@@ -316,6 +319,7 @@ export function mapCustomerRecordToForm(
     firstName: String(customer.firstName ?? ''),
     lastName: String(customer.lastName ?? ''),
     companyName: String(customer.companyName ?? ''),
+    shortName: String(customer.shortName ?? ''),
     taxNumber: String(customer.taxNumber ?? ''),
     taxOffice: String(customer.taxOffice ?? ''),
     identityNo: String(customer.identityNo ?? ''),

@@ -66,6 +66,14 @@ export class CustomersController {
     return { success: true, data: { count } };
   }
 
+  @Get('missing-short-name')
+  @RequirePermissions('customer.view')
+  @ApiOperation({ summary: 'Kısa Ad eksik aktif müşteri özeti (Dosya Sorumlusu uyarısı)' })
+  async missingShortName() {
+    const data = await this.customersService.getMissingShortNameSummary();
+    return { success: true, data };
+  }
+
   @Get('overdue-widget')
   @RequirePermissions('customer.view')
   @ApiOperation({ summary: 'Dashboard widget için takip tarihi geçmiş müşteriler (son 3)' })

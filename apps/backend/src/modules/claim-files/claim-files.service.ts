@@ -478,6 +478,7 @@ export class ClaimFilesService {
         { fileNo: { contains: q, mode: 'insensitive' } },
         { claimNo: { contains: q, mode: 'insensitive' } },
         { insuredName: { contains: q, mode: 'insensitive' } },
+        { customer: { shortName: { contains: q, mode: 'insensitive' } } },
         { customer: { companyName: { contains: q, mode: 'insensitive' } } },
         { customer: { fullName: { contains: q, mode: 'insensitive' } } },
         { customer: { firstName: { contains: q, mode: 'insensitive' } } },
@@ -540,6 +541,7 @@ export class ClaimFilesService {
           customer: {
             select: {
               id: true,
+              shortName: true,
               fullName: true,
               companyName: true,
               firstName: true,
@@ -724,7 +726,8 @@ export class ClaimFilesService {
       return {
         ...claim,
         operationStage: stage,
-        operationStatusLabel: approval72hExceeded ? 'Onay Talep Et' : stage.label,
+        // 72s aşımı Dosya Durumu etiketini bozmaz; aksiyon nextAction’da kalır, satırda pulse ile görünür.
+        operationStatusLabel: stage.label,
         nextAction: approval72hExceeded ? 'Onay Talep Et' : stage.nextAction,
         approval72hExceeded,
         approvalWaitingHours,

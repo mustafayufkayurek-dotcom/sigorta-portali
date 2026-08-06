@@ -486,6 +486,23 @@
   animation: meridyen-splash-float 3.2s ease-in-out infinite;
 }
 
+/* 72s onay aşımı — liste satırı dikkat sinyali (Hasar / Operasyon) */
+@keyframes approval-72h-row-pulse {
+  0%,
+  100% {
+    background-color: rgb(254 242 242 / 0.35);
+    box-shadow: inset 3px 0 0 0 rgb(220 38 38 / 0.35);
+  }
+  50% {
+    background-color: rgb(254 226 226 / 0.85);
+    box-shadow: inset 3px 0 0 0 rgb(220 38 38 / 0.9);
+  }
+}
+
+.ops-row-approval-72h {
+  animation: approval-72h-row-pulse 1.6s ease-in-out infinite;
+}
+
 /* ── Enterprise Dashboard v3.0 tema tokenleri ── */
 :root {
   --panel-navy: #0f2744;

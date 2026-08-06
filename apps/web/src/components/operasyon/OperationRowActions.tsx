@@ -22,7 +22,6 @@ export type OperationRowActionsProps = {
   reportId?: string | null;
   /** Varsayılan e-posta alıcısı (sigorta şirketi vb.) */
   defaultEmailTo?: string | null;
-  approval72hExceeded?: boolean;
   onDeleteRequest?: () => void;
   onEmailRequest?: () => void;
   /** Ortak Not Yaz (tercihe bağlı e-posta) — verilirse dosya detayına gitmez */
@@ -38,7 +37,6 @@ export function OperationRowActions({
   fileNo,
   reportId,
   defaultEmailTo,
-  approval72hExceeded,
   onDeleteRequest,
   onEmailRequest,
   onAddNote,
@@ -266,17 +264,6 @@ export function OperationRowActions({
 
   return (
     <div ref={ref} className="relative flex items-center gap-0.5" onClick={stop} data-testid="ops-row-actions">
-      {approval72hExceeded && (
-        <button
-          type="button"
-          title="Onay Talep Et"
-          className="px-1.5 py-1 rounded-md text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
-          onClick={() => router.push(`${detailHref}?aksiyon=onay-talep`)}
-        >
-          Onay Talep Et
-        </button>
-      )}
-
       {/* Görünür: Görüntüle · PDF · Mail · WhatsApp — diğerleri ⋮ menüde */}
       <button type="button" title="Görüntüle" aria-label="Görüntüle" className={iconBtnClass} onClick={() => router.push(detailHref)}>
         <Eye className="h-3.5 w-3.5" aria-hidden />

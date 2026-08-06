@@ -7,6 +7,7 @@ import {
 
 export type OperationCustomerSource = {
   id?: string | null;
+  shortName?: string | null;
   companyName?: string | null;
   fullName?: string | null;
   firstName?: string | null;

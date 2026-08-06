@@ -2,11 +2,9 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail } from 'lucide-react';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
-import { ActionIconButton } from '@/components/ui/ActionIconButton';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -20,9 +18,10 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
-import { repairReportStatusBadge, repairReportStatusLabel } from '@/utils/repair-report-status';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
+import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
+import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
@@ -41,14 +40,31 @@ type InsuranceCompany = { id: string; name: string };
 type ClaimStatus = { id: string; code: string; name: string };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Düşük', normal: 'Normal', high: 'Yüksek', critical: 'Kritik',
+  low: 'Düşük',
+  normal: 'Normal',
+  medium: 'Orta',
+  high: 'Yüksek',
+  critical: 'Kritik',
 };
 const PRIORITY_CLASSES: Record<string, string> = {
-  low:      'badge badge-gray',
-  normal:   'badge badge-blue',
-  high:     'badge badge-orange',
+  low: 'badge badge-gray',
+  normal: 'badge badge-blue',
+  medium: 'badge badge-blue',
+  high: 'badge badge-orange',
   critical: 'badge badge-red',
 };
+
+function formatPriorityLabel(priority?: string | null): string {
+  if (!priority) return '';
+  const key = String(priority).trim().toLowerCase();
+  return PRIORITY_LABELS[key] ?? priority;
+}
+
+function priorityBadgeClass(priority?: string | null): string {
+  if (!priority) return 'badge badge-gray';
+  const key = String(priority).trim().toLowerCase();
+  return PRIORITY_CLASSES[key] ?? 'badge badge-gray';
+}
 
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'cancelled' | 'overdue' | 'none';
 
@@ -135,15 +151,16 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'insured', label: 'Sigortalı', defaultWidth: 140, minWidth: 100 },
   { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100 },
-  { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
+  { id: 'status', label: 'Dosya Durumu', defaultWidth: 130, minWidth: 100 },
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
-  { id: 'reportStatus', label: 'Rapor Akıbeti', defaultWidth: 130, minWidth: 100 },
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
+  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110 },
+  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88 },
   { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
   { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
-  { id: 'actions', label: 'İşlem', defaultWidth: 72, minWidth: 64, pin: 'end', resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
 export default function ClaimFilesPage() {
@@ -188,9 +205,11 @@ function ClaimFilesPageContent() {
   const [noteFileId, setNoteFileId] = useState<string | null>(null);
   const [noteFileNo, setNoteFileNo] = useState<string | undefined>(undefined);
   const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
+  const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const limit = 20;
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v2', TABLE_COLUMNS);
+  /** v5: Hasar listesi sütun tercihleri — Operasyon/Acil ile paylaşılmaz */
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v5', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -335,10 +354,12 @@ function ClaimFilesPageContent() {
             return deriveInvoiceStatus(claim.invoices ?? []);
           case 'amount':
             return claim.invoicedAmount ?? claim.actualCostAmount ?? -1;
-          case 'reportStatus':
-            return claim.latestRepairReport?.status ?? '';
           case 'reportSales':
             return claim.latestRepairReport?.totalSalesAmount ?? -1;
+          case 'reportCost':
+            return claim.latestRepairReport?.totalSupplierCost ?? -1;
+          case 'reportProfit':
+            return claim.latestRepairReport?.grossProfit ?? -1;
           case 'priority':
             return claim.priority ?? '';
           case 'revision':
@@ -496,6 +517,7 @@ function ClaimFilesPageContent() {
             <option value="">Tüm Öncelikler</option>
             <option value="low">Düşük</option>
             <option value="normal">Normal</option>
+            <option value="medium">Orta</option>
             <option value="high">Yüksek</option>
             <option value="critical">Kritik</option>
           </select>
@@ -545,15 +567,16 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
                   <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
                   <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th-center">Durum</PanelTableTh>
+                  <PanelTableTh colId="status" className="table-th-center">Dosya Durumu</PanelTableTh>
                   <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
                   <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
-                  <PanelTableTh colId="reportStatus" className="table-th-center">Rapor Akıbeti</PanelTableTh>
                   <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
+                  <PanelTableTh colId="reportCost" className="table-th-center">Tedarikçi Maliyet Toplamı</PanelTableTh>
+                  <PanelTableTh colId="reportProfit" className="table-th-center">Beklenen Kar</PanelTableTh>
                   <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
+                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
@@ -619,7 +642,11 @@ function ClaimFilesPageContent() {
                   key={claim.id}
                   type="button"
                   onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40"
+                  className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40 ${
+                    claim.approval72hExceeded
+                      ? 'ops-row-approval-72h border-red-200'
+                      : 'border-slate-200'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -650,8 +677,8 @@ function ClaimFilesPageContent() {
                     </div>
                     <div>
                       <p className="text-slate-400">Öncelik</p>
-                      <span className={`mt-0.5 inline-flex ${PRIORITY_CLASSES[priority] ?? 'badge badge-gray'}`}>
-                        {PRIORITY_LABELS[priority] ?? priority}
+                      <span className={`mt-0.5 inline-flex ${priorityBadgeClass(priority)}`}>
+                        {formatPriorityLabel(priority)}
                       </span>
                     </div>
                     <div>
@@ -665,15 +692,39 @@ function ClaimFilesPageContent() {
                       <p className="mt-0.5 font-semibold text-slate-700">{fmtAmount(totalAmount)}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Rapor</p>
-                      {rapor ? (
-                        <span className={`inline-flex mt-0.5 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${repairReportStatusBadge(rapor.status)}`}>
-                          {repairReportStatusLabel(rapor.status)}
-                        </span>
-                      ) : (
-                        <p className="mt-0.5 text-slate-300">—</p>
-                      )}
+                      <p className="text-slate-400">Beklenen Ciro</p>
+                      <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}</p>
                     </div>
+                    <div>
+                      <p className="text-slate-400">Tedarikçi Maliyet</p>
+                      <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.totalSupplierCost) : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Beklenen Kar</p>
+                      <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.grossProfit) : '—'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <OperationRowActions
+                      kind="hasar"
+                      id={claim.id}
+                      fileNo={claim.fileNo ?? claim.claimNo ?? '—'}
+                      reportId={rapor?.id ?? null}
+                      defaultEmailTo={claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null}
+                      onAddNote={() => {
+                        setNoteFileId(claim.id);
+                        setNoteFileNo(claim.fileNo ?? claim.claimNo ?? undefined);
+                        setNoteInsuredName(resolveHasarInsuredName(claim) || undefined);
+                      }}
+                      onEmailRequest={() =>
+                        setEmailTarget({
+                          claimId: claim.id,
+                          fileNo: claim.fileNo ?? claim.claimNo ?? '—',
+                          reportId: rapor?.id ?? null,
+                          defaultTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? undefined,
+                        })
+                      }
+                    />
                   </div>
                   {revCount > 0 && (
                     <div className="mt-3">
@@ -693,15 +744,16 @@ function ClaimFilesPageContent() {
                   <SortablePanelTableTh colId="insured" sortKey="insured" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sigortalı</SortablePanelTableTh>
                   <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tarih</SortablePanelTableTh>
                   <SortablePanelTableTh colId="subject" sortKey="subject" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Konusu</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Durumu</SortablePanelTableTh>
                   <SortablePanelTableTh colId="supplier" sortKey="supplier" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi</SortablePanelTableTh>
                   <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Fatura</SortablePanelTableTh>
                   <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tutar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="reportStatus" sortKey="reportStatus" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Rapor Akıbeti</SortablePanelTableTh>
                   <SortablePanelTableTh colId="reportSales" sortKey="reportSales" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Ciro</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="reportCost" sortKey="reportCost" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi Maliyet Toplamı</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="reportProfit" sortKey="reportProfit" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Kar</SortablePanelTableTh>
                   <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Öncelik</SortablePanelTableTh>
                   <SortablePanelTableTh colId="revision" sortKey="revision" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Revizyon</SortablePanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlem</PanelTableTh>
+                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -714,11 +766,13 @@ function ClaimFilesPageContent() {
                   const rapor = claim.latestRepairReport;
                   const supplierName = claim.assignedAdjuster?.adjuster?.company
                     ?? (claim.assignedAdjuster ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim() : null);
-                  const rowAccent = revCount > 0
-                    ? 'border-l-4 border-amber-300'
-                    : rapor?.status === 'pending_approval'
-                      ? 'border-l-4 border-orange-400'
-                      : '';
+                  const rowAccent = claim.approval72hExceeded
+                    ? 'ops-row-approval-72h'
+                    : revCount > 0
+                      ? 'border-l-4 border-amber-300'
+                      : rapor?.status === 'pending_approval'
+                        ? 'border-l-4 border-orange-400'
+                        : '';
 
                   return (
                     <tr
@@ -758,22 +812,24 @@ function ClaimFilesPageContent() {
                       <PanelTableTd colId="amount" className="table-td text-xs whitespace-nowrap font-semibold">
                         {fmtAmount(totalAmount)}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportStatus" className="table-td whitespace-nowrap">
-                        {rapor ? (
-                          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${repairReportStatusBadge(rapor.status)}`}>
-                            {repairReportStatusLabel(rapor.status)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">Rapor Yok</span>
-                        )}
-                      </PanelTableTd>
                       <PanelTableTd colId="reportSales" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}
                       </PanelTableTd>
+                      <PanelTableTd colId="reportCost" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                        {rapor ? fmtAmount(rapor.totalSupplierCost) : '—'}
+                      </PanelTableTd>
+                      <PanelTableTd
+                        colId="reportProfit"
+                        className={`table-td text-xs whitespace-nowrap font-semibold ${
+                          rapor && Number(rapor.grossProfit) < 0 ? 'text-status-danger' : 'text-slate-800'
+                        }`}
+                      >
+                        {rapor ? fmtAmount(rapor.grossProfit) : '—'}
+                      </PanelTableTd>
                       <PanelTableTd colId="priority" className="table-td whitespace-nowrap">
                         {claim.priority && (
-                          <span className={PRIORITY_CLASSES[claim.priority] ?? 'badge badge-gray'}>
-                            {PRIORITY_LABELS[claim.priority] ?? claim.priority}
+                          <span className={priorityBadgeClass(claim.priority)}>
+                            {formatPriorityLabel(claim.priority)}
                           </span>
                         )}
                       </PanelTableTd>
@@ -793,16 +849,26 @@ function ClaimFilesPageContent() {
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
-                          <ActionIconButton
-                            label="Dosya Notu Oluştur Ve Gönder"
-                            onClick={() => {
+                          <OperationRowActions
+                            kind="hasar"
+                            id={claim.id}
+                            fileNo={claim.fileNo ?? claim.claimNo ?? '—'}
+                            reportId={rapor?.id ?? null}
+                            defaultEmailTo={claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null}
+                            onAddNote={() => {
                               setNoteFileId(claim.id);
                               setNoteFileNo(claim.fileNo ?? claim.claimNo ?? undefined);
                               setNoteInsuredName(resolveHasarInsuredName(claim) || undefined);
                             }}
-                          >
-                            <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                          </ActionIconButton>
+                            onEmailRequest={() =>
+                              setEmailTarget({
+                                claimId: claim.id,
+                                fileNo: claim.fileNo ?? claim.claimNo ?? '—',
+                                reportId: rapor?.id ?? null,
+                                defaultTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? undefined,
+                              })
+                            }
+                          />
                         </div>
                       </PanelTableTd>
                     </tr>
@@ -838,6 +904,10 @@ function ClaimFilesPageContent() {
           setNoteFileNo(undefined);
           setNoteInsuredName(undefined);
         }}
+      />
+      <OperationSendEmailModal
+        target={emailTarget}
+        onClose={() => setEmailTarget(null)}
       />
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg">

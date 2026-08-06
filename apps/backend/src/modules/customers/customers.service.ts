@@ -13,6 +13,7 @@ type CustomerNameFields = {
   lastName?: string | null;
   fullName?: string | null;
   companyName?: string | null;
+  shortName?: string | null;
   authorizedPerson?: string | null;
   taxNumber?: string | null;
 };
@@ -39,6 +40,8 @@ export class CustomersService {
 
   /** Çakışma uyarılarında gösterilecek okunaklı müşteri adı */
   private resolveCustomerDisplayName(c: CustomerNameFields): string {
+    const short = c.shortName?.trim();
+    if (short) return short;
     if (c.entityType === 'individual') {
       const personal = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
       return personal || c.fullName?.trim() || c.companyName?.trim() || 'Kayıtlı Müşteri';
@@ -49,6 +52,47 @@ export class CustomersService {
       || c.authorizedPerson?.trim()
       || (c.taxNumber ? `Kurumsal Müşteri (VKN: ${c.taxNumber})` : 'Kayıtlı Kurumsal Müşteri')
     );
+  }
+
+  private assertShortNameRequired(data: Record<string, unknown>): void {
+    const short = String(data.shortName ?? '').trim();
+    if (!short) {
+      throw new BadRequestException('Kısa Ad zorunludur.');
+    }
+    data.shortName = short;
+  }
+
+  /** Dosya Sorumlusu uyarı bandı — Kısa Ad eksik aktif müşteriler */
+  async getMissingShortNameSummary() {
+    const where = {
+      status: 'active',
+      OR: [{ shortName: null }, { shortName: '' }],
+    };
+    const [count, sample] = await Promise.all([
+      this.prisma.customer.count({ where }),
+      this.prisma.customer.findMany({
+        where,
+        select: {
+          id: true,
+          shortName: true,
+          companyName: true,
+          fullName: true,
+          firstName: true,
+          lastName: true,
+          entityType: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
+      }),
+    ]);
+    return {
+      count,
+      complete: count === 0,
+      samples: sample.map((c) => ({
+        id: c.id,
+        name: this.resolveCustomerDisplayName(c),
+      })),
+    };
   }
 
   /**
@@ -175,6 +219,7 @@ export class CustomersService {
       tags?: string | string[];
       source?: string;
       followUpOverdue?: string;
+      missingShortName?: string;
     },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
@@ -186,6 +231,13 @@ export class CustomersService {
     const where: Record<string, unknown> = {};
     if (params?.type) where.type = params.type;
     if (params?.customerType) (where as any).entityType = params.customerType;
+    if (params?.missingShortName === '1' || params?.missingShortName === 'true') {
+      (where as any).AND = [
+        ...((where as any).AND ?? []),
+        { OR: [{ shortName: null }, { shortName: '' }] },
+      ];
+      if (!(where as any).status) (where as any).status = 'active';
+    }
     if (params?.subType) {
       // Legacy: sub_type=eksper | eksper_firmasi.
       // Eski CRM kayıtlarında eksper ofisleri corporate + sub_type NULL kalmış olabilir
@@ -245,6 +297,7 @@ export class CustomersService {
     }
     if (params?.search) {
       (where as any).OR = [
+        { shortName: { contains: params.search, mode: 'insensitive' } },
         { fullName: { contains: params.search, mode: 'insensitive' } },
         { companyName: { contains: params.search, mode: 'insensitive' } },
         { email: { contains: params.search, mode: 'insensitive' } },
@@ -328,6 +381,7 @@ export class CustomersService {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
+    this.assertShortNameRequired(rest);
 
     // entityType / type eşleme
     if (customerType && !rest.entityType) {
@@ -340,7 +394,7 @@ export class CustomersService {
     }
 
     // Title Case — isim alanları
-    applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'contactFirstName', 'contactLastName']);
+    applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'shortName', 'contactFirstName', 'contactLastName']);
 
     // fullName compute
     if (rest.entityType === 'individual' && rest.firstName && rest.lastName && !rest.fullName) {
@@ -408,12 +462,13 @@ export class CustomersService {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
+    this.assertShortNameRequired(rest);
     if (customerType && !rest.entityType) {
       rest.entityType = customerType;
     }
 
     // Title Case — isim alanları
-    applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'contactFirstName', 'contactLastName']);
+    applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'shortName', 'contactFirstName', 'contactLastName']);
 
     if (rest.entityType === 'individual' && rest.firstName && rest.lastName && !rest.fullName) {
       rest.fullName = `${rest.firstName} ${rest.lastName}`.trim();

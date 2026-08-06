@@ -8,6 +8,11 @@ import {
   panelRevizyonTalebiPath,
 } from '@/common/utils/panel-url';
 import { EmailService } from './email.service';
+import {
+  buildApprovalReminderEmailHtml,
+  buildApprovalReminderEmailSubject,
+  buildApprovalReminderEmailText,
+} from './approval-reminder-email.template';
 
 @Injectable()
 export class ClaimEventEmailService {
@@ -287,6 +292,59 @@ export class ClaimEventEmailService {
         actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',
       },
+    );
+  }
+
+  /**
+   * 72s onay hatırlatması — müşteriye.
+   * Atama mailinden ayrı şablon (turuncu / charcoal); tercih kapısı yok (müşteri paneli dışı).
+   */
+  async onApproval72hCustomerReminder(params: {
+    recipientEmail: string;
+    recipientName?: string | null;
+    fileNo: string;
+    customerName: string;
+    insuranceCompanyName?: string | null;
+    insuredName?: string | null;
+    cityDistrict?: string | null;
+    hoursWaiting: number;
+    claimFileId: string;
+  }) {
+    const to = params.recipientEmail?.trim();
+    const fileNo = params.fileNo?.trim();
+    const customerName = params.customerName?.trim();
+    const insuranceCompanyName = params.insuranceCompanyName?.trim();
+    const insuredName = params.insuredName?.trim();
+    const cityDistrict = params.cityDistrict?.trim();
+
+    // İkinci kapı — scheduler dışında çağrı olsa bile eksik/yanlış içerik gitmez
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { sent: false as const, errorMsg: 'Müşteri e-postası yok veya geçersiz' };
+    }
+    if (!fileNo || !customerName || !insuranceCompanyName || !insuredName || !cityDistrict) {
+      return { sent: false as const, errorMsg: 'Dosya özeti eksik — mail gönderilmedi' };
+    }
+    if (!params.claimFileId?.trim()) {
+      return { sent: false as const, errorMsg: 'Dosya kimliği yok' };
+    }
+
+    const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
+    const payload = {
+      recipientName: params.recipientName,
+      fileNo,
+      customerName,
+      insuranceCompanyName,
+      insuredName,
+      cityDistrict,
+      hoursWaiting: params.hoursWaiting,
+      actionUrl,
+      portalUrl: this.appUrl,
+    };
+    return this.email.sendEmail(
+      to,
+      buildApprovalReminderEmailSubject(fileNo),
+      buildApprovalReminderEmailHtml(payload),
+      { text: buildApprovalReminderEmailText(payload) },
     );
   }
 }

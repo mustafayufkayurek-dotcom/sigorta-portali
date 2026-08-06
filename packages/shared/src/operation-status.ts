@@ -196,7 +196,8 @@ export function deriveOperationStage(input: DeriveOperationStageInput): Operatio
 export function resolveOperationStatusLabel(
   input: DeriveOperationStageInput & { approval72hExceeded?: boolean },
 ): string {
-  if (input.approval72hExceeded) return 'Onay Talep Et';
+  // 72s aşımı Dosya Durumu metnini değiştirmez; aksiyon İşlemler / üst bantta kalır.
+  void input.approval72hExceeded;
   return deriveOperationStage(input).label;
 }
 

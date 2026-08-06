@@ -41,8 +41,16 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
       if (rawVisible) {
         const parsed = JSON.parse(rawVisible) as string[];
         const valid = parsed.filter((id) => columns.some((c) => c.id === id));
+        // Yeni eklenen varsayılan sütunlar eski tercihte yoksa görünür hale getir
+        const missingDefaults = columns
+          .filter((c) => c.defaultVisible !== false && !valid.includes(c.id))
+          .map((c) => c.id);
         if (valid.length > 0) {
-          setVisibleIds(valid);
+          const merged = [...valid, ...missingDefaults];
+          setVisibleIds(merged);
+          if (missingDefaults.length > 0) {
+            localStorage.setItem(storageKey, JSON.stringify(merged));
+          }
         }
       }
       const rawOrder = localStorage.getItem(`${storageKey}:order`);

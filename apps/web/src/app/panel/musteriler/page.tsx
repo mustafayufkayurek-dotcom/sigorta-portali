@@ -40,6 +40,7 @@ import {
   customerPhoneValidationError,
   formatCustomerUpdatedMeta,
   customerServiceTypeLabel,
+  customerDisplayName,
   isHasarCustomerServiceType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
@@ -117,7 +118,7 @@ const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', lab
 const emptyForm = () => ({
   customerType: 'individual' as 'individual' | 'corporate',
   subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi' | 'broker_firmasi',
-  firstName: '', lastName: '', companyName: '',
+  firstName: '', lastName: '', companyName: '', shortName: '',
   taxNumber: '', taxOffice: '', identityNo: '',
   contactFirstName: '', contactLastName: '',
   phone: '', email: '',
@@ -279,10 +280,7 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
 
   if (!visible || !pos) return null;
 
-  const name =
-    customer.customerType === 'individual'
-      ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || '—'
-      : customer.companyName ?? '—';
+  const name = customerDisplayName(customer);
 
   const contactName = customer.customerType === 'corporate'
     ? (customer.contactFirstName || customer.contactLastName)
@@ -1224,6 +1222,8 @@ export default function MusterilerPage() {
     await handleTaxNoDuplicateCheck(s);
   };
 
+  const missingShortNameFilter = searchParams.get('shortName') === 'eksik';
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -1234,6 +1234,7 @@ export default function MusterilerPage() {
       if (cityFilter) params.set('city', cityFilter);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
+      if (missingShortNameFilter) params.set('missingShortName', '1');
       selectedTags.forEach((tag) => params.append('tags', tag));
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       const rows: any[] = r.data.data || [];
@@ -1248,7 +1249,7 @@ export default function MusterilerPage() {
       console.error(e);
       showToast('error', 'Müşteri listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
     } finally { setLoading(false); }
-  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
+  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page, missingShortNameFilter]); // eslint-disable-line
 
   const refreshTypeSummary = useCallback(async () => {
     try {
@@ -1536,6 +1537,7 @@ export default function MusterilerPage() {
 
   const validateSection0 = (): Record<string, string> => {
     const errors: Record<string, string> = {};
+    if (!form.shortName.trim()) errors.shortName = 'Bu alan zorunludur';
     if (form.customerType === 'individual') {
       if (!form.firstName.trim()) errors.firstName = 'Bu alan zorunludur';
       if (!form.lastName.trim()) errors.lastName = 'Bu alan zorunludur';
@@ -1564,6 +1566,7 @@ export default function MusterilerPage() {
         if (errors.identityNo) setIdentityNoError(errors.identityNo);
         if (errors.phone) setPhoneError(errors.phone);
         const labels = [];
+        if (errors.shortName) labels.push('Kısa Ad');
         if (errors.firstName) labels.push('Ad');
         if (errors.lastName) labels.push('Soyad');
         if (errors.companyName) labels.push('Şirket Adı');
@@ -1586,6 +1589,7 @@ export default function MusterilerPage() {
     const errors: Record<string, string> = {};
     const missingLabels: string[] = [];
 
+    if (!form.shortName.trim()) { errors.shortName = 'Bu alan zorunludur'; missingLabels.push('Kısa Ad'); }
     if (form.customerType === 'individual') {
       if (!form.firstName.trim()) { errors.firstName = 'Bu alan zorunludur'; missingLabels.push('Ad'); }
       if (!form.lastName.trim()) { errors.lastName = 'Bu alan zorunludur'; missingLabels.push('Soyad'); }
@@ -1681,6 +1685,7 @@ export default function MusterilerPage() {
         doorNo: form.doorNo || null,
         address: computedAddress,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
+        shortName: form.shortName.trim(),
         notes: serializeCardNotes(form.cardNotes), source: form.source || null,
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
         followUpDate: form.followUpDate || null, tags: form.tags,
@@ -1792,9 +1797,7 @@ export default function MusterilerPage() {
       sortRowsByClientSort(customers, clientSort, (c, key) => {
         switch (key) {
           case 'name':
-            return c.customerType === 'individual'
-              ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim()
-              : (c.companyName ?? '');
+            return customerDisplayName(c);
           case 'phone':
             return c.phone ?? c.mobilePhone ?? '';
           case 'type':
@@ -2288,8 +2291,7 @@ export default function MusterilerPage() {
           {/* Mobil / tablet kart */}
           <div className="grid gap-3 p-3 lg:hidden">
             {displayedCustomers.map((c) => {
-              const name = c.customerType === 'individual'
-                ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() : c.companyName ?? '—';
+              const name = customerDisplayName(c);
               const subTypeDef = customerSubTypes.find((t) => t.value === c.subType);
               const subTypeLabel = subTypeDef?.label ?? null;
               const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -2403,8 +2405,7 @@ export default function MusterilerPage() {
               </thead>
               <tbody className="table-body">
                 {displayedCustomers.map((c) => {
-                  const name = c.customerType === 'individual'
-                    ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() : c.companyName ?? '—';
+                  const name = customerDisplayName(c);
                   const subTypeDef = customerSubTypes.find((t) => t.value === c.subType);
                   const subTypeLabel = subTypeDef?.label ?? null;
                   const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -2706,6 +2707,24 @@ export default function MusterilerPage() {
                     <>
                       <SectionDivider emoji="📋" title="Bireysel Bilgiler" />
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+                        <div className="col-span-1 sm:col-span-2">
+                          <FormField label="Kısa Ad" required error={fieldErrors.shortName}>
+                            <input
+                              className={fieldErrors.shortName ? inpError : inp}
+                              placeholder="Listelerde Görünecek Kısa Ad"
+                              value={form.shortName}
+                              onChange={(e) => {
+                                setForm((p) => ({ ...p, shortName: e.target.value }));
+                                setFieldErrors((prev) => { const n = { ...prev }; delete n.shortName; return n; });
+                              }}
+                              onBlur={(e) => {
+                                const v = toTitleCaseTR(e.target.value.trim());
+                                if (v) setForm((p) => ({ ...p, shortName: v }));
+                              }}
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500">Dosya listelerinde uzun unvan yerine bu ad gösterilir.</p>
+                          </FormField>
+                        </div>
                         <FormField label="Ad" required error={fieldErrors.firstName}>
                           <input ref={firstNameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Örn: Ahmet" value={form.firstName}
                             onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.firstName; return n; }); }}
@@ -2785,6 +2804,24 @@ export default function MusterilerPage() {
                     <>
                       <SectionDivider emoji="🏢" title="Kurumsal Bilgiler" />
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+                        <div className="col-span-1 sm:col-span-2">
+                          <FormField label="Kısa Ad" required error={fieldErrors.shortName}>
+                            <input
+                              className={fieldErrors.shortName ? inpError : inp}
+                              placeholder="Örn: Remed, Sezgi Grup"
+                              value={form.shortName}
+                              onChange={(e) => {
+                                setForm((p) => ({ ...p, shortName: e.target.value }));
+                                setFieldErrors((prev) => { const n = { ...prev }; delete n.shortName; return n; });
+                              }}
+                              onBlur={(e) => {
+                                const v = toTitleCaseTR(e.target.value.trim());
+                                if (v) setForm((p) => ({ ...p, shortName: v }));
+                              }}
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500">Dosya listelerinde uzun unvan yerine bu ad gösterilir.</p>
+                          </FormField>
+                        </div>
                         <div className="col-span-1 sm:col-span-2">
                           <FormField label="Şirket Adı" required error={fieldErrors.companyName}>
                             <input ref={companyNameRef} className={fieldErrors.companyName ? inpError : inp} placeholder="Şirket Unvanı" value={form.companyName} onChange={(e) => { setForm((p) => ({ ...p, companyName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.companyName; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
