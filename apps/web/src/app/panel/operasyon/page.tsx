@@ -969,8 +969,10 @@ function OperasyonPageContent() {
               <option value="none">Fatura Yok</option>
               <option value="draft">Taslak</option>
               <option value="sent">Gönderildi</option>
+              <option value="partial">Kısmi</option>
               <option value="paid">Ödendi</option>
               <option value="overdue">Gecikmiş</option>
+              <option value="cancelled">İptal</option>
             </select>
             <select
               className="panel-filter-control"
@@ -1103,7 +1105,44 @@ function OperasyonPageContent() {
             <div className="space-y-3 animate-pulse">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-12 rounded-lg bg-slate-200" />)}</div>
           </div>
         ) : filteredRows.length === 0 ? (
-          <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
+          isAcilListMode ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+              </div>
+              <p className="text-sm font-semibold text-slate-600">
+                {customerQuery.trim() || filterInvoice
+                  ? 'Filtrelere Uyan Dosya Bulunamadı'
+                  : 'Henüz Acil Yardım Dosyası Yok'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {customerQuery.trim() || filterInvoice
+                  ? 'Farklı filtreler deneyin veya filtreleri temizleyin.'
+                  : 'İlk dosyanızı oluşturun!'}
+              </p>
+              {customerQuery.trim() || filterInvoice ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomerQuery('');
+                    setFilterInvoice('');
+                  }}
+                  className="btn-secondary mt-4"
+                >
+                  Filtreleri Temizle
+                </button>
+              ) : (
+                <Link href="/panel/operasyon?filter=acil&yeni=1" className="btn-primary mt-4 inline-flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  Yeni Dosya Oluştur
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
+          )
         ) : (
           <>
           {/* Mobil / tablet kart — masaüstü tablo lg+ */}
