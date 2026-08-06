@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-06",
-  "label": "v464-personel-empty-states",
-  "description": "Web-only: Personel sekmelerinde API/profil yokken sıfır/boş enterprise durum (Özet, Devam, İzin, Özlük Yüklenmedi, Zimmet, Kadro). Migration yok. Backend v460. Rollback web v463.",
+  "label": "v465-short-name-approval-mail",
+  "description": "Full: müşteri Kısa Ad + migration, 72s müşteri hatırlatma maili, Hasar/Operasyon liste ayrımı (Gecikme/Onay Talep Et/pulse). Web v465 + Backend v461. Rollback web v464 / backend v460.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v460-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v464-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v461-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v465-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v463-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v464-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v460-amd64"
   },
   "mustPassSmokeRoutes": [
