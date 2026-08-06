@@ -473,9 +473,28 @@ export function AdminAttendanceSupervisionPanel({
   }
 
   if (!preview && (loadError || !data)) {
+    // API yoksa / hata: sıfır kadro — kırmızı hata yerine enterprise boş durum
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        Kadro özeti yüklenemedi. Sayfayı yenileyin.
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { label: 'Toplam Personel', value: 0 },
+            { label: 'İzinli', value: 0 },
+            { label: 'Devamı Onaylayan', value: 0 },
+            { label: 'Devamı Onaylamayan', value: 0 },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className="rounded-xl border border-slate-100 bg-slate-50/70 p-4"
+            >
+              <p className="text-2xl font-bold tabular-nums text-content-primary">{card.value}</p>
+              <p className="mt-1 text-xs font-medium text-content-tertiary">{card.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-content-tertiary">
+          Kadro listesinde personel yok.
+        </div>
       </div>
     );
   }

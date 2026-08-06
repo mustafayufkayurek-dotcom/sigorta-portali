@@ -558,7 +558,7 @@ export function HrPersonnelDocumentsPanel({
                               : 'bg-status-success/10 text-status-success'
                         }`}
                       >
-                        {isNa ? 'Uygulanmaz' : isMissing ? 'Eksik' : 'Yüklendi'}
+                        {isNa ? 'Uygulanmaz' : isMissing ? 'Yüklenmedi' : 'Yüklendi'}
                       </span>
                       {canUpload && !isNa && (
                         <button

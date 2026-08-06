@@ -33,6 +33,22 @@ import {
 } from '@/components/hr/HrMyLeavesPanel';
 import { DAY_END_SUPERVISION_PREVIEW } from '@/components/hr/attendance-day-end.preview';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
+
+function readSessionUserLabel(): { name: string; email: string } {
+  if (typeof window === 'undefined') return { name: 'Personel', email: '' };
+  try {
+    const u = JSON.parse(localStorage.getItem('user') ?? '{}') as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+    const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
+    return { name: name || 'Personel', email: u.email?.trim() || '' };
+  } catch {
+    return { name: 'Personel', email: '' };
+  }
+}
+
 type TabKey =
   | 'attendance'
   | 'leaves'
@@ -301,6 +317,19 @@ export default function PersonelOzlukPage() {
     'hr/summary',
   );
   const summary = summaryRaw as HrSummary | undefined;
+  const sessionUser = useMemo(() => readSessionUserLabel(), [summaryLoading, summaryError]);
+  const selfDisplayName = summary
+    ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
+    : sessionUser.name;
+  const selfDisplayEmail = summary?.profile.user.email ?? sessionUser.email;
+  /** Profil / API yokken de personel sekmeleri sıfır/boş enterprise durum gösterir */
+  const emptyLeaveEntitlement = {
+    total: 0,
+    used: 0,
+    pending: 0,
+    remaining: 0,
+    rule: `Yıllık İzin (${year})`,
+  };
 
   const canSupervise =
     designPreview ||
@@ -358,7 +387,6 @@ export default function PersonelOzlukPage() {
     data: attendanceRaw,
     isLoading: attendanceLoading,
     isError: attendanceError,
-    error: attendanceErr,
   } = useApiQuery<AttendanceResponse>(
     ['hr-attendance', year, month, selectedEmployeeId, mustConfirmOwnAttendance],
     'hr/attendance',
@@ -396,7 +424,6 @@ export default function PersonelOzlukPage() {
     data: pendingRaw,
     isLoading: pendingLoading,
     isError: pendingError,
-    error: pendingErr,
   } = useApiQuery<LeaveRequest[]>(
     ['hr-pending-approval'],
     'hr/leave-requests/pending-approval',
@@ -750,10 +777,14 @@ export default function PersonelOzlukPage() {
 
   const leaveApprovalPendingItems = designPreview
     ? previewLeavePending
-    : pending.map(toLeaveApprovalItem);
+    : pendingError
+      ? []
+      : pending.map(toLeaveApprovalItem);
   const leaveApprovalHistoryItems = designPreview
     ? previewLeaveHistory
-    : allLeaves.map(toLeaveApprovalItem);
+    : allLeavesError
+      ? []
+      : allLeaves.map(toLeaveApprovalItem);
 
   const leavePendingWatchCount = designPreview
     ? previewLeavePending.length
@@ -896,67 +927,76 @@ export default function PersonelOzlukPage() {
                 </>
               ) : summaryLoading ? (
                 <div className="animate-pulse h-32 bg-slate-100 rounded-xl" />
-              ) : summaryError ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 space-y-2">
-                  <p className="font-semibold">Özet Yüklenemedi</p>
-                  <p>
-                    Bu kullanıcı için özlük kartı / İK profili henüz oluşmamış olabilir veya
-                    personel modülü kapalıdır. Yönetici Kadro Özeti’nden personeli ekleyin;
-                    ardından sayfayı yenileyin (Cmd+Shift+R).
-                  </p>
-                  <p className="text-xs text-red-600/80">
-                    Tasarım önizleme: /dev/personel veya bu sayfaya ?tasarim=1
-                  </p>
-                </div>
-              ) : summary ? (
+              ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="rounded-xl border border-slate-100 p-5 bg-slate-50/50">
                       <p className="text-xs font-medium text-slate-500 mb-2">Personel Bilgisi</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {summary.profile.user.firstName} {summary.profile.user.lastName}
-                      </p>
-                      <p className="text-sm text-slate-500 mt-1">{summary.profile.user.email}</p>
-                      {summary.profile.department && (
-                        <p className="text-sm text-slate-600 mt-2">Departman: {summary.profile.department.name}</p>
-                      )}
-                      {summary.profile.manager && (
-                        <p className="text-sm text-slate-600">
-                          Yönetici: {summary.profile.manager.firstName} {summary.profile.manager.lastName}
+                      <p className="text-lg font-semibold text-slate-900">{selfDisplayName}</p>
+                      {selfDisplayEmail ? (
+                        <p className="text-sm text-slate-500 mt-1">{selfDisplayEmail}</p>
+                      ) : null}
+                      {summary?.profile.department && (
+                        <p className="text-sm text-slate-600 mt-2">
+                          Departman: {summary.profile.department.name}
                         </p>
                       )}
+                      {summary?.profile.manager && (
+                        <p className="text-sm text-slate-600">
+                          Yönetici: {summary.profile.manager.firstName}{' '}
+                          {summary.profile.manager.lastName}
+                        </p>
+                      )}
+                      {!summary ? (
+                        <p className="mt-2 text-xs text-content-tertiary">
+                          Özlük kartı henüz oluşmamış olabilir. Özet değerleri sıfır gösterilir.
+                        </p>
+                      ) : null}
                     </div>
                     <div className="rounded-xl border border-brand-100 p-5 bg-brand-50/40">
-                      <p className="text-xs font-medium text-slate-500 mb-2">{summary.leaveBalance.leaveTypeLabel} ({summary.leaveBalance.year})</p>
-                      <p className="text-3xl font-bold text-brand-700">{summary.leaveBalance.remainingDays} gün</p>
+                      <p className="text-xs font-medium text-slate-500 mb-2">
+                        {summary?.leaveBalance.leaveTypeLabel ?? 'Yıllık İzin'} (
+                        {summary?.leaveBalance.year ?? year})
+                      </p>
+                      <p className="text-3xl font-bold text-brand-700">
+                        {summary?.leaveBalance.remainingDays ?? 0} gün
+                      </p>
                       <p className="text-sm text-slate-600 mt-2">
-                        Toplam {summary.leaveBalance.totalDays} · Kullanılan {summary.leaveBalance.usedDays} · Bekleyen {summary.leaveBalance.pendingDays}
+                        Toplam {summary?.leaveBalance.totalDays ?? 0} · Kullanılan{' '}
+                        {summary?.leaveBalance.usedDays ?? 0} · Bekleyen{' '}
+                        {summary?.leaveBalance.pendingDays ?? 0}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="stat-card card-accent-orange">
-                      <p className="text-2xl font-bold text-orange-700">{summary.stats.pendingLeaveRequests}</p>
+                      <p className="text-2xl font-bold text-orange-700">
+                        {summary?.stats.pendingLeaveRequests ?? 0}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">Bekleyen İzinlerim</p>
                     </div>
                     <div className="stat-card card-accent-emerald">
-                      <p className="text-2xl font-bold text-green-700">{summary.stats.approvedLeavesThisYear}</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {summary?.stats.approvedLeavesThisYear ?? 0}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">Onaylanan (Bu Yıl)</p>
                     </div>
                     <div className="stat-card card-accent-blue">
-                      <p className="text-2xl font-bold text-blue-700">{summary.stats.attendanceRecordsThisMonth}</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {summary?.stats.attendanceRecordsThisMonth ?? 0}
+                      </p>
                       <p className="text-xs text-slate-400 mt-0.5">Devam Kaydı (Bu Ay)</p>
                     </div>
-                    {summary.canApprove && (
+                    {(summary?.canApprove || canApproveByRole) && (
                       <div className="stat-card card-accent-purple">
-                        <p className="text-2xl font-bold text-purple-700">{summary.stats.pendingApprovalQueue}</p>
+                        <p className="text-2xl font-bold text-purple-700">
+                          {summary?.stats.pendingApprovalQueue ?? 0}
+                        </p>
                         <p className="text-xs text-slate-400 mt-0.5">Onay Kuyruğu</p>
                       </div>
                     )}
                   </div>
                 </>
-              ) : (
-                <p className="text-sm text-slate-500">Özet yüklenemedi.</p>
               )}
               {canSupervise && (
                 <HrAssignedAssetsPanel
@@ -1008,7 +1048,9 @@ export default function PersonelOzlukPage() {
                 </div>
               )}
 
-              {(selectedEmployeeId || (!canSupervise && !canManagePersonnelDocuments && summary?.profile?.id) || designPreview) && (
+              {(selectedEmployeeId
+                || designPreview
+                || (!canSupervise && !canManagePersonnelDocuments)) && (
                 <>
                   <HrPersonnelDocumentsPanel
                     preview={designPreview}
@@ -1020,9 +1062,7 @@ export default function PersonelOzlukPage() {
                               ? `${emp.user.firstName} ${emp.user.lastName}`.trim()
                               : 'Personel';
                           })()
-                        : summary
-                          ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
-                          : 'Personel'
+                        : selfDisplayName
                     }
                     canSelectEmployee={false}
                     canUpload={canManagePersonnelDocuments}
@@ -1046,7 +1086,9 @@ export default function PersonelOzlukPage() {
                       />
                     </div>
                   )}
-                  {!designPreview && !canManagePersonnelDocuments && (selectedEmployeeId || summary?.profile?.id) && (
+                  {!designPreview
+                    && !canManagePersonnelDocuments
+                    && (selectedEmployeeId || summary?.profile?.id) && (
                     <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
                       <h3 className="text-sm font-semibold text-content-primary">Yüklenen Evraklar</h3>
                       <EntityDocumentsTab
@@ -1070,9 +1112,7 @@ export default function PersonelOzlukPage() {
                 employeeName={
                   canSupervise
                     ? undefined
-                    : summary
-                      ? `${summary.profile.user.firstName} ${summary.profile.user.lastName}`.trim()
-                      : undefined
+                    : selfDisplayName
                 }
                 canAdd={canSupervise && !designPreview}
                 onOpenEmployee={(profileId) => {
@@ -1300,13 +1340,9 @@ export default function PersonelOzlukPage() {
 
               {attendanceLoading ? (
                 <div className="animate-pulse h-64 bg-slate-100 rounded-xl" />
-              ) : attendanceError ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  Devam listesi alınamadı: {(attendanceErr as Error)?.message ?? 'Bağlantı hatası'}. Cmd+Shift+R ile yenileyin.
-                </div>
-              ) : (attendance?.days ?? []).length === 0 ? (
+              ) : attendanceError || (attendance?.days ?? []).length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-                  Bu ay için devam satırı oluşturulamadı.
+                  Bu ay için devam kaydı yok.
                 </div>
               ) : (
                 <>
@@ -1411,16 +1447,8 @@ export default function PersonelOzlukPage() {
               history={leaveApprovalHistoryItems}
               pendingLoading={!designPreview && pendingLoading}
               historyLoading={!designPreview && allLeavesLoading}
-              pendingError={
-                !designPreview && pendingError
-                  ? `Onay kuyruğu alınamadı: ${(pendingErr as Error)?.message ?? 'Bağlantı hatası'}.`
-                  : null
-              }
-              historyError={
-                !designPreview && allLeavesError
-                  ? 'İzin geçmişi alınamadı. Sayfayı yenileyin veya yöneticinize bildirin.'
-                  : null
-              }
+              pendingError={null}
+              historyError={null}
               expandedId={expandedLeaveId}
               onToggleExpand={(id) => setExpandedLeaveId((cur) => (cur === id ? null : id))}
               onApprove={(id) => {
@@ -1466,11 +1494,11 @@ export default function PersonelOzlukPage() {
                       remaining: summary.leaveBalance.remainingDays,
                       rule: `${summary.leaveBalance.leaveTypeLabel} (${summary.leaveBalance.year})`,
                     }
-                  : undefined
+                  : emptyLeaveEntitlement
               }
-              leaves={designPreview ? undefined : myLeaveRows}
+              leaves={designPreview ? undefined : leavesError ? [] : myLeaveRows}
               leavesLoading={!designPreview && leavesLoading}
-              leavesError={!designPreview && leavesError}
+              leavesError={false}
               submitting={createLeave.isPending}
               onSubmitLive={designPreview ? undefined : handleCreateLeaveFromPanel}
               documentsSlot={

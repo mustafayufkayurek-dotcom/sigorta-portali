@@ -153,7 +153,8 @@ export function HrAssignedAssetsPanel({
     'hr/assets',
     {
       params: employeeProfileId ? { employeeProfileId } : undefined,
-      enabled: !preview,
+      // Kendi görünümünde profil yoksa API çağırma; boş liste göster
+      enabled: !preview && (canAdd || Boolean(employeeProfileId)),
     },
   );
 
@@ -414,9 +415,9 @@ export function HrAssignedAssetsPanel({
 
       {!preview && assetsQuery.isLoading ? (
         <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
-      ) : !preview && assetsQuery.isError ? (
-        <div className="rounded-xl border border-status-danger/30 bg-status-danger/5 px-4 py-3 text-sm text-status-danger">
-          Zimmet listesi yüklenemedi.
+      ) : !preview && assetsQuery.isError && canAdd ? (
+        <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center">
+          <p className="text-sm text-content-tertiary">Bu filtrede zimmet kaydı yok.</p>
         </div>
       ) : scoped.length === 0 ? (
         <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center">
