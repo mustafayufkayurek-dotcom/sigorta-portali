@@ -6,9 +6,14 @@ import { useHrAttendanceMonthCloseReminders } from '@/features/dashboard/hooks/u
 
 type Props = {
   compact?: boolean;
+  /**
+   * Admin kuşbaşı denetim: puantaj oluşturma / sekme CTA yok.
+   * Finans ve personel kendi devam onayına yönlenir.
+   */
+  superviseOnly?: boolean;
 };
 
-export function AttendanceMonthCloseBanner({ compact = false }: Props) {
+export function AttendanceMonthCloseBanner({ compact = false, superviseOnly = false }: Props) {
   const { data, isLoading, isError } = useHrAttendanceMonthCloseReminders();
   const reminders = Array.isArray(data?.reminders) ? data.reminders : [];
 
@@ -37,53 +42,75 @@ export function AttendanceMonthCloseBanner({ compact = false }: Props) {
 
   return (
     <div className="space-y-2">
-      {reminders.slice(0, 2).map((item) => (
-        <div
-          key={`${item.year}-${item.month}-${item.audience}`}
-          className={`rounded-xl border p-4 ${
-            item.urgency === 'overdue'
-              ? 'border-red-200 bg-red-50/80'
-              : 'border-amber-200 bg-amber-50/80'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle
-              className={`h-5 w-5 shrink-0 mt-0.5 ${
-                item.urgency === 'overdue' ? 'text-red-600' : 'text-amber-600'
-              }`}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900">
-                {item.audience === 'finance'
-                  ? (item.urgency === 'overdue' ? 'Gecikmiş Puantaj Süreç Kapanışı' : 'Puantaj Süreç Yönetimi — Ay Sonu')
-                  : (item.urgency === 'overdue' ? 'Gecikmiş Puantaj Kapanışı' : 'Ay Sonu Puantaj Hatırlatması')}
-                {' — '}
-                {item.periodLabel}
-              </p>
-              <p className="text-sm text-slate-700 mt-1">{item.message}</p>
-              {item.checklist?.length > 0 && (
-                <ul className="mt-2 space-y-1 text-xs text-slate-600 list-disc list-inside">
-                  {item.checklist.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              )}
-              {item.stats && (
-                <p className="text-xs text-slate-500 mt-2">
-                  {item.stats.totalEmployees} personel — {item.stats.pendingDailyConfirmEmployees} günlük onay bekliyor,{' '}
-                  {item.stats.missingMonthlyConfirm} aylık onay eksik, {item.stats.missingLock} ay kilidi yok
+      {reminders.slice(0, 2).map((item) => {
+        const overdue = item.urgency === 'overdue';
+        const title = superviseOnly
+          ? overdue
+            ? 'Gecikmiş Dönem Kapanışı'
+            : 'Dönem Kapanış Hatırlatması'
+          : item.audience === 'finance'
+            ? overdue
+              ? 'Gecikmiş Dönem Kapanışı'
+              : 'Ay Sonu Dönem Kapanışı'
+            : overdue
+              ? 'Gecikmiş Devam Onayı'
+              : 'Ay Sonu Devam Hatırlatması';
+
+        const href = superviseOnly
+          ? '/panel/personel-ozluk?tab=summary'
+          : `/panel/personel-ozluk?tab=attendance&year=${item.year}&month=${item.month}`;
+
+        const cta = superviseOnly
+          ? 'Kuşbaşı Denetime Bakın →'
+          : item.audience === 'finance'
+            ? 'Devam Onayına Git →'
+            : 'Devam Onayına Git →';
+
+        return (
+          <div
+            key={`${item.year}-${item.month}-${item.audience}`}
+            className={`rounded-xl border p-4 ${
+              overdue ? 'border-red-200 bg-red-50/80' : 'border-amber-200 bg-amber-50/80'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                className={`h-5 w-5 shrink-0 mt-0.5 ${
+                  overdue ? 'text-status-danger' : 'text-status-warning'
+                }`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-content-primary">
+                  {title}
+                  {' — '}
+                  {item.periodLabel}
                 </p>
-              )}
-              <Link
-                href={`/panel/personel-ozluk?tab=attendance&year=${item.year}&month=${item.month}`}
-                className="inline-block mt-3 text-xs font-medium text-[#1a4080] hover:underline"
-              >
-                {item.audience === 'finance' ? 'Puantaj Sekmesine Git →' : 'Puantaj Onaylarına Git →'}
-              </Link>
+                <p className="text-sm text-content-secondary mt-1">{item.message}</p>
+                {item.checklist?.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-content-secondary list-disc list-inside">
+                    {item.checklist.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+                {item.stats && (
+                  <p className="text-xs text-content-tertiary mt-2">
+                    {item.stats.totalEmployees} personel — {item.stats.pendingDailyConfirmEmployees}{' '}
+                    günlük onay bekliyor, {item.stats.missingMonthlyConfirm} aylık onay eksik,{' '}
+                    {item.stats.missingLock} ay kilidi yok
+                  </p>
+                )}
+                <Link
+                  href={href}
+                  className="inline-block mt-3 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                >
+                  {cta}
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -98,7 +125,7 @@ export function AttendanceMonthCloseOkBanner() {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
       <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
-      <p className="text-sm text-emerald-900">Bu dönem puantaj kapanış kontrol listesi tamam görünüyor.</p>
+      <p className="text-sm text-emerald-900">Bu dönem kapanış kontrol listesi tamam görünüyor.</p>
     </div>
   );
 }

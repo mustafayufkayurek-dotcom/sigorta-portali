@@ -490,7 +490,7 @@ export function HrPersonnelDocumentsPanel({
       <div className="space-y-6">
         {grouped.map((group) => (
           <section key={group.phase} className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
+            <h4 className="text-xs font-semibold text-content-tertiary">
               {PHASE_LABELS[group.phase]}
             </h4>
             <div className="rounded-2xl border border-border bg-surface overflow-hidden divide-y divide-border">
@@ -548,9 +548,9 @@ export function HrPersonnelDocumentsPanel({
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5">
                       <span
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        className={`mr-2 text-xs font-medium px-2.5 py-1 rounded-full ${
                           isNa
                             ? 'bg-slate-100 text-slate-500'
                             : isMissing
@@ -563,11 +563,12 @@ export function HrPersonnelDocumentsPanel({
                       {canUpload && !isNa && (
                         <button
                           type="button"
+                          title={isMissing ? 'Yükle' : 'Güncelle'}
+                          aria-label={isMissing ? 'Yükle' : 'Güncelle'}
                           onClick={() => handleUploadClick(doc)}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 text-xs font-semibold"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-800"
                         >
                           <Upload className="h-3.5 w-3.5" />
-                          {isMissing ? 'Yükle' : 'Güncelle'}
                         </button>
                       )}
                     </div>

@@ -13,7 +13,7 @@ import { HrAssignedAssetsPanel } from '@/components/hr/HrAssignedAssetsPanel';
  * URL: /dev/personel-ozluk-evrak
  *
  * 1) Özlük evrakları — çalışma tipine göre zorunluluk (Ofis → İSG uygulanmaz)
- * 2) Zimmet kuşbakışı — Admin/Finans Özet Ve Denetim görünümü
+ * 2) Zimmet — Admin/Finans genel görünüm
  */
 export default function PersonelOzlukEvrakPreviewPage() {
   const [workScope, setWorkScope] = useState<WorkScope>('office');
@@ -33,7 +33,7 @@ export default function PersonelOzlukEvrakPreviewPage() {
               </h1>
               <p className="text-sm text-content-secondary mt-1 max-w-2xl">
                 Evrak zorunluluğu çalışma tipine göre (Ofis / Saha / Riskli İş).
-                Zimmetli demirbaşlar Admin ve Finans kuşbakışında. Örnek veri —
+                Zimmetli demirbaşlar Admin ve Finans listesinde. Örnek veri —
                 API henüz bağlı değil.
               </p>
             </div>
@@ -73,7 +73,7 @@ export default function PersonelOzlukEvrakPreviewPage() {
                   : 'bg-white border border-border text-content-secondary hover:bg-slate-50'
               }`}
             >
-              2) Zimmet Kuşbakışı (Özet Ve Denetim)
+              2) Zimmet
             </button>
           </div>
 

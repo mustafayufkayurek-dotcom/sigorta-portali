@@ -79,7 +79,6 @@ import {
   ShieldCheck,
   Users,
   TestTube2,
-  UserCog,
   Zap,
 } from 'lucide-react';
 
@@ -97,8 +96,8 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
+  { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/crm', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -142,7 +141,7 @@ const SCREEN_TO_PATH: Record<string, string> = {
   kullanicilar:      '/panel/kullanicilar',
   guvenlik:          '/panel/guvenlik',
   harita:            '/panel/harita',
-  personel_yonetimi: '/panel/personel-yonetimi',
+  personel_yonetimi: '/panel/personel-ozluk',
   personel_ozluk: '/panel/personel-ozluk',
   test_notes_admin: '/panel/ayarlar/test-notlari-gorev-takip',
 };
@@ -150,7 +149,7 @@ const SCREEN_TO_PATH: Record<string, string> = {
 const LOCKED_MAIN_NAV_PATHS = new Set([
   '/panel',
   '/panel/operasyon',
-  '/panel/personel-yonetimi',
+  '/panel/personel-ozluk',
   '/panel/sahiplik',
   '/panel/musteriler',
   '/panel/tedarikciler',
@@ -287,14 +286,14 @@ function getPanelMainLinks({
               icon: MessageSquareText,
               children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
-            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
+            { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : isFieldStaff
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
-            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
+            { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Carilerim', href: '/panel/carilerim', icon: Building2 },
           ]
       : isFinance
@@ -322,7 +321,7 @@ function getPanelMainLinks({
               icon: MessageSquareText,
               children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
-            { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
+            { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : [
@@ -338,8 +337,7 @@ function getPanelMainLinks({
               { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
             ],
           },
-          { title: 'Performans Yönetimi', href: '/panel/personel-yonetimi', icon: UserCog, groupStart: true },
-          { title: 'Personel Özlük', href: '/panel/personel-ozluk', icon: ClipboardList },
+          { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList, groupStart: true },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
           { title: 'Müşteriler', href: '/panel/musteriler', icon: Users, groupStart: true },
           { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },

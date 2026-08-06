@@ -61,11 +61,11 @@ export default function PersonelOzlukDenetimPreviewPage() {
                 Geliştirme / Personel Özlük
               </p>
               <h1 className="text-2xl font-bold text-content-primary">
-                Puantaj Denetimi — Tasarım Önizleme
+                Personel Kuşbaşı Denetim — Önizleme
               </h1>
               <p className="text-sm text-content-secondary mt-1 max-w-2xl">
-                Mesai popup’ı (masum saat bildirimi), tatil/Cumartesi kapanış kapısı ve
-                puantaj onay uyarısı. Örnek veri.
+                Admin ekranı: süreç CTA yok, kişisel devam yok. KPI pencereleri ve personel
+                listesi. Örnek veri.
               </p>
             </div>
             <span className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white">

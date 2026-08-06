@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Eye,
   Laptop,
   Package,
   Plus,
   Smartphone,
   Tablet,
-  UserRound,
+  Users,
   X,
 } from 'lucide-react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
@@ -113,7 +114,7 @@ type FormState = {
 
 type Props = {
   preview?: boolean;
-  /** Belirli personelin zimmeti — verilirse kuşbakış yerine personel listesi. */
+  /** Belirli personelin zimmeti — verilirse genel liste yerine personel listesi. */
   employeeProfileId?: string;
   employeeName?: string;
   canAdd?: boolean;
@@ -121,7 +122,7 @@ type Props = {
 };
 
 /**
- * Zimmetli demirbaş — Admin/Finans kuşbakışı + Zimmet Ekle.
+ * Zimmetli demirbaş — Admin/Finans genel liste + Zimmet Ekle.
  * Canlıda mevcut `fixed_assets` tablosu kullanılır (şema değişikliği yok).
  */
 export function HrAssignedAssetsPanel({
@@ -167,6 +168,7 @@ export function HrAssignedAssetsPanel({
   const employeeOptions = Array.isArray(employeesQuery.data) ? employeesQuery.data : [];
 
   useEffect(() => {
+    if (preview) return;
     let alive = true;
     apiClient
       .get<Array<{ code: string; label: string; active?: boolean }>>('system-settings/hr-asset-categories')
@@ -178,28 +180,17 @@ export function HrAssignedAssetsPanel({
         }
       })
       .catch(() => {
-        /* önizleme / yetki yoksa varsayılan kalsın */
+        /* yetki yoksa varsayılan kalsın */
       });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [preview]);
 
   const scoped = useMemo(() => {
     if (categoryFilter === 'all') return rows;
     return rows.filter((a) => a.category === categoryFilter);
   }, [rows, categoryFilter]);
-
-  const byEmployee = useMemo(() => {
-    const map = new Map<string, AssignedAssetPreview[]>();
-    for (const row of scoped) {
-      const key = row.employeeProfileId || row.employeeName;
-      const list = map.get(key) ?? [];
-      list.push(row);
-      map.set(key, list);
-    }
-    return Array.from(map.entries());
-  }, [scoped]);
 
   const totals = useMemo(() => {
     const phones = rows.filter((a) => a.category === 'phone').length;
@@ -290,71 +281,110 @@ export function HrAssignedAssetsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-surface p-5 space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-slate-100/90 px-4 py-3 sm:px-5">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 shrink-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
               <Package className="h-5 w-5 text-brand-600" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-content-primary">
-                {employeeProfileId || employeeName ? 'Zimmetli Demirbaşlar' : 'Zimmet Kuşbakışı'}
+              <h3 className="text-base font-semibold text-content-primary">
+                {employeeProfileId || employeeName ? 'Zimmetli Demirbaşlar' : 'Zimmet'}
               </h3>
-              <p className="text-xs text-content-secondary mt-0.5 max-w-xl">
+              <p className="mt-0.5 max-w-xl text-xs text-content-tertiary">
                 {employeeName
-                  ? `${employeeName} adına zimmetlenen demirbaşlar.`
-                  : 'Admin ve Finans — tüm personelin zimmetli demirbaşları tek bakışta.'}
+                  ? `${employeeName} Adına Zimmetlenen Demirbaşlar`
+                  : 'Admin Ve Finans — Tüm Personelin Zimmetli Demirbaşları'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {preview && (
-              <span className="text-[10px] font-semibold tracking-wide text-content-tertiary">
-                Önizleme
+            {preview ? (
+              <span className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-content-tertiary">
+                Tasarım Önizleme
               </span>
-            )}
-            {canAdd && (
+            ) : null}
+            {canAdd ? (
               <button
                 type="button"
                 onClick={() => openForm()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 <Plus className="h-4 w-4" />
                 Zimmet Ekle
               </button>
-            )}
+            ) : null}
           </div>
         </div>
 
-        {!employeeProfileId && !employeeName && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-border bg-surface-muted/60 px-3 py-2.5">
-              <p className="text-[11px] text-content-tertiary">Toplam Zimmet</p>
-              <p className="text-lg font-semibold text-content-primary">{totals.total}</p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface-muted/60 px-3 py-2.5">
-              <p className="text-[11px] text-content-tertiary">Cep Telefonu</p>
-              <p className="text-lg font-semibold text-content-primary">{totals.phones}</p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface-muted/60 px-3 py-2.5">
-              <p className="text-[11px] text-content-tertiary">Dizüstü</p>
-              <p className="text-lg font-semibold text-content-primary">{totals.laptops}</p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface-muted/60 px-3 py-2.5">
-              <p className="text-[11px] text-content-tertiary">Personel</p>
-              <p className="text-lg font-semibold text-content-primary">{totals.employees}</p>
-            </div>
+        {!employeeProfileId && !employeeName ? (
+          <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-4 sm:grid-cols-4 sm:p-5">
+            {(
+              [
+                {
+                  key: 'total',
+                  label: 'Toplam Zimmet',
+                  hint: 'Kayıtlı demirbaş',
+                  value: totals.total,
+                  icon: Package,
+                  tone: 'brand' as const,
+                },
+                {
+                  key: 'phone',
+                  label: 'Cep Telefonu',
+                  hint: 'Aktif zimmet',
+                  value: totals.phones,
+                  icon: Smartphone,
+                  tone: 'brand' as const,
+                },
+                {
+                  key: 'laptop',
+                  label: 'Dizüstü',
+                  hint: 'Aktif zimmet',
+                  value: totals.laptops,
+                  icon: Laptop,
+                  tone: 'brand' as const,
+                },
+                {
+                  key: 'people',
+                  label: 'Personel',
+                  hint: 'Zimmeti olan',
+                  value: totals.employees,
+                  icon: Users,
+                  tone: 'brand' as const,
+                },
+              ] as const
+            ).map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.key}
+                  className="rounded-xl border border-slate-100 bg-white p-4 text-left shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </div>
+                    <p className="text-2xl font-bold tabular-nums text-content-primary">
+                      {card.value}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-content-primary">{card.label}</p>
+                  <p className="mt-0.5 text-xs text-content-tertiary">{card.hint}</p>
+                </div>
+              );
+            })}
           </div>
-        )}
+        ) : null}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3 sm:px-5">
           <button
             type="button"
             onClick={() => setCategoryFilter('all')}
             className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
               categoryFilter === 'all'
                 ? 'bg-brand-600 text-white'
-                : 'bg-surface border border-border text-content-secondary hover:bg-surface-muted'
+                : 'border border-border bg-white text-content-secondary hover:bg-slate-50'
             }`}
           >
             Tümü
@@ -367,58 +397,58 @@ export function HrAssignedAssetsPanel({
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                 categoryFilter === item.code
                   ? 'bg-brand-600 text-white'
-                  : 'bg-surface border border-border text-content-secondary hover:bg-surface-muted'
+                  : 'border border-border bg-white text-content-secondary hover:bg-slate-50'
               }`}
             >
               {item.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {savedNote && (
+      {savedNote ? (
         <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-xs text-content-secondary">
           {savedNote}
         </div>
-      )}
+      ) : null}
 
       {!preview && assetsQuery.isLoading ? (
-        <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
       ) : !preview && assetsQuery.isError ? (
         <div className="rounded-xl border border-status-danger/30 bg-status-danger/5 px-4 py-3 text-sm text-status-danger">
           Zimmet listesi yüklenemedi.
         </div>
       ) : scoped.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center space-y-3">
+        <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center">
           <p className="text-sm text-content-tertiary">Bu filtrede zimmet kaydı yok.</p>
-          {canAdd && (
+          {canAdd ? (
             <button
               type="button"
               onClick={() => openForm()}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 text-sm font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               <Plus className="h-4 w-4" />
               İlk Zimmeti Ekle
             </button>
-          )}
+          ) : null}
         </div>
       ) : employeeProfileId || employeeName ? (
-        <div className="rounded-2xl border border-border bg-surface overflow-hidden divide-y divide-border">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
           {scoped.map((asset) => {
             const meta = categoryMeta(String(asset.category));
             const Icon = meta.icon;
             return (
               <div key={asset.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="flex items-start gap-3 min-w-0">
+                <div className="flex min-w-0 items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50">
                     <Icon className="h-4 w-4 text-brand-600" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-content-primary">{asset.name}</p>
-                    <p className="text-[11px] text-content-tertiary mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-content-tertiary">
                       {meta.label} · Marka: {asset.brand} · Model: {asset.model}
                     </p>
-                    <p className="text-[11px] text-content-secondary mt-1">
+                    <p className="mt-1 text-[11px] text-content-secondary">
                       Seri No: {asset.serialNo} · Zimmet: {formatDate(asset.assignedAt)}
                     </p>
                   </div>
@@ -428,69 +458,91 @@ export function HrAssignedAssetsPanel({
           })}
         </div>
       ) : (
-        <div className="space-y-3">
-          {byEmployee.map(([key, list]) => {
-            const first = list[0];
-            const name = first?.employeeName ?? '—';
-            const profileId = first?.employeeProfileId ?? key;
-            return (
-              <div key={key} className="rounded-2xl border border-border bg-surface overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-surface-muted/50 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <UserRound className="h-4 w-4 text-content-tertiary" />
-                    <div>
-                      <p className="text-sm font-medium text-content-primary">{name}</p>
-                      <p className="text-[11px] text-content-tertiary">{first?.department}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-content-secondary">
-                      {list.length} demirbaş
-                    </span>
-                    {canAdd && (
-                      <button
-                        type="button"
-                        onClick={() => openForm(profileId)}
-                        className="inline-flex items-center gap-1 rounded-xl border border-brand-200 bg-brand-50 text-brand-700 px-3 py-1.5 text-xs font-semibold hover:bg-brand-100"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Zimmet Ekle
-                      </button>
-                    )}
-                    {onOpenEmployee && first?.employeeProfileId && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenEmployee(first.employeeProfileId!, name)}
-                        className="rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-content-secondary hover:bg-surface-muted"
-                      >
-                        Özlük Dosyası
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="divide-y divide-border">
-                  {list.map((asset) => {
-                    const meta = categoryMeta(String(asset.category));
-                    const Icon = meta.icon;
-                    return (
-                      <div key={asset.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                        <Icon className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-                        <p className="text-xs font-medium text-content-primary min-w-[140px]">
+        <div className="table-container">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="table-head-row">
+                <tr>
+                  <th className="table-th text-left">Personel</th>
+                  <th className="table-th text-left">Tür</th>
+                  <th className="table-th text-left">Demirbaş</th>
+                  <th className="table-th text-left">Seri No</th>
+                  <th className="table-th">Zimmet</th>
+                  <th
+                    className="sticky right-0 z-[1] border-l border-slate-200 bg-slate-50 px-4 py-3.5 text-center text-xs font-semibold tracking-wide text-slate-500 shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]"
+                    style={{ width: 168, minWidth: 168 }}
+                  >
+                    İşlemler
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="table-body">
+                {scoped.map((asset) => {
+                  const meta = categoryMeta(String(asset.category));
+                  const Icon = meta.icon;
+                  return (
+                    <tr key={asset.id} className="table-row">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-content-primary">{asset.employeeName}</p>
+                        <p className="text-xs text-content-tertiary">{asset.department}</p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-1.5 text-content-secondary">
+                          <Icon className="h-3.5 w-3.5 text-brand-600" />
                           {meta.label}
-                        </p>
-                        <p className="text-xs text-content-secondary flex-1 min-w-[160px]">
-                          {asset.brand} {asset.model}
-                        </p>
-                        <p className="text-[11px] text-content-tertiary font-mono">
-                          {asset.serialNo}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-content-secondary">
+                        {asset.brand} {asset.model}
+                      </td>
+                      <td className="px-5 py-3 font-mono text-xs text-content-tertiary">
+                        {asset.serialNo}
+                      </td>
+                      <td className="px-4 py-3 text-center text-content-secondary">
+                        {formatDate(asset.assignedAt)}
+                      </td>
+                      <td
+                        className="sticky right-0 z-[1] border-l border-slate-100 bg-white px-3 py-3 shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]"
+                        style={{ width: 168, minWidth: 168 }}
+                      >
+                        <div className="flex flex-wrap items-center gap-1">
+                          {onOpenEmployee && asset.employeeProfileId ? (
+                            <button
+                              type="button"
+                              title="Özlük Dosyası"
+                              aria-label="Özlük Dosyası"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                              onClick={() =>
+                                onOpenEmployee(asset.employeeProfileId!, asset.employeeName)
+                              }
+                            >
+                              <Eye className="h-3.5 w-3.5" aria-hidden />
+                              Özlük
+                            </button>
+                          ) : null}
+                          {canAdd ? (
+                            <button
+                              type="button"
+                              title="Zimmet Ekle"
+                              aria-label="Zimmet Ekle"
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+                              onClick={() => openForm(asset.employeeProfileId ?? undefined)}
+                            >
+                              <Plus className="h-3.5 w-3.5" aria-hidden />
+                              Ekle
+                            </button>
+                          ) : null}
+                          {!onOpenEmployee && !canAdd ? (
+                            <span className="text-xs text-content-tertiary">—</span>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
