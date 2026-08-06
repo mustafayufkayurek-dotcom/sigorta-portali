@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-05",
-  "label": "v459-mesai-performans",
-  "description": "Full: Mesai paneli kapısı (geç giriş/erken çıkış/kapalı + TR resmi tatiller) + Performans Yönetimi bekleyen onaylar. Migration yok. Rollback web v458 / backend v458.",
+  "updatedAt": "2026-08-06",
+  "label": "v462-personel-ui",
+  "description": "Web-only: Birleşik Personel UI — Yönetici İzleme, İzin Onayları (Bekleyen/Geçmiş + arşiv drawer), tablo/sonuç penceresi dili, menü Personel birleşimi. Migration yok. Backend v460. Rollback web v461 / backend v460.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v459-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v459-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v460-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v462-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v458-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v458-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v461-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v460-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -36,7 +36,6 @@
     "/panel/sigorta-portal/faturalar",
     "/panel/asistans-portal",
     "/panel/asistans-portal/dosyalar",
-    "/panel/personel-ozluk",
-    "/panel/personel-yonetimi"
+    "/panel/personel-ozluk"
   ]
 }
