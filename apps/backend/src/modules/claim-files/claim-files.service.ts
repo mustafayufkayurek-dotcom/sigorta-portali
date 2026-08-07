@@ -569,6 +569,16 @@ export class ClaimFilesService {
               adjuster: { select: { id: true, name: true, company: true } },
             },
           },
+          /** Liste «Tedarikçi» sütunu — eksper (assignedAdjuster) değil */
+          assignedSupplier: { select: { id: true, name: true } },
+          supplierAssignments: {
+            orderBy: [{ sortOrder: 'asc' as const }, { assignedAt: 'asc' as const }],
+            take: 5,
+            select: {
+              vendorId: true,
+              vendor: { select: { id: true, name: true } },
+            },
+          },
           statusHistory: {
             take: 1,
             orderBy: { changedAt: 'asc' },
@@ -2502,6 +2512,7 @@ export class ClaimFilesService {
     supplierIdOrIds: string | string[],
     actor: any,
     note?: string,
+    supplierNotes?: Record<string, string>,
   ) {
     const supplierIds = (Array.isArray(supplierIdOrIds) ? supplierIdOrIds : [supplierIdOrIds])
       .map((id) => String(id ?? '').trim())
@@ -2510,6 +2521,13 @@ export class ClaimFilesService {
     if (uniqueIds.length === 0) {
       throw new BadRequestException('En az bir tedarikçi seçiniz.');
     }
+
+    const noteFor = (vendorId: string): string | null => {
+      const per = supplierNotes?.[vendorId];
+      if (typeof per === 'string' && per.trim()) return per.trim();
+      if (typeof note === 'string' && note.trim()) return note.trim();
+      return null;
+    };
 
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
@@ -2532,8 +2550,17 @@ export class ClaimFilesService {
 
     const existingIds = new Set(file.supplierAssignments.map((s) => s.vendorId));
     const toAdd = vendors.filter((v) => !existingIds.has(v.id));
+    const toUpdateNotes = vendors.filter((v) => existingIds.has(v.id) && noteFor(v.id) != null);
     const maxSort = file.supplierAssignments.reduce((m, s) => Math.max(m, s.sortOrder), -1);
     const now = new Date();
+
+    // Mevcut atamada görev tanımı kaydı sessizce düşmesin
+    for (const v of toUpdateNotes) {
+      await this.prisma.claimFileSupplier.updateMany({
+        where: { claimFileId: fileId, vendorId: v.id },
+        data: { note: noteFor(v.id) },
+      });
+    }
 
     if (toAdd.length > 0) {
       await this.prisma.claimFileSupplier.createMany({
@@ -2541,7 +2568,7 @@ export class ClaimFilesService {
           claimFileId: fileId,
           vendorId: v.id,
           assignedAt: now,
-          note: note?.trim() || null,
+          note: noteFor(v.id),
           sortOrder: maxSort + 1 + i,
         })),
         skipDuplicates: true,
@@ -2567,6 +2594,20 @@ export class ClaimFilesService {
         metadata: {
           supplierIds: toAdd.map((v) => v.id),
           supplierNames: toAdd.map((v) => v.name),
+          note,
+          supplierNotes,
+        },
+      });
+    } else if (toUpdateNotes.length > 0) {
+      await this.logActivity({
+        claimFileId: fileId,
+        action: 'SUPPLIER_ASSIGNED',
+        actorId: actor.id,
+        actorRole: actor.role?.code ?? 'unknown',
+        description: 'Tedarikçi görev tanımı güncellendi.',
+        metadata: {
+          supplierIds: toUpdateNotes.map((v) => v.id),
+          supplierNotes,
           note,
         },
       });

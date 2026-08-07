@@ -164,6 +164,7 @@ describe('ClaimFilesService', () => {
       prisma.vendor = { findMany: jest.fn() };
       prisma.claimFileSupplier = {
         createMany: jest.fn().mockResolvedValue({ count: 2 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         delete: jest.fn(),
@@ -260,6 +261,40 @@ describe('ClaimFilesService', () => {
 
       expect(prisma.claimFileSupplier.createMany).not.toHaveBeenCalled();
       expect(result.newlyAssignedCount).toBe(0);
+    });
+
+    it('zaten atanmış tedarikçide görev tanımını günceller', async () => {
+      prisma.claimFile.findUnique
+        .mockResolvedValueOnce({
+          id: 'file-1',
+          fileNo: 'F-1',
+          insuredName: 'Test',
+          lossType: null,
+          assignedSupplier: { id: 'v1', name: 'Mobilyacı A' },
+          propertyAddress: null,
+          claimSubject: null,
+          supplierAssignments: [{ vendorId: 'v1', sortOrder: 0 }],
+        })
+        .mockResolvedValueOnce({
+          id: 'file-1',
+          assignedSupplier: { id: 'v1', name: 'Mobilyacı A' },
+          supplierAssignments: [{ vendor: { id: 'v1', name: 'Mobilyacı A' } }],
+          currentStatus: null,
+          propertyAddress: null,
+        });
+      prisma.vendor.findMany.mockResolvedValue([
+        { id: 'v1', name: 'Mobilyacı A', phone: null, authorizedPhone: null, status: 'active' },
+      ]);
+
+      await service.assignSupplier('file-1', ['v1'], actor, undefined, {
+        v1: 'Mutfak dolabı tamiri',
+      });
+
+      expect(prisma.claimFileSupplier.createMany).not.toHaveBeenCalled();
+      expect(prisma.claimFileSupplier.updateMany).toHaveBeenCalledWith({
+        where: { claimFileId: 'file-1', vendorId: 'v1' },
+        data: { note: 'Mutfak dolabı tamiri' },
+      });
     });
   });
 });

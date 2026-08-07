@@ -288,6 +288,8 @@ export class ClaimOperationCenterService {
         workGroups: link.vendor.vendorWorkGroups.map((item) => item.workGroup),
         serviceAreas: link.vendor.serviceAreas,
         assignedAt: link.assignedAt,
+        /** Görev tanımı / talimat — planlayıcı hydrate için zorunlu */
+        note: link.note ?? null,
       })),
       activity,
       appointmentNotifications,

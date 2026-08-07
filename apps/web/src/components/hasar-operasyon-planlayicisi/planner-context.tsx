@@ -155,6 +155,12 @@ export function PlannerProvider({
       formHydratedForClaim.current = claimId;
       setAssignedSupplierIds(initialClaim.preAssignedSupplierIds);
       setAssignedInspectorId(initialClaim.preAssignedInspectorId);
+      // Görev tanımlarını kayıtlı note’tan geri yükle (Kaydet sonrası boş kalmasın)
+      const taskMap: Record<string, string> = {};
+      for (const s of initialClaim.suppliers) {
+        if (s.note?.trim()) taskMap[s.id] = s.note.trim();
+      }
+      setSupplierTasks(taskMap);
       setApptNote('');
       setEmailSubject(
         `${initialClaim.fileNo} — Onay Talebi Revizyon ${initialClaim.report.revision}`,
@@ -382,11 +388,17 @@ export function PlannerProvider({
             return { ok: true, message: 'Tespitçi ataması kaydedildi.' };
           }
           case 'supplier': {
+            const supplierNotes: Record<string, string> = {};
+            for (const id of assignedSupplierIds) {
+              const t = (supplierTasks[id] || '').trim();
+              if (t) supplierNotes[id] = t;
+            }
             await axios.post(
               `${API}/claim-files/${claimId}/assign-supplier`,
               {
                 supplierIds: assignedSupplierIds,
-                note: Object.values(supplierTasks).filter(Boolean).join(' | ') || undefined,
+                supplierNotes,
+                note: Object.values(supplierNotes).join(' | ') || undefined,
               },
               { headers: authHeader() },
             );

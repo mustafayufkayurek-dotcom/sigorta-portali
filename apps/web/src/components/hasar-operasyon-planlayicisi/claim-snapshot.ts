@@ -218,6 +218,8 @@ type OperationCenterPayload = {
     city?: string | null;
     district?: string | null;
     workGroups?: Array<{ name: string }>;
+    /** Görev tanımı / talimat (claim_file_suppliers.note) */
+    note?: string | null;
   }>;
   activity: Array<{
     id: string;
@@ -304,6 +306,7 @@ export function mapLiveSnapshot(
     rating: '—',
     avail: 'Müsait' as const,
     phone: s.phone ?? undefined,
+    note: typeof s.note === 'string' ? s.note : undefined,
   }));
 
   const inspectors =

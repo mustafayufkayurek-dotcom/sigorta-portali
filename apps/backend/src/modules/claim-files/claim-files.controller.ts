@@ -288,14 +288,26 @@ export class ClaimFilesController {
   @ApiOperation({ summary: 'Dosyaya tedarikçi ata (tekil veya çoklu)' })
   async assignSupplier(
     @Param('id') id: string,
-    @Body() body: { supplierId?: string; supplierIds?: string[]; note?: string },
+    @Body() body: {
+      supplierId?: string;
+      supplierIds?: string[];
+      note?: string;
+      /** vendorId → görev tanımı (mevcut atamalarda da güncellenir) */
+      supplierNotes?: Record<string, string>;
+    },
     @CurrentUser() user: any,
   ) {
     const ids = [
       ...(Array.isArray(body.supplierIds) ? body.supplierIds : []),
       ...(body.supplierId ? [body.supplierId] : []),
     ];
-    const data = await this.claimFilesService.assignSupplier(id, ids, user, body.note);
+    const data = await this.claimFilesService.assignSupplier(
+      id,
+      ids,
+      user,
+      body.note,
+      body.supplierNotes,
+    );
     return { success: true, data };
   }
 

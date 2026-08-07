@@ -19,6 +19,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
@@ -342,14 +343,8 @@ function ClaimFilesPageContent() {
             return resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
           case 'status':
             return claim.currentStatus?.name ?? claim.currentStatus?.code ?? '';
-          case 'supplier': {
-            const name =
-              claim.assignedAdjuster?.adjuster?.company ??
-              (claim.assignedAdjuster
-                ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim()
-                : '');
-            return name || '';
-          }
+          case 'supplier':
+            return resolveClaimSupplierDisplayName(claim) ?? '';
           case 'invoice':
             return deriveInvoiceStatus(claim.invoices ?? []);
           case 'amount':
@@ -628,14 +623,7 @@ function ClaimFilesPageContent() {
               const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
               const rapor = claim.latestRepairReport;
               const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
-              const supplierName =
-                claim.assignedAdjuster?.adjuster?.company
-                ?? (claim.assignedAdjuster
-                  ? (`${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim() || null)
-                  : null)
-                ?? claim.assignedVendor?.name
-                ?? claim.vendor?.name
-                ?? null;
+              const supplierName = resolveClaimSupplierDisplayName(claim);
               const priority = claim.priority ?? 'normal';
               return (
                 <button
@@ -764,8 +752,7 @@ function ClaimFilesPageContent() {
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
                   const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
                   const rapor = claim.latestRepairReport;
-                  const supplierName = claim.assignedAdjuster?.adjuster?.company
-                    ?? (claim.assignedAdjuster ? `${claim.assignedAdjuster.firstName ?? ''} ${claim.assignedAdjuster.lastName ?? ''}`.trim() : null);
+                  const supplierName = resolveClaimSupplierDisplayName(claim);
                   const rowAccent = claim.approval72hExceeded
                     ? 'ops-row-approval-72h'
                     : revCount > 0
