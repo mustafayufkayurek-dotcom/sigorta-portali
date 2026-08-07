@@ -1,0 +1,43 @@
+---
+description: Hasar tedarikçi listesi + planlayıcı görev tanımı round-trip kilidi; Acil bütçe persist. Onaysız bozulmaz.
+alwaysApply: true
+---
+
+# Hasar Tedarikçi + Görev Tanımı Kilidi (kalıcı)
+
+**Kaynak olay (07.08.2026):** Liste «Tedarikçi» sütunu hep «Atanmadı» görünüyordu; Operasyon Planlayıcısı’nda Kaydet sonrası görev tanımları boş kalıyordu. Veri DB’de vardı — okuma/yazma zinciri kırılmıştı.
+
+**Temel cümle:** Hasar’da tedarikçi = `assignedSupplier` / `supplierAssignments` / `claim_file_suppliers`. Eksper (`assignedAdjuster`) tedarikçi değildir.
+
+## Zorunlu sözleşmeler
+
+### 1) Liste API (`claim-files.service.ts` → `findAll`)
+
+- Select’te **mutlaka** `assignedSupplier` ve `supplierAssignments` (vendor adı) bulunur.
+- Bu alanları «performans» gerekçesiyle select’ten çıkarmak **yasak** — önce Mustafa onayı.
+
+### 2) Liste UI (`hasar-dosyalari/page.tsx`)
+
+- «Tedarikçi» sütunu / sıralama / mobil kart: yalnız `resolveClaimSupplierDisplayName(claim)`.
+- `assignedAdjuster` ile tedarikçi adı üretmek **yasak**.
+
+### 3) Operasyon Planlayıcısı — görev tanımı round-trip
+
+| Adım | Zorunlu |
+|------|---------|
+| Operation-center response | Her `assignedSuppliers[]` öğesinde `note` |
+| `mapLiveSnapshot` | `note` → `PlannerSupplier.note` |
+| Hydrate | `supplierTasks` kayıtlı `note`’lardan dolu |
+| Kaydet | `supplierNotes` (vendorId → metin); mevcut atamada da `updateMany` |
+
+`assignSupplier` yalnızca yeni satırlara note yazıp mevcutta sessizce geçmek **yasak**.
+
+### 4) Acil Yardım (aynı sınıf risk)
+
+- Dosya Bütçesi Kaydet → backend maliyet kaydı (yalnız localStorage yetmez).
+- Onay Talebi tutarları `resolveAcilBudgetAmounts` ile birleşik okunur.
+
+## Durdurma
+
+Bu sözleşmeyi bozan PR / refactor / select daraltması → **dur, Mustafa onayı iste**.  
+Regresyon kapısı: `claim-supplier-display*.spec.ts`, `claim-files.service.spec.ts` (assignSupplier + findAll select), `acil-budget-resolve.spec.ts`, `hasar-tedarikci-roundtrip.lock.spec.ts`.

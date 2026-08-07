@@ -56,6 +56,13 @@ describe('ClaimFilesService', () => {
       const findManyCall = prisma.claimFile.findMany.mock.calls[0][0];
       expect(findManyCall.where.customerId).toBeUndefined();
     });
+
+    it('liste select tedarikçi alanlarını içerir (Atanmadı regresyon kilidi)', async () => {
+      await service.findAll({});
+      const findManyCall = prisma.claimFile.findMany.mock.calls[0][0];
+      expect(findManyCall.select.assignedSupplier).toBeDefined();
+      expect(findManyCall.select.supplierAssignments).toBeDefined();
+    });
   });
 
   describe('findAllForCustomer', () => {

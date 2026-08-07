@@ -21,6 +21,7 @@ import {
   type HasarTemplateRecord,
 } from './hasar-templates';
 import { normalizeTrDateValue } from '@/utils/tr-date-input';
+import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
 import {
@@ -156,11 +157,7 @@ export function PlannerProvider({
       setAssignedSupplierIds(initialClaim.preAssignedSupplierIds);
       setAssignedInspectorId(initialClaim.preAssignedInspectorId);
       // Görev tanımlarını kayıtlı note’tan geri yükle (Kaydet sonrası boş kalmasın)
-      const taskMap: Record<string, string> = {};
-      for (const s of initialClaim.suppliers) {
-        if (s.note?.trim()) taskMap[s.id] = s.note.trim();
-      }
-      setSupplierTasks(taskMap);
+      setSupplierTasks(buildSupplierTaskMapFromNotes(initialClaim.suppliers));
       setApptNote('');
       setEmailSubject(
         `${initialClaim.fileNo} — Onay Talebi Revizyon ${initialClaim.report.revision}`,
