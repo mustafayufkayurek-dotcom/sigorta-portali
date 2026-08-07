@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-07",
-  "label": "v467-manuel-karar-header-ux",
-  "description": "Full: Manuel Karar (üç nokta menü) + Dosya Akışı üst bant UX + rapor Onayla/Reddet kaldırma + Saha Keşif Ölçüsü rapor sayfasına taşıma. Migration yok. Rollback web v466 / backend v461.",
+  "label": "v468-reddedildi-status",
+  "description": "Full: Reddedilen rapor Rapor Yazılıyor yerine Reddedildi aşamasında. Migration yok. Rollback web v467 / backend v467.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v467-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v467-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v468-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v468-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v466-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v461-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v467-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v467-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
