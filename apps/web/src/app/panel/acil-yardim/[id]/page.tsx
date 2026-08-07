@@ -51,6 +51,7 @@ import {
   appendFlowHistory,
   appendMessageLog,
   appendPriceChange,
+  approvalBudgetReady,
   buildCustomerGroupWhatsAppText,
   buildInsuredClosureSurveyWhatsAppText,
   buildInsuredInitialWhatsAppText,
@@ -61,6 +62,7 @@ import {
   evaluateCloseFinanceGate,
   isValidVendorPhone,
   readAcilLocalFlow,
+  resolveAcilBudgetAmounts,
   stageTaskTitle,
   validateInsuredWhatsAppGuard,
   validateVendorMessageGuard,
@@ -702,6 +704,7 @@ export default function AcilDosyaDetayPage() {
   const [draftAlisVat, setDraftAlisVat] = useState<VatMode>('haric');
   const [draftSatisVat, setDraftSatisVat] = useState<VatMode>('haric');
   const [priceFormError, setPriceFormError] = useState<string | null>(null);
+  const [priceSaveBusy, setPriceSaveBusy] = useState(false);
   const priceFormRef = useRef<HTMLDivElement | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalChannel, setApprovalChannel] = useState<ApprovalChannel>('whatsapp');
@@ -806,17 +809,18 @@ export default function AcilDosyaDetayPage() {
       setFindingsError(null);
       setCosts(costRes.data);
       setCostSummary(costRes.summary);
-      const gelir = costRes.data.find((c) => c.entryType === 'gelir');
-      const gider = costRes.data.find((c) => c.entryType === 'gider');
-      if (gelir) {
-        const n = Number(gelir.amount);
-        setSatisFiyati((prev) => prev || formatPriceInput(n));
-        if (Number.isFinite(n)) satisRef.current = n;
+      const localFlow = readAcilLocalFlow(id);
+      const resolved = resolveAcilBudgetAmounts({
+        costs: costRes.data,
+        priceChangeLog: localFlow.priceChangeLog,
+      });
+      if (resolved.satis != null) {
+        setSatisFiyati((prev) => prev || formatPriceInput(resolved.satis!));
+        if (satisRef.current == null) satisRef.current = resolved.satis;
       }
-      if (gider) {
-        const n = Number(gider.amount);
-        setAlisFiyati((prev) => prev || formatPriceInput(n));
-        if (Number.isFinite(n)) alisRef.current = n;
+      if (resolved.alis != null) {
+        setAlisFiyati((prev) => prev || formatPriceInput(resolved.alis!));
+        if (alisRef.current == null) alisRef.current = resolved.alis;
       }
     } catch {
       // sessiz
@@ -1017,8 +1021,79 @@ export default function AcilDosyaDetayPage() {
     });
   }
 
+  /** Bütçe tutarlarını backend maliyet kayıtlarına yazar (Onay Talebi / yenileme için kalıcı kaynak). */
+  async function upsertBudgetCostEntries(opts: {
+    alis: number | null;
+    satis: number | null;
+    persistAlis: boolean;
+    persistSatis: boolean;
+    currentCosts?: EmergencyCostEntry[];
+  }): Promise<EmergencyCostEntry[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const list = opts.currentCosts ?? costs;
+    const vendorId = vaka?.assignedVendorId ?? undefined;
+
+    if (opts.persistAlis && opts.alis != null && opts.alis > 0) {
+      const existing = list.find((c) => c.entryType === 'gider');
+      if (existing) {
+        const prev = Number(existing.amount);
+        if (!Number.isFinite(prev) || Math.abs(prev - opts.alis) >= 0.005) {
+          await updateCostEntry(id, existing.id, {
+            amount: opts.alis,
+            vendorId: vendorId ?? existing.vendorId ?? null,
+          });
+        }
+      } else {
+        await addCostEntry(id, {
+          entryType: 'gider',
+          description: 'Tedarikçi Alış Fiyatı',
+          amount: opts.alis,
+          entryDate: today,
+          vendorId,
+        });
+      }
+    }
+
+    if (opts.persistSatis && opts.satis != null && opts.satis > 0) {
+      const existing = list.find((c) => c.entryType === 'gelir');
+      if (existing) {
+        const prev = Number(existing.amount);
+        if (!Number.isFinite(prev) || Math.abs(prev - opts.satis) >= 0.005) {
+          await updateCostEntry(id, existing.id, { amount: opts.satis });
+        }
+      } else {
+        await addCostEntry(id, {
+          entryType: 'gelir',
+          description: 'Meridyen Satış Fiyatı',
+          amount: opts.satis,
+          entryDate: today,
+        });
+      }
+    }
+
+    const refreshed = await getCostEntries(id);
+    setCosts(refreshed.data);
+    setCostSummary(refreshed.summary);
+    return refreshed.data;
+  }
+
+  function hydrateBudgetFields(resolved: { alis: number | null; satis: number | null }, force = false) {
+    if (resolved.alis != null && (force || !(parsePriceInput(alisFiyati) > 0))) {
+      const text = formatPriceInput(resolved.alis);
+      setAlisFiyati(text);
+      setDraftAlis(text);
+      alisRef.current = resolved.alis;
+    }
+    if (resolved.satis != null && (force || !(parsePriceInput(satisFiyati) > 0))) {
+      const text = formatPriceInput(resolved.satis);
+      setSatisFiyati(text);
+      setDraftSatis(text);
+      satisRef.current = resolved.satis;
+    }
+  }
+
   /** @returns true if fiyat kaydı geçerli ve uygulandı (veya değişiklik yok ama form geçerli) */
-  function savePriceForm(): boolean {
+  async function savePriceForm(): Promise<boolean> {
     if (!ensureFindingsBeforeBudget()) {
       return false;
     }
@@ -1050,8 +1125,10 @@ export default function AcilDosyaDetayPage() {
 
     let nextFlow = flow;
     let changed = false;
+    const persistAlis = canSeeOpsCost && hasAlisInput && Number.isFinite(alisN) && alisN > 0;
+    const persistSatis = hasSatisInput && Number.isFinite(satisN) && satisN > 0;
 
-    if (canSeeOpsCost && hasAlisInput && Number.isFinite(alisN) && alisN > 0) {
+    if (persistAlis) {
       setAlisFiyati(formatPriceInput(alisN));
       setAlisVatMode(draftAlisVat);
       const prev = alisRef.current;
@@ -1064,7 +1141,7 @@ export default function AcilDosyaDetayPage() {
       setAlisVatMode(draftAlisVat);
     }
 
-    if (hasSatisInput && Number.isFinite(satisN) && satisN > 0) {
+    if (persistSatis) {
       setSatisFiyati(formatPriceInput(satisN));
       setSatisVatMode(draftSatisVat);
       const prev = satisRef.current;
@@ -1079,21 +1156,39 @@ export default function AcilDosyaDetayPage() {
 
     if (changed) {
       persistFlow(nextFlow);
-      setActionFlash('Fiyat kaydedildi.');
     }
+
+    setPriceSaveBusy(true);
+    try {
+      await upsertBudgetCostEntries({
+        alis: persistAlis ? alisN : null,
+        satis: persistSatis ? satisN : null,
+        persistAlis,
+        persistSatis,
+      });
+      setActionFlash('Fiyat kaydedildi.');
+      setPriceFormError(null);
+      setBudgetEditing(false);
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Fiyat sunucuya kaydedilemedi. Tekrar deneyin.');
+      reportCaughtError(err, msg);
+      setPriceFormError(msg);
+      return false;
+    } finally {
+      setPriceSaveBusy(false);
+    }
+
     if (canSeeOpsCost) {
       const warn = getMarginWarning(
         calcMarginPercent(alisN, draftAlisVat, satisN, draftSatisVat),
       );
       if (warn) flashMarginWarning(warn);
     }
-    setPriceFormError(null);
-    setBudgetEditing(false);
     return true;
   }
 
-  function savePriceFormAndClose() {
-    if (!savePriceForm()) return;
+  async function savePriceFormAndClose() {
+    if (!(await savePriceForm())) return;
     router.push('/panel/acil-yardim');
   }
 
@@ -1324,10 +1419,57 @@ export default function AcilDosyaDetayPage() {
     return false;
   }
 
+  function readLiveBudgetAmounts(): { alis: number | null; satis: number | null } {
+    const fromFormAlis = budgetEditing ? parsePriceInput(draftAlis) : parsePriceInput(alisFiyati);
+    const fromFormSatis = budgetEditing ? parsePriceInput(draftSatis) : parsePriceInput(satisFiyati);
+    const resolved = resolveAcilBudgetAmounts({
+      costs,
+      priceChangeLog: flow.priceChangeLog,
+    });
+    const alis =
+      (Number.isFinite(fromFormAlis) && fromFormAlis > 0 ? fromFormAlis : null)
+      ?? resolved.alis;
+    const satis =
+      (Number.isFinite(fromFormSatis) && fromFormSatis > 0 ? fromFormSatis : null)
+      ?? resolved.satis;
+    return { alis, satis };
+  }
+
   function openApprovalModal() {
     if (!requireAssignedVendor()) return;
-    setShowApprovalModal(true);
     setApprovalMsg(null);
+
+    const live = readLiveBudgetAmounts();
+    hydrateBudgetFields(live, true);
+
+    const ready = approvalBudgetReady({
+      alis: live.alis,
+      satis: live.satis,
+      requireAlis: canSeeOpsCost,
+    });
+    if (!ready.ok) {
+      const msg = ready.missing === 'alis'
+        ? 'Onay talebi için tedarikçi maliyetini girip Kaydet’e basın.'
+        : 'Onay talebi için müşteri satış bedelini girip Kaydet’e basın.';
+      setPriceFormError(msg);
+      setActionFlash(msg);
+      // Taslağı canlı tutardan doldur (setState henüz flush olmadan syncPriceDrafts boş yazmasın)
+      if (live.alis != null) setDraftAlis(formatPriceInput(live.alis));
+      if (live.satis != null) setDraftSatis(formatPriceInput(live.satis));
+      setBudgetEditing(true);
+      requestAnimationFrame(() => {
+        priceFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const preferAlis = canSeeOpsCost
+          ? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="alis-fiyati"]')
+          : null;
+        const el = preferAlis
+          ?? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="satis-fiyati"]');
+        el?.focus();
+      });
+      return;
+    }
+
+    setShowApprovalModal(true);
   }
 
   async function handleApprovalSubmit() {
@@ -1338,40 +1480,34 @@ export default function AcilDosyaDetayPage() {
     setApprovalBusy(true);
     setApprovalMsg(null);
     try {
-      const alis = parsePriceInput(alisFiyati);
-      const satis = parsePriceInput(satisFiyati);
-      if (!alisFiyati || isNaN(alis) || alis <= 0) {
-        setApprovalMsg('Tedarikçi alış fiyatı girin');
-        return;
-      }
-      if (!satisFiyati || isNaN(satis) || satis <= 0) {
-        setApprovalMsg('Meridyen satış fiyatı girin');
+      const live = readLiveBudgetAmounts();
+      const ready = approvalBudgetReady({
+        alis: live.alis,
+        satis: live.satis,
+        requireAlis: canSeeOpsCost,
+      });
+      if (!ready.ok) {
+        const msg = ready.missing === 'alis'
+          ? 'Tedarikçi maliyeti girin ve Kaydet’e basın.'
+          : 'Müşteri satış bedelini girin ve Kaydet’e basın.';
+        setApprovalMsg(msg);
+        setPriceFormError(msg);
         return;
       }
 
-      const hasGider = costs.some((c) => c.entryType === 'gider');
-      const hasGelir = costs.some((c) => c.entryType === 'gelir');
-      const today = new Date().toISOString().slice(0, 10);
+      const alis = live.alis!;
+      const satis = live.satis!;
+      setAlisFiyati(formatPriceInput(alis));
+      setSatisFiyati(formatPriceInput(satis));
+      alisRef.current = alis;
+      satisRef.current = satis;
 
-      if (!hasGider) {
-        await addCostEntry(id, {
-          entryType: 'gider',
-          description: 'Tedarikçi Alış Fiyatı',
-          amount: alis,
-          entryDate: today,
-          vendorId: vaka?.assignedVendorId ?? undefined,
-        });
-      }
-      if (!hasGelir) {
-        await addCostEntry(id, {
-          entryType: 'gelir',
-          description: 'Meridyen Satış Fiyatı',
-          amount: satis,
-          entryDate: today,
-        });
-      }
-      await refreshCosts();
-      await load();
+      await upsertBudgetCostEntries({
+        alis,
+        satis,
+        persistAlis: canSeeOpsCost,
+        persistSatis: true,
+      });
 
       const channelLabel =
         approvalChannel === 'whatsapp' ? 'WhatsApp'
@@ -1390,8 +1526,12 @@ export default function AcilDosyaDetayPage() {
       setApprovalMsg(`Onay talebi oluşturuldu (${channelLabel}).`);
       setShowApprovalModal(false);
       setActionFlash(`Onay talebi: ${channelLabel}`);
-    } catch (err: any) {
-      setApprovalMsg(err.message ?? 'Onay talebi oluşturulamadı');
+      setPriceFormError(null);
+      setBudgetEditing(false);
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, 'Onay talebi oluşturulamadı');
+      reportCaughtError(err, msg);
+      setApprovalMsg(msg);
     } finally {
       setApprovalBusy(false);
     }
@@ -1806,6 +1946,12 @@ export default function AcilDosyaDetayPage() {
   const missingCloseLabels = closeGate.missingLabels;
 
   const approvalDone = flow.approvalRequested || flow.customerApproved;
+  const liveBudgetForOps = readLiveBudgetAmounts();
+  const budgetReadyForApproval = approvalBudgetReady({
+    alis: liveBudgetForOps.alis,
+    satis: liveBudgetForOps.satis,
+    requireAlis: canSeeOpsCost,
+  }).ok;
   const workStartDone = flow.workStartPrepared;
   const serviceDone = flow.serviceCompleted || fileAlreadyClosed;
   const initialNotifyDone = requiredOps.insuredInitialNotify;
@@ -2208,7 +2354,7 @@ export default function AcilDosyaDetayPage() {
                 icon={Send}
                 label="Onay Talebi"
                 onClick={openApprovalModal}
-                disabled={!vaka.assignedVendorId || approvalBusy}
+                disabled={!vaka.assignedVendorId || approvalBusy || priceSaveBusy}
                 busy={approvalBusy}
                 variant="primary"
                 visualState={opsVisual.approval}
@@ -2217,7 +2363,9 @@ export default function AcilDosyaDetayPage() {
                     ? 'Onay talebi oluşturuldu.'
                     : !vaka.assignedVendorId
                       ? 'Önce tedarikçi atayın.'
-                      : 'Asistans onay talebi oluştur'
+                      : !budgetReadyForApproval
+                        ? 'Önce dosya bütçesini (alış ve satış) kaydedin.'
+                        : 'Asistans onay talebi oluştur'
                 }
                 testId="hizli-onay-talebi"
               />
@@ -2618,19 +2766,21 @@ export default function AcilDosyaDetayPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => { savePriceForm(); }}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white h-9 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  disabled={priceSaveBusy}
+                  onClick={() => { void savePriceForm(); }}
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white h-9 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                   data-testid="fiyat-kaydet"
                 >
-                  Kaydet
+                  {priceSaveBusy ? 'Kaydediliyor…' : 'Kaydet'}
                 </button>
                 <button
                   type="button"
-                  onClick={savePriceFormAndClose}
-                  className="inline-flex items-center justify-center rounded-lg bg-brand-600 h-9 px-3 text-xs font-semibold text-white hover:bg-blue-700"
+                  disabled={priceSaveBusy}
+                  onClick={() => { void savePriceFormAndClose(); }}
+                  className="inline-flex items-center justify-center rounded-lg bg-brand-600 h-9 px-3 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
                   data-testid="fiyat-kaydet-ve-kapat"
                 >
-                  Kaydet Ve Kapat
+                  {priceSaveBusy ? 'Kaydediliyor…' : 'Kaydet Ve Kapat'}
                 </button>
               </div>
             ) : null}
@@ -2661,8 +2811,10 @@ export default function AcilDosyaDetayPage() {
                 Tedarikçi satış bedelini görmez. Müşteri tedarikçi maliyetini görmez.
               </p>
             )}
-            {approvalMsg && (
-              <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2 py-1">{approvalMsg}</p>
+            {approvalMsg && !showApprovalModal && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2 py-1" data-testid="onay-talebi-sonuc">
+                {approvalMsg}
+              </p>
             )}
           </div>
 <div
@@ -3396,8 +3548,20 @@ export default function AcilDosyaDetayPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
             <h3 className="text-base font-semibold text-slate-900">Onay Talebi Oluştur</h3>
             <p className="text-xs text-slate-500">
-              Satış fiyatı ({satisFiyati || '—'} TL) seçilen kanala iletilir. Alış fiyatı gönderilmez.
+              Satış fiyatı (
+              {satisFiyati
+                || (liveBudgetForOps.satis != null ? formatPriceInput(liveBudgetForOps.satis) : '—')}
+              {' '}TL) seçilen kanala iletilir. Alış fiyatı gönderilmez.
             </p>
+            {approvalMsg && (
+              <p
+                className="text-xs text-status-danger bg-rose-50 border border-rose-100 rounded-lg px-2 py-1.5"
+                data-testid="onay-talebi-modal-hata"
+                role="alert"
+              >
+                {approvalMsg}
+              </p>
+            )}
             <fieldset className="space-y-2">
               {([
                 { id: 'whatsapp' as const, label: 'WhatsApp' },
@@ -3424,7 +3588,7 @@ export default function AcilDosyaDetayPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setShowApprovalModal(false)}
+                onClick={() => { setShowApprovalModal(false); setApprovalMsg(null); }}
                 className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
               >
                 İptal
@@ -3432,8 +3596,8 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 disabled={approvalBusy}
-                onClick={handleApprovalSubmit}
-                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-50"
+                onClick={() => { void handleApprovalSubmit(); }}
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-50 hover:bg-brand-700"
                 data-testid="onay-talebi-gonder"
               >
                 {approvalBusy ? 'Gönderiliyor...' : 'Oluştur'}

@@ -210,6 +210,13 @@ export function appendPriceChange(
   };
 }
 
+export {
+  latestPriceFromChangeLog,
+  amountFromCostEntries,
+  resolveAcilBudgetAmounts,
+  approvalBudgetReady,
+} from '../acil-budget-resolve';
+
 /** Tedarikçi telefonu — TR / uluslararası basit doğrulama. */
 export function isValidVendorPhone(phone: string | null | undefined): boolean {
   const raw = (phone || '').trim();
