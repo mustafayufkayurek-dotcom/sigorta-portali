@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-07",
-  "label": "v468-reddedildi-status",
-  "description": "Full: Reddedilen rapor Rapor Yazılıyor yerine Reddedildi aşamasında. Migration yok. Rollback web v467 / backend v467.",
+  "label": "v470-hasar-tedarikci-gorev",
+  "description": "Full: Hasar liste tedarikçi sütunu + planlayıcı görev tanımı round-trip. Migration yok. Rollback web v469 / backend v468.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v468-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v468-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v470-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v470-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v467-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v467-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v469-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v468-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
