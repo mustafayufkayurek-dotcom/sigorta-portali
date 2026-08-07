@@ -16,8 +16,10 @@ import {
   Send,
   Wallet,
 } from 'lucide-react';
+import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
+import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
 import {
-  getCase, updateCase, updateCaseStatus, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
+  getCase, updateCase, updateCaseStatus, recordEmergencyManualDecision, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
   getEmergencyVendors, createVendorQuick, getRecommendedVendors,
   previewClosureEmail, sendClosureEmail,
   EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorOption, VendorRecommendation,
@@ -39,6 +41,10 @@ import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { toWhatsAppLink } from '@/utils/date-helpers';
+import {
+  isWhatsAppMarkSentBypassActive,
+  WHATSAPP_MARK_SENT_BYPASS_NOTE,
+} from '@/utils/whatsapp-sent-confirm-gate';
 import {
   ACIL_STAGES,
   AcilLocalFlow,
@@ -1249,6 +1255,30 @@ export default function AcilDosyaDetayPage() {
     );
   }
 
+  /** 09.08.2026 öncesi: geriye dönük giriş için WhatsApp açmadan gönderildi işareti */
+  function markInsuredWhatsAppSentWithoutOpen() {
+    if (!vaka || !insuredMsgPreview || !isWhatsAppMarkSentBypassActive()) return;
+    const logKind = insuredMsgPreview.kind === 'initial' ? 'insured_initial' : 'insured_closure';
+    let next = appendMessageLog(
+      flow,
+      logKind,
+      `[Geçici işaret — WhatsApp açılmadan] ${insuredMsgPreview.text}`,
+    );
+    if (insuredMsgPreview.kind === 'initial') {
+      next = { ...next, insuredInitialWhatsAppSent: true };
+    } else {
+      next = { ...next, insuredClosureSurveyWhatsAppSent: true };
+    }
+    persistFlow(next);
+    setInsuredMsgPreview(null);
+    setInsuredMsgErrors([]);
+    setActionFlash(
+      insuredMsgPreview.kind === 'initial'
+        ? 'İlk bilgilendirme gönderildi olarak işaretlendi (geçici muafiyet).'
+        : 'Kapanış / anket gönderildi olarak işaretlendi (geçici muafiyet).',
+    );
+  }
+
   /** Eski tek tık — guard + önizleme akışına yönlendirir */
   function handleWhatsAppSend() {
     requestVendorWhatsAppSend();
@@ -1839,8 +1869,46 @@ export default function AcilDosyaDetayPage() {
       </div>
 
       {/* 1. Dosya Bilgileri — yalnızca üst bilgi */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 sm:p-3" data-testid="dosya-basligi">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="relative bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 sm:p-3" data-testid="dosya-basligi">
+        <div className="absolute right-2.5 top-2.5 z-20 sm:right-3 sm:top-3">
+          <ClaimFileHeaderActionsMenu
+            fileNo={vaka.fileNo || vaka.caseNo}
+            showManualDecision
+            onManualDecision={async (action: ManualDecisionAction, reason: string) => {
+              try {
+                const res = await recordEmergencyManualDecision(id, { action, reason });
+                const hint = res?.data?.flowHint;
+                if (hint === 'customerApproved') {
+                  persistFlow(appendFlowHistory(
+                    { ...flow, customerApproved: true, approvalDetected: false, approvalRequested: true },
+                    `Manuel onay: ${reason}`,
+                  ));
+                } else if (hint === 'approvalRejected') {
+                  persistFlow(appendFlowHistory(
+                    { ...flow, customerApproved: false, approvalDetected: false, approvalRequested: true },
+                    `Manuel red: ${reason}`,
+                  ));
+                } else {
+                  persistFlow(appendFlowHistory(
+                    { ...flow, approvalDetected: false, approvalRequested: true },
+                    `Manuel revizyon: ${reason}`,
+                  ));
+                }
+                setActionFlash(
+                  action === 'approve'
+                    ? 'Manuel onay kaydedildi. Yönetici ve müşteri bilgilendirildi.'
+                    : action === 'reject'
+                      ? 'Manuel red kaydedildi. Yönetici ve müşteri bilgilendirildi.'
+                      : 'Manuel revizyon kaydedildi. Yönetici ve müşteri bilgilendirildi.',
+                );
+              } catch (err: any) {
+                setActionFlash(getApiErrorMessage(err, 'Manuel karar kaydedilemedi'));
+                throw err;
+              }
+            }}
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 pr-10">
           <div className="min-w-0">
             <p className="text-xs text-slate-400">Müşteri</p>
             <p className="mt-0.5 text-sm font-semibold text-slate-900 truncate" title={customerLabel(vaka)}>
@@ -3555,25 +3623,42 @@ export default function AcilDosyaDetayPage() {
             <p className="text-xs text-slate-500">
               Onayladıktan sonra WhatsApp açılır. Otomatik gönderim yoktur.
             </p>
+            {isWhatsAppMarkSentBypassActive() ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {WHATSAPP_MARK_SENT_BYPASS_NOTE}
+              </p>
+            ) : null}
             <pre className="text-xs text-slate-700 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-xl p-3" data-testid="sigortali-mesaj-govde">
               {insuredMsgPreview.text}
             </pre>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setInsuredMsgPreview(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
-              >
-                İptal
-              </button>
-              <button
-                type="button"
-                onClick={confirmInsuredWhatsAppSend}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold"
-                data-testid="sigortali-mesaj-onayla"
-              >
-                Onayla Ve Gönder
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInsuredMsgPreview(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmInsuredWhatsAppSend}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold"
+                  data-testid="sigortali-mesaj-onayla"
+                >
+                  Onayla Ve Gönder
+                </button>
+              </div>
+              {isWhatsAppMarkSentBypassActive() ? (
+                <button
+                  type="button"
+                  onClick={markInsuredWhatsAppSentWithoutOpen}
+                  className="w-full py-2.5 rounded-xl border border-brand-600 bg-brand-50 text-sm font-semibold text-brand-700"
+                  data-testid="sigortali-mesaj-gonderildi-isaretle"
+                >
+                  Gönderildi Olarak İşaretle (WhatsApp Açmadan)
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

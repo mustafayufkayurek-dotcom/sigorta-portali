@@ -30,7 +30,13 @@ import {
 } from 'lucide-react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
+import {
+  isWhatsAppMarkSentBypassActive,
+  isWhatsAppOpenRequiredBeforeMarkSent,
+  WHATSAPP_MARK_SENT_BYPASS_NOTE,
+} from '@/utils/whatsapp-sent-confirm-gate';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
+import { API, authAxios } from '@/utils/api';
 import type { StepId } from './types';
 import { usePlanner } from './planner-context';
 import {
@@ -60,11 +66,13 @@ function WhatsAppOpenButton({
   message,
   label = "WhatsApp'ta Aç Ve Gönder",
   className = '',
+  onOpened,
 }: {
   phone: string;
   message?: string;
   label?: string;
   className?: string;
+  onOpened?: () => void;
 }) {
   const url = toWhatsAppLink(phone, message);
   if (!url) {
@@ -82,6 +90,7 @@ function WhatsAppOpenButton({
       onClick={(e) => {
         e.preventDefault();
         openWhatsAppChat(phone, message);
+        onOpened?.();
       }}
       className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white hover:bg-emerald-700 ${className}`}
     >
@@ -166,12 +175,14 @@ function Btn({
   onClick,
   disabled,
   className = '',
+  title,
 }: {
   children: ReactNode;
   tone?: 'primary' | 'secondary' | 'danger' | 'ghost';
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  title?: string;
 }) {
   const styles =
     tone === 'primary'
@@ -186,6 +197,7 @@ function Btn({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      title={title}
       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
@@ -262,11 +274,14 @@ export function StepInsuredAppointment() {
     templatesFromSettings,
   } = usePlanner();
   const [sent, setSent] = useState(false);
+  const [waOpenedLocal, setWaOpenedLocal] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const apptDateWrapRef = useRef<HTMLDivElement>(null);
   const apptTimeRef = useRef<HTMLInputElement>(null);
   const waText = buildInsuredApptMessage();
   const apptEditable = canEdit;
+  const bypassActive = isWhatsAppMarkSentBypassActive();
+  const canMarkSentLocal = bypassActive || waOpenedLocal || sent;
 
   const focusAppointmentEditors = () => {
     const dateInput = apptDateWrapRef.current?.querySelector('input');
@@ -425,12 +440,25 @@ export function StepInsuredAppointment() {
           Şablon: Ayarlar › Mesaj Şablonları › Hasar
           {templatesFromSettings ? ' (canlı şablon)' : ' (varsayılan — oturum/API yok)'}
         </p>
+        {bypassActive ? (
+          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] text-amber-900">
+            {WHATSAPP_MARK_SENT_BYPASS_NOTE}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-1.5">
           <Btn tone="secondary" onClick={() => setPreviewOpen((v) => !v)}>
             Mesajı Önizle
           </Btn>
-          <WhatsAppOpenButton phone={claim.insuredPhone} message={waText} />
-          <Btn tone="secondary" onClick={() => setSent(true)} disabled={sent}>
+          <WhatsAppOpenButton
+            phone={claim.insuredPhone}
+            message={waText}
+            onOpened={() => setWaOpenedLocal(true)}
+          />
+          <Btn
+            tone="secondary"
+            onClick={() => setSent(true)}
+            disabled={!canMarkSentLocal || sent}
+          >
             <CheckCircle2 className="h-3 w-3" />
             {sent ? 'Gönderildi' : 'Gönderildi Olarak İşaretle'}
           </Btn>
@@ -851,6 +879,10 @@ export function StepWhatsApp() {
     setWaTemplateType: setTemplateType,
     waBody: body,
     setWaBody: setBody,
+    waOpened,
+    setWaOpened,
+    waMarkedSent,
+    setWaMarkedSent,
     templates,
     templatesFromSettings,
     templatesLoading,
@@ -858,7 +890,9 @@ export function StepWhatsApp() {
     assignedInspectorId,
     assignedSupplierIds,
   } = usePlanner();
-  const [marked, setMarked] = useState(false);
+  const bypassActive = isWhatsAppMarkSentBypassActive();
+  const openRequired = isWhatsAppOpenRequiredBeforeMarkSent();
+  const canMarkSent = bypassActive || waOpened || waMarkedSent;
 
   const assignedInspector = claim.inspectors.find((i) => i.id === assignedInspectorId);
   const assignedSupplier = claim.suppliers.find((s) => assignedSupplierIds.includes(s.id));
@@ -959,18 +993,48 @@ export function StepWhatsApp() {
             <TextArea value={body} onChange={setBody} rows={4} />
           </Field>
         </div>
+        {bypassActive ? (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] text-amber-900">
+            {WHATSAPP_MARK_SENT_BYPASS_NOTE}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <WhatsAppOpenButton phone={phone} message={body} />
-          <Btn tone="secondary" onClick={() => setMarked(true)}>
+          <WhatsAppOpenButton
+            phone={phone}
+            message={body}
+            onOpened={() => setWaOpened(true)}
+          />
+          <Btn
+            tone={waMarkedSent ? 'primary' : 'secondary'}
+            disabled={!canMarkSent || waMarkedSent}
+            onClick={() => setWaMarkedSent(true)}
+            title={
+              openRequired && !waOpened && !waMarkedSent
+                ? 'Önce WhatsApp’ta Aç Ve Gönder’e tıklayın'
+                : undefined
+            }
+          >
             <CheckCircle2 className="h-3 w-3" /> Gönderildi
           </Btn>
-          <Btn tone="secondary">
+          <Btn
+            tone="secondary"
+            disabled={!waMarkedSent}
+            onClick={() => {
+              setWaMarkedSent(false);
+              setWaOpened(false);
+            }}
+          >
             <RefreshCcw className="h-3 w-3" /> Tekrar Gönder
           </Btn>
         </div>
-        {marked ? (
+        {waMarkedSent ? (
           <p className="mt-2 text-[10px] text-emerald-700">
-            Lokal işaret kaydı · contact-events API bağlanınca kalıcı olur.
+            Gönderildi işaretlendi. Kaydet ile kalıcı kayıt oluşur.
+            {!waOpened && bypassActive ? ' (WhatsApp açılmadan — geçici muafiyet)' : ''}
+          </p>
+        ) : openRequired && !waOpened ? (
+          <p className="mt-2 text-[10px] text-slate-500">
+            «Gönderildi» için önce WhatsApp’ta Aç Ve Gönder’e tıklayın.
           </p>
         ) : null}
       </Card>
@@ -998,11 +1062,23 @@ export function StepDigitalApproval() {
     claim,
     digitalFormType: formType,
     setDigitalFormType: setFormType,
+    digitalApprovalStatus: status,
+    setDigitalApprovalStatus: setStatus,
+    digitalSentAt: sentAt,
+    setDigitalSentAt: setSentAt,
+    digitalApprovedAt: approvedAt,
+    setDigitalApprovedAt: setApprovedAt,
   } = usePlanner();
-  const [status, setStatus] = useState<'Bekliyor' | 'Gönderildi' | 'Onaylandı'>('Bekliyor');
-  const [sentAt, setSentAt] = useState<string | null>(null);
-  const [approvedAt, setApprovedAt] = useState<string | null>(null);
   const link = `https://onay.meridyen.local/${claim.fileNo}`;
+  const nowLabel = () => {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}.${mm}.${yyyy} ${hh}:${mi}`;
+  };
 
   return (
     <div className="mt-3 space-y-3">
@@ -1031,7 +1107,7 @@ export function StepDigitalApproval() {
             tone="primary"
             onClick={() => {
               setStatus('Gönderildi');
-              setSentAt('19.07.2026 16:05');
+              setSentAt(nowLabel());
             }}
           >
             <Send className="h-3 w-3" /> Gönder
@@ -1040,7 +1116,7 @@ export function StepDigitalApproval() {
             tone="secondary"
             onClick={() => {
               setStatus('Gönderildi');
-              setSentAt('19.07.2026 16:20');
+              setSentAt(nowLabel());
             }}
           >
             Yeniden Gönder
@@ -1068,15 +1144,17 @@ export function StepDigitalApproval() {
           <Btn
             tone="secondary"
             onClick={() => {
+              const t = nowLabel();
               setStatus('Onaylandı');
-              setApprovedAt('19.07.2026 17:00');
+              if (!sentAt) setSentAt(t);
+              setApprovedAt(t);
             }}
           >
-            Onaylandı Olarak İşaretle (Lokal)
+            Onaylandı Olarak İşaretle
           </Btn>
         </div>
         <div className="mt-2">
-          <ApiNote text="Dijital onay gönderim/sonuç API’si bu lokal önizlemede bağlı değil; kalıcı kayıt için backend gerekir." />
+          <ApiNote text="Durumu güncelleyip Kaydet’e basın; kayıt operasyon geçmişine yazılır ve adım tamamlanır." />
         </div>
       </Card>
     </div>
@@ -1180,11 +1258,42 @@ export function StepReportWriting() {
         <ul className="space-y-1 text-xs text-slate-700">
           <li>Eksik Evraklar: <span className="font-semibold">{r.missingDocs}</span></li>
           <li>Fotoğraf Sayısı: <span className="font-semibold">{r.photoCount}</span></li>
-          <li>Tespit Bulguları: Ön izleme notları hazır</li>
-          <li>Rapor Notları: Yazım devam ediyor</li>
+          <li>
+            Tespit Bulguları:{' '}
+            {r.readyChecks.reportComplete ? 'Rapor hazır' : 'Yazım devam ediyor'}
+          </li>
+          <li>
+            Rapor Notları:{' '}
+            {r.readyChecks.reportComplete ? 'Tamamlandı' : 'Yazım devam ediyor'}
+          </li>
         </ul>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <Btn tone="secondary">Rapor Önizleme</Btn>
+          <Btn
+            tone="secondary"
+            onClick={() => {
+              const reportId = claim.report.id;
+              if (!reportId) {
+                if (onGoToReports) onGoToReports();
+                return;
+              }
+              void (async () => {
+                try {
+                  const res = await authAxios<Blob>({
+                    method: 'GET',
+                    url: `${API}/repair-reports/${reportId}/pdf?view=external`,
+                    responseType: 'blob',
+                  });
+                  const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                } catch {
+                  if (onGoToReports) onGoToReports();
+                }
+              })();
+            }}
+          >
+            Rapor Önizleme
+          </Btn>
           <Btn
             tone="primary"
             onClick={() => {

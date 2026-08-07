@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dosya Ataması — Enterprise Mail Önizleme</title>
+  <style>
+    body { margin: 0; padding: 24px 16px 48px; background: #E2E8F0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .meta { max-width: 640px; margin: 0 auto 16px; color: #475569; font-size: 13px; line-height: 1.5; }
+    .meta strong { color: #0F172A; }
+    .compare { max-width: 640px; margin: 0 auto 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .chip { background: #fff; border: 1px solid #CBD5E1; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #334155; }
+    .chip b { display: block; color: #0F172A; margin-bottom: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <strong>Öneri — Dosya Ataması e-postası (enterprise)</strong><br />
+    Hoş geldin mailindeki onaylı marka diline hizalı: logo, lacivert accent, net CTA, açık zemin (koyu tema istemcilerinde de kart okunaklı kalır).
+  </div>
+  <div class="compare">
+    <div class="chip"><b>Mevcut</b>Metin başlık, zayıf tablo, logo yok, marka hissi düşük.</div>
+    <div class="chip"><b>Öneri</b>Logo + lacivert şerit, dosya rozeti, kurumsal tablo, güçlü CTA.</div>
+  </div>
+
+  <!-- ===== PROPOSED EMAIL (table-based, client-safe) ===== -->
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#E2E8F0;">
+    <tr>
+      <td align="center" style="padding:8px 0 32px;">
+        <table width="640" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;max-width:640px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,.06);">
+
+          <!-- Logo bar -->
+          <tr>
+            <td style="padding:14px 24px;background:#ffffff;border-bottom:2px solid #1E5AA8;">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748B;">Operasyon Bildirimi</div>
+                  </td>
+                  <td align="right" style="vertical-align:middle;">
+                    <img
+                      src="./meridyen-logo-original.png"
+                      alt="Meridyen Asistans"
+                      width="120"
+                      style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"
+                    />
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Hero -->
+          <tr>
+            <td style="padding:22px 24px 20px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td>
+                    <div style="display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#FFFFFF;font-size:11px;font-weight:700;letter-spacing:.04em;padding:5px 10px;border-radius:999px;margin-bottom:12px;">
+                      Yeni Atama
+                    </div>
+                    <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">Dosya Ataması</h1>
+                    <p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,.88);">
+                      <strong style="color:#ffffff;">20260110256923</strong> numaralı dosya size atandı.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:26px 24px 8px;background:#ffffff;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#0F172A;font-weight:700;">
+                Sayın M. Hakan Yufkayürek,
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;line-height:1.65;color:#64748B;">
+                Size atanan dosyayı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.
+              </p>
+
+              <!-- Detail card -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 22px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;background:#ffffff;">
+                <tr>
+                  <td colspan="2" style="padding:14px 16px;background:#F8FAFC;font-size:13px;font-weight:800;color:#123A63;border-bottom:1px solid #E2E8F0;">
+                    Dosya Özeti
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Dosya No</td>
+                  <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;font-weight:800;color:#0F172A;font-variant-numeric:tabular-nums;">20260110256923</td>
+                </tr>
+                <tr>
+                  <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Müşteri</td>
+                  <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#F8FAFC;">M-Nihal Sigorta Ekspertiz</td>
+                </tr>
+                <tr>
+                  <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Atanan Personel</td>
+                  <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#ffffff;">M. Hakan Yufkayürek</td>
+                </tr>
+              </table>
+
+              <!-- Accent note -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 22px;background:#EFF6FF;border:1px solid #BFDBFE;border-left:4px solid #1E5AA8;border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <div style="font-size:12px;font-weight:800;color:#1E5AA8;margin-bottom:4px;">Sonraki Adım</div>
+                    <div style="font-size:13px;line-height:1.55;color:#123A63;">Dosyayı açarak güncel durumu, belgeleri ve operasyon notlarını kontrol edin.</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 10px;">
+                <tr>
+                  <td align="center" style="padding:0 0 8px;">
+                    <a href="https://app.meridyen-tr.com/panel/hasar-dosyalari" style="display:inline-block;background:#1E5AA8;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:14px;font-weight:800;box-shadow:0 4px 12px rgba(30,90,168,.28);">
+                      Dosyayı Görüntüle
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-size:12px;color:#64748B;padding-bottom:8px;">
+                    Buton çalışmazsa panele giriş yapıp dosya numarasını arayın.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:18px 24px 22px;background:#F8FAFC;border-top:1px solid #E2E8F0;">
+              <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#123A63;text-align:center;">Meridyen Asistans</p>
+              <p style="margin:0;font-size:11px;line-height:1.5;color:#94A3B8;text-align:center;">
+                Bu e-posta otomatik olarak gönderilmiştir.<br />
+                Safran Birleşik Hizmetler Alt Kuruluşudur.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

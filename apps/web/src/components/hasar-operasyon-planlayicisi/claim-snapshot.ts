@@ -6,6 +6,12 @@
 import type { StepId, StepStatus } from './types';
 import { PLANNER_STEPS } from './types';
 import { PREVIEW } from './preview-data';
+import {
+  computePlannerStepStatuses,
+  formatLiveReportFinance,
+  hasDigitalApprovalApproved,
+  hasWhatsappSent as activityHasWhatsappSent,
+} from './planner-live-rules';
 
 export type PlannerMode = 'preview' | 'live';
 
@@ -72,6 +78,7 @@ export type PlannerClaimSnapshot = {
   }>;
   notes: Array<{ who: string; when: string; text: string }>;
   report: {
+    id: string | null;
     number: string;
     revision: string | number;
     status: string;
@@ -135,6 +142,17 @@ function initials(name: string): string {
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+}
+
+function reportStatusLabel(status: string | null | undefined): string {
+  const s = String(status ?? '').toLowerCase();
+  if (!s) return 'Taslak';
+  if (s === 'draft') return 'Taslak';
+  if (s === 'submitted' || s === 'sent_for_approval') return 'Onaya Gönderildi';
+  if (s === 'approved' || s === 'externally_approved') return 'Onaylandı';
+  if (s === 'rejected' || s === 'externally_rejected') return 'Reddedildi';
+  if (s.includes('writing') || s === 'in_progress') return 'Yazım Aşamasında';
+  return status ?? 'Taslak';
 }
 
 /** Lokal önizleme anlık görüntüsü */
@@ -224,6 +242,7 @@ type OperationCenterPayload = {
     action: string;
     description: string;
     createdAt: string;
+    metadata?: Record<string, unknown> | null;
     actor?: { firstName: string; lastName: string } | null;
   }>;
 };
@@ -248,9 +267,15 @@ type ClaimFileLite = {
   assignedFieldUserId?: string | null;
   assignedInspectorVendorId?: string | null;
   latestRepairReport?: {
+    id?: string | null;
     reportNo?: string | null;
     status?: string | null;
     revisionNo?: number | null;
+    totalSalesAmount?: number | null;
+    totalSupplierCost?: number | null;
+    grossProfit?: number | null;
+    grossMarginPct?: number | null;
+    updatedAt?: string | null;
     createdBy?: { firstName?: string; lastName?: string } | null;
   } | null;
   createdAt?: string;
@@ -283,16 +308,34 @@ export function mapLiveSnapshot(
   );
   const hasSupplier = op.assignedSuppliers.length > 0;
 
-  const stepStatuses: Record<StepId, StepStatus> = {
-    insured_appointment: hasAppt ? 'done' : 'waiting',
-    inspector: hasInspector ? 'done' : hasAppt ? 'waiting' : 'future',
-    supplier: hasSupplier ? 'done' : hasInspector ? 'waiting' : 'future',
-    whatsapp: 'future',
-    digital_approval: 'future',
-    report_writing: 'future',
-    sent_for_approval: 'future',
-    approved: 'future',
-  };
+  const waSentActivities = op.activity.filter((a) => {
+    if (a.action !== 'WHATSAPP_STATUS_RECORDED') return false;
+    const meta = (a.metadata ?? {}) as Record<string, unknown>;
+    return meta.status === 'sent' || String(a.description ?? '').includes('sent');
+  });
+  const hasWhatsappSent = activityHasWhatsappSent(op.activity);
+  const digitalApproved = hasDigitalApprovalApproved(op.activity);
+  const digitalActivities = op.activity.filter((a) => {
+    const meta = (a.metadata ?? {}) as Record<string, unknown>;
+    return meta.kind === 'digital_approval';
+  });
+  const digitalSent = digitalActivities.some((a) => {
+    const meta = (a.metadata ?? {}) as Record<string, unknown>;
+    return meta.status === 'sent' || meta.status === 'approved';
+  });
+
+  const rr = claimFile?.latestRepairReport;
+  const stepStatuses = computePlannerStepStatuses({
+    hasAppt,
+    hasInspector,
+    hasSupplier,
+    activity: op.activity,
+    report: rr,
+  }) as Record<StepId, StepStatus>;
+  const reportWritingDone = stepStatuses.report_writing === 'done';
+  const reportSentForApproval = stepStatuses.sent_for_approval === 'done';
+  const reportApproved = stepStatuses.approved === 'done';
+  const hasReport = Boolean(rr?.id || rr?.reportNo);
 
   const completedCount = Object.values(stepStatuses).filter((s) => s === 'done').length;
 
@@ -349,20 +392,31 @@ export function mapLiveSnapshot(
         ? suppliersFromAssigned
         : [];
 
-  const rr = claimFile?.latestRepairReport;
+  const finance = formatLiveReportFinance(rr);
+  const hasFinance = finance.total !== '—';
   const report = {
-    ...PREVIEW.report,
-    number: rr?.reportNo ?? PREVIEW.report.number,
-    status: rr?.status ?? 'Taslak',
-    revision: rr?.revisionNo != null ? `R${rr.revisionNo}` : PREVIEW.report.revision,
+    id: rr?.id ?? null,
+    number: rr?.reportNo ?? '—',
+    status: reportStatusLabel(rr?.status),
+    revision: rr?.revisionNo != null ? `R${rr.revisionNo}` : 'R0',
     owner: rr?.createdBy
       ? `${rr.createdBy.firstName ?? ''} ${rr.createdBy.lastName ?? ''}`.trim()
       : ownerName,
+    updatedAt: rr?.updatedAt ? fmtDateTime(rr.updatedAt).at : '—',
+    total: finance.total,
+    supplierCost: finance.supplierCost,
+    actualExpense: '—',
+    expectedIncome: finance.expectedIncome,
+    profit: finance.profit,
+    margin: finance.margin,
+    vatNote: 'Kdv Hariç',
+    missingDocs: 0,
+    photoCount: 0,
     readyChecks: {
-      reportComplete: false,
+      reportComplete: reportWritingDone || reportApproved,
       docsComplete: false,
       photosComplete: false,
-      financeReady: false,
+      financeReady: hasFinance,
       revisionOk: true,
     },
   };
@@ -387,32 +441,40 @@ export function mapLiveSnapshot(
       step: 'supplier',
     },
     {
-      state: 'future',
-      text: 'WhatsApp bilgilendirme bekleniyor',
-      when: null,
+      state: hasWhatsappSent ? 'done' : hasSupplier ? 'waiting' : 'future',
+      text: hasWhatsappSent
+        ? 'WhatsApp bilgilendirme tamamlandı'
+        : 'WhatsApp bilgilendirme bekleniyor',
+      when: hasWhatsappSent ? fmtDateTime(waSentActivities[0]?.createdAt).at : null,
       step: 'whatsapp',
     },
     {
-      state: 'future',
-      text: 'Dijital onay bekleniyor',
-      when: null,
+      state: digitalApproved ? 'done' : hasWhatsappSent ? 'waiting' : 'future',
+      text: digitalApproved
+        ? 'Dijital onay tamamlandı'
+        : digitalSent
+          ? 'Dijital onay gönderildi'
+          : 'Dijital onay bekleniyor',
+      when: digitalApproved
+        ? fmtDateTime(digitalActivities.find((a) => (a.metadata as any)?.status === 'approved')?.createdAt).at
+        : null,
       step: 'digital_approval',
     },
     {
-      state: 'future',
-      text: 'Rapor yazım aşamasında',
+      state: reportWritingDone ? 'done' : digitalApproved || hasReport ? 'waiting' : 'future',
+      text: reportWritingDone ? 'Rapor yazımı tamamlandı' : 'Rapor yazım aşamasında',
       when: null,
       step: 'report_writing',
     },
     {
-      state: 'future',
-      text: 'Onaya gönderilecek',
+      state: reportSentForApproval ? 'done' : reportWritingDone ? 'waiting' : 'future',
+      text: reportSentForApproval ? 'Onaya gönderildi' : 'Onaya gönderilecek',
       when: null,
       step: 'sent_for_approval',
     },
     {
-      state: 'future',
-      text: 'Onay bekleniyor',
+      state: reportApproved ? 'done' : reportSentForApproval ? 'waiting' : 'future',
+      text: reportApproved ? 'Onaylandı' : 'Onay bekleniyor',
       when: null,
       step: 'approved',
     },
@@ -425,6 +487,42 @@ export function mapLiveSnapshot(
     when: fmtDateTime(a.createdAt).at,
     text: a.description,
   }));
+
+  const recipientLabel: Record<string, string> = {
+    insured: 'Sigortalı',
+    adjuster: 'Tespitçi',
+    vendor: 'Tedarikçi',
+  };
+
+  const waHistory = op.activity
+    .filter((a) => a.action === 'WHATSAPP_STATUS_RECORDED')
+    .slice(0, 10)
+    .map((a) => {
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const statusRaw = String(meta.status ?? '');
+      const status =
+        statusRaw === 'sent'
+          ? 'Gönderildi'
+          : statusRaw === 'ready'
+            ? 'Hazır'
+            : statusRaw === 'opened'
+              ? 'Açıldı'
+              : statusRaw || 'Kayıt';
+      return {
+        when: fmtDateTime(a.createdAt).at,
+        by: a.actor
+          ? `${a.actor.firstName} ${a.actor.lastName}`.trim()
+          : 'Sistem',
+        recipient:
+          (typeof meta.recipientName === 'string' && meta.recipientName) ||
+          recipientLabel[String(meta.recipientType ?? '')] ||
+          'Alıcı',
+        template:
+          (typeof meta.templateType === 'string' && meta.templateType) ||
+          'WhatsApp',
+        status,
+      };
+    });
 
   return {
     claimId: op.claim.id,
@@ -454,7 +552,7 @@ export function mapLiveSnapshot(
     address: op.mainAppointment?.location ?? op.claim.address ?? '—',
     district: op.claim.district ?? '',
     owner: ownerName || '—',
-    insuredApproval: false,
+    insuredApproval: digitalApproved,
     inspectors,
     suppliers,
     alternativeSuppliers: [],
@@ -488,7 +586,7 @@ export function mapLiveSnapshot(
     notes: notes.length > 0 ? notes : [],
     report,
     revisions: PREVIEW.revisions,
-    waHistory: [],
+    waHistory,
     completedCount,
     totalCount: 8,
     completionPct: Math.round((completedCount / 8) * 100),

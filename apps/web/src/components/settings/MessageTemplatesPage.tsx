@@ -124,6 +124,7 @@ const DEFINITIONS: TemplateDefinition[] = [
     processStep: 'Tespit Randevusu',
     variables: [
       { key: '{musteriAdi}', label: 'Sigortalı Ad', sample: 'Ahmet Yılmaz' },
+      { key: '{musteriTelefon}', label: 'Sigortalı Telefon', sample: '0532 000 00 00' },
       { key: '{dosyaNo}', label: 'Dosya No', sample: 'HD-2026-0042' },
       { key: '{randevuTarih}', label: 'Randevu Tarihi', sample: '19.07.2026' },
       { key: '{randevuSaat}', label: 'Randevu Saati', sample: '10:30' },

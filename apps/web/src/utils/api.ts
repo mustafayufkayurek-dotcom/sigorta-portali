@@ -4,7 +4,7 @@ import {
   ensureValidSession,
   getAccessToken,
   getRefreshToken,
-  persistTokens,
+  sharedRefreshSession,
 } from './auth-session';
 
 export { ensureValidSession };
@@ -67,22 +67,18 @@ export async function authFetch(
     const refreshToken = getRefreshToken();
     if (refreshToken) {
       try {
-        const refreshed = await fetch(`${API}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        const body = await refreshed.json().catch(() => null);
-        const tokens = body?.data;
-        if (tokens?.accessToken && tokens?.refreshToken) {
-          persistTokens(tokens.accessToken, tokens.refreshToken);
-          response = await fetch(url, {
-            ...init,
-            headers: {
-              ...headers,
-              Authorization: `Bearer ${tokens.accessToken}`,
-            },
-          });
+        const ok = await sharedRefreshSession(API);
+        if (ok) {
+          const accessToken = getAccessToken();
+          if (accessToken) {
+            response = await fetch(url, {
+              ...init,
+              headers: {
+                ...headers,
+                Authorization: `Bearer ${accessToken}`,
+              },
+            });
+          }
         }
       } catch {
         /* refresh başarısız */
@@ -124,20 +120,19 @@ export async function authAxios<T>(
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
       clearAuth();
-      if (typeof window !== 'undefined') window.location.href = '/giris';
+      if (typeof window !== 'undefined') window.location.href = '/giris?reason=session_expired';
       throw error;
     }
 
     try {
-      const refreshed = await axios.post(`${API}/auth/refresh`, { refreshToken });
-      const tokens = refreshed.data?.data;
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
+      const ok = await sharedRefreshSession(API);
+      if (ok) {
+        const accessToken = getAccessToken();
         return await axios.request<T>({
           ...config,
           headers: {
             ...config.headers,
-            Authorization: `Bearer ${tokens.accessToken}`,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
         });
       }
@@ -146,7 +141,7 @@ export async function authAxios<T>(
     }
 
     clearAuth();
-    if (typeof window !== 'undefined') window.location.href = '/giris';
+    if (typeof window !== 'undefined') window.location.href = '/giris?reason=session_expired';
     throw error;
   }
 }

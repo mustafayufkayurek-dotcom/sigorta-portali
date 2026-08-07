@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { shareInFlight, type InFlightHolder } from '@/utils/share-inflight';
 
 export type AuthPersistence = 'remember' | 'session';
 
@@ -368,6 +369,32 @@ export function isRememberMeInactive(): boolean {
 }
 
 /** Oturum geçerli mi kontrol eder; 401 ise refresh dener. */
+const refreshInFlightHolder: InFlightHolder<boolean> = { current: null };
+
+async function refreshSessionTokens(apiBase: string): Promise<boolean> {
+  return shareInFlight(refreshInFlightHolder, async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+    const base = apiBase.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+    try {
+      const refreshed = await axios.post(`${base}/auth/refresh`, { refreshToken });
+      const tokens = refreshed.data?.data;
+      if (tokens?.accessToken && tokens?.refreshToken) {
+        persistTokens(tokens.accessToken, tokens.refreshToken);
+        return true;
+      }
+    } catch {
+      /* refresh başarısız */
+    }
+    return false;
+  });
+}
+
+/** Tüm axios/fetch yolları aynı refresh promise'ini paylaşır (çift atılma önlemi). */
+export async function sharedRefreshSession(apiBase: string): Promise<boolean> {
+  return refreshSessionTokens(apiBase);
+}
+
 export async function ensureValidSession(apiBase: string): Promise<boolean> {
   if (isPasswordLoginRequired()) return false;
   const token = getAccessToken();
@@ -385,19 +412,7 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
     if (!axios.isAxiosError(error) || error.response?.status !== 401) {
       return false;
     }
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-    try {
-      const refreshed = await axios.post(`${base}/auth/refresh`, { refreshToken });
-      const tokens = refreshed.data?.data;
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
-        return true;
-      }
-    } catch {
-      /* refresh başarısız */
-    }
-    return false;
+    return refreshSessionTokens(base);
   }
 }
 

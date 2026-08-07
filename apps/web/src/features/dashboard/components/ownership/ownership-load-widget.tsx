@@ -29,7 +29,7 @@ export function OwnershipLoadWidget({ staggerIndex = 0 }: OwnershipLoadWidgetPro
           icon={Users}
           message="Personel ataması yapılmamış. Personel yönetimi →"
           actionLabel="Personel yönetimi"
-          actionHref="/panel/personel-yonetimi"
+          actionHref="/panel/personel-ozluk?tab=performance"
         />
       ) : (
         <div className="overflow-x-auto">

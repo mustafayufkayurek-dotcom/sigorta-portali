@@ -31,6 +31,22 @@ export const HR_ATTENDANCE_ENTRY_TYPE = {
   REGULAR: 'regular',
 } as const;
 
+/** Personel kartına atanabilir sistem rolleri (görev seçimi) */
+export const HR_ASSIGNABLE_ROLE_CODES = [
+  'admin',
+  'ADMIN',
+  'manager',
+  'MANAGER',
+  'office_staff',
+  'OFFICE_STAFF',
+  'field_staff',
+  'FIELD_STAFF',
+  'finance',
+  'FINANCE',
+  'accountant',
+  'ACCOUNTANT',
+] as const;
+
 export const HR_LEAVE_STATUS_LABELS: Record<HrLeaveStatus, string> = {
   draft: 'Taslak',
   pending: 'Beklemede',

@@ -15,6 +15,7 @@ import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { TakipTab } from './_components/tabs/TakipTab';
 import { OperasyonPlanlayiciPanel } from '@/components/hasar-operasyon-planlayicisi/OperasyonPlanlayiciPanel';
+import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { DosyaBilgileriDetay, resolveDosyaEksperi, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
@@ -24,15 +25,12 @@ import {
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
 import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
-import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
-import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { SmartTakeoffPanel } from '@/components/smart-takeoff/SmartTakeoffPanel';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
-import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
-import { ClaimStageStrip } from '@/components/damage-reports/ClaimStageStrip';
+import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
 import {
   ClipboardList,
   FileText,
@@ -253,40 +251,29 @@ function DosyaSayfaUstu({
               </a>
             </p>
           )}
-          <div className="mt-2 max-w-xl">
-            <ClaimStageStrip
-              source={{
-                reportStatus: latestReport?.status ?? null,
-                claimStatusCode: claim.currentStatus?.code ?? null,
-                claimFile: claim,
-              }}
-              compact
-            />
-          </div>
           {ihbarChip !== '—' && <p className="text-xs text-slate-500 mt-0.5">{ihbarChip}</p>}
         </div>
-        {latestReport && (
-          <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
+        <ClaimFileHeaderStatusCluster
+          statusBadge={
+            latestReport ? (
+              <span className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
                 {repairReportStatusLabel(latestReport.status)}
               </span>
-              {reportEditHref && (
-                <Link
-                  href={reportEditHref}
-                  className="text-xs font-medium text-amber-800 hover:underline whitespace-nowrap"
-                >
-                  Rapora Git →
-                </Link>
-              )}
-            </div>
-            {latestReport.id && (
-              <div className="w-full max-w-md">
-                <RevisionHistoryStrip reportId={latestReport.id} compact />
-              </div>
-            )}
-          </div>
-        )}
+            ) : null
+          }
+          actionsMenu={
+            <ClaimFileHeaderActionsMenu
+              fileNo={claim.fileNo}
+              reportEditHref={reportEditHref}
+              reportId={latestReport?.id ?? null}
+            />
+          }
+          stageSource={{
+            reportStatus: latestReport?.status ?? null,
+            claimStatusCode: claim.currentStatus?.code ?? null,
+            claimFile: claim,
+          }}
+        />
       </div>
 
       {claim.customer && (
@@ -1361,10 +1348,6 @@ export default function ClaimFileDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<GroupTab>(initialGroup);
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
-  const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
-  const [fieldSurveyRefreshKey, setFieldSurveyRefreshKey] = useState(0);
-
-  const canEditFieldSurvey = userHasPermission('claim_file.update');
 
   useEffect(() => {
     setUserRoleCode(getCurrentUserRole());
@@ -1421,38 +1404,6 @@ export default function ClaimFileDetailPage() {
         onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
         focusSigortali={focusSigortali}
         openEdit={openEdit}
-      />
-
-      {canEditFieldSurvey && (
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setFieldSurveyOpen(true)}
-            className="btn-secondary text-sm"
-          >
-            Saha Keşif Ölçüsü
-          </button>
-        </div>
-      )}
-
-      <FieldSurveyBriefList
-        claimFileId={id!}
-        refreshKey={fieldSurveyRefreshKey}
-        canDelete={canEditFieldSurvey}
-      />
-
-      <FieldSurveyBriefModal
-        open={fieldSurveyOpen}
-        onClose={() => setFieldSurveyOpen(false)}
-        claimFileId={id!}
-        claimFileNo={claim.fileNo}
-        defaultPhone={
-          claim.assignedSuppliers?.[0]?.phone
-          ?? claim.assignedSupplier?.phone
-          ?? claim.customer?.phone
-          ?? null
-        }
-        onSaved={() => setFieldSurveyRefreshKey((k) => k + 1)}
       />
 
       {!isFieldStaff && canViewFinancials && activeGroup !== 'finans' && (

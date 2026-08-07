@@ -420,12 +420,12 @@ export class ReportPdfService {
               <td>${catDot} ${escHtml(wgCell)}</td>
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
               <td>${formatJobDescriptionCell(item)}</td>
-              <td class="text-center">${qty}</td>
-              <td class="text-center">${unit}</td>
-              <td class="text-right">${fmtCurrency(supplierUnitPrice)}</td>
-              <td class="text-right">${unitPriceStr}</td>
+              <td class="text-center col-nowrap">${qty}</td>
+              <td class="text-center col-unit">${unit}</td>
+              <td class="text-right col-nowrap">${fmtCurrency(supplierUnitPrice)}</td>
+              <td class="text-right col-nowrap">${unitPriceStr}</td>
               <td class="text-right"><span class="${marginCls}">%${marginPct.toFixed(1)}</span></td>
-              <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
+              <td class="text-right amount-cell col-nowrap">${fmtCurrency(salesTotal)}</td>
             </tr>`;
           } else {
             const descNote = (item.description ?? '').trim();
@@ -435,10 +435,10 @@ export class ReportPdfService {
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
               <td>${formatJobDescriptionCell(item, { includeDescription: false })}</td>
               <td>${descNote ? escHtml(descNote) : '—'}</td>
-              <td class="text-center">${qty}</td>
-              <td class="text-center">${unit}</td>
-              <td class="text-right">${unitPriceStr}</td>
-              <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
+              <td class="text-center col-nowrap">${qty}</td>
+              <td class="text-center col-unit">${unit}</td>
+              <td class="text-right col-nowrap">${unitPriceStr}</td>
+              <td class="text-right amount-cell col-nowrap">${fmtCurrency(salesTotal)}</td>
             </tr>`;
           }
         }
@@ -545,11 +545,11 @@ export class ReportPdfService {
 
     const tableHeaderInternal = `
       <tr>
-        <th style="width:14%">İş Grubu</th>
-        <th style="width:16%">Mahal/Bölge</th>
-        <th style="width:20%">İşin Tanımı</th>
+        <th style="width:13%">İş Grubu</th>
+        <th style="width:15%">Mahal/Bölge</th>
+        <th style="width:19%">İşin Tanımı</th>
         <th style="width:6%" class="text-center">Miktar</th>
-        <th style="width:6%" class="text-center">Birim</th>
+        <th style="width:9%" class="text-center">Birim</th>
         <th style="width:10%" class="text-right">Tlr. Fiyat</th>
         <th style="width:10%" class="text-right">Satış Fiyatı</th>
         <th style="width:7%" class="text-right">Marj</th>
@@ -558,14 +558,14 @@ export class ReportPdfService {
 
     const tableHeaderExternal = `
       <tr>
-        <th style="width:14%">İş Grubu</th>
-        <th style="width:16%">Mahal/Bölge</th>
-        <th style="width:18%">İşin Tanımı</th>
-        <th style="width:14%">Açıklama</th>
+        <th style="width:13%">İş Grubu</th>
+        <th style="width:15%">Mahal/Bölge</th>
+        <th style="width:17%">İşin Tanımı</th>
+        <th style="width:13%">Açıklama</th>
         <th style="width:6%" class="text-center">Miktar</th>
-        <th style="width:6%" class="text-center">Birim</th>
+        <th style="width:9%" class="text-center">Birim</th>
         <th style="width:12%" class="text-right">Birim Fiyat</th>
-        <th style="width:14%" class="text-right">Onarım Bedeli</th>
+        <th style="width:15%" class="text-right">Onarım Bedeli</th>
       </tr>`;
 
     // Tespit resimleri — rapor eki: en fazla 9 adet, satırda 3
@@ -951,6 +951,19 @@ export class ReportPdfService {
   }
 
   .items-table td:last-child { border-right: none; }
+
+  /* Birim / tutar hücreleri satır kırmasın (Maktuen, ₺) */
+  .items-table td.col-unit {
+    white-space: nowrap;
+    word-break: normal;
+    font-size: 8pt;
+    letter-spacing: -0.01em;
+  }
+
+  .items-table td.col-nowrap {
+    white-space: nowrap;
+    word-break: normal;
+  }
 
   .item-desc {
     font-size: 7.5pt;
@@ -1531,12 +1544,16 @@ ${report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
 <!-- DİJİTAL ONAY İZLERİ -->
 ${approvalTrailHtml}
 
-<!-- İMZA ALANLARI -->
+<!-- İMZA ALANLARI — müşteri görünümünde eksper firması adı yazılmaz (imza için boş bırakılır) -->
 <div class="signature-section">
   <div class="signature-box">
     <div class="signature-label">Tespiti Yapan</div>
     <div class="signature-line"></div>
-    <div class="signature-name">${escHtml(resolveRepairReportExpertName(report) ?? '') || '..............................'}</div>
+    <div class="signature-name">${
+      viewType === 'external'
+        ? '&nbsp;'
+        : (escHtml(resolveRepairReportExpertName(report) ?? '') || '..............................')
+    }</div>
   </div>
 </div>
 

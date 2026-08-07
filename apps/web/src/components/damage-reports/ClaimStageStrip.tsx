@@ -32,92 +32,79 @@ function resolveActiveIndex(source: ClaimStageStripSource): number | null {
   });
 }
 
-function dotClass(tone: ClaimFileStageTone, compact: boolean): string {
-  const size = compact ? 'h-5 w-5' : 'h-6 w-6';
-  if (tone === 'active') {
-    return `${size} border-2 border-red-600 bg-white ring-2 ring-red-100 shadow-sm`;
-  }
-  if (tone === 'completed') {
-    return `${size} border-2 border-slate-300 bg-slate-300`;
-  }
-  return `${size} border-2 border-slate-200 bg-white`;
-}
-
-function labelClass(tone: ClaimFileStageTone): string {
-  if (tone === 'active') return 'text-slate-800 font-semibold';
-  if (tone === 'completed') return 'text-slate-400';
-  return 'text-slate-300';
-}
-
-function connectorClass(toneLeft: ClaimFileStageTone): string {
-  if (toneLeft === 'completed' || toneLeft === 'active') return 'bg-slate-300';
-  return 'bg-slate-100';
+function dotTone(tone: ClaimFileStageTone): string {
+  if (tone === 'active') return 'border-amber-400 bg-amber-50 text-amber-900';
+  if (tone === 'completed') return 'border-status-success bg-emerald-50 text-emerald-900';
+  return 'border-slate-200 bg-slate-50 text-slate-400 border-dashed';
 }
 
 /**
- * Hasar dosyası aşama şeridi — Revizyon Geçmişi compact dilinde.
- * Pasif / aktif / gelecek etiket yöntemi.
+ * Dosya akışı — başlık çizginin solunda; ilk daire çizginin başında.
  */
 export function ClaimStageStrip({
   source,
   compact = true,
+  showTitle = true,
   className = '',
 }: {
   source: ClaimStageStripSource;
   compact?: boolean;
+  showTitle?: boolean;
   className?: string;
 }) {
   const activeIndex = resolveActiveIndex(source);
-  const stemWidth = compact ? 'w-3 sm:w-5' : 'w-5 sm:w-8';
+  const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
+  const connectorTone = 'bg-status-danger';
 
-  return (
-    <div className={`w-full min-w-0 ${className}`.trim()}>
-      <p className="mb-1.5 text-[10px] font-semibold text-slate-500">Hasar Dosyası Aşamaları</p>
-      <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-        <div className="relative flex w-full min-w-0 items-start py-1">
-          {CLAIM_FILE_STAGE_SLOTS.map((slot, idx) => {
-            const tone = claimFileStageTone(idx, activeIndex);
-            const isLast = idx === CLAIM_FILE_STAGE_SLOTS.length - 1;
-            const prevTone = idx > 0 ? claimFileStageTone(idx - 1, activeIndex) : null;
-            return (
-              <div
-                key={slot.id}
-                className={`flex items-start ${idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}
-              >
-                {idx === 0 && (
-                  <div
-                    className={`relative z-0 mt-2.5 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorClass(tone)}`}
-                    aria-hidden
-                  />
-                )}
-                {idx > 0 && prevTone && (
-                  <div
-                    className={`relative z-0 mt-2.5 h-0.5 min-w-[0.75rem] flex-1 rounded-full ${connectorClass(prevTone)}`}
-                    aria-hidden
-                  />
-                )}
+  const timeline = (
+    <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative flex w-full min-w-[9.5rem] items-center py-0.5">
+        {CLAIM_FILE_STAGE_SLOTS.map((slot, idx) => {
+          const tone = claimFileStageTone(idx, activeIndex);
+          return (
+            <div
+              key={slot.id}
+              className={`flex items-center ${idx === 0 ? 'shrink-0' : 'min-w-0 flex-1'}`}
+            >
+              {idx > 0 && (
                 <div
-                  className="group relative z-10 flex shrink-0 flex-col items-center"
-                  title={slot.label}
+                  className={`relative z-0 h-0.5 min-w-[0.75rem] flex-1 rounded-full ${connectorTone}`}
+                  aria-hidden
+                />
+              )}
+              <div
+                className="relative z-10 flex shrink-0 flex-col items-center"
+                title={slot.label}
+              >
+                <div
+                  className={`flex items-center justify-center rounded-full border-2 font-semibold tabular-nums shadow-sm ring-2 ring-white ${dotSize} ${dotTone(tone)}`}
                 >
-                  <div className={`rounded-full ${dotClass(tone, compact)}`} aria-hidden />
-                  <span
-                    className={`mt-1.5 max-w-[4.75rem] sm:max-w-[5.5rem] text-center text-[9px] sm:text-[10px] leading-tight ${labelClass(tone)}`}
-                  >
+                  {idx + 1}
+                </div>
+                {!compact ? (
+                  <span className="mt-1.5 max-w-[88px] truncate text-center text-[10px] text-slate-500 whitespace-nowrap">
                     {slot.label}
                   </span>
-                </div>
-                {isLast && (
-                  <div
-                    className={`relative z-0 mt-2.5 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorClass(tone)}`}
-                    aria-hidden
-                  />
-                )}
+                ) : null}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-2 ${className}`.trim()}
+      data-testid="claim-stage-strip"
+    >
+      {showTitle ? (
+        <p className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-500">
+          Dosya Akışı
+        </p>
+      ) : null}
+      {timeline}
     </div>
   );
 }

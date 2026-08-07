@@ -101,7 +101,7 @@ assert(c3Src.includes('OPERATIONS_CENTER_HREF') || c3Src.includes('/panel/operas
 assert(c3Src.includes('CLAIM_LIST_SLA_HREF') || c3Src.includes('status=sla_exceeded'), 'C3 Tümünü Gör SLA');
 assert(c3Src.includes('DashboardRowLink'), 'C3 satır Link bileşeni');
 assert(c3Src.includes('claimNavHref'), 'C3 claimNavHref');
-assert(c3Src.includes('staffLoadHref') || c3Src.includes('personel-yonetimi'), 'C3 Son Atamalar nav');
+assert(c3Src.includes('staffLoadHref') || c3Src.includes('personel-ozluk'), 'C3 Son Atamalar nav');
 assert(c3Src.includes('items-start'), 'C3 equal-height stretch kaldırıldı');
 assert(!c3Src.includes('items-stretch'), 'C3 items-stretch yok');
 assert(c3Src.includes('line-clamp-2'), 'C3 kontrollü line-clamp');

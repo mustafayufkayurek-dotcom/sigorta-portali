@@ -33,7 +33,7 @@ const DEFAULT_HASAR_APPOINTMENT_INSURED_TEMPLATE =
   'Sayın {musteriAdi}, {dosyaNo} numaralı hasar dosyanız için tespit randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
 const DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE =
-  '{dosyaNo} numaralı dosya için tespit randevusu: {randevuTarih} {randevuSaat}. Sigortalı: {musteriAdi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
+  '{dosyaNo} numaralı dosya için tespit randevusu: {randevuTarih} {randevuSaat}. Sigortalı: {musteriAdi}. Telefon: {musteriTelefon}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
 const DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE =
   '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
@@ -116,6 +116,7 @@ export class MessageTemplateService {
     template: string,
     vars: {
       musteriAdi?: string;
+      musteriTelefon?: string;
       dosyaNo?: string;
       sirketAdi?: string;
       sirketTelefon?: string;
@@ -129,6 +130,7 @@ export class MessageTemplateService {
   ): string {
     return template
       .replace(/\{musteriAdi\}/g, vars.musteriAdi ?? '')
+      .replace(/\{musteriTelefon\}/g, vars.musteriTelefon ?? '')
       .replace(/\{dosyaNo\}/g, vars.dosyaNo ?? '')
       .replace(/\{sirketAdi\}/g, vars.sirketAdi ?? '')
       .replace(/\{sirketTelefon\}/g, vars.sirketTelefon ?? '')

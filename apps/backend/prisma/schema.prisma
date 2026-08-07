@@ -3514,6 +3514,11 @@ model HrEmployeeProfile {
   id                  String    @id @default(uuid())
   userId              String    @unique @map("user_id")
   personnelNo         String?   @unique @map("personnel_no")
+  personalGsm         String?   @map("personal_gsm")
+  companyGsm          String?   @map("company_gsm")
+  bloodType           String?   @map("blood_type")
+  identityNo          String?   @unique @map("identity_no")
+  birthDate           DateTime? @map("birth_date") @db.Date
   payrollEmployerName String?   @map("payroll_employer_name")
   employmentType      String    @default("indefinite") @map("employment_type")
   hireDate            DateTime? @map("hire_date") @db.Date

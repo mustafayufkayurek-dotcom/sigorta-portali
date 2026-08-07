@@ -3,7 +3,7 @@ import {
   ensureValidSession,
   getAccessToken,
   getRefreshToken,
-  persistTokens,
+  sharedRefreshSession,
 } from '@/utils/auth-session';
 
 export class ApiError extends Error {
@@ -81,27 +81,23 @@ async function request<T>(url: string, init: RequestInit = {}, params?: QueryPar
     const refreshToken = getRefreshToken();
     if (refreshToken) {
       try {
-        const refreshed = await fetch(`${apiBase}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        const refreshData = await refreshed.json().catch(() => null);
-        const tokens = refreshData?.data;
-        if (tokens?.accessToken && tokens?.refreshToken) {
-          persistTokens(tokens.accessToken, tokens.refreshToken);
-          response = await fetch(finalUrl, {
-            ...init,
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${tokens.accessToken}`,
-              ...(init.headers ?? {}),
-            },
-          });
-          try {
-            data = await response.json();
-          } catch {
-            data = null;
+        const ok = await sharedRefreshSession(apiBase);
+        if (ok) {
+          const accessToken = getAccessToken();
+          if (accessToken) {
+            response = await fetch(finalUrl, {
+              ...init,
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+                ...(init.headers ?? {}),
+              },
+            });
+            try {
+              data = await response.json();
+            } catch {
+              data = null;
+            }
           }
         }
       } catch {

@@ -136,6 +136,7 @@ export const PREVIEW = {
     },
   ],
   report: {
+    id: null as string | null,
     number: 'HR-2026-0042',
     revision: 0,
     status: 'Yazım Aşamasında',

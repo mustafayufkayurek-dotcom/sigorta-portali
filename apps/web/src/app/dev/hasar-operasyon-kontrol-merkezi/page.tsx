@@ -11,6 +11,7 @@ import axios from 'axios';
 import { useEffect, useState, type ReactNode } from 'react';
 import { API, authHeader } from '@/utils/api';
 import { toWhatsAppLink } from '@/utils/date-helpers';
+import { isWhatsAppMarkSentBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { formatClaimSubjectLabel, toTitleCaseTR } from '@/utils/text-helpers';
 
@@ -2811,7 +2812,9 @@ export default function HasarOperasyonKontrolMerkeziPreviewPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          disabled={result.status !== 'opened'}
+                          disabled={
+                            result.status !== 'opened' && !isWhatsAppMarkSentBypassActive()
+                          }
                           onClick={() => void recordNotificationResult(result, 'sent')}
                           className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                         >

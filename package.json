@@ -10,6 +10,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "smoke:route-gate": "bash scripts/smoke-route-gate.sh",
+    "smoke:planner-five-fixes": "bash scripts/smoke-planner-five-fixes.sh",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "preview:docs": "node scripts/serve-preview.js"

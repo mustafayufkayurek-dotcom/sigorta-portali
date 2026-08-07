@@ -48,8 +48,14 @@ describe('ClaimOperationCenterService', () => {
       getByType: jest.fn(),
       interpolate: jest.fn(),
     };
+    const claimEventEmail: any = { onManualDecision: jest.fn() };
+    const repairReports: any = {
+      approveReport: jest.fn(),
+      rejectReport: jest.fn(),
+      reviseReport: jest.fn(),
+    };
     return {
-      service: new ClaimOperationCenterService(prisma, templates),
+      service: new ClaimOperationCenterService(prisma, templates, claimEventEmail, repairReports),
       prisma,
       appointmentUpdate,
     };
@@ -115,5 +121,40 @@ describe('ClaimOperationCenterService', () => {
         }),
       }),
     });
+  });
+
+  it('dijital onayı NOTE_ADDED + metadata.kind ile kalıcı kaydeder', async () => {
+    const { service, prisma } = createService();
+
+    await service.recordDigitalApproval(
+      'claim-1',
+      {
+        formType: 'Mutabakat',
+        status: 'approved',
+        insuredName: 'Pelin İki',
+        link: 'https://onay.meridyen.local/15598774220001',
+      },
+      actor,
+    );
+
+    expect(prisma.fileActivityLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'NOTE_ADDED',
+        description: 'Dijital onay tamamlandı (Mutabakat).',
+        metadata: expect.objectContaining({
+          kind: 'digital_approval',
+          status: 'approved',
+          formType: 'Mutabakat',
+          insuredName: 'Pelin İki',
+        }),
+      }),
+    });
+  });
+
+  it('dijital onayda form türü boşsa hata verir', async () => {
+    const { service } = createService();
+    await expect(
+      service.recordDigitalApproval('claim-1', { formType: '  ', status: 'sent' }, actor),
+    ).rejects.toThrow(/Form türü zorunludur/);
   });
 });

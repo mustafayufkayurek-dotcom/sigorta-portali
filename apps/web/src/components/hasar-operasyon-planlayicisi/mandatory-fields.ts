@@ -25,6 +25,7 @@ export function getMandatoryChecks(
     waPhone: string;
     waBody: string;
     waTemplateType: string;
+    waMarkedSent: boolean;
     digitalFormType: string;
     approvalAuthority: string;
     emailTo: string;
@@ -81,6 +82,11 @@ export function getMandatoryChecks(
         { key: 'phone', label: 'Telefon', ok: ctx.waPhone.replace(/\D/g, '').length >= 10 },
         { key: 'template', label: 'Şablon (Ayarlar › Mesaj Şablonları)', ok: Boolean(ctx.waTemplateType.trim()) },
         { key: 'body', label: 'Mesaj İçeriği', ok: ctx.waBody.trim().length >= 5 },
+        {
+          key: 'wa_marked',
+          label: 'Gönderildi İşareti',
+          ok: ctx.waMarkedSent,
+        },
       ];
     case 'digital_approval':
       return [

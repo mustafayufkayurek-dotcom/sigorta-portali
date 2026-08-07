@@ -41,6 +41,28 @@ export class TaskAssignmentsController {
     return { data };
   }
 
+  /**
+   * Personel performans KPI (Tümü / seçili personel).
+   * detail=written|approved|revenue|profit → satır listesi
+   */
+  @Get('performance-kpis')
+  async getPerformanceKpis(
+    @Query('userId') userId?: string,
+    @Query('detail') detail?: 'written' | 'approved' | 'revenue' | 'profit',
+    @Query('period') period?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    const data = await this.service.getPerformanceKpis({
+      userId,
+      detail,
+      period,
+      dateFrom,
+      dateTo,
+    });
+    return { data };
+  }
+
   @Get('workload/:userId')
   async getWorkload(@Param('userId') userId: string) {
     const data = await this.service.getWorkload(userId);

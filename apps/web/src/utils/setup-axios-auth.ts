@@ -1,12 +1,12 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
   clearAuth,
   ensureValidSession,
   getAccessToken,
   getRefreshToken,
-  persistTokens,
+  sharedRefreshSession,
 } from '@/utils/auth-session';
 import { API } from '@/utils/api';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 let installed = false;
 
@@ -63,13 +63,14 @@ export function installAxiosAuthInterceptors(): void {
 
       config._authRetried = true;
       try {
-        const refreshed = await axios.post(`${API}/auth/refresh`, { refreshToken });
-        const tokens = (refreshed.data as { data?: { accessToken?: string; refreshToken?: string } })?.data;
-        if (tokens?.accessToken && tokens?.refreshToken) {
-          persistTokens(tokens.accessToken, tokens.refreshToken);
-          config.headers = config.headers ?? {};
-          config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-          return axios.request(config);
+        const ok = await sharedRefreshSession(API);
+        if (ok) {
+          const accessToken = getAccessToken();
+          if (accessToken) {
+            config.headers = config.headers ?? {};
+            config.headers.Authorization = `Bearer ${accessToken}`;
+            return axios.request(config);
+          }
         }
       } catch {
         /* refresh başarısız */

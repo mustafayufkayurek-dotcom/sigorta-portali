@@ -98,6 +98,16 @@ export class HrController {
     return { data };
   }
 
+  @Get('employees/roles')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async listAssignableRoles(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.listAssignableRoles(user);
+    return { data };
+  }
+
   @Post('employees')
   @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
   @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')

@@ -18,9 +18,35 @@ import {
 import { buildEmergencyOperationChain } from './emergency-operation-chain';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { resolveInsuredPhoneForInbox } from '@sigorta/shared';
 import type { SendMailOptions } from 'nodemailer';
+import {
+  resolveCustomerReminderEmail,
+} from '@/modules/claim-files/approval-72h-customer-email.rule';
+
+const MANUAL_DECISION_MIN_REASON = 10;
+const PORTAL_ROLE_CODES = new Set([
+  'expert',
+  'insurance_company_user',
+  'assistance_company_user',
+  'EXPERT',
+  'INSURANCE_COMPANY_USER',
+  'ASSISTANCE_COMPANY_USER',
+]);
+const MERIDYEN_ROLE_CODES = new Set([
+  'admin',
+  'ADMIN',
+  'manager',
+  'MANAGER',
+  'ops_manager',
+  'OPS_MANAGER',
+  'office_staff',
+  'OFFICE_STAFF',
+  'field_staff',
+  'FIELD_STAFF',
+]);
 
 @Injectable()
 export class EmergencyCasesService {
@@ -33,6 +59,7 @@ export class EmergencyCasesService {
     private readonly invoiceRequestsService: InvoiceRequestsService,
     private readonly vendorProfile: VendorIntelligenceProfileService,
     private readonly emailService: EmailService,
+    private readonly claimEventEmail: ClaimEventEmailService,
     private readonly storage: StorageService,
   ) {}
 
@@ -1026,6 +1053,116 @@ export class EmergencyCasesService {
         attachmentNames: payload.attachmentNames,
         errorMsg: result.errorMsg ?? null,
       },
+    };
+  }
+
+  /**
+   * Sözlü müşteri kararı (Acil) — zorunlu açıklama + not kaydı + yönetici/müşteri maili.
+   * customerApproved UI akışı frontend’de persistFlow ile senkronlanır.
+   */
+  async recordManualDecision(
+    caseId: string,
+    input: { action: 'approve' | 'reject' | 'revise'; reason: string },
+    actor: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
+    const role = actor?.roleCode ?? actor?.role?.code ?? '';
+    if (PORTAL_ROLE_CODES.has(role) || !MERIDYEN_ROLE_CODES.has(role)) {
+      throw new ForbiddenException('Manuel karar yalnız Meridyen personeli tarafından kaydedilebilir.');
+    }
+    const reason = (input.reason ?? '').trim();
+    if (reason.length < MANUAL_DECISION_MIN_REASON) {
+      throw new BadRequestException(`Açıklama en az ${MANUAL_DECISION_MIN_REASON} karakter olmalıdır.`);
+    }
+    if (!['approve', 'reject', 'revise'].includes(input.action)) {
+      throw new BadRequestException('Geçersiz manuel karar işlemi.');
+    }
+
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      select: {
+        id: true,
+        caseNo: true,
+        fileNo: true,
+        notes: true,
+        status: true,
+        customer: {
+          select: {
+            email: true,
+            shortName: true,
+            companyName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            contacts: { select: { email: true, isPrimary: true }, take: 10 },
+          },
+        },
+      },
+    });
+    if (!emergencyCase) throw new NotFoundException('Acil yardım dosyası bulunamadı.');
+
+    const actorId = actor?.id ?? actor?.userId;
+    const actorUser = actorId
+      ? await this.prisma.user.findUnique({
+          where: { id: actorId },
+          select: { firstName: true, lastName: true },
+        })
+      : null;
+    const actorName = `${actorUser?.firstName ?? ''} ${actorUser?.lastName ?? ''}`.trim() || 'Meridyen Personeli';
+    const actionLabel =
+      input.action === 'approve' ? 'Manuel Onay' : input.action === 'reject' ? 'Manuel Red' : 'Manuel Revizyon';
+    const stamp = new Date().toISOString();
+    const noteLine = `[${actionLabel} · ${stamp}] ${reason}`;
+    const nextNotes = emergencyCase.notes?.trim()
+      ? `${emergencyCase.notes.trim()}\n${noteLine}`
+      : noteLine;
+
+    // Onay: durum GELEN/ATANDI ise SAHADA’ya çekilmez — yalnız onay kaydı; red/revizyon not.
+    let statusApplied: string = `acil_${input.action}_note`;
+    if (input.action === 'approve' && (emergencyCase.status === 'GELEN' || emergencyCase.status === 'ATANDI')) {
+      statusApplied = 'acil_customer_approved_note';
+    }
+
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: { notes: nextNotes },
+    });
+
+    const managers = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'ADMIN', 'manager', 'MANAGER', 'ops_manager', 'OPS_MANAGER'] } },
+      },
+      select: { email: true },
+      take: 40,
+    });
+
+    const customerEmail = resolveCustomerReminderEmail(emergencyCase.customer);
+    const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
+
+    void this.claimEventEmail.onManualDecision({
+      action: input.action,
+      fileNo,
+      reason,
+      actorName,
+      emergencyCaseId: emergencyCase.id,
+      customerEmail,
+      managerEmails: managers.map((m) => m.email).filter(Boolean) as string[],
+    });
+
+    return {
+      action: input.action,
+      actionLabel,
+      statusApplied,
+      flowHint:
+        input.action === 'approve'
+          ? 'customerApproved'
+          : input.action === 'reject'
+            ? 'approvalRejected'
+            : 'revisionRequested',
+      customerNotified: Boolean(customerEmail),
+      reason,
     };
   }
 }

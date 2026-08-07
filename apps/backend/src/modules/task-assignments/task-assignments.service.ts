@@ -463,6 +463,203 @@ export class TaskAssignmentsService {
     });
   }
 
+  /**
+   * Personel performans KPI — rapor adedi / onay / ciro / kâr.
+   * Kaynak: RepairReport (createdByUserId). Migration yok.
+   * Ciro = onaylı raporların totalSalesAmount toplamı.
+   * Kâr = onaylı raporların grossProfit toplamı.
+   */
+  async getPerformanceKpis(opts?: {
+    userId?: string;
+    detail?: 'written' | 'approved' | 'revenue' | 'profit';
+    /** week | month | year | custom — varsayılan year */
+    period?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    // Performans yalnız Dosya Sorumlusu (office_staff) — saha etken değil
+    const staffRoleCodes = ['office_staff', 'OFFICE_STAFF'];
+    const approvedStatuses = ['approved', 'externally_approved'];
+
+    const now = new Date();
+    const period = (opts?.period || 'year').toLowerCase();
+    let rangeStart: Date;
+    let rangeEnd = new Date(now);
+    rangeEnd.setHours(23, 59, 59, 999);
+    let periodLabel = `${now.getFullYear()} Yılı`;
+
+    if (period === 'week') {
+      rangeStart = new Date(now);
+      rangeStart.setDate(rangeStart.getDate() - 6);
+      rangeStart.setHours(0, 0, 0, 0);
+      periodLabel = 'Son 7 Gün';
+    } else if (period === 'month') {
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      rangeStart.setHours(0, 0, 0, 0);
+      periodLabel = now.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+      periodLabel = periodLabel.charAt(0).toLocaleUpperCase('tr-TR') + periodLabel.slice(1);
+    } else if (period === 'custom' && opts?.dateFrom && opts?.dateTo) {
+      rangeStart = new Date(`${opts.dateFrom}T00:00:00`);
+      rangeEnd = new Date(`${opts.dateTo}T23:59:59.999`);
+      if (Number.isNaN(rangeStart.getTime()) || Number.isNaN(rangeEnd.getTime())) {
+        rangeStart = new Date(now.getFullYear(), 0, 1);
+        periodLabel = `${now.getFullYear()} Yılı`;
+      } else {
+        periodLabel = `${opts.dateFrom} – ${opts.dateTo}`;
+      }
+    } else {
+      rangeStart = new Date(now.getFullYear(), 0, 1);
+      rangeStart.setHours(0, 0, 0, 0);
+    }
+
+    const staff = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: staffRoleCodes } },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: { select: { name: true, code: true } },
+      },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+
+    const staffOptions = staff.map((u) => ({
+      userId: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      roleLabel: u.role?.name ?? 'Dosya Sorumlusu',
+    }));
+
+    const staffIds = staff.map((u) => u.id);
+    const filterUserId =
+      opts?.userId && staffIds.includes(opts.userId) ? opts.userId : undefined;
+
+    const reportWhere = {
+      createdAt: { gte: rangeStart, lte: rangeEnd },
+      createdByUserId: filterUserId
+        ? filterUserId
+        : { in: staffIds.length ? staffIds : ['__none__'] },
+      status: { not: 'cancelled' },
+    };
+
+    const reports = staffIds.length
+      ? await this.prisma.repairReport.findMany({
+          where: reportWhere,
+          select: {
+            id: true,
+            reportNo: true,
+            status: true,
+            totalSalesAmount: true,
+            totalSupplierCost: true,
+            grossProfit: true,
+            reportDate: true,
+            createdAt: true,
+            createdByUserId: true,
+            claimFileId: true,
+            claimFile: { select: { id: true, fileNo: true } },
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 2000,
+        })
+      : [];
+
+    const statusLabel = (status: string) => {
+      switch (status) {
+        case 'draft':
+          return 'Taslak';
+        case 'pending_approval':
+        case 'pending':
+          return 'Onay Bekliyor';
+        case 'approved':
+          return 'Onaylandı';
+        case 'externally_approved':
+          return 'Harici Onay';
+        case 'rejected':
+        case 'externally_rejected':
+          return 'Reddedildi';
+        default:
+          return status;
+      }
+    };
+
+    const rows = reports.map((r) => ({
+      reportId: r.id,
+      reportNo: r.reportNo,
+      claimFileId: r.claimFileId,
+      fileNo: r.claimFile?.fileNo ?? '—',
+      status: r.status,
+      statusLabel: statusLabel(r.status),
+      salesAmount: Number(r.totalSalesAmount ?? 0),
+      supplierCost: Number(r.totalSupplierCost ?? 0),
+      profitAmount: Number(r.grossProfit ?? 0),
+      reportDate: r.reportDate?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+      authorName: `${r.createdBy?.firstName ?? ''} ${r.createdBy?.lastName ?? ''}`.trim(),
+      isApproved: approvedStatuses.includes(r.status),
+    }));
+
+    const approvedRows = rows.filter((r) => r.isApproved);
+    const kpis = {
+      reportsWritten: rows.length,
+      reportsApproved: approvedRows.length,
+      revenue: approvedRows.reduce((s, r) => s + r.salesAmount, 0),
+      profit: approvedRows.reduce((s, r) => s + r.profitAmount, 0),
+    };
+
+    const selected = filterUserId
+      ? staffOptions.find((s) => s.userId === filterUserId) ?? null
+      : null;
+
+    let details:
+      | {
+          kind: 'written' | 'approved' | 'revenue' | 'profit';
+          title: string;
+          rows: typeof rows;
+        }
+      | undefined;
+
+    if (opts?.detail) {
+      const kind = opts.detail;
+      if (kind === 'written') {
+        details = { kind, title: 'Yazılan Raporlar', rows };
+      } else if (kind === 'approved') {
+        details = { kind, title: 'Onaylanan Raporlar', rows: approvedRows };
+      } else if (kind === 'revenue') {
+        details = {
+          kind,
+          title: 'Ciro Detayı (Onaylı Raporlar)',
+          rows: approvedRows.filter((r) => r.salesAmount > 0),
+        };
+      } else {
+        details = {
+          kind,
+          title: 'Kâr Detayı (Onaylı Raporlar)',
+          rows: approvedRows.filter((r) => r.profitAmount !== 0),
+        };
+      }
+    }
+
+    return {
+      scope: filterUserId ? ('user' as const) : ('all' as const),
+      userId: filterUserId ?? null,
+      userName: selected
+        ? `${selected.firstName} ${selected.lastName}`.trim()
+        : null,
+      roleLabel: selected?.roleLabel ?? null,
+      period,
+      periodLabel,
+      kpis,
+      staffOptions,
+      details,
+    };
+  }
+
   @Cron('0 */30 * * * *')
   async checkTimeouts() {
     const now = new Date();

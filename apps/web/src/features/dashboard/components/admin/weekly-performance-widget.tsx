@@ -75,7 +75,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
     staffItems.some((s) => s.criticalFiles > 0)
       ? {
           label: 'Kritik Dosya Yükü Olan Personel',
-          href: '/panel/personel-yonetimi',
+          href: '/panel/personel-ozluk?tab=performance',
         }
       : null,
   ].filter(Boolean) as Array<{ label: string; href: string }>;
@@ -84,7 +84,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
     priorities.length === 0
       ? [
           { label: 'Kritik Öncelik Görünmüyor', href: '/panel/hasar-dosyalari' },
-          { label: 'Açık Dosya Sahiplik Atamaları', href: '/panel/personel-yonetimi' },
+          { label: 'Açık Dosya Sahiplik Atamaları', href: '/panel/personel-ozluk?tab=performance' },
           { label: 'Bekleyen Tedarikçi Dönüşleri', href: '/panel/tedarikciler' },
           { label: 'SLA Riski Taşıyan Dosyalar', href: '/panel/raporlar/sla' },
         ]

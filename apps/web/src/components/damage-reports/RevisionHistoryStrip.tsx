@@ -98,29 +98,22 @@ export function RevisionHistoryStrip({
 
   const connectorTone = 'bg-status-danger';
   const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
-  const stemWidth = compact ? 'w-5 sm:w-7' : 'w-7 sm:w-10';
   const maxReached = items.some((item) => item.version >= REPAIR_REPORT_MAX_VERSION);
 
+  /** İlk daire çizginin başında; ara bağlantılar eşit orantılı. */
   const timeline = (
-    <div className="min-w-0 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300">
-      <div className="relative flex w-full min-w-0 items-center py-1">
+    <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative flex w-full min-w-[8.5rem] items-center py-0.5">
         {REPAIR_REPORT_VERSION_SLOTS.map((slot, idx) => {
           const item = byVersion.get(slot);
-          const isLast = idx === REPAIR_REPORT_VERSION_SLOTS.length - 1;
           return (
             <div
               key={`slot-${slot}`}
-              className={`flex items-center ${idx > 0 ? 'min-w-0 flex-1' : 'shrink-0'}`}
+              className={`flex items-center ${idx === 0 ? 'shrink-0' : 'min-w-0 flex-1'}`}
             >
-              {idx === 0 && (
-                <div
-                  className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
-                  aria-hidden
-                />
-              )}
               {idx > 0 && (
                 <div
-                  className={`relative z-0 h-0.5 min-w-[1.25rem] flex-1 rounded-full ${connectorTone}`}
+                  className={`relative z-0 h-0.5 min-w-[0.75rem] flex-1 rounded-full ${connectorTone}`}
                   aria-hidden
                 />
               )}
@@ -147,12 +140,6 @@ export function RevisionHistoryStrip({
                   </span>
                 )}
               </div>
-              {isLast && (
-                <div
-                  className={`relative z-0 h-0.5 shrink-0 rounded-full ${stemWidth} ${connectorTone}`}
-                  aria-hidden
-                />
-              )}
             </div>
           );
         })}
@@ -163,8 +150,11 @@ export function RevisionHistoryStrip({
   if (compact) {
     return (
       <div className="w-full min-w-0">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-semibold text-slate-500">Revizyon Geçmişi</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-500">
+            Revizyon Geçmişi
+          </p>
+          {timeline}
           <a
             href={`/panel/revizyon-talepleri?reportId=${reportId}`}
             className="shrink-0 whitespace-nowrap text-[10px] text-brand-600 hover:text-blue-700"
@@ -172,7 +162,6 @@ export function RevisionHistoryStrip({
             Tümünü Gör →
           </a>
         </div>
-        {timeline}
         {maxReached && (
           <p className="mt-1 text-[10px] text-rose-600">0–3 Tamamlandı · 4. Revizyon Yok</p>
         )}

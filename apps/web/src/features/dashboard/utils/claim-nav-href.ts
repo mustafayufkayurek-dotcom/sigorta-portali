@@ -25,9 +25,9 @@ export const CLAIM_LIST_OPEN_HREF = '/panel/hasar-dosyalari?status=open';
 export const CLAIM_LIST_SLA_HREF = '/panel/hasar-dosyalari?status=sla_exceeded';
 export const CLAIM_LIST_HREF = '/panel/hasar-dosyalari';
 export const OPERATIONS_CENTER_HREF = '/panel/operasyon';
-export const STAFF_MGMT_HREF = '/panel/personel-yonetimi';
+export const STAFF_MGMT_HREF = '/panel/personel-ozluk?tab=performance';
 
-/** Ownership satırı — mevcut personel yönetimi rotası (yeni query uydurma yok). */
+/** Ownership satırı — Personel / Performans sekmesi. */
 export function staffLoadHref(_userId?: string | null): string {
   return STAFF_MGMT_HREF;
 }

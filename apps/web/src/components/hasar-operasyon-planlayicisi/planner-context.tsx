@@ -14,6 +14,7 @@ import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import {
   HASAR_WA_TEMPLATE_TYPES,
+  ensureInsuredPhoneInMessage,
   interpolateHasarTemplate,
   loadHasarWaTemplates,
   pickTemplate,
@@ -61,8 +62,18 @@ type PlannerDraft = {
   setWaTemplateType: (v: string) => void;
   waBody: string;
   setWaBody: (v: string) => void;
+  waOpened: boolean;
+  setWaOpened: (v: boolean) => void;
+  waMarkedSent: boolean;
+  setWaMarkedSent: (v: boolean) => void;
   digitalFormType: string;
   setDigitalFormType: (v: string) => void;
+  digitalApprovalStatus: 'Bekliyor' | 'Gönderildi' | 'Onaylandı';
+  setDigitalApprovalStatus: (v: 'Bekliyor' | 'Gönderildi' | 'Onaylandı') => void;
+  digitalSentAt: string | null;
+  setDigitalSentAt: (v: string | null) => void;
+  digitalApprovedAt: string | null;
+  setDigitalApprovedAt: (v: string | null) => void;
   approvalAuthority: string;
   setApprovalAuthority: (v: string) => void;
   emailTo: string;
@@ -127,7 +138,14 @@ export function PlannerProvider({
     HASAR_WA_TEMPLATE_TYPES.insuredAppointment,
   );
   const [waBody, setWaBody] = useState('');
+  const [waOpened, setWaOpened] = useState(false);
+  const [waMarkedSent, setWaMarkedSent] = useState(false);
   const [digitalFormType, setDigitalFormType] = useState('Mutabakat');
+  const [digitalApprovalStatus, setDigitalApprovalStatus] = useState<
+    'Bekliyor' | 'Gönderildi' | 'Onaylandı'
+  >('Bekliyor');
+  const [digitalSentAt, setDigitalSentAt] = useState<string | null>(null);
+  const [digitalApprovedAt, setDigitalApprovedAt] = useState<string | null>(null);
   const [approvalAuthority, setApprovalAuthority] = useState('Eksper');
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -151,6 +169,13 @@ export function PlannerProvider({
     if (!initialClaim) return;
     setClaim(initialClaim);
     if (mode === 'live') {
+      if (initialClaim.stepStatuses.whatsapp === 'done') setWaMarkedSent(true);
+      if (initialClaim.insuredApproval) {
+        setDigitalApprovalStatus('Onaylandı');
+        setDigitalApprovedAt(
+          initialClaim.progressLines.find((p) => p.step === 'digital_approval')?.when ?? null,
+        );
+      }
       if (formHydratedForClaim.current === claimId) return;
       formHydratedForClaim.current = claimId;
       setAssignedSupplierIds(initialClaim.preAssignedSupplierIds);
@@ -167,6 +192,7 @@ export function PlannerProvider({
   const baseVars = useMemo(
     () => ({
       musteriAdi: claim.insuredName,
+      musteriTelefon: claim.insuredPhone,
       dosyaNo: claim.fileNo,
       sirketAdi: claim.insurer,
       hasarAdresi: claim.address,
@@ -220,7 +246,10 @@ export function PlannerProvider({
 
   const buildInspectorMessage = useCallback(() => {
     const t = pickTemplate(templates, HASAR_WA_TEMPLATE_TYPES.inspectorAppointment);
-    return interpolateHasarTemplate(t.content, baseVars);
+    return ensureInsuredPhoneInMessage(
+      interpolateHasarTemplate(t.content, baseVars),
+      baseVars.musteriTelefon ?? '',
+    );
   }, [templates, baseVars]);
 
   const buildVendorTaskMessage = useCallback(
@@ -239,7 +268,11 @@ export function PlannerProvider({
     (recipientType: string) => {
       const type = templateTypeForRecipient(recipientType);
       const t = pickTemplate(templates, type);
-      return interpolateHasarTemplate(t.content, baseVars);
+      const msg = interpolateHasarTemplate(t.content, baseVars);
+      if (recipientType === 'Tespitçi') {
+        return ensureInsuredPhoneInMessage(msg, baseVars.musteriTelefon ?? '');
+      }
+      return msg;
     },
     [templates, baseVars],
   );
@@ -270,6 +303,7 @@ export function PlannerProvider({
         waPhone: resolveWaPhone(),
         waBody,
         waTemplateType,
+        waMarkedSent,
         digitalFormType,
         approvalAuthority,
         emailTo,
@@ -293,6 +327,7 @@ export function PlannerProvider({
       resolveWaPhone,
       waBody,
       waTemplateType,
+      waMarkedSent,
       digitalFormType,
       approvalAuthority,
       emailTo,
@@ -414,7 +449,37 @@ export function PlannerProvider({
                 phone: resolveWaPhone(),
                 templateType: waTemplateType,
                 message: waBody,
-                status: 'ready',
+                status: waMarkedSent ? 'sent' : 'ready',
+              },
+              { headers: authHeader() },
+            );
+            await refreshClaim();
+            return {
+              ok: true,
+              message: waMarkedSent
+                ? waOpened
+                  ? 'WhatsApp bilgilendirmesi gönderildi olarak kaydedildi.'
+                  : 'WhatsApp bilgilendirmesi gönderildi olarak işaretlendi (geçici geriye dönük giriş).'
+                : 'WhatsApp hazırlığı kaydedildi. Gönderim sonrası «Gönderildi» işaretleyin.',
+            };
+          }
+          case 'digital_approval': {
+            if (digitalApprovalStatus === 'Bekliyor') {
+              return {
+                ok: false,
+                message:
+                  'Önce formu Gönderin veya «Onaylandı Olarak İşaretle» ile durumu güncelleyin, ardından Kaydet’e basın.',
+              };
+            }
+            const status =
+              digitalApprovalStatus === 'Onaylandı' ? ('approved' as const) : ('sent' as const);
+            await axios.post(
+              `${API}/claim-operation-center/${claimId}/digital-approval`,
+              {
+                formType: digitalFormType,
+                status,
+                insuredName: claim.insuredName,
+                link: `https://onay.meridyen.local/${claim.fileNo}`,
               },
               { headers: authHeader() },
             );
@@ -422,15 +487,11 @@ export function PlannerProvider({
             return {
               ok: true,
               message:
-                'WhatsApp hazırlığı kaydedildi. Gönderim WhatsApp uygulamasından yapılır; sahte gönderildi işareti yok.',
+                status === 'approved'
+                  ? 'Dijital onay tamamlandı olarak kaydedildi.'
+                  : 'Dijital onay gönderimi kaydedildi.',
             };
           }
-          case 'digital_approval':
-            return {
-              ok: false,
-              message:
-                'Dijital onay API bağlı değil. Sahte başarı gösterilmez. Bu adım sonraki fazda bağlanacak.',
-            };
           case 'report_writing':
             return {
               ok: false,
@@ -479,6 +540,10 @@ export function PlannerProvider({
       waRecipientType,
       waTemplateType,
       waBody,
+      waOpened,
+      waMarkedSent,
+      digitalFormType,
+      digitalApprovalStatus,
       resolveWaPhone,
       refreshClaim,
     ],
@@ -508,8 +573,18 @@ export function PlannerProvider({
     setWaTemplateType,
     waBody,
     setWaBody,
+    waOpened,
+    setWaOpened,
+    waMarkedSent,
+    setWaMarkedSent,
     digitalFormType,
     setDigitalFormType,
+    digitalApprovalStatus,
+    setDigitalApprovalStatus,
+    digitalSentAt,
+    setDigitalSentAt,
+    digitalApprovedAt,
+    setDigitalApprovedAt,
     approvalAuthority,
     setApprovalAuthority,
     emailTo,

@@ -1,10 +1,38 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   MessageTemplateService,
   TEMPLATE_TYPES,
 } from '@/modules/notifications/sms/message-template.service';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
+import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
+import { RepairReportsService } from '@/modules/repair-reports/repair-reports.service';
+import {
+  resolveCustomerReminderEmail,
+  resolveCustomerReminderTitle,
+} from './approval-72h-customer-email.rule';
+
+const MANUAL_DECISION_MIN_REASON = 10;
+const PORTAL_ROLE_CODES = new Set([
+  'expert',
+  'insurance_company_user',
+  'assistance_company_user',
+  'EXPERT',
+  'INSURANCE_COMPANY_USER',
+  'ASSISTANCE_COMPANY_USER',
+]);
+const MERIDYEN_ROLE_CODES = new Set([
+  'admin',
+  'ADMIN',
+  'manager',
+  'MANAGER',
+  'ops_manager',
+  'OPS_MANAGER',
+  'office_staff',
+  'OFFICE_STAFF',
+  'field_staff',
+  'FIELD_STAFF',
+]);
 
 type Actor = {
   id?: string;
@@ -46,7 +74,16 @@ export class ClaimOperationCenterService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly templateService: MessageTemplateService,
+    private readonly claimEventEmail: ClaimEventEmailService,
+    private readonly repairReports: RepairReportsService,
   ) {}
+
+  private assertMeridyenStaff(actor: Actor) {
+    const role = this.actorRole(actor);
+    if (PORTAL_ROLE_CODES.has(role) || !MERIDYEN_ROLE_CODES.has(role)) {
+      throw new ForbiddenException('Manuel karar yalnız Meridyen personeli tarafından kaydedilebilir.');
+    }
+  }
 
   private actorId(actor: Actor): string {
     const id = actor?.id ?? actor?.userId;
@@ -392,6 +429,7 @@ export class ClaimOperationCenterService {
       : 'Belirtilmedi';
     const vars = {
       musteriAdi: insuredName,
+      musteriTelefon: claim.insuredPhone ?? claim.customer?.phone ?? '',
       dosyaNo: claim.fileNo,
       isTanimi: claim.claimSubject?.name ?? claim.lossType ?? 'Hasar Tespiti',
       hasarAdresi: address,
@@ -485,5 +523,193 @@ export class ClaimOperationCenterService {
       `${input.recipientName} randevu bildirimi: ${input.status}.`,
       { ...input, recordedAt: new Date().toISOString() },
     );
+  }
+
+  /**
+   * Dijital onay adımı — migration yok; mevcut NOTE_ADDED + metadata.kind ile kalıcı kayıt.
+   */
+  async recordDigitalApproval(
+    claimFileId: string,
+    input: {
+      formType: string;
+      status: 'sent' | 'approved';
+      insuredName?: string | null;
+      link?: string | null;
+    },
+    actor: Actor,
+  ) {
+    await this.getClaimOrThrow(claimFileId);
+    const formType = (input.formType ?? '').trim();
+    if (!formType) {
+      throw new BadRequestException('Form türü zorunludur.');
+    }
+    if (input.status !== 'sent' && input.status !== 'approved') {
+      throw new BadRequestException('Geçersiz dijital onay durumu.');
+    }
+    const description =
+      input.status === 'approved'
+        ? `Dijital onay tamamlandı (${formType}).`
+        : `Dijital onay formu gönderildi (${formType}).`;
+    return this.log(claimFileId, actor, 'NOTE_ADDED', description, {
+      kind: 'digital_approval',
+      formType,
+      status: input.status,
+      insuredName: input.insuredName ?? null,
+      link: input.link ?? null,
+      recordedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Sözlü müşteri kararı — zorunlu açıklama + durum + yönetici/müşteri maili.
+   * Migration yok; NOTE_ADDED + mevcut rapor onay API.
+   */
+  async recordManualDecision(
+    claimFileId: string,
+    input: { action: 'approve' | 'reject' | 'revise'; reason: string },
+    actor: Actor,
+  ) {
+    this.assertMeridyenStaff(actor);
+    const reason = (input.reason ?? '').trim();
+    if (reason.length < MANUAL_DECISION_MIN_REASON) {
+      throw new BadRequestException(`Açıklama en az ${MANUAL_DECISION_MIN_REASON} karakter olmalıdır.`);
+    }
+    if (!['approve', 'reject', 'revise'].includes(input.action)) {
+      throw new BadRequestException('Geçersiz manuel karar işlemi.');
+    }
+
+    const claim = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        fileNo: true,
+        insuredName: true,
+        customer: {
+          select: {
+            email: true,
+            shortName: true,
+            companyName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            contacts: { select: { email: true, isPrimary: true }, take: 10 },
+          },
+        },
+      },
+    });
+    if (!claim) throw new NotFoundException('Dosya bulunamadı.');
+
+    const actorId = this.actorId(actor);
+    const actorUser = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { firstName: true, lastName: true },
+    });
+    const actorName = `${actorUser?.firstName ?? ''} ${actorUser?.lastName ?? ''}`.trim() || 'Meridyen Personeli';
+
+    let statusApplied: string | null = null;
+    let reportId: string | null = null;
+
+    if (input.action === 'approve' || input.action === 'reject') {
+      const pending = await this.prisma.repairReport.findFirst({
+        where: { claimFileId, status: 'pending_approval' },
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true },
+      });
+      if (pending) {
+        reportId = pending.id;
+        if (input.action === 'approve') {
+          await this.repairReports.approveReport(
+            pending.id,
+            actorId,
+            `Sözlü Müşteri Onayı — ${reason}`,
+          );
+          statusApplied = 'report_approved';
+        } else {
+          await this.repairReports.rejectReport(
+            pending.id,
+            actorId,
+            `Sözlü Müşteri Reddi — ${reason}`,
+          );
+          statusApplied = 'report_rejected';
+        }
+      } else {
+        statusApplied = input.action === 'approve' ? 'file_approved_note' : 'file_rejected_note';
+      }
+    } else {
+      const sourceReport = await this.prisma.repairReport.findFirst({
+        where: {
+          claimFileId,
+          status: {
+            in: ['approved', 'externally_approved', 'externally_rejected', 'pending_approval'],
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, status: true },
+      });
+      if (sourceReport) {
+        const revised = await this.repairReports.reviseReport(sourceReport.id, actorId, {
+          reason: 'verbal_manual',
+          reasonNote: `Sözlü Müşteri Revizyonu — ${reason}`,
+          allowPendingVerbal: sourceReport.status === 'pending_approval',
+        });
+        reportId = revised?.id ?? sourceReport.id;
+        statusApplied = 'report_revised';
+      } else {
+        statusApplied = 'revision_requested_note';
+      }
+    }
+
+    const actionLabel =
+      input.action === 'approve' ? 'Manuel Onay' : input.action === 'reject' ? 'Manuel Red' : 'Manuel Revizyon';
+    const log = await this.log(
+      claimFileId,
+      actor,
+      'NOTE_ADDED',
+      `${actionLabel}: ${reason}`,
+      {
+        kind: 'manual_decision',
+        action: input.action,
+        reason,
+        channel: 'verbal',
+        statusApplied,
+        reportId,
+        recordedAt: new Date().toISOString(),
+      },
+    );
+
+    const managers = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'ADMIN', 'manager', 'MANAGER', 'ops_manager', 'OPS_MANAGER'] } },
+      },
+      select: { email: true },
+      take: 40,
+    });
+
+    const customerEmail = resolveCustomerReminderEmail(claim.customer);
+    const customerTitle = resolveCustomerReminderTitle(claim.customer);
+
+    void this.claimEventEmail.onManualDecision({
+      action: input.action,
+      fileNo: claim.fileNo,
+      reason,
+      actorName,
+      claimFileId: claim.id,
+      customerEmail,
+      managerEmails: managers.map((m) => m.email).filter(Boolean) as string[],
+    });
+
+    return {
+      id: log.id,
+      action: input.action,
+      actionLabel,
+      statusApplied,
+      reportId,
+      customerNotified: Boolean(customerEmail),
+      customerTitle,
+      reason,
+    };
   }
 }

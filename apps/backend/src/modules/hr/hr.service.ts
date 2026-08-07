@@ -8,6 +8,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import {
   HR_ATTENDANCE_ENTRY_TYPE,
   HR_ATTENDANCE_STATUS,
+  HR_ASSIGNABLE_ROLE_CODES,
   HR_LEAVE_STATUS,
   HR_LEAVE_TYPE,
   HR_LEAVE_TYPE_LABELS,
@@ -34,6 +35,7 @@ import {
 } from './hr-work-hours.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import { normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 
 type AuthUser = {
   id?: string;
@@ -115,6 +117,15 @@ export class HrService {
     if (role === 'ADMIN') return false;
     if (role === 'FINANCE' || role === 'FINANS' || role === 'ACCOUNTANT') return true;
     return (user.permissions ?? []).includes('hr.documents.manage');
+  }
+
+  /** TR cep → 05XXXXXXXXX; geçersizse BadRequest. */
+  private normalizeTrGsm(raw: string, label: string): string {
+    const normalized = normalizeWhatsAppPhone(raw.trim());
+    if (!normalized || !/^905\d{9}$/.test(normalized)) {
+      throw new BadRequestException(`Geçerli ${label} girin (örn. 05XX XXX XX XX)`);
+    }
+    return `0${normalized.slice(2)}`;
   }
 
   /** Türkçe ad-soyad karşılaştırması (AgreementConsentModal ile uyumlu). */
@@ -269,7 +280,16 @@ export class HrService {
     const profiles = await this.prisma.hrEmployeeProfile.findMany({
       where: { status: 'active' },
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            employeeCode: true,
+            role: { select: { id: true, code: true, name: true } },
+          },
+        },
         department: { select: { id: true, name: true } },
         leaveBalances: {
           where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year },
@@ -289,9 +309,15 @@ export class HrService {
         id: p.id,
         userId: p.userId,
         personnelNo: p.personnelNo,
+        personalGsm: p.personalGsm,
+        companyGsm: p.companyGsm,
+        bloodType: p.bloodType,
+        identityNo: p.identityNo,
+        birthDate: p.birthDate,
         hireDate: p.hireDate,
         status: p.status,
         user: p.user,
+        jobTitle: p.user.role?.name ?? null,
         department: p.department,
         leaveEntitlement: entitlement,
         leaveBalance: {
@@ -317,20 +343,7 @@ export class HrService {
         status: 'active',
         role: {
           code: {
-            in: [
-              'admin',
-              'ADMIN',
-              'manager',
-              'MANAGER',
-              'office_staff',
-              'OFFICE_STAFF',
-              'field_staff',
-              'FIELD_STAFF',
-              'finance',
-              'FINANCE',
-              'accountant',
-              'ACCOUNTANT',
-            ],
+            in: [...HR_ASSIGNABLE_ROLE_CODES],
           },
         },
       },
@@ -339,10 +352,20 @@ export class HrService {
         firstName: true,
         lastName: true,
         email: true,
-        role: { select: { code: true, name: true } },
+        role: { select: { id: true, code: true, name: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       take: 200,
+    });
+  }
+
+  /** Personel Ekle — görev seçimi için sistem rolleri */
+  async listAssignableRoles(user: AuthUser) {
+    this.assertCanSupervise(user);
+    return this.prisma.role.findMany({
+      where: { code: { in: [...HR_ASSIGNABLE_ROLE_CODES] } },
+      select: { id: true, code: true, name: true },
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -649,23 +672,59 @@ export class HrService {
           ? this.toDateOnly(dto.hireDate)
           : undefined;
 
-    const personnelNo =
-      dto.personnelNo === undefined
-        ? undefined
-        : dto.personnelNo?.trim()
-          ? dto.personnelNo.trim()
-          : null;
+    const personnelNo = dto.personnelNo?.trim();
+    if (!personnelNo) {
+      throw new BadRequestException('Sicil No zorunludur');
+    }
+
+    const personalGsm = this.normalizeTrGsm(dto.personalGsm ?? '', 'Kişisel GSM No');
+    const companyGsm = this.normalizeTrGsm(dto.companyGsm ?? '', 'Şirket GSM No');
+    const bloodType = dto.bloodType?.trim();
+    if (!bloodType) {
+      throw new BadRequestException('Kan Grubu zorunludur');
+    }
+
+    const identityNo = dto.identityNo?.replace(/\D/g, '') ?? '';
+    if (!/^\d{11}$/.test(identityNo)) {
+      throw new BadRequestException('T.C. Kimlik No 11 haneli olmalıdır');
+    }
+
+    const birthDateRaw = dto.birthDate?.trim();
+    if (!birthDateRaw) {
+      throw new BadRequestException('Doğum Tarihi zorunludur');
+    }
+    const birthDate = this.toDateOnly(birthDateRaw);
+
+    const role = await this.prisma.role.findFirst({
+      where: {
+        id: dto.roleId,
+        code: { in: [...HR_ASSIGNABLE_ROLE_CODES] },
+      },
+      select: { id: true, name: true },
+    });
+    if (!role) {
+      throw new BadRequestException('Geçerli bir görev (sistem rolü) seçin');
+    }
 
     const existing = await this.prisma.hrEmployeeProfile.findUnique({
       where: { userId: dto.userId },
     });
+
+    const contactData = {
+      personnelNo,
+      personalGsm,
+      companyGsm,
+      bloodType,
+      identityNo,
+      birthDate,
+    };
 
     const profile = existing
       ? await this.prisma.hrEmployeeProfile.update({
           where: { id: existing.id },
           data: {
             ...(hireDate !== undefined ? { hireDate } : {}),
-            ...(personnelNo !== undefined ? { personnelNo } : {}),
+            ...contactData,
             ...(dto.departmentId !== undefined
               ? { departmentId: dto.departmentId }
               : {}),
@@ -683,7 +742,7 @@ export class HrService {
           data: {
             userId: dto.userId,
             hireDate: hireDate ?? null,
-            personnelNo: personnelNo ?? null,
+            ...contactData,
             departmentId: dto.departmentId ?? null,
             managerUserId: dto.managerUserId ?? null,
             status: 'active',
@@ -693,6 +752,12 @@ export class HrService {
             department: { select: { id: true, name: true } },
           },
         });
+
+    // Bildirim telefonu + görev (sistem rolü)
+    await this.prisma.user.update({
+      where: { id: dto.userId },
+      data: { phone: personalGsm, roleId: role.id },
+    });
 
     const year = new Date().getFullYear();
     const balance = await this.ensureAnnualBalance(profile.id, year, profile.hireDate);
@@ -712,7 +777,7 @@ export class HrService {
           Number(balance.pendingDays),
       },
       note:
-        'Kıdem ve ihbar tazminatı hesabı sonraki fazdadır; bu adım yalnızca yıllık izin hakedişini günceller.',
+        'İşe giriş kaydı yıllık izin bakiyesini günceller. Kıdem ve ihbar tazminatı sonraki fazdadır.',
     };
   }
 

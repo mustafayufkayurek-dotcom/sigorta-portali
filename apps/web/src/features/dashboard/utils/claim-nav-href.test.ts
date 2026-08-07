@@ -47,8 +47,8 @@ assert.equal(CLAIM_LIST_SLA_HREF, '/panel/hasar-dosyalari?status=sla_exceeded');
 assert.equal(CLAIM_LIST_OPEN_HREF, '/panel/hasar-dosyalari?status=open');
 assert.equal(CLAIM_LIST_HREF, '/panel/hasar-dosyalari');
 assert.equal(OPERATIONS_CENTER_HREF, '/panel/operasyon');
-assert.equal(STAFF_MGMT_HREF, '/panel/personel-yonetimi');
-assert.equal(staffLoadHref('u-1'), STAFF_MGMT_HREF, 'staff load uses personel yönetimi');
+assert.equal(STAFF_MGMT_HREF, '/panel/personel-ozluk?tab=performance');
+assert.equal(staffLoadHref('u-1'), STAFF_MGMT_HREF, 'staff load uses personel performans');
 assert.equal(staffLoadHref(null), STAFF_MGMT_HREF, 'staff load null user');
 
 console.log('claim-nav-href.test.ts PASS');
