@@ -1,0 +1,44 @@
+---
+description: Ayarlar Yetkilendirme ekranı — operasyon dili, kayan düğme, whitelist API. Onaysız bozulmaz.
+alwaysApply: true
+---
+
+# Yetkilendirme Ekranı Kilidi (kalıcı)
+
+**Kaynak olay (07.08.2026):** Finans tedarikçi silme + Ayarlar Yetkilendirme. Yanlış layout (iki kolon / checkbox / eksper listesi) ürün dilinden kopuyordu.
+
+**Temel cümle:** Bu ekran operasyon dilinde, Alan Zorunlulukları kalıbında kayan düğme ile çalışır; ham permission kodu UI’da yoktur.
+
+## Zorunlu sözleşmeler
+
+### 1) Kapsam (roller)
+
+- Yönetilen görevler yalnızca iç operasyon: `finance` / `office_staff` / `manager` / `accountant` / `ops_manager`.
+- Portal / eksper (`expert`, `adjuster`, `insurance_company_user`, …) listede **yok**.
+- `admin` yetenekleri bu API’den değiştirilemez.
+
+### 2) UI tasarım
+
+- `SettingsPageLayout` + yatay görev sekmeleri + tek kart (Alan Zorunlulukları ile aynı aile).
+- İşlem aç/kapa: **kayan düğme** (`role="switch"`, `bg-brand-600`, `h-5 w-10 rounded-full`) — checkbox yasak.
+- Etiketler Title Case operasyon dili; `vendor.delete` gibi kodlar UI’da görünmez.
+- `office_staff` sekme adı ürün dilinde **Dosya Sorumlusu**.
+- Dosya Sorumlusu sol menüde `/panel/ayarlar/yetkilendirme` erişimi korunur (Test Notları yanı).
+
+### 3) Güvenlik (API)
+
+- Yalnızca `CAPABILITY_GROUPS` whitelist yazılır (`role-capabilities.ts`).
+- `setCapabilities` yönetilmeyen izinlere **dokunmaz**.
+- Bilinmeyen capability id → 400; admin rolü → 403.
+- İlk sürüm grubu: **Tedarikçiler** (`vendor.view` / create+update / `vendor.delete`).
+- Yeni grup eklemek ürün onayı ister; tüm permission matrisini ekrana dökmek yasak.
+
+### 4) Finans tedarikçi silme
+
+- `FINANS` guard + seed + canlı `role_permissions` içinde `vendor.delete` bulunur.
+- Bu izni «yanlışlıkla» kaldırmak yasak — önce Mustafa onayı.
+
+## Durdurma
+
+İki kolon rol listesi, checkbox’a dönüş, eksper/portal rolleri, ham kod etiketi, whitelist dışı yazma → **dur, Mustafa onayı iste**.  
+Regresyon: `yetkilendirme.lock.spec.ts`, `role-capabilities*.spec.ts`, `role-capabilities.lock.spec.ts`.

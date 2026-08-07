@@ -28,6 +28,7 @@ async function main() {
 
     // Role management
     { code: 'role.view', name: 'Rolleri Görüntüle', module: 'role', action: 'view' },
+    { code: 'role.manage', name: 'Rolleri Yönet', module: 'role', action: 'manage' },
     { code: 'role.create', name: 'Rol Oluştur', module: 'role', action: 'create' },
     { code: 'role.update', name: 'Rol Güncelle', module: 'role', action: 'update' },
     { code: 'role.delete', name: 'Rol Sil', module: 'role', action: 'delete' },
@@ -92,6 +93,12 @@ async function main() {
 
     // Report
     { code: 'report.view', name: 'Raporları Görüntüle', module: 'report', action: 'view' },
+
+    // Vendor / Tedarikçi
+    { code: 'vendor.view', name: 'Tedarikçileri Görüntüle', module: 'vendor', action: 'view' },
+    { code: 'vendor.create', name: 'Tedarikçi Oluştur', module: 'vendor', action: 'create' },
+    { code: 'vendor.update', name: 'Tedarikçi Güncelle', module: 'vendor', action: 'update' },
+    { code: 'vendor.delete', name: 'Tedarikçi Sil', module: 'vendor', action: 'delete' },
 
     // Location tracking
     { code: 'location.view', name: 'Konum Takibini Görüntüle', module: 'location', action: 'view' },
@@ -231,6 +238,7 @@ async function main() {
     'hr.view', 'hr.leave.request',
     'report.view', 'report.create',
     'operation_inbox.view', 'operation_inbox.manage',
+    'role.view', 'role.manage',
   ];
   await assignPermissions(officeStaffRole.id, officePermCodes, createdPermissions);
 
@@ -257,7 +265,7 @@ async function main() {
   const financePermCodes = [
     'claim_file.view', 'claim_file.update',
     'customer.view',
-    'vendor.view', 'vendor.create', 'vendor.update',
+    'vendor.view', 'vendor.create', 'vendor.update', 'vendor.delete',
     'document.view', 'document.upload',
     'note.view', 'note.create', 'note.update',
     'dashboard.view',

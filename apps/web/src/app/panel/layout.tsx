@@ -75,6 +75,7 @@ import {
   MonitorCheck,
   PackageCheck,
   Receipt,
+  KeyRound,
   Settings,
   ShieldCheck,
   Users,
@@ -108,6 +109,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/anketler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
+  { path: '/panel/ayarlar/yetkilendirme', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/kullanicilar', roles: ['admin', 'ADMIN'] },
   { path: '/panel/guvenlik', roles: ['admin', 'ADMIN'] },
@@ -287,6 +289,7 @@ function getPanelMainLinks({
               children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
             { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
+            { title: 'Yetkilendirme', href: '/panel/ayarlar/yetkilendirme', icon: KeyRound },
             { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : isFieldStaff

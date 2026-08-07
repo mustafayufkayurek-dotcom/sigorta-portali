@@ -16,6 +16,7 @@
   { "path": "/panel/anketler", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
   { "path": "/panel/ayarlar/test-notlari-gorev-takip", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "finance", "accountant", "ACCOUNTANT", "MANAGER"] },
   { "path": "/panel/ayarlar/is-gruplari", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "finance", "accountant", "ACCOUNTANT", "MANAGER"] },
+  { "path": "/panel/ayarlar/yetkilendirme", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "MANAGER"] },
   { "path": "/panel/ayarlar", "roles": ["admin", "ADMIN"] },
   { "path": "/panel/sigorta-sirketleri", "roles": ["admin", "ADMIN"] },
   { "path": "/panel/kullanicilar", "roles": ["admin", "ADMIN"] },

@@ -15,6 +15,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'task.view', 'task.create', 'task.update',
     'dashboard.view',
     'operation_inbox.view', 'operation_inbox.manage',
+    'role.view', 'role.manage',
   ],
   FIELD_STAFF: [
     'customer.view',
@@ -25,7 +26,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ],
   FINANS: [
     'customer.view',
-    'vendor.view', 'vendor.create', 'vendor.update',
+    'vendor.view', 'vendor.create', 'vendor.update', 'vendor.delete',
     'claim_file.view',
     'invoice.view', 'invoice.create', 'invoice.update',
     'budget.view', 'budget.create', 'budget.review',

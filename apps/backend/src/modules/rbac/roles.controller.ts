@@ -1,8 +1,9 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { SetRoleCapabilitiesDto } from './dto/set-role-capabilities.dto';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 
@@ -17,6 +18,33 @@ export class RolesController {
   @RequirePermissions('role.view')
   async findAll() {
     const data = await this.rolesService.findAll();
+    return { success: true, data };
+  }
+
+  @Get('capability-catalog')
+  @RequirePermissions('role.view')
+  @ApiOperation({ summary: 'Yetkilendirme ekranı — işlem kataloğu (operasyon etiketleri)' })
+  async capabilityCatalog() {
+    const data = this.rolesService.getCapabilityCatalog();
+    return { success: true, data };
+  }
+
+  @Get(':id/capabilities')
+  @RequirePermissions('role.view')
+  @ApiOperation({ summary: 'Role atanmış yetenek kimlikleri' })
+  async getCapabilities(@Param('id') id: string) {
+    const capabilityIds = await this.rolesService.getCapabilityIdsForRole(id);
+    return { success: true, data: { capabilityIds } };
+  }
+
+  @Put(':id/capabilities')
+  @RequirePermissions('role.manage')
+  @ApiOperation({ summary: 'Rol yeteneklerini güncelle (whitelist)' })
+  async setCapabilities(
+    @Param('id') id: string,
+    @Body() dto: SetRoleCapabilitiesDto,
+  ) {
+    const data = await this.rolesService.setCapabilities(id, dto.capabilityIds ?? []);
     return { success: true, data };
   }
 
