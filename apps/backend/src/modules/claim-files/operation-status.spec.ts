@@ -59,6 +59,30 @@ describe('operation-status mapping', () => {
     expect(stage.nextAction).toBe('Onay Talep Et');
   });
 
+  it('report rejected → Reddedildi (Rapor Yazılıyor değil)', () => {
+    const stage = deriveOperationStage({
+      claimStatusCode: 'budget_preparing',
+      reportStatus: 'rejected',
+    });
+    expect(stage.id).toBe('rapor_reddedildi');
+    expect(stage.label).toBe('Reddedildi');
+    expect(
+      resolveOperationStatusLabel({
+        claimStatusCode: 'budget_preparing',
+        reportStatus: 'rejected',
+      }),
+    ).toBe('Reddedildi');
+  });
+
+  it('externally_rejected → Reddedildi', () => {
+    expect(
+      deriveOperationStage({
+        claimStatusCode: 'budget_submitted',
+        reportStatus: 'externally_rejected',
+      }).label,
+    ).toBe('Reddedildi');
+  });
+
   it('72h rule: exactly 72h is exceeded', () => {
     const since = new Date(Date.now() - APPROVAL_72H_MS);
     expect(isApproval72hExceeded(since)).toBe(true);

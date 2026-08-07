@@ -19,6 +19,7 @@ export const OPERATION_STAGE_ORDER = [
   'saha_tamamlandi',
   'rapor_yaziliyor',
   'onay_bekliyor',
+  'rapor_reddedildi',
   'onaylandi',
   'onarim',
   'fatura',
@@ -84,6 +85,12 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     label: 'Onay Bekliyor',
     tone: 'amber',
     nextAction: 'Onay Talep Et',
+  },
+  rapor_reddedildi: {
+    id: 'rapor_reddedildi',
+    label: 'Reddedildi',
+    tone: 'red',
+    nextAction: 'Revizyona başla veya yeniden onaya gönder',
   },
   onaylandi: {
     id: 'onaylandi',
@@ -166,7 +173,9 @@ const REPORT_APPROVED = new Set([
   'sent_for_external_approval',
   'externally_approved',
 ]);
-const REPORT_WRITING = new Set(['draft', 'rejected']);
+/** Taslak rapor — yazım aşaması. Red, ayrı «Reddedildi» aşamasıdır. */
+const REPORT_WRITING = new Set(['draft']);
+const REPORT_REJECTED = new Set(['rejected', 'externally_rejected']);
 
 export type DeriveOperationStageInput = {
   claimStatusCode?: string | null;
@@ -180,6 +189,8 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
   if (claim === 'cancelled') return 'iptal';
   if (claim === 'closed' || claim === 'completed') return 'dosya_kapandi';
 
+  // Red, claim budget_preparing olsa bile «Rapor Yazılıyor»a düşmez
+  if (REPORT_REJECTED.has(report)) return 'rapor_reddedildi';
   if (REPORT_AWAITING.has(report)) return 'onay_bekliyor';
   if (REPORT_APPROVED.has(report) && !['repair_planning', 'repair_in_progress', 'repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'].includes(claim)) {
     return 'onaylandi';

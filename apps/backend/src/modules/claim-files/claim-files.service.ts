@@ -356,9 +356,15 @@ export class ClaimFilesService {
         };
         break;
       case 'report_writing':
+        // Reddedilen raporlar bu kovaya girmez — durum etiketi «Reddedildi»
         baseWhere.OR = [
-          { currentStatus: { code: 'budget_preparing' } },
-          { repairReports: { some: { status: { in: ['draft', 'rejected'] } } } },
+          {
+            AND: [
+              { currentStatus: { code: 'budget_preparing' } },
+              { NOT: { repairReports: { some: { status: { in: ['rejected', 'externally_rejected'] } } } } },
+            ],
+          },
+          { repairReports: { some: { status: 'draft' } } },
         ];
         break;
       case 'finance_transfer':
