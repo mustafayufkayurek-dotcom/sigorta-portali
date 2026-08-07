@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-07",
-  "label": "v470-hasar-tedarikci-gorev",
-  "description": "Full: Hasar liste tedarikçi sütunu + planlayıcı görev tanımı round-trip. Migration yok. Rollback web v469 / backend v468.",
+  "label": "v471-yetkilendirme-finans-silme",
+  "description": "Full: Ayarlar Yetkilendirme (kayan düğme) + Finans vendor.delete + Dosya Sorumlusu erişim. Migration yok. Rollback web v470 / backend v470.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v470-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v470-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v471-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v471-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v469-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v468-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v470-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v470-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -22,6 +22,7 @@
     "/panel/raporlar",
     "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/yetkilendirme",
     "/panel/operasyon",
     "/panel/operasyon/gelen-kutusu",
     "/panel/hasar-dosyalari",
