@@ -251,6 +251,17 @@ export async function updateCaseStatus(
   return { data: asEntity<EmergencyCase>(data) };
 }
 
+export async function recordEmergencyManualDecision(
+  id: string,
+  body: { action: 'approve' | 'reject' | 'revise'; reason: string },
+): Promise<{ data: { action: string; actionLabel: string; flowHint?: string } }> {
+  const data = await apiClient.post<{ action: string; actionLabel: string; flowHint?: string }>(
+    `/emergency/cases/${id}/manual-decision`,
+    body,
+  );
+  return { data };
+}
+
 export type ClosureEmailPreview = {
   to: string;
   recipients: string[];

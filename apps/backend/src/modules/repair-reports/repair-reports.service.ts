@@ -998,7 +998,7 @@ export class RepairReportsService {
     return this.getReport(reportId);
   }
 
-  async approveReport(reportId: string, userId: string) {
+  async approveReport(reportId: string, userId: string, reason?: string) {
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {
@@ -1028,8 +1028,9 @@ export class RepairReportsService {
       select: { firstName: true, lastName: true },
     });
 
+    const trimmedReason = reason?.trim() || null;
     await this.prisma.reportApprovalHistory.create({
-      data: { reportId, userId, action: 'approved' },
+      data: { reportId, userId, action: 'approved', reason: trimmedReason },
     });
 
     // Notify report creator (in-app)
@@ -1146,6 +1147,8 @@ export class RepairReportsService {
       reason?: string;
       reasonNote?: string;
       affectedSections?: string[];
+      /** Sözlü manuel revizyon: onay bekleyen rapordan da revizyon taslağı açılabilir */
+      allowPendingVerbal?: boolean;
     },
   ) {
     const report = await this.prisma.repairReport.findUnique({
@@ -1157,8 +1160,15 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    if (report.status !== 'approved' && report.status !== 'externally_approved' && report.status !== 'externally_rejected') {
-      throw new BadRequestException('Yalnızca onaylanmış raporlar revize edilebilir');
+    const allowedStatuses = new Set([
+      'approved',
+      'externally_approved',
+      'externally_rejected',
+      // Onay beklerken de Revizyona Başla ile taslak açılabilir
+      'pending_approval',
+    ]);
+    if (!allowedStatuses.has(report.status)) {
+      throw new BadRequestException('Bu rapor durumunda revizyon başlatılamaz');
     }
 
     // Zincirin kök id'sini bul
@@ -1299,6 +1309,22 @@ export class RepairReportsService {
           reason: reasonDetail,
         },
       });
+
+      // Onay bekleyen kaynaktan revizyon: eski bekleyen kaydı kapat, tek aktif taslak kalsın
+      if (report.status === 'pending_approval') {
+        await tx.repairReport.update({
+          where: { id: report.id },
+          data: { status: 'rejected' },
+        });
+        await tx.reportApprovalHistory.create({
+          data: {
+            reportId: report.id,
+            userId,
+            action: 'rejected',
+            reason: options?.reasonNote?.trim() || 'Revizyon başlatıldı — yeni taslak açıldı',
+          },
+        });
+      }
 
       if (options?.reason && options?.reasonNote?.trim()) {
         await tx.reportRevisionRequest.create({

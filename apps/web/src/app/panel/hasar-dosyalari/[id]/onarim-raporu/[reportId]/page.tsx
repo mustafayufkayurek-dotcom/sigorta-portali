@@ -13,8 +13,12 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import ReportImageGallery, { type PendingReportImageUpload } from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
-import { RevisionHistoryStrip } from '@/components/damage-reports/RevisionHistoryStrip';
-import { ClaimStageStrip } from '@/components/damage-reports/ClaimStageStrip';
+import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
+import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
+import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
+import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
+import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
+import { getApiErrorMessage } from '@/utils/api-error';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
@@ -41,6 +45,7 @@ import {
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
 import { editingDraftFromCellValue, normalizeCellNumericInput } from '@/utils/repair-report-number-input';
+import { formatTrAmountInput, numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
@@ -279,8 +284,6 @@ function IconChevronDown({ className = 'w-3.5 h-3.5' }: { className?: string }) 
   );
 }
 
-// ─── Revizyon Geçmişi → RevisionHistoryStrip (paylaşımlı bileşen)
-
 function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
     <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -464,7 +467,7 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
   const profitBg = (pct: number) => pct >= 20 ? 'bg-green-50' : pct >= 10 ? 'bg-yellow-50' : pct >= 0 ? 'bg-orange-50' : 'bg-red-50';
 
   return (
-    <div className="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden">
+    <div id="dosya-butcesi" className="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden scroll-mt-24">
       {/* Başlık — tıklanınca açılır/kapanır */}
       <button
         type="button"
@@ -2006,12 +2009,17 @@ function mergeVendorMemoryIntoRow(row: RowState): RowState {
 }
 
 // ─── Hesap Makinesi Input ─────────────────────────────────────────────────────
+function looksLikeCalcFormula(raw: string): boolean {
+  return /[+\-*/()]/.test(raw) && !/^-?\d+([.,]\d+)?$/.test(raw.trim());
+}
+
 function CalcInput({
   value,
   onChange,
   onCommit,
   className,
   placeholder,
+  amountFormat,
   'data-cell': dataCell,
   tabIndex,
   onFocus,
@@ -2022,6 +2030,8 @@ function CalcInput({
   onCommit: (v: string) => void;
   className?: string;
   placeholder?: string;
+  /** Satış/maliyet: yazarken binlik nokta (15.600) göster */
+  amountFormat?: boolean;
   'data-cell'?: string;
   tabIndex?: number;
   onFocus?: () => void;
@@ -2031,10 +2041,18 @@ function CalcInput({
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   const committingRef = useRef(false);
-  const isFormula = /[\+\-\*\/\(\)]/.test(value) && !/^-?\d+(\.\d+)?$/.test(value.trim());
+  const isFormula = looksLikeCalcFormula(value);
+
+  const toAmountDraft = (raw: string): string => {
+    const base = editingDraftFromCellValue(raw);
+    if (!base) return '';
+    if (!amountFormat || looksLikeCalcFormula(base)) return base;
+    const n = parseFloat(base);
+    return Number.isFinite(n) ? numberToTrAmountInput(n) : base;
+  };
 
   const handleFocus = () => {
-    const initialDraft = editingDraftFromCellValue(value);
+    const initialDraft = toAmountDraft(value);
     setDraft(initialDraft);
     setEditing(true);
     onFocus?.();
@@ -2054,8 +2072,15 @@ function CalcInput({
     committingRef.current = true;
     setEditing(false);
     const evaluated = evaluateExpression(raw);
-    const base = evaluated !== null ? evaluated.toString() : raw;
-    const final = normalizeCellNumericInput(base);
+    let final: string;
+    if (evaluated !== null) {
+      final = String(evaluated);
+    } else if (amountFormat && !looksLikeCalcFormula(raw)) {
+      const tr = parseTrAmountInput(raw);
+      final = tr !== null ? String(Math.round(tr * 100) / 100) : normalizeCellNumericInput(raw);
+    } else {
+      final = normalizeCellNumericInput(raw);
+    }
     onChange(final);
     onCommit(final);
     requestAnimationFrame(() => {
@@ -2078,15 +2103,22 @@ function CalcInput({
       if (e.key === 'Enter') e.preventDefault();
     } else if (e.key === 'Escape') {
       setEditing(false);
-      setDraft(value);
+      setDraft(toAmountDraft(value));
     }
     onKeyDown?.(e);
   };
 
-  const displayValue = editing ? draft : value;
+  const idleDisplay =
+    amountFormat && value && !looksLikeCalcFormula(value)
+      ? (() => {
+          const n = parseFloat(value);
+          return Number.isFinite(n) ? numberToTrAmountInput(n) : value;
+        })()
+      : value;
+  const displayValue = editing ? draft : idleDisplay;
 
   return (
-    <div className="relative flex items-center w-full h-10">
+    <div className="relative flex items-center w-full min-h-11">
       {isFormula && !editing && (
         <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-indigo-400 bg-indigo-50 rounded px-0.5 leading-none select-none">fx</span>
       )}
@@ -2094,13 +2126,21 @@ function CalcInput({
         ref={inputRef}
         data-cell={dataCell}
         type="text"
+        inputMode={amountFormat && !editing ? 'decimal' : undefined}
         className={`${className} ${isFormula && !editing ? 'pl-6' : ''}`}
         value={displayValue}
         placeholder={placeholder}
         tabIndex={tabIndex}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (amountFormat && !looksLikeCalcFormula(next) && !/[+\-*/()]/.test(next)) {
+            setDraft(formatTrAmountInput(next));
+          } else {
+            setDraft(next);
+          }
+        }}
         onKeyDown={handleKeyDown}
       />
     </div>
@@ -2887,8 +2927,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const cellCls = (rowIdx: number | 'new', col: string, editable: boolean) => {
     const isActive = activeCell?.rowIdx === rowIdx && activeCell?.col === col;
-    const base = 'w-full h-10 px-2 text-xs bg-transparent outline-none border-0';
-    const activeCls = isActive && editable ? 'ring-2 ring-inset ring-blue-400 bg-blue-50/40 rounded' : '';
+    const isAmountCol = col === 'salesUnitPrice' || col === 'supplierUnitPrice';
+    const base = `w-full ${isAmountCol ? 'h-11 px-2.5 text-sm font-medium' : 'h-10 px-2 text-xs'} bg-transparent outline-none border-0`;
+    const activeCls = isActive && editable ? 'ring-2 ring-inset ring-brand-600 bg-blue-50/40 rounded' : '';
     const readonlyCls = !editable ? 'text-slate-400 cursor-default select-none' : 'text-slate-800';
     return `${base} ${activeCls} ${readonlyCls}`;
   };
@@ -2974,7 +3015,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         data-kalem-scrollport="v329"
         className="max-h-[50vh] overflow-y-auto overflow-x-auto overscroll-contain"
       >
-      <table className="w-full text-xs border-separate border-spacing-0 min-w-[800px]">
+      <table className="w-full text-xs border-separate border-spacing-0 min-w-[980px]">
         <thead>
           <tr className="bg-slate-50">
             {isEditable && <th className="sticky top-0 z-30 w-8 px-2 py-2 text-center text-slate-400 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">#</th>}
@@ -2985,14 +3026,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[160px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İş Tanımı</th>
             <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[140px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Açıklama <span className="text-status-danger">*</span></th>
             <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Miktar</th>
-            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 w-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Birim</th>
-            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-24 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Satış Fiyatı</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 min-w-[92px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Birim</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 min-w-[148px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Satış Fiyatı</th>
             {viewMode === 'internal' && (
-              <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-r border-slate-200 min-w-[148px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
                 Maliyet
               </th>
             )}
-            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-slate-200 w-28 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Toplam</th>
+            <th className="sticky top-0 z-30 px-2 py-2 text-right text-slate-500 font-medium border-b border-slate-200 min-w-[120px] bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">Toplam</th>
             {isEditable && <th className="sticky top-0 z-30 min-w-[108px] px-1 py-2 text-center text-slate-500 font-medium border-b border-l border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">İşlem</th>}
           </tr>
         </thead>
@@ -3267,13 +3308,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     <span className="px-2 text-xs text-slate-700 block py-3">{row.unit}</span>
                   )}
                 </td>
-                {/* Satış Fiyatı — CalcInput */}
-                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-right ${isLoss ? 'bg-red-50/30' : ''}`}>
+                {/* Satış Fiyatı — CalcInput (geniş + binlik ayraç) */}
+                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-right min-w-[148px] ${isLoss ? 'bg-red-50/40' : ''}`}>
                   {isEditable ? (
-                    <div className="relative flex items-center">
+                    <div className="relative flex items-center min-h-11">
                       <CalcInput
                         data-cell={`${rowIdx}-salesUnitPrice`}
-                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-right pr-10 ${isLoss ? '!ring-2 !ring-inset !ring-red-400 !rounded' : ''}`}
+                        amountFormat
+                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-right pr-12 ${isLoss ? '!ring-2 !ring-inset !ring-status-danger !rounded-md' : ''}`}
                         value={row.salesUnitPrice}
                         onChange={(v) => updateRow(row._id, 'salesUnitPrice', v)}
                         onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { salesUnitPrice: v }), 50)}
@@ -3281,23 +3323,31 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         onFocus={() => setActiveCell({ rowIdx, col: 'salesUnitPrice' })}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'salesUnitPrice', row._id)}
                       />
-                      <div className="absolute right-1 flex items-center gap-0.5 pointer-events-none">
-                        {isLoss && <span title="Tedarikçi fiyatı satış fiyatından yüksek — bu kalemde zarar var" className="text-status-danger pointer-events-auto cursor-help text-xs">⚠</span>}
-                        <span className="text-[10px] font-medium text-slate-400 select-none">TL.</span>
+                      <div className="absolute right-1.5 flex items-center gap-1 pointer-events-none">
+                        {isLoss && (
+                          <span
+                            title="Tedarikçi fiyatı satış fiyatından yüksek — bu kalemde zarar var"
+                            className="pointer-events-auto cursor-help inline-flex items-center rounded bg-status-danger/15 px-1.5 py-0.5 text-[10px] font-semibold text-status-danger"
+                          >
+                            Zarar
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-slate-500 select-none">TL</span>
                       </div>
                     </div>
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3 text-right">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
+                    <span className="px-2 text-sm text-slate-700 block py-3 text-right">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
                   )}
                 </td>
-                {/* TDR (Tedarikçi Fiyatı, internal only) — CalcInput */}
+                {/* Maliyet (Tedarikçi Fiyatı, internal only) — CalcInput */}
                 {viewMode === 'internal' && (
-                  <td className={`${tdCls(rowIdx, 'supplierUnitPrice')} text-right ${isLoss ? 'bg-red-50/30' : ''}`}>
+                  <td className={`${tdCls(rowIdx, 'supplierUnitPrice')} text-right min-w-[148px] ${isLoss ? 'bg-status-warning/10' : ''}`}>
                     {isEditable ? (
-                      <div className="relative flex items-center justify-end h-10 px-1">
+                      <div className="relative flex items-center justify-end min-h-11 px-1">
                         <CalcInput
                           data-cell={`${rowIdx}-supplierUnitPrice`}
-                          className={`${cellCls(rowIdx, 'supplierUnitPrice', true)} text-right pr-8 text-slate-500 ${isLoss ? '!ring-2 !ring-inset !ring-orange-400 !rounded' : ''}`}
+                          amountFormat
+                          className={`${cellCls(rowIdx, 'supplierUnitPrice', true)} text-right pr-10 text-slate-600 ${isLoss ? '!ring-2 !ring-inset !ring-status-warning !rounded-md' : ''}`}
                           value={row.supplierUnitPrice}
                           onChange={(v) => updateRow(row._id, 'supplierUnitPrice', v)}
                           onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { supplierUnitPrice: v }), 50)}
@@ -3305,11 +3355,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           onFocus={() => setActiveCell({ rowIdx, col: 'supplierUnitPrice' })}
                           onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'supplierUnitPrice', row._id)}
                         />
-                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 pointer-events-none select-none">TL</span>
                       </div>
                     ) : (
                       <div className="px-2 py-2 text-right">
-                        <span className="text-xs text-slate-500 block">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
+                        <span className="text-sm text-slate-500 block">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
                         {row.vendorQuotes?.preferredVendorName && (
                           <span className="text-[9px] text-slate-400 block truncate">
                             {formatDisplayLabel(row.vendorQuotes.preferredVendorName)}
@@ -3533,11 +3583,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </select>
               </td>
               {/* Satış Fiyatı — CalcInput */}
-              <td className={`${tdCls('new', 'salesUnitPrice')} text-right`}>
-                <div className="relative flex items-center">
+              <td className={`${tdCls('new', 'salesUnitPrice')} text-right min-w-[148px]`}>
+                <div className="relative flex items-center min-h-11">
                   <CalcInput
                     data-cell="new-salesUnitPrice"
-                    className={`${cellCls('new', 'salesUnitPrice', true)} text-right pr-8`}
+                    amountFormat
+                    className={`${cellCls('new', 'salesUnitPrice', true)} text-right pr-10`}
                     value={addingRow.salesUnitPrice}
                     onChange={(v) => { setAddingRow((p) => ({ ...p, salesUnitPrice: v })); setAddingDirty(true); }}
                     onCommit={() => {}}
@@ -3545,16 +3596,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     onFocus={() => setActiveCell({ rowIdx: 'new', col: 'salesUnitPrice' })}
                     onKeyDown={(e) => handleCellKeyDown(e, 'new', 'salesUnitPrice')}
                   />
-                  <span className="absolute right-2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                  <span className="absolute right-2 text-xs font-semibold text-slate-500 pointer-events-none select-none">TL</span>
                 </div>
               </td>
-              {/* TDR (Tedarikçi Fiyatı) — CalcInput */}
+              {/* Maliyet (Tedarikçi Fiyatı) — CalcInput */}
               {viewMode === 'internal' && (
-                <td className={`${tdCls('new', 'supplierUnitPrice')} text-right`}>
-                  <div className="relative flex items-center justify-end h-10 px-1">
+                <td className={`${tdCls('new', 'supplierUnitPrice')} text-right min-w-[148px]`}>
+                  <div className="relative flex items-center justify-end min-h-11 px-1">
                     <CalcInput
                       data-cell="new-supplierUnitPrice"
-                      className={`${cellCls('new', 'supplierUnitPrice', true)} text-right pr-8 text-slate-500`}
+                      amountFormat
+                      className={`${cellCls('new', 'supplierUnitPrice', true)} text-right pr-10 text-slate-600`}
                       value={addingRow.supplierUnitPrice}
                       onChange={(v) => { setAddingRow((p) => ({ ...p, supplierUnitPrice: v })); setAddingDirty(true); }}
                       onCommit={() => {}}
@@ -3562,7 +3614,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onFocus={() => setActiveCell({ rowIdx: 'new', col: 'supplierUnitPrice' })}
                       onKeyDown={(e) => handleCellKeyDown(e, 'new', 'supplierUnitPrice')}
                     />
-                    <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 pointer-events-none select-none">TL.</span>
+                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 pointer-events-none select-none">TL</span>
                   </div>
                 </td>
               )}
@@ -3841,6 +3893,15 @@ function EmergencyReportEditor({
     } catch (e) { console.error(e); }
   };
 
+  const openPdfPreview = async (view: 'internal' | 'external') => {
+    try {
+      const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, { headers: authHeader(), responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    } catch (e) { console.error(e); }
+  };
+
   const handleSubmitReport = async () => {
     if (!confirm('Raporu sunmak istediğinizden emin misiniz?')) return;
     try {
@@ -3870,17 +3931,23 @@ function EmergencyReportEditor({
           <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden text-xs">
             <button
               type="button"
-              onClick={() => setViewMode('internal')}
+              onClick={() => {
+                setViewMode('internal');
+                void openPdfPreview('internal');
+              }}
               className={`px-3 py-1.5 transition-colors ${viewMode === 'internal' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-              title="TDR, Marj ve Kâr sütunları görünür (şirket içi kullanım)"
+              title="Tam görünüm PDF önizlemesi — TDR, Marj ve Kâr dahil"
             >
               Tam Görünüm
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('external')}
+              onClick={() => {
+                setViewMode('external');
+                void openPdfPreview('external');
+              }}
               className={`px-3 py-1.5 border-l border-slate-200 transition-colors ${viewMode === 'external' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-              title="TDR, Marj ve Kâr gizli — müşteriye gösterilecek görünüm"
+              title="Müşteri görünümü PDF önizlemesi — TDR, Marj ve Kâr gizli"
             >
               Müşteri Görünümü
             </button>
@@ -4125,12 +4192,12 @@ export default function RepairReportPage() {
   const [claimVendors, setClaimVendors] = useState<ClaimVendorSource[]>([]);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [fieldSurveyOpen, setFieldSurveyOpen] = useState(false);
+  const [fieldSurveyRefreshKey, setFieldSurveyRefreshKey] = useState(0);
   const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [confirmSendWithoutImages, setConfirmSendWithoutImages] = useState(false);
   const [itemsApprovalError, setItemsApprovalError] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showExternalApprovalModal, setShowExternalApprovalModal] = useState(false);
@@ -4675,24 +4742,6 @@ export default function RepairReportPage() {
     setShowRequestApprovalModal(true);
   };
 
-  const handleApprove = async () => {
-    if (!(await askConfirm('Raporu onaylamak istediğinizden emin misiniz?'))) return;
-    try {
-      await axios.post(`${API}/repair-reports/${reportId}/approve`, {}, { headers: authHeader() });
-      load();
-    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
-  };
-
-  const handleReject = async () => {
-    if (!rejectReason.trim()) { notify('warning', 'Lütfen Red Nedeni Giriniz'); return; }
-    try {
-      await axios.post(`${API}/repair-reports/${reportId}/reject`, { reason: rejectReason }, { headers: authHeader() });
-      setShowRejectModal(false);
-      setRejectReason('');
-      load();
-    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
-  };
-
   const handleUpdateField = (field: string, value: string) => {
     setPendingFields((prev) => ({ ...prev, [field]: value }));
     setReport((prev: any) => ({ ...prev, [field]: value }));
@@ -4933,6 +4982,44 @@ export default function RepairReportPage() {
     }
   };
 
+  const openPdfPreview = async (view: 'internal' | 'external') => {
+    if (!(await ensureSessionBeforeMutation())) {
+      notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      return;
+    }
+    try {
+      const res = await authAxios<Blob>({
+        method: 'GET',
+        url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
+        responseType: 'blob',
+      });
+      const contentType = String(res.headers['content-type'] ?? '');
+      if (!contentType.includes('pdf')) {
+        const text = await (res.data as Blob).text();
+        let message = 'PDF önizleme açılamadı.';
+        try { message = JSON.parse(text)?.message ?? message; } catch { /* ignore */ }
+        notify('error', message);
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
+    } catch (e: any) {
+      let message = 'PDF önizleme açılamadı.';
+      if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+        try {
+          const text = await e.response.data.text();
+          message = JSON.parse(text)?.message ?? message;
+        } catch { /* ignore */ }
+      } else if (e?.response?.data?.message) {
+        message = e.response.data.message;
+      }
+      notify('error', message);
+      console.error(e);
+    }
+  };
+
   if (loading || !report) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
 
   const imageCats = REPORT_IMAGE_CATEGORY_LABELS;
@@ -4945,8 +5032,18 @@ export default function RepairReportPage() {
 
   // Acil Yardım raporu ise ayrı editörü kullan
   const isEditable = (report.status === 'draft' || report.status === 'rejected') && !isFieldStaff;
-  const canManageApproval = ['admin', 'ops_manager', 'manager'].includes(normalizedRoleCode);
   const showExternalChannelButton = ['approved', 'sent_for_external_approval', 'externally_rejected'].includes(report.status);
+  const canEditFieldSurvey = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = localStorage.getItem('user') ?? localStorage.getItem('currentUser');
+      if (!raw) return false;
+      const u = JSON.parse(raw);
+      return Array.isArray(u?.permissions) && u.permissions.includes('claim_file.update');
+    } catch {
+      return false;
+    }
+  })();
 
   if (report.reportType === 'emergency') {
     return (
@@ -4963,12 +5060,12 @@ export default function RepairReportPage() {
 
   return (
     <div className="space-y-5 pb-28">
-      {/* Header */}
+      {/* Header — sol kimlik · sağ durum + aşamalar + işlemler */}
       <div className="flex items-start gap-3 flex-wrap">
         <button type="button" onClick={() => {
           tryNavigate(() => router.push(claimPath), 'leave');
         }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[12rem]">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
             {report.claimFile?.insuranceCompany?.name && (
@@ -5001,32 +5098,57 @@ export default function RepairReportPage() {
           <p className="text-xs text-slate-400 mt-0.5">
             {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
-          <div className="mt-2 max-w-xl">
-            <ClaimStageStrip
-              source={{
-                reportStatus: report.status,
-                claimFile: report.claimFile,
-              }}
-              compact
-            />
-          </div>
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0 ml-auto min-w-0 max-w-full w-full sm:w-auto">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+        <ClaimFileHeaderStatusCluster
+          statusBadge={
             <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(report.status)}`}>
               {repairReportStatusLabel(report.status)}
             </span>
-            {isRepairReportRevision(report.versionNo) && (
-              <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
-            )}
-            {pendingInsurancePortalApproval && (
-              <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
-            )}
-          </div>
-          <div className="w-full max-w-md">
-            <RevisionHistoryStrip reportId={reportId as string} compact />
-          </div>
-        </div>
+          }
+          extraBadges={
+            <>
+              {isRepairReportRevision(report.versionNo) && (
+                <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-700">v{report.versionNo}</span>
+              )}
+              {pendingInsurancePortalApproval && (
+                <Badge text="Sigorta Portalında · Bekliyor" color="bg-indigo-100 text-indigo-700" />
+              )}
+            </>
+          }
+          actionsMenu={
+            <ClaimFileHeaderActionsMenu
+              fileNo={report.claimFile?.fileNo}
+              reportId={reportId as string}
+              showManualDecision
+              onStartRevision={handleRevise}
+              startRevisionDisabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
+              onManualDecision={async (action: ManualDecisionAction, reason: string) => {
+                if (action === 'revise') return;
+                try {
+                  await axios.post(
+                    `${API}/claim-operation-center/${claimId}/manual-decision`,
+                    { action, reason },
+                    { headers: authHeader() },
+                  );
+                  notify(
+                    'success',
+                    action === 'approve'
+                      ? 'Manuel onay kaydedildi. Yönetici ve müşteri bilgilendirildi.'
+                      : 'Manuel red kaydedildi. Yönetici ve müşteri bilgilendirildi.',
+                  );
+                  await load();
+                } catch (e) {
+                  notify('error', getApiErrorMessage(e, 'Manuel karar kaydedilemedi'));
+                  throw e;
+                }
+              }}
+            />
+          }
+          stageSource={{
+            reportStatus: report.status,
+            claimFile: report.claimFile,
+          }}
+        />
       </div>
 
       {/* Onay durumu özeti */}
@@ -5048,20 +5170,35 @@ export default function RepairReportPage() {
           )}
           {latestApprovalDecision?.action === 'approved' && (
             <p>
-              <span className="font-medium text-green-800">Onaylandı:</span>{' '}
+              <span className="font-medium text-green-800">
+                {String(latestApprovalDecision.reason ?? '').includes('Sözlü Müşteri')
+                  ? 'Manuel Onay:'
+                  : 'Onaylandı:'}
+              </span>{' '}
               {fmtDateTime(latestApprovalDecision.createdAt)}
               {' · '}
               <span className="text-slate-600">Onaylayan: {approvalActorName(latestApprovalDecision.user)}</span>
+              {latestApprovalDecision.reason && (
+                <span className="block text-xs text-slate-600 mt-0.5">
+                  Gerekçe: {latestApprovalDecision.reason}
+                </span>
+              )}
             </p>
           )}
           {latestApprovalDecision?.action === 'rejected' && (
             <p>
-              <span className="font-medium text-red-800">Reddedildi:</span>{' '}
+              <span className="font-medium text-red-800">
+                {String(latestApprovalDecision.reason ?? '').includes('Sözlü Müşteri')
+                  ? 'Manuel Red:'
+                  : 'Reddedildi:'}
+              </span>{' '}
               {fmtDateTime(latestApprovalDecision.createdAt)}
               {' · '}
               <span className="text-slate-600">Reddeden: {approvalActorName(latestApprovalDecision.user)}</span>
               {latestApprovalDecision.reason && (
-                <span className="block text-xs text-red-600 mt-0.5 italic">Neden: {latestApprovalDecision.reason}</span>
+                <span className="block text-xs text-slate-600 mt-0.5">
+                  Gerekçe: {latestApprovalDecision.reason}
+                </span>
               )}
             </p>
           )}
@@ -5100,22 +5237,6 @@ export default function RepairReportPage() {
                 Onaya Gönder
               </button>
             )}
-            {report.status === 'pending_approval' && canManageApproval && (
-              <>
-                <button type="button"
-                  onClick={handleApprove}
-                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
-                >
-                  Onayla
-                </button>
-                <button type="button"
-                  onClick={() => setShowRejectModal(true)}
-                  className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700"
-                >
-                  Reddet
-                </button>
-              </>
-            )}
             {showExternalChannelButton && (
               <button type="button"
                 onClick={() => {
@@ -5137,17 +5258,23 @@ export default function RepairReportPage() {
               <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden text-xs">
                 <button
                   type="button"
-                  onClick={() => setViewMode('internal')}
+                  onClick={() => {
+                    setViewMode('internal');
+                    void openPdfPreview('internal');
+                  }}
                   className={`px-3 py-1.5 transition-colors ${effectiveViewMode === 'internal' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                  title="TDR, Marj ve Kâr sütunları görünür (şirket içi kullanım)"
+                  title="Tam görünüm PDF önizlemesi — TDR, Marj ve Kâr dahil"
                 >
                   Tam Görünüm
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode('external')}
+                  onClick={() => {
+                    setViewMode('external');
+                    void openPdfPreview('external');
+                  }}
                   className={`px-3 py-1.5 border-l border-slate-200 transition-colors ${effectiveViewMode === 'external' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                  title="TDR, Marj ve Kâr gizli — müşteriye gösterilecek görünüm"
+                  title="Müşteri görünümü PDF önizlemesi — TDR, Marj ve Kâr gizli"
                 >
                   Müşteri Görünümü
                 </button>
@@ -5277,20 +5404,52 @@ export default function RepairReportPage() {
                 ))}
               </div>
             </div>
-            <button
-              type="button"
-              disabled={!isEditable || quickDamageTypes.length === 0}
-              onClick={() => setShowQuickRepairModal(true)}
-              className="rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
-            >
-              ⚡ Hızlı Onarım Türü Ekle
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={!isEditable || quickDamageTypes.length === 0}
+                onClick={() => setShowQuickRepairModal(true)}
+                className="rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ⚡ Hızlı Onarım Türü Ekle
+              </button>
+              {canEditFieldSurvey && (
+                <button
+                  type="button"
+                  onClick={() => setFieldSurveyOpen(true)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Saha Keşif Ölçüsü
+                </button>
+              )}
+            </div>
           </div>
           {quickDamageTypes.length > 0 && (
             <p className="text-xs text-slate-400">{quickDamageTypes.map((v) => quickDamageTypeDisplayLabel(v, quickDamageTypeLabels)).join(' + ')} ({damageSizeLabel(quickDamageSize)}) için öneri alınacak.</p>
           )}
         </div>
       </SectionCard>
+
+      <FieldSurveyBriefList
+        claimFileId={claimId}
+        refreshKey={fieldSurveyRefreshKey}
+        canDelete={canEditFieldSurvey}
+      />
+
+      <FieldSurveyBriefModal
+        open={fieldSurveyOpen}
+        onClose={() => setFieldSurveyOpen(false)}
+        claimFileId={claimId}
+        claimFileNo={report.claimFile?.fileNo ?? report.fileNo}
+        defaultPhone={
+          report.claimFile?.assignedSuppliers?.[0]?.phone
+          ?? report.claimFile?.assignedSupplier?.phone
+          ?? report.claimFile?.customer?.phone
+          ?? report.claimFile?.insuredPhone
+          ?? null
+        }
+        onSaved={() => setFieldSurveyRefreshKey((k) => k + 1)}
+      />
 
       {/* Tespit Bulguları */}
       <SectionCard title="Tespit Bulguları *" id="tespit-bulgulari-section">
@@ -5879,40 +6038,6 @@ export default function RepairReportPage() {
         </div>
       )}
 
-      {/* Red Nedeni Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-semibold text-slate-800 mb-4">Raporu Reddet</h3>
-            <div>
-              <label className="text-xs text-slate-500 block mb-1">Red Nedeni *</label>
-              <textarea
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-y min-h-[80px]"
-                rows={4}
-                placeholder="Red Nedenini Açıklayınız..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button type="button"
-                onClick={handleReject}
-                disabled={!rejectReason.trim()}
-                className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
-              >
-                Reddet
-              </button>
-              <button type="button"
-                onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
-                className="flex-1 border border-slate-200 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
-              >
-                İptal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showRequestApprovalModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
@@ -6045,10 +6170,18 @@ export default function RepairReportPage() {
                     h.action === 'rejected' ? 'bg-red-100 text-red-700' :
                     'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {h.action === 'approved' ? 'Onayladı' : h.action === 'rejected' ? 'Reddetti' : h.action === 'revision_created' ? 'Revizyon Oluşturdu' : 'Onaya Gönderdi'}
+                    {h.action === 'approved'
+                      ? (String(h.reason ?? '').includes('Sözlü Müşteri') ? 'Manuel Onay' : 'Onayladı')
+                      : h.action === 'rejected'
+                        ? (String(h.reason ?? '').includes('Sözlü Müşteri') ? 'Manuel Red' : 'Reddetti')
+                        : h.action === 'revision_created'
+                          ? (String(h.reason ?? '').includes('Sözlü Müşteri') ? 'Manuel Revizyon' : 'Revizyon Oluşturdu')
+                          : 'Onaya Gönderdi'}
                   </span>
                   <p className="text-xs text-slate-400">{new Date(h.createdAt).toLocaleString('tr-TR')}</p>
-                  {h.reason && <p className="text-xs text-red-600 mt-0.5 italic">Neden: {h.reason}</p>}
+                  {h.reason && (
+                    <p className="text-xs text-slate-600 mt-0.5">Gerekçe: {h.reason}</p>
+                  )}
                 </div>
               </div>
             ))}

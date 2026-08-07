@@ -13,6 +13,7 @@ import {
   buildApprovalReminderEmailSubject,
   buildApprovalReminderEmailText,
 } from './approval-reminder-email.template';
+import { buildNotificationEmailHtml } from './email.template';
 
 @Injectable()
 export class ClaimEventEmailService {
@@ -346,5 +347,66 @@ export class ClaimEventEmailService {
       buildApprovalReminderEmailHtml(payload),
       { text: buildApprovalReminderEmailText(payload) },
     );
+  }
+
+  /**
+   * Sözlü (manuel) onay / red / revizyon — yönetici ve müşteriye.
+   * Sigorta şirketi fallback yok.
+   */
+  async onManualDecision(params: {
+    action: 'approve' | 'reject' | 'revise';
+    fileNo: string;
+    reason: string;
+    actorName: string;
+    claimFileId?: string | null;
+    emergencyCaseId?: string | null;
+    customerEmail?: string | null;
+    managerEmails: string[];
+  }) {
+    const actionLabel =
+      params.action === 'approve'
+        ? 'Manuel Onay'
+        : params.action === 'reject'
+          ? 'Manuel Red'
+          : 'Manuel Revizyon';
+    const subject = `${actionLabel} — ${params.fileNo}`;
+    const path = params.claimFileId
+      ? panelHasarDosyasiPath(params.claimFileId)
+      : params.emergencyCaseId
+        ? `/panel/acil-yardim/${params.emergencyCaseId}`
+        : '/panel';
+    const actionUrl = buildPanelUrl(this.appUrl, path);
+    const html = buildNotificationEmailHtml({
+      title: actionLabel,
+      preheader: `${params.fileNo} için ${actionLabel.toLowerCase()} kaydı oluşturuldu.`,
+      rows: [
+        { label: 'Dosya No', value: params.fileNo },
+        { label: 'İşlem', value: actionLabel },
+        { label: 'Kaydeden', value: params.actorName || '—' },
+        { label: 'Açıklama', value: params.reason },
+        { label: 'Kanal', value: 'Sözlü (Manuel Karar)' },
+      ],
+      actionUrl,
+      actionLabel: 'Dosyayı Görüntüle',
+    });
+
+    const results: Array<{ to: string; sent: boolean }> = [];
+    const customerTo = params.customerEmail?.trim() ?? '';
+    if (customerTo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerTo)) {
+      const res = await this.email.sendEmail(customerTo, subject, html);
+      results.push({ to: customerTo, sent: !!res.sent });
+    }
+
+    const seen = new Set<string>(customerTo ? [customerTo.toLowerCase()] : []);
+    for (const raw of params.managerEmails) {
+      const to = (raw ?? '').trim();
+      if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) continue;
+      if (seen.has(to.toLowerCase())) continue;
+      seen.add(to.toLowerCase());
+      const res = await this.email.sendEmail(to, subject, html);
+      results.push({ to, sent: !!res.sent });
+    }
+
+    return { sentCount: results.filter((x) => x.sent).length, results };
   }
 }

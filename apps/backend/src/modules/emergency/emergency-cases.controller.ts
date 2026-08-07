@@ -158,6 +158,21 @@ export class EmergencyCasesController {
     return this.service.updateStatus(id, dto, user?.id ?? 'system');
   }
 
+  @Post(':id/manual-decision')
+  @RequirePermissions('claim_file.update')
+  async recordManualDecision(
+    @Param('id') id: string,
+    @Body() body: { action: 'approve' | 'reject' | 'revise'; reason: string },
+    @CurrentUser() user?: any,
+  ) {
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
+    return {
+      success: true,
+      data: await this.service.recordManualDecision(id, body, user),
+    };
+  }
+
   /** Kapanış e-postası önizleme (asistans firması) */
   @Get(':id/closure-email')
   @RequirePermissions('claim_file.view')

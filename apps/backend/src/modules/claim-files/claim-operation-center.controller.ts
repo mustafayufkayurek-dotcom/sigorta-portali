@@ -118,4 +118,38 @@ export class ClaimOperationCenterController {
       ),
     };
   }
+
+  @Post(':claimFileId/digital-approval')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Dijital onay adımını operasyon geçmişine kaydet' })
+  async recordDigitalApproval(
+    @Param('claimFileId') claimFileId: string,
+    @Body()
+    body: {
+      formType: string;
+      status: 'sent' | 'approved';
+      insuredName?: string | null;
+      link?: string | null;
+    },
+    @CurrentUser() user: any,
+  ) {
+    return {
+      success: true,
+      data: await this.service.recordDigitalApproval(claimFileId, body, user),
+    };
+  }
+
+  @Post(':claimFileId/manual-decision')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Sözlü (manuel) onay / red / revizyon — zorunlu açıklama + bildirim' })
+  async recordManualDecision(
+    @Param('claimFileId') claimFileId: string,
+    @Body() body: { action: 'approve' | 'reject' | 'revise'; reason: string },
+    @CurrentUser() user: any,
+  ) {
+    return {
+      success: true,
+      data: await this.service.recordManualDecision(claimFileId, body, user),
+    };
+  }
 }
